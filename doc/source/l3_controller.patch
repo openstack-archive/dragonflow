@@ -1,0 +1,3465 @@
+From cc38589f3632ef6054524c13de9d2bd793c094aa Mon Sep 17 00:00:00 2001
+From: Eran Gampel <eran@gampel.net>
+Date: Sun, 11 Jan 2015 09:49:21 +0200
+Subject: [PATCH 1/8] merge
+
+Change-Id: Ibb3d4bab9f094de0081cc3fb8a49f75a01ef5cdf
+---
+ neutron/agent/linux/ovs_lib.py                     |   22 +-
+ neutron/agent/rpc.py                               |   11 +-
+ neutron/api/rpc/handlers/l3_rpc.py                 |   18 +-
+ .../plugins/openvswitch/agent/ovs_neutron_agent.py |  130 +-
+ neutron/plugins/openvswitch/common/config.py       |    3 +
+ neutron/plugins/openvswitch/common/constants.py    |    5 +-
+ .../services/l3_router/README.l3_cont_dvr_plugin   |   63 +
+ neutron/services/l3_router/l3_cont_dvr_plugin.py   |  360 ++++++
+ neutron/services/l3_router/l3_reactive_app.py      | 1274 ++++++++++++++++++++
+ neutron/tests/unit/openvswitch/test_ovs_tunnel.py  |    2 +
+ 10 files changed, 1869 insertions(+), 19 deletions(-)
+ create mode 100644 neutron/services/l3_router/README.l3_cont_dvr_plugin
+ create mode 100755 neutron/services/l3_router/l3_cont_dvr_plugin.py
+ create mode 100755 neutron/services/l3_router/l3_reactive_app.py
+
+diff --git a/neutron/agent/linux/ovs_lib.py b/neutron/agent/linux/ovs_lib.py
+index 7b2d2a2..f745cf3 100644
+--- a/neutron/agent/linux/ovs_lib.py
++++ b/neutron/agent/linux/ovs_lib.py
+@@ -138,6 +138,7 @@ class BaseOVS(object):
+ 
+ 
+ class OVSBridge(BaseOVS):
++
+     def __init__(self, br_name, root_helper):
+         super(OVSBridge, self).__init__(root_helper)
+         self.br_name = br_name
+@@ -158,6 +159,11 @@ class OVSBridge(BaseOVS):
+             return res.strip().split('\n')
+         return res
+ 
++    def set_controller_mode(self, mode):
++        self.run_vsctl(['--', 'set', 'controller', self.br_name,
++                        "connection-mode=%s" % mode],
++                       check_error=True)
++
+     def set_secure_mode(self):
+         self.run_vsctl(['--', 'set-fail-mode', self.br_name, 'secure'],
+                        check_error=True)
+@@ -209,8 +215,11 @@ class OVSBridge(BaseOVS):
+         args = ["clear", table_name, record, column]
+         self.run_vsctl(args)
+ 
+-    def run_ofctl(self, cmd, args, process_input=None):
+-        full_args = ["ovs-ofctl", cmd, self.br_name] + args
++    def run_ofctl(self, cmd, args, process_input=None, protocols=None):
++        if protocols:
++            full_args = ["ovs-ofctl", cmd, protocols, self.br_name] + args
++        else:
++            full_args = ["ovs-ofctl", cmd, self.br_name] + args
+         try:
+             return utils.execute(full_args, root_helper=self.root_helper,
+                                  process_input=process_input)
+@@ -245,12 +254,13 @@ class OVSBridge(BaseOVS):
+         return self.db_get_val('Bridge',
+                                self.br_name, 'datapath_id').strip('"')
+ 
+-    def do_action_flows(self, action, kwargs_list):
++    def do_action_flows(self, action, kwargs_list, protocols=None):
+         flow_strs = [_build_flow_expr_str(kw, action) for kw in kwargs_list]
+-        self.run_ofctl('%s-flows' % action, ['-'], '\n'.join(flow_strs))
++        self.run_ofctl('%s-flows' % action, ['-'], '\n'.join(flow_strs),
++                       protocols)
+ 
+-    def add_flow(self, **kwargs):
+-        self.do_action_flows('add', [kwargs])
++    def add_flow(self, protocols=None, **kwargs):
++        self.do_action_flows('add', [kwargs], protocols)
+ 
+     def mod_flow(self, **kwargs):
+         self.do_action_flows('mod', [kwargs])
+diff --git a/neutron/agent/rpc.py b/neutron/agent/rpc.py
+index 98e641a..deae0e4 100644
+--- a/neutron/agent/rpc.py
++++ b/neutron/agent/rpc.py
+@@ -22,7 +22,6 @@ from neutron.common import topics
+ from neutron.i18n import _LW
+ from neutron.openstack.common import log as logging
+ 
+-
+ LOG = logging.getLogger(__name__)
+ 
+ 
+@@ -121,3 +120,13 @@ class PluginApi(object):
+         cctxt = self.client.prepare()
+         return cctxt.call(context, 'tunnel_sync', tunnel_ip=tunnel_ip,
+                           tunnel_type=tunnel_type)
++
++    def update_agent_port_mapping_done(self, context, agent_id,
++                                       ip_address, host=None):
++        LOG.debug(("Notify controller on new/updated endpoint %s"), host)
++        topic = topics.L3PLUGIN
++        cctxt = self.client.prepare(topic=topic, fanout=True)
++        cctxt.cast(context, 'update_agent_port_mapping_done',
++                   agent_id=agent_id,
++                   ip_address=ip_address,
++                   host=host)
+diff --git a/neutron/api/rpc/handlers/l3_rpc.py b/neutron/api/rpc/handlers/l3_rpc.py
+index aebb670..9e08eed 100644
+--- a/neutron/api/rpc/handlers/l3_rpc.py
++++ b/neutron/api/rpc/handlers/l3_rpc.py
+@@ -28,11 +28,11 @@ from neutron import manager
+ from neutron.openstack.common import log as logging
+ from neutron.plugins.common import constants as plugin_constants
+ 
+-
+ LOG = logging.getLogger(__name__)
+ 
+ 
+ class L3RpcCallback(object):
++
+     """L3 agent RPC callback in plugin implementations."""
+ 
+     # 1.0  L3PluginApi BASE_RPC_API_VERSION
+@@ -80,7 +80,7 @@ class L3RpcCallback(object):
+         else:
+             routers = self.l3plugin.get_sync_data(context, router_ids)
+         if utils.is_extension_supported(
+-            self.plugin, constants.PORT_BINDING_EXT_ALIAS):
++                self.plugin, constants.PORT_BINDING_EXT_ALIAS):
+             self._ensure_host_set_on_ports(context, host, routers)
+         LOG.debug("Routers returned to l3 agent:\n %s",
+                   jsonutils.dumps(routers, indent=5))
+@@ -206,7 +206,7 @@ class L3RpcCallback(object):
+         self._ensure_host_set_on_port(admin_ctx, host, agent_port)
+         LOG.debug('Agent Gateway port returned : %(agent_port)s with '
+                   'host %(host)s', {'agent_port': agent_port,
+-                  'host': host})
++                                    'host': host})
+         return agent_port
+ 
+     def get_snat_router_interface_ports(self, context, **kwargs):
+@@ -228,7 +228,7 @@ class L3RpcCallback(object):
+             self._ensure_host_set_on_port(admin_ctx, host, p)
+         LOG.debug('SNAT interface ports returned : %(snat_port_list)s '
+                   'and on host %(host)s', {'snat_port_list': snat_port_list,
+-                  'host': host})
++                                           'host': host})
+         return snat_port_list
+ 
+     def update_router_state(self, context, **kwargs):
+@@ -238,3 +238,13 @@ class L3RpcCallback(object):
+ 
+         return self.l3plugin.update_router_state(context, router_id, state,
+                                                  host=host)
++
++    def update_agent_port_mapping_done(self, context, **kwargs):
++        agent_id = kwargs.get('agent_id')
++        ip_address = kwargs.get('ip_address')
++        host = kwargs.get('host')
++        try:
++            return self.l3plugin.update_agent_port_mapping_done(
++                context, agent_id, ip_address, host)
++        except AttributeError:
++            LOG.debug("No Handle for:update_agent_port_mapping_done L3 Serv")
+diff --git a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+index 4fd77e3..dce7feb 100644
+--- a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
++++ b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+@@ -14,12 +14,12 @@
+ #    License for the specific language governing permissions and limitations
+ #    under the License.
+ 
++import eventlet
+ import hashlib
+ import signal
+ import sys
++import threading
+ import time
+-
+-import eventlet
+ eventlet.monkey_patch()
+ 
+ import netaddr
+@@ -47,8 +47,6 @@ from neutron.openstack.common import log as logging
+ from neutron.openstack.common import loopingcall
+ from neutron.plugins.common import constants as p_const
+ from neutron.plugins.openvswitch.common import constants
+-
+-
+ LOG = logging.getLogger(__name__)
+ cfg.CONF.import_group('AGENT', 'neutron.plugins.openvswitch.common.config')
+ 
+@@ -194,15 +192,25 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+ 
+         # Keep track of int_br's device count for use by _report_state()
+         self.int_br_device_count = 0
++        self.local_vlan_map = {}
++        # Initialize controller Ip List
++        self.controllers_ip_list = None
++        '''
++        Sync lock for Race condition set_controller <--> check_ovs_restart
++        when setting the controller all the flow table are deleted
++        by the time we set the CANARY_TABLE again.
++        '''
++        self.set_controller_lock = threading.Lock()
++        self.enable_l3_controller = cfg.CONF.AGENT.enable_l3_controller
+ 
+         self.int_br = ovs_lib.OVSBridge(integ_br, self.root_helper)
++
+         self.setup_integration_br()
+         # Stores port update notifications for processing in main rpc loop
+         self.updated_ports = set()
+         self.setup_rpc()
+         self.bridge_mappings = bridge_mappings
+         self.setup_physical_bridges(self.bridge_mappings)
+-        self.local_vlan_map = {}
+         self.tun_br_ofports = {p_const.TYPE_GRE: {},
+                                p_const.TYPE_VXLAN: {}}
+ 
+@@ -453,6 +461,103 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+         else:
+             LOG.warning(_LW('Action %s not supported'), action)
+ 
++    def get_bridge_by_name(self, br_id):
++        bridge = None
++        if self.int_br.br_name == br_id:
++            bridge = self.int_br
++        elif self.tun_br.br_name == br_id:
++            bridge = self.tun_br
++        else:
++            for physical_network in self.phys_brs:
++                if self.phys_brs[physical_network].br_name == br_id:
++                    bridge = self.phys_brs[physical_network]
++                    break
++        return bridge
++
++    def setup_entry_for_arp_reply_remote(self, context, br_id, action,
++                                         table_id, segmentation_id, net_uuid,
++                                         mac_address, ip_address):
++        '''Set the ARP respond entry.
++        :param br_id: the bridge id.
++        :param action: add or remove.
++        :param table_id: Id of the table to insert the ARP responder rule.
++        :param segmentation_id: the segmentation id of the req network.
++        :param net_uuid: the uuid of the network associated with this vlan.
++        :param mac_address: the resolved mac addressby arp.
++        :param ip address: the ip address to resolve ARP for .
++         '''
++        br = self.get_bridge_by_name(br_id)
++        if not br:
++            LOG.errror("Failure Could not find bridge name <%s>", br_id)
++            return
++        lvm = self.local_vlan_map.get(net_uuid)
++        if lvm:
++            local_vid = lvm.vlan
++        else:
++            LOG.debug(("Network %s not used on agent."), net_uuid)
++            return
++        mac = netaddr.EUI(mac_address, dialect=netaddr.mac_unix)
++        ip = netaddr.IPAddress(ip_address)
++        if action == 'add':
++            actions = constants.ARP_RESPONDER_ACTIONS % {'mac': mac, 'ip': ip}
++            actions = "strip_vlan,%s" % actions
++            br.add_flow(table=table_id,
++                        priority=100,
++                        proto='arp',
++                        dl_vlan=local_vid,
++                        nw_dst='%s' % ip,
++                        actions=actions)
++        elif action == 'remove':
++            br.delete_flows(table=table_id,
++                            proto='arp',
++                            dl_vlan=local_vid,
++                            nw_dst='%s' % ip)
++        else:
++            LOG.warning(_LW('Action %s not supported'), action)
++
++    def set_controller_for_br(self, context, br_id, ip_address_list,
++                              force_reconnect=False, protocols="OpenFlow13"):
++        '''Set OpenFlow Controller on the Bridge .
++        :param br_id: the bridge id  .
++        :param ip_address_list: tcp:ip_address:port;tcp:ip_address2:port
++        :param force_reconnect: Force re setting the controller,remove i
++        all flows
++        '''
++        if not self.enable_l3_controller:
++            LOG.info(_LI("Controller Base l3 is disabled on Agent"))
++            return
++        bridge = None
++        if (force_reconnect or not self.controllers_ip_list
++                or self.controllers_ip_list != ip_address_list):
++            self.controllers_ip_list = ip_address_list
++            bridge = self.get_bridge_by_name(br_id)
++            if not bridge:
++                LOG.errror("set_controller_for_br failur! no bridge  %s ",
++                           br_id)
++                return
++            ip_address_ = ip_address_list.split(";")
++            LOG.debug(("Set Controllers on br %s to %s"), br_id, ip_address_)
++            self.set_controller_lock.acquire()
++            bridge.del_controller()
++            bridge.set_controller(ip_address_)
++            #bridge.set_protocols(protocols)
++            if bridge.br_name == "br-int":
++                bridge.add_flow(priority=0, actions="normal")
++                bridge.add_flow(table=constants.CANARY_TABLE, priority=0,
++                                actions="drop")
++            self.update_metadata_vlan_map_table(bridge)
++            bridge.set_controller_mode("out-of-band")
++            self.set_controller_lock.release()
++
++    def update_metadata_vlan_map_table(self, bridge):
++        for net_id, vlan_mapping in self.local_vlan_map.iteritems():
++            seg_id_hex = hex(vlan_mapping.segmentation_id)
++            bridge.add_flow(table=constants.BR_INT_METADATA_TABLE,
++                            priority=100,
++                            dl_vlan=vlan_mapping.vlan,
++                            actions="write_metadata:%s" %
++                            (seg_id_hex), protocols="-OOpenFlow13")
++
+     def provision_local_vlan(self, net_uuid, network_type, physical_network,
+                              segmentation_id):
+         '''Provisions a local VLAN.
+@@ -648,7 +753,8 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+         self.dvr_agent.bind_port_to_dvr(port, network_type, fixed_ips,
+                                         device_owner,
+                                         local_vlan_id=lvm.vlan)
+-
++        if self.enable_l3_controller:
++            self.update_metadata_vlan_map_table(self.int_br)
+         # Do not bind a port if it's already bound
+         cur_tag = self.int_br.db_get_val("Port", port.port_name, "tag")
+         if cur_tag != str(lvm.vlan):
+@@ -712,7 +818,8 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+         # which does nothing if bridge already exists.
+         self.int_br.create()
+         self.int_br.set_secure_mode()
+-
++        if not self.enable_l3_controller:
++            self.int_br.del_controller()
+         self.int_br.delete_port(cfg.CONF.OVS.int_peer_patch_port)
+         self.int_br.remove_all_flows()
+         # switch all traffic using L2 learning
+@@ -1341,8 +1448,11 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+                 port_info.get('updated'))
+ 
+     def check_ovs_status(self):
++        # Sync lock for race condition with set_controller
++        self.set_controller_lock.acquire()
+         # Check for the canary flow
+         canary_flow = self.int_br.dump_flows_for_table(constants.CANARY_TABLE)
++        self.set_controller_lock.release()
+         if canary_flow == '':
+             LOG.warn(_LW("OVS is restarted. OVSNeutronAgent will reset "
+                          "bridges and recover ports."))
+@@ -1467,6 +1577,12 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+                             len(port_info.get('updated', [])))
+                         port_stats['regular']['removed'] = (
+                             len(port_info.get('removed', [])))
++                        if self.enable_l3_controller:
++                            rpc = self.plugin_rpc
++                            rpc.update_agent_port_mapping_done(self.context,
++                                                               self.agent_id,
++                                                               self.local_ip,
++                                                               cfg.CONF.host)
+                     ports = port_info['current']
+                     # Treat ancillary devices if they exist
+                     if self.ancillary_brs:
+diff --git a/neutron/plugins/openvswitch/common/config.py b/neutron/plugins/openvswitch/common/config.py
+index a5d1e92..8926981 100644
+--- a/neutron/plugins/openvswitch/common/config.py
++++ b/neutron/plugins/openvswitch/common/config.py
+@@ -79,6 +79,9 @@ agent_opts = [
+                        "outgoing IP packet carrying GRE/VXLAN tunnel.")),
+     cfg.BoolOpt('enable_distributed_routing', default=False,
+                 help=_("Make the l2 agent run in DVR mode.")),
++    cfg.BoolOpt('enable_l3_controller', default=False,
++                help=_("Allow the l3 controller Mode on the"
++                       "integration_bridge")),
+ ]
+ 
+ 
+diff --git a/neutron/plugins/openvswitch/common/constants.py b/neutron/plugins/openvswitch/common/constants.py
+index 98c122d..d709d87 100644
+--- a/neutron/plugins/openvswitch/common/constants.py
++++ b/neutron/plugins/openvswitch/common/constants.py
+@@ -52,7 +52,10 @@ FLOOD_TO_TUN = 22
+ # Tables for integration bridge
+ # Table 0 is used for forwarding.
+ CANARY_TABLE = 23
+-
++BR_INT_CLASSIFIER_TABLE = 40
++BR_INT_METADATA_TABLE = 50
++BR_INT_ARP_TABLE = 51
++BR_INT_L3_FLOWS = 52
+ # Map tunnel types to tables number
+ TUN_TABLE = {p_const.TYPE_GRE: GRE_TUN_TO_LV,
+              p_const.TYPE_VXLAN: VXLAN_TUN_TO_LV}
+diff --git a/neutron/services/l3_router/README.l3_cont_dvr_plugin b/neutron/services/l3_router/README.l3_cont_dvr_plugin
+new file mode 100644
+index 0000000..e02efa6
+--- /dev/null
++++ b/neutron/services/l3_router/README.l3_cont_dvr_plugin
+@@ -0,0 +1,63 @@
++#######
++In order to enable Neutron Controlle-based DVR, you need to make the 
++   following change in ``neutron.conf``:
++
++  1. Comment-out loading of the ``L3RouterPlugin``
++
++  2. Add the ``neutron.services.l3_router.l3_cont_dvr_plugin.ControllerL3ServicePlugin`` 
++     to the service plugin list: 
++
++    **neutron.conf**
++
++    :literal:`[default]`
++
++    :literal:`#service_plugins = neutron.services.l3_router.l3_router_plugin.L3RouterPlugin`
++
++    :literal:`service_plugins=neutron.services.l3_router.l3_cont_dvr_plugin.ControllerL3ServicePlugin`
++
++2. In addition, make the following change in ``ml2_conf.ini``:
++
++  * Set the ``enable_l3_controller`` to ``True``: 
++
++    **ml2_conf.ini**
++
++    :literal:`[agent]`
++
++    :literal:`# enable_l3_controller = True`
++
++    
++3. Deploy the **L3 Controller-based DVR Agent** on the Network Node
++
++4. Deploy the **Public Network Agent** on *each* Compute node
++
++5. Remove deployment of L3 Agent or DVR Agent  
++
++6. Install Ryu on Network Node
++% git clone git://github.com/osrg/ryu.git 
++The current implementation is embedded into the service plugin. will be moved into a Agent based implementation of the controller.
++Until we do that we will have to apply the following patch on ryu 
++ryu/controller/controller.py and ryu/app/wsgi.py modify register_cli_opts to register_opts
++--- a/ryu/app/wsgi.py
+++++ b/ryu/app/wsgi.py
++@@ -31,7 +31,7 @@ from tinyrpc.transports import ServerTransport, ClientTranspor
++ from tinyrpc.client import RPCClient
++
++ CONF = cfg.CONF
++-CONF.register_cli_opts([
+++CONF.register_opts([
++     cfg.StrOpt('wsapi-host', default='', help='webapp listen host'),
++     cfg.IntOpt('wsapi-port', default=8080, help='webapp listen port')
++ ])
++diff --git a/ryu/controller/controller.py b/ryu/controller/controller.py
++index 23418f5..a5bcda2 100644
++--- a/ryu/controller/controller.py
+++++ b/ryu/controller/controller.py
++@@ -48,7 +48,7 @@ from ryu.lib.dpid import dpid_to_str
++ LOG = logging.getLogger('ryu.controller.controller')
++
++ CONF = cfg.CONF
++-CONF.register_cli_opts([
+++CONF.register_opts([
++
++
++% cd ryu; python ./setup.py install  
+diff --git a/neutron/services/l3_router/l3_cont_dvr_plugin.py b/neutron/services/l3_router/l3_cont_dvr_plugin.py
+new file mode 100755
+index 0000000..e449e6f
+--- /dev/null
++++ b/neutron/services/l3_router/l3_cont_dvr_plugin.py
+@@ -0,0 +1,360 @@
++# Copyright (c) 2014 OpenStack Foundation.
++# All Rights Reserved.
++#
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++
++import threading
++
++from ryu.base.app_manager import AppManager
++from ryu.controller.ofp_handler import OFPHandler
++
++from oslo.config import cfg
++from oslo import messaging
++from oslo.utils import excutils
++from oslo.utils import importutils
++
++from neutron import context
++from neutron import manager
++
++from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
++from neutron.api.rpc.handlers import l3_rpc
++from neutron.common import constants as q_const
++from neutron.common import rpc as n_rpc
++from neutron.common import topics
++from neutron.common import utils
++from neutron.plugins.common import constants
++
++from neutron.db import common_db_mixin
++from neutron.db import l3_gwmode_db
++from neutron.db import l3_hascheduler_db
++
++from neutron.openstack.common import log as logging
++from neutron.openstack.common import loopingcall
++
++from neutron.services.l3_router.l3_reactive_app import L3ReactiveApp
++
++LOG = logging.getLogger(__name__)
++
++
++NET_CONTROL_L3_OPTS = [
++    cfg.StrOpt('L3controller_ip_list',
++               default='tcp:10.100.100.38:6633',
++               help=("L3 Controler IP list list tcp:ip_addr:port;"
++                     "tcp:ip_addr:port..;..")),
++    cfg.StrOpt('net_controller_l3_southbound_protocol',
++               default='OpenFlow',
++               help=("Southbound protocol to connect the forwarding"
++                     "element Currently supports only OpenFlow"))
++]
++
++cfg.CONF.register_opts(NET_CONTROL_L3_OPTS)
++
++
++L3_SDN_AGNET_TYPE = "SDN_app_l3"
++
++
++class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
++                                l3_gwmode_db.L3_NAT_db_mixin,
++                                l3_hascheduler_db.L3_HA_scheduler_db_mixin):
++
++    RPC_API_VERSION = '1.2'
++    supported_extension_aliases = ["router", "ext-gw-mode"]
++
++    def __init__(self):
++
++        self.setup_rpc()
++        self.router_scheduler = importutils.import_object(
++            cfg.CONF.router_scheduler_driver)
++        self.start_periodic_agent_status_check()
++        if cfg.CONF.net_controller_l3_southbound_protocol == "OpenFlow":
++            # Open Flow Controller
++            LOG.debug(("Using Southbound OpenFlow Protocol "))
++            self.controllerThread = ControllerRunner("openflow")
++            self.controllerThread.start()
++            self.controllerThread.router_scheduler = self.router_scheduler
++            self.controllerThread.endpoints = self.endpoints
++
++        elif cfg.CONF.net_controller_l3_southbound_protocol == "OVSDB":
++            LOG.error(("Southbound OVSDB Protocol not implemented yet"))
++        elif cfg.CONF.net_controller_l3_southbound_protocol == "OP-FLEX":
++            LOG.error(("Southbound OP-FLEX Protocol not implemented yet"))
++
++        super(ControllerL3ServicePlugin, self).__init__()
++
++    def setup_rpc(self):
++        # RPC support
++        self.topic = topics.L3PLUGIN
++        self.conn = n_rpc.create_connection(new=True)
++        self.agent_notifiers.update(
++            {q_const.AGENT_TYPE_L3: l3_rpc_agent_api.L3AgentNotifyAPI()})
++        self.endpoints = [l3_rpc.L3RpcCallback()]
++        self.conn.create_consumer(self.topic, self.endpoints,
++                                  fanout=True)
++        self.conn.consume_in_threads()
++
++    def get_plugin_type(self):
++        return constants.L3_ROUTER_NAT
++
++    def get_plugin_description(self):
++        """Returns string description of the plugin."""
++        return "Net Controler Plugin reactive mode l3 Implementation"
++
++    def create_floatingip(self, _context, floatingip):
++        """Create floating IP.
++
++        :param _context: Neutron request context
++        :param floatingip: data for the floating IP being created
++        :returns: A floating IP object on success
++
++        """
++        return super(ControllerL3ServicePlugin, self).create_floatingip(
++            _context, floatingip,
++            initial_status=q_const.FLOATINGIP_STATUS_DOWN)
++
++    def add_router_interface_postcommit(self, _context, router_id,
++                                        interface_info):
++        # Update router's state first
++        LOG.debug(("add_router_interface_postcommit "))
++        self.controllerThread.bind_unscheduled_routers()
++        self.controllerThread.update_device_up_by_port_id(
++            interface_info['port_id'])
++        # TODO(gampel) Add router info to Local datastore and abstruction layer
++        # sync local data
++        self.controllerThread.l3_r_app.notify_sync()
++
++    def remove_router_interface_precommit(self, _context, router_id,
++                                          interface_info):
++        LOG.debug(("remove_router_interface_precommit"))
++        # TODO(gampel) Add router info to Local datastore and abstruction layer
++
++    def delete_router_precommit(self, _context, router_id):
++        LOG.debug(("delete_router_precommit "))
++
++    def update_router_postcommit(self, _context, router):
++        self.controllerThread.bind_unscheduled_routers()
++        LOG.debug(("update_router_postcommit "))
++        if router['admin_state_up']:
++            LOG.debug(("update_router_postcommit admin state up Enable "))
++        else:
++            LOG.debug(("update_router_postcommit admin state down disable"))
++
++        self.controllerThread.l3_r_app.notify_sync()
++
++    # Router API
++
++    def create_router(self, *args, **kwargs):
++        self.controllerThread.l3_r_app.create_router(self, *args, **kwargs)
++        return super(ControllerL3ServicePlugin, self).create_router(
++            *args, **kwargs)
++
++    def update_router(self, _context, r_id, router):
++
++        result = super(ControllerL3ServicePlugin, self).update_router(_context,
++                                                                      r_id,
++                                                                      router)
++        self.update_router_postcommit(_context, result)
++        return result
++
++    def delete_router(self, _context, router_id):
++        self.delete_router_precommit(_context, router_id)
++        result = super(ControllerL3ServicePlugin, self).delete_router(_context,
++                                                                    router_id)
++        self.controllerThread.l3_r_app.notify_sync()
++        return result
++
++    # Router Interface API
++
++    def add_router_interface(self, _context, router_id, interface_info):
++        # Create interface in parent
++        result = super(ControllerL3ServicePlugin, self).add_router_interface(
++            _context, router_id, interface_info)
++        try:
++            self.add_router_interface_postcommit(_context, router_id,
++                                                 result)
++        except Exception:
++            with excutils.save_and_reraise_exception():
++                # Rollback db operation
++                super(ControllerL3ServicePlugin, self).remove_router_interface(
++                    _context, router_id, interface_info)
++                return result
++
++    def remove_router_interface(self, _context, router_id, interface_info):
++        self.remove_router_interface_precommit(_context, router_id,
++                                               interface_info)
++        res = super(ControllerL3ServicePlugin, self).remove_router_interface(
++            _context, router_id, interface_info)
++        self.controllerThread.l3_r_app.notify_sync()
++        return res
++
++    def setup_vrouter_arp_responder(self, _context, br, action, table_id,
++                                    segmentation_id, net_uuid, mac_address,
++                                    ip_address):
++
++        topic_port_update = topics.get_topic_name(topics.AGENT,
++                                                  topics.PORT,
++                                                  topics.UPDATE)
++        target = messaging.Target(topic=topic_port_update)
++        rpcapi = n_rpc.get_client(target)
++        rpcapi.cast(_context,
++                    'setup_entry_for_arp_reply_remote',
++                    br_id="br-int",
++                    action=action,
++                    table_id=table_id,
++                    segmentation_id=segmentation_id,
++                    net_uuid=net_uuid,
++                    mac_address=mac_address,
++                    ip_address=ip_address)
++
++    def update_agent_port_mapping_done(
++            self, _context, agent_id, ip_address, host=None):
++        LOG.debug(("::agent agent  <%s> on ip <%s> host <%s>  "),
++                  agent_id,
++                  ip_address,
++                  host)
++        self.send_set_controllers_upadte(_context, False)
++
++    def send_set_controllers_upadte(self, _context, force_reconnect):
++
++        topic_port_update = topics.get_topic_name(topics.AGENT,
++                                                  topics.PORT,
++                                                  topics.UPDATE)
++        target = messaging.Target(topic=topic_port_update)
++        rpcapi = n_rpc.get_client(target)
++        iplist = cfg.CONF.L3controller_ip_list
++        rpcapi.cast(_context,
++                    'set_controller_for_br',
++                    br_id="br-int",
++                    ip_address_list=iplist,
++                    force_reconnect=force_reconnect,
++                    protocols="OpenFlow13")
++
++
++class ControllerRunner(threading.Thread):
++
++    def __init__(self, controllertype):
++        super(ControllerRunner, self).__init__()
++        self.controllertype = controllertype
++        self.ctx = context.get_admin_context()
++        self.hostname = utils.get_hostname()
++        self.agent_state = {
++            'binary': 'neutron-l3-agent',
++            'host': self.hostname,
++            'topic': topics.L3_AGENT,
++            'configurations': {
++                'agent_mode': 'legacy',
++                'use_namespaces': True,
++                'router_id': 1,
++                'handle_internal_only_routers': True,
++                'external_network_bridge': 'br-ex',
++                'gateway_external_network_id': '',
++                'interface_driver': "OpenFlow"},
++            'start_flag': True,
++            'agent_type': L3_SDN_AGNET_TYPE}
++        self.l3_rpc = l3_rpc.L3RpcCallback()
++        self.sync_active_state = False
++        self.sync_all = True
++        self.l3_r_app = None
++        self.heartbeat = None
++        self.open_flow_hand = None
++
++    def start(self):
++        app_mgr = AppManager.get_instance()
++        LOG.debug(("running ryu openflow Controller lib  "))
++        self.open_flow_hand = app_mgr.instantiate(OFPHandler, None, None)
++        self.open_flow_hand.start()
++        self.l3_r_app = app_mgr.instantiate(L3ReactiveApp, None, None)
++        self.l3_r_app.start()
++        ''' TODO fix this is hack to let the scheduler schedule the virtual
++        router to L3 SDN app so this app will be in teh Agnet table as active
++         Will be change when we convert this implementation to Service
++         Plugin ----> l3 SDN agent for scalability Currently runs as tread
++         will be converted to run as a standalone agent
++        '''
++        self.heartbeat = loopingcall.FixedIntervalLoopingCall(
++            self._report_state_and_bind_routers)
++        self.heartbeat.start(interval=30)
++
++    def _report_state_and_bind_routers(self):
++        if self.sync_all:
++            l3plugin = manager.NeutronManager.get_service_plugins().get(
++                constants.L3_ROUTER_NAT)
++            l3plugin.send_set_controllers_upadte(self.ctx, True)
++            self.sync_all = False
++        plugin = manager.NeutronManager.get_plugin()
++        plugin.create_or_update_agent(self.ctx, self.agent_state)
++        self.bind_unscheduled_routers()
++        if not self.sync_active_state:
++            self.update_deviceup_on_all_vr_ports()
++            self.sync_active_state = True
++
++    def bind_unscheduled_routers(self):
++        l3plugin = manager.NeutronManager.get_service_plugins().get(
++            constants.L3_ROUTER_NAT)
++        unscheduled_routers = []
++        routers = l3plugin.get_routers(self.ctx, filters={})
++        for router in routers:
++            l3_agents = l3plugin.get_l3_agents_hosting_routers(
++                self.ctx, [router['id']], admin_state_up=True)
++
++            if l3_agents:
++                LOG.debug(('Router %(router_id)s has already been '
++                           'hosted by L3 agent %(agent_id)s'),
++                          {'router_id': router['id'],
++                           'agent_id': l3_agents[0]['id']})
++            else:
++                unscheduled_routers.append(router)
++
++        if unscheduled_routers:
++
++            l3_agent = l3plugin.get_enabled_agent_on_host(
++                self.ctx, L3_SDN_AGNET_TYPE, utils.get_hostname())
++            if l3_agent:
++                self.router_scheduler.bind_routers(
++                    self.ctx, l3plugin, unscheduled_routers, l3_agent)
++                LOG.debug('Router %(router_id)s scheduled '
++                          'to L3 SDN agent %(agent_id)s.',
++                          {'agent_id': l3_agent.id,
++                           'router_id': unscheduled_routers})
++                # Update Port binbding
++
++                self.l3_rpc._ensure_host_set_on_ports(
++                    self.ctx, utils.get_hostname(), routers)
++            else:
++                LOG.error(("could not find fake l3 agent for L3 SDN app can"
++                          "not schedule router id %(router_ids)s"),
++                          {'router_ids': unscheduled_routers})
++
++    def update_deviceup_on_all_vr_ports(self):
++
++        l3plugin = manager.NeutronManager.get_service_plugins().get(
++            constants.L3_ROUTER_NAT)
++        routers = l3plugin.get_sync_data(self.ctx)
++        for router in routers:
++            for interface in router.get(q_const.INTERFACE_KEY, []):
++                self.update_device_up(interface)
++
++    def update_device_up_by_port_id(self, port_id):
++
++        plugin = manager.NeutronManager.get_plugin()
++        port = plugin._get_port(self.ctx, port_id)
++        self.update_device_up(port)
++
++    def update_device_up(self, port):
++        plugin = manager.NeutronManager.get_plugin()
++        #plugin.update_device_up(self.ctx, device)
++        self.l3_rpc._ensure_host_set_on_port(
++            self.ctx, utils.get_hostname(), port)
++        plugin.update_port_status(self.ctx, port['id'],
++                                  q_const.PORT_STATUS_ACTIVE,
++                                  utils.get_hostname())
+diff --git a/neutron/services/l3_router/l3_reactive_app.py b/neutron/services/l3_router/l3_reactive_app.py
+new file mode 100755
+index 0000000..3dcd928
+--- /dev/null
++++ b/neutron/services/l3_router/l3_reactive_app.py
+@@ -0,0 +1,1274 @@
++# Copyright (c) 2014 OpenStack Foundation.
++# All Rights Reserved.
++#
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++
++import collections
++import struct
++import threading
++
++import time
++
++from ryu.base import app_manager
++from ryu.controller.handler import CONFIG_DISPATCHER
++from ryu.controller.handler import MAIN_DISPATCHER
++from ryu.controller.handler import set_ev_cls
++from ryu.controller import ofp_event
++from ryu.ofproto import ether
++from ryu.ofproto.ether import ETH_TYPE_8021Q
++from ryu.ofproto import ofproto_v1_3
++
++from ryu.lib.packet import ethernet
++from ryu.lib.packet import packet
++
++from ryu.lib.mac import haddr_to_bin
++from ryu.lib.packet import icmp
++from ryu.lib.packet import ipv4
++from ryu.lib.packet import tcp
++from ryu.lib.packet import udp
++from ryu.lib.packet import vlan
++
++from ryu.lib import addrconv
++
++from neutron.openstack.common import log
++from neutron.plugins.ml2 import driver_api as api
++
++from neutron import context
++from neutron import manager
++from neutron.plugins.common import constants as service_constants
++
++
++LOG = log.getLogger(__name__)
++
++ETHERNET = ethernet.ethernet.__name__
++VLAN = vlan.vlan.__name__
++IPV4 = ipv4.ipv4.__name__
++ICMP = icmp.icmp.__name__
++TCP = tcp.tcp.__name__
++UDP = udp.udp.__name__
++
++VLANID_NONE = 0
++VLANID_MIN = 2
++VLANID_MAX = 4094
++COOKIE_SHIFT_VLANID = 32
++UINT16_MAX = 0xffff
++UINT32_MAX = 0xffffffff
++UINT64_MAX = 0xffffffffffffffff
++OFPFW_NW_PROTO = 1 << 5
++
++HIGH_PRIOREITY_FLOW = 1000
++MEDIUM_PRIOREITY_FLOW = 100
++NORMAL_PRIOREITY_FLOW = 10
++LOW_PRIOREITY_FLOW = 1
++LOWEST_PRIOREITY_FLOW = 0
++
++
++# A class to represent a  forwarding Elemnt Switch local state
++class AgentDatapath(object):
++
++    def __init__(self):
++        self.local_vlan_mapping = {}
++        self.local_ports = None
++        self.datapath = 0
++        self.patch_port_num = 0
++
++
++# A class to represent tenat toplogie
++class TenantTopo(object):
++
++    def __init__(self):
++        self.nodes = set()
++        self.edges = collections.defaultdict(list)
++        self.routers = []
++        self.distances = {}
++        self.mac_to_port_data = collections.defaultdict(set)
++        self.tenant_id = None
++        #self.segmentation_id = None
++
++    def add_router(self, router, r_id):
++        self.routers.append(router)
++
++    def add_node(self, value):
++        self.nodes.add(value)
++
++    def add_edge(self, from_node, to_node, distance):
++        self.edges[from_node].append(to_node)
++        self.edges[to_node].append(from_node)
++        self.distances[(from_node, to_node)] = distance
++
++        # we need dijsktra only for extra route
++    def dijsktra(self, graph, initial):
++        visited = {initial: 0}
++        path = {}
++
++        nodes = set(graph.nodes)
++
++        while nodes:
++            min_node = None
++            for node in nodes:
++                if node in visited:
++                    if min_node is None:
++                        min_node = node
++                    elif visited[node] < visited[min_node]:
++                        min_node = node
++
++            if min_node is None:
++                break
++
++            nodes.remove(min_node)
++            current_weight = visited[min_node]
++
++            for edge in graph.edges[min_node]:
++                weight = current_weight + graph.distance[(min_node, edge)]
++                if edge not in visited or weight < visited[edge]:
++                    visited[edge] = weight
++                    path[edge] = min_node
++
++        return visited, path
++
++
++class Router(object):
++
++    def __init__(self, data):
++        self.data = data
++        #self.subnets = defaultdict(list)
++        self.subnets = []
++
++    def add_subnet(self, subnet, sub_id):
++        self.subnets.append(subnet)
++
++
++class Subnet(object):
++
++    def __init__(self, data, port_data, segmentation_id):
++        self.data = data
++        self.port_data = port_data
++        self.segmentation_id = segmentation_id
++
++
++class L3ReactiveApp(app_manager.RyuApp):
++    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
++    #OFP_VERSIONS = [ofproto_v1_2.OFP_VERSION]
++    #OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
++    BASE_RPC_API_VERSION = '1.0'
++
++    BASE_TABLE = 0
++    CLASSIFIER_TABLE = 40
++    METADATA_TABLE_ID = 50
++    ARP_AND_BR_TABLE = 51
++    L3_VROUTER_TABLE = 52
++
++    def __init__(self, *args, **kwargs):
++        super(L3ReactiveApp, self).__init__(*args, **kwargs)
++        self.mac_to_port = {}
++
++        self.ctx = context.get_admin_context()
++        self.lock = threading.Lock()
++        self.tenants = collections.defaultdict(lambda: None)
++        self.need_sync = True
++        self.dp_list = {}
++
++    def start(self):
++        super(L3ReactiveApp, self).start()
++        return 1
++
++    def create_router(self, *args, **kwargs):
++        self.logger.info("l3ReactiveApp create_router")
++        # self.sync_data()
++
++    def notify_sync(self):
++        self.need_sync = True
++        for dpid in self.dp_list:
++            datapath = self.dp_list[dpid].datapath
++            self.send_features_request(datapath)
++            self.send_flow_stats_request(
++                datapath, table=self.METADATA_TABLE_ID)
++
++    def sync_data(self):
++        self.logger.info(" l3_reactive_app sync router data ")
++
++        self.lock.acquire()
++        # Lock
++        self.logger.debug('l3_reactive_app in the critical section the lock')
++        if self.need_sync:
++            l3plugin = manager.NeutronManager.get_service_plugins().get(
++                service_constants.L3_ROUTER_NAT)
++
++            routers = l3plugin.get_sync_data(self.ctx, None)
++            self.core_plugin = manager.NeutronManager.get_plugin()
++            self.get_router_subnets(routers)
++            self.need_sync = False
++            del l3plugin
++            del self.core_plugin
++            self.core_plugin = None
++        self.logger.debug('l3_reactive_app releasing the lock')
++        # Release
++        self.lock.release()
++
++    def get_router_subnets(self, router_data):
++        for router in router_data:
++            tenant_id = router['tenant_id']
++            if not router['tenant_id'] in self.tenants:
++                self.tenants[router['tenant_id']] = TenantTopo()
++            tenant_topo = self.tenants[router['tenant_id']]
++            tenant_topo.tenant_id = tenant_id
++            router_cls = Router(router)
++            tenant_topo.add_router(router_cls, router['id'])
++            if "_interfaces" in router:
++                for interface in router['_interfaces']:
++                    ports_data = self.get_ports_by_subnet(
++                        interface['subnet']['id'])
++                    segmentation_id = None
++                    for device in ports_data:
++                        port = self.get_port_bond_data(
++                            self.ctx, device['id'], device['binding:host_id'])
++                        if "mac_address" in port:
++                            tenant_topo.mac_to_port_data[
++                                port['mac_address']] = port
++                            segmentation_id = port['segmentation_id']
++                        else:
++                            if (device['device_owner'] ==
++                                    'network:router_interface'):
++                                # if this a router then bind it to our
++                                # application
++
++                                LOG.error(("No binding for router %s"), device)
++                    # tenant_topo.add_router(router,router['id'])
++                    subnet_cls = Subnet(interface['subnet'], ports_data,
++                                        segmentation_id)
++                    router_cls.add_subnet(
++                        subnet_cls, interface['subnet']['id'])
++
++    def get_port_bond_data(self, ctx, port_id, device_id):
++        port_context = self.core_plugin.get_bound_port_context(
++            ctx, port_id, device_id)
++        if not port_context:
++            LOG.warning(("Device %(device)s requested by agent "
++                         "%(agent_id)s not found in database"),
++                        {'device': device_id, 'agent_id': port_id})
++            return {'device': device_id}
++
++        segment = port_context.bound_segment
++        port = port_context.current
++
++        if not segment:
++            LOG.warning(("Device %(device)s requested by agent "
++                         " on network %(network_id)s not "
++                         "bound, vif_type: "),
++                        {'device': device_id,
++                         'network_id': port['network_id']})
++            return {'device': device_id}
++
++        entry = {'device': device_id,
++                 'network_id': port['network_id'],
++                 'port_id': port_id,
++                 'mac_address': port['mac_address'],
++                 'admin_state_up': port['admin_state_up'],
++                 'network_type': segment[api.NETWORK_TYPE],
++                 'segmentation_id': segment[api.SEGMENTATION_ID],
++                 'physical_network': segment[api.PHYSICAL_NETWORK],
++                 'fixed_ips': port['fixed_ips'],
++                 'device_owner': port['device_owner']}
++        LOG.debug(("Returning: %s"), entry)
++        return entry
++
++    def get_ports_by_subnet(self, subnet_id):
++        filters = {'fixed_ips': {'subnet_id': [subnet_id]}}
++        return self.core_plugin.get_ports(self.ctx, filters=filters)
++
++    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
++    def OF_packet_in_handler(self, ev):
++        if self.need_sync == 1:
++            self.sync_data()
++        msg = ev.msg
++        datapath = msg.datapath
++        ofproto = datapath.ofproto
++        if msg.reason == ofproto.OFPR_NO_MATCH:
++            reason = 'NO MATCH'
++        elif msg.reason == ofproto.OFPR_ACTION:
++            reason = 'ACTION'
++        elif msg.reason == ofproto.OFPR_INVALID_TTL:
++            reason = 'INVALID TTL'
++        else:
++            reason = 'unknown'
++
++        LOG.debug('OFPPacketIn received: '
++                  'buffer_id=%x total_len=%d reason=%s '
++                  'table_id=%d cookie=%d match=%s',
++                  msg.buffer_id, msg.total_len, reason,
++                  msg.table_id, msg.cookie, msg.match)
++        # utils.hex_array(msg.data))
++        in_port = msg.match['in_port']
++
++        pkt = packet.Packet(msg.data)
++        eth = pkt.get_protocols(ethernet.ethernet)[0]
++
++        header_list = dict((p.protocol_name, p)
++                           for p in pkt.protocols if not isinstance(p, str))
++        if header_list:
++            try:
++                if "ipv4" in header_list:
++                    self.handle_ipv4_packet_in(
++                        datapath,
++                        msg,
++                        in_port,
++                        header_list,
++                        pkt,
++                        eth)
++                    return
++                if "ipv6" in header_list:
++                    self.handle_ipv6_packet_in(
++                        datapath, in_port, header_list, pkt, eth)
++                    return
++            except Exception as exception:
++
++                LOG.debug("Unable to handle packet  %(msg): %(e)s",
++                          {'msg': msg, 'e': exception})
++
++        LOG.error((">>>>>>>>>> Unhandled  Packet>>>>>  %s", pkt))
++
++    def handle_ipv6_packet_in(self, datapath, in_port, header_list,
++                              pkt, eth):
++        # TODO(gampel)(gampel) add ipv6 support
++        LOG.error(("No handle for ipv6 yet should be offload to the"
++                   "NORMAL path  %s", pkt))
++        return
++
++    def handle_ipv4_packet_in(self, datapath, msg, in_port, header_list, pkt,
++                              eth):
++        pkt_ipv4 = header_list['ipv4']
++        pkt_ethernet = header_list['ethernet']
++
++        # Check vlan-tag
++        if VLAN in header_list:
++            vlan_id = header_list[VLAN].vid
++            self.logger.info("handle_ipv4_packet_in::  VLANID %s  ", vlan_id)
++            switch = self.dp_list.get(datapath.id)
++            if switch:
++                if vlan_id not in switch.local_vlan_mapping:
++                    # send request for loacl switch data
++                    # self.send_port_desc_stats_request(datapath)
++                    self.send_flow_stats_request(
++                        datapath, table=self.METADATA_TABLE_ID)
++                    LOG.error(("No local switch vlan mapping for vlan %s"),
++                              vlan_id)
++                    return
++                self.logger.info(
++                    "packet segmentation_id %s ",
++                    switch.local_vlan_mapping[vlan_id])
++                segmentation_id = switch.local_vlan_mapping[vlan_id]
++                for tenantid in self.tenants:
++                    tenant = self.tenants[tenantid]
++                    for router in tenant.routers:
++                        for subnet in router.subnets:
++                            if segmentation_id == subnet.segmentation_id:
++                                self.logger.info("packet from  to tenant  %s ",
++                                                 tenant.tenant_id)
++                                in_port_data = self.tenants[
++                                    tenantid].mac_to_port_data[eth.src]
++                                out_port_data = self.tenants[
++                                    tenantid].mac_to_port_data[eth.dst]
++                                LOG.debug(('Source port data <--- %s ',
++                                           in_port_data))
++                                LOG.debug(('Router Mac dest port data -> %s ',
++                                           out_port_data))
++                                if self.handle_router_interface(datapath,
++                                                                in_port,
++                                                                out_port_data,
++                                                                pkt,
++                                                                pkt_ethernet,
++                                                                pkt_ipv4) == 1:
++                                    # trafic to the virtual routre handle only
++                                    # ping
++                                    return
++                                (dst_p_data,
++                                 dst_sub_id) = self.get_port_data(tenant,
++                                                                  pkt_ipv4.dst)
++                                for _subnet in router.subnets:
++                                    if dst_sub_id == _subnet.data['id']:
++                                        out_subnet = _subnet
++                                        subnet_gw = out_subnet.data[
++                                            'gateway_ip']
++
++                                        (dst_gw_port_data,
++                                         dst_gw_sub_id) = self.get_port_data(
++                                            tenant, subnet_gw)
++
++                                        if self.handle_router_interface(
++                                                datapath,
++                                                in_port,
++                                                dst_gw_port_data,
++                                                pkt,
++                                                pkt_ethernet,
++                                                pkt_ipv4) == 1:
++                                            # this trafic to the virtual routre
++                                            return
++                                        if not dst_p_data:
++                                            LOG.error(("No local switch"
++                                                       "mapping for %s"),
++                                                      pkt_ipv4.dst)
++                                            return
++                                        if self.handle_router_interface(
++                                                datapath,
++                                                in_port,
++                                                dst_p_data,
++                                                pkt,
++                                                pkt_ethernet,
++                                                pkt_ipv4) != -1:
++                                            # case for vrouter that is not the
++                                            #gw and we are trying to  ping
++                                            # this trafic to the virtual routre
++                                            return
++
++                                        LOG.debug(("Route from  %s to %s"
++                                                   "exist installing flow ",
++                                                   pkt_ipv4.src,
++                                                   pkt_ipv4.dst))
++                                        dst_vlan = self.get_l_vid_from_seg_id(
++                                            switch,
++                                            out_subnet.segmentation_id)
++                                        self.install_l3_forwarding_flows(
++                                            datapath,
++                                            msg,
++                                            in_port_data,
++                                            in_port,
++                                            vlan_id,
++                                            eth,
++                                            pkt_ipv4,
++                                            dst_gw_port_data,
++                                            dst_p_data,
++                                            dst_vlan)
++                                        return
++
++    def install_l3_forwarding_flows(
++            self,
++            datapath,
++            msg,
++            in_port_data,
++            in_port,
++            vlan_id,
++            eth,
++            pkt_ipv4,
++            dst_gw_port_data,
++            dst_p_data,
++            dst_vlan):
++        if dst_p_data['local_dpid_switch'] == datapath.id:
++            # The dst VM and the source VM are on the same copute Node
++            # Send output flow directly to port iuse the same datapath
++            actions = self.add_flow_subnet_traffic(
++                datapath,
++                self.L3_VROUTER_TABLE,
++                MEDIUM_PRIOREITY_FLOW,
++                in_port,
++                vlan_id,
++                eth.src,
++                eth.dst,
++                pkt_ipv4.dst,
++                pkt_ipv4.src,
++                dst_gw_port_data['mac_address'],
++                dst_p_data['mac_address'],
++                dst_p_data['local_port_num'])
++    # Install the reverse flow return traffic
++            self.add_flow_subnet_traffic(datapath,
++                                         self.L3_VROUTER_TABLE,
++                                         MEDIUM_PRIOREITY_FLOW,
++                                         dst_p_data['local_port_num'],
++                                         dst_vlan,
++                                         dst_p_data['mac_address'],
++                                         dst_gw_port_data['mac_address'],
++                                         pkt_ipv4.src,
++                                         pkt_ipv4.dst,
++                                         eth.dst,
++                                         in_port_data['mac_address'],
++                                         in_port_data['local_port_num'])
++            self.handle_packet_out_l3(datapath, msg, in_port, actions)
++        else:
++            # The dst VM and the source VM are NOT  on the same copute Node
++            # Send output to br-tun patch port and install reverse flow on the
++            # dst compute node
++            remoteSwitch = self.dp_list.get(dst_p_data['local_dpid_switch'])
++            localSwitch = self.dp_list.get(datapath.id)
++            actions = self.add_flow_subnet_traffic(datapath,
++                                                   self.L3_VROUTER_TABLE,
++                                                   MEDIUM_PRIOREITY_FLOW,
++                                                   in_port,
++                                                   vlan_id,
++                                                   eth.src,
++                                                   eth.dst,
++                                                   pkt_ipv4.dst,
++                                                   pkt_ipv4.src,
++                                                   dst_gw_port_data[
++                                                       'mac_address'],
++                                                   dst_p_data[
++                                                       'mac_address'],
++                                                   localSwitch.patch_port,
++                                                   dst_vlan)
++            # Remote reverse flow install
++            self.add_flow_subnet_traffic(remoteSwitch.datapath,
++                                         self.L3_VROUTER_TABLE,
++                                         MEDIUM_PRIOREITY_FLOW,
++                                         dst_p_data['local_port_num'],
++                                         dst_vlan,
++                                         dst_p_data['mac_address'],
++                                         dst_gw_port_data['mac_address'],
++                                         pkt_ipv4.src,
++                                         pkt_ipv4.dst,
++                                         eth.dst,
++                                         in_port_data['mac_address'],
++                                         in_port_data['local_port_num'],
++                                         vlan_id)
++            self.handle_packet_out_l3(datapath, msg, in_port, actions)
++
++    def handle_packet_out_l3(self, datapath, msg, in_port, actions):
++        data = None
++
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++        if msg.buffer_id == ofproto.OFP_NO_BUFFER:
++            data = msg.data
++        out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
++                                  in_port=in_port, actions=actions, data=data)
++        datapath.send_msg(out)
++
++    def add_flow_subnet_traffic(self, datapath, table, priority, in_port,
++                                match_vlan, match_src_mac, match_dst_mac,
++                                match_dst_ip, match_src_ip, src_mac,
++                                dst_mac, out_port_num, dst_vlan=None):
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++        match = parser.OFPMatch()
++    # BUG in the Ryu lib constructor match do not work
++        match.set_dl_type(0x0800)
++        match.set_in_port(in_port)
++        match.set_dl_src(haddr_to_bin(match_src_mac))
++        match.set_dl_dst(haddr_to_bin(match_dst_mac))
++        match.set_ipv4_src(ipv4_text_to_int(str(match_src_ip)))
++        match.set_ipv4_dst(ipv4_text_to_int(str(match_dst_ip)))
++        match.set_vlan_vid(0x1000 | match_vlan)
++        actions = [parser.OFPActionPopVlan()]
++        actions.append(parser.OFPActionDecNwTtl())
++        actions.append(parser.OFPActionSetField(eth_src=src_mac))
++        actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
++        actions.append(parser.OFPActionOutput(out_port_num,
++                                              ofproto.OFPCML_NO_BUFFER))
++        if dst_vlan:
++            field = parser.OFPMatchField.make(
++                ofproto.OXM_OF_VLAN_VID, dst_vlan)
++            actions.append(parser.OFPActionPushVlan(ETH_TYPE_8021Q))
++            actions.append(parser.OFPActionSetField(field))
++
++        ofproto = datapath.ofproto
++        inst = [datapath.ofproto_parser.OFPInstructionActions(
++            ofproto.OFPIT_APPLY_ACTIONS, actions)]
++        self.mod_flow(
++            datapath,
++            inst=inst,
++            table_id=table,
++            priority=priority,
++            match=match)
++
++        return actions
++
++    def add_flow_pop_vlan_to_normal(self, datapath, table, priority, vlan_id):
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++        match = parser.OFPMatch(vlan_vid=0x1000 | vlan_id)
++        #match = parser.OFPMatch(vlan_pcp=0)
++        actions = [
++            parser.OFPActionPopVlan(),
++            parser.OFPActionOutput(
++                ofproto.OFPP_NORMAL,
++                ofproto.OFPCML_NO_BUFFER)]
++        ofproto = datapath.ofproto
++        inst = [datapath.ofproto_parser.OFPInstructionActions(
++            ofproto.OFPIT_APPLY_ACTIONS, actions)]
++        self.mod_flow(
++            datapath,
++            inst=inst,
++            table_id=table,
++            priority=priority,
++            match=match)
++
++    def add_flow_normal_local_subnet(
++            self, datapath, table, priority, dst_net, dst_mask, vlan_id):
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++        #match = parser.OFPMatch(vlan_vid=0x1000| vlan_id)
++        match = parser.OFPMatch(vlan_vid=0x1000 | vlan_id)
++        match.set_dl_type(0x0800)
++        match.set_vlan_vid(0x1000 | vlan_id)
++        match.set_ipv4_dst_masked(ipv4_text_to_int(str(dst_net)),
++                                  mask_ntob(int(dst_mask)))
++        #match = parser.OFPMatch(vlan_pcp=0)
++        actions = [
++            parser.OFPActionPopVlan(),
++            parser.OFPActionOutput(
++                ofproto.OFPP_NORMAL)]
++        # actions = [parser.OFPActionOutput(ofproto.OFPP_NORMAL,
++        #    ofproto.OFPCML_NO_BUFFER)]
++        ofproto = datapath.ofproto
++        inst = [datapath.ofproto_parser.OFPInstructionActions(
++            ofproto.OFPIT_APPLY_ACTIONS, actions)]
++        self.mod_flow(
++            datapath,
++            inst=inst,
++            table_id=table,
++            priority=priority,
++            match=match)
++
++    def add_flow_normal_by_port_num(self, datapath, table, priority, in_port):
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++        match = parser.OFPMatch(in_port=in_port)
++        #match = parser.OFPMatch(vlan_pcp=0)
++        actions = [parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
++        ofproto = datapath.ofproto
++        inst = [datapath.ofproto_parser.OFPInstructionActions(
++            ofproto.OFPIT_APPLY_ACTIONS, actions)]
++        self.mod_flow(
++            datapath,
++            inst=inst,
++            table_id=table,
++            priority=priority,
++            match=match)
++
++    def add_flow_push_vlan_by_port_num(
++            self, datapath, table, priority, in_port, dst_vlan, goto_table):
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++        match = parser.OFPMatch()
++        match.set_in_port(in_port)
++        field = parser.OFPMatchField.make(
++            ofproto.OXM_OF_VLAN_VID, 0x1000 | dst_vlan)
++        actions = [datapath. ofproto_parser. OFPActionPushVlan(
++            ETH_TYPE_8021Q), datapath.ofproto_parser.OFPActionSetField(field)]
++        goto_inst = parser.OFPInstructionGotoTable(goto_table)
++        ofproto = datapath.ofproto
++        inst = [datapath.ofproto_parser.OFPInstructionActions(
++            ofproto.OFPIT_APPLY_ACTIONS, actions), goto_inst]
++        self.mod_flow(
++            datapath,
++            inst=inst,
++            table_id=table,
++            priority=priority,
++            match=match)
++
++    def delete_all_flow_from_table(self, datapath, table_id):
++
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++        match = parser.OFPMatch()
++        instructions = []
++        flow_mod = datapath.ofproto_parser.OFPFlowMod(
++            datapath,
++            0,
++            0,
++            table_id,
++            ofproto.OFPFC_DELETE,
++            0,
++            0,
++            1,
++            ofproto.OFPCML_NO_BUFFER,
++            ofproto.OFPP_ANY,
++            ofproto.OFPG_ANY,
++            0,
++            match,
++            instructions)
++        datapath.send_msg(flow_mod)
++
++    def add_flow_normal(self, datapath, table, priority):
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++        match = parser.OFPMatch(vlan_vid=0x1000)
++        #match = parser.OFPMatch(vlan_pcp=0)
++        actions = [
++            parser.OFPActionPopVlan(),
++            parser.OFPActionOutput(
++                ofproto.OFPP_NORMAL)]
++        ofproto = datapath.ofproto
++        inst = [datapath.ofproto_parser.OFPInstructionActions(
++            ofproto.OFPIT_APPLY_ACTIONS, actions)]
++        self.mod_flow(
++            datapath,
++            inst=inst,
++            table_id=table,
++            priority=priority,
++            match=match)
++
++    def mod_flow(self, datapath, cookie=0, cookie_mask=0, table_id=0,
++                 command=None, idle_timeout=0, hard_timeout=0,
++                 priority=0xff, buffer_id=0xffffffff, match=None,
++                 actions=None, inst_type=None, out_port=None,
++                 out_group=None, flags=0, inst=None):
++
++        if command is None:
++            command = datapath.ofproto.OFPFC_ADD
++
++        if inst is None:
++            if inst_type is None:
++                inst_type = datapath.ofproto.OFPIT_APPLY_ACTIONS
++
++            inst = []
++            if actions is not None:
++                inst = [datapath.ofproto_parser.OFPInstructionActions(
++                    inst_type, actions)]
++
++                if match is None:
++                    match = datapath.ofproto_parser.OFPMatch()
++
++        if out_port is None:
++            out_port = datapath.ofproto.OFPP_ANY
++
++        if out_group is None:
++            out_group = datapath.ofproto.OFPG_ANY
++
++        message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
++                                                     cookie_mask,
++                                                     table_id, command,
++                                                     idle_timeout,
++                                                     hard_timeout,
++                                                     priority,
++                                                     buffer_id,
++                                                     out_port,
++                                                     out_group,
++                                                     flags,
++                                                     match,
++                                                     inst)
++
++        datapath.send_msg(message)
++
++    def add_flow_go_to_table2(self, datapath, table, priority,
++                              goto_table_id, match=None):
++        inst = [datapath.ofproto_parser.OFPInstructionGotoTable(goto_table_id)]
++        self.mod_flow(datapath, inst=inst, table_id=table, priority=priority,
++                      match=match)
++
++    def add_flow_goto_table_on_broad(self, datapath, table, priority,
++                                     goto_table_id):
++        match = datapath.ofproto_parser.OFPMatch(eth_dst='ff:ff:ff:ff:ff:ff')
++
++        self.add_flow_go_to_table2(datapath, table, priority, goto_table_id,
++                                   match)
++
++    def add_flow_goto_table_on_mcast(self, datapath, table, priority,
++                                     goto_table_id):
++        #ofproto = datapath.ofproto
++        match = datapath.ofproto_parser.OFPMatch(eth_dst='01:00:00:00:00:00')
++        addint = haddr_to_bin('01:00:00:00:00:00')
++        match.set_dl_dst_masked(addint, addint)
++        self.add_flow_go_to_table2(datapath, table, priority, goto_table_id,
++                                   match)
++
++    def add_flow_go_to_table_on_arp(self, datapath, table, priority,
++                                    goto_table_id):
++        match = datapath.ofproto_parser.OFPMatch(eth_type=0x0806)
++        self.add_flow_go_to_table2(datapath, table, priority, goto_table_id,
++                                   match)
++
++    def add_flow_go_to_table(self, datapath, table, priority, goto_table_id):
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++        match = parser.OFPMatch()
++        actions = [parser.OFPInstructionGotoTable(goto_table_id)]
++        inst = [datapath.ofproto_parser.OFPInstructionActions(
++            ofproto.OFPIT_APPLY_ACTIONS, actions)]
++        mod = datapath.ofproto_parser.OFPFlowMod(
++            datapath=datapath, cookie=0, cookie_mask=0, table_id=table,
++            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
++            priority=priority, buffer_id=ofproto.OFP_NO_BUFFER,
++            out_port=ofproto.OFPP_ANY,
++            out_group=ofproto.OFPG_ANY,
++            flags=0, match=match, instructions=inst)
++        datapath.send_msg(mod)
++
++    def add_flow_match_to_controller(self, datapath, table, priority,
++                                     match=None, _actions=None):
++
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++
++        ofproto = datapath.ofproto
++        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
++                                          ofproto.OFPCML_NO_BUFFER)]
++
++        inst = [datapath.ofproto_parser.OFPInstructionActions(
++            ofproto.OFPIT_APPLY_ACTIONS, actions)]
++        self.mod_flow(
++            datapath,
++            inst=inst,
++            table_id=table,
++            priority=priority,
++            match=match)
++
++    def add_flow_match_gw_mac_to_cont(self, datapath, dst_mac, table,
++                                      priority, vlan_vid=None,
++                                      _actions=None):
++        parser = datapath.ofproto_parser
++        #ofproto = datapath.ofproto
++        vlan_id = 0x1000 | vlan_vid
++        match = parser.OFPMatch(eth_dst=dst_mac, vlan_vid=vlan_id)
++
++        self.add_flow_match_to_controller(
++            datapath, table, priority, match=match, _actions=_actions)
++
++    def add_flow_l3(self, datapath, in_port, dst_mac, src_mac, vlan_vid,
++                    actions):
++        ofproto = datapath.ofproto
++
++        match = datapath.ofproto_parser.OFPMatch(in_port=in_port,
++                                                 eth_dst=dst_mac,
++                                                 eth_src=src_mac,
++                                                 vlan_vid=vlan_vid)
++        inst = [datapath.ofproto_parser.OFPInstructionActions(
++            ofproto.OFPIT_APPLY_ACTIONS, actions)]
++
++        mod = datapath.ofproto_parser.OFPFlowMod(
++            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
++            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
++            priority=0, buffer_id=ofproto.OFP_NO_BUFFER,
++            out_port=ofproto.OFPP_ANY,
++            out_group=ofproto.OFPG_ANY,
++            flags=0, match=match, instructions=inst)
++        datapath.send_msg(mod)
++
++    def add_flow(self, datapath, port, dst, actions):
++        ofproto = datapath.ofproto
++
++        match = datapath.ofproto_parser.OFPMatch(in_port=port,
++                                                 eth_dst=dst)
++        inst = [datapath.ofproto_parser.OFPInstructionActions(
++            ofproto.OFPIT_APPLY_ACTIONS, actions)]
++
++        mod = datapath.ofproto_parser.OFPFlowMod(
++            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
++            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
++            priority=0, buffer_id=ofproto.OFP_NO_BUFFER,
++            out_port=ofproto.OFPP_ANY,
++            out_group=ofproto.OFPG_ANY,
++            flags=0, match=match, instructions=inst)
++        datapath.send_msg(mod)
++
++    @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
++    def _port_status_handler(self, ev):
++        msg = ev.msg
++        reason = msg.reason
++        port_no = msg.desc.port_no
++        datapath = ev.msg.datapath
++
++        ofproto = msg.datapath.ofproto
++        if reason == ofproto.OFPPR_ADD:
++            self.logger.info("port added %s", port_no)
++        elif reason == ofproto.OFPPR_DELETE:
++            self.logger.info("port deleted %s", port_no)
++        elif reason == ofproto.OFPPR_MODIFY:
++            self.logger.info("port modified %s", port_no)
++        else:
++            self.logger.info("Illeagal port state %s %s", port_no, reason)
++        # TODO(gampel) Currently we update all the agents on modification
++        LOG.info((" Updating flow table on agents got port update "))
++
++        switch = self.dp_list.get(datapath.id)
++        if switch:
++            self.send_flow_stats_request(
++                datapath, table=self.METADATA_TABLE_ID)
++
++    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
++    def switch_features_handler(self, ev):
++        datapath = ev.msg.datapath
++
++        if self.need_sync:
++            self.sync_data()
++        switch = self.dp_list.get(datapath.id)
++        if not switch:
++            self.dp_list[datapath.id] = AgentDatapath()
++            self.dp_list[datapath.id].datapath = datapath
++
++        LOG.info(("Wait:: Let agent insert the meta data table "))
++        time.sleep(1)  # sleep during 500ms
++        LOG.info(("Done Wait .. will retry if meta table not set "))
++
++        self.send_flow_stats_request(datapath, table=self.METADATA_TABLE_ID)
++        #  --> meta
++        #self.add_flow_go_to_table2(datapath, 0, 1  ,self.L3_VROUTER_TABLE)
++        # main table 0  to Arp On ARp or broadcat or multicast
++        self.add_flow_go_to_table_on_arp(
++            datapath,
++            self.CLASSIFIER_TABLE,
++            NORMAL_PRIOREITY_FLOW,
++            self.ARP_AND_BR_TABLE)
++        self.add_flow_goto_table_on_broad(
++            datapath,
++            self.CLASSIFIER_TABLE,
++            MEDIUM_PRIOREITY_FLOW,
++            self.ARP_AND_BR_TABLE)
++        self.add_flow_goto_table_on_mcast(
++            datapath,
++            self.CLASSIFIER_TABLE,
++            NORMAL_PRIOREITY_FLOW,
++            self.ARP_AND_BR_TABLE)
++
++        # Meta Table to L3 router table on all other trafic
++        self.add_flow_go_to_table2(
++            datapath, self.METADATA_TABLE_ID, 1, self.L3_VROUTER_TABLE)
++
++        # Normal flow on arp table in low priorety
++        self.add_flow_normal(datapath, self.ARP_AND_BR_TABLE, 1)
++        #del l3plugin
++
++    def send_port_desc_stats_request(self, datapath):
++        ofp_parser = datapath.ofproto_parser
++
++        req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
++        datapath.send_msg(req)
++
++    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
++    def port_desc_stats_reply_handler(self, ev):
++        ports = []
++        datapath = ev.msg.datapath
++        switch = self.dp_list.get(datapath.id)
++        self.delete_all_flow_from_table(datapath, self.BASE_TABLE)
++        for port in ev.msg.body:
++            ports.append('port_no=%d hw_addr=%s name=%s config=0x%08x '
++                         'state=0x%08x curr=0x%08x advertised=0x%08x '
++                         'supported=0x%08x peer=0x%08x curr_speed=%d '
++                         'max_speed=%d' %
++                         (port.port_no, port.hw_addr,
++                             port.name, port.config,
++                             port.state, port.curr, port.advertised,
++                             port.supported, port.peer, port.curr_speed,
++                             port.max_speed))
++
++            if "tap" in port.name:
++                LOG.debug(("Found DHCPD port  %s using MAC  %s"
++                           "One machine install Special"
++                           "(One Machine set up ) test use case"),
++                          port.name,
++                          port.hw_addr)
++                self.add_flow_normal_by_port_num(
++                    datapath, 0, HIGH_PRIOREITY_FLOW, port.port_no)
++            elif "qvo" in port.name:
++                # this is a VM port start with qvo<NET-ID[:11]> update the port
++                # data with the port num and the switch dpid
++                (port_id, mac, segmentation_id) = self.update_local_port_num(
++                    port.name, port.port_no, datapath.id)
++                vlan_id = self.get_l_vid_from_seg_id(switch, segmentation_id)
++                LOG.debug(("Found VM  port  %s using MAC  %s  %d"),
++                          port.name, port.hw_addr, datapath.id)
++                if vlan_id:
++                    self.add_flow_push_vlan_by_port_num(datapath,
++                                                        0,
++                                                        HIGH_PRIOREITY_FLOW,
++                                                        port.port_no,
++                                                        vlan_id,
++                                                        self.CLASSIFIER_TABLE)
++                else:
++                    LOG.error(("No local switch vlan mapping for port"
++                              " %s on %d Sending to Normal PATH "),
++                              port.name,
++                              datapath.id)
++                    self.add_flow_normal_by_port_num(datapath, 0,
++                                                     HIGH_PRIOREITY_FLOW,
++                                                     port.port_no)
++            elif "patch-tun" in port.name:
++                LOG.debug(("Found br-tun patch port "
++                           "%s   %s sending to NORMAL path"),
++                    port.name,
++                    port.hw_addr)
++                switch.patch_port_num = port.port_no
++                self.add_flow_normal_by_port_num(
++                    datapath, 0, HIGH_PRIOREITY_FLOW, port.port_no)
++        self.logger.debug('OFPPortDescStatsReply received: %s', ports)
++        switch.local_ports = ports
++        self.add_flow_go_to_table2(datapath, 0, 1, self.CLASSIFIER_TABLE)
++        self.add_flow_match_to_controller(datapath, self.L3_VROUTER_TABLE, 0)
++        self.add_flow_go_to_table2(
++            datapath, self.CLASSIFIER_TABLE, 1, self.L3_VROUTER_TABLE)
++
++    def send_features_request(self, datapath):
++        ofp_parser = datapath.ofproto_parser
++
++        req = ofp_parser.OFPFeaturesRequest(datapath)
++        datapath.send_msg(req)
++
++    def _send_packet(self, datapath, port, pkt):
++        ofproto = datapath.ofproto
++        parser = datapath.ofproto_parser
++        pkt.serialize()
++        self.logger.info("packet-out %s" % (pkt,))
++        data = pkt.data
++        actions = [parser.OFPActionOutput(port=port)]
++        out = parser.OFPPacketOut(datapath=datapath,
++                                  buffer_id=ofproto.OFP_NO_BUFFER,
++                                  in_port=ofproto.OFPP_CONTROLLER,
++                                  actions=actions,
++                                  data=data)
++        datapath.send_msg(out)
++
++    def get_l_vid_from_seg_id(self, switch, segmentation_id):
++        for local_vlan in switch.local_vlan_mapping:
++            if segmentation_id == switch.local_vlan_mapping[local_vlan]:
++                return local_vlan
++        return 0
++
++    def update_local_port_num(self, port_name, port_num, dpid):
++
++        for tenantid in self.tenants:
++            tenant = self.tenants[tenantid]
++            for mac in tenant.mac_to_port_data:
++                port_data = tenant.mac_to_port_data[mac]
++                # print "port_data >>>>>>>>>>>>>>%s",port_data
++                if 'port_id' in port_data:
++                    port_id = port_data['port_id']
++                    sub_str_port_id = str(port_id[0:11])
++                    port_id_from_name = port_name[3:]
++                    if sub_str_port_id == port_id_from_name:
++                        port_data['local_port_num'] = port_num
++                        port_data['local_dpid_switch'] = dpid
++                        return (
++                            port_data['port_id'],
++                            mac,
++                            port_data['segmentation_id'])
++                else:
++                    LOG.error(("No data in port)data %s "), port_data)
++        return(0, 0, 0)
++
++    def get_port_data(self, tenant, ip_address):
++        for mac in tenant.mac_to_port_data:
++            port_data = tenant.mac_to_port_data[mac]
++            if 'fixed_ips' in port_data:
++                for fixed_ips in port_data['fixed_ips']:
++                    if ip_address == fixed_ips['ip_address']:
++                        return (port_data, fixed_ips['subnet_id'])
++
++        return(0, 0)
++
++    @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
++    def flow_stats_reply_handler(self, ev):
++
++        datapath = ev.msg.datapath
++
++        if self.need_sync:
++            self.sync_data()
++        self.delete_all_flow_from_table(datapath, self.ARP_AND_BR_TABLE)
++        # TODO(gampel) for the moment we delete all the flows in the
++        #table TO delete  only the relevant flows all ready installed
++        self.delete_all_flow_from_table(datapath, self.L3_VROUTER_TABLE)
++        # TODO(gampel) remove ARP responders
++        flows = []
++        for stat in ev.msg.body:
++            for instruction in stat.instructions:
++                if hasattr(instruction, 'metadata'):
++                    vlan_int = int(stat.match['vlan_vid'])
++                    if vlan_int > 4096:
++                        vlan_int -= 4096
++
++                        switch = self.dp_list.get(datapath.id)
++                        if switch:
++                            switch.local_vlan_mapping[
++                                vlan_int] = instruction.metadata
++                            flows.append(
++                                'table_id=%s '
++                                'duration_sec=%d diuration_nsec=%d '
++                                'priority=%d '
++                                'idle_timeout=%d hard_timeout=%d flags=0x%04x '
++                                'cookie=%d packet_count=%d byte_count=%d '
++                                'match=%s instructions=%s'
++                                'vlan_id=%s metadata=%s' %
++                                (stat.table_id,
++                                 stat.duration_sec,
++                                 stat.duration_nsec,
++                                 stat.priority,
++                                 stat.idle_timeout,
++                                 stat.hard_timeout,
++                                 stat.flags,
++                                 stat.cookie,
++                                 stat.packet_count,
++                                 stat.byte_count,
++                                 stat.match,
++                                 stat.instructions,
++                                 stat.match['vlan_vid'],
++                                    instruction.metadata))
++        l3plugin = manager.NeutronManager.get_service_plugins().get(
++            service_constants.L3_ROUTER_NAT)
++        switch = self.dp_list.get(datapath.id)
++
++        for tenantid in self.tenants:
++            for router in self.tenants[tenantid].routers:
++                for subnet in router.subnets:
++                    for interface in router.data['_interfaces']:
++                        if interface['subnet']['id'] == subnet.data['id']:
++                            segmentation_id = subnet.segmentation_id
++                            vlan_id = self.get_l_vid_from_seg_id(
++                                switch, segmentation_id)
++                            network, net_mask = self.get_subnet_from_cidr(
++                                subnet.data['cidr'])
++
++                            if vlan_id:
++                                self.add_flow_normal_local_subnet(
++                                    datapath,
++                                    self.L3_VROUTER_TABLE,
++                                    NORMAL_PRIOREITY_FLOW,
++                                    network,
++                                    net_mask,
++                                    vlan_id)
++
++                                self.add_flow_match_gw_mac_to_cont(
++                                    datapath,
++                                    interface['mac_address'],
++                                    self.L3_VROUTER_TABLE,
++                                    99,
++                                    vlan_id)
++                            l3plugin.setup_vrouter_arp_responder(
++                                self.ctx,
++                                "br-int",
++                                "add",
++                                self.ARP_AND_BR_TABLE,
++                                segmentation_id,
++                                interface['network_id'],
++                                interface['mac_address'],
++                                self.get_ip_from_router_interface(interface))
++        # No match on table L3_VROUTER_TABLE go to normal flow
++        # No match on table L3_VROUTER_TABLE go to controller
++        # Patch to overcome OVS BUG not accepting match on tag vlans
++        # set Pop per taged vlan
++
++        for local_vlan in switch.local_vlan_mapping:
++            self.add_flow_pop_vlan_to_normal(
++                datapath, self.ARP_AND_BR_TABLE, 1, local_vlan)
++
++        if not switch.local_vlan_mapping:
++            LOG.error(("CRITICAL ERROR ***** Switch did not send local port"
++                      "data dpid == <%s> sending flow req "),
++                      datapath.id)
++            time.sleep(0.5)  # sleep during 500ms
++            self.send_flow_stats_request(
++                datapath, table=self.METADATA_TABLE_ID)
++        else:
++            self.send_port_desc_stats_request(datapath)
++        del l3plugin
++
++    def get_ip_from_router_interface(self, interface):
++        for fixed_ip in interface['fixed_ips']:
++            if "ip_address" in fixed_ip:
++                return fixed_ip['ip_address']
++
++    def is_router_interface(self, port):
++        if port['device_owner'] == 'network:router_interface':
++            return True
++        else:
++            return False
++
++    def handle_router_interface(self, datapath, in_port, port_data,
++                                pkt, pkt_ethernet, pkt_ipv4):
++        # retVal -1 -- dst  is not a v Router
++        # retVal  1 -- The request was handled
++        # retVal  0 -- router interface and the request was not handled
++        retVal = -1
++        if self.is_router_interface(port_data):
++            # router mac address
++            retVal = 0
++            for fixed_ips in port_data['fixed_ips']:
++                if pkt_ipv4.dst == fixed_ips['ip_address']:
++                    # The dst ip address is the router Ip address should  be
++                    # ping req
++                    pkt_icmp = pkt.get_protocol(icmp.icmp)
++                    if pkt_icmp:
++                        # send ping responce
++                        self._handle_icmp(
++                            datapath,
++                            in_port,
++                            pkt_ethernet,
++                            pkt_ipv4,
++                            pkt_icmp)
++                        LOG.info(("Sending ping echo -> ip %s "), pkt_ipv4.src)
++                        retVal = 1
++                    else:
++                        LOG.error(("any comunication to a router that"
++                                   " is not ping should be dropped from"
++                                   "ip  %s",
++                                   pkt_ipv4.src))
++                        retVal = 1
++        return retVal
++
++    def send_flow_stats_request(self, datapath, table=None):
++
++        ofp = datapath.ofproto
++        ofp_parser = datapath.ofproto_parser
++        if table is None:
++            table = ofp.OFPTT_ALL
++        cookie = cookie_mask = 0
++        match = ofp_parser.OFPMatch()
++        req = ofp_parser.OFPFlowStatsRequest(datapath, 0,
++                                             table,
++                                             ofp.OFPP_ANY, ofp.OFPG_ANY,
++                                             cookie, cookie_mask,
++                                             match)
++        datapath.send_msg(req)
++
++    def _handle_icmp(self, datapath, port, pkt_ethernet, pkt_ipv4, pkt_icmp):
++        if pkt_icmp.type != icmp.ICMP_ECHO_REQUEST:
++            return
++        pkt = packet.Packet()
++        pkt.add_protocol(ethernet.ethernet(ethertype=ether.ETH_TYPE_IP,
++                                           dst=pkt_ethernet.src,
++                                           src=pkt_ethernet.dst))
++        pkt.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
++                                   src=pkt_ipv4.dst,
++                                   proto=pkt_ipv4.proto))
++        pkt.add_protocol(icmp.icmp(type_=icmp.ICMP_ECHO_REPLY,
++                                   code=icmp.ICMP_ECHO_REPLY_CODE,
++                                   csum=0,
++                                   data=pkt_icmp.data))
++        self._send_packet(datapath, port, pkt)
++
++    def check_direct_routing(self, tenant, from_subnet_id, to_subnet_id):
++        #from_subnet_cidr = from_subnet_id['cidr']
++        #to_subnet_cidr = to_subnet_id['cidr']
++        #split = m_subnet_cidr.split("/")
++        return
++
++    def get_subnet_from_cidr(self, cidr):
++        split = cidr.split("/")
++        return (split[0], split[1])
++
++# Base static
++
++
++def ipv4_apply_mask(address, prefix_len, err_msg=None):
++    #                import itertools
++    assert isinstance(address, str)
++    address_int = ipv4_text_to_int(address)
++    return ipv4_int_to_text(address_int & mask_ntob(prefix_len, err_msg))
++
++
++def ipv4_text_to_int(ip_text):
++    if ip_text == 0:
++        return ip_text
++    assert isinstance(ip_text, str)
++    return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
++
++
++def ipv4_int_to_text(ip_int):
++    assert isinstance(ip_int, (int, long))
++    return addrconv.ipv4.bin_to_text(struct.pack('!I', ip_int))
++
++
++def mask_ntob(mask, err_msg=None):
++    try:
++        return (UINT32_MAX << (32 - mask)) & UINT32_MAX
++    except ValueError:
++        msg = 'illegal netmask'
++        if err_msg is not None:
++            msg = '%s %s' % (err_msg, msg)
++            raise ValueError(msg)
+diff --git a/neutron/tests/unit/openvswitch/test_ovs_tunnel.py b/neutron/tests/unit/openvswitch/test_ovs_tunnel.py
+index ee020d8..3035f2b 100644
+--- a/neutron/tests/unit/openvswitch/test_ovs_tunnel.py
++++ b/neutron/tests/unit/openvswitch/test_ovs_tunnel.py
+@@ -147,6 +147,7 @@ class TunnelTest(base.BaseTestCase):
+         self.mock_int_bridge_expected = [
+             mock.call.create(),
+             mock.call.set_secure_mode(),
++            mock.call.del_controller(),
+             mock.call.delete_port('patch-tun'),
+             mock.call.remove_all_flows(),
+             mock.call.add_flow(priority=1, actions='normal'),
+@@ -571,6 +572,7 @@ class TunnelTestUseVethInterco(TunnelTest):
+         self.mock_int_bridge_expected = [
+             mock.call.create(),
+             mock.call.set_secure_mode(),
++            mock.call.del_controller(),
+             mock.call.delete_port('patch-tun'),
+             mock.call.remove_all_flows(),
+             mock.call.add_flow(priority=1, actions='normal'),
+-- 
+2.1.0
+
+
+From 9eca2a7c519a562779f97ebf0b4ac75308cbf07e Mon Sep 17 00:00:00 2001
+From: Eran Gampel <Eran.Gampel@Huawei.com>
+Date: Sun, 7 Dec 2014 18:05:58 +0200
+Subject: [PATCH 2/8] First move toward MetaDat and not local vlan
+
+Change-Id: Ia2c075b1bf7a310fe824cf433e971a29ab05e09a
+---
+ neutron/services/l3_router/l3_reactive_app.py | 51 +++++++++++++++++++++------
+ 1 file changed, 40 insertions(+), 11 deletions(-)
+
+diff --git a/neutron/services/l3_router/l3_reactive_app.py b/neutron/services/l3_router/l3_reactive_app.py
+index 3dcd928..9867e21 100755
+--- a/neutron/services/l3_router/l3_reactive_app.py
++++ b/neutron/services/l3_router/l3_reactive_app.py
+@@ -47,7 +47,7 @@ from neutron.plugins.ml2 import driver_api as api
+ from neutron import context
+ from neutron import manager
+ from neutron.plugins.common import constants as service_constants
+-
++import ipdb 
+ 
+ LOG = log.getLogger(__name__)
+ 
+@@ -548,7 +548,6 @@ class L3ReactiveApp(app_manager.RyuApp):
+         parser = datapath.ofproto_parser
+         ofproto = datapath.ofproto
+         match = parser.OFPMatch()
+-    # BUG in the Ryu lib constructor match do not work
+         match.set_dl_type(0x0800)
+         match.set_in_port(in_port)
+         match.set_dl_src(haddr_to_bin(match_src_mac))
+@@ -600,19 +599,21 @@ class L3ReactiveApp(app_manager.RyuApp):
+             priority=priority,
+             match=match)
+ 
+-    def add_flow_normal_local_subnet(
+-            self, datapath, table, priority, dst_net, dst_mask, vlan_id):
++    def add_flow_normal_local_subnet(self, datapath, table, priority,
++                                     dst_net, dst_mask, vlan_id):
++        ipdb.set_trace()
+         parser = datapath.ofproto_parser
+         ofproto = datapath.ofproto
+         #match = parser.OFPMatch(vlan_vid=0x1000| vlan_id)
+-        match = parser.OFPMatch(vlan_vid=0x1000 | vlan_id)
+-        match.set_dl_type(0x0800)
+-        match.set_vlan_vid(0x1000 | vlan_id)
++        match = parser.OFPMatch()
++        match.set_dl_type( ether.ETH_TYPE_IP)
++        #match.set_vlan_vid(0x1000 | vlan_id)
++        match.set_metadata(vlan_id)
+         match.set_ipv4_dst_masked(ipv4_text_to_int(str(dst_net)),
+                                   mask_ntob(int(dst_mask)))
+         #match = parser.OFPMatch(vlan_pcp=0)
+         actions = [
+-            parser.OFPActionPopVlan(),
++            #parser.OFPActionPopVlan(),
+             parser.OFPActionOutput(
+                 ofproto.OFPP_NORMAL)]
+         # actions = [parser.OFPActionOutput(ofproto.OFPP_NORMAL,
+@@ -643,8 +644,26 @@ class L3ReactiveApp(app_manager.RyuApp):
+             priority=priority,
+             match=match)
+ 
+-    def add_flow_push_vlan_by_port_num(
+-            self, datapath, table, priority, in_port, dst_vlan, goto_table):
++    def add_flow_metadata_by_port_num(self, datapath, table, priority,
++                                      in_port, metadata,
++                                      metadata_mask, goto_table):
++        parser = datapath.ofproto_parser
++        ofproto = datapath.ofproto
++        match = parser.OFPMatch()
++        match.set_in_port(in_port)
++        goto_inst = parser.OFPInstructionGotoTable(goto_table)
++        ofproto = datapath.ofproto
++        write_metadata = parser.OFPInstructionWriteMetadata(metadata,metadata_mask)
++        inst = [write_metadata, goto_inst]
++        self.mod_flow(
++            datapath,
++            inst=inst,
++            table_id=table,
++            priority=priority,
++            match=match)
++
++    def add_flow_push_vlan_by_port_num(self, datapath, table, priority,
++                                      in_port, dst_vlan, goto_table):
+         parser = datapath.ofproto_parser
+         ofproto = datapath.ofproto
+         match = parser.OFPMatch()
+@@ -962,16 +981,26 @@ class L3ReactiveApp(app_manager.RyuApp):
+                 # data with the port num and the switch dpid
+                 (port_id, mac, segmentation_id) = self.update_local_port_num(
+                     port.name, port.port_no, datapath.id)
++                self.add_flow_metadata_by_port_num(datapath,
++                                                   0,
++                                                   HIGH_PRIOREITY_FLOW,
++                                                   port.port_no,
++                                                   segmentation_id,
++                                                   0xffff,
++                                                   self.CLASSIFIER_TABLE)
++
+                 vlan_id = self.get_l_vid_from_seg_id(switch, segmentation_id)
+                 LOG.debug(("Found VM  port  %s using MAC  %s  %d"),
+                           port.name, port.hw_addr, datapath.id)
+                 if vlan_id:
+-                    self.add_flow_push_vlan_by_port_num(datapath,
++                    '''self.add_flow_push_vlan_by_port_num(datapath,
+                                                         0,
+                                                         HIGH_PRIOREITY_FLOW,
+                                                         port.port_no,
+                                                         vlan_id,
+                                                         self.CLASSIFIER_TABLE)
++                    '''
++
+                 else:
+                     LOG.error(("No local switch vlan mapping for port"
+                               " %s on %d Sending to Normal PATH "),
+-- 
+2.1.0
+
+
+From 710cf49db58994935f9a4f38616a4ec4370111d4 Mon Sep 17 00:00:00 2001
+From: Eran Gampel <eran@gampel.net>
+Date: Sun, 11 Jan 2015 09:53:58 +0200
+Subject: [PATCH 3/8] merge
+
+Change-Id: Ie9dbe45c1568ab8366f25ca523f14220b5d2a487
+---
+ neutron/common/topics.py                           |   2 +-
+ .../plugins/openvswitch/agent/ovs_neutron_agent.py |  23 +-
+ .../services/l3_router/README.l3_cont_dvr_plugin   |  64 +++-
+ neutron/services/l3_router/l3_cont_dvr_plugin.py   |   6 +-
+ neutron/services/l3_router/l3_reactive_app.py      | 368 ++++++++++-----------
+ 5 files changed, 244 insertions(+), 219 deletions(-)
+
+diff --git a/neutron/common/topics.py b/neutron/common/topics.py
+index 9bb1956..3ec424f 100644
+--- a/neutron/common/topics.py
++++ b/neutron/common/topics.py
+@@ -19,7 +19,7 @@ PORT = 'port'
+ SECURITY_GROUP = 'security_group'
+ L2POPULATION = 'l2population'
+ DVR = 'dvr'
+-
++SDNCONTROLLER='sdncontrol'
+ CREATE = 'create'
+ DELETE = 'delete'
+ UPDATE = 'update'
+diff --git a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+index dce7feb..0013280 100644
+--- a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
++++ b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+@@ -192,7 +192,6 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+ 
+         # Keep track of int_br's device count for use by _report_state()
+         self.int_br_device_count = 0
+-        self.local_vlan_map = {}
+         # Initialize controller Ip List
+         self.controllers_ip_list = None
+         '''
+@@ -211,6 +210,7 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+         self.setup_rpc()
+         self.bridge_mappings = bridge_mappings
+         self.setup_physical_bridges(self.bridge_mappings)
++        self.local_vlan_map = {}
+         self.tun_br_ofports = {p_const.TYPE_GRE: {},
+                                p_const.TYPE_VXLAN: {}}
+ 
+@@ -305,6 +305,10 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+         if self.l2_pop:
+             consumers.append([topics.L2POPULATION,
+                               topics.UPDATE, cfg.CONF.host])
++        if self.enable_l3_controller:
++            consumers.append([topics.SDNCONTROLLER,
++                              topics.UPDATE])
++
+         self.connection = agent_rpc.create_consumers(self.endpoints,
+                                                      self.topic,
+                                                      consumers,
+@@ -504,7 +508,7 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+             br.add_flow(table=table_id,
+                         priority=100,
+                         proto='arp',
+-                        dl_vlan=local_vid,
++                        metadata=segmentation_id,
+                         nw_dst='%s' % ip,
+                         actions=actions)
+         elif action == 'remove':
+@@ -545,19 +549,9 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+                 bridge.add_flow(priority=0, actions="normal")
+                 bridge.add_flow(table=constants.CANARY_TABLE, priority=0,
+                                 actions="drop")
+-            self.update_metadata_vlan_map_table(bridge)
+             bridge.set_controller_mode("out-of-band")
+             self.set_controller_lock.release()
+ 
+-    def update_metadata_vlan_map_table(self, bridge):
+-        for net_id, vlan_mapping in self.local_vlan_map.iteritems():
+-            seg_id_hex = hex(vlan_mapping.segmentation_id)
+-            bridge.add_flow(table=constants.BR_INT_METADATA_TABLE,
+-                            priority=100,
+-                            dl_vlan=vlan_mapping.vlan,
+-                            actions="write_metadata:%s" %
+-                            (seg_id_hex), protocols="-OOpenFlow13")
+-
+     def provision_local_vlan(self, net_uuid, network_type, physical_network,
+                              segmentation_id):
+         '''Provisions a local VLAN.
+@@ -753,8 +747,6 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+         self.dvr_agent.bind_port_to_dvr(port, network_type, fixed_ips,
+                                         device_owner,
+                                         local_vlan_id=lvm.vlan)
+-        if self.enable_l3_controller:
+-            self.update_metadata_vlan_map_table(self.int_br)
+         # Do not bind a port if it's already bound
+         cur_tag = self.int_br.db_get_val("Port", port.port_name, "tag")
+         if cur_tag != str(lvm.vlan):
+@@ -1447,7 +1439,8 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+                 port_info.get('removed') or
+                 port_info.get('updated'))
+ 
+-    def check_ovs_status(self):
++    def check_ovs_restart(self):
++        # Check for the canary flow
+         # Sync lock for race condition with set_controller
+         self.set_controller_lock.acquire()
+         # Check for the canary flow
+diff --git a/neutron/services/l3_router/README.l3_cont_dvr_plugin b/neutron/services/l3_router/README.l3_cont_dvr_plugin
+index e02efa6..b5b9469 100644
+--- a/neutron/services/l3_router/README.l3_cont_dvr_plugin
++++ b/neutron/services/l3_router/README.l3_cont_dvr_plugin
+@@ -1,11 +1,11 @@
+ #######
+-In order to enable Neutron Controlle-based DVR, you need to make the 
++In order to enable Neutron Controlle-based DVR, you need to make the
+    following change in ``neutron.conf``:
+ 
+   1. Comment-out loading of the ``L3RouterPlugin``
+ 
+-  2. Add the ``neutron.services.l3_router.l3_cont_dvr_plugin.ControllerL3ServicePlugin`` 
+-     to the service plugin list: 
++  2. Add the ``neutron.services.l3_router.l3_cont_dvr_plugin.ControllerL3ServicePlugin``
++     to the service plugin list:
+ 
+     **neutron.conf**
+ 
+@@ -17,7 +17,7 @@ In order to enable Neutron Controlle-based DVR, you need to make the
+ 
+ 2. In addition, make the following change in ``ml2_conf.ini``:
+ 
+-  * Set the ``enable_l3_controller`` to ``True``: 
++  * Set the ``enable_l3_controller`` to ``True``:
+ 
+     **ml2_conf.ini**
+ 
+@@ -25,17 +25,16 @@ In order to enable Neutron Controlle-based DVR, you need to make the
+ 
+     :literal:`# enable_l3_controller = True`
+ 
+-    
+ 3. Deploy the **L3 Controller-based DVR Agent** on the Network Node
+ 
+ 4. Deploy the **Public Network Agent** on *each* Compute node
+ 
+-5. Remove deployment of L3 Agent or DVR Agent  
++5. Remove deployment of L3 Agent or DVR Agent
+ 
+ 6. Install Ryu on Network Node
+-% git clone git://github.com/osrg/ryu.git 
++% git clone git://github.com/osrg/ryu.git
+ The current implementation is embedded into the service plugin. will be moved into a Agent based implementation of the controller.
+-Until we do that we will have to apply the following patch on ryu 
++Until we do that we will have to apply the following patch on ryu
+ ryu/controller/controller.py and ryu/app/wsgi.py modify register_cli_opts to register_opts
+ --- a/ryu/app/wsgi.py
+ +++ b/ryu/app/wsgi.py
+@@ -60,4 +59,51 @@ index 23418f5..a5bcda2 100644
+ +CONF.register_opts([
+ 
+ 
+-% cd ryu; python ./setup.py install  
++% cd ryu; python ./setup.py install
++
++For Tenant with two networks:
++192.168.100.0/24
++VM1 :192.168.100.2
++VM3: 192.168.100.4
++
++
++192.168.200.0/24
++VM2:192.168.200.2
++
++
++On devstack one machine setup you will get  following  flows after boot strap
++running the following command
++
++sudo ovs-ofctl dump-flows br-int
++
++NXST_FLOW reply (xid=0x4):
++ cookie=0x0, duration=9.970s, table=0, n_packets=0, n_bytes=0, idle_age=9, priority=1 actions=drop
++ cookie=0x0, duration=9.970s, table=0, n_packets=0, n_bytes=0, idle_age=9, priority=1000,in_port=10 actions=NORMAL
++ cookie=0x0, duration=9.970s, table=0, n_packets=0, n_bytes=0, idle_age=9, priority=1000,in_port=35 actions=NORMAL
++ cookie=0x0, duration=9.970s, table=0, n_packets=1, n_bytes=107, idle_age=4, priority=1000,in_port=30 actions=write_metadata:0xfa2/0xffff
++ cookie=0x0, duration=9.970s, table=0, n_packets=1, n_bytes=107, idle_age=7, priority=1000,in_port=6 actions=write_metadata:0xfa2/0xffff
++ cookie=0x0, duration=9.970s, table=0, n_packets=0, n_bytes=0, idle_age=9, priority=1000,in_port=1 actions=NORMAL
++ cookie=0x0, duration=9.970s, table=0, n_packets=0, n_bytes=0, idle_age=9, priority=1000,in_port=5 actions=NORMAL
++ cookie=0x0, duration=9.970s, table=0, n_packets=22, n_bytes=3974, idle_age=0, priority=1000,in_port=11 actions=write_metadata:0xfa3/0xffff
++ cookie=0x0, duration=10.804s, table=23, n_packets=0, n_bytes=0, idle_age=10, priority=0 actions=drop
++ cookie=0x0, duration=9.970s, table=40, n_packets=0, n_bytes=0, idle_age=9, priority=1 actions=drop
++ cookie=0x0, duration=9.977s, table=40, n_packets=24, n_bytes=4188, idle_age=0, priority=10,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=drop
++ cookie=0x0, duration=9.977s, table=40, n_packets=0, n_bytes=0, idle_age=9, priority=100,dl_dst=ff:ff:ff:ff:ff:ff actions=drop
++ cookie=0x0, duration=9.977s, table=40, n_packets=0, n_bytes=0, idle_age=9, priority=10,arp actions=drop
++ cookie=0x0, duration=9.977s, table=51, n_packets=24, n_bytes=4188, idle_age=0, priority=1 actions=NORMAL
++ cookie=0x0, duration=9.817s, table=51, n_packets=0, n_bytes=0, idle_age=9, priority=100,arp,metadata=0xfa3,arp_tpa=192.168.200.1 actions=strip_vlan,move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:fa:16:3e:e9:74:9c,load:0x2->NXM_OF_ARP_OP[],move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[],move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[],load:0xfa163ee9749c->NXM_NX_ARP_SHA[],load:0xc0a8c801->NXM_OF_ARP_SPA[],IN_PORT
++ cookie=0x0, duration=9.812s, table=51, n_packets=0, n_bytes=0, idle_age=9, priority=100,arp,metadata=0xfa2,arp_tpa=192.168.100.1 actions=strip_vlan,move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:fa:16:3e:6f:f6:6e,load:0x2->NXM_OF_ARP_OP[],move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[],move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[],load:0xfa163e6ff66e->NXM_NX_ARP_SHA[],load:0xc0a86401->NXM_OF_ARP_SPA[],IN_PORT
++ cookie=0x0, duration=9.966s, table=52, n_packets=0, n_bytes=0, idle_age=9, priority=99,metadata=0xfa2,dl_dst=fa:16:3e:6f:f6:6e actions=CONTROLLER:65535
++ cookie=0x0, duration=9.970s, table=52, n_packets=0, n_bytes=0, idle_age=9, priority=99,metadata=0xfa3,dl_dst=fa:16:3e:e9:74:9c actions=CONTROLLER:65535
++ cookie=0x0, duration=9.970s, table=52, n_packets=0, n_bytes=0, idle_age=9, priority=0 actions=CONTROLLER:65535
++ cookie=0x0, duration=9.967s, table=52, n_packets=0, n_bytes=0, idle_age=9, priority=10,ip,metadata=0xfa2,nw_dst=192.168.100.0/24 actions=NORMAL
++ cookie=0x0, duration=9.970s, table=52, n_packets=0, n_bytes=0, idle_age=9, priority=10,ip,metadata=0xfa3,nw_dst=192.168.200.0/24 actions=NORMAL
++
++
++
++After   ping from VM1 to VM3 you will get the following additional  flows on table 52
++
++ sudo ovs-ofctl dump-flows br-int
++
++ cookie=0x0, duration=3.606s, table=52, n_packets=0, n_bytes=0, idle_age=3, priority=100,ip,metadata=0xfa2,in_port=6,dl_src=fa:16:3e:59:a5:7e,dl_dst=fa:16:3e:6f:f6:6e,nw_src=192.168.100.2,nw_dst=192.168.200.2 actions=dec_ttl(0),mod_dl_src:fa:16:3e:e9:74:9c,mod_dl_dst:fa:16:3e:6b:e4:97,output:11
++  cookie=0x0, duration=3.606s, table=52, n_packets=1, n_bytes=98, idle_age=3, priority=100,ip,metadata=0xfa3,in_port=11,dl_src=fa:16:3e:6b:e4:97,dl_dst=fa:16:3e:e9:74:9c,nw_src=192.168.200.2,nw_dst=192.168.100.2 actions=dec_ttl(0),mod_dl_src:fa:16:3e:6f:f6:6e,mod_dl_dst:fa:16:3e:59:a5:7e,output:6
+diff --git a/neutron/services/l3_router/l3_cont_dvr_plugin.py b/neutron/services/l3_router/l3_cont_dvr_plugin.py
+index e449e6f..eae96dd 100755
+--- a/neutron/services/l3_router/l3_cont_dvr_plugin.py
++++ b/neutron/services/l3_router/l3_cont_dvr_plugin.py
+@@ -222,9 +222,9 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
+                   agent_id,
+                   ip_address,
+                   host)
+-        self.send_set_controllers_upadte(_context, False)
++        self.send_set_controllers_update(_context, False)
+ 
+-    def send_set_controllers_upadte(self, _context, force_reconnect):
++    def send_set_controllers_update(self, _context, force_reconnect):
+ 
+         topic_port_update = topics.get_topic_name(topics.AGENT,
+                                                   topics.PORT,
+@@ -289,7 +289,7 @@ class ControllerRunner(threading.Thread):
+         if self.sync_all:
+             l3plugin = manager.NeutronManager.get_service_plugins().get(
+                 constants.L3_ROUTER_NAT)
+-            l3plugin.send_set_controllers_upadte(self.ctx, True)
++            l3plugin.send_set_controllers_update(self.ctx, True)
+             self.sync_all = False
+         plugin = manager.NeutronManager.get_plugin()
+         plugin.create_or_update_agent(self.ctx, self.agent_state)
+diff --git a/neutron/services/l3_router/l3_reactive_app.py b/neutron/services/l3_router/l3_reactive_app.py
+index 9867e21..a12f90f 100755
+--- a/neutron/services/l3_router/l3_reactive_app.py
++++ b/neutron/services/l3_router/l3_reactive_app.py
+@@ -27,6 +27,7 @@ from ryu.controller.handler import set_ev_cls
+ from ryu.controller import ofp_event
+ from ryu.ofproto import ether
+ from ryu.ofproto.ether import ETH_TYPE_8021Q
++from ryu.ofproto import nx_match
+ from ryu.ofproto import ofproto_v1_3
+ 
+ from ryu.lib.packet import ethernet
+@@ -192,8 +193,9 @@ class L3ReactiveApp(app_manager.RyuApp):
+         for dpid in self.dp_list:
+             datapath = self.dp_list[dpid].datapath
+             self.send_features_request(datapath)
+-            self.send_flow_stats_request(
+-                datapath, table=self.METADATA_TABLE_ID)
++            self.send_port_desc_stats_request(datapath)
++            #self.send_flow_stats_request(
++             #   datapath, table=self.METADATA_TABLE_ID)
+ 
+     def sync_data(self):
+         self.logger.info(" l3_reactive_app sync router data ")
+@@ -349,129 +351,120 @@ class L3ReactiveApp(app_manager.RyuApp):
+                               eth):
+         pkt_ipv4 = header_list['ipv4']
+         pkt_ethernet = header_list['ethernet']
+-
+-        # Check vlan-tag
+-        if VLAN in header_list:
+-            vlan_id = header_list[VLAN].vid
+-            self.logger.info("handle_ipv4_packet_in::  VLANID %s  ", vlan_id)
+-            switch = self.dp_list.get(datapath.id)
+-            if switch:
+-                if vlan_id not in switch.local_vlan_mapping:
+-                    # send request for loacl switch data
+-                    # self.send_port_desc_stats_request(datapath)
+-                    self.send_flow_stats_request(
+-                        datapath, table=self.METADATA_TABLE_ID)
+-                    LOG.error(("No local switch vlan mapping for vlan %s"),
+-                              vlan_id)
+-                    return
+-                self.logger.info(
+-                    "packet segmentation_id %s ",
+-                    switch.local_vlan_mapping[vlan_id])
+-                segmentation_id = switch.local_vlan_mapping[vlan_id]
+-                for tenantid in self.tenants:
+-                    tenant = self.tenants[tenantid]
+-                    for router in tenant.routers:
+-                        for subnet in router.subnets:
+-                            if segmentation_id == subnet.segmentation_id:
+-                                self.logger.info("packet from  to tenant  %s ",
+-                                                 tenant.tenant_id)
+-                                in_port_data = self.tenants[
+-                                    tenantid].mac_to_port_data[eth.src]
+-                                out_port_data = self.tenants[
+-                                    tenantid].mac_to_port_data[eth.dst]
+-                                LOG.debug(('Source port data <--- %s ',
+-                                           in_port_data))
+-                                LOG.debug(('Router Mac dest port data -> %s ',
+-                                           out_port_data))
+-                                if self.handle_router_interface(datapath,
+-                                                                in_port,
+-                                                                out_port_data,
+-                                                                pkt,
+-                                                                pkt_ethernet,
+-                                                                pkt_ipv4) == 1:
+-                                    # trafic to the virtual routre handle only
+-                                    # ping
+-                                    return
+-                                (dst_p_data,
+-                                 dst_sub_id) = self.get_port_data(tenant,
+-                                                                  pkt_ipv4.dst)
+-                                for _subnet in router.subnets:
+-                                    if dst_sub_id == _subnet.data['id']:
+-                                        out_subnet = _subnet
+-                                        subnet_gw = out_subnet.data[
+-                                            'gateway_ip']
+-
+-                                        (dst_gw_port_data,
+-                                         dst_gw_sub_id) = self.get_port_data(
+-                                            tenant, subnet_gw)
+-
+-                                        if self.handle_router_interface(
+-                                                datapath,
+-                                                in_port,
+-                                                dst_gw_port_data,
+-                                                pkt,
+-                                                pkt_ethernet,
+-                                                pkt_ipv4) == 1:
+-                                            # this trafic to the virtual routre
+-                                            return
+-                                        if not dst_p_data:
+-                                            LOG.error(("No local switch"
+-                                                       "mapping for %s"),
+-                                                      pkt_ipv4.dst)
+-                                            return
+-                                        if self.handle_router_interface(
+-                                                datapath,
+-                                                in_port,
+-                                                dst_p_data,
+-                                                pkt,
+-                                                pkt_ethernet,
+-                                                pkt_ipv4) != -1:
+-                                            # case for vrouter that is not the
+-                                            #gw and we are trying to  ping
+-                                            # this trafic to the virtual routre
+-                                            return
+-
+-                                        LOG.debug(("Route from  %s to %s"
+-                                                   "exist installing flow ",
+-                                                   pkt_ipv4.src,
+-                                                   pkt_ipv4.dst))
+-                                        dst_vlan = self.get_l_vid_from_seg_id(
+-                                            switch,
+-                                            out_subnet.segmentation_id)
+-                                        self.install_l3_forwarding_flows(
++        #ipdb.set_trace()
++        switch = self.dp_list.get(datapath.id)
++        if switch:
++            if 'metadata' not in msg.match:
++                # send request for loacl switch data
++                # self.send_port_desc_stats_request(datapath)
++                #self.send_flow_stats_request(
++                #    datapath, table=self.METADATA_TABLE_ID)
++                LOG.error(("No metadata on packet from %s"),
++                          eth.src)
++                return
++            segmentation_id = msg.match['metadata']
++            self.logger.info(
++                "packet segmentation_id %s ",
++                segmentation_id)
++            for tenantid in self.tenants:
++                tenant = self.tenants[tenantid]
++                for router in tenant.routers:
++                    for subnet in router.subnets:
++                        if segmentation_id == subnet.segmentation_id:
++                            self.logger.info("packet from  to tenant  %s ",
++                                             tenant.tenant_id)
++                            in_port_data = self.tenants[
++                                tenantid].mac_to_port_data[eth.src]
++                            out_port_data = self.tenants[
++                                tenantid].mac_to_port_data[eth.dst]
++                            LOG.debug(('Source port data <--- %s ',
++                                       in_port_data))
++                            LOG.debug(('Router Mac dest port data -> %s ',
++                                       out_port_data))
++                            if self.handle_router_interface(datapath,
++                                                            in_port,
++                                                            out_port_data,
++                                                            pkt,
++                                                            pkt_ethernet,
++                                                            pkt_ipv4) == 1:
++                                # trafic to the virtual routre handle only
++                                # ping
++                                return
++                            (dst_p_data,
++                             dst_sub_id) = self.get_port_data(tenant,
++                                                              pkt_ipv4.dst)
++                            for _subnet in router.subnets:
++                                if dst_sub_id == _subnet.data['id']:
++                                    out_subnet = _subnet
++                                    subnet_gw = out_subnet.data[
++                                        'gateway_ip']
++
++                                    (dst_gw_port_data,
++                                     dst_gw_sub_id) = self.get_port_data(
++                                        tenant, subnet_gw)
++
++                                    if self.handle_router_interface(
+                                             datapath,
+-                                            msg,
+-                                            in_port_data,
+                                             in_port,
+-                                            vlan_id,
+-                                            eth,
+-                                            pkt_ipv4,
+                                             dst_gw_port_data,
++                                            pkt,
++                                            pkt_ethernet,
++                                            pkt_ipv4) == 1:
++                                        # this trafic to the virtual routre
++                                        return
++                                    if not dst_p_data:
++                                        LOG.error(("No local switch"
++                                                   "mapping for %s"),
++                                                  pkt_ipv4.dst)
++                                        return
++                                    if self.handle_router_interface(
++                                            datapath,
++                                            in_port,
+                                             dst_p_data,
+-                                            dst_vlan)
++                                            pkt,
++                                            pkt_ethernet,
++                                            pkt_ipv4) != -1:
++                                        # case for vrouter that is not the
++                                        #gw and we are trying to  ping
++                                        # this trafic to the virtual routre
+                                         return
+ 
+-    def install_l3_forwarding_flows(
+-            self,
+-            datapath,
+-            msg,
+-            in_port_data,
+-            in_port,
+-            vlan_id,
+-            eth,
+-            pkt_ipv4,
+-            dst_gw_port_data,
+-            dst_p_data,
+-            dst_vlan):
++                                    LOG.debug(("Route from  %s to %s"
++                                               "exist installing flow ",
++                                               pkt_ipv4.src,
++                                               pkt_ipv4.dst))
++                                    self.install_l3_forwarding_flows(
++                                        datapath,
++                                        msg,
++                                        in_port_data,
++                                        in_port,
++                                        segmentation_id,
++                                        eth,
++                                        pkt_ipv4,
++                                        dst_gw_port_data,
++                                        dst_p_data,
++                                        out_subnet.segmentation_id)
++                                    return
++
++    def install_l3_forwarding_flows(self,
++                                    datapath,
++                                    msg,
++                                    in_port_data,
++                                    in_port,
++                                    src_seg_id,
++                                    eth,
++                                    pkt_ipv4,
++                                    dst_gw_port_data,
++                                    dst_p_data,
++                                    dst_seg_id):
+         if dst_p_data['local_dpid_switch'] == datapath.id:
+             # The dst VM and the source VM are on the same copute Node
+             # Send output flow directly to port iuse the same datapath
+-            actions = self.add_flow_subnet_traffic(
+-                datapath,
++            actions = self.add_flow_subnet_traffic(datapath,
+                 self.L3_VROUTER_TABLE,
+                 MEDIUM_PRIOREITY_FLOW,
+                 in_port,
+-                vlan_id,
++                src_seg_id,
+                 eth.src,
+                 eth.dst,
+                 pkt_ipv4.dst,
+@@ -479,12 +472,12 @@ class L3ReactiveApp(app_manager.RyuApp):
+                 dst_gw_port_data['mac_address'],
+                 dst_p_data['mac_address'],
+                 dst_p_data['local_port_num'])
+-    # Install the reverse flow return traffic
++            # Install the reverse flow return traffic
+             self.add_flow_subnet_traffic(datapath,
+                                          self.L3_VROUTER_TABLE,
+                                          MEDIUM_PRIOREITY_FLOW,
+                                          dst_p_data['local_port_num'],
+-                                         dst_vlan,
++                                         dst_seg_id,
+                                          dst_p_data['mac_address'],
+                                          dst_gw_port_data['mac_address'],
+                                          pkt_ipv4.src,
+@@ -503,7 +496,7 @@ class L3ReactiveApp(app_manager.RyuApp):
+                                                    self.L3_VROUTER_TABLE,
+                                                    MEDIUM_PRIOREITY_FLOW,
+                                                    in_port,
+-                                                   vlan_id,
++                                                   src_seg_id,
+                                                    eth.src,
+                                                    eth.dst,
+                                                    pkt_ipv4.dst,
+@@ -513,13 +506,13 @@ class L3ReactiveApp(app_manager.RyuApp):
+                                                    dst_p_data[
+                                                        'mac_address'],
+                                                    localSwitch.patch_port,
+-                                                   dst_vlan)
++                                                   dst_seg_id=dst_seg_id)
+             # Remote reverse flow install
+             self.add_flow_subnet_traffic(remoteSwitch.datapath,
+                                          self.L3_VROUTER_TABLE,
+                                          MEDIUM_PRIOREITY_FLOW,
+                                          dst_p_data['local_port_num'],
+-                                         dst_vlan,
++                                         dst_seg_id,
+                                          dst_p_data['mac_address'],
+                                          dst_gw_port_data['mac_address'],
+                                          pkt_ipv4.src,
+@@ -527,7 +520,7 @@ class L3ReactiveApp(app_manager.RyuApp):
+                                          eth.dst,
+                                          in_port_data['mac_address'],
+                                          in_port_data['local_port_num'],
+-                                         vlan_id)
++                                         dst_seg_id=src_seg_id)
+             self.handle_packet_out_l3(datapath, msg, in_port, actions)
+ 
+     def handle_packet_out_l3(self, datapath, msg, in_port, actions):
+@@ -542,31 +535,28 @@ class L3ReactiveApp(app_manager.RyuApp):
+         datapath.send_msg(out)
+ 
+     def add_flow_subnet_traffic(self, datapath, table, priority, in_port,
+-                                match_vlan, match_src_mac, match_dst_mac,
++                                src_seg_id, match_src_mac, match_dst_mac,
+                                 match_dst_ip, match_src_ip, src_mac,
+-                                dst_mac, out_port_num, dst_vlan=None):
++                                dst_mac, out_port_num, dst_seg_id=None):
+         parser = datapath.ofproto_parser
+         ofproto = datapath.ofproto
+         match = parser.OFPMatch()
+-        match.set_dl_type(0x0800)
++        match.set_dl_type( ether.ETH_TYPE_IP)
+         match.set_in_port(in_port)
++        match.set_metadata(src_seg_id)
+         match.set_dl_src(haddr_to_bin(match_src_mac))
+         match.set_dl_dst(haddr_to_bin(match_dst_mac))
+         match.set_ipv4_src(ipv4_text_to_int(str(match_src_ip)))
+         match.set_ipv4_dst(ipv4_text_to_int(str(match_dst_ip)))
+-        match.set_vlan_vid(0x1000 | match_vlan)
+-        actions = [parser.OFPActionPopVlan()]
++        actions = []
++        if dst_seg_id:
++            field = parser.OFPActionSetField(tunnel_id=dst_seg_id)
++            actions.append(parser.OFPActionSetField(field))
+         actions.append(parser.OFPActionDecNwTtl())
+         actions.append(parser.OFPActionSetField(eth_src=src_mac))
+         actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
+         actions.append(parser.OFPActionOutput(out_port_num,
+                                               ofproto.OFPCML_NO_BUFFER))
+-        if dst_vlan:
+-            field = parser.OFPMatchField.make(
+-                ofproto.OXM_OF_VLAN_VID, dst_vlan)
+-            actions.append(parser.OFPActionPushVlan(ETH_TYPE_8021Q))
+-            actions.append(parser.OFPActionSetField(field))
+-
+         ofproto = datapath.ofproto
+         inst = [datapath.ofproto_parser.OFPInstructionActions(
+             ofproto.OFPIT_APPLY_ACTIONS, actions)]
+@@ -600,15 +590,14 @@ class L3ReactiveApp(app_manager.RyuApp):
+             match=match)
+ 
+     def add_flow_normal_local_subnet(self, datapath, table, priority,
+-                                     dst_net, dst_mask, vlan_id):
+-        ipdb.set_trace()
++                                     dst_net, dst_mask, seg_id):
+         parser = datapath.ofproto_parser
+         ofproto = datapath.ofproto
+         #match = parser.OFPMatch(vlan_vid=0x1000| vlan_id)
+         match = parser.OFPMatch()
+         match.set_dl_type( ether.ETH_TYPE_IP)
+         #match.set_vlan_vid(0x1000 | vlan_id)
+-        match.set_metadata(vlan_id)
++        match.set_metadata(seg_id)
+         match.set_ipv4_dst_masked(ipv4_text_to_int(str(dst_net)),
+                                   mask_ntob(int(dst_mask)))
+         #match = parser.OFPMatch(vlan_pcp=0)
+@@ -706,13 +695,12 @@ class L3ReactiveApp(app_manager.RyuApp):
+             instructions)
+         datapath.send_msg(flow_mod)
+ 
+-    def add_flow_normal(self, datapath, table, priority):
++    def add_flow_normal(self, datapath, table, priority, match=None):
+         parser = datapath.ofproto_parser
+         ofproto = datapath.ofproto
+-        match = parser.OFPMatch(vlan_vid=0x1000)
++        #match = parser.OFPMatch(vlan_vid=0x1000)
+         #match = parser.OFPMatch(vlan_pcp=0)
+         actions = [
+-            parser.OFPActionPopVlan(),
+             parser.OFPActionOutput(
+                 ofproto.OFPP_NORMAL)]
+         ofproto = datapath.ofproto
+@@ -831,12 +819,11 @@ class L3ReactiveApp(app_manager.RyuApp):
+             match=match)
+ 
+     def add_flow_match_gw_mac_to_cont(self, datapath, dst_mac, table,
+-                                      priority, vlan_vid=None,
++                                      priority, seg_id=None,
+                                       _actions=None):
+         parser = datapath.ofproto_parser
+         #ofproto = datapath.ofproto
+-        vlan_id = 0x1000 | vlan_vid
+-        match = parser.OFPMatch(eth_dst=dst_mac, vlan_vid=vlan_id)
++        match = parser.OFPMatch(eth_dst=dst_mac, metadata=seg_id)
+ 
+         self.add_flow_match_to_controller(
+             datapath, table, priority, match=match, _actions=_actions)
+@@ -899,8 +886,9 @@ class L3ReactiveApp(app_manager.RyuApp):
+ 
+         switch = self.dp_list.get(datapath.id)
+         if switch:
+-            self.send_flow_stats_request(
+-                datapath, table=self.METADATA_TABLE_ID)
++            self.send_port_desc_stats_request(datapath)
++           # self.send_flow_stats_request(
++            #    datapath, table=self.METADATA_TABLE_ID)
+ 
+     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+     def switch_features_handler(self, ev):
+@@ -917,7 +905,8 @@ class L3ReactiveApp(app_manager.RyuApp):
+         time.sleep(1)  # sleep during 500ms
+         LOG.info(("Done Wait .. will retry if meta table not set "))
+ 
+-        self.send_flow_stats_request(datapath, table=self.METADATA_TABLE_ID)
++        self.send_port_desc_stats_request(datapath)
++        #self.send_flow_stats_request(datapath, table=self.METADATA_TABLE_ID)
+         #  --> meta
+         #self.add_flow_go_to_table2(datapath, 0, 1  ,self.L3_VROUTER_TABLE)
+         # main table 0  to Arp On ARp or broadcat or multicast
+@@ -937,10 +926,6 @@ class L3ReactiveApp(app_manager.RyuApp):
+             NORMAL_PRIOREITY_FLOW,
+             self.ARP_AND_BR_TABLE)
+ 
+-        # Meta Table to L3 router table on all other trafic
+-        self.add_flow_go_to_table2(
+-            datapath, self.METADATA_TABLE_ID, 1, self.L3_VROUTER_TABLE)
+-
+         # Normal flow on arp table in low priorety
+         self.add_flow_normal(datapath, self.ARP_AND_BR_TABLE, 1)
+         #del l3plugin
+@@ -992,14 +977,13 @@ class L3ReactiveApp(app_manager.RyuApp):
+                 vlan_id = self.get_l_vid_from_seg_id(switch, segmentation_id)
+                 LOG.debug(("Found VM  port  %s using MAC  %s  %d"),
+                           port.name, port.hw_addr, datapath.id)
+-                if vlan_id:
+-                    '''self.add_flow_push_vlan_by_port_num(datapath,
++                '''if vlan_id:
++                    self.add_flow_push_vlan_by_port_num(datapath,
+                                                         0,
+                                                         HIGH_PRIOREITY_FLOW,
+                                                         port.port_no,
+                                                         vlan_id,
+                                                         self.CLASSIFIER_TABLE)
+-                    '''
+ 
+                 else:
+                     LOG.error(("No local switch vlan mapping for port"
+@@ -1009,6 +993,7 @@ class L3ReactiveApp(app_manager.RyuApp):
+                     self.add_flow_normal_by_port_num(datapath, 0,
+                                                      HIGH_PRIOREITY_FLOW,
+                                                      port.port_no)
++                    '''
+             elif "patch-tun" in port.name:
+                 LOG.debug(("Found br-tun patch port "
+                            "%s   %s sending to NORMAL path"),
+@@ -1021,8 +1006,45 @@ class L3ReactiveApp(app_manager.RyuApp):
+         switch.local_ports = ports
+         self.add_flow_go_to_table2(datapath, 0, 1, self.CLASSIFIER_TABLE)
+         self.add_flow_match_to_controller(datapath, self.L3_VROUTER_TABLE, 0)
+-        self.add_flow_go_to_table2(
+-            datapath, self.CLASSIFIER_TABLE, 1, self.L3_VROUTER_TABLE)
++        self.add_flow_go_to_table2(datapath, self.CLASSIFIER_TABLE, 1,
++                                   self.L3_VROUTER_TABLE)
++        l3plugin = manager.NeutronManager.get_service_plugins().get(
++            service_constants.L3_ROUTER_NAT)
++
++        for tenantid in self.tenants:
++            for router in self.tenants[tenantid].routers:
++                for subnet in router.subnets:
++                    for interface in router.data['_interfaces']:
++                        if interface['subnet']['id'] == subnet.data['id']:
++                            segmentation_id = subnet.segmentation_id
++                            #vlan_id = self.get_l_vid_from_seg_id(
++                            #    switch, segmentation_id)
++                            network, net_mask = self.get_subnet_from_cidr(
++                                subnet.data['cidr'])
++
++                            self.add_flow_normal_local_subnet(
++                                datapath,
++                                self.L3_VROUTER_TABLE,
++                                NORMAL_PRIOREITY_FLOW,
++                                network,
++                                net_mask,
++                                segmentation_id)
++
++                            self.add_flow_match_gw_mac_to_cont(
++                                datapath,
++                                interface['mac_address'],
++                                self.L3_VROUTER_TABLE,
++                                99,
++                                segmentation_id)
++                            l3plugin.setup_vrouter_arp_responder(
++                                self.ctx,
++                                "br-int",
++                                "add",
++                                self.ARP_AND_BR_TABLE,
++                                segmentation_id,
++                                interface['network_id'],
++                                interface['mac_address'],
++                                self.get_ip_from_router_interface(interface))
+ 
+     def send_features_request(self, datapath):
+         ofp_parser = datapath.ofproto_parser
+@@ -1131,50 +1153,14 @@ class L3ReactiveApp(app_manager.RyuApp):
+         l3plugin = manager.NeutronManager.get_service_plugins().get(
+             service_constants.L3_ROUTER_NAT)
+         switch = self.dp_list.get(datapath.id)
+-
+-        for tenantid in self.tenants:
+-            for router in self.tenants[tenantid].routers:
+-                for subnet in router.subnets:
+-                    for interface in router.data['_interfaces']:
+-                        if interface['subnet']['id'] == subnet.data['id']:
+-                            segmentation_id = subnet.segmentation_id
+-                            vlan_id = self.get_l_vid_from_seg_id(
+-                                switch, segmentation_id)
+-                            network, net_mask = self.get_subnet_from_cidr(
+-                                subnet.data['cidr'])
+-
+-                            if vlan_id:
+-                                self.add_flow_normal_local_subnet(
+-                                    datapath,
+-                                    self.L3_VROUTER_TABLE,
+-                                    NORMAL_PRIOREITY_FLOW,
+-                                    network,
+-                                    net_mask,
+-                                    vlan_id)
+-
+-                                self.add_flow_match_gw_mac_to_cont(
+-                                    datapath,
+-                                    interface['mac_address'],
+-                                    self.L3_VROUTER_TABLE,
+-                                    99,
+-                                    vlan_id)
+-                            l3plugin.setup_vrouter_arp_responder(
+-                                self.ctx,
+-                                "br-int",
+-                                "add",
+-                                self.ARP_AND_BR_TABLE,
+-                                segmentation_id,
+-                                interface['network_id'],
+-                                interface['mac_address'],
+-                                self.get_ip_from_router_interface(interface))
+-        # No match on table L3_VROUTER_TABLE go to normal flow
++       # No match on table L3_VROUTER_TABLE go to normal flow
+         # No match on table L3_VROUTER_TABLE go to controller
+         # Patch to overcome OVS BUG not accepting match on tag vlans
+         # set Pop per taged vlan
+ 
+-        for local_vlan in switch.local_vlan_mapping:
+-            self.add_flow_pop_vlan_to_normal(
+-                datapath, self.ARP_AND_BR_TABLE, 1, local_vlan)
++       # for local_vlan in switch.local_vlan_mapping:
++       #     self.add_flow_pop_vlan_to_normal(
++       #        datapath, self.ARP_AND_BR_TABLE, 1, local_vlan)
+ 
+         if not switch.local_vlan_mapping:
+             LOG.error(("CRITICAL ERROR ***** Switch did not send local port"
+-- 
+2.1.0
+
+
+From b3845322c8faae72971d8d7f48e576ec0609451a Mon Sep 17 00:00:00 2001
+From: Eran Gampel <eran@gampel.net>
+Date: Mon, 12 Jan 2015 18:05:20 +0200
+Subject: [PATCH 4/8] merge
+
+Change-Id: I92566ffca502fcb3fa9d9ff323652e6933fd54cc
+---
+ neutron/plugins/openvswitch/agent/ovs_neutron_agent.py | 2 +-
+ neutron/services/l3_router/l3_cont_dvr_plugin.py       | 4 ++--
+ neutron/services/l3_router/l3_reactive_app.py          | 3 +--
+ 3 files changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+index 0013280..418032e 100644
+--- a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
++++ b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+@@ -1439,7 +1439,7 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+                 port_info.get('removed') or
+                 port_info.get('updated'))
+ 
+-    def check_ovs_restart(self):
++    def check_ovs_status(self):
+         # Check for the canary flow
+         # Sync lock for race condition with set_controller
+         self.set_controller_lock.acquire()
+diff --git a/neutron/services/l3_router/l3_cont_dvr_plugin.py b/neutron/services/l3_router/l3_cont_dvr_plugin.py
+index eae96dd..d10e4e2 100755
+--- a/neutron/services/l3_router/l3_cont_dvr_plugin.py
++++ b/neutron/services/l3_router/l3_cont_dvr_plugin.py
+@@ -49,7 +49,7 @@ LOG = logging.getLogger(__name__)
+ 
+ NET_CONTROL_L3_OPTS = [
+     cfg.StrOpt('L3controller_ip_list',
+-               default='tcp:10.100.100.38:6633',
++               default='tcp:10.100.100.3:6633',
+                help=("L3 Controler IP list list tcp:ip_addr:port;"
+                      "tcp:ip_addr:port..;..")),
+     cfg.StrOpt('net_controller_l3_southbound_protocol',
+@@ -79,7 +79,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
+         self.start_periodic_agent_status_check()
+         if cfg.CONF.net_controller_l3_southbound_protocol == "OpenFlow":
+             # Open Flow Controller
+-            LOG.debug(("Using Southbound OpenFlow Protocol "))
++            LOG.info(("Using Southbound OpenFlow Protocol "))
+             self.controllerThread = ControllerRunner("openflow")
+             self.controllerThread.start()
+             self.controllerThread.router_scheduler = self.router_scheduler
+diff --git a/neutron/services/l3_router/l3_reactive_app.py b/neutron/services/l3_router/l3_reactive_app.py
+index a12f90f..e37c449 100755
+--- a/neutron/services/l3_router/l3_reactive_app.py
++++ b/neutron/services/l3_router/l3_reactive_app.py
+@@ -48,7 +48,6 @@ from neutron.plugins.ml2 import driver_api as api
+ from neutron import context
+ from neutron import manager
+ from neutron.plugins.common import constants as service_constants
+-import ipdb 
+ 
+ LOG = log.getLogger(__name__)
+ 
+@@ -181,6 +180,7 @@ class L3ReactiveApp(app_manager.RyuApp):
+         self.dp_list = {}
+ 
+     def start(self):
++        self.logger.info("Starting Virtual L3 Reactive OpenFlow APP ")
+         super(L3ReactiveApp, self).start()
+         return 1
+ 
+@@ -893,7 +893,6 @@ class L3ReactiveApp(app_manager.RyuApp):
+     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+     def switch_features_handler(self, ev):
+         datapath = ev.msg.datapath
+-
+         if self.need_sync:
+             self.sync_data()
+         switch = self.dp_list.get(datapath.id)
+-- 
+2.1.0
+
+
+From 11f922622f8b4d59d1e857e3426a736653ab41b1 Mon Sep 17 00:00:00 2001
+From: Eran Gampel <eran@gampel.net>
+Date: Sun, 25 Jan 2015 17:29:14 +0200
+Subject: [PATCH 5/8] Fix cross Compute Node flow installation, order to
+ communicate across virtual switch in the US we must use the mark action
+ metadata and tunnel_id are removed from flow when sent to patch port
+
+Change-Id: Iab01fd387cb09a7bfdf0b99d38ce02fb3a9e1675
+---
+ .../plugins/openvswitch/agent/ovs_neutron_agent.py | 12 +++++++
+ neutron/services/l3_router/l3_cont_dvr_plugin.py   |  2 +-
+ neutron/services/l3_router/l3_reactive_app.py      | 38 +++++++++++++++-------
+ 3 files changed, 39 insertions(+), 13 deletions(-)
+
+diff --git a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+index 418032e..3f6c012 100644
+--- a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
++++ b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+@@ -549,6 +549,10 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+                 bridge.add_flow(priority=0, actions="normal")
+                 bridge.add_flow(table=constants.CANARY_TABLE, priority=0,
+                                 actions="drop")
++                bridge.add_flow(table="60", priority=1,
++                                actions="move:NXM_NX_TUN_ID[0..31]->NXM_NX_PKT_MARK[],"
++                                "output:%s" %
++                                (self.patch_tun_ofport))
+             bridge.set_controller_mode("out-of-band")
+             self.set_controller_lock.release()
+ 
+@@ -943,6 +947,7 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+                                  constants.FLOOD_TO_TUN)
+         # FLOOD_TO_TUN will handle flooding in tunnels based on lvid,
+         # for now, add a default drop action
++
+         self.tun_br.add_flow(table=constants.FLOOD_TO_TUN,
+                              priority=0,
+                              actions="drop")
+@@ -1164,6 +1169,13 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+                                 dl_vlan=vlan_mapping.vlan,
+                                 actions="strip_vlan,set_tunnel:%s,output:%s" %
+                                 (vlan_mapping.segmentation_id, ofports))
++        if self.enable_l3_controller:
++            if ofports:
++                    br.add_flow(table=constants.FLOOD_TO_TUN,
++                            actions="move:NXM_NX_PKT_MARK[]->NXM_NX_TUN_ID[0..31],"
++                                    "output:%s" %
++                                    (ofports))
++
+         return ofport
+ 
+     def setup_tunnel_port(self, br, remote_ip, network_type):
+diff --git a/neutron/services/l3_router/l3_cont_dvr_plugin.py b/neutron/services/l3_router/l3_cont_dvr_plugin.py
+index d10e4e2..5a27543 100755
+--- a/neutron/services/l3_router/l3_cont_dvr_plugin.py
++++ b/neutron/services/l3_router/l3_cont_dvr_plugin.py
+@@ -49,7 +49,7 @@ LOG = logging.getLogger(__name__)
+ 
+ NET_CONTROL_L3_OPTS = [
+     cfg.StrOpt('L3controller_ip_list',
+-               default='tcp:10.100.100.3:6633',
++               default='tcp:172.16.10.10:6633',
+                help=("L3 Controler IP list list tcp:ip_addr:port;"
+                      "tcp:ip_addr:port..;..")),
+     cfg.StrOpt('net_controller_l3_southbound_protocol',
+diff --git a/neutron/services/l3_router/l3_reactive_app.py b/neutron/services/l3_router/l3_reactive_app.py
+index e37c449..5f3bac2 100755
+--- a/neutron/services/l3_router/l3_reactive_app.py
++++ b/neutron/services/l3_router/l3_reactive_app.py
+@@ -48,7 +48,6 @@ from neutron.plugins.ml2 import driver_api as api
+ from neutron import context
+ from neutron import manager
+ from neutron.plugins.common import constants as service_constants
+-
+ LOG = log.getLogger(__name__)
+ 
+ ETHERNET = ethernet.ethernet.__name__
+@@ -351,7 +350,6 @@ class L3ReactiveApp(app_manager.RyuApp):
+                               eth):
+         pkt_ipv4 = header_list['ipv4']
+         pkt_ethernet = header_list['ethernet']
+-        #ipdb.set_trace()
+         switch = self.dp_list.get(datapath.id)
+         if switch:
+             if 'metadata' not in msg.match:
+@@ -505,7 +503,7 @@ class L3ReactiveApp(app_manager.RyuApp):
+                                                        'mac_address'],
+                                                    dst_p_data[
+                                                        'mac_address'],
+-                                                   localSwitch.patch_port,
++                                                   localSwitch.patch_port_num,
+                                                    dst_seg_id=dst_seg_id)
+             # Remote reverse flow install
+             self.add_flow_subnet_traffic(remoteSwitch.datapath,
+@@ -520,6 +518,7 @@ class L3ReactiveApp(app_manager.RyuApp):
+                                          eth.dst,
+                                          in_port_data['mac_address'],
+                                          in_port_data['local_port_num'],
++                                         remoteSwitch.patch_port_num,
+                                          dst_seg_id=src_seg_id)
+             self.handle_packet_out_l3(datapath, msg, in_port, actions)
+ 
+@@ -543,29 +542,44 @@ class L3ReactiveApp(app_manager.RyuApp):
+         match = parser.OFPMatch()
+         match.set_dl_type( ether.ETH_TYPE_IP)
+         match.set_in_port(in_port)
+-        match.set_metadata(src_seg_id)
++        match.set_metadata(src_seg_id )
+         match.set_dl_src(haddr_to_bin(match_src_mac))
+         match.set_dl_dst(haddr_to_bin(match_dst_mac))
+         match.set_ipv4_src(ipv4_text_to_int(str(match_src_ip)))
+         match.set_ipv4_dst(ipv4_text_to_int(str(match_dst_ip)))
+         actions = []
++        inst = []
++        write_metadata = 0;
++        ofproto = datapath.ofproto
+         if dst_seg_id:
+-            field = parser.OFPActionSetField(tunnel_id=dst_seg_id)
+-            actions.append(parser.OFPActionSetField(field))
++            #The best vm is on another compute machine so we must set the
++            #segmentation Id and set metadata for the tunnel bridge to flood this packet
++            field = parser.OFPActionSetField(tunnel_id=dst_seg_id )
++            actions.append(field)
++            goto_inst = parser.OFPInstructionGotoTable(60)
++            #field = parser.OFPActionSetField(metadata=0x8000)
++            #actions.append(field)
++            #write_metadata = parser.OFPInstructionWriteMetadata(0x8000,0x8000)
++            #inst= [write_metadata]
++            inst.append(goto_inst)
++            #inst.append(write_metadata)
++        else:
++            actions.append(parser.OFPActionOutput(out_port_num,
++                                              ofproto.OFPCML_NO_BUFFER))
+         actions.append(parser.OFPActionDecNwTtl())
+         actions.append(parser.OFPActionSetField(eth_src=src_mac))
+         actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
+-        actions.append(parser.OFPActionOutput(out_port_num,
+-                                              ofproto.OFPCML_NO_BUFFER))
+-        ofproto = datapath.ofproto
+-        inst = [datapath.ofproto_parser.OFPInstructionActions(
+-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
++        #inst.append( datapath.ofproto_parser.OFPInstructionActions(
++        #    ofproto.OFPIT_APPLY_ACTIONS, actions))
++        inst.append(datapath.ofproto_parser.OFPInstructionActions(
++                        ofproto.OFPIT_APPLY_ACTIONS, actions))
+         self.mod_flow(
+             datapath,
+             inst=inst,
+             table_id=table,
+             priority=priority,
+-            match=match)
++            match=match,
++            out_port=out_port_num)
+ 
+         return actions
+ 
+-- 
+2.1.0
+
+
+From 12f5dfce0226f379f0931dc9a5b1cbb267df2d2e Mon Sep 17 00:00:00 2001
+From: Eran Gampel <eran@gampel.net>
+Date: Sun, 25 Jan 2015 17:54:51 +0200
+Subject: [PATCH 6/8] fix local cross subnet VMs
+
+Change-Id: Icf05940b56973b76fd2754dd59fef7af5acfff52
+---
+ neutron/services/l3_router/l3_reactive_app.py | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/neutron/services/l3_router/l3_reactive_app.py b/neutron/services/l3_router/l3_reactive_app.py
+index 5f3bac2..a9c23a3 100755
+--- a/neutron/services/l3_router/l3_reactive_app.py
++++ b/neutron/services/l3_router/l3_reactive_app.py
+@@ -551,6 +551,9 @@ class L3ReactiveApp(app_manager.RyuApp):
+         inst = []
+         write_metadata = 0;
+         ofproto = datapath.ofproto
++        actions.append(parser.OFPActionDecNwTtl())
++        actions.append(parser.OFPActionSetField(eth_src=src_mac))
++        actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
+         if dst_seg_id:
+             #The best vm is on another compute machine so we must set the
+             #segmentation Id and set metadata for the tunnel bridge to flood this packet
+@@ -566,10 +569,7 @@ class L3ReactiveApp(app_manager.RyuApp):
+         else:
+             actions.append(parser.OFPActionOutput(out_port_num,
+                                               ofproto.OFPCML_NO_BUFFER))
+-        actions.append(parser.OFPActionDecNwTtl())
+-        actions.append(parser.OFPActionSetField(eth_src=src_mac))
+-        actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
+-        #inst.append( datapath.ofproto_parser.OFPInstructionActions(
++       #inst.append( datapath.ofproto_parser.OFPInstructionActions(
+         #    ofproto.OFPIT_APPLY_ACTIONS, actions))
+         inst.append(datapath.ofproto_parser.OFPInstructionActions(
+                         ofproto.OFPIT_APPLY_ACTIONS, actions))
+-- 
+2.1.0
+
+
+From c0fb88fcca7c657dcaa3a6bf1fd0d327b4c27500 Mon Sep 17 00:00:00 2001
+From: Eran Gampel <eran@gampel.net>
+Date: Mon, 26 Jan 2015 11:21:26 +0200
+Subject: [PATCH 7/8] send not forced connect message every 30 sec, temporary
+ fix until we manage to detect new/restarted L2 agent
+
+Change-Id: I1189af681548d4adf406a7defa8feb082435de19
+---
+ neutron/plugins/openvswitch/agent/ovs_neutron_agent.py | 4 ++--
+ neutron/services/l3_router/l3_cont_dvr_plugin.py       | 7 ++++---
+ 2 files changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+index 3f6c012..d7d19e1 100644
+--- a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
++++ b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+@@ -814,8 +814,8 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+         # which does nothing if bridge already exists.
+         self.int_br.create()
+         self.int_br.set_secure_mode()
+-        if not self.enable_l3_controller:
+-            self.int_br.del_controller()
++        #if not self.enable_l3_controller:
++        self.int_br.del_controller()
+         self.int_br.delete_port(cfg.CONF.OVS.int_peer_patch_port)
+         self.int_br.remove_all_flows()
+         # switch all traffic using L2 learning
+diff --git a/neutron/services/l3_router/l3_cont_dvr_plugin.py b/neutron/services/l3_router/l3_cont_dvr_plugin.py
+index 5a27543..d2cb029 100755
+--- a/neutron/services/l3_router/l3_cont_dvr_plugin.py
++++ b/neutron/services/l3_router/l3_cont_dvr_plugin.py
+@@ -43,7 +43,6 @@ from neutron.openstack.common import log as logging
+ from neutron.openstack.common import loopingcall
+ 
+ from neutron.services.l3_router.l3_reactive_app import L3ReactiveApp
+-
+ LOG = logging.getLogger(__name__)
+ 
+ 
+@@ -286,11 +285,13 @@ class ControllerRunner(threading.Thread):
+         self.heartbeat.start(interval=30)
+ 
+     def _report_state_and_bind_routers(self):
+-        if self.sync_all:
+-            l3plugin = manager.NeutronManager.get_service_plugins().get(
++        l3plugin = manager.NeutronManager.get_service_plugins().get(
+                 constants.L3_ROUTER_NAT)
++        if self.sync_all:
+             l3plugin.send_set_controllers_update(self.ctx, True)
+             self.sync_all = False
++        else:
++            l3plugin.send_set_controllers_update(self.ctx, False)
+         plugin = manager.NeutronManager.get_plugin()
+         plugin.create_or_update_agent(self.ctx, self.agent_state)
+         self.bind_unscheduled_routers()
+-- 
+2.1.0
+
+
+From d61d29e1694fe25eac675fa835a2080a80cbb962 Mon Sep 17 00:00:00 2001
+From: Eran Gampel <eran@gampel.net>
+Date: Mon, 26 Jan 2015 14:05:28 +0200
+Subject: [PATCH 8/8] remove unnecessary changes
+
+Change-Id: Idbefcb2c793b13b9ac147fedf4b068cf3a11be8f
+---
+ neutron/agent/linux/ovs_lib.py | 27 +++++++++++----------------
+ 1 file changed, 11 insertions(+), 16 deletions(-)
+
+diff --git a/neutron/agent/linux/ovs_lib.py b/neutron/agent/linux/ovs_lib.py
+index f745cf3..707291f 100644
+--- a/neutron/agent/linux/ovs_lib.py
++++ b/neutron/agent/linux/ovs_lib.py
+@@ -138,7 +138,6 @@ class BaseOVS(object):
+ 
+ 
+ class OVSBridge(BaseOVS):
+-
+     def __init__(self, br_name, root_helper):
+         super(OVSBridge, self).__init__(root_helper)
+         self.br_name = br_name
+@@ -148,6 +147,11 @@ class OVSBridge(BaseOVS):
+         vsctl_command.extend(controller_names)
+         self.run_vsctl(vsctl_command, check_error=True)
+ 
++    def set_controller_mode(self, mode):
++        self.run_vsctl(['--', 'set', 'controller', self.br_name,
++                        "connection-mode=%s" % mode],
++                        check_error=True)
++
+     def del_controller(self):
+         self.run_vsctl(['--', 'del-controller', self.br_name],
+                        check_error=True)
+@@ -159,11 +163,6 @@ class OVSBridge(BaseOVS):
+             return res.strip().split('\n')
+         return res
+ 
+-    def set_controller_mode(self, mode):
+-        self.run_vsctl(['--', 'set', 'controller', self.br_name,
+-                        "connection-mode=%s" % mode],
+-                       check_error=True)
+-
+     def set_secure_mode(self):
+         self.run_vsctl(['--', 'set-fail-mode', self.br_name, 'secure'],
+                        check_error=True)
+@@ -215,11 +214,8 @@ class OVSBridge(BaseOVS):
+         args = ["clear", table_name, record, column]
+         self.run_vsctl(args)
+ 
+-    def run_ofctl(self, cmd, args, process_input=None, protocols=None):
+-        if protocols:
+-            full_args = ["ovs-ofctl", cmd, protocols, self.br_name] + args
+-        else:
+-            full_args = ["ovs-ofctl", cmd, self.br_name] + args
++    def run_ofctl(self, cmd, args, process_input=None):
++        full_args = ["ovs-ofctl", cmd, self.br_name] + args
+         try:
+             return utils.execute(full_args, root_helper=self.root_helper,
+                                  process_input=process_input)
+@@ -254,13 +250,12 @@ class OVSBridge(BaseOVS):
+         return self.db_get_val('Bridge',
+                                self.br_name, 'datapath_id').strip('"')
+ 
+-    def do_action_flows(self, action, kwargs_list, protocols=None):
++    def do_action_flows(self, action, kwargs_list):
+         flow_strs = [_build_flow_expr_str(kw, action) for kw in kwargs_list]
+-        self.run_ofctl('%s-flows' % action, ['-'], '\n'.join(flow_strs),
+-                       protocols)
++        self.run_ofctl('%s-flows' % action, ['-'], '\n'.join(flow_strs))
+ 
+-    def add_flow(self, protocols=None, **kwargs):
+-        self.do_action_flows('add', [kwargs], protocols)
++    def add_flow(self, **kwargs):
++        self.do_action_flows('add', [kwargs])
+ 
+     def mod_flow(self, **kwargs):
+         self.do_action_flows('mod', [kwargs])
+-- 
+2.1.0
+
