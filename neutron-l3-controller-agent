@@ -1,0 +1,10 @@
+#!/usr/bin/python
+# EASY-INSTALL-ENTRY-SCRIPT: 'neutron==2015.1.dev109','console_scripts','neutron-l3-agent'
+__requires__ = 'dragonflow==0.1'
+import sys
+from pkg_resources import load_entry_point
+
+if __name__ == '__main__':
+    sys.exit(
+        load_entry_point('dragonflow==0.1', 'console_scripts', 'neutron-l3-controller-agent')()
+    )
