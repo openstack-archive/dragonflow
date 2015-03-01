@@ -45,17 +45,11 @@ class OpenFlowController(ControllerBase):
 
     def start(self):
         app_mgr = AppManager.get_instance()
-        LOG.debug(("running ryu openflow Controller lib  "))
+        LOG.debug(("Running RYU openflow stack, DragonFlow OpenFlow Controller"))
         self.open_flow_hand = app_mgr.instantiate(OFPHandler, None, None)
         self.open_flow_hand.start()
         self.l3_app = app_mgr.instantiate(L3ReactiveApp, None, None)
         self.l3_app.start()
-        ''' TODO fix this is hack to let the scheduler schedule the virtual
-        router to L3 SDN app so this app will be in teh Agnet table as active
-         Will be change when we convert this implementation to Service
-         Plugin ----> l3 SDN agent for scalability Currently runs as tread
-         will be converted to run as a standalone agent
-        '''
 
     def sync_router(self, router):
         self.l3_app.sync_router(router)
