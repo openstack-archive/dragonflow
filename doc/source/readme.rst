@@ -52,13 +52,13 @@ Setup
 
     ``enable_l3_controller = True``
 
- 2. Remove deployment of L3 Agent or DVR Agent from the Network Node (make sure the L3 Agent is not running)
+2) Remove deployment of L3 Agent or DVR Agent from the Network Node (make sure the L3 Agent is not running)
 
 **Note: This will disable north-south traffic, allowing you only to test east-west**
 
 `(TODO) explain how to remove L3/DVR Agent`
 
- 3. Installing Ryu on Controller Node
+3)  Installing Ryu on Controller Node
 
   -  Cloning the Ryu project
 
@@ -71,6 +71,17 @@ Setup
     ``ryu/controller/controller.py``
 
     ``ryu/app/wsgi.py``
+  
+  - Configure the controller IP address
+
+    Edit the following file:
+
+    ``/opt/stack/neutron/neutron/services/l3_router/l3_cont_dvr_plugin.py``
+
+    Change the IP in the list:
+
+    `NET_CONTROL_L3_OPTS`
+ 
 
 Run the following commands:
  ``sed -i 's/register_cli_opts/register_opts/g' ryu/controller/controller.py``
@@ -79,4 +90,4 @@ Run the following commands:
 
 
 
- ``% cd ryu;     python ./setup.py installl``
+ ``% cd ryu;     python ./setup.py install``
