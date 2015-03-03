@@ -209,8 +209,11 @@ class L3ControllerAgent(manager.Manager):
 
             #self._process_router_if_compatible(router)
             self.controller.sync_router(router)
-            for interface in router['_interfaces']:
-                self.sync_subnet_port_data(interface['subnet']['id'])
+
+            # Handle case of router with no interfaces
+            if '_interfaces' in router:
+                for interface in router['_interfaces']:
+                    self.sync_subnet_port_data(interface['subnet']['id'])
             LOG.debug("Finished a router update for %s", update.id)
             rp.fetched_and_processed(update.timestamp)
 
