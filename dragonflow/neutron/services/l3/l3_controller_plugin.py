@@ -29,6 +29,7 @@ from neutron.plugins.ml2 import driver_api as api
 
 from neutron.db import common_db_mixin
 from neutron.db import l3_gwmode_db
+from neutron.db import l3_dvrscheduler_db
 from neutron.db import l3_hascheduler_db
 
 from neutron.openstack.common import log as logging
@@ -53,7 +54,8 @@ cfg.CONF.register_opts(NET_CONTROL_L3_OPTS)
 class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                                 l3_gwmode_db.L3_NAT_db_mixin,
                                 l3_hascheduler_db.L3_HA_scheduler_db_mixin,
-                                l3_rpc.L3RpcCallback):
+                                l3_rpc.L3RpcCallback,
+                                l3_dvrscheduler_db.L3_DVRsch_db_mixin):
 
     RPC_API_VERSION = '1.2'
     supported_extension_aliases = ["router", "ext-gw-mode", "dvr",
