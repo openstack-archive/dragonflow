@@ -243,3 +243,11 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                     ip_address_list=iplist,
                     force_reconnect=force_reconnect,
                     protocols="OpenFlow13")
+
+    def dvr_deletens_if_no_port(self, context, port_id):
+        """This method is called by ML2 plugin
+        when a VM is deleted (port delete)
+        Leave empty implementation to avoid
+        bug #1427988
+        """
+        return []
