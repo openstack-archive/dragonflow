@@ -16,6 +16,8 @@ from oslo.config import cfg
 from oslo import messaging
 from oslo.utils import importutils
 
+from dragonflow.neutron.common.config import SDNCONTROLLER
+
 from neutron import context
 from neutron import manager
 
@@ -34,7 +36,6 @@ from neutron.db import l3_hascheduler_db
 from neutron.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
-
 
 NET_CONTROL_L3_OPTS = [
     cfg.StrOpt('L3controller_ip_list',
@@ -206,7 +207,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                                     ip_address):
 
         topic_port_update = topics.get_topic_name(topics.AGENT,
-                                                  topics.PORT,
+                                                  SDNCONTROLLER,
                                                   topics.UPDATE)
         target = messaging.Target(topic=topic_port_update)
         rpcapi = n_rpc.get_client(target)
@@ -231,7 +232,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
     def send_set_controllers_update(self, _context, force_reconnect):
 
         topic_port_update = topics.get_topic_name(topics.AGENT,
-                                                  topics.PORT,
+                                                  SDNCONTROLLER,
                                                   topics.UPDATE)
         target = messaging.Target(topic=topic_port_update)
         rpcapi = n_rpc.get_client(target)

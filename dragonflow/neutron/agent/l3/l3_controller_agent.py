@@ -34,7 +34,6 @@ from neutron.openstack.common import log as logging
 from neutron.openstack.common import loopingcall
 from neutron.openstack.common import periodic_task
 
-
 LOG = logging.getLogger(__name__)
 
 NET_CONTROL_L3_OPTS = [
@@ -47,7 +46,6 @@ NET_CONTROL_L3_OPTS = [
                help=("Southbound protocol to connect the forwarding"
                      "element Currently supports only OpenFlow"))
 ]
-
 
 cfg.CONF.register_opts(NET_CONTROL_L3_OPTS)
 
