@@ -2,7 +2,7 @@
 
 if is_service_enabled q-df-svc; then
     if [[ "$1" == "stack" && "$2" == "pre-install" ]]; then
-
+        echo summary "DragonFlow pre-install"
     elif [[ "$1" == "stack" && "$2" == "install" ]]; then
         echo_summary "Installing DragonFlow"
 
@@ -19,6 +19,15 @@ if is_service_enabled q-df-svc; then
 
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         echo_summary "Configure DragonFlow"
+
+        if is_service_enabled q-df-agt; then
+           _configure_neutron_plugin_agent
+        fi
+
+        if is_service_enabled q-df-l3; then
+           _configure_neutron_l3_agent
+        fi
+
         iniset $NEUTRON_CONF DEFAULT service_plugins $DF_L3_SERVICE_PLUGIN
         iniset $NEUTRON_CONF DEFAULT L3controller_ip_list $Q_DF_CONTROLLER_IP
         iniset /$Q_PLUGIN_CONF_FILE agent enable_l3_controller "True"
