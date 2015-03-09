@@ -41,12 +41,14 @@ from ryu.lib.packet import vlan
 
 from ryu.lib import addrconv
 
-from neutron.openstack.common import log
-from neutron.plugins.ml2 import driver_api as api
-
 from neutron import context
 from neutron import manager
+
+from neutron.common import constants as const
+from neutron.openstack.common import log
 from neutron.plugins.common import constants as service_constants
+from neutron.plugins.ml2 import driver_api as api
+
 LOG = log.getLogger(__name__)
 
 ETHERNET = ethernet.ethernet.__name__
@@ -236,23 +238,25 @@ class L3ReactiveApp(app_manager.RyuApp):
                     subnet_cls = Subnet(interface['subnet'],
                                         None,
                                         0)
-                    subnets_array[subnet_id] = subnet_cls
+                subnet_cls = subnets_array[subnet_id]
                 router_cls.add_subnet(subnet_cls,
                                       interface['subnet']['id'])
                 if subnets_array[subnet_id].segmentation_id != 0:
                     l3plugin.setup_vrouter_arp_responder(
-                                    self.ctx,
-                                    "br-int",
-                                    "add",
-                                    self.ARP_AND_BR_TABLE,
-                                    subnets_array[subnet_id].segmentation_id,
-                                    interface['network_id'],
-                                    interface['mac_address'],
-                                    self.get_ip_from_interface(interface))
+                        self.ctx,
+                        "br-int",
+                        "add",
+                        self.ARP_AND_BR_TABLE,
+                        subnets_array[subnet_id].segmentation_id,
+                        interface['network_id'],
+                        interface['mac_address'],
+                        self.get_ip_from_interface(interface))
 
     def sync_port(self, port):
         port_data = port
         LOG.info(("sync_port--> %s\n"), port_data)
+        l3plugin = manager.NeutronManager.get_service_plugins().get(
+            service_constants.L3_ROUTER_NAT)
         tenant_id = port_data['tenant_id']
         if tenant_id not in self.tenants:
             self.tenants[tenant_id] = TenantTopo()
@@ -266,6 +270,16 @@ class L3ReactiveApp(app_manager.RyuApp):
                 if subnet_id in subnets_array:
                     subnet = subnets_array[subnet_id]
                     subnet.segmentation_id = port_data['segmentation_id']
+                    if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
+                        l3plugin.setup_vrouter_arp_responder(
+                                        self.ctx,
+                                        "br-int",
+                                        "add",
+                                        self.ARP_AND_BR_TABLE,
+                                        subnet.segmentation_id,
+                                        port['network_id'],
+                                        port['mac_address'],
+                                        self.get_ip_from_interface(port))
                 else:
                     LOG.error(("No subnet object for subnet %s"), subnet_id)
         else:
