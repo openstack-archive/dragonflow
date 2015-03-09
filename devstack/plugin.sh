@@ -31,6 +31,13 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
         iniset $NEUTRON_CONF DEFAULT L3controller_ip_list $Q_DF_CONTROLLER_IP
         iniset /$Q_PLUGIN_CONF_FILE agent enable_l3_controller "True"
 
+        OVS_VERSION=`ovs-vsctl --version | head -n 1 | grep -E -o "[0-9]+\.[0-9]+\.[0-9]"`
+        if [ `vercmp_numbers "$OVS_VERSION" "2.3.1"` -lt "0" ] && ! is_service_enabled q-svc ; then
+            die $LINENO "You are running OVS version $OVS_VERSION. OVS 2.3.1+ is required for Dragonflow."
+        fi
+
+        echo summary "Dragonflow OVS version validated, version is $OVS_VERSION"
+
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         echo_summary "Initializing DragonFlow"
         if is_service_enabled q-df-agt; then
