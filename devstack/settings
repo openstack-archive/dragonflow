@@ -11,7 +11,7 @@ DF_L3_SERVICE_PLUGIN="dragonflow.neutron.services.l3.l3_controller_plugin.Contro
 DF_L2_AGENT=$DRAGONFLOW_DIR/dragonflow/neutron/agent/l2/ovs_dragonflow_neutron_agent.py
 DF_L3_AGENT=$DRAGONFLOW_DIR/dragonflow/neutron/agent/l3_sdn_agent.py
 
-Q_DF_CONTROLLER_IP=${Q_DF_CONTROLLER_IP:-'tcp:10.100.100.4:6633'}
+Q_DF_CONTROLLER_IP=${Q_DF_CONTROLLER_IP:-'tcp:'$HOST_IP':6633'}
 
 export PYTHONPATH=$PYTHONPATH:$DRAGONFLOW_DIR
 export PYTHONPATH=$PYTHONPATH:$RYU_DIR
