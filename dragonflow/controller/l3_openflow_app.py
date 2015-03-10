@@ -18,8 +18,6 @@ import collections
 import struct
 import threading
 
-import time
-
 from ryu.base import app_manager
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
@@ -47,7 +45,6 @@ from neutron import manager
 from neutron.common import constants as const
 from neutron.openstack.common import log
 from neutron.plugins.common import constants as service_constants
-from neutron.plugins.ml2 import driver_api as api
 
 LOG = log.getLogger(__name__)
 
@@ -108,42 +105,11 @@ class TenantTopo(object):
         self.edges[to_node].append(from_node)
         self.distances[(from_node, to_node)] = distance
 
-        # we need dijsktra only for extra route
-    def dijsktra(self, graph, initial):
-        visited = {initial: 0}
-        path = {}
-
-        nodes = set(graph.nodes)
-
-        while nodes:
-            min_node = None
-            for node in nodes:
-                if node in visited:
-                    if min_node is None:
-                        min_node = node
-                    elif visited[node] < visited[min_node]:
-                        min_node = node
-
-            if min_node is None:
-                break
-
-            nodes.remove(min_node)
-            current_weight = visited[min_node]
-
-            for edge in graph.edges[min_node]:
-                weight = current_weight + graph.distance[(min_node, edge)]
-                if edge not in visited or weight < visited[edge]:
-                    visited[edge] = weight
-                    path[edge] = min_node
-
-        return visited, path
-
 
 class Router(object):
 
     def __init__(self, data):
         self.data = data
-        #self.subnets = defaultdict(list)
         self.subnets = []
 
     def add_subnet(self, subnet, sub_id):
@@ -185,37 +151,12 @@ class L3ReactiveApp(app_manager.RyuApp):
         super(L3ReactiveApp, self).start()
         return 1
 
-    def create_router(self, *args, **kwargs):
-        self.logger.info("l3ReactiveApp create_router")
-        # self.sync_data()
-
     def notify_sync(self):
         self.need_sync = True
         for dpid in self.dp_list:
             datapath = self.dp_list[dpid].datapath
             self.send_features_request(datapath)
             self.send_port_desc_stats_request(datapath)
-
-    def sync_data(self):
-        self.logger.info(" l3_reactive_app sync router data ")
-
-        self.lock.acquire()
-        # Lock
-        self.logger.debug('l3_reactive_app in the critical section the lock')
-        if self.need_sync:
-            l3plugin = manager.NeutronManager.get_service_plugins().get(
-                service_constants.L3_ROUTER_NAT)
-
-            routers = l3plugin.get_sync_data(self.ctx, None)
-            self.core_plugin = manager.NeutronManager.get_plugin()
-            self.get_router_subnets(routers)
-            self.need_sync = False
-            del l3plugin
-            del self.core_plugin
-            self.core_plugin = None
-        self.logger.debug('l3_reactive_app releasing the lock')
-        # Release
-        self.lock.release()
 
     def sync_router(self, router):
         LOG.info(("sync_router --> %s"), router)
@@ -243,14 +184,14 @@ class L3ReactiveApp(app_manager.RyuApp):
                                       interface['subnet']['id'])
                 if subnets_array[subnet_id].segmentation_id != 0:
                     l3plugin.setup_vrouter_arp_responder(
-                                    self.ctx,
-                                    "br-int",
-                                    "add",
-                                    self.ARP_AND_BR_TABLE,
-                                    subnets_array[subnet_id].segmentation_id,
-                                    interface['network_id'],
-                                    interface['mac_address'],
-                                    self.get_ip_from_interface(interface))
+                        self.ctx,
+                        "br-int",
+                        "add",
+                        self.ARP_AND_BR_TABLE,
+                        subnets_array[subnet_id].segmentation_id,
+                        interface['network_id'],
+                        interface['mac_address'],
+                        self.get_ip_from_interface(interface))
 
     def sync_port(self, port):
         port_data = port
@@ -292,81 +233,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                 subnets_ids.append(fixed_ips['subnet_id'])
         return subnets_ids
 
-    def get_router_subnets(self, router_data):
-        for router in router_data:
-            tenant_id = router['tenant_id']
-            if not router['tenant_id'] in self.tenants:
-                self.tenants[router['tenant_id']] = TenantTopo()
-            tenant_topo = self.tenants[router['tenant_id']]
-            tenant_topo.tenant_id = tenant_id
-            router_cls = Router(router)
-            tenant_topo.add_router(router_cls, router['id'])
-            if "_interfaces" in router:
-                for interface in router['_interfaces']:
-                    ports_data = self.get_ports_by_subnet(
-                        interface['subnet']['id'])
-                    segmentation_id = None
-                    for device in ports_data:
-                        port = self.get_port_bond_data(
-                            self.ctx, device['id'], device['binding:host_id'])
-                        if "mac_address" in port:
-                            tenant_topo.mac_to_port_data[
-                                port['mac_address']] = port
-                            segmentation_id = port['segmentation_id']
-                        else:
-                            if (device['device_owner'] ==
-                                    'network:router_interface'):
-                                # if this a router then bind it to our
-                                # application
-
-                                LOG.error(("No binding for router %s"), device)
-                    # tenant_topo.add_router(router,router['id'])
-                    subnet_cls = Subnet(interface['subnet'], ports_data,
-                                        segmentation_id)
-                    router_cls.add_subnet(
-                        subnet_cls, interface['subnet']['id'])
-
-    def get_port_bond_data(self, ctx, port_id, device_id):
-        port_context = self.core_plugin.get_bound_port_context(
-            ctx, port_id, device_id)
-        if not port_context:
-            LOG.warning(("Device %(device)s requested by agent "
-                         "%(agent_id)s not found in database"),
-                        {'device': device_id, 'agent_id': port_id})
-            return {'device': device_id}
-
-        segment = port_context.bound_segment
-        port = port_context.current
-
-        if not segment:
-            LOG.warning(("Device %(device)s requested by agent "
-                         " on network %(network_id)s not "
-                         "bound, vif_type: "),
-                        {'device': device_id,
-                         'network_id': port['network_id']})
-            return {'device': device_id}
-
-        entry = {'device': device_id,
-                 'network_id': port['network_id'],
-                 'port_id': port_id,
-                 'mac_address': port['mac_address'],
-                 'admin_state_up': port['admin_state_up'],
-                 'network_type': segment[api.NETWORK_TYPE],
-                 'segmentation_id': segment[api.SEGMENTATION_ID],
-                 'physical_network': segment[api.PHYSICAL_NETWORK],
-                 'fixed_ips': port['fixed_ips'],
-                 'device_owner': port['device_owner']}
-        LOG.debug(("Returning: %s"), entry)
-        return entry
-
-    def get_ports_by_subnet(self, subnet_id):
-        filters = {'fixed_ips': {'subnet_id': [subnet_id]}}
-        return self.core_plugin.get_ports(self.ctx, filters=filters)
-
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def OF_packet_in_handler(self, ev):
-        #if self.need_sync == 1:
-        #    self.sync_data()
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
@@ -628,9 +496,9 @@ class L3ReactiveApp(app_manager.RyuApp):
         actions.append(parser.OFPActionSetField(eth_src=src_mac))
         actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
         if dst_seg_id:
-            # The best vm is on another compute machine so we must set the
+            # The dest vm is on another compute machine so we must set the
             # segmentation Id and set metadata for the tunnel bridge to
-            # flood this packet
+            # for this flow
             field = parser.OFPActionSetField(tunnel_id=dst_seg_id)
             actions.append(field)
             goto_inst = parser.OFPInstructionGotoTable(60)
@@ -976,21 +844,11 @@ class L3ReactiveApp(app_manager.RyuApp):
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
-        #if self.need_sync:
-        #    self.sync_data()
         switch = self.dp_list.get(datapath.id)
         if not switch:
             self.dp_list[datapath.id] = AgentDatapath()
             self.dp_list[datapath.id].datapath = datapath
-
-        LOG.info(("Wait:: Let agent insert the meta data table "))
-        time.sleep(1)  # sleep during 500ms
-        LOG.info(("Done Wait .. will retry if meta table not set "))
-
         self.send_port_desc_stats_request(datapath)
-        #self.send_flow_stats_request(datapath, table=self.METADATA_TABLE_ID)
-        #  --> meta
-        #self.add_flow_go_to_table2(datapath, 0, 1  ,self.L3_VROUTER_TABLE)
         # main table 0  to Arp On ARp or broadcat or multicast
         self.add_flow_go_to_table_on_arp(
             datapath,
@@ -1010,7 +868,6 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         # Normal flow on arp table in low priorety
         self.add_flow_normal(datapath, self.ARP_AND_BR_TABLE, 1)
-        #del l3plugin
 
     def send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
@@ -1059,23 +916,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                 # vlan_id = self.get_l_vid_from_seg_id(switch, segmentation_id)
                 LOG.debug(("Found VM  port  %s using MAC  %s  %d"),
                           port.name, port.hw_addr, datapath.id)
-                '''if vlan_id:
-                    self.add_flow_push_vlan_by_port_num(datapath,
-                                                        0,
-                                                        HIGH_PRIOREITY_FLOW,
-                                                        port.port_no,
-                                                        vlan_id,
-                                                        self.CLASSIFIER_TABLE)
-
-                else:
-                    LOG.error(("No local switch vlan mapping for port"
-                              " %s on %d Sending to Normal PATH "),
-                              port.name,
-                              datapath.id)
-                    self.add_flow_normal_by_port_num(datapath, 0,
-                                                     HIGH_PRIOREITY_FLOW,
-                                                     port.port_no)
-                    '''
             elif "patch-tun" in port.name:
                 LOG.debug(("Found br-tun patch port %s %s --> NORMAL path"),
                         port.name, port.hw_addr)
@@ -1090,12 +930,14 @@ class L3ReactiveApp(app_manager.RyuApp):
                                    self.L3_VROUTER_TABLE)
         l3plugin = manager.NeutronManager.get_service_plugins().get(
             service_constants.L3_ROUTER_NAT)
-
+        #TODO(gampel) Install flows only for tenants with VMs running on
+        #this specific compute node
         for tenantid in self.tenants:
             for router in self.tenants[tenantid].routers:
                 for subnet in router.subnets:
                     for interface in router.data['_interfaces']:
-                        if interface['subnet']['id'] == subnet.data['id']:
+                        if (interface['subnet']['id'] == subnet.data['id']
+                                and subnet.segmentation_id != 0):
                             segmentation_id = subnet.segmentation_id
                             network, net_mask = self.get_subnet_from_cidr(
                                 subnet.data['cidr'])
@@ -1181,68 +1023,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                         return (port_data, fixed_ips['subnet_id'])
 
         return(0, 0)
-
-    @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
-    def flow_stats_reply_handler(self, ev):
-
-        datapath = ev.msg.datapath
-
-        # if self.need_sync:
-        #    self.sync_data()
-        self.delete_all_flow_from_table(datapath, self.ARP_AND_BR_TABLE)
-        # TODO(gampel) for the moment we delete all the flows in the
-        # table TO delete  only the relevant flows all ready installed
-        self.delete_all_flow_from_table(datapath, self.L3_VROUTER_TABLE)
-        # TODO(gampel) remove ARP responders
-        flows = []
-        for stat in ev.msg.body:
-            for instruction in stat.instructions:
-                if hasattr(instruction, 'metadata'):
-                    vlan_int = int(stat.match['vlan_vid'])
-                    if vlan_int > 4096:
-                        vlan_int -= 4096
-
-                        switch = self.dp_list.get(datapath.id)
-                        if switch:
-                            switch.local_vlan_mapping[
-                                vlan_int] = instruction.metadata
-                            flows.append(
-                                'table_id=%s '
-                                'duration_sec=%d diuration_nsec=%d '
-                                'priority=%d '
-                                'idle_timeout=%d hard_timeout=%d flags=0x%04x '
-                                'cookie=%d packet_count=%d byte_count=%d '
-                                'match=%s instructions=%s'
-                                'vlan_id=%s metadata=%s' %
-                                (stat.table_id,
-                                 stat.duration_sec,
-                                 stat.duration_nsec,
-                                 stat.priority,
-                                 stat.idle_timeout,
-                                 stat.hard_timeout,
-                                 stat.flags,
-                                 stat.cookie,
-                                 stat.packet_count,
-                                 stat.byte_count,
-                                 stat.match,
-                                 stat.instructions,
-                                 stat.match['vlan_vid'],
-                                    instruction.metadata))
-        l3plugin = manager.NeutronManager.get_service_plugins().get(
-            service_constants.L3_ROUTER_NAT)
-        switch = self.dp_list.get(datapath.id)
-        # No match on table L3_VROUTER_TABLE go to normal flow
-        # No match on table L3_VROUTER_TABLE go to controller
-        if not switch.local_vlan_mapping:
-            LOG.error(("CRITICAL ERROR ***** Switch did not send local port"
-                      "data dpid == <%s> sending flow req "),
-                      datapath.id)
-            time.sleep(0.5)  # sleep during 500ms
-            self.send_flow_stats_request(
-                datapath, table=self.METADATA_TABLE_ID)
-        else:
-            self.send_port_desc_stats_request(datapath)
-        del l3plugin
 
     def get_ip_from_interface(self, interface):
         for fixed_ip in interface['fixed_ips']:
