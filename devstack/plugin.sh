@@ -41,11 +41,11 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         echo_summary "Initializing DragonFlow"
         if is_service_enabled q-df-agt; then
-             run_process q-df-agt "python $DF_L2_AGENT --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE"
+             run_process q-df-agt "PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR python $DF_L2_AGENT --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE"
         fi
 
         if is_service_enabled q-df-l3; then
-            run_process q-df-l3 "python $DF_L3_AGENT"
+            run_process q-df-l3 "PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR python $DF_L3_AGENT"
         fi
     fi
 
