@@ -280,7 +280,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                 LOG.debug("Unable to handle packet %(msg)s: %(e)s",
                           {'msg': msg, 'e': exception})
 
-        LOG.error((">>>>>>>>>> Unhandled  Packet>>>>>  %s", pkt))
+        LOG.error(">>>>>>>>>> Unhandled  Packet>>>>>  %s", pkt)
 
     def handle_ipv6_packet_in(self, datapath, in_port, header_list,
                               pkt, eth):
