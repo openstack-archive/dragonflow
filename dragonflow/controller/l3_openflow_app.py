@@ -277,7 +277,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                     return
             except Exception as exception:
 
-                LOG.debug("Unable to handle packet  %(msg): %(e)s",
+                LOG.debug("Unable to handle packet %(msg)s: %(e)s",
                           {'msg': msg, 'e': exception})
 
         LOG.error((">>>>>>>>>> Unhandled  Packet>>>>>  %s", pkt))
