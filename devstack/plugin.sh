@@ -24,6 +24,11 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
            _configure_neutron_plugin_agent
         fi
 
+        if is_service_enabled q-df-agt && ! is_service_enabled q-svc; then
+           Q_POLICY_FILE=$NEUTRON_CONF_DIR/policy.json
+           cp $NEUTRON_DIR/etc/policy.json $Q_POLICY_FILE
+        fi
+
         if is_service_enabled q-df-l3; then
            _configure_neutron_l3_agent
         fi
