@@ -183,6 +183,10 @@ class L3ControllerAgent(manager.Manager):
         LOG.debug('Got router added to agent :%r', payload)
         self.routers_updated(context, payload)
 
+    def _router_removed(self, router_id):
+        #(TODO)gsagie need to be implemented
+        pass
+
     def _process_router_update(self):
         for rp, update in self._queue.each_update_to_next_router():
             LOG.debug("Starting router update for %s", update.id)
