@@ -45,7 +45,6 @@ from neutron import manager
 from neutron.common import constants as const
 from neutron.openstack.common import log
 from neutron.plugins.common import constants as service_constants
-
 LOG = log.getLogger(__name__)
 
 ETHERNET = ethernet.ethernet.__name__
@@ -155,7 +154,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.need_sync = True
         for dpid in self.dp_list:
             datapath = self.dp_list[dpid].datapath
-            self.send_features_request(datapath)
             self.send_port_desc_stats_request(datapath)
 
     def sync_router(self, router):
@@ -297,9 +295,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         if switch:
             if 'metadata' not in msg.match:
                 # send request for loacl switch data
-                # self.send_port_desc_stats_request(datapath)
-                #self.send_flow_stats_request(
-                #    datapath, table=self.METADATA_TABLE_ID)
+                self.send_port_desc_stats_request(datapath)
                 LOG.error(("No metadata on packet from %s"),
                           eth.src)
                 return
@@ -841,25 +837,29 @@ class L3ReactiveApp(app_manager.RyuApp):
         if switch:
             self.send_port_desc_stats_request(datapath)
 
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def switch_features_handler(self, ev):
-        datapath = ev.msg.datapath
-        switch = self.dp_list.get(datapath.id)
-        if not switch:
-            self.dp_list[datapath.id] = AgentDatapath()
-            self.dp_list[datapath.id].datapath = datapath
-        self.send_port_desc_stats_request(datapath)
-        # main table 0  to Arp On ARp or broadcat or multicast
+    def add_bootstrap_flows(self, datapath):
+        # Goto from main CLASSIFIER table
+        self.add_flow_go_to_table2(datapath, 0, 1, self.CLASSIFIER_TABLE)
+        # Send to controller unmatched inter subnet L3 traffic
+        self.add_flow_match_to_controller(datapath, self.L3_VROUTER_TABLE, 0)
+        #send L3 traffic unmatched to controller
+        self.add_flow_go_to_table2(datapath, self.CLASSIFIER_TABLE, 1,
+                                   self.L3_VROUTER_TABLE)
+        #Goto from CLASSIFIER to ARP Table on ARP
         self.add_flow_go_to_table_on_arp(
             datapath,
             self.CLASSIFIER_TABLE,
             NORMAL_PRIOREITY_FLOW,
             self.ARP_AND_BR_TABLE)
+        #Goto from CLASSIFIER to ARP Table on broadcast
+        #TODO(gampel) can go directly to NORMAL
         self.add_flow_goto_table_on_broad(
             datapath,
             self.CLASSIFIER_TABLE,
             MEDIUM_PRIOREITY_FLOW,
             self.ARP_AND_BR_TABLE)
+        #Goto from CLASSIFIER to ARP Table on mcast
+        #TODO(gampel) can go directly to NORMAL
         self.add_flow_goto_table_on_mcast(
             datapath,
             self.CLASSIFIER_TABLE,
@@ -868,6 +868,18 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         # Normal flow on arp table in low priorety
         self.add_flow_normal(datapath, self.ARP_AND_BR_TABLE, 1)
+
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    def switch_features_handler(self, ev):
+        datapath = ev.msg.datapath
+        switch = self.dp_list.get(datapath.id)
+        if not switch:
+            self.dp_list[datapath.id] = AgentDatapath()
+            self.dp_list[datapath.id].datapath = datapath
+        # Normal flow with the lowset priority to send all traffic to NORMAL
+        #until the bootstarp is done
+        self.add_flow_normal(datapath, self.BASE_TABLE, 0)
+        self.send_port_desc_stats_request(datapath)
 
     def send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
@@ -880,7 +892,8 @@ class L3ReactiveApp(app_manager.RyuApp):
         ports = []
         datapath = ev.msg.datapath
         switch = self.dp_list.get(datapath.id)
-        self.delete_all_flow_from_table(datapath, self.BASE_TABLE)
+        #self.delete_all_flow_from_table(datapath, self.BASE_TABLE)
+        self.add_bootstrap_flows(datapath)
         for port in ev.msg.body:
             ports.append('port_no=%d hw_addr=%s name=%s config=0x%08x '
                          'state=0x%08x curr=0x%08x advertised=0x%08x '
@@ -924,10 +937,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                     datapath, 0, HIGH_PRIOREITY_FLOW, port.port_no)
         self.logger.debug('OFPPortDescStatsReply received: %s', ports)
         switch.local_ports = ports
-        self.add_flow_go_to_table2(datapath, 0, 1, self.CLASSIFIER_TABLE)
-        self.add_flow_match_to_controller(datapath, self.L3_VROUTER_TABLE, 0)
-        self.add_flow_go_to_table2(datapath, self.CLASSIFIER_TABLE, 1,
-                                   self.L3_VROUTER_TABLE)
         l3plugin = manager.NeutronManager.get_service_plugins().get(
             service_constants.L3_ROUTER_NAT)
         #TODO(gampel) Install flows only for tenants with VMs running on
