@@ -146,7 +146,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.dp_list = {}
 
     def start(self):
-        self.logger.info("Starting Virtual L3 Reactive OpenFlow APP ")
+        LOG.info("Starting Virtual L3 Reactive OpenFlow APP ")
         super(L3ReactiveApp, self).start()
         return 1
 
@@ -193,7 +193,7 @@ class L3ReactiveApp(app_manager.RyuApp):
 
     def sync_port(self, port):
         port_data = port
-        LOG.info(("sync_port--> %s\n"), port_data)
+        LOG.info("sync_port--> %s\n", port_data)
         l3plugin = manager.NeutronManager.get_service_plugins().get(
             service_constants.L3_ROUTER_NAT)
         tenant_id = port_data['tenant_id']
@@ -220,9 +220,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                             port['mac_address'],
                             self.get_ip_from_interface(port))
                 else:
-                    LOG.error(("No subnet object for subnet %s"), subnet_id)
+                    LOG.error("No subnet object for subnet %s", subnet_id)
         else:
-            LOG.info(("no segmentation data in port --> %s"), port_data)
+            LOG.info("no segmentation data in port --> %s", port_data)
 
     def get_port_subnets(self, port):
         subnets_ids = []
@@ -283,8 +283,8 @@ class L3ReactiveApp(app_manager.RyuApp):
     def handle_ipv6_packet_in(self, datapath, in_port, header_list,
                               pkt, eth):
         # TODO(gampel)(gampel) add ipv6 support
-        LOG.error(("No handle for ipv6 yet should be offload to the"
-                   "NORMAL path  %s", pkt))
+        LOG.error("No handle for ipv6 yet should be offload to the"
+                "NORMAL path  %s", pkt)
         return
 
     def handle_ipv4_packet_in(self, datapath, msg, in_port, header_list, pkt,
@@ -296,11 +296,11 @@ class L3ReactiveApp(app_manager.RyuApp):
             if 'metadata' not in msg.match:
                 # send request for loacl switch data
                 self.send_port_desc_stats_request(datapath)
-                LOG.error(("No metadata on packet from %s"),
+                LOG.error("No metadata on packet from %s",
                           eth.src)
                 return
             segmentation_id = msg.match['metadata']
-            self.logger.info(
+            LOG.debug(
                 "packet segmentation_id %s ",
                 segmentation_id)
             for tenantid in self.tenants:
@@ -308,16 +308,16 @@ class L3ReactiveApp(app_manager.RyuApp):
                 for router in tenant.routers:
                     for subnet in router.subnets:
                         if segmentation_id == subnet.segmentation_id:
-                            self.logger.info("packet from  to tenant  %s ",
-                                             tenant.tenant_id)
+                            LOG.debug("packet from  to tenant  %s ",
+                                tenant.tenant_id)
                             in_port_data = self.tenants[
                                 tenantid].mac_to_port_data[eth.src]
                             out_port_data = self.tenants[
                                 tenantid].mac_to_port_data[eth.dst]
-                            LOG.debug(('Source port data <--- %s ',
-                                       in_port_data))
-                            LOG.debug(('Router Mac dest port data -> %s ',
-                                       out_port_data))
+                            LOG.debug('Source port data <--- %s ',
+                                in_port_data)
+                            LOG.debug('Router Mac dest port data -> %s ',
+                                out_port_data)
                             if self.handle_router_interface(datapath,
                                                             in_port,
                                                             out_port_data,
@@ -350,9 +350,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                                         # this trafic to the virtual routre
                                         return
                                     if not dst_p_data:
-                                        LOG.error(("No local switch"
-                                                   "mapping for %s"),
-                                                  pkt_ipv4.dst)
+                                        LOG.error("No local switch"
+                                            "mapping for %s",
+                                            pkt_ipv4.dst)
                                         return
                                     if self.handle_router_interface(
                                             datapath,
@@ -366,10 +366,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                                         # this trafic to the virtual routre
                                         return
 
-                                    LOG.debug(("Route from  %s to %s"
-                                               "exist installing flow ",
-                                               pkt_ipv4.src,
-                                               pkt_ipv4.dst))
+                                    LOG.debug("Installing flow Route %s-> %s",
+                                        pkt_ipv4.src,
+                                        pkt_ipv4.dst)
                                     self.install_l3_forwarding_flows(
                                         datapath,
                                         msg,
@@ -823,13 +822,13 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         ofproto = msg.datapath.ofproto
         if reason == ofproto.OFPPR_ADD:
-            self.logger.info("port added %s", port_no)
+            LOG.info("port added %s", port_no)
         elif reason == ofproto.OFPPR_DELETE:
-            self.logger.info("port deleted %s", port_no)
+            LOG.info("port deleted %s", port_no)
         elif reason == ofproto.OFPPR_MODIFY:
-            self.logger.info("port modified %s", port_no)
+            LOG.info("port modified %s", port_no)
         else:
-            self.logger.info("Illeagal port state %s %s", port_no, reason)
+            LOG.info("Illeagal port state %s %s", port_no, reason)
         # TODO(gampel) Currently we update all the agents on modification
         LOG.info((" Updating flow table on agents got port update "))
 
@@ -925,9 +924,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                                    segmentation_id,
                                                    0xffff,
                                                    self.CLASSIFIER_TABLE)
-
-                # vlan_id = self.get_l_vid_from_seg_id(switch, segmentation_id)
-                LOG.debug(("Found VM  port  %s using MAC  %s  %d"),
+                LOG.debug("Found VM  port  %s using MAC  %s  %d",
                           port.name, port.hw_addr, datapath.id)
             elif "patch-tun" in port.name:
                 LOG.debug(("Found br-tun patch port %s %s --> NORMAL path"),
@@ -935,7 +932,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                 switch.patch_port_num = port.port_no
                 self.add_flow_normal_by_port_num(
                     datapath, 0, HIGH_PRIOREITY_FLOW, port.port_no)
-        self.logger.debug('OFPPortDescStatsReply received: %s', ports)
+        LOG.debug('OFPPortDescStatsReply received: %s', ports)
         switch.local_ports = ports
         l3plugin = manager.NeutronManager.get_service_plugins().get(
             service_constants.L3_ROUTER_NAT)
@@ -985,7 +982,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         pkt.serialize()
-        self.logger.info("packet-out %s" % (pkt,))
         data = pkt.data
         actions = [parser.OFPActionOutput(port=port)]
         out = parser.OFPPacketOut(datapath=datapath,
@@ -1020,7 +1016,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                             mac,
                             port_data['segmentation_id'])
                 else:
-                    LOG.error(("No data in port)data %s "), port_data)
+                    LOG.error("No data in port data %s ", port_data)
+        LOG.error("Port data not found %s  num <%d> dpid <%d>", port_name,
+                port_num, dpid)
         return(0, 0, 0)
 
     def get_port_data(self, tenant, ip_address):
@@ -1066,7 +1064,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                             pkt_ethernet,
                             pkt_ipv4,
                             pkt_icmp)
-                        LOG.info(("Sending ping echo -> ip %s "), pkt_ipv4.src)
+                        LOG.debug("Sending ping echo -> ip %s ", pkt_ipv4.src)
                         retVal = 1
                     else:
                         LOG.error(("any comunication to a router that"
