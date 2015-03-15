@@ -145,6 +145,11 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.need_sync = True
         self.dp_list = {}
 
+        # Dictionary used to hold port information received from OVS
+        # each port data structure has a link to an entry in this dictionary
+        # in 'switch_port_desc'
+        self.switch_port_desc_dict = {}
+
     def start(self):
         LOG.info("Starting Virtual L3 Reactive OpenFlow APP ")
         super(L3ReactiveApp, self).start()
@@ -191,6 +196,28 @@ class L3ReactiveApp(app_manager.RyuApp):
                         interface['mac_address'],
                         self.get_ip_from_interface(interface))
 
+    def attach_switch_port_desc_to_port_data(self, port_data):
+        if 'id' in port_data:
+            port_id = port_data['id']
+            sub_str_port_id = str(port_id[0:11])
+
+            # Only true if we already received port_desc from OVS
+            if sub_str_port_id in self.switch_port_desc_dict:
+                port_data['switch_port_desc'] = \
+                    self.switch_port_desc_dict[sub_str_port_id]
+                self.add_flow_metadata_by_port_num(port_data
+                                                   ['switch_port_desc']
+                                                   ['datapath'],
+                                                   0,
+                                                   HIGH_PRIOREITY_FLOW,
+                                                   port_data
+                                                   ['switch_port_desc']
+                                                   ['local_port_num'],
+                                                   port_data
+                                                   ['segmentation_id'],
+                                                   0xffff,
+                                                   self.CLASSIFIER_TABLE)
+
     def sync_port(self, port):
         port_data = port
         LOG.info("sync_port--> %s\n", port_data)
@@ -223,6 +250,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                     LOG.error("No subnet object for subnet %s", subnet_id)
         else:
             LOG.info("no segmentation data in port --> %s", port_data)
+        self.attach_switch_port_desc_to_port_data(port)
 
     def get_port_subnets(self, port):
         subnets_ids = []
@@ -393,9 +421,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                                     dst_gw_port_data,
                                     dst_p_data,
                                     dst_seg_id):
-        if dst_p_data['local_dpid_switch'] == datapath.id:
-            # The dst VM and the source VM are on the same copute Node
-            # Send output flow directly to port iuse the same datapath
+        if dst_p_data['switch_port_desc']['local_dpid_switch'] == datapath.id:
+            # The dst VM and the source VM are on the same compute Node
+            # Send output flow directly to port, use the same datapath
             actions = self.add_flow_subnet_traffic(datapath,
                 self.L3_VROUTER_TABLE,
                 MEDIUM_PRIOREITY_FLOW,
@@ -407,12 +435,13 @@ class L3ReactiveApp(app_manager.RyuApp):
                 pkt_ipv4.src,
                 dst_gw_port_data['mac_address'],
                 dst_p_data['mac_address'],
-                dst_p_data['local_port_num'])
+                dst_p_data['switch_port_desc']['local_port_num'])
             # Install the reverse flow return traffic
             self.add_flow_subnet_traffic(datapath,
                                          self.L3_VROUTER_TABLE,
                                          MEDIUM_PRIOREITY_FLOW,
-                                         dst_p_data['local_port_num'],
+                                         dst_p_data['switch_port_desc']
+                                                   ['local_port_num'],
                                          dst_seg_id,
                                          dst_p_data['mac_address'],
                                          dst_gw_port_data['mac_address'],
@@ -420,13 +449,15 @@ class L3ReactiveApp(app_manager.RyuApp):
                                          pkt_ipv4.dst,
                                          eth.dst,
                                          in_port_data['mac_address'],
-                                         in_port_data['local_port_num'])
+                                         in_port_data['switch_port_desc']
+                                         ['local_port_num'])
             self.handle_packet_out_l3(datapath, msg, in_port, actions)
         else:
             # The dst VM and the source VM are NOT  on the same copute Node
             # Send output to br-tun patch port and install reverse flow on the
             # dst compute node
-            remoteSwitch = self.dp_list.get(dst_p_data['local_dpid_switch'])
+            remoteSwitch = self.dp_list.get(dst_p_data['switch_port_desc']
+                                                      ['local_dpid_switch'])
             localSwitch = self.dp_list.get(datapath.id)
             actions = self.add_flow_subnet_traffic(datapath,
                                                    self.L3_VROUTER_TABLE,
@@ -447,7 +478,8 @@ class L3ReactiveApp(app_manager.RyuApp):
             self.add_flow_subnet_traffic(remoteSwitch.datapath,
                                          self.L3_VROUTER_TABLE,
                                          MEDIUM_PRIOREITY_FLOW,
-                                         dst_p_data['local_port_num'],
+                                         dst_p_data['switch_port_desc']
+                                                   ['local_port_num'],
                                          dst_seg_id,
                                          dst_p_data['mac_address'],
                                          dst_gw_port_data['mac_address'],
@@ -916,14 +948,15 @@ class L3ReactiveApp(app_manager.RyuApp):
                 # this is a VM port start with qvo<NET-ID[:11]> update the port
                 # data with the port num and the switch dpid
                 (port_id, mac, segmentation_id) = self.update_local_port_num(
-                    port.name, port.port_no, datapath.id)
-                self.add_flow_metadata_by_port_num(datapath,
-                                                   0,
-                                                   HIGH_PRIOREITY_FLOW,
-                                                   port.port_no,
-                                                   segmentation_id,
-                                                   0xffff,
-                                                   self.CLASSIFIER_TABLE)
+                    port.name, port.port_no, datapath)
+                if (segmentation_id != 0):
+                    self.add_flow_metadata_by_port_num(datapath,
+                                                       0,
+                                                       HIGH_PRIOREITY_FLOW,
+                                                       port.port_no,
+                                                       segmentation_id,
+                                                       0xffff,
+                                                       self.CLASSIFIER_TABLE)
                 LOG.debug("Found VM  port  %s using MAC  %s  %d",
                           port.name, port.hw_addr, datapath.id)
             elif "patch-tun" in port.name:
@@ -997,8 +1030,17 @@ class L3ReactiveApp(app_manager.RyuApp):
                 return local_vlan
         return 0
 
-    def update_local_port_num(self, port_name, port_num, dpid):
+    def update_local_port_num(self, port_name, port_num, datapath):
 
+        dpid = datapath.id
+        port_id_from_name = port_name[3:]
+        self.switch_port_desc_dict[port_id_from_name] = {}
+        switch_port_desc = self.switch_port_desc_dict[port_id_from_name]
+        switch_port_desc['local_port_num'] = port_num
+        switch_port_desc['local_dpid_switch'] = dpid
+        switch_port_desc['datapath'] = datapath
+
+        # If we already received port sync, link between the structures
         for tenantid in self.tenants:
             tenant = self.tenants[tenantid]
             for mac in tenant.mac_to_port_data:
@@ -1007,17 +1049,17 @@ class L3ReactiveApp(app_manager.RyuApp):
                 if 'id' in port_data:
                     port_id = port_data['id']
                     sub_str_port_id = str(port_id[0:11])
-                    port_id_from_name = port_name[3:]
                     if sub_str_port_id == port_id_from_name:
-                        port_data['local_port_num'] = port_num
-                        port_data['local_dpid_switch'] = dpid
+                        port_data['switch_port_desc'] = switch_port_desc
                         return (
                             port_data['id'],
                             mac,
                             port_data['segmentation_id'])
                 else:
                     LOG.error("No data in port data %s ", port_data)
-        LOG.error("Port data not found %s  num <%d> dpid <%d>", port_name,
+        # This can happen if we received port description from OVS but didn't
+        # yet received port_sync from the L3 service
+        LOG.debug("Port data not found %s  num <%d> dpid <%d>", port_name,
                 port_num, dpid)
         return(0, 0, 0)
 
