@@ -22,7 +22,7 @@ from dragonflow.controller.base_controller import ControllerBase
 from neutron.common import utils
 
 
-from neutron.openstack.common import log as logging
+from oslo_log import log as logging
 
 from dragonflow.controller.l3_openflow_app import L3ReactiveApp
 LOG = logging.getLogger(__name__)

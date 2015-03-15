@@ -33,7 +33,7 @@ from neutron.db import common_db_mixin
 from neutron.db import l3_gwmode_db
 from neutron.db import l3_hascheduler_db
 
-from neutron.openstack.common import log as logging
+from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 

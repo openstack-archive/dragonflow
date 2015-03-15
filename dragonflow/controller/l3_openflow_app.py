@@ -43,8 +43,9 @@ from neutron import context
 from neutron import manager
 
 from neutron.common import constants as const
-from neutron.openstack.common import log
 from neutron.plugins.common import constants as service_constants
+from oslo_log import log
+
 LOG = log.getLogger(__name__)
 
 ETHERNET = ethernet.ethernet.__name__

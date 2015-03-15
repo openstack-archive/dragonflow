@@ -39,10 +39,10 @@ from neutron.common import utils as q_utils
 from neutron import context
 
 from neutron.i18n import _LE, _LI, _LW
-from neutron.openstack.common import log as logging
 from neutron.plugins.openvswitch.agent import ovs_neutron_agent
 from neutron.plugins.openvswitch.agent.ovs_neutron_agent import OVSNeutronAgent
 from neutron.plugins.openvswitch.common import constants
+from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 
