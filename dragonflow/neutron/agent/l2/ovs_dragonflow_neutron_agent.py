@@ -107,12 +107,6 @@ class L2OVSControllerAgent(OVSNeutronAgent):
         if not br:
             LOG.errror("Failure Could not find bridge name <%s>", br_id)
             return
-        lvm = self.local_vlan_map.get(net_uuid)
-        if lvm:
-            local_vid = lvm.vlan
-        else:
-            LOG.debug(("Network %s not used on agent."), net_uuid)
-            return
         mac = netaddr.EUI(mac_address, dialect=netaddr.mac_unix)
         ip = netaddr.IPAddress(ip_address)
         if action == 'add':
@@ -126,7 +120,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
         elif action == 'remove':
             br.delete_flows(table=table_id,
                             proto='arp',
-                            dl_vlan=local_vid,
+                            metadata=segmentation_id,
                             nw_dst='%s' % ip)
         else:
             LOG.warning(_LW('Action %s not supported'), action)
