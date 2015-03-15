@@ -146,16 +146,17 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                            br_id)
                 return
             ip_address_ = ip_address_list.split(";")
-            LOG.debug(("Set Controllers on br %s to %s"), br_id, ip_address_)
+            LOG.debug("Set Controllers on br %s to %s", br_id, ip_address_)
             self.set_controller_lock.acquire()
             bridge.del_controller()
             bridge.set_controller(ip_address_)
-            #bridge.set_protocols(protocols)
             if bridge.br_name == "br-int":
                 bridge.add_flow(priority=0, actions="normal")
                 bridge.add_flow(table=constants.CANARY_TABLE,
                                 priority=0,
                                 actions="drop")
+                # Mark the tunnel ID so the data will be transferred to the
+                # br-tun virtual switch, tun id and metadata are local
                 bridge.add_flow(table="60", priority=1,
                                 actions="move:NXM_NX_TUN_ID[0..31]"
                                         "->NXM_NX_PKT_MARK[],"
