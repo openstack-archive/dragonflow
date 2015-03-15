@@ -28,7 +28,6 @@ from oslo_config import cfg
 
 from neutron.agent.common import config
 from neutron.agent.linux import ip_lib
-from neutron.agent.linux import ovs_lib
 from neutron.agent.ovsdb import api as ovsdb
 from neutron.agent import rpc as agent_rpc
 from neutron.agent import securitygroups_rpc as sg_rpc
@@ -44,7 +43,6 @@ from neutron.openstack.common import log as logging
 from neutron.plugins.openvswitch.agent import ovs_neutron_agent
 from neutron.plugins.openvswitch.agent.ovs_neutron_agent import OVSNeutronAgent
 from neutron.plugins.openvswitch.common import constants
-
 LOG = logging.getLogger(__name__)
 
 agent_additional_opts = [
@@ -107,12 +105,6 @@ class L2OVSControllerAgent(OVSNeutronAgent):
         if not br:
             LOG.errror("Failure Could not find bridge name <%s>", br_id)
             return
-        lvm = self.local_vlan_map.get(net_uuid)
-        if lvm:
-            local_vid = lvm.vlan
-        else:
-            LOG.debug(("Network %s not used on agent."), net_uuid)
-            return
         mac = netaddr.EUI(mac_address, dialect=netaddr.mac_unix)
         ip = netaddr.IPAddress(ip_address)
         if action == 'add':
@@ -126,7 +118,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
         elif action == 'remove':
             br.delete_flows(table=table_id,
                             proto='arp',
-                            dl_vlan=local_vid,
+                            metadata=segmentation_id,
                             nw_dst='%s' % ip)
         else:
             LOG.warning(_LW('Action %s not supported'), action)
@@ -152,16 +144,18 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                            br_id)
                 return
             ip_address_ = ip_address_list.split(";")
-            LOG.debug(("Set Controllers on br %s to %s"), br_id, ip_address_)
+            LOG.debug("Set Controllers on br %s to %s", br_id, ip_address_)
             self.set_controller_lock.acquire()
             bridge.del_controller()
             bridge.set_controller(ip_address_)
-            #bridge.set_protocols(protocols)
             if bridge.br_name == "br-int":
                 bridge.add_flow(priority=0, actions="normal")
                 bridge.add_flow(table=constants.CANARY_TABLE,
                                 priority=0,
                                 actions="drop")
+                #Mark the tunnel ID so the data will be transferred to the
+                #br-tun virtual switch. Tunnel id and metadata are local to
+                #the br-int virtual switch
                 bridge.add_flow(table="60", priority=1,
                                 actions="move:NXM_NX_TUN_ID[0..31]"
                                         "->NXM_NX_PKT_MARK[],"
@@ -191,22 +185,8 @@ class L2OVSControllerAgent(OVSNeutronAgent):
         # Check for the canary flow
         # Add lock to avoid race condition of flows
         self.set_controller_lock.acquire()
-        canary_flow = self.int_br.dump_flows_for_table(constants.CANARY_TABLE)
+        super(L2OVSControllerAgent, self).check_ovs_status()
         self.set_controller_lock.release()
-
-        if canary_flow == '':
-            LOG.error("flow == null")
-            LOG.warn(_LW("OVS is restarted. OVSNeutronAgent will reset "
-                         "bridges and recover ports."))
-            return constants.OVS_RESTARTED
-        elif canary_flow is None:
-            LOG.error("flow == is none")
-            LOG.warn(_LW("OVS is dead. OVSNeutronAgent will keep running "
-                         "and checking OVS status periodically."))
-            return constants.OVS_DEAD
-        else:
-            # OVS is in normal status
-            return constants.OVS_NORMAL
 
     def setup_rpc(self):
         self.agent_id = 'ovs-agent-%s' % cfg.CONF.host
@@ -240,36 +220,13 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                                                      start_listening=False)
 
     def _setup_tunnel_port(self, br, port_name, remote_ip, tunnel_type):
-        ofport = br.add_tunnel_port(port_name,
-                                    remote_ip,
-                                    self.local_ip,
-                                    tunnel_type,
-                                    self.vxlan_udp_port,
-                                    self.dont_fragment)
-        if ofport == ovs_lib.INVALID_OFPORT:
-            LOG.error(_LE("Failed to set-up %(type)s tunnel port to %(ip)s"),
-                      {'type': tunnel_type, 'ip': remote_ip})
-            return 0
+        ofports = super(L2OVSControllerAgent, self) \
+                    ._setup_tunnel_port(self,
+                    br,
+                    port_name,
+                    remote_ip,
+                    tunnel_type)
 
-        self.tun_br_ofports[tunnel_type][remote_ip] = ofport
-        # Add flow in default table to resubmit to the right
-        # tunnelling table (lvid will be set in the latter)
-        br.add_flow(priority=1,
-                    in_port=ofport,
-                    actions="resubmit(,%s)" %
-                            constants.TUN_TABLE[tunnel_type])
-
-        ofports = ovs_neutron_agent. \
-            _ofport_set_to_str(self.tun_br_ofports[tunnel_type].values())
-        if ofports and not self.l2_pop:
-            # Update flooding flows to include the new tunnel
-            for network_id, vlan_mapping in self.local_vlan_map.iteritems():
-                if vlan_mapping.network_type == tunnel_type:
-                    br.mod_flow(table=constants.FLOOD_TO_TUN,
-                                dl_vlan=vlan_mapping.vlan,
-                                actions="strip_vlan,set_tunnel:%s,output:%s" %
-                                        (vlan_mapping.segmentation_id,
-                                         ofports))
         if self.enable_l3_controller:
             if ofports:
                 br.add_flow(table=constants.FLOOD_TO_TUN,
@@ -278,7 +235,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                                     "output:%s" %
                                     (ofports))
 
-        return ofport
+        return ofports
 
     def set_connection_mode(self, bridge, connection_mode):
         ovsdb_api = ovsdb.API.get(bridge)
