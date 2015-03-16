@@ -163,16 +163,18 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                         {'device': device_id, 'agent_id': port_id})
             return {None}
 
-        segment = port_context.bottom_bound_segment
         port = port_context.current
 
-        if not segment:
-            LOG.warning(_LW("Device %(device)s requested by agent "
-                         " on network %(network_id)s not "
-                         "bound, vif_type: "),
-                        {'device': device_id,
-                         'network_id': port['network_id']})
-            return {None}
+        try:
+            segment = port_context.network.network_segments[0]
+        except KeyError:
+            if not segment:
+                LOG.warning(_LW("Device %(device)s requested by agent "
+                             " on network %(network_id)s not "
+                             "bound, vif_type: "),
+                            {'device': device_id,
+                             'network_id': port['network_id']})
+                return {}
 
         entry = {'device': device_id,
                  'network_id': port['network_id'],
