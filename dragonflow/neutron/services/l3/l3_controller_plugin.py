@@ -221,14 +221,6 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                     mac_address=mac_address,
                     ip_address=ip_address)
 
-    def update_agent_port_mapping_done(self, _context, agent_id, ip_address,
-            host=None):
-        LOG.debug(("::agent agent  <%s> on ip <%s> host <%s>  "),
-                  agent_id,
-                  ip_address,
-                  host)
-        self.send_set_controllers_update(_context, False)
-
     def send_set_controllers_update(self, _context, force_reconnect):
 
         topic_port_update = topics.get_topic_name(topics.AGENT,
