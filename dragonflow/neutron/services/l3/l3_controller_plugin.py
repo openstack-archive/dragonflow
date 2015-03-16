@@ -23,6 +23,9 @@ from neutron import manager
 
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import l3_rpc
+from neutron.callbacks import events
+from neutron.callbacks import registry
+from neutron.callbacks import resources
 from neutron.common import constants as q_const
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
@@ -50,6 +53,36 @@ NET_CONTROL_L3_OPTS = [
 ]
 
 cfg.CONF.register_opts(NET_CONTROL_L3_OPTS)
+
+
+def _notify_l3_agent_new_port(resource, event, trigger, **kwargs):
+    LOG.debug('Received %s %s', resource, event)
+    port = kwargs.get('port')
+    if port is None:
+        return
+
+    l3plugin = manager.NeutronManager.get_service_plugins().get(
+        constants.L3_ROUTER_NAT)
+    mac_address_updated = kwargs.get('mac_address_updated')
+    update_device_up = kwargs.get('update_device_up')
+    context = kwargs.get('context')
+    if context is None:
+        LOG.warning(
+            'Received %s %s without context [%s]',
+            resource,
+            event,
+            port,
+        )
+        return
+    if mac_address_updated or update_device_up:
+        l3plugin.dvr_vmarp_table_update(context, port, "add")
+
+
+def subscribe():
+    registry.subscribe(
+        _notify_l3_agent_new_port, resources.PORT, events.AFTER_UPDATE)
+    registry.subscribe(
+        _notify_l3_agent_new_port, resources.PORT, events.AFTER_CREATE)
 
 
 class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
@@ -86,6 +119,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
             LOG.error(_LE("Southbound OP-FLEX Protocol not implemented yet"))
 
         super(ControllerL3ServicePlugin, self).__init__()
+        subscribe()
 
     def setup_rpc(self):
         # RPC support
