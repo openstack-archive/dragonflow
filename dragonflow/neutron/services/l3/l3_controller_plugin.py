@@ -26,6 +26,7 @@ from neutron.api.rpc.handlers import l3_rpc
 from neutron.common import constants as q_const
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
+from neutron.i18n import _LE, _LI, _LW
 from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api as api
 
@@ -70,7 +71,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         cfg.CONF.router_auto_schedule = True
         if cfg.CONF.net_controller_l3_southbound_protocol == "OpenFlow":
             # Open Flow Controller
-            LOG.info(("Using Southbound OpenFlow Protocol "))
+            LOG.info(_LI("Using Southbound OpenFlow Protocol "))
 
             self.send_set_controllers_update(self.ctx, True)
 
@@ -80,9 +81,9 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
             #self.controllerThread.endpoints = self.endpoints
 
         elif cfg.CONF.net_controller_l3_southbound_protocol == "OVSDB":
-            LOG.error(("Southbound OVSDB Protocol not implemented yet"))
+            LOG.error(_LE("Southbound OVSDB Protocol not implemented yet"))
         elif cfg.CONF.net_controller_l3_southbound_protocol == "OP-FLEX":
-            LOG.error(("Southbound OP-FLEX Protocol not implemented yet"))
+            LOG.error(_LE("Southbound OP-FLEX Protocol not implemented yet"))
 
         super(ControllerL3ServicePlugin, self).__init__()
 
@@ -157,7 +158,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         port_context = core_plugin.get_bound_port_context(
             ctx, port_id, device_id)
         if not port_context:
-            LOG.warning(("Device %(device)s requested by agent "
+            LOG.warning(_LW("Device %(device)s requested by agent "
                          "%(agent_id)s not found in database"),
                         {'device': device_id, 'agent_id': port_id})
             return {None}
@@ -166,7 +167,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         port = port_context.current
 
         if not segment:
-            LOG.warning(("Device %(device)s requested by agent "
+            LOG.warning(_LW("Device %(device)s requested by agent "
                          " on network %(network_id)s not "
                          "bound, vif_type: "),
                         {'device': device_id,

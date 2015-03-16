@@ -112,13 +112,13 @@ class L3ControllerAgent(manager.Manager):
 
         if cfg.CONF.net_controller_l3_southbound_protocol == "OpenFlow":
             # Open Flow Controller
-            LOG.info(("Using Southbound OpenFlow Protocol "))
+            LOG.info(_LI("Using Southbound OpenFlow Protocol "))
             self.controller = of_controller.OpenFlowController(cfg, "openflow")
 
         elif cfg.CONF.net_controller_l3_southbound_protocol == "OVSDB":
-            LOG.error(("Southbound OVSDB Protocol not implemented yet"))
+            LOG.error(_LE("Southbound OVSDB Protocol not implemented yet"))
         elif cfg.CONF.net_controller_l3_southbound_protocol == "OP-FLEX":
-            LOG.error(("Southbound OP-FLEX Protocol not implemented yet"))
+            LOG.error(_LE("Southbound OP-FLEX Protocol not implemented yet"))
         self._queue = queue.RouterProcessingQueue()
         #self.event_observers = event_observers.L3EventObservers()
         super(L3ControllerAgent, self).__init__()

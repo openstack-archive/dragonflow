@@ -43,6 +43,7 @@ from neutron import context
 from neutron import manager
 
 from neutron.common import constants as const
+from neutron.i18n import _LE, _LI
 from neutron.plugins.common import constants as service_constants
 from oslo_log import log
 
@@ -152,7 +153,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.dp_list = {}
 
     def start(self):
-        LOG.info("Starting Virtual L3 Reactive OpenFlow APP ")
+        LOG.info(_LI("Starting Virtual L3 Reactive OpenFlow APP "))
         super(L3ReactiveApp, self).start()
         return 1
 
@@ -163,7 +164,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             self.send_port_desc_stats_request(datapath)
 
     def sync_router(self, router):
-        LOG.info(("sync_router --> %s"), router)
+        LOG.info(_LI("sync_router --> %s"), router)
         tenant_id = router['tenant_id']
         if not router['tenant_id'] in self.tenants:
             self.tenants[router['tenant_id']] = TenantTopo()
@@ -222,7 +223,7 @@ class L3ReactiveApp(app_manager.RyuApp):
 
     def sync_port(self, port):
         port_data = port
-        LOG.info("sync_port--> %s\n", port_data)
+        LOG.info(_LI("sync_port--> %s\n"), port_data)
         l3plugin = manager.NeutronManager.get_service_plugins().get(
             service_constants.L3_ROUTER_NAT)
         tenant_id = port_data['tenant_id']
@@ -249,9 +250,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                             port['mac_address'],
                             self.get_ip_from_interface(port))
                 else:
-                    LOG.error("No subnet object for subnet %s", subnet_id)
+                    LOG.error(_LE("No subnet object for subnet %s"), subnet_id)
         else:
-            LOG.info("no segmentation data in port --> %s", port_data)
+            LOG.info(_LI("no segmentation data in port --> %s"), port_data)
         self.attach_switch_port_desc_to_port_data(port)
 
     def get_port_subnets(self, port):
@@ -308,13 +309,13 @@ class L3ReactiveApp(app_manager.RyuApp):
                 LOG.debug("Unable to handle packet %(msg)s: %(e)s",
                           {'msg': msg, 'e': exception})
 
-        LOG.error(">>>>>>>>>> Unhandled  Packet>>>>>  %s", pkt)
+        LOG.error(_LE(">>>>>>>>>> Unhandled  Packet>>>>>  %s"), pkt)
 
     def handle_ipv6_packet_in(self, datapath, in_port, header_list,
                               pkt, eth):
         # TODO(gampel)(gampel) add ipv6 support
-        LOG.error("No handle for ipv6 yet should be offload to the"
-                "NORMAL path  %s", pkt)
+        LOG.error(_LE("No handle for ipv6 yet should be offload to the"
+                "NORMAL path  %s"), pkt)
         return
 
     def handle_ipv4_packet_in(self, datapath, msg, in_port, header_list, pkt,
@@ -326,7 +327,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             if 'metadata' not in msg.match:
                 # send request for loacl switch data
                 self.send_port_desc_stats_request(datapath)
-                LOG.error("No metadata on packet from %s",
+                LOG.error(_LE("No metadata on packet from %s"),
                           eth.src)
                 return
             segmentation_id = msg.match['metadata']
@@ -380,8 +381,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                                         # this trafic to the virtual routre
                                         return
                                     if not dst_p_data:
-                                        LOG.error("No local switch"
-                                            "mapping for %s",
+                                        LOG.error(_LE("No local switch"
+                                            "mapping for %s"),
                                             pkt_ipv4.dst)
                                         return
                                     if self.handle_router_interface(
@@ -854,15 +855,16 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         ofproto = msg.datapath.ofproto
         if reason == ofproto.OFPPR_ADD:
-            LOG.info("port added %s", port_no)
+            LOG.info(_LI("port added %s"), port_no)
         elif reason == ofproto.OFPPR_DELETE:
-            LOG.info("port deleted %s", port_no)
+            LOG.info(_LI("port deleted %s"), port_no)
         elif reason == ofproto.OFPPR_MODIFY:
-            LOG.info("port modified %s", port_no)
+            LOG.info(_LI("port modified %s"), port_no)
         else:
-            LOG.info("Illeagal port state %s %s", port_no, reason)
+            LOG.info(_LI("Illeagal port state %(port_no)s %(reason)s")
+                     % {'port_no': port_no, 'reason': reason})
         # TODO(gampel) Currently we update all the agents on modification
-        LOG.info((" Updating flow table on agents got port update "))
+        LOG.info(_LI(" Updating flow table on agents got port update "))
 
         switch = self.dp_list.get(datapath.id)
         if switch:
@@ -1057,7 +1059,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                             mac,
                             port_data['segmentation_id'])
                 else:
-                    LOG.error("No data in port data %s ", port_data)
+                    LOG.error(_LE("No data in port data %s "), port_data)
         # This can happen if we received port description from OVS but didn't
         # yet received port_sync from the L3 service
         LOG.debug("Port data not found %s  num <%d> dpid <%d>", port_name,
@@ -1110,10 +1112,10 @@ class L3ReactiveApp(app_manager.RyuApp):
                         LOG.debug("Sending ping echo -> ip %s ", pkt_ipv4.src)
                         retVal = 1
                     else:
-                        LOG.error(("any comunication to a router that"
+                        LOG.error(_LE("any comunication to a router that"
                                    " is not ping should be dropped from"
-                                   "ip  %s",
-                                   pkt_ipv4.src))
+                                   "ip  %s"),
+                                   pkt_ipv4.src)
                         retVal = 1
         return retVal
 
