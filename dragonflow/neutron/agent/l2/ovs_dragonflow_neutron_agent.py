@@ -104,7 +104,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
          '''
         br = self.get_bridge_by_name(br_id)
         if not br:
-            LOG.errror("Failure Could not find bridge name <%s>", br_id)
+            LOG.error(_LE("Failure Could not find bridge name <%s>"), br_id)
             return
         mac = netaddr.EUI(mac_address, dialect=netaddr.mac_unix)
         ip = netaddr.IPAddress(ip_address)
@@ -141,8 +141,8 @@ class L2OVSControllerAgent(OVSNeutronAgent):
             self.controllers_ip_list = ip_address_list
             bridge = self.get_bridge_by_name(br_id)
             if not bridge:
-                LOG.errror("set_controller_for_br failur! no bridge  %s ",
-                           br_id)
+                LOG.error(_LE("set_controller_for_br failur! no bridge  %s "),
+                         br_id)
                 return
             ip_address_ = ip_address_list.split(";")
             LOG.debug("Set Controllers on br %s to %s", br_id, ip_address_)
