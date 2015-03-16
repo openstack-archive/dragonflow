@@ -31,6 +31,7 @@ from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api as api
 
 from neutron.db import common_db_mixin
+from neutron.db import l3_dvrscheduler_db
 from neutron.db import l3_gwmode_db
 from neutron.db import l3_hascheduler_db
 
@@ -87,6 +88,8 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
 
         super(ControllerL3ServicePlugin, self).__init__()
 
+        l3_dvrscheduler_db.subscribe()
+
     def setup_rpc(self):
         # RPC support
         self.topic = topics.L3PLUGIN
@@ -104,6 +107,21 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
     def get_plugin_description(self):
         """Returns string description of the plugin."""
         return "L3 SDN Controller For Neutron"
+
+    def dvr_update_router_addvm(self, context, port):
+        ips = port['fixed_ips']
+        for ip in ips:
+            subnet = ip['subnet_id']
+            filter_sub = {'fixed_ips': {'subnet_id': [subnet]},
+                          'device_owner':
+                          [q_const.DEVICE_OWNER_DVR_INTERFACE]}
+            router_id = None
+            ports = self._core_plugin.get_ports(context, filters=filter_sub)
+            for port in ports:
+                router_id = port['device_id']
+                payload = {'subnet_id': subnet}
+                self.l3_rpc_notifier.routers_updated(
+                    context, [router_id], None, payload)
 
     def dvr_vmarp_table_update(self, context, port_dict, action):
         """Notify the L3 agent of VM ARP table changes.
