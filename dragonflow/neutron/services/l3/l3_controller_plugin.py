@@ -154,8 +154,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         filters = {'fixed_ips': {'subnet_id': [subnet]}}
         ports = self._core_plugin.get_ports(context, filters=filters)
         for port in ports:
-            if (port['device_owner'] == q_const.DEVICE_OWNER_ROUTER_INTF or
-                port['device_owner'] == q_const.DEVICE_OWNER_DVR_INTERFACE):
+            if port['device_owner'] in q_const.ROUTER_INTERFACE_OWNERS:
                 router_id = port['device_id']
                 #router_dict = self._get_router(context, router_id)
                 port_data = self.get_ml2_port_bond_data(context, port['id'],
