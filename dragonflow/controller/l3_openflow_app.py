@@ -93,18 +93,27 @@ class TenantTopo(object):
     def __init__(self):
         self.nodes = set()
         self.edges = collections.defaultdict(list)
-        self.routers = []
+        self.routers = {}
         self.distances = {}
         self.mac_to_port_data = collections.defaultdict(set)
-        self.subnet_array = collections.defaultdict(set)
+        self.subnets = collections.defaultdict(set)
         self.tenant_id = None
         #self.segmentation_id = None
 
-    def add_router(self, router, r_id):
-        self.routers.append(router)
+    def add_router(self, router):
+        self.routers[router.id] = router
+
+    def del_router(self, router):
+        del self.routers[router.id]
+
+    def get_router_by_id(self, router_id):
+        return self.routers[router_id]
 
     def add_node(self, value):
         self.nodes.add(value)
+
+    def del_node(self, value):
+        self.node.remove(value)
 
     def add_edge(self, from_node, to_node, distance):
         self.edges[from_node].append(to_node)
@@ -116,10 +125,21 @@ class Router(object):
 
     def __init__(self, data):
         self.data = data
-        self.subnets = []
+        self.subnets = {}
 
-    def add_subnet(self, subnet, sub_id):
-        self.subnets.append(subnet)
+    def add_subnet(self, subnet):
+        self.subnets[subnet.id] = subnet
+
+    def remove_subnet(self, subnet):
+        del self.subnets[subnet.id]
+
+    @property
+    def id(self):
+        return self.data['id']
+
+    @property
+    def interfaces(self):
+        return self.data.get('_interfaces', ())
 
 
 class Subnet(object):
@@ -128,6 +148,10 @@ class Subnet(object):
         self.data = data
         self.port_data = port_data
         self.segmentation_id = segmentation_id
+
+    @property
+    def id(self):
+        return self.data['id']
 
 
 class L3ReactiveApp(app_manager.RyuApp):
@@ -163,40 +187,36 @@ class L3ReactiveApp(app_manager.RyuApp):
             datapath = self.dp_list[dpid].datapath
             self.send_port_desc_stats_request(datapath)
 
-    def sync_router(self, router):
-        LOG.info(_LI("sync_router --> %s"), router)
-        tenant_id = router['tenant_id']
-        if not router['tenant_id'] in self.tenants:
-            self.tenants[router['tenant_id']] = TenantTopo()
-        tenant_topo = self.tenants[router['tenant_id']]
-        tenant_topo.tenant_id = tenant_id
-        router_cls = Router(router)
-        tenant_topo.add_router(router_cls, router['id'])
-        subnets_array = tenant_topo.subnet_array
+    def sync_router(self, router_info):
+        LOG.info(_LI("sync_router --> %s"), router_info)
+
+        tenant_id = router_info['tenant_id']
+        tenant_topology = self.tenants.setdefault(tenant_id, TenantTopo())
+
+        tenant_topology.tenant_id = tenant_id
+        router = Router(router_info)
+        tenant_topology.add_router(router)
+        subnets = tenant_topology.subnets
         l3plugin = manager.NeutronManager.get_service_plugins().get(
             service_constants.L3_ROUTER_NAT)
 
-        if "_interfaces" in router:
-            for interface in router['_interfaces']:
-                # tenant_topo.add_router(router,router['id'])
-                subnet_id = interface['subnet']['id']
-                if subnet_id not in subnets_array:
-                    subnets_array[subnet_id] = Subnet(interface['subnet'],
-                                        None,
-                                        0)
-                subnet_cls = subnets_array[subnet_id]
-                router_cls.add_subnet(subnet_cls,
-                                      interface['subnet']['id'])
-                if subnets_array[subnet_id].segmentation_id != 0:
-                    l3plugin.setup_vrouter_arp_responder(
-                        self.ctx,
-                        "br-int",
-                        "add",
-                        self.ARP_AND_BR_TABLE,
-                        subnets_array[subnet_id].segmentation_id,
-                        interface['network_id'],
-                        interface['mac_address'],
-                        self.get_ip_from_interface(interface))
+        for interface in router.interfaces:
+            subnet = subnets.setdefault(
+                interface['subnet']['id'],
+                Subnet(interface['subnet'], None, 0),
+            )
+
+            router.add_subnet(subnet)
+            if subnet.segmentation_id != 0:
+                l3plugin.setup_vrouter_arp_responder(
+                    self.ctx,
+                    "br-int",
+                    "add",
+                    self.ARP_AND_BR_TABLE,
+                    subnet.segmentation_id,
+                    interface['network_id'],
+                    interface['mac_address'],
+                    self.get_ip_from_interface(interface))
 
     def attach_switch_port_desc_to_port_data(self, port_data):
         if 'id' in port_data:
@@ -230,10 +250,10 @@ class L3ReactiveApp(app_manager.RyuApp):
         if tenant_id not in self.tenants:
             self.tenants[tenant_id] = TenantTopo()
         tenant_topo = self.tenants[tenant_id]
-        subnets_array = tenant_topo.subnet_array
+        subnets_array = tenant_topo.subnets
         if port_data['segmentation_id'] != 0:
             tenant_topo.mac_to_port_data[port_data['mac_address']] = port_data
-            tenant_topo.subnet_array[port_data['mac_address']] = port_data
+            tenant_topo.subnets[port_data['mac_address']] = port_data
             subnets_ids = self.get_port_subnets(port_data)
             for subnet_id in subnets_ids:
                 if subnet_id in subnets_array:
@@ -336,8 +356,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                 segmentation_id)
             for tenantid in self.tenants:
                 tenant = self.tenants[tenantid]
-                for router in tenant.routers:
-                    for subnet in router.subnets:
+                for router in tenant.routers.values():
+                    for subnet in router.subnets.values():
                         if segmentation_id == subnet.segmentation_id:
                             LOG.debug("packet from  to tenant  %s ",
                                 tenant.tenant_id)
@@ -361,7 +381,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                             (dst_p_data,
                              dst_sub_id) = self.get_port_data(tenant,
                                                               pkt_ipv4.dst)
-                            for _subnet in router.subnets:
+                            for _subnet in router.subnets.values():
                                 if dst_sub_id == _subnet.data['id']:
                                     out_subnet = _subnet
                                     subnet_gw = out_subnet.data[
@@ -938,7 +958,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                              port.supported, port.peer, port.curr_speed,
                              port.max_speed))
 
-            if "tap" in port.name:
+            if port.name.startswith('tap'):
                 LOG.debug(("Found DHCPD port  %s using MAC  %s"
                            "One machine install Special"
                            "(One Machine set up ) test use case"),
@@ -946,7 +966,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                           port.hw_addr)
                 self.add_flow_normal_by_port_num(
                     datapath, 0, HIGH_PRIOREITY_FLOW, port.port_no)
-            elif "qvo" in port.name:
+            elif port.name.startswith('qvo'):
                 # this is a VM port start with qvo<NET-ID[:11]> update the port
                 # data with the port num and the switch dpid
                 (port_id, mac, segmentation_id) = self.update_local_port_num(
@@ -974,8 +994,8 @@ class L3ReactiveApp(app_manager.RyuApp):
         #TODO(gampel) Install flows only for tenants with VMs running on
         #this specific compute node
         for tenantid in self.tenants:
-            for router in self.tenants[tenantid].routers:
-                for subnet in router.subnets:
+            for router in self.tenants[tenantid].routers.values():
+                for subnet in router.subnets.values():
                     for interface in router.data['_interfaces']:
                         if (interface['subnet']['id'] == subnet.data['id']
                                 and subnet.segmentation_id != 0):
