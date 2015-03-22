@@ -192,9 +192,10 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         tenant_id = router_info['tenant_id']
         tenant_topology = self.tenants.setdefault(tenant_id, TenantTopo())
-
         tenant_topology.tenant_id = tenant_id
+
         router = Router(router_info)
+        router_old = tenant_topology.routers.get(router.id)
         tenant_topology.add_router(router)
         subnets = tenant_topology.subnets
         l3plugin = manager.NeutronManager.get_service_plugins().get(
@@ -212,6 +213,34 @@ class L3ReactiveApp(app_manager.RyuApp):
                     self.ctx,
                     "br-int",
                     "add",
+                    self.ARP_AND_BR_TABLE,
+                    subnet.segmentation_id,
+                    interface['network_id'],
+                    interface['mac_address'],
+                    self.get_ip_from_interface(interface))
+
+        # If previous definition of the router is known
+        if router_old:
+            # Handle removed subnets
+            for interface in router_old.interfaces:
+                subnet = router_old.subnets[interface['subnet']['id']]
+                if subnet.segmentation_id == 0:
+                    continue
+
+                # if subnet was not deleted
+                if subnet.id in router.subnets:
+                    continue
+
+                for router in tenant_topology.routers.values():
+                    if subnet.id in router.subnets:
+                        break
+                else:
+                    del tenant_topology.subnets[subnet.id]
+
+                l3plugin.setup_vrouter_arp_responder(
+                    self.ctx,
+                    "br-int",
+                    "remove",
                     self.ARP_AND_BR_TABLE,
                     subnet.segmentation_id,
                     interface['network_id'],
