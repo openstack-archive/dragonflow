@@ -144,9 +144,8 @@ class Router(object):
 
 class Subnet(object):
 
-    def __init__(self, data, port_data, segmentation_id):
+    def __init__(self, data, segmentation_id):
         self.data = data
-        self.port_data = port_data
         self.segmentation_id = segmentation_id
 
     @property
@@ -204,7 +203,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         for interface in router.interfaces:
             subnet = subnets.setdefault(
                 interface['subnet']['id'],
-                Subnet(interface['subnet'], None, 0),
+                Subnet(interface['subnet'], 0),
             )
 
             router.add_subnet(subnet)
@@ -282,7 +281,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         subnets_array = tenant_topo.subnets
         if port_data['segmentation_id'] != 0:
             tenant_topo.mac_to_port_data[port_data['mac_address']] = port_data
-            tenant_topo.subnets[port_data['mac_address']] = port_data
             subnets_ids = self.get_port_subnets(port_data)
             for subnet_id in subnets_ids:
                 if subnet_id in subnets_array:
