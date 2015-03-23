@@ -308,7 +308,7 @@ class L3ControllerAgentWithStateReport(L3ControllerAgent):
             'topic': topics.L3_AGENT,
             'configurations': {
                 #'agent_mode': self.conf.agent_mode,
-                'agent_mode': "sdn",
+                'agent_mode': "legacy",
                 'router_id': self.conf.router_id,
                 'handle_internal_only_routers':
                 self.conf.handle_internal_only_routers,
