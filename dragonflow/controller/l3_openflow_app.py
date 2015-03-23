@@ -151,6 +151,21 @@ class Subnet(object):
     def id(self):
         return self.data['id']
 
+    @property
+    def cidr(self):
+        return self.data['cidr']
+
+    @property
+    def gateway_ip(self):
+        return self.data['gateway_ip']
+
+    def __repr__(self):
+        return "<Subnet id='%s' cidr='%s' gateway_ip='%s'>" % (
+            self.id,
+            self.cidr,
+            self.gateway_ip,
+        )
+
 
 class L3ReactiveApp(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
