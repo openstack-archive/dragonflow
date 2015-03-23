@@ -315,19 +315,18 @@ class L3ReactiveApp(app_manager.RyuApp):
                                                    self.CLASSIFIER_TABLE)
 
     def sync_port(self, port):
-        port_data = port
-        LOG.info(_LI("sync_port--> %s\n"), port_data)
+        LOG.info(_LI("sync_port--> %s\n"), port)
         l3plugin = manager.NeutronManager.get_service_plugins().get(
             service_constants.L3_ROUTER_NAT)
-        tenant_topo = self.get_tenant_by_id(port_data['tenant_id'])
+        tenant_topo = self.get_tenant_by_id(port['tenant_id'])
         subnets_array = tenant_topo.subnets
-        if port_data['segmentation_id'] != 0:
-            tenant_topo.mac_to_port_data[port_data['mac_address']] = port_data
-            subnets_ids = self.get_port_subnets(port_data)
+        if port['segmentation_id'] != 0:
+            tenant_topo.mac_to_port_data[port['mac_address']] = port
+            subnets_ids = self.get_port_subnets(port)
             for subnet_id in subnets_ids:
                 if subnet_id in subnets_array:
                     subnet = subnets_array[subnet_id]
-                    subnet.segmentation_id = port_data['segmentation_id']
+                    subnet.segmentation_id = port['segmentation_id']
                     if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
                         l3plugin.setup_vrouter_arp_responder(
                             self.ctx,
@@ -341,7 +340,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                 else:
                     LOG.error(_LE("No subnet object for subnet %s"), subnet_id)
         else:
-            LOG.info(_LI("no segmentation data in port --> %s"), port_data)
+            LOG.info(_LI("no segmentation data in port --> %s"), port)
         self.attach_switch_port_desc_to_port_data(port)
 
     def get_port_subnets(self, port):
