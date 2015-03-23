@@ -186,43 +186,50 @@ class L3ControllerAgent(manager.Manager):
     def _router_removed(self, router_id):
         pass
 
-    def _process_router_update(self):
-        for rp, update in self._queue.each_update_to_next_router():
-            LOG.debug("Starting router update for %s", update.id)
-            router = update.router
-            if update.action != queue.DELETE_ROUTER and not router:
-                try:
-                    update.timestamp = timeutils.utcnow()
-                    routers = self.plugin_rpc.get_routers(self.context,
-                                                          [update.id])
-                except Exception:
-                    msg = _LE("Failed to fetch router information for '%s'")
-                    LOG.exception(msg, update.id)
-                    self.fullsync = True
-                    continue
+    def _process_router_updates(self):
+        for (
+            router_processor, update
+        ) in self._queue.each_update_to_next_router():
+            self._process_router_update(router_processor, update)
 
-                if routers:
-                    router = routers[0]
+    def _process_router_update(self, router_processor, update):
+        LOG.debug("Starting router update for %s", update.id)
 
-            if not router:
-                self._router_removed(update.id)
-                continue
+        router = update.router
+        if update.action != queue.DELETE_ROUTER and not router:
+            try:
+                update.timestamp = timeutils.utcnow()
+                routers = self.plugin_rpc.get_routers(self.context,
+                                                      [update.id])
+            except Exception:
+                msg = _LE("Failed to fetch router information for '%s'")
+                LOG.exception(msg, update.id)
+                self.fullsync = True
+                return
 
-            #self._process_router_if_compatible(router)
-            self.controller.sync_router(router)
+            if routers:
+                router = routers[0]
 
-            # Handle case of router with no interfaces
-            if '_interfaces' in router:
-                for interface in router['_interfaces']:
-                    self.sync_subnet_port_data(interface['subnet']['id'])
-            LOG.debug("Finished a router update for %s", update.id)
-            rp.fetched_and_processed(update.timestamp)
+        if not router:
+            self._router_removed(update.id)
+            return
+
+        #self._process_router_if_compatible(router)
+        self.controller.sync_router(router)
+
+        # Handle case of router with no interfaces
+        if '_interfaces' in router:
+            for interface in router['_interfaces']:
+                self.sync_subnet_port_data(interface['subnet']['id'])
+
+        LOG.debug("Finished a router update for %s", update.id)
+        router_processor.fetched_and_processed(update.timestamp)
 
     def _process_routers_loop(self):
         LOG.debug("Starting _process_routers_loop")
         pool = eventlet.GreenPool(size=8)
         while True:
-            pool.spawn_n(self._process_router_update)
+            pool.spawn_n(self._process_router_updates)
 
     def sync_subnet_port_data(self, subnet_id):
         ports_data = self.plugin_rpc.get_ports_by_subnet(self.context,
