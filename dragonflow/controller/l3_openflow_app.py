@@ -72,8 +72,8 @@ LOW_PRIOREITY_FLOW = 1
 LOWEST_PRIOREITY_FLOW = 0
 
 
-# A class to represent a  forwarding Elemnt Switch local state
 class AgentDatapath(object):
+    """Represents a forwarding element switch local state"""
 
     def __init__(self):
         self.local_vlan_mapping = {}
@@ -87,8 +87,8 @@ class AgentDatapath(object):
         self.switch_port_desc_dict = {}
 
 
-# A class to represent tenat toplogie
 class TenantTopo(object):
+    """Represents a tenant topology"""
 
     def __init__(self):
         self.nodes = set()
