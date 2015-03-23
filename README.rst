@@ -19,7 +19,11 @@ In OpenFlow these rules are called flows. To put this simply, the virtual router
 
 Dragonflow eliminate the use of namespaces in contrast to the standard DVR, a diagram showing Dragonflow components and overall architecture can be seen here:
 
-![Solution Overview](https://raw.githubusercontent.com/stackforge/dragonflow/master/doc/images/df_components.jpg)
+.. image:: https://raw.githubusercontent.com/stackforge/dragonflow/master/doc/images/df_components.jpg
+    :alt: Solution Overview
+    :width: 600
+    :height: 400
+    :align: center
 
 Perhaps the most important part of the solution is the OpenFlow pipeline which we install into the integration bridge upon bootstrap.
 This is the flow that controls all traffic in the OVS integration bridge `(br-int)`.
@@ -37,7 +41,12 @@ The pipeline works in the following manner:
 
 The following diagram shows the multi-table OpenFlow pipeline installed into the OVS integration bridge `(br-int)` in order to represent the virtual router using flows only:
 
-![Openflow pipeline](https://raw.githubusercontent.com/stackforge/dragonflow/master/doc/images/df_of_pipeline.jpg)
+.. image:: https://raw.githubusercontent.com/stackforge/dragonflow/master/doc/images/df_of_pipeline.jpg
+    :alt: Pipeline
+    :width: 600
+    :height: 400
+    :align: center
+
 
 A detailed blog post describing the solution can be found Here_.
 
