@@ -22,8 +22,9 @@ Dragonflow eliminate the use of namespaces in contrast to the standard DVR, a di
 .. image:: https://raw.githubusercontent.com/stackforge/dragonflow/master/doc/images/df_components.jpg
     :alt: Solution Overview
     :width: 600
-    :height: 400
+    :height: 525
     :align: center
+
 
 Perhaps the most important part of the solution is the OpenFlow pipeline which we install into the integration bridge upon bootstrap.
 This is the flow that controls all traffic in the OVS integration bridge `(br-int)`.
@@ -39,13 +40,16 @@ The pipeline works in the following manner:
         3. All L2 traffic and local subnet traffic are offloaded to the NORMAL pipeline handled by ML2
         4. North/South traffic is forwarded to the network node (SNAT)
 
+
 The following diagram shows the multi-table OpenFlow pipeline installed into the OVS integration bridge `(br-int)` in order to represent the virtual router using flows only:
+
 
 .. image:: https://raw.githubusercontent.com/stackforge/dragonflow/master/doc/images/df_of_pipeline.jpg
     :alt: Pipeline
     :width: 600
     :height: 400
     :align: center
+
 
 
 A detailed blog post describing the solution can be found Here_.
