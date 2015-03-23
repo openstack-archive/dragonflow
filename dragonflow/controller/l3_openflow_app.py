@@ -87,18 +87,17 @@ class AgentDatapath(object):
         self.switch_port_desc_dict = {}
 
 
-class TenantTopo(object):
+class TenantTopology(object):
     """Represents a tenant topology"""
 
-    def __init__(self):
+    def __init__(self, tenant_id):
         self.nodes = set()
         self.edges = collections.defaultdict(list)
         self.routers = {}
         self.distances = {}
         self.mac_to_port_data = collections.defaultdict(set)
         self.subnets = collections.defaultdict(set)
-        self.tenant_id = None
-        #self.segmentation_id = None
+        self.tenant_id = tenant_id
 
     def add_router(self, router):
         self.routers[router.id] = router
@@ -171,9 +170,12 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         self.ctx = context.get_admin_context()
         self.lock = threading.Lock()
-        self.tenants = collections.defaultdict(lambda: None)
+        self._tenants = {}
         self.need_sync = True
         self.dp_list = {}
+
+    def get_tenant_by_id(self, tenant_id):
+        return self._tenants.setdefault(tenant_id, TenantTopology(tenant_id))
 
     def start(self):
         LOG.info(_LI("Starting Virtual L3 Reactive OpenFlow APP "))
@@ -189,9 +191,7 @@ class L3ReactiveApp(app_manager.RyuApp):
     def sync_router(self, router_info):
         LOG.info(_LI("sync_router --> %s"), router_info)
 
-        tenant_id = router_info['tenant_id']
-        tenant_topology = self.tenants.setdefault(tenant_id, TenantTopo())
-        tenant_topology.tenant_id = tenant_id
+        tenant_topology = self.get_tenant_by_id(router_info['tenant_id'])
 
         router = Router(router_info)
         router_old = tenant_topology.routers.get(router.id)
@@ -274,10 +274,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         LOG.info(_LI("sync_port--> %s\n"), port_data)
         l3plugin = manager.NeutronManager.get_service_plugins().get(
             service_constants.L3_ROUTER_NAT)
-        tenant_id = port_data['tenant_id']
-        if tenant_id not in self.tenants:
-            self.tenants[tenant_id] = TenantTopo()
-        tenant_topo = self.tenants[tenant_id]
+        tenant_topo = self.get_tenant_by_id(port_data['tenant_id'])
         subnets_array = tenant_topo.subnets
         if port_data['segmentation_id'] != 0:
             tenant_topo.mac_to_port_data[port_data['mac_address']] = port_data
@@ -381,16 +378,16 @@ class L3ReactiveApp(app_manager.RyuApp):
             LOG.debug(
                 "packet segmentation_id %s ",
                 segmentation_id)
-            for tenantid in self.tenants:
-                tenant = self.tenants[tenantid]
+            for tenantid in self._tenants:
+                tenant = self._tenants[tenantid]
                 for router in tenant.routers.values():
                     for subnet in router.subnets.values():
                         if segmentation_id == subnet.segmentation_id:
                             LOG.debug("packet from  to tenant  %s ",
                                 tenant.tenant_id)
-                            in_port_data = self.tenants[
+                            in_port_data = self._tenants[
                                 tenantid].mac_to_port_data[eth.src]
-                            out_port_data = self.tenants[
+                            out_port_data = self._tenants[
                                 tenantid].mac_to_port_data[eth.dst]
                             LOG.debug('Source port data <--- %s ',
                                 in_port_data)
@@ -1020,8 +1017,8 @@ class L3ReactiveApp(app_manager.RyuApp):
             service_constants.L3_ROUTER_NAT)
         #TODO(gampel) Install flows only for tenants with VMs running on
         #this specific compute node
-        for tenantid in self.tenants:
-            for router in self.tenants[tenantid].routers.values():
+        for tenantid in self._tenants:
+            for router in self._tenants[tenantid].routers.values():
                 for subnet in router.subnets.values():
                     for interface in router.data['_interfaces']:
                         if (interface['subnet']['id'] == subnet.data['id']
@@ -1091,8 +1088,8 @@ class L3ReactiveApp(app_manager.RyuApp):
         switch_port_desc['datapath'] = datapath
 
         # If we already received port sync, link between the structures
-        for tenantid in self.tenants:
-            tenant = self.tenants[tenantid]
+        for tenantid in self._tenants:
+            tenant = self._tenants[tenantid]
             for mac in tenant.mac_to_port_data:
                 port_data = tenant.mac_to_port_data[mac]
                 # print "port_data >>>>>>>>>>>>>>%s",port_data
