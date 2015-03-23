@@ -204,6 +204,36 @@ class L3ReactiveApp(app_manager.RyuApp):
             datapath = self.dp_list[dpid].datapath
             self.send_port_desc_stats_request(datapath)
 
+    def delete_router(self, router_id):
+        l3plugin = manager.NeutronManager.get_service_plugins().get(
+            service_constants.L3_ROUTER_NAT)
+        for tenant in self._tenants.values():
+            try:
+                router = tenant.routers.pop(router_id)
+            except KeyError:
+                pass
+            else:
+                for interface in router.interfaces:
+                    subnet = router.subnets[interface['subnet']['id']]
+                    if subnet.segmentation_id == 0:
+                        continue
+
+                    for router in tenant.routers.values():
+                        if subnet.id in router.subnets:
+                            break
+                    else:
+                        del tenant.subnets[subnet.id]
+
+                    l3plugin.setup_vrouter_arp_responder(
+                        self.ctx,
+                        "br-int",
+                        "remove",
+                        self.ARP_AND_BR_TABLE,
+                        subnet.segmentation_id,
+                        interface['network_id'],
+                        interface['mac_address'],
+                        self.get_ip_from_interface(interface))
+
     def sync_router(self, router_info):
         LOG.info(_LI("sync_router --> %s"), router_info)
 

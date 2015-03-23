@@ -183,9 +183,6 @@ class L3ControllerAgent(manager.Manager):
         LOG.debug('Got router added to agent :%r', payload)
         self.routers_updated(context, payload)
 
-    def _router_removed(self, router_id):
-        pass
-
     def _process_router_updates(self):
         for (
             router_processor, update
@@ -211,7 +208,7 @@ class L3ControllerAgent(manager.Manager):
                 router = routers[0]
 
         if not router:
-            self._router_removed(update.id)
+            self.controller.delete_router(update.id)
             return
 
         #self._process_router_if_compatible(router)

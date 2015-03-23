@@ -50,6 +50,9 @@ class OpenFlowController(ControllerBase):
         self.l3_app = app_mgr.instantiate(L3ReactiveApp, None, None)
         self.l3_app.start()
 
+    def delete_router(self, router_id):
+        self.l3_app.delete_router(router_id)
+
     def sync_router(self, router):
         self.l3_app.sync_router(router)
 
