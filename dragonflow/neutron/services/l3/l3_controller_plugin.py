@@ -29,11 +29,13 @@ from neutron.callbacks import resources
 from neutron.common import constants as q_const
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
+from neutron.db import l3_hamode_db
 from neutron.i18n import _LE, _LI, _LW
 from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api as api
 
 from neutron.db import common_db_mixin
+from neutron.db import l3_dvrscheduler_db
 from neutron.db import l3_gwmode_db
 from neutron.db import l3_hascheduler_db
 
@@ -86,7 +88,9 @@ def subscribe():
 
 
 class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
+                                l3_hamode_db.L3_HA_NAT_db_mixin,
                                 l3_gwmode_db.L3_NAT_db_mixin,
+                                l3_dvrscheduler_db.L3_DVRsch_db_mixin,
                                 l3_hascheduler_db.L3_HA_scheduler_db_mixin,
                                 l3_rpc.L3RpcCallback):
 
@@ -272,11 +276,3 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                     ip_address_list=iplist,
                     force_reconnect=force_reconnect,
                     protocols="OpenFlow13")
-
-    def dvr_deletens_if_no_port(self, context, port_id):
-        """This method is called by ML2 plugin
-        when a VM is deleted (port delete)
-        Leave empty implementation to avoid
-        bug #1427988
-        """
-        return []
