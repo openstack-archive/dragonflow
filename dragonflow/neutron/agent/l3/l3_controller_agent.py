@@ -16,15 +16,20 @@
 import eventlet
 from oslo_config import cfg
 import oslo_messaging
-from oslo_utils import excutils
+from oslo_utils import importutils
 from oslo_utils import timeutils
 
+
 from dragonflow.controller import openflow_controller as of_controller
-#from neutron.agent.common import config
+from dragonflow.neutron.agent.l3 import df_dvr_router
+
 from neutron.agent.l3 import agent
+from neutron.agent.l3 import dvr
+from neutron.agent.l3 import namespaces
 from neutron.agent.l3 import router_processing_queue as queue
 from neutron.agent import rpc as agent_rpc
 from neutron.common import constants as l3_constants
+from neutron.common.exceptions import excutils
 from neutron.common import topics
 from neutron.common import utils as common_utils
 from neutron import context as n_context
@@ -32,7 +37,10 @@ from neutron.i18n import _LE, _LI, _LW
 from neutron import manager
 from neutron.openstack.common import loopingcall
 from neutron.openstack.common import periodic_task
+from neutron.services.firewall.agents.l3reference import firewall_l3_agent
 from oslo_log import log as logging
+
+EXTERNAL_DEV_PREFIX = namespaces.EXTERNAL_DEV_PREFIX
 
 LOG = logging.getLogger(__name__)
 
@@ -44,13 +52,30 @@ NET_CONTROL_L3_OPTS = [
     cfg.StrOpt('net_controller_l3_southbound_protocol',
                default='OpenFlow',
                help=("Southbound protocol to connect the forwarding"
-                     "element Currently supports only OpenFlow"))
+                     "element Currently supports only OpenFlow")),
+    cfg.StrOpt('interface_driver',
+               default='neutron.agent.linux.interface.OVSInterfaceDriver',
+               help=("interface driver help")),
+    cfg.StrOpt('ovs_use_veth',
+               default=False,
+               help=("help on ovs_use_veth")),
+    cfg.StrOpt('use_namespaces',
+               default=True,
+               help=("help on use_namespaces")),
+    cfg.StrOpt('ovs_integration_bridge',
+               default='br-int',
+               help=("help on ovs_integration_bridge")),
+    cfg.StrOpt('network_device_mtu',
+               default=1500,
+               help=("help on ovs_integration_bridge")),
 ]
 
 cfg.CONF.register_opts(NET_CONTROL_L3_OPTS)
 
 
-class L3ControllerAgent(manager.Manager):
+class L3ControllerAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
+                        dvr.AgentMixin,
+                        manager.Manager):
     """Manager for L3ControllerAgent
 
         API version history:
@@ -78,6 +103,17 @@ class L3ControllerAgent(manager.Manager):
         self.context = n_context.get_admin_context_without_session()
         self.plugin_rpc = agent.L3PluginApi(topics.L3PLUGIN, host)
         self.fullsync = True
+        self.use_ipv6 = False
+
+        try:
+            self.driver = importutils.import_object(
+                self.conf.interface_driver,
+                self.conf
+            )
+        except Exception:
+            LOG.error(_LE("Error importing interface driver "
+                          "'%s'"), self.conf.interface_driver)
+            raise SystemExit(1)
 
         # Get the list of service plugins from Neutron Server
         # This is the first place where we contact neutron-server on startup
@@ -121,7 +157,7 @@ class L3ControllerAgent(manager.Manager):
             LOG.error(_LE("Southbound OP-FLEX Protocol not implemented yet"))
         self._queue = queue.RouterProcessingQueue()
         #self.event_observers = event_observers.L3EventObservers()
-        super(L3ControllerAgent, self).__init__()
+        super(L3ControllerAgent, self).__init__(self.conf)
 
     def _check_config_params(self):
         """Check items in configuration files.
@@ -129,28 +165,6 @@ class L3ControllerAgent(manager.Manager):
         Check for required and invalid configuration items.
         The actual values are not verified for correctness.
         """
-
-    @common_utils.exception_logger()
-    def process_router(self, ri):
-        # TODO(mrsmith) - we shouldn't need to check here
-        if 'distributed' not in ri.router:
-            ri.router['distributed'] = False
-        ex_gw_port = self._get_ex_gw_port(ri)
-        if ri.router.get('distributed') and ex_gw_port:
-            ri.fip_ns = self.get_fip_ns(ex_gw_port['network_id'])
-            ri.fip_ns.scan_fip_ports(ri)
-        self._process_internal_ports(ri)
-        self._process_external(ri)
-        # Process static routes for router
-        ri.routes_updated()
-
-        # Enable or disable keepalived for ha routers
-        self._process_ha_router(ri)
-
-        # Update ex_gw_port and enable_snat on the router info cache
-        ri.ex_gw_port = ex_gw_port
-        ri.snat_ports = ri.router.get(l3_constants.SNAT_ROUTER_INTF_KEY, [])
-        ri.enable_snat = ri.router.get('enable_snat')
 
     def router_deleted(self, context, router_id):
         """Deal with router deletion RPC message."""
@@ -183,6 +197,74 @@ class L3ControllerAgent(manager.Manager):
         LOG.debug('Got router added to agent :%r', payload)
         self.routers_updated(context, payload)
 
+    def _router_removed(self, router_id):
+        ri = self.router_info.get(router_id)
+        if ri is None:
+            LOG.warn(_LW("Info for router %s were not found. "
+                         "Skipping router removal"), router_id)
+            return
+
+        ri.router['gw_port'] = None
+        ri.router[l3_constants.INTERFACE_KEY] = []
+        ri.router[l3_constants.FLOATINGIP_KEY] = []
+        self.process_router(ri)
+        del self.router_info[router_id]
+        #ri.delete()
+
+    @common_utils.exception_logger()
+    def process_router(self, ri):
+        ri.router['distributed'] = True
+        ex_gw_port = ri.get_ex_gw_port()
+
+        # if ri.router.get('distributed') and ex_gw_port:
+        #     ri.fip_ns = self.get_fip_ns(ex_gw_port['network_id'])
+        #     ri.fip_ns.scan_fip_ports(ri)
+        ri._process_internal_ports()
+        ri.process_external(self)
+        # Process static routes for router
+        #ri.routes_updated()
+
+        # Update ex_gw_port and enable_snat on the router info cache
+        ri.ex_gw_port = ex_gw_port
+        ri.snat_ports = ri.router.get(l3_constants.SNAT_ROUTER_INTF_KEY, [])
+        ri.enable_snat = ri.router.get('enable_snat')
+
+    def _create_router(self, router_id, router):
+        args = []
+        kwargs = {
+            'router_id': router_id,
+            'router': router,
+            'use_ipv6': self.use_ipv6,
+            'agent_conf': self.conf,
+            'interface_driver': self.driver,
+        }
+
+        kwargs['agent'] = self
+        kwargs['host'] = self.host
+        return df_dvr_router.DfDvrRouter(*args, **kwargs)
+
+    def _process_updated_router(self, router):
+        ri = self.router_info[router['id']]
+        ri.router = router
+        self.process_router(ri)
+
+    def _process_added_router(self, router):
+        self._router_added(router['id'], router)
+        ri = self.router_info[router['id']]
+        ri.router = router
+        self.process_router(ri)
+
+    def _router_added(self, router_id, router):
+        ri = self._create_router(router_id, router)
+        self.router_info[router_id] = ri
+        #ri.create()
+
+    def process_router_snat_dnat(self, router):
+        if router['id'] not in self.router_info:
+            self._process_added_router(router)
+        else:
+            self._process_updated_router(router)
+
     def _process_router_updates(self):
         for (
             router_processor, update
@@ -208,14 +290,16 @@ class L3ControllerAgent(manager.Manager):
                 router = routers[0]
 
         if not router:
+            self._router_removed(update.id)
             self.controller.delete_router(update.id)
             return
 
-        #self._process_router_if_compatible(router)
         self.controller.sync_router(router)
 
         for interface in router.get('_interfaces', ()):
             self.sync_subnet_port_data(interface['subnet']['id'])
+
+        self.process_router_snat_dnat(router)
 
         LOG.debug("Finished a router update for %s", update.id)
         router_processor.fetched_and_processed(update.timestamp)
