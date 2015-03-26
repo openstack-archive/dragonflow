@@ -37,6 +37,8 @@ def main(manager='dragonflow.neutron.agent.l3.l3_controller_agent.'
     register_opts(cfg.CONF)
     common_config.init(sys.argv[1:])
     config.setup_logging()
+    cfg.CONF.set_override('agent_mode', 'dvr_snat')
+    cfg.CONF.set_override('router_delete_namespaces', True)
     server = neutron_service.Service.create(
         binary='neutron-l3-controller-agent',
         topic=topics.L3_AGENT,
