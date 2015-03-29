@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-import netaddr
 import signal
 import sys
 import threading
@@ -38,7 +37,7 @@ from neutron.common import topics
 from neutron.common import utils as q_utils
 from neutron import context
 
-from neutron.i18n import _LE, _LI, _LW
+from neutron.i18n import _LE, _LI
 from neutron.plugins.openvswitch.agent import ovs_neutron_agent
 from neutron.plugins.openvswitch.agent.ovs_neutron_agent import OVSNeutronAgent
 from neutron.plugins.openvswitch.common import constants
@@ -89,40 +88,6 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                       arp_responder,
                       use_veth_interconnection,
                       quitting_rpc_timeout)
-
-    def setup_entry_for_arp_reply_remote(self, context, br_id, action,
-                                         table_id, segmentation_id, net_uuid,
-                                         mac_address, ip_address):
-        '''Set the ARP respond entry.
-        :param br_id: the bridge id.
-        :param action: add or remove.
-        :param table_id: Id of the table to insert the ARP responder rule.
-        :param segmentation_id: the segmentation id of the req network.
-        :param net_uuid: the uuid of the network associated with this vlan.
-        :param mac_address: the resolved mac addressby arp.
-        :param ip address: the ip address to resolve ARP for .
-         '''
-        br = self.get_bridge_by_name(br_id)
-        if not br:
-            LOG.error(_LE("Failure Could not find bridge name <%s>"), br_id)
-            return
-        mac = netaddr.EUI(mac_address, dialect=netaddr.mac_unix)
-        ip = netaddr.IPAddress(ip_address)
-        if action == 'add':
-            actions = constants.ARP_RESPONDER_ACTIONS % {'mac': mac, 'ip': ip}
-            br.add_flow(table=table_id,
-                        priority=100,
-                        proto='arp',
-                        metadata=segmentation_id,
-                        nw_dst='%s' % ip,
-                        actions=actions)
-        elif action == 'remove':
-            br.delete_flows(table=table_id,
-                            proto='arp',
-                            metadata=segmentation_id,
-                            nw_dst='%s' % ip)
-        else:
-            LOG.warning(_LW('Action %s not supported'), action)
 
     def set_controller_for_br(self, context, br_id, ip_address_list,
                               force_reconnect=False, protocols="OpenFlow13"):

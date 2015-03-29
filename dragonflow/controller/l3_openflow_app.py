@@ -27,6 +27,7 @@ from ryu.ofproto import ether
 from ryu.ofproto.ether import ETH_TYPE_8021Q
 from ryu.ofproto import ofproto_v1_3
 
+from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 
@@ -40,11 +41,9 @@ from ryu.lib.packet import vlan
 from ryu.lib import addrconv
 
 from neutron import context
-from neutron import manager
 
 from neutron.common import constants as const
 from neutron.i18n import _LE, _LI
-from neutron.plugins.common import constants as service_constants
 from oslo_log import log
 
 LOG = log.getLogger(__name__)
@@ -65,11 +64,11 @@ UINT32_MAX = 0xffffffff
 UINT64_MAX = 0xffffffffffffffff
 OFPFW_NW_PROTO = 1 << 5
 
-HIGH_PRIOREITY_FLOW = 1000
-MEDIUM_PRIOREITY_FLOW = 100
-NORMAL_PRIOREITY_FLOW = 10
-LOW_PRIOREITY_FLOW = 1
-LOWEST_PRIOREITY_FLOW = 0
+HIGH_PRIORITY_FLOW = 1000
+MEDIUM_PRIORITY_FLOW = 100
+NORMAL_PRIORITY_FLOW = 10
+LOW_PRIORITY_FLOW = 1
+LOWEST_PRIORITY_FLOW = 0
 
 
 class AgentDatapath(object):
@@ -199,13 +198,11 @@ class L3ReactiveApp(app_manager.RyuApp):
 
     def notify_sync(self):
         self.need_sync = True
-        for dpid in self.dp_list:
-            datapath = self.dp_list[dpid].datapath
+        for switch in self.dp_list.values():
+            datapath = switch.datapath
             self.send_port_desc_stats_request(datapath)
 
     def delete_router(self, router_id):
-        l3plugin = manager.NeutronManager.get_service_plugins().get(
-            service_constants.L3_ROUTER_NAT)
         for tenant in self._tenants.values():
             try:
                 router = tenant.routers.pop(router_id)
@@ -224,13 +221,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                         else:
                             del tenant.subnets[subnet.id]
 
-                        l3plugin.setup_vrouter_arp_responder(
-                            self.ctx,
-                            "br-int",
-                            "remove",
-                            self.ARP_AND_BR_TABLE,
+                        self._remove_vrouter_arp_responder(
                             subnet.segmentation_id,
-                            interface['network_id'],
                             interface['mac_address'],
                             self.get_ip_from_interface(interface))
 
@@ -243,8 +235,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         router_old = tenant_topology.routers.get(router.id)
         tenant_topology.add_router(router)
         subnets = tenant_topology.subnets
-        l3plugin = manager.NeutronManager.get_service_plugins().get(
-            service_constants.L3_ROUTER_NAT)
 
         for interface in router.interfaces:
             for subnet_info in interface['subnets']:
@@ -255,13 +245,8 @@ class L3ReactiveApp(app_manager.RyuApp):
 
                 router.add_subnet(subnet)
                 if subnet.segmentation_id != 0:
-                    l3plugin.setup_vrouter_arp_responder(
-                        self.ctx,
-                        "br-int",
-                        "add",
-                        self.ARP_AND_BR_TABLE,
+                    self._add_vrouter_arp_responder(
                         subnet.segmentation_id,
-                        interface['network_id'],
                         interface['mac_address'],
                         self.get_ip_from_interface(interface))
 
@@ -284,13 +269,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                     else:
                         del tenant_topology.subnets[subnet.id]
 
-                    l3plugin.setup_vrouter_arp_responder(
-                        self.ctx,
-                        "br-int",
-                        "remove",
-                        self.ARP_AND_BR_TABLE,
+                    self._remove_vrouter_arp_responder(
                         subnet.segmentation_id,
-                        interface['network_id'],
                         interface['mac_address'],
                         self.get_ip_from_interface(interface))
 
@@ -309,7 +289,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                     self.add_flow_metadata_by_port_num(
                         port_desc['datapath'],
                         0,
-                        HIGH_PRIOREITY_FLOW,
+                        HIGH_PRIORITY_FLOW,
                         port_desc['local_port_num'],
                         port_data['segmentation_id'],
                         0xffff,
@@ -317,8 +297,6 @@ class L3ReactiveApp(app_manager.RyuApp):
 
     def sync_port(self, port):
         LOG.info(_LI("sync_port--> %s\n"), port)
-        l3plugin = manager.NeutronManager.get_service_plugins().get(
-            service_constants.L3_ROUTER_NAT)
 
         tenant_topo = self.get_tenant_by_id(port['tenant_id'])
         subnets = tenant_topo.subnets
@@ -335,13 +313,8 @@ class L3ReactiveApp(app_manager.RyuApp):
 
             subnet.segmentation_id = port['segmentation_id']
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
-                l3plugin.setup_vrouter_arp_responder(
-                    self.ctx,
-                    "br-int",
-                    "add",
-                    self.ARP_AND_BR_TABLE,
+                self._add_vrouter_arp_responder(
                     subnet.segmentation_id,
-                    port['network_id'],
                     port['mac_address'],
                     self.get_ip_from_interface(port))
             else:
@@ -525,7 +498,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             # Send output flow directly to port, use the same datapath
             actions = self.add_flow_subnet_traffic(datapath,
                 self.L3_VROUTER_TABLE,
-                MEDIUM_PRIOREITY_FLOW,
+                MEDIUM_PRIORITY_FLOW,
                 in_port,
                 src_seg_id,
                 eth.src,
@@ -538,7 +511,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             # Install the reverse flow return traffic
             self.add_flow_subnet_traffic(datapath,
                                          self.L3_VROUTER_TABLE,
-                                         MEDIUM_PRIOREITY_FLOW,
+                                         MEDIUM_PRIORITY_FLOW,
                                          dst_p_desc['local_port_num'],
                                          dst_seg_id,
                                          dst_p_data['mac_address'],
@@ -557,7 +530,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             localSwitch = self.dp_list.get(datapath.id)
             actions = self.add_flow_subnet_traffic(datapath,
                                                    self.L3_VROUTER_TABLE,
-                                                   MEDIUM_PRIOREITY_FLOW,
+                                                   MEDIUM_PRIORITY_FLOW,
                                                    in_port,
                                                    src_seg_id,
                                                    eth.src,
@@ -573,7 +546,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             # Remote reverse flow install
             self.add_flow_subnet_traffic(remoteSwitch.datapath,
                                          self.L3_VROUTER_TABLE,
-                                         MEDIUM_PRIOREITY_FLOW,
+                                         MEDIUM_PRIORITY_FLOW,
                                          dst_p_desc['local_port_num'],
                                          dst_seg_id,
                                          dst_p_data['mac_address'],
@@ -602,7 +575,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                                 match_dst_ip, match_src_ip, src_mac,
                                 dst_mac, out_port_num, dst_seg_id=None):
         parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
         match.set_in_port(in_port)
@@ -976,24 +948,24 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.add_flow_go_to_table_on_arp(
             datapath,
             self.CLASSIFIER_TABLE,
-            NORMAL_PRIOREITY_FLOW,
+            NORMAL_PRIORITY_FLOW,
             self.ARP_AND_BR_TABLE)
         #Goto from CLASSIFIER to ARP Table on broadcast
         #TODO(gampel) can go directly to NORMAL
         self.add_flow_goto_table_on_broad(
             datapath,
             self.CLASSIFIER_TABLE,
-            MEDIUM_PRIOREITY_FLOW,
+            MEDIUM_PRIORITY_FLOW,
             self.ARP_AND_BR_TABLE)
         #Goto from CLASSIFIER to ARP Table on mcast
         #TODO(gampel) can go directly to NORMAL
         self.add_flow_goto_table_on_mcast(
             datapath,
             self.CLASSIFIER_TABLE,
-            NORMAL_PRIOREITY_FLOW,
+            NORMAL_PRIORITY_FLOW,
             self.ARP_AND_BR_TABLE)
 
-        # Normal flow on arp table in low priorety
+        # Normal flow on arp table in low priority
         self.add_flow_normal(datapath, self.ARP_AND_BR_TABLE, 1)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -1039,7 +1011,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                           port.name,
                           port.hw_addr)
                 self.add_flow_normal_by_port_num(
-                    datapath, 0, HIGH_PRIOREITY_FLOW, port.port_no)
+                    datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
             elif port.name.startswith('qvo'):
                 # this is a VM port start with qvo<NET-ID[:11]> update the port
                 # data with the port num and the switch dpid
@@ -1048,7 +1020,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                 if (segmentation_id != 0):
                     self.add_flow_metadata_by_port_num(datapath,
                                                        0,
-                                                       HIGH_PRIOREITY_FLOW,
+                                                       HIGH_PRIORITY_FLOW,
                                                        port.port_no,
                                                        segmentation_id,
                                                        0xffff,
@@ -1060,11 +1032,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                         port.name, port.hw_addr)
                 switch.patch_port_num = port.port_no
                 self.add_flow_normal_by_port_num(
-                    datapath, 0, HIGH_PRIOREITY_FLOW, port.port_no)
+                    datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
         LOG.debug('OFPPortDescStatsReply received: %s', ports)
         switch.local_ports = ports
-        l3plugin = manager.NeutronManager.get_service_plugins().get(
-            service_constants.L3_ROUTER_NAT)
         #TODO(gampel) Install flows only for tenants with VMs running on
         #this specific compute node
         for tenantid in self._tenants:
@@ -1081,7 +1051,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                 self.add_flow_normal_local_subnet(
                                     datapath,
                                     self.L3_VROUTER_TABLE,
-                                    NORMAL_PRIOREITY_FLOW,
+                                    NORMAL_PRIORITY_FLOW,
                                     network,
                                     net_mask,
                                     segmentation_id)
@@ -1092,13 +1062,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                                     self.L3_VROUTER_TABLE,
                                     99,
                                     segmentation_id)
-                                l3plugin.setup_vrouter_arp_responder(
-                                    self.ctx,
-                                    "br-int",
-                                    "add",
-                                    self.ARP_AND_BR_TABLE,
-                                    segmentation_id,
-                                    interface['network_id'],
+                                self._add_vrouter_arp_responder(
+                                    subnet.segmentation_id,
                                     interface['mac_address'],
                                     self.get_ip_from_interface(interface))
 
@@ -1251,6 +1216,80 @@ class L3ReactiveApp(app_manager.RyuApp):
     def get_subnet_from_cidr(self, cidr):
         split = cidr.split("/")
         return (split[0], split[1])
+
+    def _get_match_vrouter_arp_responder(self, datapath, segmentation_id,
+                                         interface_ip):
+        parser = datapath.ofproto_parser
+        match = parser.OFPMatch()
+        match.set_dl_type(ether.ETH_TYPE_ARP)
+        match.set_arp_tpa(ipv4_text_to_int(str(interface_ip)))
+        match.set_metadata(segmentation_id)
+        return match
+
+    def _get_inst_vrouter_arp_responder(self, datapath,
+                                        mac_address, interface_ip):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        actions = [parser.OFPActionSetField(arp_op=arp.ARP_REPLY),
+                   parser.NXActionRegMove(src_field='arp_sha',
+                                          dst_field='arp_tha',
+                                          n_bits=48),
+                   parser.NXActionRegMove(src_field='arp_spa',
+                                          dst_field='arp_tpa',
+                                          n_bits=32),
+                   parser.OFPActionSetField(arp_sha=mac_address),
+                   parser.OFPActionSetField(arp_spa=interface_ip),
+                   parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
+        instructions = [parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        return instructions
+
+    def _add_vrouter_arp_responder(self, segmentation_id,
+                                   mac_address, interface_ip):
+        LOG.debug("adding %(segmentation_id)s, %(mac_address)s, "
+                  "%(interface_ip)s",
+                  {'segmentation_id': segmentation_id,
+                   'mac_address': mac_address,
+                   'interface_ip': interface_ip})
+        for switch in self.dp_list.values():
+            datapath = switch.datapath
+            match = self._get_match_vrouter_arp_responder(
+                datapath, segmentation_id, interface_ip)
+            instructions = self._get_inst_vrouter_arp_responder(
+                datapath, mac_address, interface_ip)
+            ofproto = datapath.ofproto
+            parser = datapath.ofproto_parser
+            msg = parser.OFPFlowMod(datapath=datapath,
+                                    table_id=L3ReactiveApp.ARP_AND_BR_TABLE,
+                                    command=ofproto.OFPFC_ADD,
+                                    priority=MEDIUM_PRIORITY_FLOW,
+                                    match=match, instructions=instructions,
+                                    flags=ofproto.OFPFF_SEND_FLOW_REM)
+            datapath.send_msg(msg)
+
+    def _remove_vrouter_arp_responder(self, segmentation_id, mac_address,
+                                      interface_ip):
+        LOG.debug("removing %(segmentation_id)s, %(mac_address)s, "
+                  "%(interface_ip)s",
+                  {'segmentation_id': segmentation_id,
+                   'mac_address': mac_address,
+                   'interface_ip': interface_ip})
+        for switch in self.dp_list.values():
+            datapath = switch.datapath
+            ofproto = datapath.ofproto
+            parser = datapath.ofproto_parser
+            match = self._get_match_vrouter_arp_responder(
+                datapath, segmentation_id, interface_ip)
+            msg = parser.OFPFlowMod(datapath=datapath,
+                                    cookie=0,
+                                    cookie_mask=0,
+                                    table_id=L3ReactiveApp.ARP_AND_BR_TABLE,
+                                    command=ofproto.OFPFC_DELETE,
+                                    priority=MEDIUM_PRIORITY_FLOW,
+                                    out_port=ofproto.OFPP_ANY,
+                                    out_group=ofproto.OFPG_ANY,
+                                    match=match)
+            datapath.send_msg(msg)
 
 # Base static
 
