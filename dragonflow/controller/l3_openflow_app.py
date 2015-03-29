@@ -213,25 +213,26 @@ class L3ReactiveApp(app_manager.RyuApp):
                 pass
             else:
                 for interface in router.interfaces:
-                    subnet = router.subnets[interface['subnet']['id']]
-                    if subnet.segmentation_id == 0:
-                        continue
+                    for subnet_info in router.interfaces['subnets']:
+                        subnet = router.subnets[subnet_info['id']]
+                        if subnet.segmentation_id == 0:
+                            continue
 
-                    for router in tenant.routers.values():
-                        if subnet.id in router.subnets:
-                            break
-                    else:
-                        del tenant.subnets[subnet.id]
+                        for router in tenant.routers.values():
+                            if subnet.id in router.subnets:
+                                break
+                        else:
+                            del tenant.subnets[subnet.id]
 
-                    l3plugin.setup_vrouter_arp_responder(
-                        self.ctx,
-                        "br-int",
-                        "remove",
-                        self.ARP_AND_BR_TABLE,
-                        subnet.segmentation_id,
-                        interface['network_id'],
-                        interface['mac_address'],
-                        self.get_ip_from_interface(interface))
+                        l3plugin.setup_vrouter_arp_responder(
+                            self.ctx,
+                            "br-int",
+                            "remove",
+                            self.ARP_AND_BR_TABLE,
+                            subnet.segmentation_id,
+                            interface['network_id'],
+                            interface['mac_address'],
+                            self.get_ip_from_interface(interface))
 
     def sync_router(self, router_info):
         LOG.info(_LI("sync_router --> %s"), router_info)
@@ -246,50 +247,52 @@ class L3ReactiveApp(app_manager.RyuApp):
             service_constants.L3_ROUTER_NAT)
 
         for interface in router.interfaces:
-            subnet = subnets.setdefault(
-                interface['subnet']['id'],
-                Subnet(interface['subnet'], 0),
-            )
+            for subnet_info in interface['subnets']:
+                subnet = subnets.setdefault(
+                        subnet_info['id'],
+                        Subnet(subnet_info, 0),
+                )
 
-            router.add_subnet(subnet)
-            if subnet.segmentation_id != 0:
-                l3plugin.setup_vrouter_arp_responder(
-                    self.ctx,
-                    "br-int",
-                    "add",
-                    self.ARP_AND_BR_TABLE,
-                    subnet.segmentation_id,
-                    interface['network_id'],
-                    interface['mac_address'],
-                    self.get_ip_from_interface(interface))
+                router.add_subnet(subnet)
+                if subnet.segmentation_id != 0:
+                    l3plugin.setup_vrouter_arp_responder(
+                        self.ctx,
+                        "br-int",
+                        "add",
+                        self.ARP_AND_BR_TABLE,
+                        subnet.segmentation_id,
+                        interface['network_id'],
+                        interface['mac_address'],
+                        self.get_ip_from_interface(interface))
 
         # If previous definition of the router is known
         if router_old:
             # Handle removed subnets
             for interface in router_old.interfaces:
-                subnet = router_old.subnets[interface['subnet']['id']]
-                if subnet.segmentation_id == 0:
-                    continue
+                for subnet_info in interface['subnets']:
+                    subnet = router_old.subnets[subnet_info['id']]
+                    if subnet.segmentation_id == 0:
+                        continue
 
-                # if subnet was not deleted
-                if subnet.id in router.subnets:
-                    continue
-
-                for router in tenant_topology.routers.values():
+                    # if subnet was not deleted
                     if subnet.id in router.subnets:
-                        break
-                else:
-                    del tenant_topology.subnets[subnet.id]
+                        continue
 
-                l3plugin.setup_vrouter_arp_responder(
-                    self.ctx,
-                    "br-int",
-                    "remove",
-                    self.ARP_AND_BR_TABLE,
-                    subnet.segmentation_id,
-                    interface['network_id'],
-                    interface['mac_address'],
-                    self.get_ip_from_interface(interface))
+                    for router in tenant_topology.routers.values():
+                        if subnet.id in router.subnets:
+                            break
+                    else:
+                        del tenant_topology.subnets[subnet.id]
+
+                    l3plugin.setup_vrouter_arp_responder(
+                        self.ctx,
+                        "br-int",
+                        "remove",
+                        self.ARP_AND_BR_TABLE,
+                        subnet.segmentation_id,
+                        interface['network_id'],
+                        interface['mac_address'],
+                        self.get_ip_from_interface(interface))
 
     def attach_switch_port_desc_to_port_data(self, port_data):
         if 'id' in port_data:
@@ -1068,35 +1071,36 @@ class L3ReactiveApp(app_manager.RyuApp):
             for router in self._tenants[tenantid].routers.values():
                 for subnet in router.subnets.values():
                     for interface in router.data['_interfaces']:
-                        if (interface['subnet']['id'] == subnet.data['id']
-                                and subnet.segmentation_id != 0):
-                            segmentation_id = subnet.segmentation_id
-                            network, net_mask = self.get_subnet_from_cidr(
-                                subnet.data['cidr'])
+                        for subnet_info in interface['subnets']:
+                            if (subnet.data['id'] == subnet_info['id']
+                                    and subnet.segmentation_id != 0):
+                                segmentation_id = subnet.segmentation_id
+                                network, net_mask = self.get_subnet_from_cidr(
+                                    subnet.data['cidr'])
 
-                            self.add_flow_normal_local_subnet(
-                                datapath,
-                                self.L3_VROUTER_TABLE,
-                                NORMAL_PRIOREITY_FLOW,
-                                network,
-                                net_mask,
-                                segmentation_id)
+                                self.add_flow_normal_local_subnet(
+                                    datapath,
+                                    self.L3_VROUTER_TABLE,
+                                    NORMAL_PRIOREITY_FLOW,
+                                    network,
+                                    net_mask,
+                                    segmentation_id)
 
-                            self.add_flow_match_gw_mac_to_cont(
-                                datapath,
-                                interface['mac_address'],
-                                self.L3_VROUTER_TABLE,
-                                99,
-                                segmentation_id)
-                            l3plugin.setup_vrouter_arp_responder(
-                                self.ctx,
-                                "br-int",
-                                "add",
-                                self.ARP_AND_BR_TABLE,
-                                segmentation_id,
-                                interface['network_id'],
-                                interface['mac_address'],
-                                self.get_ip_from_interface(interface))
+                                self.add_flow_match_gw_mac_to_cont(
+                                    datapath,
+                                    interface['mac_address'],
+                                    self.L3_VROUTER_TABLE,
+                                    99,
+                                    segmentation_id)
+                                l3plugin.setup_vrouter_arp_responder(
+                                    self.ctx,
+                                    "br-int",
+                                    "add",
+                                    self.ARP_AND_BR_TABLE,
+                                    segmentation_id,
+                                    interface['network_id'],
+                                    interface['mac_address'],
+                                    self.get_ip_from_interface(interface))
 
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser

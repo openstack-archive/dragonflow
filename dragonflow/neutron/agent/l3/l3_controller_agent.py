@@ -215,7 +215,8 @@ class L3ControllerAgent(manager.Manager):
         self.controller.sync_router(router)
 
         for interface in router.get('_interfaces', ()):
-            self.sync_subnet_port_data(interface['subnet']['id'])
+            for subnet_info in interface['subnets']:
+                self.sync_subnet_port_data(subnet_info['id'])
 
         LOG.debug("Finished a router update for %s", update.id)
         router_processor.fetched_and_processed(update.timestamp)
