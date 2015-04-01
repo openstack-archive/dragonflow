@@ -242,25 +242,6 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                     l3_agent)
         return
 
-    def setup_vrouter_arp_responder(self, _context, br, action, table_id,
-                                    segmentation_id, net_uuid, mac_address,
-                                    ip_address):
-
-        topic_port_update = topics.get_topic_name(topics.AGENT,
-                                                  SDNCONTROLLER,
-                                                  topics.UPDATE)
-        target = messaging.Target(topic=topic_port_update)
-        rpcapi = n_rpc.get_client(target)
-        rpcapi.cast(_context,
-                    'setup_entry_for_arp_reply_remote',
-                    br_id="br-int",
-                    action=action,
-                    table_id=table_id,
-                    segmentation_id=segmentation_id,
-                    net_uuid=net_uuid,
-                    mac_address=mac_address,
-                    ip_address=ip_address)
-
     def send_set_controllers_update(self, _context, force_reconnect):
 
         topic_port_update = topics.get_topic_name(topics.AGENT,
