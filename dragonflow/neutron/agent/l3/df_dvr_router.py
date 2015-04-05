@@ -27,6 +27,7 @@ LOG = logging.getLogger(__name__)
 class DfDvrRouter(dvr_router.DvrRouter):
 
     def __init__(self, agent, host, *args, **kwargs):
+        self.controller = None
         super(DfDvrRouter, self).__init__(agent, host, *args, **kwargs)
 
     def _process_internal_ports(self):
@@ -53,19 +54,27 @@ class DfDvrRouter(dvr_router.DvrRouter):
         if sn_port is None:
             LOG.debug("None sn_port")
             return
-        LOG.debug("remove_snat_binding_to_controller")
+
+        LOG.debug("add_snat_binding_to_controller")
         LOG.debug("subnet = %s" % sn_port['fixed_ips'][0]['subnet_id'])
         LOG.debug("ip = %s" % sn_port['fixed_ips'][0]['ip_address'])
         LOG.debug("mac = %s" % sn_port['mac_address'])
+
+        self.controller.add_snat_binding(
+            sn_port['fixed_ips'][0]['subnet_id'], sn_port, port)
 
     def remove_snat_binding_to_controller(self, sn_port, port):
         if sn_port is None:
             LOG.error("None sn_port")
             return
+
         LOG.debug("remove_snat_binding_to_controller")
         LOG.debug("subnet = %s" % sn_port['fixed_ips'][0]['subnet_id'])
         LOG.debug("ip = %s" % sn_port['fixed_ips'][0]['ip_address'])
         LOG.debug("mac = %s" % sn_port['mac_address'])
+
+        self.controller.remove_snat_binding(
+            sn_port['fixed_ips'][0]['subnet_id'], sn_port, port)
 
     def internal_network_added(self, port):
         ex_gw_port = self.get_ex_gw_port()

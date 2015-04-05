@@ -166,6 +166,14 @@ class Subnet(object):
         )
 
 
+class SnatBinding(object):
+
+    def __init__(self, subnet, port):
+        self.subnet_id = subnet
+        self.sn_port = port
+        self.segmentation_id = 0
+
+
 class L3ReactiveApp(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     #OFP_VERSIONS = [ofproto_v1_2.OFP_VERSION]
@@ -177,6 +185,7 @@ class L3ReactiveApp(app_manager.RyuApp):
     METADATA_TABLE_ID = 50
     ARP_AND_BR_TABLE = 51
     L3_VROUTER_TABLE = 52
+    L3_PUBLIC_TABLE = 53
 
     def __init__(self, *args, **kwargs):
         super(L3ReactiveApp, self).__init__(*args, **kwargs)
@@ -187,6 +196,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         self._tenants = {}
         self.need_sync = True
         self.dp_list = {}
+        self.snat_bindings = {}
 
     def get_tenant_by_id(self, tenant_id):
         return self._tenants.setdefault(tenant_id, TenantTopology(tenant_id))
@@ -944,6 +954,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         #send L3 traffic unmatched to controller
         self.add_flow_go_to_table2(datapath, self.CLASSIFIER_TABLE, 1,
                                    self.L3_VROUTER_TABLE)
+
         #Goto from CLASSIFIER to ARP Table on ARP
         self.add_flow_go_to_table_on_arp(
             datapath,
@@ -1290,6 +1301,81 @@ class L3ReactiveApp(app_manager.RyuApp):
                                     out_group=ofproto.OFPG_ANY,
                                     match=match)
             datapath.send_msg(msg)
+
+    def add_snat_binding(self, subnet_id, sn_port, added_port):
+        # check if snat_binding exists, if it does add "added_port"
+        # no need to configure everything, just add flows to port node
+        # if doesnt exists need to create snat_binding object
+        self.snat_bindings[subnet_id] = SnatBinding(subnet_id, sn_port)
+        snat_binding = self.snat_bindings[subnet_id]
+
+        # Now find the segmentation ID for this subnet if it exists
+        for tenantid in self._tenants:
+            tenant = self._tenants[tenantid]
+            for router in tenant.routers.values():
+                for subnet in router.subnets.values():
+                    if subnet.id == subnet_id:
+                        snat_binding.segmentation_id = subnet.segmentation_id
+
+        if snat_binding.segmentation_id != 0:
+            self.bootstrap_snat_flows()
+        else:
+            LOG.error("Could not bind snat to subnet")
+
+    def remove_snat_binding(self, subnet_id, sn_port, removed_port):
+        # check if removed_port is last port in snat_binding, if
+        # yes it needs to be removed
+        # remove flows from all nodes that dont have ports from
+        # this subnet
+
+        # if subnet_id in self.snat_bindings:
+        #     del self.snat_bindings[subnet_id]
+        # TODO(gsagie) add removal logic
+        pass
+
+    def bootstrap_snat_flows(self):
+        # Currently configure the same public table for all compute nodes
+        # TODO(gsagie) send only to relevant compute nodes for each subnet
+        print (self.dp_list)
+        for dp in self.dp_list.values():
+            for snat_binding in self.snat_bindings.values():
+                if (dp.datapath == 0):
+                    msg = "Datapath object is not set"
+                    raise RuntimeError(msg)
+                self.add_flow_snat_redirect(dp.datapath, snat_binding)
+
+    def add_flow_snat_redirect(self, datapath, snat_binding):
+        pass
+        # # TODO(gsagie) remove comments
+        # if (snat_binding.segmentation_id == 0):
+        #     msg = "Segmentation id == 0"
+        #     raise RuntimeError(msg)
+        #
+        # parser = datapath.ofproto_parser
+        # ofproto = datapath.ofproto
+        #
+        # match = parser.OFPMatch()
+        # match.set_dl_type(ether.ETH_TYPE_IP)
+        # match.set_metadata(snat_binding.segmentation_id)
+        #
+        # actions = []
+        # actions.append(parser.OFPActionDecNwTtl())
+        # eth_dst_mac = snat_binding.sn_port['mac_address']
+        # #eth_src_mac = snat_binding.router_mac
+        # #actions.append(parser.OFPActionSetField(eth_src=eth_src_mac))
+        # actions.append(parser.OFPActionSetField(eth_dst=eth_dst_mac))
+        # actions.append(parser.OFPActionOutput(ofproto.OFPP_NORMAL))
+        #
+        # inst = [datapath.ofproto_parser.OFPInstructionActions(
+        #     ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        #
+        # self.mod_flow(
+        #     datapath,
+        #     inst=inst,
+        #     table_id=self.L3_VROUTER_TABLE,
+        #     priority=1700,
+        #     match=match)
+
 
 # Base static
 
