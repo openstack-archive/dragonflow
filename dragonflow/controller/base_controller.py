@@ -30,3 +30,11 @@ class ControllerBase(object):
     @abc.abstractmethod
     def sync_router(self, router):
         pass
+
+    @abc.abstractmethod
+    def add_snat_binding(self, subnet_id, sn_port, router_port_added):
+        pass
+
+    @abc.abstractmethod
+    def remove_snat_binding(self, subnet_id, sn_port, router_port_removed):
+        pass

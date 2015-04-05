@@ -256,6 +256,7 @@ class L3ControllerAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
 
     def _router_added(self, router_id, router):
         ri = self._create_router(router_id, router)
+        ri.controller = self.controller
         self.router_info[router_id] = ri
         #ri.create()
 
