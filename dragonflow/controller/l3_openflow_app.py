@@ -256,7 +256,7 @@ class L3ReactiveApp(app_manager.RyuApp):
 
                 router.add_subnet(subnet)
                 if subnet.segmentation_id != 0:
-                    self._add_vrouter_arp_responder(
+                    self._add_vrouter_arp_responder_cast(
                         subnet.segmentation_id,
                         interface['mac_address'],
                         self.get_ip_from_interface(interface))
@@ -324,7 +324,7 @@ class L3ReactiveApp(app_manager.RyuApp):
 
             subnet.segmentation_id = port['segmentation_id']
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
-                self._add_vrouter_arp_responder(
+                self._add_vrouter_arp_responder_cast(
                     subnet.segmentation_id,
                     port['mac_address'],
                     self.get_ip_from_interface(port))
@@ -1075,6 +1075,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                     99,
                                     segmentation_id)
                                 self._add_vrouter_arp_responder(
+                                    datapath,
                                     subnet.segmentation_id,
                                     interface['mac_address'],
                                     self.get_ip_from_interface(interface))
@@ -1256,7 +1257,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         return instructions
 
-    def _add_vrouter_arp_responder(self, segmentation_id,
+    def _add_vrouter_arp_responder_cast(self, segmentation_id,
                                    mac_address, interface_ip):
         LOG.debug("adding %(segmentation_id)s, %(mac_address)s, "
                   "%(interface_ip)s",
@@ -1265,6 +1266,14 @@ class L3ReactiveApp(app_manager.RyuApp):
                    'interface_ip': interface_ip})
         for switch in self.dp_list.values():
             datapath = switch.datapath
+            self._add_vrouter_arp_responder(
+                    datapath,
+                    segmentation_id,
+                    mac_address,
+                    interface_ip)
+
+    def _add_vrouter_arp_responder(self, datapath, segmentation_id,
+            mac_address, interface_ip):
             match = self._get_match_vrouter_arp_responder(
                 datapath, segmentation_id, interface_ip)
             instructions = self._get_inst_vrouter_arp_responder(
