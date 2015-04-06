@@ -986,7 +986,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         switch = self.dp_list.get(datapath.id)
         if not switch:
             self.dp_list[datapath.id] = AgentDatapath()
-            self.dp_list[datapath.id].datapath = datapath
+        self.dp_list[datapath.id].datapath = datapath
         # Normal flow with the lowset priority to send all traffic to NORMAL
         #until the bootstarp is done
         self.add_flow_normal(datapath, self.BASE_TABLE, 0)
