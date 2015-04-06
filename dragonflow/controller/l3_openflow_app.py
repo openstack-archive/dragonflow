@@ -25,7 +25,6 @@ from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.controller import ofp_event
 from ryu.ofproto import ether
-from ryu.ofproto.ether import ETH_TYPE_8021Q
 from ryu.ofproto import ofproto_v1_3
 
 from ryu.lib.packet import arp
@@ -177,8 +176,6 @@ class SnatBinding(object):
 
 class L3ReactiveApp(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
-    #OFP_VERSIONS = [ofproto_v1_2.OFP_VERSION]
-    #OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
     BASE_RPC_API_VERSION = '1.0'
 
     BASE_TABLE = 0
@@ -403,7 +400,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         switch = self.dp_list.get(datapath.id)
         if switch:
             if 'metadata' not in msg.match:
-                # send request for loacl switch data
+                # send request for local switch data
                 self.send_port_desc_stats_request(datapath)
                 LOG.error(_LE("No metadata on packet from %s"),
                           eth.src)
@@ -433,7 +430,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                                             pkt,
                                                             pkt_ethernet,
                                                             pkt_ipv4) == 1:
-                                # trafic to the virtual routre handle only
+                                # traffic to the virtual router handle only
                                 # ping
                                 return
                             (dst_p_data,
@@ -456,7 +453,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                             pkt,
                                             pkt_ethernet,
                                             pkt_ipv4) == 1:
-                                        # this trafic to the virtual routre
+                                        # this traffic to the virtual router
                                         return
                                     if not dst_p_data:
                                         LOG.error(_LE("No local switch"
@@ -471,8 +468,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                                             pkt_ethernet,
                                             pkt_ipv4) != -1:
                                         # case for vrouter that is not the
-                                        #gw and we are trying to  ping
-                                        # this trafic to the virtual routre
+                                        # gw and we are trying to ping
+                                        # this traffic to the virtual router
                                         return
 
                                     LOG.debug("Installing flow Route %s-> %s",
@@ -607,12 +604,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             field = parser.OFPActionSetField(tunnel_id=dst_seg_id)
             actions.append(field)
             goto_inst = parser.OFPInstructionGotoTable(60)
-            #field = parser.OFPActionSetField(metadata=0x8000)
-            #actions.append(field)
-            #write_metadata = parser.OFPInstructionWriteMetadata(0x8000,0x8000)
-            #inst= [write_metadata]
             inst.append(goto_inst)
-            #inst.append(write_metadata)
         else:
             actions.append(parser.OFPActionOutput(out_port_num,
                                               ofproto.OFPCML_NO_BUFFER))
@@ -632,13 +624,11 @@ class L3ReactiveApp(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
         match = parser.OFPMatch(vlan_vid=0x1000 | vlan_id)
-        #match = parser.OFPMatch(vlan_pcp=0)
         actions = [
             parser.OFPActionPopVlan(),
             parser.OFPActionOutput(
                 ofproto.OFPP_NORMAL,
                 ofproto.OFPCML_NO_BUFFER)]
-        ofproto = datapath.ofproto
         inst = [datapath.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         self.mod_flow(
@@ -652,21 +642,14 @@ class L3ReactiveApp(app_manager.RyuApp):
                                      dst_net, dst_mask, seg_id):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        #match = parser.OFPMatch(vlan_vid=0x1000| vlan_id)
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
-        #match.set_vlan_vid(0x1000 | vlan_id)
         match.set_metadata(seg_id)
         match.set_ipv4_dst_masked(ipv4_text_to_int(str(dst_net)),
                                   mask_ntob(int(dst_mask)))
-        #match = parser.OFPMatch(vlan_pcp=0)
         actions = [
-            #parser.OFPActionPopVlan(),
             parser.OFPActionOutput(
                 ofproto.OFPP_NORMAL)]
-        # actions = [parser.OFPActionOutput(ofproto.OFPP_NORMAL,
-        #    ofproto.OFPCML_NO_BUFFER)]
-        ofproto = datapath.ofproto
         inst = [datapath.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         self.mod_flow(
@@ -680,9 +663,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
         match = parser.OFPMatch(in_port=in_port)
-        #match = parser.OFPMatch(vlan_pcp=0)
         actions = [parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
-        ofproto = datapath.ofproto
         inst = [datapath.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         self.mod_flow(
@@ -709,59 +690,12 @@ class L3ReactiveApp(app_manager.RyuApp):
             priority=priority,
             match=match)
 
-    def add_flow_push_vlan_by_port_num(self, datapath, table, priority,
-                                      in_port, dst_vlan, goto_table):
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
-        match = parser.OFPMatch()
-        match.set_in_port(in_port)
-        field = parser.OFPMatchField.make(
-            ofproto.OXM_OF_VLAN_VID, 0x1000 | dst_vlan)
-        actions = [datapath. ofproto_parser. OFPActionPushVlan(
-            ETH_TYPE_8021Q), datapath.ofproto_parser.OFPActionSetField(field)]
-        goto_inst = parser.OFPInstructionGotoTable(goto_table)
-        ofproto = datapath.ofproto
-        inst = [datapath.ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions), goto_inst]
-        self.mod_flow(
-            datapath,
-            inst=inst,
-            table_id=table,
-            priority=priority,
-            match=match)
-
-    def delete_all_flow_from_table(self, datapath, table_id):
-
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
-        match = parser.OFPMatch()
-        instructions = []
-        flow_mod = datapath.ofproto_parser.OFPFlowMod(
-            datapath,
-            0,
-            0,
-            table_id,
-            ofproto.OFPFC_DELETE,
-            0,
-            0,
-            1,
-            ofproto.OFPCML_NO_BUFFER,
-            ofproto.OFPP_ANY,
-            ofproto.OFPG_ANY,
-            0,
-            match,
-            instructions)
-        datapath.send_msg(flow_mod)
-
     def add_flow_normal(self, datapath, table, priority, match=None):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        #match = parser.OFPMatch(vlan_vid=0x1000)
-        #match = parser.OFPMatch(vlan_pcp=0)
         actions = [
             parser.OFPActionOutput(
                 ofproto.OFPP_NORMAL)]
-        ofproto = datapath.ofproto
         inst = [datapath.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         self.mod_flow(
@@ -828,7 +762,6 @@ class L3ReactiveApp(app_manager.RyuApp):
 
     def add_flow_goto_table_on_mcast(self, datapath, table, priority,
                                      goto_table_id):
-        #ofproto = datapath.ofproto
         match = datapath.ofproto_parser.OFPMatch(eth_dst='01:00:00:00:00:00')
         addint = haddr_to_bin('01:00:00:00:00:00')
         match.set_dl_dst_masked(addint, addint)
@@ -858,12 +791,11 @@ class L3ReactiveApp(app_manager.RyuApp):
         datapath.send_msg(mod)
 
     def add_flow_match_to_controller(self, datapath, table, priority,
-                                     match=None, _actions=None):
+                                     match=None):
 
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
 
-        ofproto = datapath.ofproto
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
 
@@ -877,14 +809,12 @@ class L3ReactiveApp(app_manager.RyuApp):
             match=match)
 
     def add_flow_match_gw_mac_to_cont(self, datapath, dst_mac, table,
-                                      priority, seg_id=None,
-                                      _actions=None):
+                                      priority, seg_id=None):
         parser = datapath.ofproto_parser
-        #ofproto = datapath.ofproto
         match = parser.OFPMatch(eth_dst=dst_mac, metadata=seg_id)
 
         self.add_flow_match_to_controller(
-            datapath, table, priority, match=match, _actions=_actions)
+            datapath, table, priority, match=match)
 
     def add_flow_l3(self, datapath, in_port, dst_mac, src_mac, vlan_vid,
                     actions):
@@ -988,7 +918,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             self.dp_list[datapath.id] = AgentDatapath()
         self.dp_list[datapath.id].datapath = datapath
         # Normal flow with the lowset priority to send all traffic to NORMAL
-        #until the bootstarp is done
+        # until the bootstrap is done
         self.add_flow_normal(datapath, self.BASE_TABLE, 0)
         self.send_port_desc_stats_request(datapath)
 
@@ -1003,7 +933,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         ports = []
         datapath = ev.msg.datapath
         switch = self.dp_list.get(datapath.id)
-        #self.delete_all_flow_from_table(datapath, self.BASE_TABLE)
         self.add_bootstrap_flows(datapath)
         for port in ev.msg.body:
             ports.append('port_no=%d hw_addr=%s name=%s config=0x%08x '
@@ -1120,7 +1049,6 @@ class L3ReactiveApp(app_manager.RyuApp):
             tenant = self._tenants[tenantid]
             for mac in tenant.mac_to_port_data:
                 port_data = tenant.mac_to_port_data[mac]
-                # print "port_data >>>>>>>>>>>>>>%s",port_data
                 if 'id' in port_data:
                     port_id = port_data['id']
                     sub_str_port_id = str(port_id[0:11])
@@ -1146,7 +1074,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                     if ip_address == fixed_ips['ip_address']:
                         return (port_data, fixed_ips['subnet_id'])
 
-        return(0, 0)
+        return (0, 0)
 
     def get_ip_from_interface(self, interface):
         for fixed_ip in interface['fixed_ips']:
@@ -1174,7 +1102,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                     # ping req
                     pkt_icmp = pkt.get_protocol(icmp.icmp)
                     if pkt_icmp:
-                        # send ping responce
+                        # send ping response
                         self._handle_icmp(
                             datapath,
                             in_port,
@@ -1184,10 +1112,10 @@ class L3ReactiveApp(app_manager.RyuApp):
                         LOG.debug("Sending ping echo -> ip %s ", pkt_ipv4.src)
                         retVal = 1
                     else:
-                        LOG.error(_LE("any comunication to a router that"
-                                   " is not ping should be dropped from"
-                                   "ip  %s"),
-                                   pkt_ipv4.src)
+                        LOG.error(_LE("any communication to a router that "
+                                      "is not ping should be dropped from "
+                                      "ip  %s"),
+                                  pkt_ipv4.src)
                         retVal = 1
         return retVal
 
