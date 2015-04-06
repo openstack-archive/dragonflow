@@ -94,9 +94,9 @@ class TenantTopology(object):
         self.edges = collections.defaultdict(list)
         self.routers = {}
         self.distances = {}
-        self.mac_to_port_data = collections.defaultdict(set)
-        self.subnets = collections.defaultdict(set)
-        self.tenant_id = tenant_id
+        self.mac_to_port_data = {}
+        self.subnets = {}
+        self.id = tenant_id
 
     def add_router(self, router):
         self.routers[router.id] = router
@@ -104,14 +104,11 @@ class TenantTopology(object):
     def del_router(self, router):
         del self.routers[router.id]
 
-    def get_router_by_id(self, router_id):
-        return self.routers[router_id]
-
     def add_node(self, value):
         self.nodes.add(value)
 
     def del_node(self, value):
-        self.node.remove(value)
+        self.nodes.remove(value)
 
     def add_edge(self, from_node, to_node, distance):
         self.edges[from_node].append(to_node)
