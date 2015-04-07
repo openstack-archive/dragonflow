@@ -147,6 +147,9 @@ class TenantTopology(object):
         (dst_port_data, dst_subnet) = self.find_port_data_by_ip_address(
             pkt_ipv4.dst
         )
+        if not dst_port_data:
+            LOG.error(_LE("No data for destination port %s"), pkt_ipv4.dst)
+            return None
 
         is_same_port = out_port_data.id == dst_port_data.id
         if is_same_port:
