@@ -65,11 +65,21 @@ UINT32_MAX = 0xffffffff
 UINT64_MAX = 0xffffffffffffffff
 OFPFW_NW_PROTO = 1 << 5
 
+
 HIGH_PRIORITY_FLOW = 1000
 MEDIUM_PRIORITY_FLOW = 100
 NORMAL_PRIORITY_FLOW = 10
 LOW_PRIORITY_FLOW = 1
 LOWEST_PRIORITY_FLOW = 0
+
+
+CONTROLLER_L3_CONFIGURED_FLOW_PRIORITY = 50
+ROUTER_INTERFACE_FLOW_PRIORITY = 40
+LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY = 30
+EAST_WEST_TRAFFIC_TO_CONTROLLER_FLOW_PRIORITY = 20
+SNAT_RULES_PRIORITY_FLOW = 10
+
+
 
 
 class AgentDatapath(object):
@@ -378,6 +388,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                         interface['mac_address'],
                         self.get_ip_from_interface(interface))
 
+        self.bootstrap_east_west_and_north_south_classifiers()
+
     def attach_switch_port_desc_to_port_data(self, port_data):
         if 'id' in port_data:
             port_id = port_data['id']
@@ -399,6 +411,11 @@ class L3ReactiveApp(app_manager.RyuApp):
                         0xffff,
                         self.CLASSIFIER_TABLE)
 
+    def bootstrap_east_west_and_north_south_classifiers(self):
+        for dp in self.dp_list.values():
+            self.bootstrap_inner_subnets(dp.datapath)
+        self.bootstrap_snat_flows()
+
     def sync_port(self, port):
         LOG.info(_LI("sync_port--> %s\n"), port)
 
@@ -416,11 +433,15 @@ class L3ReactiveApp(app_manager.RyuApp):
                 continue
 
             subnet.segmentation_id = port['segmentation_id']
+
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
                 self._add_vrouter_arp_responder_cast(
                     subnet.segmentation_id,
                     port['mac_address'],
                     self.get_ip_from_interface(port))
+
+                self.bootstrap_east_west_and_north_south_classifiers()
+
             else:
                 LOG.error(_LE("No subnet object for subnet %s"), subnet_id)
 
@@ -931,10 +952,18 @@ class L3ReactiveApp(app_manager.RyuApp):
             priority=priority,
             match=match)
 
-    def add_flow_match_gw_mac_to_cont(self, datapath, dst_mac, table,
+    def add_flow_match_gw_mac_to_cont(self, datapath, router_interface, table,
                                       priority, seg_id=None):
+
+        dst_mac = router_interface['mac_address']
+        router_ip_address = self.get_ip_from_interface(router_interface)
+
         parser = datapath.ofproto_parser
-        match = parser.OFPMatch(eth_dst=dst_mac, metadata=seg_id)
+        match = parser.OFPMatch()
+        match.set_dl_type(ether.ETH_TYPE_IP)
+        match.set_metadata(seg_id)
+        match.set_dl_dst(haddr_to_bin(dst_mac))
+        match.set_ipv4_dst(ipv4_text_to_int(str(router_ip_address)))
 
         self.add_flow_match_to_controller(
             datapath, table, priority, match=match)
@@ -1003,11 +1032,16 @@ class L3ReactiveApp(app_manager.RyuApp):
     def add_bootstrap_flows(self, datapath):
         # Goto from main CLASSIFIER table
         self.add_flow_go_to_table2(datapath, 0, 1, self.CLASSIFIER_TABLE)
+
         # Send to controller unmatched inter subnet L3 traffic
-        self.add_flow_match_to_controller(datapath, self.L3_VROUTER_TABLE, 0)
+        #self.add_flow_match_to_controller(datapath, self.L3_VROUTER_TABLE, 0)
+
         #send L3 traffic unmatched to controller
         self.add_flow_go_to_table2(datapath, self.CLASSIFIER_TABLE, 1,
                                    self.L3_VROUTER_TABLE)
+
+        # Update inner subnets and SNAT
+        self.bootstrap_east_west_and_north_south_classifiers()
 
         #Goto from CLASSIFIER to ARP Table on ARP
         self.add_flow_go_to_table_on_arp(
@@ -1115,17 +1149,18 @@ class L3ReactiveApp(app_manager.RyuApp):
                                 self.add_flow_normal_local_subnet(
                                     datapath,
                                     self.L3_VROUTER_TABLE,
-                                    NORMAL_PRIORITY_FLOW,
+                                    LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
                                     network,
                                     net_mask,
                                     segmentation_id)
 
                                 self.add_flow_match_gw_mac_to_cont(
                                     datapath,
-                                    interface['mac_address'],
+                                    interface,
                                     self.L3_VROUTER_TABLE,
-                                    99,
+                                    ROUTER_INTERFACE_FLOW_PRIORITY,
                                     segmentation_id)
+
                                 self._add_vrouter_arp_responder(
                                     datapath,
                                     subnet.segmentation_id,
@@ -1326,9 +1361,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         datapath.send_msg(msg)
 
     def add_snat_binding(self, subnet_id, sn_port, added_port):
-        # check if snat_binding exists, if it does add "added_port"
-        # no need to configure everything, just add flows to port node
-        # if doesnt exists need to create snat_binding object
         self.snat_bindings[subnet_id] = SnatBinding(subnet_id, sn_port)
         snat_binding = self.snat_bindings[subnet_id]
 
@@ -1346,26 +1378,18 @@ class L3ReactiveApp(app_manager.RyuApp):
             LOG.error("Could not bind snat to subnet")
 
     def remove_snat_binding(self, subnet_id, sn_port, removed_port):
-        # check if removed_port is last port in snat_binding, if
-        # yes it needs to be removed
-        # remove flows from all nodes that dont have ports from
-        # this subnet
-
         # if subnet_id in self.snat_bindings:
         #     del self.snat_bindings[subnet_id]
-        # TODO(gsagie) add removal logic
         pass
 
     def bootstrap_snat_flows(self):
-        # Currently configure the same public table for all compute nodes
         # TODO(gsagie) send only to relevant compute nodes for each subnet
-        print (self.dp_list)
         for dp in self.dp_list.values():
             for snat_binding in self.snat_bindings.values():
                 if (dp.datapath == 0):
                     msg = "Datapath object is not set"
                     raise RuntimeError(msg)
-                # self.add_flow_snat_redirect(dp.datapath, snat_binding)
+                self.add_flow_snat_redirect(dp.datapath, snat_binding)
 
     def add_flow_snat_redirect(self, datapath, snat_binding):
 
@@ -1395,8 +1419,15 @@ class L3ReactiveApp(app_manager.RyuApp):
             datapath,
             inst=inst,
             table_id=self.L3_VROUTER_TABLE,
-            priority=1700,
+            priority=SNAT_RULES_PRIORITY_FLOW,
             match=match)
+
+    def bootstrap_inner_subnets(self, datapath):
+        for tenantid in self._tenants:
+            tenant = self._tenants[tenantid]
+            for router in tenant.routers.values():
+                for subnet in router.subnets.values():
+                    self.bootstrap_inner_subnet_flows(datapath, subnet)
 
     def bootstrap_inner_subnet_flows(self, datapath, from_subnet):
         for tenantid in self._tenants:
@@ -1430,7 +1461,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             datapath,
             inst=inst,
             table_id=self.L3_VROUTER_TABLE,
-            priority=100,
+            priority=EAST_WEST_TRAFFIC_TO_CONTROLLER_FLOW_PRIORITY,
             match=match)
 
 # Base static
