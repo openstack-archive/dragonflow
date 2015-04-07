@@ -325,7 +325,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                         else:
                             del tenant.subnets[subnet.id]
 
-                        self._remove_vrouter_arp_responder(
+                        self._remove_vrouter_arp_responder_cast(
                             subnet.segmentation_id,
                             interface['mac_address'],
                             self.get_ip_from_interface(interface))
@@ -349,7 +349,7 @@ class L3ReactiveApp(app_manager.RyuApp):
 
                 router.add_subnet(subnet)
                 if subnet.segmentation_id != 0:
-                    self._add_vrouter_arp_responder(
+                    self._add_vrouter_arp_responder_cast(
                         subnet.segmentation_id,
                         interface['mac_address'],
                         self.get_ip_from_interface(interface))
@@ -373,7 +373,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                     else:
                         del tenant_topology.subnets[subnet.id]
 
-                    self._remove_vrouter_arp_responder(
+                    self._remove_vrouter_arp_responder_cast(
                         subnet.segmentation_id,
                         interface['mac_address'],
                         self.get_ip_from_interface(interface))
@@ -417,7 +417,7 @@ class L3ReactiveApp(app_manager.RyuApp):
 
             subnet.segmentation_id = port['segmentation_id']
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
-                self._add_vrouter_arp_responder(
+                self._add_vrouter_arp_responder_cast(
                     subnet.segmentation_id,
                     port['mac_address'],
                     self.get_ip_from_interface(port))
@@ -1127,6 +1127,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                     99,
                                     segmentation_id)
                                 self._add_vrouter_arp_responder(
+                                    datapath,
                                     subnet.segmentation_id,
                                     interface['mac_address'],
                                     self.get_ip_from_interface(interface))
@@ -1261,7 +1262,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         return instructions
 
-    def _add_vrouter_arp_responder(self, segmentation_id,
+    def _add_vrouter_arp_responder_cast(self, segmentation_id,
                                    mac_address, interface_ip):
         LOG.debug("adding %(segmentation_id)s, %(mac_address)s, "
                   "%(interface_ip)s",
@@ -1270,6 +1271,14 @@ class L3ReactiveApp(app_manager.RyuApp):
                    'interface_ip': interface_ip})
         for switch in self.dp_list.values():
             datapath = switch.datapath
+            self._add_vrouter_arp_responder(
+                    datapath,
+                    segmentation_id,
+                    mac_address,
+                    interface_ip)
+
+    def _add_vrouter_arp_responder(self, datapath, segmentation_id,
+            mac_address, interface_ip):
             match = self._get_match_vrouter_arp_responder(
                 datapath, segmentation_id, interface_ip)
             instructions = self._get_inst_vrouter_arp_responder(
@@ -1284,7 +1293,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                     flags=ofproto.OFPFF_SEND_FLOW_REM)
             datapath.send_msg(msg)
 
-    def _remove_vrouter_arp_responder(self, segmentation_id, mac_address,
+    def _remove_vrouter_arp_responder_cast(self, segmentation_id, mac_address,
                                       interface_ip):
         LOG.debug("removing %(segmentation_id)s, %(mac_address)s, "
                   "%(interface_ip)s",
@@ -1293,20 +1302,28 @@ class L3ReactiveApp(app_manager.RyuApp):
                    'interface_ip': interface_ip})
         for switch in self.dp_list.values():
             datapath = switch.datapath
-            ofproto = datapath.ofproto
-            parser = datapath.ofproto_parser
-            match = self._get_match_vrouter_arp_responder(
-                datapath, segmentation_id, interface_ip)
-            msg = parser.OFPFlowMod(datapath=datapath,
-                                    cookie=0,
-                                    cookie_mask=0,
-                                    table_id=L3ReactiveApp.ARP_AND_BR_TABLE,
-                                    command=ofproto.OFPFC_DELETE,
-                                    priority=MEDIUM_PRIORITY_FLOW,
-                                    out_port=ofproto.OFPP_ANY,
-                                    out_group=ofproto.OFPG_ANY,
-                                    match=match)
-            datapath.send_msg(msg)
+            self._remove_vrouter_arp_responder(
+                    datapath,
+                    segmentation_id,
+                    mac_address,
+                    interface_ip)
+
+    def _remove_vrouter_arp_responder(self, datapath,
+            segmentation_id, mac_address, interface_ip):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        match = self._get_match_vrouter_arp_responder(
+            datapath, segmentation_id, interface_ip)
+        msg = parser.OFPFlowMod(datapath=datapath,
+                                cookie=0,
+                                cookie_mask=0,
+                                table_id=L3ReactiveApp.ARP_AND_BR_TABLE,
+                                command=ofproto.OFPFC_DELETE,
+                                priority=MEDIUM_PRIORITY_FLOW,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY,
+                                match=match)
+        datapath.send_msg(msg)
 
     def add_snat_binding(self, subnet_id, sn_port, added_port):
         # check if snat_binding exists, if it does add "added_port"
