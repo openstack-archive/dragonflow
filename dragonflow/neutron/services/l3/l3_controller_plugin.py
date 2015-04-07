@@ -153,26 +153,41 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         if ("compute:" not in port_dict['device_owner'] or
             not port_dict['fixed_ips']):
             return
-        #ip_address = port_dict['fixed_ips'][0]['ip_address']
         subnet = port_dict['fixed_ips'][0]['subnet_id']
         filters = {'fixed_ips': {'subnet_id': [subnet]}}
         ports = self._core_plugin.get_ports(context, filters=filters)
+        notify_port = None
+        router_id = 0
         for port in ports:
+            # Check if this port subnet is connected to a router
             if port['device_owner'] in q_const.ROUTER_INTERFACE_OWNERS:
                 router_id = port['device_id']
-                #router_dict = self._get_router(context, router_id)
-                port_data = self.get_ml2_port_bond_data(context, port['id'],
-                        port['binding:host_id'])
-                segmentation_id = 0
-                if "segmentation_id" in port_data:
-                    segmentation_id = port_data['segmentation_id']
-                port['segmentation_id'] = segmentation_id
-                if action == "add":
-                    notify_action = self.l3_rpc_notifier.add_arp_entry
-                elif action == "del":
-                    notify_action = self.l3_rpc_notifier.del_arp_entry
-                notify_action(context, router_id, port)
-                self.send_set_controllers_update(context, False)
+            if port['id'] == port_dict['id']:
+                    notify_port = port
+            if notify_port and router_id:
+                break
+        if notify_port:
+            self._send_new_port_notify(context, notify_port, action, router_id)
+        else:
+            LOG.error(_LE("Could not find port_id %(port_id)s"
+                "in subnet %(subnet_id)s"),
+                {"port_id": port_dict['id'],
+                 "subnet_id": subnet})
+
+    def _send_new_port_notify(self, context, notify_port, action, router_id):
+        port_data = self.get_ml2_port_bond_data(context, notify_port['id'],
+                        notify_port['binding:host_id'])
+        if "segmentation_id" in port_data:
+            notify_port['segmentation_id'] = port_data['segmentation_id']
+        else:
+            notify_port['segmentation_id'] = 0
+
+        if action == "add":
+            notify_action = self.l3_rpc_notifier.add_arp_entry
+        elif action == "del":
+            notify_action = self.l3_rpc_notifier.del_arp_entry
+        notify_action(context, router_id, notify_port)
+        self.send_set_controllers_update(context, False)
         return
 
     def get_ports_by_subnet(self, context, **kwargs):
