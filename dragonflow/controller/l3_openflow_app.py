@@ -34,6 +34,7 @@ from ryu.lib.packet import packet
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import icmp
 from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv6
 from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
 from ryu.lib.packet import vlan
@@ -115,6 +116,56 @@ class TenantTopology(object):
         self.edges[to_node].append(from_node)
         self.distances[(from_node, to_node)] = distance
 
+    def find_port_data_by_ip_address(self, ip_address):
+        for port_data in self.mac_to_port_data.values():
+            for fixed_ip in port_data.fixed_ips:
+                if ip_address == fixed_ip['ip_address']:
+                    return port_data, self.subnets[fixed_ip['subnet_id']]
+        else:
+            return 0, 0
+
+    def get_route(self, pkt):
+        """Get a possible route the packet can take to reach it's destination
+
+        The are no guarantees that the returned route is the fastest. Only that
+        it's possible.
+
+        Currently doesn't support extra routes.
+
+        :param pkt: The packet to trace
+        :return: A list of port_data objects if a route was found or None if no
+                 route is available.
+        """
+        pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
+
+        in_port_data = self.mac_to_port_data.get(pkt_ethernet.src)
+        out_port_data = self.mac_to_port_data.get(pkt_ethernet.dst)
+        if in_port_data is None or out_port_data is None:
+            return None
+
+        (dst_port_data, dst_subnet) = self.find_port_data_by_ip_address(
+            pkt_ipv4.dst
+        )
+
+        is_same_port = out_port_data.id == dst_port_data.id
+        if is_same_port:
+            return [in_port_data, out_port_data]
+
+        # In order to hop the target has to be a router
+        if not out_port_data.is_router_interface:
+            return None
+
+        gateway_router = self.routers.get(out_port_data.device_id)
+        if gateway_router is None:
+            return None
+
+        if dst_subnet.id in gateway_router.subnets:
+            return [in_port_data, out_port_data, dst_port_data]
+
+        # route not found
+        return None
+
 
 class Router(object):
 
@@ -169,6 +220,54 @@ class SnatBinding(object):
         self.subnet_id = subnet
         self.sn_port = port
         self.segmentation_id = 0
+
+
+class PortData(object):
+    def __init__(self, port_data):
+        self._port_data = port_data
+
+    @property
+    def is_router_interface(self):
+        if self._port_data['device_owner'] == 'network:router_interface':
+            return True
+        else:
+            return False
+
+    @property
+    def id(self):
+        return self._port_data['id']
+
+    @property
+    def device_id(self):
+        return self._port_data['device_id']
+
+    @property
+    def fixed_ips(self):
+        try:
+            return tuple(self._port_data.get('fixed_ips'))
+        except KeyError:
+            return tuple()
+
+    @property
+    def segmentation_id(self):
+        return self._port_data['segmentation_id']
+
+    @property
+    def local_port_number(self):
+        return self._port_data['switch_port_desc']['local_port_num']
+
+    def get_subnet_from_ip_address(self, ip_address):
+        for fixed_ip in self.fixed_ips:
+            if ip_address == fixed_ip['ip_address']:
+                return fixed_ip
+        else:
+            return None
+
+    def __getitem__(self, item):
+        return self._port_data.__getitem__(item)
+
+    def __setitem__(self, key, value):
+        return self._port_data.__setitem__(key, value)
 
 
 class L3ReactiveApp(app_manager.RyuApp):
@@ -309,7 +408,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             LOG.info(_LI("no segmentation data in port --> %s"), port)
             return
 
-        tenant_topo.mac_to_port_data[port['mac_address']] = port
+        tenant_topo.mac_to_port_data[port['mac_address']] = PortData(port)
         subnets_ids = self.get_port_subnets(port)
         for subnet_id in subnets_ids:
             subnet = subnets.get(subnet_id)
@@ -334,11 +433,25 @@ class L3ReactiveApp(app_manager.RyuApp):
                 subnets_ids.append(fixed_ips['subnet_id'])
         return subnets_ids
 
+    def _get_input_packet_handler(self, pkt):
+        is_ipv4_packet = pkt.get_protocol(ipv4.ipv4) is not None
+        is_ipv6_packet = pkt.get_protocol(ipv6.ipv6) is not None
+
+        packet_handler = None
+        if is_ipv4_packet:
+            packet_handler = self.handle_ipv4_packet_in
+
+        elif is_ipv6_packet:
+            packet_handler = self.handle_ipv6_packet_in
+
+        return packet_handler
+
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
-    def OF_packet_in_handler(self, ev):
-        msg = ev.msg
+    def OF_packet_in_handler(self, event):
+        msg = event.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
+
         if msg.reason == ofproto.OFPR_NO_MATCH:
             reason = 'NO MATCH'
         elif msg.reason == ofproto.OFPR_ACTION:
@@ -353,137 +466,150 @@ class L3ReactiveApp(app_manager.RyuApp):
                   'table_id=%d cookie=%d match=%s',
                   msg.buffer_id, msg.total_len, reason,
                   msg.table_id, msg.cookie, msg.match)
-        # utils.hex_array(msg.data))
-        in_port = msg.match['in_port']
 
         pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocols(ethernet.ethernet)[0]
-
-        header_list = dict((p.protocol_name, p)
-                           for p in pkt.protocols if not isinstance(p, str))
-        if header_list:
+        packet_handler = self._get_input_packet_handler(pkt)
+        if packet_handler is None:
+            LOG.error(_LE("Unable to find appropriate packet "
+                          "handler for packet: %s"), pkt)
+        else:
             try:
-                if "ipv4" in header_list:
-                    self.handle_ipv4_packet_in(
-                        datapath,
-                        msg,
-                        in_port,
-                        header_list,
-                        pkt,
-                        eth)
-                    return
-                if "ipv6" in header_list:
-                    self.handle_ipv6_packet_in(
-                        datapath, in_port, header_list, pkt, eth)
-                    return
+                packet_handler(datapath, msg, pkt)
             except Exception as exception:
+                LOG.debug(
+                    "Unable to handle packet %(msg)s: %(e)s",
+                    {'msg': msg, 'e': exception}
+                )
 
-                LOG.debug("Unable to handle packet %(msg)s: %(e)s",
-                          {'msg': msg, 'e': exception})
-
-        LOG.error(_LE(">>>>>>>>>> Unhandled  Packet>>>>>  %s"), pkt)
-
-    def handle_ipv6_packet_in(self, datapath, in_port, header_list,
-                              pkt, eth):
+    def handle_ipv6_packet_in(self, datapath, msg, pkt):
         # TODO(gampel)(gampel) add ipv6 support
         LOG.error(_LE("No handle for ipv6 yet should be offload to the"
                 "NORMAL path  %s"), pkt)
         return
 
-    def handle_ipv4_packet_in(self, datapath, msg, in_port, header_list, pkt,
-                              eth):
-        pkt_ipv4 = header_list['ipv4']
-        pkt_ethernet = header_list['ethernet']
-        switch = self.dp_list.get(datapath.id)
-        if switch:
-            if 'metadata' not in msg.match:
-                # send request for local switch data
-                self.send_port_desc_stats_request(datapath)
-                LOG.error(_LE("No metadata on packet from %s"),
-                          eth.src)
-                return
-            segmentation_id = msg.match['metadata']
+    def is_known_datapath(self, datapath):
+        """Check if datapath is known to this openflow appliaction"""
+        return self.dp_list.get(datapath.id) is not None
+
+    def _iter_entities_by_segmentation_id(self, segmentation_id):
+        for tenant in self._tenants.values():
+            for router in tenant.routers.values():
+                for subnet in router.subnets.values():
+                    if segmentation_id == subnet.segmentation_id:
+                        yield tenant, router, subnet
+
+    def _handle_router_packet(self, datapath, pkt, route):
+        """Handle packets intended for routers
+
+        Specifically OAM (Operations, administration and management) packets
+        Does nothing if pkt is not a supported protocol.
+
+        The function assumes the route is valid and the packet is meant for the
+        last port in the route.
+
+        Currently only handles ping
+
+        :param datapath: The datapath to send through
+        :param pkt: The packet to handle
+        :param route: The resolved route the packet is it take
+        """
+        is_icmp_packet = pkt.get_protocol(icmp.icmp) is not None
+
+        if is_icmp_packet:
+            # send ping response
+            self._handle_icmp(
+                datapath,
+                pkt,
+                route[0],
+            )
+
+        else:
+            pkt_ipv4 = pkt.get_protocol(ipv4.ipv4) is not None
+            LOG.error(_LE("any communication to a router that "
+                          "is not ping should be dropped from "
+                          "ip '%s'"),
+                      pkt_ipv4.src)
+
+    def _handle_vm_packet(self, datapath, msg, pkt, route):
+        """Handle packets intended for VMs
+        """
+        pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
+
+        LOG.debug(
+            "Installing flow Route %s-> %s",
+            pkt_ipv4.src,
+            pkt_ipv4.dst)
+
+        self.install_l3_forwarding_flows(
+            datapath,
+            msg,
+            route[0],
+            msg.match['in_port'],
+            route[0].segmentation_id,
+            pkt_ethernet,
+            pkt_ipv4,
+            route[1],
+            route[-1],
+            route[-1].segmentation_id,
+        )
+
+    def _get_tenant_for_msg(self, msg, pkt):
+        segmentation_id = msg.match.get('metadata')
+        if segmentation_id is None:
+            return None
+
+        pkt_eth = pkt.get_protocol(ethernet.ethernet)
+        for tenant in self._tenants.values():
+            port_data = tenant.mac_to_port_data.get(pkt_eth)
+            if port_data is None:
+                # target is router
+                for subnet in tenant.subnets.values():
+                    if subnet.segmentation_id == segmentation_id:
+                        return tenant
+            else:
+                for fixed_ip in port_data.fixed_ips:
+                    subnet = tenant.subnets.get(fixed_ip['subnet_id'])
+                    if subnet is None:
+                        continue
+
+                    if subnet.segmentation_id == segmentation_id:
+                        return tenant
+
+    def handle_ipv4_packet_in(self, datapath, msg, pkt):
+        if not self.is_known_datapath(datapath):
+            LOG.warning("Received packet from unknown datapath '%s'",
+                        datapath.id)
+            return
+
+        segmentation_id = msg.match.get('metadata')
+        if segmentation_id is None:
+            # send request for local switch data
+            self.send_port_desc_stats_request(datapath)
+            LOG.error(_LE("No metadata on packet from %s"),
+                      pkt.get_protocol(ethernet.ethernet).src)
+            return
+
+        LOG.debug("packet segmentation_id %s ", segmentation_id)
+
+        tenant = self._get_tenant_for_msg(msg, pkt)
+        if tenant is None:
+            LOG.warning(_LE("No available tenant for packet %s"),
+                        pkt.get_protocol(ethernet.ethernet).src)
+
+        route = tenant.get_route(pkt)
+        if route is None:
             LOG.debug(
-                "packet segmentation_id %s ",
-                segmentation_id)
-            for tenantid in self._tenants:
-                tenant = self._tenants[tenantid]
-                for router in tenant.routers.values():
-                    for subnet in router.subnets.values():
-                        if segmentation_id == subnet.segmentation_id:
-                            LOG.debug("packet from  to tenant  %s ",
-                                tenant.tenant_id)
-                            in_port_data = self._tenants[
-                                tenantid].mac_to_port_data[eth.src]
-                            out_port_data = self._tenants[
-                                tenantid].mac_to_port_data[eth.dst]
-                            LOG.debug('Source port data <--- %s ',
-                                in_port_data)
-                            LOG.debug('Router Mac dest port data -> %s ',
-                                out_port_data)
-                            if self.handle_router_interface(datapath,
-                                                            in_port,
-                                                            out_port_data,
-                                                            pkt,
-                                                            pkt_ethernet,
-                                                            pkt_ipv4) == 1:
-                                # traffic to the virtual router handle only
-                                # ping
-                                return
-                            (dst_p_data,
-                             dst_sub_id) = self.get_port_data(tenant,
-                                                              pkt_ipv4.dst)
-                            for _subnet in router.subnets.values():
-                                if dst_sub_id == _subnet.data['id']:
-                                    out_subnet = _subnet
-                                    subnet_gw = out_subnet.data[
-                                        'gateway_ip']
+                _LE("No route is available for packet %(src_ip)s->%(dst_ip)s"),
+                {"src_ip": pkt.get_protocol(ethernet.ethernet).src,
+                 "dst_ip": pkt.get_protocol(ethernet.ethernet).dst})
+            return
 
-                                    (dst_gw_port_data,
-                                     dst_gw_sub_id) = self.get_port_data(
-                                        tenant, subnet_gw)
-
-                                    if self.handle_router_interface(
-                                            datapath,
-                                            in_port,
-                                            dst_gw_port_data,
-                                            pkt,
-                                            pkt_ethernet,
-                                            pkt_ipv4) == 1:
-                                        # this traffic to the virtual router
-                                        return
-                                    if not dst_p_data:
-                                        LOG.error(_LE("No local switch"
-                                            "mapping for %s"),
-                                            pkt_ipv4.dst)
-                                        return
-                                    if self.handle_router_interface(
-                                            datapath,
-                                            in_port,
-                                            dst_p_data,
-                                            pkt,
-                                            pkt_ethernet,
-                                            pkt_ipv4) != -1:
-                                        # case for vrouter that is not the
-                                        # gw and we are trying to ping
-                                        # this traffic to the virtual router
-                                        return
-
-                                    LOG.debug("Installing flow Route %s-> %s",
-                                        pkt_ipv4.src,
-                                        pkt_ipv4.dst)
-                                    self.install_l3_forwarding_flows(
-                                        datapath,
-                                        msg,
-                                        in_port_data,
-                                        in_port,
-                                        segmentation_id,
-                                        eth,
-                                        pkt_ipv4,
-                                        dst_gw_port_data,
-                                        dst_p_data,
-                                        out_subnet.segmentation_id)
-                                    return
+        final_port = route[-1]
+        if final_port.is_router_interface:
+            self._handle_router_packet(datapath, pkt, route)
+        else:
+            self._handle_vm_packet(datapath, msg, pkt, route)
 
     def install_l3_forwarding_flows(self,
                                     datapath,
@@ -1044,77 +1170,25 @@ class L3ReactiveApp(app_manager.RyuApp):
         # If we already received port sync, link between the structures
         for tenantid in self._tenants:
             tenant = self._tenants[tenantid]
-            for mac in tenant.mac_to_port_data:
-                port_data = tenant.mac_to_port_data[mac]
-                if 'id' in port_data:
-                    port_id = port_data['id']
-                    sub_str_port_id = str(port_id[0:11])
-                    if sub_str_port_id == port_id_from_name:
-                        port_data['switch_port_desc'] = switch_port_desc
-                        return (
-                            port_data['id'],
-                            mac,
-                            port_data['segmentation_id'])
-                else:
-                    LOG.error(_LE("No data in port data %s "), port_data)
+            for mac, port_data in tenant.mac_to_port_data.items():
+                port_id = port_data.id
+                sub_str_port_id = str(port_id[0:11])
+                if sub_str_port_id == port_id_from_name:
+                    port_data['switch_port_desc'] = switch_port_desc
+                    return (
+                        port_data['id'],
+                        mac,
+                        port_data['segmentation_id'])
         # This can happen if we received port description from OVS but didn't
         # yet received port_sync from the L3 service
         LOG.debug("Port data not found %s  num <%d> dpid <%d>", port_name,
                 port_num, dpid)
         return(0, 0, 0)
 
-    def get_port_data(self, tenant, ip_address):
-        for mac in tenant.mac_to_port_data:
-            port_data = tenant.mac_to_port_data[mac]
-            if 'fixed_ips' in port_data:
-                for fixed_ips in port_data['fixed_ips']:
-                    if ip_address == fixed_ips['ip_address']:
-                        return (port_data, fixed_ips['subnet_id'])
-
-        return (0, 0)
-
     def get_ip_from_interface(self, interface):
         for fixed_ip in interface['fixed_ips']:
             if "ip_address" in fixed_ip:
                 return fixed_ip['ip_address']
-
-    def is_router_interface(self, port):
-        if port['device_owner'] == 'network:router_interface':
-            return True
-        else:
-            return False
-
-    def handle_router_interface(self, datapath, in_port, port_data,
-                                pkt, pkt_ethernet, pkt_ipv4):
-        # retVal -1 -- dst  is not a v Router
-        # retVal  1 -- The request was handled
-        # retVal  0 -- router interface and the request was not handled
-        retVal = -1
-        if self.is_router_interface(port_data):
-            # router mac address
-            retVal = 0
-            for fixed_ips in port_data['fixed_ips']:
-                if pkt_ipv4.dst == fixed_ips['ip_address']:
-                    # The dst ip address is the router Ip address should  be
-                    # ping req
-                    pkt_icmp = pkt.get_protocol(icmp.icmp)
-                    if pkt_icmp:
-                        # send ping response
-                        self._handle_icmp(
-                            datapath,
-                            in_port,
-                            pkt_ethernet,
-                            pkt_ipv4,
-                            pkt_icmp)
-                        LOG.debug("Sending ping echo -> ip %s ", pkt_ipv4.src)
-                        retVal = 1
-                    else:
-                        LOG.error(_LE("any communication to a router that "
-                                      "is not ping should be dropped from "
-                                      "ip  %s"),
-                                  pkt_ipv4.src)
-                        retVal = 1
-        return retVal
 
     def send_flow_stats_request(self, datapath, table=None):
 
@@ -1131,9 +1205,14 @@ class L3ReactiveApp(app_manager.RyuApp):
                                              match)
         datapath.send_msg(req)
 
-    def _handle_icmp(self, datapath, port, pkt_ethernet, pkt_ipv4, pkt_icmp):
+    def _handle_icmp(self, datapath, pkt, in_port):
+        pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
+        pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_icmp = pkt.get_protocol(icmp.icmp)
+
         if pkt_icmp.type != icmp.ICMP_ECHO_REQUEST:
             return
+
         pkt = packet.Packet()
         pkt.add_protocol(ethernet.ethernet(ethertype=ether.ETH_TYPE_IP,
                                            dst=pkt_ethernet.src,
@@ -1145,7 +1224,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                                    code=icmp.ICMP_ECHO_REPLY_CODE,
                                    csum=0,
                                    data=pkt_icmp.data))
-        self._send_packet(datapath, port, pkt)
+        self._send_packet(datapath, in_port.local_port_number, pkt)
+        LOG.debug("Sending ping echo -> ip %s ", pkt_ipv4.src)
 
     def check_direct_routing(self, tenant, from_subnet_id, to_subnet_id):
         return
