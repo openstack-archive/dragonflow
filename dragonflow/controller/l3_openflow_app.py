@@ -142,11 +142,20 @@ class TenantTopology(object):
         in_port_data = self.mac_to_port_data.get(pkt_ethernet.src)
         out_port_data = self.mac_to_port_data.get(pkt_ethernet.dst)
         if in_port_data is None or out_port_data is None:
+            LOG.error(_LE("No data for packet ports %(src_mac)s %(dst_mac)s"),
+                    {"src_mac": pkt_ethernet.src,
+                     "dst_mac": pkt_ethernet.dst})
             return None
 
         (dst_port_data, dst_subnet) = self.find_port_data_by_ip_address(
             pkt_ipv4.dst
         )
+        import ipdb
+        ipdb.set_trace()
+        if not dst_port_data:
+            LOG.error(_LE("No data for destination port %(dst_ip)s"),
+                    {"dst_ip": pkt_ipv4.dst})
+            return None
 
         is_same_port = out_port_data.id == dst_port_data.id
         if is_same_port:
@@ -154,6 +163,8 @@ class TenantTopology(object):
 
         # In order to hop the target has to be a router
         if not out_port_data.is_router_interface:
+            LOG.error(_LE("The gateway port is not a router  %(dst_mac)s"),
+                {"dst_mac": pkt_ethernet.dst})
             return None
 
         gateway_router = self.routers.get(out_port_data.device_id)
