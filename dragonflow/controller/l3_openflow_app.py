@@ -358,6 +358,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                 router.add_subnet(subnet)
                 if subnet.segmentation_id != 0:
                     self.subnet_added_binding_cast(subnet, interface)
+                    self.bootstrap_network_classifiers(
+                        subnet=subnet)
 
         # If previous definition of the router is known
         if router_old:
@@ -383,8 +385,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                         interface['mac_address'],
                         self.get_ip_from_interface(interface))
 
-        self.bootstrap_east_west_and_north_south_classifiers()
-
     def attach_switch_port_desc_to_port_data(self, port_data):
         if 'id' in port_data:
             port_id = port_data['id']
@@ -405,11 +405,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                         port_data['segmentation_id'],
                         0xffff,
                         self.CLASSIFIER_TABLE)
-
-    def bootstrap_east_west_and_north_south_classifiers(self):
-        for dp in self.dp_list.values():
-            self.bootstrap_inner_subnets(dp.datapath)
-        self.bootstrap_snat_flows()
 
     def sync_port(self, port):
         LOG.info(_LI("sync_port--> %s\n"), port)
@@ -432,7 +427,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
                 self.subnet_added_binding_cast(subnet, port)
 
-                self.bootstrap_east_west_and_north_south_classifiers()
+                self.bootstrap_network_classifiers(subnet=subnet)
 
             else:
                 LOG.error(_LE("No subnet object for subnet %s"), subnet_id)
@@ -1026,14 +1021,18 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.add_flow_go_to_table2(datapath, 0, 1, self.CLASSIFIER_TABLE)
 
         # Send to controller unmatched inter subnet L3 traffic
-        #self.add_flow_match_to_controller(datapath, self.L3_VROUTER_TABLE, 0)
+        # self.add_flow_match_to_controller(datapath, self.L3_VROUTER_TABLE, 0)
 
         #send L3 traffic unmatched to controller
         self.add_flow_go_to_table2(datapath, self.CLASSIFIER_TABLE, 1,
                                    self.L3_VROUTER_TABLE)
 
+        # send L3 traffic that is not east west to public network
+        self.add_flow_go_to_table2(datapath, self.L3_VROUTER_TABLE, 1,
+                                   self.L3_PUBLIC_TABLE)
+
         # Update inner subnets and SNAT
-        self.bootstrap_east_west_and_north_south_classifiers()
+        self.bootstrap_network_classifiers()
 
         #Goto from CLASSIFIER to ARP Table on ARP
         self.add_flow_go_to_table_on_arp(
@@ -1134,8 +1133,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                         for subnet_info in interface['subnets']:
                             if (subnet.data['id'] == subnet_info['id']
                                     and subnet.segmentation_id != 0):
-                                self.add_subnet_binding(self,
-                                                        datapath,
+                                self.add_subnet_binding(datapath,
                                                         subnet,
                                                         interface)
 
@@ -1299,7 +1297,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                    'mac_address': interface['mac_address'],
                    'interface_ip': self.get_ip_from_interface(interface)})
         for switch in self.dp_list.values():
-            self.add_subnet_binding(self, switch.datapath, subnet, interface)
+            self.add_subnet_binding(switch.datapath, subnet, interface)
 
     def _add_vrouter_arp_responder(self, datapath, segmentation_id,
             mac_address, interface_ip):
@@ -1359,30 +1357,40 @@ class L3ReactiveApp(app_manager.RyuApp):
             for router in tenant.routers.values():
                 for subnet in router.subnets.values():
                     if subnet.id == subnet_id:
-                        snat_binding.segmentation_id = subnet.segmentation_id
-
-        if snat_binding.segmentation_id != 0:
-            self.bootstrap_snat_flows()
-        else:
-            LOG.error("Could not bind snat to subnet")
+                        self.bootstrap_snat_subnet_flow(snat_binding, subnet)
 
     def remove_snat_binding(self, subnet_id, sn_port, removed_port):
         # if subnet_id in self.snat_bindings:
         #     del self.snat_bindings[subnet_id]
         pass
 
-    def bootstrap_snat_flows(self):
-        # TODO(gsagie) send only to relevant compute nodes for each subnet
+    def bootstrap_network_classifiers(self, subnet=None):
+        if subnet is None:
+            self.bootstrap_inner_subnets_connection()
+            self.bootstrap_snat_flows()
+        else:
+            self.bootstrap_inner_subnets_connection_for_subnet(subnet)
+            snat_binding = self.snat_bindings.get(subnet.id)
+            if snat_binding is not None:
+                self.bootstrap_snat_subnet_flow(snat_binding, subnet)
+
+    def bootstrap_snat_subnet_flow(self, snat_binding, subnet):
+        # TODO(gsagie) only iterate on DP's that implement the subnet
         for dp in self.dp_list.values():
-            for snat_binding in self.snat_bindings.values():
-                if (dp.datapath == 0):
-                    msg = "Datapath object is not set"
-                    raise RuntimeError(msg)
-                self.add_flow_snat_redirect(dp.datapath, snat_binding)
+            self.add_flow_snat_redirect(dp.datapath, snat_binding, subnet)
 
-    def add_flow_snat_redirect(self, datapath, snat_binding):
+    def bootstrap_snat_flows(self):
+        for tenant in self._tenants.values():
+            for subnet in tenant.subnets.values():
+                snat_binding = self.snat_bindings.get(subnet.id)
+                if snat_binding is not None:
+                    for dp in self.dp_list.values():
+                        self.add_flow_snat_redirect(dp.datapath,
+                                                    snat_binding, subnet)
 
-        if (snat_binding.segmentation_id == 0):
+    def add_flow_snat_redirect(self, datapath, snat_binding, subnet):
+
+        if (subnet.segmentation_id == 0):
             msg = "Segmentation id == 0"
             raise RuntimeError(msg)
 
@@ -1391,13 +1399,11 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
-        match.set_metadata(snat_binding.segmentation_id)
+        match.set_metadata(subnet.segmentation_id)
 
         actions = []
         actions.append(parser.OFPActionDecNwTtl())
         eth_dst_mac = snat_binding.sn_port['mac_address']
-        #eth_src_mac = snat_binding.router_mac
-        #actions.append(parser.OFPActionSetField(eth_src=eth_src_mac))
         actions.append(parser.OFPActionSetField(eth_dst=eth_dst_mac))
         actions.append(parser.OFPActionOutput(ofproto.OFPP_NORMAL))
 
@@ -1407,25 +1413,39 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.mod_flow(
             datapath,
             inst=inst,
-            table_id=self.L3_VROUTER_TABLE,
+            table_id=self.L3_PUBLIC_TABLE,
             priority=SNAT_RULES_PRIORITY_FLOW,
             match=match)
 
-    def bootstrap_inner_subnets(self, datapath):
-        for tenantid in self._tenants:
-            tenant = self._tenants[tenantid]
-            for router in tenant.routers.values():
-                for subnet in router.subnets.values():
-                    self.bootstrap_inner_subnet_flows(datapath, subnet)
+    def bootstrap_inner_subnets_connection_for_subnet(self, subnet):
+        # First configure all flows from the subnet to all
+        # the other possible subnets
+        for dp in self.dp_list.values():
+            self.bootstrap_inner_subnet_flows(dp.datapath, subnet)
+
+        # For each other subnet, configure the opposite direction
+        for tenant in self._tenants.values():
+            for from_subnet in tenant.subnets.values():
+                if (from_subnet.segmentation_id !=
+                        subnet.segmentation_id):
+                    for dp in self.dp_list.values():
+                        self.add_flow_inner_subnet(dp.datapath,
+                                                   from_subnet, subnet)
+
+    def bootstrap_inner_subnets_connection(self):
+        for tenant in self._tenants.values():
+            for subnet in tenant.subnets.values():
+                for dp in self.dp_list.values():
+                    self.bootstrap_inner_subnet_flows(dp.datapath,
+                                                      subnet)
 
     def bootstrap_inner_subnet_flows(self, datapath, from_subnet):
-        for tenantid in self._tenants:
-            tenant = self._tenants[tenantid]
-            for router in tenant.routers.values():
-                for to_subnet in router.subnets.values():
-                    if to_subnet.id != from_subnet.id:
-                        self.add_flow_inner_subnet(datapath,
-                                                   from_subnet, to_subnet)
+        for tenant in self._tenants.values():
+            for to_subnet in tenant.subnets.values():
+                if (to_subnet.segmentation_id !=
+                        from_subnet.segmentation_id):
+                    self.add_flow_inner_subnet(datapath,
+                                               from_subnet, to_subnet)
 
     def add_flow_inner_subnet(self, datapath, from_subnet, to_subnet):
         parser = datapath.ofproto_parser
