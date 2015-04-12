@@ -893,20 +893,17 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.mod_flow(datapath, inst=inst, table_id=table, priority=priority,
                       match=match)
 
-    def add_flow_goto_table_on_broad(self, datapath, table, priority,
+    def add_flow_goto_normal_on_broad(self, datapath, table, priority,
                                      goto_table_id):
         match = datapath.ofproto_parser.OFPMatch(eth_dst='ff:ff:ff:ff:ff:ff')
+        self.add_flow_normal(datapath, table, priority, match)
 
-        self.add_flow_go_to_table2(datapath, table, priority, goto_table_id,
-                                   match)
-
-    def add_flow_goto_table_on_mcast(self, datapath, table, priority,
+    def add_flow_goto_normal_on_mcast(self, datapath, table, priority,
                                      goto_table_id):
         match = datapath.ofproto_parser.OFPMatch(eth_dst='01:00:00:00:00:00')
         addint = haddr_to_bin('01:00:00:00:00:00')
         match.set_dl_dst_masked(addint, addint)
-        self.add_flow_go_to_table2(datapath, table, priority, goto_table_id,
-                                   match)
+        self.add_flow_normal(datapath, table, priority, match)
 
     def add_flow_go_to_table_on_arp(self, datapath, table, priority,
                                     goto_table_id):
@@ -1047,18 +1044,16 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.add_flow_go_to_table_on_arp(
             datapath,
             self.CLASSIFIER_TABLE,
-            NORMAL_PRIORITY_FLOW,
+            HIGH_PRIORITY_FLOW,
             self.ARP_AND_BR_TABLE)
-        #Goto from CLASSIFIER to ARP Table on broadcast
-        #TODO(gampel) can go directly to NORMAL
-        self.add_flow_goto_table_on_broad(
+        #Goto from CLASSIFIER to NORMAL on broadcast
+        self.add_flow_goto_normal_on_broad(
             datapath,
             self.CLASSIFIER_TABLE,
             MEDIUM_PRIORITY_FLOW,
             self.ARP_AND_BR_TABLE)
-        #Goto from CLASSIFIER to ARP Table on mcast
-        #TODO(gampel) can go directly to NORMAL
-        self.add_flow_goto_table_on_mcast(
+        #Goto from CLASSIFIER to NORMAL on mcast
+        self.add_flow_goto_normal_on_mcast(
             datapath,
             self.CLASSIFIER_TABLE,
             NORMAL_PRIORITY_FLOW,
