@@ -37,7 +37,6 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
-from ryu.lib.packet import vlan
 
 from ryu.lib import addrconv
 
@@ -50,7 +49,6 @@ from oslo_log import log
 LOG = log.getLogger(__name__)
 
 ETHERNET = ethernet.ethernet.__name__
-VLAN = vlan.vlan.__name__
 IPV4 = ipv4.ipv4.__name__
 ICMP = icmp.icmp.__name__
 TCP = tcp.tcp.__name__
@@ -84,7 +82,6 @@ class AgentDatapath(object):
     """Represents a forwarding element switch local state"""
 
     def __init__(self):
-        self.local_vlan_mapping = {}
         self.local_ports = None
         self.datapath = 0
         self.patch_port_num = 0
@@ -760,24 +757,6 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         return actions
 
-    def add_flow_pop_vlan_to_normal(self, datapath, table, priority, vlan_id):
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
-        match = parser.OFPMatch(vlan_vid=0x1000 | vlan_id)
-        actions = [
-            parser.OFPActionPopVlan(),
-            parser.OFPActionOutput(
-                ofproto.OFPP_NORMAL,
-                ofproto.OFPCML_NO_BUFFER)]
-        inst = [datapath.ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        self.mod_flow(
-            datapath,
-            inst=inst,
-            table_id=table,
-            priority=priority,
-            match=match)
-
     def add_flow_normal_local_subnet(self, datapath, table, priority,
                                      dst_net, dst_mask, seg_id):
         parser = datapath.ofproto_parser
@@ -964,26 +943,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.add_flow_match_to_controller(
             datapath, table, priority, match=match)
 
-    def add_flow_l3(self, datapath, in_port, dst_mac, src_mac, vlan_vid,
-                    actions):
-        ofproto = datapath.ofproto
-
-        match = datapath.ofproto_parser.OFPMatch(in_port=in_port,
-                                                 eth_dst=dst_mac,
-                                                 eth_src=src_mac,
-                                                 vlan_vid=vlan_vid)
-        inst = [datapath.ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-
-        mod = datapath.ofproto_parser.OFPFlowMod(
-            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-            priority=0, buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
-            flags=0, match=match, instructions=inst)
-        datapath.send_msg(mod)
-
     def add_flow(self, datapath, port, dst, actions):
         ofproto = datapath.ofproto
 
@@ -1164,12 +1123,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                                   actions=actions,
                                   data=data)
         datapath.send_msg(out)
-
-    def get_l_vid_from_seg_id(self, switch, segmentation_id):
-        for local_vlan in switch.local_vlan_mapping:
-            if segmentation_id == switch.local_vlan_mapping[local_vlan]:
-                return local_vlan
-        return 0
 
     def update_local_port_num(self, port_name, port_num, datapath):
 
