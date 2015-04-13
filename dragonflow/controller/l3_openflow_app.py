@@ -1369,9 +1369,18 @@ class L3ReactiveApp(app_manager.RyuApp):
                         self.bootstrap_snat_subnet_flow(snat_binding, subnet)
 
     def remove_snat_binding(self, subnet_id, sn_port, removed_port):
-        # if subnet_id in self.snat_bindings:
-        #     del self.snat_bindings[subnet_id]
-        pass
+        snat_binding = self.snat_bindings.get(subnet_id)
+
+        if snat_binding is None:
+            LOG.debug("subnet id %s not in snat_bindings" % subnet_id)
+            return
+
+        for tenant in self._tenants.values():
+            for subnet in tenant.subnets.values():
+                if subnet.id == subnet_id:
+                    self.remove_snat_binding_flows(snat_binding, subnet)
+
+        del self.snat_bindings[subnet_id]
 
     def bootstrap_network_classifiers(self, subnet=None):
         if subnet is None:
@@ -1396,6 +1405,34 @@ class L3ReactiveApp(app_manager.RyuApp):
                     for dp in self.dp_list.values():
                         self.add_flow_snat_redirect(dp.datapath,
                                                     snat_binding, subnet)
+
+    def remove_snat_binding_flows(self, snat_binding, subnet):
+        # TODO(gsagie) only iterate on DP's that implement the subnet
+        for dp in self.dp_list.values():
+            self.remove_flow_snat_redirect(dp.datapath, snat_binding, subnet)
+
+    def remove_flow_snat_redirect(self, datapath, snat_binding, subnet):
+        if (subnet.segmentation_id == 0):
+            msg = "Segmentation id == 0"
+            raise RuntimeError(msg)
+
+        parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
+
+        match = parser.OFPMatch()
+        match.set_dl_type(ether.ETH_TYPE_IP)
+        match.set_metadata(subnet.segmentation_id)
+
+        msg = parser.OFPFlowMod(datapath=datapath,
+                                cookie=0,
+                                cookie_mask=0,
+                                table_id=self.L3_PUBLIC_TABLE,
+                                command=ofproto.OFPFC_DELETE,
+                                priority=SNAT_RULES_PRIORITY_FLOW,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY,
+                                match=match)
+        datapath.send_msg(msg)
 
     def add_flow_snat_redirect(self, datapath, snat_binding, subnet):
 
