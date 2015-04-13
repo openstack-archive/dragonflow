@@ -62,6 +62,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                  ovsdb_monitor_respawn_interval=(
                          constants.DEFAULT_OVSDBMON_RESPAWN),
                  arp_responder=False,
+                 prevent_arp_spoofing=False,
                  use_veth_interconnection=False,
                  quitting_rpc_timeout=None):
 
@@ -86,6 +87,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                       minimize_polling,
                       ovsdb_monitor_respawn_interval,
                       arp_responder,
+                      prevent_arp_spoofing,
                       use_veth_interconnection,
                       quitting_rpc_timeout)
 
