@@ -37,7 +37,7 @@ from neutron.common import topics
 from neutron.common import utils as q_utils
 from neutron import context
 
-from neutron.i18n import _LE, _LI
+from neutron.i18n import _, _LE, _LI
 from neutron.plugins.openvswitch.agent import ovs_neutron_agent
 from neutron.plugins.openvswitch.agent.ovs_neutron_agent import OVSNeutronAgent
 from neutron.plugins.openvswitch.common import constants
@@ -65,6 +65,11 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                  prevent_arp_spoofing=False,
                  use_veth_interconnection=False,
                  quitting_rpc_timeout=None):
+
+        if prevent_arp_spoofing:
+            msg = _("ARP Spoofing prevention is yet"
+                    " not supported in Dragonflow")
+            raise RuntimeError(msg)
 
         # Initialize controller Ip List
         self.controllers_ip_list = None
