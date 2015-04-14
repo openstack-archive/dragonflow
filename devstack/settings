@@ -12,6 +12,7 @@ DF_L2_AGENT=$DRAGONFLOW_DIR/dragonflow/neutron/agent/l2/ovs_dragonflow_neutron_a
 DF_L3_AGENT=$DRAGONFLOW_DIR/dragonflow/neutron/agent/l3_sdn_agent.py
 
 Q_DF_CONTROLLER_IP=${Q_DF_CONTROLLER_IP:-'tcp:'$HOST_IP':6633'}
+Q_DF_DVR_BASE_MAC=${Q_DF_DVR_BASE_MAC:-'fa:16:3f:00:00:00'}
 
 export PYTHONPATH=$PYTHONPATH:$DRAGONFLOW_DIR
 export PYTHONPATH=$PYTHONPATH:$RYU_DIR
