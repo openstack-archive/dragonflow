@@ -194,7 +194,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
 
     def _setup_tunnel_port(self, br, port_name, remote_ip, tunnel_type):
         ofport = super(L2OVSControllerAgent, self) \
-                    ._setup_tunnel_port(self,
+                    ._setup_tunnel_port(
                     br,
                     port_name,
                     remote_ip,
