@@ -80,11 +80,25 @@ def _notify_l3_agent_new_port(resource, event, trigger, **kwargs):
         l3plugin.dvr_vmarp_table_update(context, port, "add")
 
 
+def _notify_l3_agent_delete_port(event, resource, trigger, **kwargs):
+    context = kwargs['context']
+    port = kwargs['port']
+    removed_routers = kwargs['removed_routers']
+    l3plugin = manager.NeutronManager.get_service_plugins().get(
+        constants.L3_ROUTER_NAT)
+    l3plugin.dvr_vmarp_table_update(context, port, "del")
+    for router in removed_routers:
+        l3plugin.remove_router_from_l3_agent(
+            context, router['agent_id'], router['router_id'])
+
+
 def subscribe():
     registry.subscribe(
         _notify_l3_agent_new_port, resources.PORT, events.AFTER_UPDATE)
     registry.subscribe(
         _notify_l3_agent_new_port, resources.PORT, events.AFTER_CREATE)
+    registry.subscribe(
+        _notify_l3_agent_delete_port, resources.PORT, events.AFTER_DELETE)
 
 
 class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
@@ -173,6 +187,9 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                 "in subnet %(subnet_id)s"),
                 {"port_id": port_dict['id'],
                  "subnet_id": subnet})
+
+    def remove_router_from_l3_agent(self, context, agent_id, router_id):
+        self.l3_rpc_notifier.router_deleted(context, router_id)
 
     def _send_new_port_notify(self, context, notify_port, action, router_id):
         port_data = self.get_ml2_port_bond_data(context, notify_port['id'],
