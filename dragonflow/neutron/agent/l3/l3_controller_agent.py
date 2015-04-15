@@ -315,9 +315,18 @@ class L3ControllerAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
     def sync_subnet_port_data(self, subnet_id):
         ports_data = self.plugin_rpc.get_ports_by_subnet(self.context,
             subnet_id)
+        router_ports = []
         if ports_data:
             for port in ports_data:
+                seg_id = port.get('segmentation_id')
+                if seg_id is None:
+                    router_ports.append(port)
                 self.controller.sync_port(port)
+
+            if seg_id is not None:
+                for router_port in router_ports:
+                    router_port['segmentation_id'] = seg_id
+                    self.controller.sync_port(router_port)
 
     @periodic_task.periodic_task
     def periodic_sync_routers_task(self, context):
