@@ -150,17 +150,21 @@ class TenantTopology(object):
         in_port_data = self.mac_to_port_data.get(pkt_ethernet.src)
         out_port_data = self.mac_to_port_data.get(pkt_ethernet.dst)
         if in_port_data is None or out_port_data is None:
-            LOG.error(_LE("No data for packet ports %(src_mac)s %(dst_mac)s"),
-                    {"src_mac": pkt_ethernet.src,
-                     "dst_mac": pkt_ethernet.dst})
+            LOG.error(
+                _LE("No data for packet ports %(src_mac)s %(dst_mac)s"),
+                {"src_mac": pkt_ethernet.src,
+                 "dst_mac": pkt_ethernet.dst}
+            )
             return None
 
         (dst_port_data, dst_subnet) = self.find_port_data_by_ip_address(
             pkt_ipv4.dst
         )
         if not dst_port_data:
-            LOG.error(_LE("No data for destination port %(dst_ip)s"),
-                    {"dst_ip": pkt_ipv4.dst})
+            LOG.error(
+                _LE("No data for destination port %(dst_ip)s"),
+                {"dst_ip": pkt_ipv4.dst}
+            )
             return None
 
         is_same_port = out_port_data.id == dst_port_data.id
@@ -169,8 +173,10 @@ class TenantTopology(object):
 
         # In order to hop the target has to be a router
         if not out_port_data.is_router_interface:
-            LOG.error(_LE("The gateway port is not a router  %(dst_mac)s"),
-                {"dst_mac": pkt_ethernet.dst})
+            LOG.error(
+                _LE("The gateway port is not a router  %(dst_mac)s"),
+                {"dst_mac": pkt_ethernet.dst}
+            )
             return None
 
         gateway_router = self.routers.get(out_port_data.device_id)
@@ -178,6 +184,7 @@ class TenantTopology(object):
             return None
 
         if dst_subnet.id in gateway_router.subnets:
+            # TODO(saggi) add second leg to route
             return [in_port_data, out_port_data, dst_port_data]
 
         # route not found
@@ -435,7 +442,6 @@ class L3ReactiveApp(app_manager.RyuApp):
 
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
                 self.subnet_added_binding_cast(subnet, port)
-
                 self.bootstrap_network_classifiers(subnet=subnet)
 
             else:
@@ -658,7 +664,8 @@ class L3ReactiveApp(app_manager.RyuApp):
         if dst_p_desc['local_dpid_switch'] == datapath.id:
             # The dst VM and the source VM are on the same compute Node
             # Send output flow directly to port, use the same datapath
-            actions = self.add_flow_subnet_traffic(datapath,
+            actions = self.add_flow_subnet_traffic(
+                datapath,
                 self.L3_VROUTER_TABLE,
                 MEDIUM_PRIORITY_FLOW,
                 in_port,
