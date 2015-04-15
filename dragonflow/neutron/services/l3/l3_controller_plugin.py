@@ -18,7 +18,7 @@ from oslo.utils import importutils
 
 from dragonflow.neutron.common.config import SDNCONTROLLER
 
-from neutron import context
+from neutron import context as neutron_context
 from neutron import manager
 
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
@@ -104,7 +104,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         self.router_scheduler = importutils.import_object(
             cfg.CONF.router_scheduler_driver)
         #self.start_periodic_agent_status_check()
-        self.ctx = context.get_admin_context()
+        self.ctx = neutron_context.get_admin_context()
         cfg.CONF.router_auto_schedule = True
         if cfg.CONF.net_controller_l3_southbound_protocol == "OpenFlow":
             # Open Flow Controller
