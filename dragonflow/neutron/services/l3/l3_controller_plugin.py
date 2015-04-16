@@ -157,31 +157,44 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         filters = {'fixed_ips': {'subnet_id': [subnet]}}
         ports = self._core_plugin.get_ports(context, filters=filters)
         notify_port = None
+        router_port = None
         router_id = 0
         for port in ports:
             # Check if this port subnet is connected to a router
             if port['device_owner'] in q_const.ROUTER_INTERFACE_OWNERS:
                 router_id = port['device_id']
+                router_port = port
             if port['id'] == port_dict['id']:
                     notify_port = port
             if notify_port and router_id:
                 break
         if notify_port:
-            self._send_new_port_notify(context, notify_port, action, router_id)
+            segmentation_id = self._get_segmentation_id(context, notify_port)
+            self._send_new_port_notify(context, notify_port, action, router_id,
+                    segmentation_id)
+            if router_port:
+                #TODO(gampel) Currently to overcome locally in dragonflow
+                #the problem that DVR router port does not have segmentation_id
+                #we send notification with the router ID with every port
+                #update on the subnet
+                self._send_new_port_notify(context, router_port, action,
+                        router_id,
+                        segmentation_id)
         else:
             LOG.error(_LE("Could not find port_id %(port_id)s"
                 "in subnet %(subnet_id)s"),
                 {"port_id": port_dict['id'],
                  "subnet_id": subnet})
 
-    def _send_new_port_notify(self, context, notify_port, action, router_id):
-        port_data = self.get_ml2_port_bond_data(context, notify_port['id'],
-                        notify_port['binding:host_id'])
+    def _get_segmentation_id(self, context, port):
+        port_data = self.get_ml2_port_bond_data(context, port['id'],
+                        port['binding:host_id'])
         if "segmentation_id" in port_data:
-            notify_port['segmentation_id'] = port_data['segmentation_id']
-        else:
-            notify_port['segmentation_id'] = 0
+            return port_data.get('segmentation_id', 0)
 
+    def _send_new_port_notify(self, context, notify_port, action, router_id,
+            segmentation_id):
+        notify_port['segmentation_id'] = segmentation_id
         if action == "add":
             notify_action = self.l3_rpc_notifier.add_arp_entry
         elif action == "del":

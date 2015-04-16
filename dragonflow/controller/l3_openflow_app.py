@@ -249,7 +249,7 @@ class PortData(object):
 
     @property
     def is_router_interface(self):
-        if self._port_data['device_owner'] in const.DEVICE_OWNER_ROUTER_INTF:
+        if self._port_data['device_owner'] in const.ROUTER_INTERFACE_OWNERS:
             return True
         else:
             return False
