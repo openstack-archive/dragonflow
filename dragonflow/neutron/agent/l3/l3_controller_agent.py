@@ -120,7 +120,7 @@ class L3ControllerAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
         # so retry in case its not ready to respond.
         retry_count = 5
         while True:
-            retry_count = retry_count - 1
+            retry_count -= 1
             try:
                 self.neutron_service_plugins = (
                     self.plugin_rpc.get_service_plugin_list(self.context))
