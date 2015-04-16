@@ -559,13 +559,10 @@ class L3ReactiveApp(app_manager.RyuApp):
             datapath,
             msg,
             route[0],
-            msg.match['in_port'],
-            route[0].segmentation_id,
             pkt_ethernet,
             pkt_ipv4,
             route[1],
             route[-1],
-            route[-1].segmentation_id,
         )
 
     def _get_tenant_for_msg(self, msg, pkt):
@@ -625,19 +622,36 @@ class L3ReactiveApp(app_manager.RyuApp):
         else:
             self._handle_vm_packet(datapath, msg, pkt, route)
 
-    def install_l3_forwarding_flows(self,
-                                    datapath,
-                                    msg,
-                                    in_port_data,
-                                    in_port,
-                                    src_seg_id,
-                                    eth,
-                                    pkt_ipv4,
-                                    dst_gw_port_data,
-                                    dst_p_data,
-                                    dst_seg_id):
-        dst_p_desc = dst_p_data['switch_port_desc']
+    def install_l3_forwarding_flows(
+            self,
+            datapath,
+            msg,
+            in_port_data,
+            pkt_eth,
+            pkt_ipv4,
+            gateway_port_data,
+            dst_port_data,
+    ):
+        """Install the l3 forwarding flows.
+
+        :param datapath: Datapath to install into
+        :param msg: Message to act upon
+        :param in_port_data: The port that the message arrived in
+        :type in_port_data: PortData
+        :param pkt_eth: The ethernet part of the packet
+        :param pkt_ipv4: The ipv4 part of the packet
+        :param gateway_port_data: The gateway port through which the packet
+                                 would have been routed
+        :type gateway_port_data: PortData
+        :param dst_port_data: The destination port.
+        :type dst_port_data: PortData
+        """
+        dst_p_desc = dst_port_data['switch_port_desc']
+        dst_seg_id = dst_port_data.local_port_number
+        in_port = in_port_data.local_port_number
+        src_seg_id = in_port_data.segmentation_id
         in_port_desc = in_port_data['switch_port_desc']
+
         if dst_p_desc['local_dpid_switch'] == datapath.id:
             # The dst VM and the source VM are on the same compute Node
             # Send output flow directly to port, use the same datapath
@@ -646,12 +660,12 @@ class L3ReactiveApp(app_manager.RyuApp):
                 MEDIUM_PRIORITY_FLOW,
                 in_port,
                 src_seg_id,
-                eth.src,
-                eth.dst,
+                pkt_eth.src,
+                pkt_eth.dst,
                 pkt_ipv4.dst,
                 pkt_ipv4.src,
-                dst_gw_port_data['mac_address'],
-                dst_p_data['mac_address'],
+                gateway_port_data['mac_address'],
+                dst_port_data['mac_address'],
                 dst_p_desc['local_port_num'])
             # Install the reverse flow return traffic
             self.add_flow_subnet_traffic(datapath,
@@ -659,11 +673,11 @@ class L3ReactiveApp(app_manager.RyuApp):
                                          MEDIUM_PRIORITY_FLOW,
                                          dst_p_desc['local_port_num'],
                                          dst_seg_id,
-                                         dst_p_data['mac_address'],
-                                         dst_gw_port_data['mac_address'],
+                                         dst_port_data['mac_address'],
+                                         gateway_port_data['mac_address'],
                                          pkt_ipv4.src,
                                          pkt_ipv4.dst,
-                                         eth.dst,
+                                         pkt_eth.dst,
                                          in_port_data['mac_address'],
                                          in_port_desc['local_port_num'])
             self.handle_packet_out_l3(datapath, msg, in_port, actions)
@@ -678,13 +692,13 @@ class L3ReactiveApp(app_manager.RyuApp):
                                                    MEDIUM_PRIORITY_FLOW,
                                                    in_port,
                                                    src_seg_id,
-                                                   eth.src,
-                                                   eth.dst,
+                                                   pkt_eth.src,
+                                                   pkt_eth.dst,
                                                    pkt_ipv4.dst,
                                                    pkt_ipv4.src,
-                                                   dst_gw_port_data[
+                                                   gateway_port_data[
                                                        'mac_address'],
-                                                   dst_p_data[
+                                                   dst_port_data[
                                                        'mac_address'],
                                                    localSwitch.patch_port_num,
                                                    dst_seg_id=dst_seg_id)
@@ -694,11 +708,11 @@ class L3ReactiveApp(app_manager.RyuApp):
                                          MEDIUM_PRIORITY_FLOW,
                                          dst_p_desc['local_port_num'],
                                          dst_seg_id,
-                                         dst_p_data['mac_address'],
-                                         dst_gw_port_data['mac_address'],
+                                         dst_port_data['mac_address'],
+                                         gateway_port_data['mac_address'],
                                          pkt_ipv4.src,
                                          pkt_ipv4.dst,
-                                         eth.dst,
+                                         pkt_eth.dst,
                                          in_port_data['mac_address'],
                                          remoteSwitch.patch_port_num,
                                          dst_seg_id=src_seg_id)
