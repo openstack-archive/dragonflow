@@ -275,7 +275,10 @@ class PortData(object):
 
     @property
     def local_port_number(self):
-        return self._port_data['switch_port_desc']['local_port_num']
+        try:
+            return self._port_data['switch_port_desc']['local_port_num']
+        except KeyError:
+            return -1
 
     def get_subnet_from_ip_address(self, ip_address):
         for fixed_ip in self.fixed_ips:
