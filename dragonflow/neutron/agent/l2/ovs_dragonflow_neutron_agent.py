@@ -67,9 +67,9 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                  quitting_rpc_timeout=None):
 
         if prevent_arp_spoofing:
-            msg = _("ARP Spoofing prevention is not"
-                    " yet supported in Dragonflow")
-            raise RuntimeError(msg)
+            LOG.error(_LE("ARP Spoofing prevention is not"
+                    " yet supported in Dragonflow feature disabled"))
+            prevent_arp_spoofing = False
 
         # Initialize controller Ip List
         self.controllers_ip_list = None
