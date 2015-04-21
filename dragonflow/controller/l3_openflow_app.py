@@ -656,7 +656,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         :type dst_port_data: PortData
         """
         dst_p_desc = dst_port_data['switch_port_desc']
-        dst_seg_id = dst_port_data.local_port_number
+        dst_seg_id = dst_port_data.segmentation_id
         in_port = in_port_data.local_port_number
         src_seg_id = in_port_data.segmentation_id
         in_port_desc = in_port_data['switch_port_desc']
