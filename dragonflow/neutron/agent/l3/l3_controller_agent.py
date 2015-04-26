@@ -68,6 +68,16 @@ NET_CONTROL_L3_OPTS = [
     cfg.StrOpt('network_device_mtu',
                default=1400,
                help=("help on ovs_integration_bridge")),
+    cfg.IntOpt('subnet_flows_idle_timeout',
+               default=300,
+               help=("The L3 VM to VM traffic (between networks) flows are "
+                     "configured with this idle timeout (in seconds), "
+                     "value of 0 means no timeout")),
+    cfg.IntOpt('subnet_flows_hard_timeout',
+               default=0,
+               help=("The L3 VM to VM traffic (between networks) flows are "
+                     "configured with this hard timeout (in seconds), "
+                     "value of 0 means no timeout"))
 ]
 
 cfg.CONF.register_opts(NET_CONTROL_L3_OPTS)
