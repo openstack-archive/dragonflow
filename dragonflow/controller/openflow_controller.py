@@ -32,6 +32,7 @@ class OpenFlowController(ControllerBase):
 
     def __init__(self, conf, controllertype):
         super(OpenFlowController, self).__init__(conf, controllertype)
+        self.cfg = conf
         self.controllertype = controllertype
         self.ctx = context.get_admin_context()
         self.hostname = utils.get_hostname()
@@ -45,9 +46,13 @@ class OpenFlowController(ControllerBase):
     def start(self):
         app_mgr = AppManager.get_instance()
         LOG.debug(("RYU openflow stack, DragonFlow OpenFlow Controller"))
+        l3app_kwargs = dict(
+            idle_timeout=self.cfg.CONF.subnet_flows_idle_timeout,
+            hard_timeout=self.cfg.CONF.subnet_flows_hard_timeout
+        )
         self.open_flow_hand = app_mgr.instantiate(OFPHandler, None, None)
         self.open_flow_hand.start()
-        self.l3_app = app_mgr.instantiate(L3ReactiveApp, None, None)
+        self.l3_app = app_mgr.instantiate(L3ReactiveApp, None, **l3app_kwargs)
         self.l3_app.start()
 
     def delete_router(self, router_id):

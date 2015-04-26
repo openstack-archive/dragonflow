@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import collections
 import netaddr
 import struct
@@ -315,6 +314,8 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.need_sync = True
         self.dp_list = {}
         self.snat_bindings = {}
+        self.idle_timeout = kwargs['idle_timeout']
+        self.hard_timeout = kwargs['hard_timeout']
 
     def get_tenant_by_id(self, tenant_id):
         return self._tenants.setdefault(tenant_id, TenantTopology(tenant_id))
@@ -777,7 +778,9 @@ class L3ReactiveApp(app_manager.RyuApp):
             table_id=table,
             priority=priority,
             match=match,
-            out_port=out_port_num)
+            out_port=out_port_num,
+            idle_timeout=self.idle_timeout,
+            hard_timeout=self.hard_timeout)
 
         return actions
 
