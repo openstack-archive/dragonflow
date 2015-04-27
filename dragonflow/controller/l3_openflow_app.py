@@ -1244,6 +1244,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                    parser.NXActionRegMove(src_field='arp_spa',
                                           dst_field='arp_tpa',
                                           n_bits=32),
+                   parser.OFPActionSetField(eth_src=mac_address),
                    parser.OFPActionSetField(arp_sha=mac_address),
                    parser.OFPActionSetField(arp_spa=interface_ip),
                    parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
