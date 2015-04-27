@@ -35,7 +35,6 @@ from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api as api
 
 from neutron.db import common_db_mixin
-from neutron.db import l3_dvrscheduler_db
 from neutron.db import l3_gwmode_db
 from neutron.db import l3_hascheduler_db
 
@@ -90,13 +89,12 @@ def subscribe():
 class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                                 l3_hamode_db.L3_HA_NAT_db_mixin,
                                 l3_gwmode_db.L3_NAT_db_mixin,
-                                l3_dvrscheduler_db.L3_DVRsch_db_mixin,
                                 l3_hascheduler_db.L3_HA_scheduler_db_mixin,
                                 l3_rpc.L3RpcCallback):
 
     RPC_API_VERSION = '1.2'
-    supported_extension_aliases = ["router", "ext-gw-mode", "dvr",
-            "l3_agent_scheduler"]
+    supported_extension_aliases = ['router', 'ext-gw-mode',
+        'l3_agent_scheduler']
 
     def __init__(self):
 
