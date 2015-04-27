@@ -32,9 +32,9 @@ class ControllerBase(object):
         pass
 
     @abc.abstractmethod
-    def add_snat_binding(self, subnet_id, sn_port, router_port_added):
+    def add_snat_binding(self, subnet_id, sn_port):
         pass
 
     @abc.abstractmethod
-    def remove_snat_binding(self, subnet_id, sn_port, router_port_removed):
+    def remove_snat_binding(self, subnet_id):
         pass

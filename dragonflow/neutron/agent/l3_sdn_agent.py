@@ -20,24 +20,18 @@ eventlet.monkey_patch()
 from oslo_config import cfg
 
 from neutron.agent.common import config
-from neutron.agent.l3 import config as l3_config
+from neutron.agent import l3_agent
 from neutron.common import config as common_config
 from neutron.common import topics
 from neutron.openstack.common import service
 from neutron import service as neutron_service
 
 
-def register_opts(conf):
-    conf.register_opts(l3_config.OPTS)
-    config.register_agent_state_opts_helper(conf)
-
-
 def main(manager='dragonflow.neutron.agent.l3.l3_controller_agent.'
-        'L3ControllerAgentWithStateReport'):
-    register_opts(cfg.CONF)
+         'L3ControllerAgentWithStateReport'):
+    l3_agent.register_opts(cfg.CONF)
     common_config.init(sys.argv[1:])
     config.setup_logging()
-    cfg.CONF.set_override('agent_mode', 'dvr_snat')
     cfg.CONF.set_override('router_delete_namespaces', True)
     server = neutron_service.Service.create(
         binary='neutron-l3-controller-agent',
