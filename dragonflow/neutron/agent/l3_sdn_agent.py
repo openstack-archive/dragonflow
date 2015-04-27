@@ -21,6 +21,10 @@ from oslo_config import cfg
 
 from neutron.agent.common import config
 from neutron.agent.l3 import config as l3_config
+from neutron.agent.l3 import ha
+from neutron.agent.linux import external_process
+from neutron.agent.linux import interface
+from neutron.agent.metadata import config as metadata_config
 from neutron.common import config as common_config
 from neutron.common import topics
 from neutron.openstack.common import service
@@ -29,7 +33,14 @@ from neutron import service as neutron_service
 
 def register_opts(conf):
     conf.register_opts(l3_config.OPTS)
+    conf.register_opts(metadata_config.DRIVER_OPTS)
+    conf.register_opts(metadata_config.SHARED_OPTS)
+    conf.register_opts(ha.OPTS)
+    config.register_interface_driver_opts_helper(conf)
+    config.register_use_namespaces_opts_helper(conf)
     config.register_agent_state_opts_helper(conf)
+    conf.register_opts(interface.OPTS)
+    conf.register_opts(external_process.OPTS)
 
 
 def main(manager='dragonflow.neutron.agent.l3.l3_controller_agent.'
@@ -37,7 +48,6 @@ def main(manager='dragonflow.neutron.agent.l3.l3_controller_agent.'
     register_opts(cfg.CONF)
     common_config.init(sys.argv[1:])
     config.setup_logging()
-    cfg.CONF.set_override('agent_mode', 'dvr_snat')
     cfg.CONF.set_override('router_delete_namespaces', True)
     server = neutron_service.Service.create(
         binary='neutron-l3-controller-agent',

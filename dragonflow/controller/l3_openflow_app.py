@@ -747,17 +747,17 @@ class L3ReactiveApp(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
+        match.set_ipv4_dst(ipv4_text_to_int(str(match_dst_ip)))
         match.set_in_port(in_port)
         match.set_metadata(src_seg_id)
-        match.set_dl_src(haddr_to_bin(match_src_mac))
-        match.set_dl_dst(haddr_to_bin(match_dst_mac))
-        match.set_ipv4_src(ipv4_text_to_int(str(match_src_ip)))
-        match.set_ipv4_dst(ipv4_text_to_int(str(match_dst_ip)))
+#         match.set_dl_src(haddr_to_bin(match_src_mac))
+#         match.set_dl_dst(haddr_to_bin(match_dst_mac))
+#         match.set_ipv4_src(ipv4_text_to_int(str(match_src_ip)))
         actions = []
         inst = []
         ofproto = datapath.ofproto
         actions.append(parser.OFPActionDecNwTtl())
-        actions.append(parser.OFPActionSetField(eth_src=src_mac))
+#         actions.append(parser.OFPActionSetField(eth_src=src_mac))
         actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
         if dst_seg_id:
             # The dest vm is on another compute machine so we must set the
@@ -855,7 +855,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                  command=None, idle_timeout=0, hard_timeout=0,
                  priority=0xff, buffer_id=0xffffffff, match=None,
                  actions=None, inst_type=None, out_port=None,
-                 out_group=None, flags=0, inst=None):
+                 out_group=None, flags=ofproto_v1_3.OFPFF_SEND_FLOW_REM,
+                 inst=None):
 
         if command is None:
             command = datapath.ofproto.OFPFC_ADD
@@ -933,40 +934,6 @@ class L3ReactiveApp(app_manager.RyuApp):
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
 
-    def add_flow_match_to_controller(self, datapath, table, priority,
-                                     match=None):
-
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
-
-        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER)]
-
-        inst = [datapath.ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        self.mod_flow(
-            datapath,
-            inst=inst,
-            table_id=table,
-            priority=priority,
-            match=match)
-
-    def add_flow_match_gw_mac_to_cont(self, datapath, router_interface, table,
-                                      priority, seg_id=None):
-
-        dst_mac = router_interface['mac_address']
-        router_ip_address = self.get_ip_from_interface(router_interface)
-
-        parser = datapath.ofproto_parser
-        match = parser.OFPMatch()
-        match.set_dl_type(ether.ETH_TYPE_IP)
-        match.set_metadata(seg_id)
-        match.set_dl_dst(haddr_to_bin(dst_mac))
-        match.set_ipv4_dst(ipv4_text_to_int(str(router_ip_address)))
-
-        self.add_flow_match_to_controller(
-            datapath, table, priority, match=match)
-
     def add_flow(self, datapath, port, dst, actions):
         ofproto = datapath.ofproto
 
@@ -1011,9 +978,6 @@ class L3ReactiveApp(app_manager.RyuApp):
     def add_bootstrap_flows(self, datapath):
         # Goto from main CLASSIFIER table
         self.add_flow_go_to_table2(datapath, 0, 1, self.CLASSIFIER_TABLE)
-
-        # Send to controller unmatched inter subnet L3 traffic
-        # self.add_flow_match_to_controller(datapath, self.L3_VROUTER_TABLE, 0)
 
         #send L3 traffic unmatched to controller
         self.add_flow_go_to_table2(datapath, self.CLASSIFIER_TABLE, 1,
@@ -1091,9 +1055,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                           port.hw_addr)
                 self.add_flow_normal_by_port_num(
                     datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
-            elif port.name.startswith('qvo'):
-                # this is a VM port start with qvo<NET-ID[:11]> update the port
-                # data with the port num and the switch dpid
+            elif port.name.startswith('qvo') or port.name.startswith('qr'):
+                # this is a VM/qrouter port start with qvo/qr<NET-ID[:11]>
+                # update the port data with the port num and the switch dpid
                 (port_id, mac, segmentation_id) = self.update_local_port_num(
                     port.name, port.port_no, datapath)
                 if (segmentation_id != 0):
@@ -1104,7 +1068,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                                        segmentation_id,
                                                        0xffff,
                                                        self.CLASSIFIER_TABLE)
-                LOG.debug("Found VM  port  %s using MAC  %s  %d",
+                LOG.debug("Found VM/router port %s using MAC  %s  %d",
                           port.name, port.hw_addr, datapath.id)
             elif "patch-tun" in port.name:
                 LOG.debug(("Found br-tun patch port %s %s --> NORMAL path"),
@@ -1230,6 +1194,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_ARP)
         match.set_arp_tpa(ipv4_text_to_int(str(interface_ip)))
+        match.set_arp_opcode(arp.ARP_REQUEST)
         match.set_metadata(segmentation_id)
         return match
 
@@ -1266,13 +1231,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                                         LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
                                         network,
                                         net_mask,
-                                        subnet.segmentation_id)
-
-        self.add_flow_match_gw_mac_to_cont(
-                                        datapath,
-                                        interface,
-                                        self.L3_VROUTER_TABLE,
-                                        ROUTER_INTERFACE_FLOW_PRIORITY,
                                         subnet.segmentation_id)
 
     def subnet_added_binding_cast(self, subnet, interface):
@@ -1332,9 +1290,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                                 match=match)
         datapath.send_msg(msg)
 
-    def add_snat_binding(self, subnet_id, sn_port, added_port):
-        self.snat_bindings[subnet_id] = SnatBinding(subnet_id, sn_port)
-        snat_binding = self.snat_bindings[subnet_id]
+    def add_snat_binding(self, subnet_id, sn_port):
+        snat_binding = SnatBinding(subnet_id, sn_port)
+        self.snat_bindings[subnet_id] = snat_binding
 
         # Now find the segmentation ID for this subnet if it exists
         for tenantid in self._tenants:
@@ -1344,7 +1302,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                     if subnet.id == subnet_id:
                         self.bootstrap_snat_subnet_flow(snat_binding, subnet)
 
-    def remove_snat_binding(self, subnet_id, sn_port, removed_port):
+    def remove_snat_binding(self, subnet_id):
         snat_binding = self.snat_bindings.get(subnet_id)
 
         if snat_binding is None:
