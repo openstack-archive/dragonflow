@@ -190,6 +190,24 @@ class TenantTopology(object):
         else:
             return 0, 0
 
+    def find_port_data_by_local_name(self, local_port_name):
+        """
+        :param local_port_name: local name of the port on the switch
+                                (eg. "qvo2dcdg-as")
+        :type: local_port_name: str
+        :return: A PortData object if one was found or None if no matching
+                 object exists
+        :type: PortData
+        """
+
+        name_prefix_len = 3
+        partial_id = local_port_name[name_prefix_len:]
+        for port_data in self.mac_to_port_data.values():
+            if port_data.id.startswith(partial_id):
+                return port_data
+        else:
+            return None
+
     def get_route(self, pkt):
         """Get a possible route the packet can take to reach it's destination
 
@@ -1048,6 +1066,36 @@ class L3ReactiveApp(app_manager.RyuApp):
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
 
+    def _handle_remove_port(self, port_data):
+        """Broadcast remove commands to all datapaths
+
+        :param port_data: port_data for the port that was removed
+        :type port_data: PortData
+        """
+        for tenant in self._tenants.values():
+            tenant.mac_to_port_data.pop(port_data.mac_address, None)
+
+        cookie = CookieFilter.from_port_data(port_data).to_cookie()
+        for datapath in self.dp_list.values():
+            datapath = datapath.datapath
+            parser = datapath.ofproto_parser
+            ofproto = datapath.ofproto
+
+            match = parser.OFPMatch()
+            message = parser.OFPFlowMod(
+                datapath=datapath,
+                cookie=cookie,
+                cookie_mask=cookie,
+                table_id=L3ReactiveApp.L3_VROUTER_TABLE,
+                command=ofproto.OFPFC_DELETE,
+                priority=MEDIUM_PRIORITY_FLOW,
+                out_port=ofproto.OFPP_ANY,
+                out_group=ofproto.OFPG_ANY,
+                match=match,
+            )
+
+            datapath.send_msg(message)
+
     @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
     def _port_status_handler(self, ev):
         msg = ev.msg
@@ -1071,6 +1119,12 @@ class L3ReactiveApp(app_manager.RyuApp):
         switch = self.dp_list.get(datapath.id)
         if switch:
             self.send_port_desc_stats_request(datapath)
+            if reason == ofproto.OFPPR_DELETE:
+                for tenant in self._tenants.values():
+                    port_data = tenant.find_port_data_by_local_name(
+                        msg.desc.name)
+                    if port_data is not None:
+                        self._handle_remove_port(port_data)
 
     def add_bootstrap_flows(self, datapath):
         # Goto from main CLASSIFIER table
