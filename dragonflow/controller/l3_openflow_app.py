@@ -45,6 +45,9 @@ from neutron.common import constants as const
 from neutron.i18n import _LE, _LI
 from oslo_log import log
 
+from dragonflow.utils.bloomfilter import BloomFilter
+
+
 LOG = log.getLogger(__name__)
 
 ETHERNET = ethernet.ethernet.__name__
@@ -75,6 +78,66 @@ ROUTER_INTERFACE_FLOW_PRIORITY = 40
 LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY = 30
 EAST_WEST_TRAFFIC_TO_CONTROLLER_FLOW_PRIORITY = 20
 SNAT_RULES_PRIORITY_FLOW = 10
+
+
+class CookieFilter(BloomFilter):
+    """Bloom Filter in a cookie
+
+    Useful and delicious!
+
+    To get a valid int cookie:
+     cf = CookieFilter(keys)
+     cookie = cf.to_cookie()
+
+    When adding a flow:
+     OFPModFlow(..., cookie=cookie)
+
+    When matching a flow (cookie can also just be 0xFFFFFFFF):
+     OFPModFlow(..., cookie=cookie, cookie_mask=cookie)
+    """
+    def __init__(self, keys=()):
+        super(CookieFilter, self).__init__(
+            num_bytes=8,
+            num_probes=2,
+            iterable=keys,
+        )
+
+    def to_cookie(self):
+        return CookieFilter._array_to_int64(self.array)
+
+    @staticmethod
+    def from_route(route):
+        """Create a filter for a route
+
+        :type route: list of PortData objects
+        :rtype: CookieFilter
+        """
+
+        # TODO(saggi) memoize
+        return CookieFilter(port.cookie_hash for port in route)
+
+    @staticmethod
+    def from_port_data(port_data):
+        """Create a CookieFilter from a single PortData object
+
+        :type port_data: PortData
+        :rtype: CookieFilter
+        """
+        # TODO(saggi) memoize
+        return CookieFilter((port_data.cookie_hash,))
+
+    @staticmethod
+    def _array_to_int64(array):
+        """Converts bloom filter mask or state to int64
+
+        Only works if array length is 8
+
+        :param array: Array of a bloom filter or mask
+        :return: The resulting array encoded as a signed int
+        :rtype: int
+        """
+        assert(len(array) == 8)
+        return struct.unpack("Q", str(array))[0]
 
 
 class AgentDatapath(object):
@@ -278,6 +341,26 @@ class PortData(object):
             return self._port_data['switch_port_desc']['local_port_num']
         except KeyError:
             return -1
+
+    @property
+    def local_datapath_id(self):
+        try:
+            return self._port_data['switch_port_desc']['local_dpid_switch']
+        except KeyError:
+            return -1
+
+    @property
+    def mac_address(self):
+        return self._port_data['mac_address']
+
+    @property
+    def cookie_hash(self):
+        """Create an int64 to be used for ovs cookie needs.
+        :return:
+        :type return: int
+        """
+        uuid_prefix = self.id.split('-', 1)[0]
+        return int(uuid_prefix, 16)
 
     def get_subnet_from_ip_address(self, ip_address):
         for fixed_ip in self.fixed_ips:
@@ -571,6 +654,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             pkt_ipv4,
             route[1],
             route[-1],
+            CookieFilter.from_route(route),
         )
 
     def _get_tenant_for_msg(self, msg, pkt):
@@ -639,6 +723,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             pkt_ipv4,
             gateway_port_data,
             dst_port_data,
+            cookie_filter,
     ):
         """Install the l3 forwarding flows.
 
@@ -653,12 +738,15 @@ class L3ReactiveApp(app_manager.RyuApp):
         :type gateway_port_data: PortData
         :param dst_port_data: The destination port.
         :type dst_port_data: PortData
+        :param cookie_filter: The cookie to attach to all flows
+        :type cookie_filter: CookieFilter
         """
         dst_p_desc = dst_port_data['switch_port_desc']
         dst_seg_id = dst_port_data.segmentation_id
         in_port = in_port_data.local_port_number
         src_seg_id = in_port_data.segmentation_id
         in_port_desc = in_port_data['switch_port_desc']
+        cookie = cookie_filter.to_cookie()
 
         if dst_p_desc['local_dpid_switch'] == datapath.id:
             # The dst VM and the source VM are on the same compute Node
@@ -675,56 +763,67 @@ class L3ReactiveApp(app_manager.RyuApp):
                 pkt_ipv4.src,
                 gateway_port_data['mac_address'],
                 dst_port_data['mac_address'],
-                dst_p_desc['local_port_num'])
+                dst_p_desc['local_port_num'],
+                cookie=cookie,
+            )
             # Install the reverse flow return traffic
-            self.add_flow_subnet_traffic(datapath,
-                                         self.L3_VROUTER_TABLE,
-                                         MEDIUM_PRIORITY_FLOW,
-                                         dst_p_desc['local_port_num'],
-                                         dst_seg_id,
-                                         dst_port_data['mac_address'],
-                                         gateway_port_data['mac_address'],
-                                         pkt_ipv4.src,
-                                         pkt_ipv4.dst,
-                                         pkt_eth.dst,
-                                         in_port_data['mac_address'],
-                                         in_port_desc['local_port_num'])
+            self.add_flow_subnet_traffic(
+                datapath,
+                self.L3_VROUTER_TABLE,
+                MEDIUM_PRIORITY_FLOW,
+                dst_p_desc['local_port_num'],
+                dst_seg_id,
+                dst_port_data['mac_address'],
+                gateway_port_data['mac_address'],
+                pkt_ipv4.src,
+                pkt_ipv4.dst,
+                pkt_eth.dst,
+                in_port_data['mac_address'],
+                in_port_desc['local_port_num'],
+                cookie=cookie,
+            )
             self.handle_packet_out_l3(datapath, msg, in_port, actions)
         else:
-            # The dst VM and the source VM are NOT  on the same copute Node
+            # The dst VM and the source VM are NOT on the same compute node
             # Send output to br-tun patch port and install reverse flow on the
             # dst compute node
-            remoteSwitch = self.dp_list.get(dst_p_desc['local_dpid_switch'])
-            localSwitch = self.dp_list.get(datapath.id)
-            actions = self.add_flow_subnet_traffic(datapath,
-                                                   self.L3_VROUTER_TABLE,
-                                                   MEDIUM_PRIORITY_FLOW,
-                                                   in_port,
-                                                   src_seg_id,
-                                                   pkt_eth.src,
-                                                   pkt_eth.dst,
-                                                   pkt_ipv4.dst,
-                                                   pkt_ipv4.src,
-                                                   gateway_port_data[
-                                                       'mac_address'],
-                                                   dst_port_data[
-                                                       'mac_address'],
-                                                   localSwitch.patch_port_num,
-                                                   dst_seg_id=dst_seg_id)
+            remote_switch = self.dp_list.get(dst_p_desc['local_dpid_switch'])
+            local_switch = self.dp_list.get(datapath.id)
+            actions = self.add_flow_subnet_traffic(
+                datapath,
+                self.L3_VROUTER_TABLE,
+                MEDIUM_PRIORITY_FLOW,
+                in_port,
+                src_seg_id,
+                pkt_eth.src,
+                pkt_eth.dst,
+                pkt_ipv4.dst,
+                pkt_ipv4.src,
+                gateway_port_data['mac_address'],
+                dst_port_data['mac_address'],
+                local_switch.patch_port_num,
+                dst_seg_id=dst_seg_id,
+                cookie=cookie,
+            )
+
             # Remote reverse flow install
-            self.add_flow_subnet_traffic(remoteSwitch.datapath,
-                                         self.L3_VROUTER_TABLE,
-                                         MEDIUM_PRIORITY_FLOW,
-                                         dst_p_desc['local_port_num'],
-                                         dst_seg_id,
-                                         dst_port_data['mac_address'],
-                                         gateway_port_data['mac_address'],
-                                         pkt_ipv4.src,
-                                         pkt_ipv4.dst,
-                                         pkt_eth.dst,
-                                         in_port_data['mac_address'],
-                                         remoteSwitch.patch_port_num,
-                                         dst_seg_id=src_seg_id)
+            self.add_flow_subnet_traffic(
+                remote_switch.datapath,
+                self.L3_VROUTER_TABLE,
+                MEDIUM_PRIORITY_FLOW,
+                dst_p_desc['local_port_num'],
+                dst_seg_id,
+                dst_port_data['mac_address'],
+                gateway_port_data['mac_address'],
+                pkt_ipv4.src,
+                pkt_ipv4.dst,
+                pkt_eth.dst,
+                in_port_data['mac_address'],
+                remote_switch.patch_port_num,
+                dst_seg_id=src_seg_id,
+                cookie=cookie,
+            )
+
             self.handle_packet_out_l3(datapath, msg, in_port, actions)
 
     def handle_packet_out_l3(self, datapath, msg, in_port, actions):
@@ -741,7 +840,8 @@ class L3ReactiveApp(app_manager.RyuApp):
     def add_flow_subnet_traffic(self, datapath, table, priority, in_port,
                                 src_seg_id, match_src_mac, match_dst_mac,
                                 match_dst_ip, match_src_ip, src_mac,
-                                dst_mac, out_port_num, dst_seg_id=None):
+                                dst_mac, out_port_num, dst_seg_id=None,
+                                cookie=0):
         parser = datapath.ofproto_parser
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
@@ -772,6 +872,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                         ofproto.OFPIT_APPLY_ACTIONS, actions))
         self.mod_flow(
             datapath,
+            cookie=cookie,
             inst=inst,
             table_id=table,
             priority=priority,
