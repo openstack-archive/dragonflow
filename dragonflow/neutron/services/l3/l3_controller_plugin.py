@@ -79,11 +79,28 @@ def _notify_l3_agent_new_port(resource, event, trigger, **kwargs):
         l3plugin.dvr_vmarp_table_update(context, port, "add")
 
 
+def _notify_l3_agent_delete_port(event, resource, trigger, **kwargs):
+    context = kwargs['context']
+    port = kwargs['port']
+    removed_routers = kwargs['removed_routers']
+    l3plugin = manager.NeutronManager.get_service_plugins().get(
+        constants.L3_ROUTER_NAT)
+    l3plugin.dvr_vmarp_table_update(context, port, "del")
+    if port['device_owner'] in q_const.ROUTER_INTERFACE_OWNERS:
+        l3plugin.delete_router_interface(context, port)
+
+    for router in removed_routers:
+        l3plugin.remove_router_from_l3_agent(
+            context, router['agent_id'], router['router_id'])
+
+
 def subscribe():
     registry.subscribe(
         _notify_l3_agent_new_port, resources.PORT, events.AFTER_UPDATE)
     registry.subscribe(
         _notify_l3_agent_new_port, resources.PORT, events.AFTER_CREATE)
+    registry.subscribe(
+        _notify_l3_agent_delete_port, resources.PORT, events.AFTER_DELETE)
 
 
 class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
@@ -157,6 +174,9 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         notify_port = None
         router_port = None
         router_id = 0
+        if action == "del":
+            notify_port = port_dict
+
         for port in ports:
             # Check if this port subnet is connected to a router
             if port['device_owner'] in q_const.ROUTER_INTERFACE_OWNERS:
@@ -166,6 +186,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                     notify_port = port
             if notify_port and router_id:
                 break
+
         if notify_port:
             segmentation_id = self._get_segmentation_id(context, notify_port)
             self._send_new_port_notify(context, notify_port, action, router_id,
@@ -192,6 +213,17 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
             return 0
 
         return port_data.get('segmentation_id', 0)
+
+    def remove_router_from_l3_agent(self, context, agent_id, router_id):
+        self.l3_rpc_notifier.router_deleted(context, router_id)
+
+    def delete_router_interface(self, context, notify_port):
+        self.l3_rpc_notifier.routers_updated(
+            context,
+            router_ids=[notify_port['device_id']],
+            operation="del_interface",
+            data={'port': notify_port},
+        )
 
     def _send_new_port_notify(self, context, notify_port, action, router_id,
             segmentation_id):

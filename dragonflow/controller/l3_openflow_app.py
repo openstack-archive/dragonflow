@@ -503,6 +503,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                         interface['mac_address'],
                         self.get_ip_from_interface(interface))
 
+                    self._handle_remove_port(PortData(interface))
+
     def attach_switch_port_desc_to_port_data(self, port_data):
         if 'id' in port_data:
             port_id = port_data['id']
@@ -523,6 +525,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                         port_data['segmentation_id'],
                         0xffff,
                         self.CLASSIFIER_TABLE)
+
+    def delete_port(self, port):
+        self._handle_remove_port(PortData(port))
 
     def sync_port(self, port):
         LOG.info(_LI("sync_port--> %s\n"), port)

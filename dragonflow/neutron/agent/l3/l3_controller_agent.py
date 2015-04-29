@@ -111,9 +111,8 @@ class L3ControllerAgent(agent.L3NATAgent):
 
     def del_arp_entry(self, context, payload):
         """Delete arp entry from router namespace.  Called from RPC."""
-        # arp_table = payload['arp_table']
-        # TODO(gampel) FIX add call to controller to delete entry
-        LOG.debug("NOT IMP YET del_arp_entry")
+        port = payload['arp_table']
+        self.controller.delete_port(port)
 
 
 class L3ControllerAgentWithStateReport(L3ControllerAgent,
