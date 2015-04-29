@@ -32,6 +32,14 @@ class ControllerBase(object):
         pass
 
     @abc.abstractmethod
+    def delete_router(self, router):
+        pass
+
+    @abc.abstractmethod
+    def delete_port(self, router):
+        pass
+
+    @abc.abstractmethod
     def add_snat_binding(self, subnet_id, sn_port):
         pass
 

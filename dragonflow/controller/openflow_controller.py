@@ -64,6 +64,9 @@ class OpenFlowController(ControllerBase):
     def sync_port(self, port):
         self.l3_app.sync_port(port)
 
+    def delete_port(self, port):
+        self.l3_app.delete_port(port)
+
     def add_snat_binding(self, subnet_id, sn_port):
         self.l3_app.add_snat_binding(subnet_id, sn_port)
 
