@@ -437,6 +437,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         for subnet_id in subnets_ids:
             subnet = subnets.get(subnet_id)
             if not subnet:
+                LOG.info(_LI("No subnet object for subnet %s"), subnet_id)
                 continue
 
             subnet.segmentation_id = port['segmentation_id']
@@ -444,9 +445,6 @@ class L3ReactiveApp(app_manager.RyuApp):
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
                 self.subnet_added_binding_cast(subnet, port)
                 self.bootstrap_network_classifiers(subnet=subnet)
-
-            else:
-                LOG.error(_LE("No subnet object for subnet %s"), subnet_id)
 
         self.attach_switch_port_desc_to_port_data(port)
 
