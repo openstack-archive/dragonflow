@@ -187,8 +187,11 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
     def _get_segmentation_id(self, context, port):
         port_data = self.get_ml2_port_bond_data(context, port['id'],
                         port['binding:host_id'])
-        if "segmentation_id" in port_data:
-            return port_data.get('segmentation_id', 0)
+
+        if port_data is None:
+            return 0
+
+        return port_data.get('segmentation_id', 0)
 
     def _send_new_port_notify(self, context, notify_port, action, router_id,
             segmentation_id):
@@ -224,7 +227,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
             LOG.warning(_LW("Device %(device)s requested by agent "
                          "%(agent_id)s not found in database"),
                         {'device': device_id, 'agent_id': port_id})
-            return {None}
+            return None
 
         port = port_context.current
 
