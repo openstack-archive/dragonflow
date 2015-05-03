@@ -295,6 +295,9 @@ class Subnet(object):
         self.data = data
         self.segmentation_id = segmentation_id
 
+    def set_data(self, data):
+        self.data = data
+
     @property
     def id(self):
         return self.data['id']
@@ -473,6 +476,9 @@ class L3ReactiveApp(app_manager.RyuApp):
                         Subnet(subnet_info, 0),
                 )
 
+                if subnet.data is None:
+                    subnet.set_data(subnet_info)
+
                 router.add_subnet(subnet)
                 if subnet.segmentation_id != 0:
                     self.subnet_added_binding_cast(subnet, interface)
@@ -544,6 +550,9 @@ class L3ReactiveApp(app_manager.RyuApp):
             subnet = subnets.get(subnet_id)
             if not subnet:
                 LOG.info(_LI("No subnet object for subnet %s"), subnet_id)
+
+                # Create the subnet object, and attach data in sync_router
+                subnets[subnet_id] = Subnet(None, port['segmentation_id'])
                 continue
 
             subnet.segmentation_id = port['segmentation_id']
