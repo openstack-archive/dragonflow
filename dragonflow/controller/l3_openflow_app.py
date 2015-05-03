@@ -1036,6 +1036,17 @@ class L3ReactiveApp(app_manager.RyuApp):
         req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
 
+    def append_port_data_to_ports(self, ports_list, port):
+        ports_list.append('port_no=%d hw_addr=%s name=%s config=0x%08x '
+                          'state=0x%08x curr=0x%08x advertised=0x%08x '
+                          'supported=0x%08x peer=0x%08x curr_speed=%d '
+                          'max_speed=%d' %
+                          (port.port_no, port.hw_addr,
+                           port.name, port.config,
+                           port.state, port.curr, port.advertised,
+                           port.supported, port.peer, port.curr_speed,
+                           port.max_speed))
+
     @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
     def port_desc_stats_reply_handler(self, ev):
         ports = []
@@ -1043,15 +1054,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         switch = self.dp_list.get(datapath.id)
         self.add_bootstrap_flows(datapath)
         for port in ev.msg.body:
-            ports.append('port_no=%d hw_addr=%s name=%s config=0x%08x '
-                         'state=0x%08x curr=0x%08x advertised=0x%08x '
-                         'supported=0x%08x peer=0x%08x curr_speed=%d '
-                         'max_speed=%d' %
-                         (port.port_no, port.hw_addr,
-                             port.name, port.config,
-                             port.state, port.curr, port.advertised,
-                             port.supported, port.peer, port.curr_speed,
-                             port.max_speed))
+            self.append_port_data_to_ports(ports, port)
 
             if port.name.startswith('tap'):
                 LOG.debug(("Found DHCPD port  %s using MAC  %s"
