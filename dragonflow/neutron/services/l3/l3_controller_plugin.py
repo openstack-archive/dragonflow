@@ -172,7 +172,6 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         filters = {'fixed_ips': {'subnet_id': [subnet]}}
         ports = self._core_plugin.get_ports(context, filters=filters)
         notify_port = None
-        router_port = None
         router_id = 0
         if action == "del":
             notify_port = port_dict
@@ -181,7 +180,6 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
             # Check if this port subnet is connected to a router
             if port['device_owner'] in q_const.ROUTER_INTERFACE_OWNERS:
                 router_id = port['device_id']
-                router_port = port
             if port['id'] == port_dict['id']:
                     notify_port = port
             if notify_port and router_id:
@@ -191,14 +189,6 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
             segmentation_id = self._get_segmentation_id(context, notify_port)
             self._send_new_port_notify(context, notify_port, action, router_id,
                     segmentation_id)
-            if router_port:
-                #TODO(gampel) Currently to overcome locally in dragonflow
-                #the problem that DVR router port does not have segmentation_id
-                #we send notification with the router ID with every port
-                #update on the subnet
-                self._send_new_port_notify(context, router_port, action,
-                        router_id,
-                        segmentation_id)
         else:
             LOG.error(_LE("Could not find port_id %(port_id)s"
                 "in subnet %(subnet_id)s"),
