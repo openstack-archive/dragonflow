@@ -17,7 +17,7 @@ The proposed method is based on the separation of the routing control plane from
 This is accomplished by implementing the routing logic in distributed forwarding rules on the virtual switches.
 In OpenFlow these rules are called flows. To put this simply, the virtual router is implemented using OpenFlow flows.
 
-Dragonflow eliminate the use of namespaces in contrast to the standard DVR, a diagram showing Dragonflow components and overall architecture can be seen here:
+Dragonflow eliminates the use of namespaces in contrast to the standard DVR. A diagram showing Dragonflow components and overall architecture can be seen here:
 
 .. image:: https://raw.githubusercontent.com/stackforge/dragonflow/master/doc/images/df_components.jpg
     :alt: Solution Overview
@@ -63,7 +63,7 @@ https://github.com/stackforge/dragonflow/tree/master/doc/source
 
 Prerequisites
 -------------
-Install DevStack with Netron ML2 as core plugin
+Install DevStack with Neutron ML2 as core plugin
 Install OVS 2.3.1 or newer
 
 Features
@@ -74,13 +74,12 @@ Features
 * Scalability improvement for inter-subnet network by offloading L3 East-West routing from the Network Node to all Compute Nodes
 * Reliability improvement for inter-subnet network by removal of Network Node from the East-West traffic
 * Simplified virtual routing management
-* Supports all type drivers GRE/VXLAN (Currently doesnt support VLAN)
+* Supports all type drivers GRE/VXLAN (Currently doesn't support VLAN)
 
 TODO
 ----
 
 * Add support for North-South L3 IPv4 distribution (SNAT and DNAT)
-* Remove change impact on Neutron L2 Agent by switching to OVSDB command for bootstrap sequence (set-controller and install arp responder)
+* Remove change impact on Neutron L2 Agent by switching to OVSDB command for bootstrap sequence (set-controller and install ARP responder)
 * Add support for IPv6
 * Support for multi controllers solution
-
