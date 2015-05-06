@@ -175,6 +175,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
         self.endpoints = [self]
         # Define the listening consumers for the agent
         consumers = [[topics.PORT, topics.UPDATE],
+                     [topics.PORT, topics.DELETE],
                      [topics.NETWORK, topics.DELETE],
                      [constants.TUNNEL, topics.UPDATE],
                      [constants.TUNNEL, topics.DELETE],
@@ -200,8 +201,8 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                     remote_ip,
                     tunnel_type)
         if ofport > 0:
-            ofports = ovs_neutron_agent. \
-                _ofport_set_to_str(self.tun_br_ofports[tunnel_type].values())
+            ofports = (ovs_neutron_agent._ofport_set_to_str
+                       (self.tun_br_ofports[tunnel_type].values()))
             if self.enable_l3_controller:
                 if ofports:
                     br.add_flow(table=constants.FLOOD_TO_TUN,
