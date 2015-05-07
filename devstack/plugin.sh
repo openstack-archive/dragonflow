@@ -20,15 +20,6 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         echo_summary "Configure DragonFlow"
 
-        if is_service_enabled q-df-agt; then
-           _configure_neutron_plugin_agent
-        fi
-
-        if is_service_enabled q-df-agt && ! is_service_enabled q-svc; then
-           Q_POLICY_FILE=$NEUTRON_CONF_DIR/policy.json
-           cp $NEUTRON_DIR/etc/policy.json $Q_POLICY_FILE
-        fi
-
         if is_service_enabled q-df-l3; then
            _configure_neutron_l3_agent
         fi
@@ -38,17 +29,17 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
         echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR >> $RC_DIR/.localrc.auto
 
         OVS_VERSION=`ovs-vsctl --version | head -n 1 | grep -E -o "[0-9]+\.[0-9]+\.[0-9]"`
-        if [ `vercmp_numbers "$OVS_VERSION" "2.3.1"` -lt "0" ] && is_service_enabled q-df-agt ; then
+        if [ `vercmp_numbers "$OVS_VERSION" "2.3.1"` -lt "0" ] && is_service_enabled q-agt ; then
             die $LINENO "You are running OVS version $OVS_VERSION. OVS 2.3.1+ is required for Dragonflow."
         fi
 
         echo summary "Dragonflow OVS version validated, version is $OVS_VERSION"
 
+        echo summary "Setting L2 Agent to use Dragonflow Agent"
+        AGENT_BINARY="$DF_L2_AGENT"
+
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         echo_summary "Initializing DragonFlow"
-        if is_service_enabled q-df-agt; then
-             run_process q-df-agt "python $DF_L2_AGENT --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE"
-        fi
 
         if is_service_enabled q-df-l3; then
             run_process q-df-l3 "python $DF_L3_AGENT --config-file $NEUTRON_CONF --config-file=$Q_L3_CONF_FILE"
@@ -56,9 +47,6 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
     fi
 
     if [[ "$1" == "unstack" ]]; then
-        if is_service_enabled q-df-agt; then
-           stop_process q-df-agt
-        fi
 
         if is_service_enabled q-df-l3; then
            stop_process q-df-l3
