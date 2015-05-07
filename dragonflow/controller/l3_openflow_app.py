@@ -314,7 +314,7 @@ class Subnet(object):
     @property
     def is_ipv4(self):
         try:
-            ip_int = ipv4_text_to_int(str(netaddr.IPNetwork(self.cidr).ip))
+            ipv4_text_to_int(str(netaddr.IPNetwork(self.cidr).ip))
         except AddrFormatError:
             return False
         return True
@@ -1600,8 +1600,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                         self.add_flow_inner_subnet(datapath,
                                                from_subnet, to_subnet)
                     else:
-                        ipdb.set_trace()
                         LOG.info(_LI("No support for IPV6"))
+
     def add_flow_inner_subnet(self, datapath, from_subnet, to_subnet):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
