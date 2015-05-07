@@ -429,12 +429,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         super(L3ReactiveApp, self).start()
         return 1
 
-    def notify_sync(self):
-        self.need_sync = True
-        for switch in self.dp_list.values():
-            datapath = switch.datapath
-            self.send_port_desc_stats_request(datapath)
-
     def delete_router(self, router_id):
         for tenant in self._tenants.values():
             try:
