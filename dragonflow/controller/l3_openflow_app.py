@@ -15,6 +15,7 @@
 
 import collections
 import netaddr
+from netaddr.core import AddrFormatError
 import struct
 import threading
 
@@ -310,6 +311,14 @@ class Subnet(object):
     def gateway_ip(self):
         return self.data['gateway_ip']
 
+    @property
+    def is_ipv4(self):
+        try:
+            ipv4_text_to_int(str(netaddr.IPNetwork(self.cidr).ip))
+        except (AddrFormatError, TypeError):
+            return False
+        return True
+
     def __repr__(self):
         return "<Subnet id='%s' cidr='%s' gateway_ip='%s'>" % (
             self.id,
@@ -469,7 +478,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                         subnet_info['id'],
                         Subnet(subnet_info, 0),
                 )
-
                 if subnet.data is None:
                     subnet.set_data(subnet_info)
 
@@ -1024,6 +1032,12 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.mod_flow(datapath, inst=inst, table_id=table, priority=priority,
                       match=match)
 
+    def add_flow_goto_normal_on_ipv6(self, datapath, table, priority,
+                                     goto_table_id):
+        match = datapath.ofproto_parser.OFPMatch()
+        match.set_dl_type(ether.ETH_TYPE_IPV6)
+        self.add_flow_normal(datapath, table, priority, match)
+
     def add_flow_goto_normal_on_broad(self, datapath, table, priority,
                                      goto_table_id):
         match = datapath.ofproto_parser.OFPMatch(eth_dst='ff:ff:ff:ff:ff:ff')
@@ -1168,6 +1182,12 @@ class L3ReactiveApp(app_manager.RyuApp):
             self.CLASSIFIER_TABLE,
             NORMAL_PRIORITY_FLOW,
             self.ARP_AND_BR_TABLE)
+        #Goto from CLASSIFIER to NORMAL on IPV6 traffic
+        self.add_flow_goto_normal_on_ipv6(
+            datapath,
+            self.CLASSIFIER_TABLE,
+            NORMAL_PRIORITY_FLOW,
+            self.ARP_AND_BR_TABLE)
 
         # Normal flow on arp table in low priority
         self.add_flow_normal(datapath, self.ARP_AND_BR_TABLE, 1)
@@ -1246,7 +1266,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                     for interface in router.data['_interfaces']:
                         for subnet_info in interface['subnets']:
                             if (subnet.data['id'] == subnet_info['id']
-                                    and subnet.segmentation_id != 0):
+                                    and subnet.segmentation_id != 0
+                                    and subnet.is_ipv4):
                                 self.add_subnet_binding(datapath,
                                                         subnet,
                                                         interface)
@@ -1568,9 +1589,12 @@ class L3ReactiveApp(app_manager.RyuApp):
             for from_subnet in tenant.subnets.values():
                 if (from_subnet.segmentation_id !=
                         subnet.segmentation_id):
-                    for dp in self.dp_list.values():
-                        self.add_flow_inner_subnet(dp.datapath,
-                                                   from_subnet, subnet)
+                    if from_subnet.is_ipv4 and subnet.is_ipv4:
+                        for dp in self.dp_list.values():
+                            self.add_flow_inner_subnet(dp.datapath,
+                                                       from_subnet, subnet)
+                    else:
+                        LOG.info(_LI("No support for IPV6"))
 
     def bootstrap_inner_subnets_connection(self):
         for tenant in self._tenants.values():
@@ -1584,8 +1608,11 @@ class L3ReactiveApp(app_manager.RyuApp):
             for to_subnet in tenant.subnets.values():
                 if (to_subnet.segmentation_id !=
                         from_subnet.segmentation_id):
-                    self.add_flow_inner_subnet(datapath,
+                    if from_subnet.is_ipv4 and to_subnet.is_ipv4:
+                        self.add_flow_inner_subnet(datapath,
                                                from_subnet, to_subnet)
+                    else:
+                        LOG.info(_LI("No support for IPV6"))
 
     def add_flow_inner_subnet(self, datapath, from_subnet, to_subnet):
         parser = datapath.ofproto_parser
