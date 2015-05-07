@@ -31,9 +31,9 @@ Quick Installation
 
    Q_DF_DVR_BASE_MAC='base mac prefix to use for dvr routers' (Optional, Default == FA:16:3F:00:00:00)
 
-In ENABLED_SERVICES section change q-agt to q-df-agt and q-l3 to q-df-l3
+In ENABLED_SERVICES section change q-l3 to q-df-l3
 
-   ``ENABLED_SERVICES+=,neutron,q-svc,q-df-agt,q-df-l3,q-dhcp,q-meta``
+   ``ENABLED_SERVICES+=,neutron,q-svc,q-agt,q-df-l3,q-dhcp,q-meta``
 
 
 Detailed Installation
