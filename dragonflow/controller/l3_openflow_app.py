@@ -15,6 +15,7 @@
 
 import collections
 import netaddr
+from netaddr.core import AddrFormatError
 import struct
 import threading
 
@@ -310,6 +311,14 @@ class Subnet(object):
     def gateway_ip(self):
         return self.data['gateway_ip']
 
+    @property
+    def is_ipv4(self):
+        try:
+            ip_int = ipv4_text_to_int(str(netaddr.IPNetwork(self.cidr).ip))
+        except AddrFormatError:
+            return False
+        return True
+
     def __repr__(self):
         return "<Subnet id='%s' cidr='%s' gateway_ip='%s'>" % (
             self.id,
@@ -469,7 +478,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                         subnet_info['id'],
                         Subnet(subnet_info, 0),
                 )
-
                 if subnet.data is None:
                     subnet.set_data(subnet_info)
 
@@ -1246,7 +1254,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                     for interface in router.data['_interfaces']:
                         for subnet_info in interface['subnets']:
                             if (subnet.data['id'] == subnet_info['id']
-                                    and subnet.segmentation_id != 0):
+                                    and subnet.segmentation_id != 0
+                                    and subnet.is_ipv4):
                                 self.add_subnet_binding(datapath,
                                                         subnet,
                                                         interface)
@@ -1568,9 +1577,12 @@ class L3ReactiveApp(app_manager.RyuApp):
             for from_subnet in tenant.subnets.values():
                 if (from_subnet.segmentation_id !=
                         subnet.segmentation_id):
-                    for dp in self.dp_list.values():
-                        self.add_flow_inner_subnet(dp.datapath,
-                                                   from_subnet, subnet)
+                    if from_subnet.is_ipv4 and subnet.is_ipv4:
+                        for dp in self.dp_list.values():
+                            self.add_flow_inner_subnet(dp.datapath,
+                                                       from_subnet, subnet)
+                    else:
+                        LOG.info(_LI("No support for IPV6"))
 
     def bootstrap_inner_subnets_connection(self):
         for tenant in self._tenants.values():
@@ -1584,9 +1596,12 @@ class L3ReactiveApp(app_manager.RyuApp):
             for to_subnet in tenant.subnets.values():
                 if (to_subnet.segmentation_id !=
                         from_subnet.segmentation_id):
-                    self.add_flow_inner_subnet(datapath,
+                    if from_subnet.is_ipv4 and to_subnet.is_ipv4:
+                        self.add_flow_inner_subnet(datapath,
                                                from_subnet, to_subnet)
-
+                    else:
+                        ipdb.set_trace()
+                        LOG.info(_LI("No support for IPV6"))
     def add_flow_inner_subnet(self, datapath, from_subnet, to_subnet):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
