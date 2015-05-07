@@ -47,7 +47,6 @@ from oslo_log import log
 
 from dragonflow.utils.bloomfilter import BloomFilter
 
-
 LOG = log.getLogger(__name__)
 
 ETHERNET = ethernet.ethernet.__name__
@@ -310,6 +309,13 @@ class Subnet(object):
     def gateway_ip(self):
         return self.data['gateway_ip']
 
+    def is_ipv4(self):
+        try:
+            return (netaddr.IPNetwork(self.cidr).ip).version == 4
+        except (TypeError):
+            return False
+        return True
+
     def __repr__(self):
         return "<Subnet id='%s' cidr='%s' gateway_ip='%s'>" % (
             self.id,
@@ -469,7 +475,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                         subnet_info['id'],
                         Subnet(subnet_info, 0),
                 )
-
                 if subnet.data is None:
                     subnet.set_data(subnet_info)
 
@@ -1024,6 +1029,12 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.mod_flow(datapath, inst=inst, table_id=table, priority=priority,
                       match=match)
 
+    def add_flow_goto_normal_on_ipv6(self, datapath, table, priority,
+                                     goto_table_id):
+        match = datapath.ofproto_parser.OFPMatch()
+        match.set_dl_type(ether.ETH_TYPE_IPV6)
+        self.add_flow_normal(datapath, table, priority, match)
+
     def add_flow_goto_normal_on_broad(self, datapath, table, priority,
                                      goto_table_id):
         match = datapath.ofproto_parser.OFPMatch(eth_dst='ff:ff:ff:ff:ff:ff')
@@ -1164,6 +1175,12 @@ class L3ReactiveApp(app_manager.RyuApp):
             self.ARP_AND_BR_TABLE)
         #Goto from CLASSIFIER to NORMAL on mcast
         self.add_flow_goto_normal_on_mcast(
+            datapath,
+            self.CLASSIFIER_TABLE,
+            NORMAL_PRIORITY_FLOW,
+            self.ARP_AND_BR_TABLE)
+        #Goto from CLASSIFIER to NORMAL on IPV6 traffic
+        self.add_flow_goto_normal_on_ipv6(
             datapath,
             self.CLASSIFIER_TABLE,
             NORMAL_PRIORITY_FLOW,
@@ -1378,6 +1395,9 @@ class L3ReactiveApp(app_manager.RyuApp):
         return instructions
 
     def add_subnet_binding(self, datapath, subnet, interface):
+        if not (subnet.is_ipv4()):
+            LOG.info(_LI("No support for IPV6"))
+            return
         self._add_vrouter_arp_responder(
                     datapath,
                     subnet.segmentation_id,
@@ -1585,11 +1605,15 @@ class L3ReactiveApp(app_manager.RyuApp):
                 if (to_subnet.segmentation_id !=
                         from_subnet.segmentation_id):
                     self.add_flow_inner_subnet(datapath,
-                                               from_subnet, to_subnet)
+                                            from_subnet, to_subnet)
 
     def add_flow_inner_subnet(self, datapath, from_subnet, to_subnet):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
+
+        if not (from_subnet.is_ipv4() and to_subnet.is_ipv4()):
+            LOG.info(_LI("No support for IPV6"))
+            return
 
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
