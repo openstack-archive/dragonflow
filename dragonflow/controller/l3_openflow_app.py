@@ -1387,7 +1387,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         network, net_mask = self.get_subnet_from_cidr(subnet.data['cidr'])
         self.add_flow_normal_local_subnet(
                                         datapath,
-                                        self.L3_VROUTER_TABLE,
+                                        self.CLASSIFIER_TABLE,
                                         LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
                                         network,
                                         net_mask,
