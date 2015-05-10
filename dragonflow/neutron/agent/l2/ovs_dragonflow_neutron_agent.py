@@ -38,6 +38,7 @@ from neutron.common import utils as q_utils
 from neutron import context
 
 from neutron.i18n import _, _LE, _LI
+from neutron.plugins.common import constants as p_const
 from neutron.plugins.openvswitch.agent import ovs_neutron_agent
 from neutron.plugins.openvswitch.agent.ovs_neutron_agent import OVSNeutronAgent
 from neutron.plugins.openvswitch.common import constants
@@ -54,6 +55,9 @@ cfg.CONF.register_opts(agent_additional_opts, "AGENT")
 
 
 class L2OVSControllerAgent(OVSNeutronAgent):
+
+    init_set_controller = False
+
     def __init__(self, integ_br, tun_br, local_ip,
                  bridge_mappings, polling_interval, tunnel_types=None,
                  veth_mtu=None, l2_population=False,
@@ -126,16 +130,19 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                 bridge.add_flow(table=constants.CANARY_TABLE,
                                 priority=0,
                                 actions="drop")
-                # Mark the tunnel ID so the data will be transferred to the
-                # br-tun virtual switch, tun id and metadata are local
-                bridge.add_flow(table="60", priority=1,
-                                actions="move:NXM_NX_TUN_ID[0..31]"
-                                        "->NXM_NX_PKT_MARK[],"
-                                        "output:%s" %
-                                        (self.patch_tun_ofport))
+                if self.patch_tun_ofport > 0:
+                    # Mark the tunnel ID so the data will be transferred to the
+                    # br-tun virtual switch, tun id and metadata are local
+                    bridge.add_flow(table="60", priority=1,
+                                    actions="move:NXM_NX_TUN_ID[0..31]"
+                                            "->NXM_NX_PKT_MARK[],"
+                                            "output:%s" %
+                                            (self.patch_tun_ofport))
+
             # Set controller out-of-band mode in new way
             self.set_connection_mode(bridge, "out-of-band")
             self.set_controller_lock.release()
+        L2OVSControllerAgent.init_set_controller = True
 
     def get_bridge_by_name(self, br_id):
         bridge = None
@@ -217,6 +224,50 @@ class L2OVSControllerAgent(OVSNeutronAgent):
         attrs = [('connection-mode', connection_mode)]
         ovsdb_api.db_set('controller', bridge.br_name, *attrs).execute(
             check_error=True)
+
+    def provision_local_vlan2(self, net_uuid, network_type, physical_network,
+                              segmentation_id):
+        while not L2OVSControllerAgent.init_set_controller:
+            LOG.debug("sleep")
+            eventlet.sleep(1)
+        super(L2OVSControllerAgent, self).provision_local_vlan(
+            net_uuid, network_type, physical_network, segmentation_id)
+        if network_type == p_const.TYPE_VLAN:
+            self.int_br.add_flow(table="60", priority=1,
+                                 actions="move:NXM_NX_TUN_ID[0..11]"
+                                         "->OXM_OF_VLAN_VID[],"
+                                         "output:%s" %
+                                         (self.
+                                          int_ofports[physical_network]))
+
+    def provision_local_vlan(self, net_uuid, network_type, physical_network,
+                             segmentation_id):
+
+        # On a restart or crash of OVS, the network associated with this VLAN
+        # will already be assigned, so check for that here before assigning a
+        # new one.
+        lvm = self.local_vlan_map.get(net_uuid)
+        if lvm:
+            lvid = lvm.vlan
+        else:
+            if not self.available_local_vlans:
+                LOG.error(_LE("No local VLAN available for net-id=%s"),
+                          net_uuid)
+                return
+            lvid = self.available_local_vlans.pop()
+            self.local_vlan_map[net_uuid] = (
+                ovs_neutron_agent.LocalVLANMapping(lvid,
+                                                   network_type,
+                                                   physical_network,
+                                                   segmentation_id))
+
+        LOG.info(_LI("Assigning %(vlan_id)s as local vlan for "
+                     "net-id=%(net_uuid)s"),
+                 {'vlan_id': lvid, 'net_uuid': net_uuid})
+        eventlet.spawn(self.provision_local_vlan2,
+                       net_uuid=net_uuid, network_type=network_type,
+                       physical_network=physical_network,
+                       segmentation_id=segmentation_id)
 
 
 def main():
