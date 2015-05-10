@@ -403,6 +403,16 @@ class PortData(object):
         else:
             return None
 
+    @property
+    def is_gateway(self):
+        for subnet in self._port_data['subnets']:
+            for fixed_ip in self.fixed_ips:
+                if subnet['id'] == fixed_ip['subnet_id']:
+                    if subnet['gateway_ip'] == fixed_ip['ip_address']:
+                        return True
+        else:
+            return False
+
     def __getitem__(self, item):
         return self._port_data.__getitem__(item)
 
@@ -516,7 +526,48 @@ class L3ReactiveApp(app_manager.RyuApp):
                             subnet.segmentation_id,
                             interface['mac_address'],
                             self.get_ip_from_interface(interface))
+                        if PortData(interface).is_gateway:
+                            self._handle_remove_subnet(subnet)
+
                         self._handle_remove_port(PortData(interface))
+
+    def _handle_remove_subnet(self, subnet):
+        """Remove all the flow relating to a specific subnet
+
+        :param subnet:
+        :type subnet: Subnet
+        """
+        for dp in self.dp_list.values():
+            datapath = dp.datapath
+            ofproto = datapath.ofproto
+            parser = datapath.ofproto_parser
+            match = parser.OFPMatch()
+            match.set_dl_type(ether.ETH_TYPE_IP)
+            match.set_ipv4_dst_masked(subnet.cidr.ip.value,
+                                      subnet.cidr.netmask.value)
+            msg = parser.OFPFlowMod(datapath=datapath,
+                                    cookie=0,
+                                    cookie_mask=0,
+                                    table_id=L3ReactiveApp.L3_VROUTER_TABLE,
+                                    command=ofproto.OFPFC_DELETE,
+                                    priority=MEDIUM_PRIORITY_FLOW,
+                                    out_port=ofproto.OFPP_ANY,
+                                    out_group=ofproto.OFPG_ANY,
+                                    match=match)
+            datapath.send_msg(msg)
+            match = parser.OFPMatch()
+            match.set_dl_type(ether.ETH_TYPE_IP)
+            match.set_metadata(subnet.segmentation_id)
+            msg = parser.OFPFlowMod(datapath=datapath,
+                                    cookie=0,
+                                    cookie_mask=0,
+                                    table_id=L3ReactiveApp.L3_VROUTER_TABLE,
+                                    command=ofproto.OFPFC_DELETE,
+                                    priority=MEDIUM_PRIORITY_FLOW,
+                                    out_port=ofproto.OFPP_ANY,
+                                    out_group=ofproto.OFPG_ANY,
+                                    match=match)
+            datapath.send_msg(msg)
 
     def attach_switch_port_desc_to_port_data(self, port_data):
         if 'id' in port_data:
