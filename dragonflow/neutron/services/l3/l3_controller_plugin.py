@@ -180,6 +180,10 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                     q_const.ROUTER_INTERFACE_OWNERS):
                 router_id = notify_port['device_id']
 
+        notify_port['subnets'] = [
+            self._core_plugin.get_subnet(context, fixed_ip['subnet_id'])
+            for fixed_ip in notify_port['fixed_ips']
+        ]
         segmentation_id = self._get_segmentation_id(context, notify_port)
         self._send_new_port_notify(context,
                                    notify_port,

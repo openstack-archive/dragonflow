@@ -595,30 +595,32 @@ class L3ReactiveApp(app_manager.RyuApp):
 
     def sync_port(self, port):
         LOG.info(_LI("sync_port--> %s\n"), port)
-
-        tenant_topo = self.get_tenant_by_id(port['tenant_id'])
-        subnets = tenant_topo.subnets
-        if port['segmentation_id'] == 0:
+        segmentation_id = port.get('segmentation_id')
+        if segmentation_id is None:
             LOG.info(_LI("no segmentation data in port --> %s"), port)
             return
 
-        tenant_topo.mac_to_port_data[port['mac_address']] = PortData(port)
-        subnets_ids = self.get_port_subnets(port)
-        for subnet_id in subnets_ids:
-            subnet = subnets.get(subnet_id)
-            if not subnet:
-                LOG.info(_LI("No subnet object for subnet %s"), subnet_id)
-
-                # Create the subnet object, and attach data in sync_router
-                subnets[subnet_id] = Subnet(None, port['segmentation_id'])
-                continue
-
-            subnet.segmentation_id = port['segmentation_id']
+        tenant_topo = self.get_tenant_by_id(port['tenant_id'])
+        for subnet_dict in port.get('subnets', []):
+            tenant_topo.subnets[subnet_dict['id']] = subnet = Subnet(
+                subnet_dict,
+                segmentation_id)
 
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
                 self.subnet_added_binding_cast(subnet, port)
                 self.bootstrap_network_classifiers(subnet=subnet)
 
+            cidr = subnet.cidr
+            for dp in self.dp_list.values():
+                self.add_flow_normal_local_subnet(
+                    dp.datapath,
+                    self.CLASSIFIER_TABLE,
+                    LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
+                    cidr.network.format(),
+                    str(cidr.prefixlen),
+                    subnet.segmentation_id)
+
+        tenant_topo.mac_to_port_data[port['mac_address']] = PortData(port)
         self.attach_switch_port_desc_to_port_data(port)
 
     def get_port_subnets(self, port):
