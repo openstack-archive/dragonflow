@@ -306,7 +306,12 @@ class Subnet(object):
 
     @property
     def cidr(self):
-        return self.data['cidr']
+        """Return the CIDR information for this subnet
+
+        :return: CIDR information for subnet
+        :rtype: netaddr.IPNetwork
+        """
+        return netaddr.IPNetwork(self.data['cidr'])
 
     @property
     def gateway_ip(self):
@@ -1362,10 +1367,6 @@ class L3ReactiveApp(app_manager.RyuApp):
     def check_direct_routing(self, tenant, from_subnet_id, to_subnet_id):
         return
 
-    def get_subnet_from_cidr(self, cidr):
-        split = cidr.split("/")
-        return (split[0], split[1])
-
     def _get_match_vrouter_arp_responder(self, datapath, segmentation_id,
                                          interface_ip):
         parser = datapath.ofproto_parser
@@ -1405,13 +1406,13 @@ class L3ReactiveApp(app_manager.RyuApp):
                     interface['mac_address'],
                     self.get_ip_from_interface(interface))
 
-        network, net_mask = self.get_subnet_from_cidr(subnet.data['cidr'])
+        cidr = subnet.cidr
         self.add_flow_normal_local_subnet(
                                         datapath,
                                         self.CLASSIFIER_TABLE,
                                         LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
-                                        network,
-                                        net_mask,
+                                        cidr.network.format(),
+                                        str(cidr.prefixlen),
                                         subnet.segmentation_id)
 
     def subnet_added_binding_cast(self, subnet, interface):
@@ -1623,12 +1624,9 @@ class L3ReactiveApp(app_manager.RyuApp):
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
         match.set_metadata(from_subnet.segmentation_id)
-        to_ip_cidr = to_subnet.cidr
-        dst_net = str(netaddr.IPNetwork(to_ip_cidr).ip)
-        dst_prefix = netaddr.IPNetwork(to_ip_cidr).prefixlen
 
-        match.set_ipv4_dst_masked(ipv4_text_to_int((dst_net)),
-                                  mask_ntob(int(dst_prefix)))
+        match.set_ipv4_dst_masked(to_subnet.cidr.network.value,
+                                  to_subnet.cidr.netmask.value)
 
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
