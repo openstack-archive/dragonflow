@@ -211,12 +211,53 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                               segmentation_id):
         notify_port['segmentation_id'] = segmentation_id
         if action == "add":
-            notify_action = self.l3_rpc_notifier.add_arp_entry
+            notify_action = self._add_arp_entry
         elif action == "del":
-            notify_action = self.l3_rpc_notifier.del_arp_entry
+            notify_action = self._del_arp_entry
         notify_action(context, router_id, notify_port)
         self.send_set_controllers_update(context, False)
         return
+
+    def _add_arp_entry(self, context, router_id, arp_table, operation=None):
+        if router_id:
+            self.l3_rpc_notifier.add_arp_entry(context,
+                                               router_id,
+                                               arp_table,
+                                               operation)
+        else:
+            self._agent_notification_arp(context, 'add_arp_entry', arp_table)
+
+    def _del_arp_entry(self, context, router_id, arp_table, operation=None):
+        if router_id:
+            self.l3_rpc_notifier.del_arp_entry(context,
+                                               router_id,
+                                               arp_table,
+                                               operation)
+        else:
+            self._agent_notification_arp(context, 'del_arp_entry', arp_table)
+
+    def _agent_notification_arp(self, context, method, data):
+        """Notify arp details to all l3 agents.
+
+        This is an expansion of a function in core openstack used so that we
+        can get VM port events even if there are no routers
+        """
+        admin_context = (context.is_admin and
+                         context or context.elevated())
+        plugin = manager.NeutronManager.get_service_plugins().get(
+            constants.L3_ROUTER_NAT)
+        l3_agents = plugin.get_l3_agents(admin_context)
+        for l3_agent in l3_agents:
+            log_topic = '%s.%s' % (l3_agent.topic, l3_agent.host)
+            LOG.debug('Casting message %(method)s with topic %(topic)s',
+                      {'topic': log_topic, 'method': method})
+            dvr_arptable = {'router_id': 0,
+                            'arp_table': data}
+            cctxt = self.l3_rpc_notifier.client.prepare(
+                topic=l3_agent.topic,
+                server=l3_agent.host,
+                version='1.2')
+            cctxt.cast(context, method, payload=dvr_arptable)
 
     def get_ports_by_subnet(self, context, **kwargs):
         result = super(ControllerL3ServicePlugin, self).get_ports_by_subnet(
