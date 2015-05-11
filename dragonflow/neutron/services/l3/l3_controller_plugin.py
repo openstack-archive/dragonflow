@@ -168,32 +168,24 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         has_ip_addresses = len(port_dict['fixed_ips']) > 0
         if not is_vm_port or not has_ip_addresses:
             return
-        subnet = port_dict['fixed_ips'][0]['subnet_id']
-        filters = {'fixed_ips': {'subnet_id': [subnet]}}
-        ports = self._core_plugin.get_ports(context, filters=filters)
-        notify_port = None
+
         router_id = 0
         if action == "del":
             notify_port = port_dict
-
-        for port in ports:
-            # Check if this port subnet is connected to a router
-            if port['device_owner'] in q_const.ROUTER_INTERFACE_OWNERS:
-                router_id = port['device_id']
-            if port['id'] == port_dict['id']:
-                    notify_port = port
-            if notify_port and router_id:
-                break
-
-        if notify_port:
-            segmentation_id = self._get_segmentation_id(context, notify_port)
-            self._send_new_port_notify(context, notify_port, action, router_id,
-                    segmentation_id)
         else:
-            LOG.error(_LE("Could not find port_id %(port_id)s"
-                "in subnet %(subnet_id)s"),
-                {"port_id": port_dict['id'],
-                 "subnet_id": subnet})
+            notify_port = self._core_plugin.get_port(context,
+                                                     port_dict['id'])
+            # Check if this port subnet is connected to a router
+            if (notify_port['device_owner'] in
+                    q_const.ROUTER_INTERFACE_OWNERS):
+                router_id = notify_port['device_id']
+
+        segmentation_id = self._get_segmentation_id(context, notify_port)
+        self._send_new_port_notify(context,
+                                   notify_port,
+                                   action,
+                                   router_id,
+                                   segmentation_id)
 
     def _get_segmentation_id(self, context, port):
         port_data = self.get_ml2_port_bond_data(context, port['id'],
