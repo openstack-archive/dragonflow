@@ -164,9 +164,9 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         Provide the details of the VM ARP to the L3 agent when
         a Nova instance gets created or deleted.
         """
-        # Check this is a valid VM port
-        if ("compute:" not in port_dict['device_owner'] or
-            not port_dict['fixed_ips']):
+        is_vm_port = "compute:" in port_dict['device_owner']
+        has_ip_addresses = len(port_dict['fixed_ips']) > 0
+        if not is_vm_port or not has_ip_addresses:
             return
         subnet = port_dict['fixed_ips'][0]['subnet_id']
         filters = {'fixed_ips': {'subnet_id': [subnet]}}
