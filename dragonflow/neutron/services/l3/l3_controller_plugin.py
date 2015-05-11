@@ -216,7 +216,7 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         )
 
     def _send_new_port_notify(self, context, notify_port, action, router_id,
-            segmentation_id):
+                              segmentation_id):
         notify_port['segmentation_id'] = segmentation_id
         if action == "add":
             notify_action = self.l3_rpc_notifier.add_arp_entry

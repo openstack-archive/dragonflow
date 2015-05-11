@@ -1253,7 +1253,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         if not switch:
             self.dp_list[datapath.id] = AgentDatapath()
         self.dp_list[datapath.id].datapath = datapath
-        # Normal flow with the lowset priority to send all traffic to NORMAL
+        # Normal flow with the lowest priority to send all traffic to NORMAL
         # until the bootstrap is done
         self.add_flow_normal(datapath, self.BASE_TABLE, 0)
         self.send_port_desc_stats_request(datapath)
@@ -1294,7 +1294,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                 # update the port data with the port num and the switch dpid
                 (port_id, mac, segmentation_id) = self.update_local_port_num(
                     port.name, port.port_no, datapath)
-                if (segmentation_id != 0):
+                if segmentation_id != 0:
                     self.add_flow_metadata_by_port_num(datapath,
                                                        0,
                                                        HIGH_PRIORITY_FLOW,
@@ -1305,8 +1305,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                 LOG.debug("Found VM/router port %s using MAC  %s  %d",
                           port.name, port.hw_addr, datapath.id)
             elif "patch-tun" in port.name:
-                LOG.debug(("Found br-tun patch port %s %s --> NORMAL path"),
-                        port.name, port.hw_addr)
+                LOG.debug("Found br-tun patch port %s %s --> NORMAL path",
+                          port.name, port.hw_addr)
                 switch.patch_port_num = port.port_no
                 self.add_flow_normal_by_port_num(
                     datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
@@ -1314,8 +1314,8 @@ class L3ReactiveApp(app_manager.RyuApp):
         switch.local_ports = ports
         #TODO(gampel) Install flows only for tenants with VMs running on
         #this specific compute node
-        for tenantid in self._tenants:
-            for router in self._tenants[tenantid].routers.values():
+        for tenant in self._tenants.values():
+            for router in tenant.routers.values():
                 for subnet in router.subnets.values():
                     for interface in router.data['_interfaces']:
                         for subnet_info in interface['subnets']:
@@ -1370,8 +1370,8 @@ class L3ReactiveApp(app_manager.RyuApp):
         # This can happen if we received port description from OVS but didn't
         # yet received port_sync from the L3 service
         LOG.debug("Port data not found %s  num <%d> dpid <%d>", port_name,
-                port_num, dpid)
-        return(0, 0, 0)
+                  port_num, dpid)
+        return 0, 0, 0
 
     def get_ip_from_interface(self, interface):
         for fixed_ip in interface['fixed_ips']:
@@ -1459,12 +1459,12 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         cidr = subnet.cidr
         self.add_flow_normal_local_subnet(
-                                        datapath,
-                                        self.CLASSIFIER_TABLE,
-                                        LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
-                                        cidr.network.format(),
-                                        str(cidr.prefixlen),
-                                        subnet.segmentation_id)
+            datapath,
+            self.CLASSIFIER_TABLE,
+            LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
+            cidr.network.format(),
+            str(cidr.prefixlen),
+            subnet.segmentation_id)
 
     def subnet_added_binding_cast(self, subnet, interface):
         LOG.debug("adding %(segmentation_id)s, %(mac_address)s, "
