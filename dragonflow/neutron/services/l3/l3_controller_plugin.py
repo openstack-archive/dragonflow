@@ -180,6 +180,10 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                     q_const.ROUTER_INTERFACE_OWNERS):
                 router_id = notify_port['device_id']
 
+        notify_port['subnets'] = [
+            self._core_plugin.get_subnet(context, fixed_ip['subnet_id'])
+            for fixed_ip in notify_port['fixed_ips']
+        ]
         segmentation_id = self._get_segmentation_id(context, notify_port)
         self._send_new_port_notify(context,
                                    notify_port,
@@ -239,8 +243,8 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
     def _agent_notification_arp(self, context, method, data):
         """Notify arp details to all l3 agents.
 
-        This is an expansion of a function in core openstack used so that we can
-        get VM port events even if there are no routers
+        This is an expansion of a function in core openstack used so that we
+        can get VM port events even if there are no routers
         """
         admin_context = (context.is_admin and
                          context or context.elevated())
