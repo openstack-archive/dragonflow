@@ -26,6 +26,8 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
 
         iniset $NEUTRON_CONF DEFAULT L3controller_ip_list $Q_DF_CONTROLLER_IP
         iniset /$Q_PLUGIN_CONF_FILE agent enable_l3_controller "True"
+        iniset /$Q_PLUGIN_CONF_FILE agent L3controller_ip_list $Q_DF_CONTROLLER_IP
+
         echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR >> $RC_DIR/.localrc.auto
 
         OVS_VERSION=`ovs-vsctl --version | head -n 1 | grep -E -o "[0-9]+\.[0-9]+\.[0-9]"`

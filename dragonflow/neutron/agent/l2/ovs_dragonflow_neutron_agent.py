@@ -18,24 +18,16 @@ import threading
 
 import eventlet
 
-
 eventlet.monkey_patch()
 
-from dragonflow.neutron.common.config import SDNCONTROLLER
-
-from oslo_config import cfg
+from oslo.config import cfg
 
 from neutron.agent.common import config
 from neutron.agent.linux import ip_lib
 from neutron.agent.ovsdb import api as ovsdb
-from neutron.agent import rpc as agent_rpc
-from neutron.agent import securitygroups_rpc as sg_rpc
-from neutron.api.rpc.handlers import dvr_rpc
 
 from neutron.common import config as common_config
-from neutron.common import topics
 from neutron.common import utils as q_utils
-from neutron import context
 
 from neutron.i18n import _, _LE, _LI
 from neutron.plugins.openvswitch.agent import ovs_neutron_agent
@@ -46,6 +38,10 @@ from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
 agent_additional_opts = [
+    cfg.StrOpt('L3controller_ip_list',
+               default='tcp:172.16.10.10:6633',
+               help=("L3 Controler IP list list tcp:ip_addr:port;"
+                     "tcp:ip_addr:port..;..")),
     cfg.BoolOpt('enable_l3_controller', default=True,
                 help=_("L3 SDN Controller"))
 ]
@@ -71,8 +67,6 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                     " yet supported in Dragonflow feature disabled"))
             prevent_arp_spoofing = False
 
-        # Initialize controller Ip List
-        self.controllers_ip_list = None
         '''
         Sync lock for Race condition set_controller <--> check_ovs_status
         when setting the controller all the flow table are deleted
@@ -96,29 +90,28 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                       use_veth_interconnection,
                       quitting_rpc_timeout)
 
-    def set_controller_for_br(self, context, br_id, ip_address_list,
-                              force_reconnect=False, protocols="OpenFlow13"):
+        # Initialize controller
+        self.controllers_ip_list = cfg.CONF.AGENT.L3controller_ip_list
+        self.set_controller_for_br('br-int', self.controllers_ip_list)
+
+    def set_controller_for_br(self, br_id, ip_address_list):
         '''Set OpenFlow Controller on the Bridge .
         :param br_id: the bridge id  .
         :param ip_address_list: tcp:ip_address:port;tcp:ip_address2:port
-        :param force_reconnect: Force re setting the controller,remove i
-        all flows
         '''
         if not self.enable_l3_controller:
             LOG.info(_LI("Controller Base l3 is disabled on Agent"))
             return
         bridge = None
-        if (force_reconnect or not self.controllers_ip_list
-            or self.controllers_ip_list != ip_address_list):
-            self.controllers_ip_list = ip_address_list
-            bridge = self.get_bridge_by_name(br_id)
-            if not bridge:
-                LOG.error(_LE("set_controller_for_br failur! no bridge  %s "),
-                         br_id)
-                return
-            ip_address_ = ip_address_list.split(";")
-            LOG.debug("Set Controllers on br %s to %s", br_id, ip_address_)
-            self.set_controller_lock.acquire()
+        self.controllers_ip_list = ip_address_list
+        bridge = self.get_bridge_by_name(br_id)
+        if not bridge:
+            LOG.error(_LE("set_controller_for_br failure! no bridge  %s "),
+                      br_id)
+            return
+        ip_address_ = ip_address_list.split(";")
+        LOG.debug("Set Controllers on br %s to %s", br_id, ip_address_)
+        with self.set_controller_lock:
             bridge.del_controller()
             bridge.set_controller(ip_address_)
             if bridge.br_name == "br-int":
@@ -135,7 +128,6 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                                         (self.patch_tun_ofport))
             # Set controller out-of-band mode in new way
             self.set_connection_mode(bridge, "out-of-band")
-            self.set_controller_lock.release()
 
     def get_bridge_by_name(self, br_id):
         bridge = None
@@ -156,42 +148,9 @@ class L2OVSControllerAgent(OVSNeutronAgent):
 
         # Check for the canary flow
         # Add lock to avoid race condition of flows
-        self.set_controller_lock.acquire()
-        ret = super(L2OVSControllerAgent, self).check_ovs_status()
-        self.set_controller_lock.release()
+        with self.set_controller_lock:
+            ret = super(L2OVSControllerAgent, self).check_ovs_status()
         return ret
-
-    def setup_rpc(self):
-        self.agent_id = 'ovs-agent-%s' % cfg.CONF.host
-        self.topic = topics.AGENT
-        self.plugin_rpc = ovs_neutron_agent.OVSPluginApi(topics.PLUGIN)
-        self.sg_plugin_rpc = sg_rpc.SecurityGroupServerRpcApi(topics.PLUGIN)
-        self.dvr_plugin_rpc = dvr_rpc.DVRServerRpcApi(topics.PLUGIN)
-        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.PLUGIN)
-
-        # RPC network init
-        self.context = context.get_admin_context_without_session()
-        # Handle updates from service
-        self.endpoints = [self]
-        # Define the listening consumers for the agent
-        consumers = [[topics.PORT, topics.UPDATE],
-                     [topics.PORT, topics.DELETE],
-                     [topics.NETWORK, topics.DELETE],
-                     [constants.TUNNEL, topics.UPDATE],
-                     [constants.TUNNEL, topics.DELETE],
-                     [topics.SECURITY_GROUP, topics.UPDATE],
-                     [topics.DVR, topics.UPDATE]]
-        if self.l2_pop:
-            consumers.append([topics.L2POPULATION,
-                              topics.UPDATE, cfg.CONF.host])
-        if self.enable_l3_controller:
-            consumers.append([SDNCONTROLLER,
-                              topics.UPDATE])
-
-        self.connection = agent_rpc.create_consumers(self.endpoints,
-                                                     self.topic,
-                                                     consumers,
-                                                     start_listening=False)
 
     def _setup_tunnel_port(self, br, port_name, remote_ip, tunnel_type):
         ofport = super(L2OVSControllerAgent, self) \

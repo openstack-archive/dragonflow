@@ -13,10 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from oslo.config import cfg
-from oslo import messaging
 from oslo.utils import importutils
-
-from dragonflow.neutron.common.config import SDNCONTROLLER
 
 from neutron import context as neutron_context
 from neutron import manager
@@ -125,13 +122,6 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
             # Open Flow Controller
             LOG.info(_LI("Using Southbound OpenFlow Protocol "))
 
-            self.send_set_controllers_update(self.ctx, True)
-
-            #self.controllerThread = ControllerRunner("openflow")
-            #self.controllerThread.start()
-            #self.controllerThread.router_scheduler = self.router_scheduler
-            #self.controllerThread.endpoints = self.endpoints
-
         elif cfg.CONF.net_controller_l3_southbound_protocol == "OVSDB":
             LOG.error(_LE("Southbound OVSDB Protocol not implemented yet"))
         elif cfg.CONF.net_controller_l3_southbound_protocol == "OP-FLEX":
@@ -215,7 +205,6 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         elif action == "del":
             notify_action = self._del_arp_entry
         notify_action(context, router_id, notify_port)
-        self.send_set_controllers_update(context, False)
         return
 
     def _add_arp_entry(self, context, router_id, arp_table, operation=None):
@@ -325,19 +314,3 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                     unscheduled_rs,
                     l3_agent)
         return
-
-    def send_set_controllers_update(self, _context, force_reconnect):
-
-        topic_port_update = topics.get_topic_name(topics.AGENT,
-                                                  SDNCONTROLLER,
-                                                  topics.UPDATE)
-        target = messaging.Target(topic=topic_port_update)
-        rpcapi = n_rpc.get_client(target)
-        iplist = cfg.CONF.L3controller_ip_list
-
-        rpcapi.cast(_context,
-                    'set_controller_for_br',
-                    br_id="br-int",
-                    ip_address_list=iplist,
-                    force_reconnect=force_reconnect,
-                    protocols="OpenFlow13")
