@@ -27,9 +27,7 @@ Quick Installation
 
    ML2_L3_PLUGIN=dragonflow.neutron.services.l3.l3_controller_plugin.ControllerL3ServicePlugin
 
-   Q_DF_CONTROLLER_IP='tcp:<your sdn controller ip>:6633' (Optinal, Default == $HOST_IP)
 
-   Q_DF_DVR_BASE_MAC='base mac prefix to use for dvr routers' (Optional, Default == FA:16:3F:00:00:00)
 
 In ENABLED_SERVICES section change q-l3 to q-df-l3
 
