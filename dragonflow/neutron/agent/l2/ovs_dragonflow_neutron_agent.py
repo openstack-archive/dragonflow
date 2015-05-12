@@ -126,8 +126,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                                         "->NXM_NX_PKT_MARK[],"
                                         "output:%s" %
                                         (self.patch_tun_ofport))
-            # Set controller out-of-band mode in new way
-            self.set_connection_mode(bridge, "out-of-band")
+            bridge.set_controllers_connection_mode("out-of-band")
 
     def get_bridge_by_name(self, br_id):
         bridge = None
@@ -170,12 +169,6 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                                         "output:%s" %
                                         (ofports))
         return ofport
-
-    def set_connection_mode(self, bridge, connection_mode):
-        ovsdb_api = ovsdb.API.get(bridge)
-        attrs = [('connection-mode', connection_mode)]
-        ovsdb_api.db_set('controller', bridge.br_name, *attrs).execute(
-            check_error=True)
 
 
 def main():
