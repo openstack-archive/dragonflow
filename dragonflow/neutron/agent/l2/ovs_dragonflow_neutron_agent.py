@@ -24,7 +24,6 @@ from oslo.config import cfg
 
 from neutron.agent.common import config
 from neutron.agent.linux import ip_lib
-from neutron.agent.ovsdb import api as ovsdb
 
 from neutron.common import config as common_config
 from neutron.common import utils as q_utils
@@ -106,6 +105,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
         ip_address_ = ip_address_list.split(";")
         LOG.debug("Set Controllers on br %s to %s", bridge.br_name,
                   ip_address_)
+
         with self.set_controller_lock:
             bridge.del_controller()
             bridge.set_controller(ip_address_)
@@ -120,8 +120,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                                     "->NXM_NX_PKT_MARK[],"
                                     "output:%s" %
                                     (self.patch_tun_ofport))
-            # Set controller out-of-band mode in new way
-            self.set_connection_mode(bridge, "out-of-band")
+            bridge.set_controllers_connection_mode("out-of-band")
 
     def check_ovs_status(self):
         if not self.enable_l3_controller:
@@ -151,12 +150,6 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                                         "output:%s" %
                                         (ofports))
         return ofport
-
-    def set_connection_mode(self, bridge, connection_mode):
-        ovsdb_api = ovsdb.API.get(bridge)
-        attrs = [('connection-mode', connection_mode)]
-        ovsdb_api.db_set('controller', bridge.br_name, *attrs).execute(
-            check_error=True)
 
 
 def main():
