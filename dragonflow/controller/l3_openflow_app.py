@@ -834,8 +834,8 @@ class L3ReactiveApp(app_manager.RyuApp):
         dst_p_desc = dst_port_data['switch_port_desc']
         dst_seg_id = dst_port_data.segmentation_id
         in_port = in_port_data.local_port_number
+        dst_port = dst_port_data.local_port_number
         src_seg_id = in_port_data.segmentation_id
-        in_port_desc = in_port_data['switch_port_desc']
         cookie = cookie_filter.to_cookie()
 
         if dst_p_desc['local_dpid_switch'] == datapath.id:
@@ -853,7 +853,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                 pkt_ipv4.src,
                 gateway_port_data['mac_address'],
                 dst_port_data['mac_address'],
-                dst_p_desc['local_port_num'],
+                dst_port,
                 cookie=cookie,
             )
             # Install the reverse flow return traffic
@@ -869,10 +869,10 @@ class L3ReactiveApp(app_manager.RyuApp):
                 pkt_ipv4.dst,
                 pkt_eth.dst,
                 in_port_data['mac_address'],
-                in_port_desc['local_port_num'],
+                in_port,
                 cookie=cookie,
             )
-            self.handle_packet_out_l3(datapath, msg, in_port, actions)
+            self.handle_packet_out_l3(datapath, msg, dst_port, actions)
         else:
             # The dst VM and the source VM are NOT on the same compute node
             # Send output to br-tun patch port and install reverse flow on the
@@ -914,7 +914,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                 cookie=cookie,
             )
 
-            self.handle_packet_out_l3(datapath, msg, in_port, actions)
+            self.handle_packet_out_l3(remote_switch.datapath,
+                    msg, dst_port, actions)
 
     def handle_packet_out_l3(self, datapath, msg, in_port, actions):
         data = None
