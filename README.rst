@@ -3,7 +3,7 @@ SDN based Virtual Router add-on for Neutron OpenStack
 
 * Free software: Apache license
 * Homepage:  http://launchpad.net/dragonflow
-* Documentation: http://goo.gl/rq4uJC
+* Documentation: `Documentation <#Documentation>`_
 * Source: http://git.openstack.org/cgit/stackforge/dragonflow
 * Bugs: http://bugs.launchpad.net/dragonflow
 
@@ -59,7 +59,22 @@ A detailed blog post describing the solution can be found Here_.
 
 How to Install
 --------------
-https://github.com/stackforge/dragonflow/tree/master/doc/source
+`Installation guide <https://github.com/stackforge/dragonflow/tree/master/doc/source>`_
+`DevStack Single node configration  <https://github.com/stackforge/dragonflow/tree/master/doc/source/single-node-conf>`_
+`DevStack Multi node configration  <https://github.com/stackforge/dragonflow/tree/master/doc/source/multi-node-conf>`_
+
+
+Documentation:
+--------------
+* `Solution Overview Presentation <http://www.slideshare.net/gampel/dragonflow-sdn-based-distributed-virtual-router-for-openstack-neutron>`_
+
+* `Solution Overview Blog Post  <http://blog.gampel.net/2015/01/neutron-dvr-sdn-way.html>`_
+
+* `Deep-Dive Introduction 1 Blog Post <http://galsagie.github.io/sdn/openstack/ovs/dragonflow/2015/05/09/dragonflow-1/>`_
+
+* `Deep-Dive Introduction 2 Blog Post <http://galsagie.github.io/sdn/openstack/ovs/dragonflow/2015/05/11/dragonflow-2/>`_
+
+* `Kilo-Release Blog Post  <http://blog.gampel.net/2015/01/dragonflow-sdn-based-distributed.html>`_
 
 Prerequisites
 -------------
