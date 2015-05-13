@@ -188,71 +188,59 @@ class TestOpenflowApp(tests_base.BaseTestCase):
         self.assertEqual(self.l3_app.add_flow_metadata_by_port_num.call_count,
                          2)
 
-        seg_ids = {
-            (self.l3_app.add_flow_metadata_by_port_num.
-             call_args_list[0][0][seg_id_arg_flow_metadata]),
-            (self.l3_app.add_flow_metadata_by_port_num.
-             call_args_list[1][0][seg_id_arg_flow_metadata])
-        }
+        seg_ids = set()
+        for i in range(self.l3_app.add_flow_metadata_by_port_num.call_count):
+            seg_ids.add(self.l3_app.add_flow_metadata_by_port_num.
+                        call_args_list[i][0][seg_id_arg_flow_metadata])
         self.assertEqual({_SEGMENTATION_ID_A, _SEGMENTATION_ID_B}, seg_ids)
 
         seg_id_arg_vrouter_arp = 1
         self.assertTrue(
             self.l3_app._add_vrouter_arp_responder.call_count >= 2)
-        seg_ids = {
-            (self.l3_app._add_vrouter_arp_responder.
-             call_args_list[0][0][seg_id_arg_vrouter_arp]),
-            (self.l3_app._add_vrouter_arp_responder.
-             call_args_list[1][0][seg_id_arg_vrouter_arp]),
-        }
+
+        seg_ids = set()
+        for i in range(self.l3_app._add_vrouter_arp_responder.call_count):
+            seg_ids.add(self.l3_app._add_vrouter_arp_responder.
+                        call_args_list[i][0][seg_id_arg_vrouter_arp])
+
         self.assertEqual({_SEGMENTATION_ID_A, _SEGMENTATION_ID_B}, seg_ids)
 
         mac_id_arg_vrouter_arp = 2
-        macs = {
-            (self.l3_app._add_vrouter_arp_responder.
-             call_args_list[0][0][mac_id_arg_vrouter_arp]),
-            (self.l3_app._add_vrouter_arp_responder.
-             call_args_list[1][0][mac_id_arg_vrouter_arp]),
-        }
+        macs = set()
+        for i in range(self.l3_app._add_vrouter_arp_responder.call_count):
+            macs.add(self.l3_app._add_vrouter_arp_responder.
+                        call_args_list[i][0][mac_id_arg_vrouter_arp])
         self.assertEqual({_PORT_SUBNET_A_MAC, _PORT_SUBNET_B_MAC}, macs)
 
         interfaces_arg_vrouter_arp = 3
-        interfaces = {
-            (self.l3_app._add_vrouter_arp_responder.
-             call_args_list[0][0][interfaces_arg_vrouter_arp]),
-            (self.l3_app._add_vrouter_arp_responder.
-             call_args_list[1][0][interfaces_arg_vrouter_arp]),
-        }
+        interfaces = set()
+        for i in range(self.l3_app._add_vrouter_arp_responder.call_count):
+            interfaces.add(self.l3_app._add_vrouter_arp_responder.
+                        call_args_list[i][0][interfaces_arg_vrouter_arp])
         self.assertTrue({_PORT_SUBNET_A_IP, _PORT_SUBNET_B_IP}, interfaces)
 
         self.assertTrue(
             self.l3_app.add_flow_normal_local_subnet.call_count >= 2)
 
         seg_id_arg_flow_normal = 5
-        seg_ids = {
-            (self.l3_app.add_flow_normal_local_subnet.
-             call_args_list[0][0][seg_id_arg_flow_normal]),
-            (self.l3_app.add_flow_normal_local_subnet.
-             call_args_list[1][0][seg_id_arg_flow_normal]),
-        }
+        seg_ids = set()
+        for i in range(self.l3_app.add_flow_normal_local_subnet.call_count):
+            seg_ids.add(self.l3_app.add_flow_normal_local_subnet.
+                        call_args_list[i][0][seg_id_arg_flow_normal])
         self.assertEqual({_SEGMENTATION_ID_A, _SEGMENTATION_ID_B}, seg_ids)
 
         dst_net_arg_flow_normal = 3
-        dst_net = {
-            (self.l3_app.add_flow_normal_local_subnet.
-             call_args_list[0][0][dst_net_arg_flow_normal]),
-            (self.l3_app.add_flow_normal_local_subnet.
-             call_args_list[1][0][dst_net_arg_flow_normal]),
-        }
+        dst_net = set()
+        for i in range(self.l3_app.add_flow_normal_local_subnet.call_count):
+            dst_net.add(self.l3_app.add_flow_normal_local_subnet.
+                        call_args_list[i][0][dst_net_arg_flow_normal])
         self.assertEqual({_SUBNET_A_NET, _SUBNET_B_NET}, dst_net)
 
         dst_mask_arg_flow_normal = 4
-        dst_mask = {
-            (self.l3_app.add_flow_normal_local_subnet.
-             call_args_list[0][0][dst_mask_arg_flow_normal]),
-            (self.l3_app.add_flow_normal_local_subnet.
-             call_args_list[1][0][dst_mask_arg_flow_normal]),
-        }
+        dst_mask = set()
+        for i in range(self.l3_app.add_flow_normal_local_subnet.call_count):
+            dst_mask.add(self.l3_app.add_flow_normal_local_subnet.
+                        call_args_list[i][0][dst_mask_arg_flow_normal])
         self.assertTrue({_SUBNET_A_MASK, _SUBNET_B_MASK}, dst_mask)
 
         # Validate datapath bootstrap was called correctly
