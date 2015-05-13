@@ -66,8 +66,9 @@ def _notify_l3_agent_new_port(resource, event, trigger, **kwargs):
             {'resource': resource, 'event': event, 'port': port}
         )
         return
+
     if mac_address_updated or update_device_up:
-        l3plugin.dvr_vmarp_table_update(context, port, "add")
+        l3plugin.add_port(context, port)
 
 
 def _notify_l3_agent_delete_port(event, resource, trigger, **kwargs):
@@ -76,7 +77,7 @@ def _notify_l3_agent_delete_port(event, resource, trigger, **kwargs):
     removed_routers = kwargs['removed_routers']
     l3plugin = manager.NeutronManager.get_service_plugins().get(
         constants.L3_ROUTER_NAT)
-    l3plugin.dvr_vmarp_table_update(context, port, "del")
+    l3plugin.remove_port(context, port)
     if port['device_owner'] in q_const.ROUTER_INTERFACE_OWNERS:
         l3plugin.delete_router_interface(context, port)
 
@@ -92,6 +93,12 @@ def subscribe():
         _notify_l3_agent_new_port, resources.PORT, events.AFTER_CREATE)
     registry.subscribe(
         _notify_l3_agent_delete_port, resources.PORT, events.AFTER_DELETE)
+
+
+def is_vm_port_with_ip_addresses(port_dict):
+    is_vm_port = "compute:" in port_dict['device_owner']
+    has_ip_addresses = len(port_dict['fixed_ips']) > 0
+    return is_vm_port and has_ip_addresses
 
 
 class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
@@ -142,38 +149,44 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         """Returns string description of the plugin."""
         return "L3 SDN Controller For Neutron"
 
-    def dvr_vmarp_table_update(self, context, port_dict, action):
-        """Notify the L3 agent of VM ARP table changes.
+    def add_port(self, context, port_dict):
+        if is_vm_port_with_ip_addresses(port_dict):
+            self.add_vm_port(context, port_dict)
 
-        Provide the details of the VM ARP to the L3 agent when
-        a Nova instance gets created or deleted.
-        """
-        is_vm_port = "compute:" in port_dict['device_owner']
-        has_ip_addresses = len(port_dict['fixed_ips']) > 0
-        if not is_vm_port or not has_ip_addresses:
-            return
-
-        router_id = 0
-        if action == "del":
-            notify_port = port_dict
-        else:
-            notify_port = self._core_plugin.get_port(context,
-                                                     port_dict['id'])
-            # Check if this port subnet is connected to a router
-            if (notify_port['device_owner'] in
-                    q_const.ROUTER_INTERFACE_OWNERS):
-                router_id = notify_port['device_id']
-
+    def add_vm_port(self, context, port_dict):
+        notify_port = self._core_plugin.get_port(context,
+                                                 port_dict['id'])
         notify_port['subnets'] = [
             self._core_plugin.get_subnet(context, fixed_ip['subnet_id'])
             for fixed_ip in notify_port['fixed_ips']
         ]
+
+        router_id = 0
+        if (notify_port['device_owner'] in
+                q_const.ROUTER_INTERFACE_OWNERS):
+            router_id = notify_port['device_id']
+
         segmentation_id = self._get_segmentation_id(context, notify_port)
         self._send_new_port_notify(context,
                                    notify_port,
-                                   action,
+                                   "add",
                                    router_id,
                                    segmentation_id)
+
+    def remove_port(self, context, port_dict):
+        if is_vm_port_with_ip_addresses(port_dict):
+            self.remove_vm_port(context, port_dict)
+
+    def remove_vm_port(self, context, port_dict):
+        port_dict['subnets'] = [
+            self._core_plugin.get_subnet(context, fixed_ip['subnet_id'])
+            for fixed_ip in port_dict['fixed_ips']
+        ]
+        self._send_new_port_notify(context,
+                                   port_dict,
+                                   "del",
+                                   0,
+                                   0)
 
     def _get_segmentation_id(self, context, port):
         port_data = self.get_ml2_port_bond_data(context, port['id'],
