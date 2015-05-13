@@ -391,7 +391,7 @@ class PortData(object):
     def cookie_hash(self):
         """Create an int64 to be used for ovs cookie needs.
         :return:
-        :type return: int
+        :rtype: int
         """
         uuid_prefix = self.id.split('-', 1)[0]
         return int(uuid_prefix, 16)
@@ -1512,8 +1512,11 @@ class L3ReactiveApp(app_manager.RyuApp):
                     mac_address,
                     interface_ip)
 
-    def _remove_vrouter_arp_responder(self, datapath,
-            segmentation_id, mac_address, interface_ip):
+    def _remove_vrouter_arp_responder(self,
+                                      datapath,
+                                      segmentation_id,
+                                      mac_address,
+                                      interface_ip):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         match = self._get_match_vrouter_arp_responder(
@@ -1585,7 +1588,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             self.remove_flow_snat_redirect(dp.datapath, snat_binding, subnet)
 
     def remove_flow_snat_redirect(self, datapath, snat_binding, subnet):
-        if (subnet.segmentation_id == 0):
+        if subnet.segmentation_id == 0:
             LOG.error(_LE("Segmentation id == 0 for subnet = %s"), subnet.id)
             return
 
@@ -1608,10 +1611,8 @@ class L3ReactiveApp(app_manager.RyuApp):
         datapath.send_msg(msg)
 
     def add_flow_snat_redirect(self, datapath, snat_binding, subnet):
-
-        if (subnet.segmentation_id == 0):
-            msg = "Segmentation id == 0"
-            raise RuntimeError(msg)
+        if subnet.segmentation_id == 0:
+            raise RuntimeError("Segmentation id == 0")
 
         if not subnet.is_ipv4():
             LOG.info(_LI("No support for IPV6"))
@@ -1624,11 +1625,12 @@ class L3ReactiveApp(app_manager.RyuApp):
         match.set_dl_type(ether.ETH_TYPE_IP)
         match.set_metadata(subnet.segmentation_id)
 
-        actions = []
-        actions.append(parser.OFPActionDecNwTtl())
         eth_dst_mac = snat_binding.sn_port['mac_address']
-        actions.append(parser.OFPActionSetField(eth_dst=eth_dst_mac))
-        actions.append(parser.OFPActionOutput(ofproto.OFPP_NORMAL))
+        actions = [
+            parser.OFPActionDecNwTtl(),
+            parser.OFPActionSetField(eth_dst=eth_dst_mac),
+            parser.OFPActionOutput(ofproto.OFPP_NORMAL),
+        ]
 
         inst = [datapath.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]

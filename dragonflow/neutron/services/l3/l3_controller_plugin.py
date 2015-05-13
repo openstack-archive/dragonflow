@@ -189,8 +189,9 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                                    0)
 
     def _get_segmentation_id(self, context, port):
-        port_data = self.get_ml2_port_bond_data(context, port['id'],
-                        port['binding:host_id'])
+        port_data = self.get_ml2_port_bond_data(context,
+                                                port['id'],
+                                                port['binding:host_id'])
 
         if port_data is None:
             return 0
