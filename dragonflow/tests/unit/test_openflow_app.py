@@ -303,9 +303,10 @@ class TestOpenflowApp(tests_base.BaseTestCase):
         self.assertEqual(len(self.l3_app._tenants), 1)
         tenant = self.l3_app.get_tenant_by_id(_FAKE_TENANT_ID_1)
         self.assertEqual(len(tenant.mac_to_port_data), 2)
-        self.assertEqual(self.l3_app.subnet_added_binding_cast.call_count, 2)
-        self.assertEqual(self.l3_app.bootstrap_network_classifiers.call_count,
-                         2)
+        self.assertTrue(
+            self.l3_app.subnet_added_binding_cast.call_count >= 2)
+        self.assertTrue(
+            self.l3_app.bootstrap_network_classifiers.call_count >= 2)
         subnets = tenant.subnets
         for id, subnet in subnets.items():
             self.assertIsNotNone(subnet.segmentation_id)
