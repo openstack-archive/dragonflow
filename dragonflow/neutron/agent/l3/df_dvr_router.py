@@ -14,6 +14,7 @@
 #
 
 from neutron.agent.l3 import legacy_router
+from neutron.i18n import _LE
 
 from oslo_log import log as logging
 
@@ -42,7 +43,7 @@ class DfDvrRouter(legacy_router.LegacyRouter):
 
     def _remove_snat_binding_to_controller(self, sn_port):
         if sn_port is None:
-            LOG.error("None sn_port")
+            LOG.error(_LE("None sn_port"))
             return
 
         LOG.debug("_remove_snat_binding_to_controller")
