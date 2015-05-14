@@ -209,7 +209,7 @@ class TestOpenflowApp(tests_base.BaseTestCase):
         macs = set()
         for i in range(self.l3_app._add_vrouter_arp_responder.call_count):
             macs.add(self.l3_app._add_vrouter_arp_responder.
-                        call_args_list[i][0][mac_id_arg_vrouter_arp])
+                     call_args_list[i][0][mac_id_arg_vrouter_arp])
         self.assertEqual({_PORT_SUBNET_A_MAC, _PORT_SUBNET_B_MAC}, macs)
 
         interfaces_arg_vrouter_arp = 3

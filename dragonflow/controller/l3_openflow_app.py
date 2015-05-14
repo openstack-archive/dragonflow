@@ -1283,6 +1283,8 @@ class L3ReactiveApp(app_manager.RyuApp):
         datapath = ev.msg.datapath
         switch = self.dp_list.get(datapath.id)
         self.add_bootstrap_flows(datapath)
+        router_ports = []
+
         for port in ev.msg.body:
             self.append_port_data_to_ports(ports, port)
 
@@ -1297,16 +1299,22 @@ class L3ReactiveApp(app_manager.RyuApp):
             elif port.name.startswith('qvo') or port.name.startswith('qr'):
                 # this is a VM/qrouter port start with qvo/qr<NET-ID[:11]>
                 # update the port data with the port num and the switch dpid
-                (port_id, mac, segmentation_id) = self.update_local_port_num(
+                port_data = self.update_local_port_num(
                     port.name, port.port_no, datapath)
-                if segmentation_id != 0:
-                    self.add_flow_metadata_by_port_num(datapath,
-                                                       0,
-                                                       HIGH_PRIORITY_FLOW,
-                                                       port.port_no,
-                                                       segmentation_id,
-                                                       0xffff,
-                                                       self.CLASSIFIER_TABLE)
+
+                if (port.name.startswith('qr')) and (port_data is not None):
+                    router_ports.append(port_data)
+
+                if port_data is not None:
+                    if port_data.segmentation_id != 0:
+                        (self.add_flow_metadata_by_port_num(
+                            datapath,
+                            0,
+                            HIGH_PRIORITY_FLOW,
+                            port.port_no,
+                            port_data.segmentation_id,
+                            0xffff,
+                            self.CLASSIFIER_TABLE))
                 LOG.debug("Found VM/router port %s using MAC  %s  %d",
                           port.name, port.hw_addr, datapath.id)
             elif "patch-tun" in port.name:
@@ -1320,15 +1328,13 @@ class L3ReactiveApp(app_manager.RyuApp):
         #TODO(gampel) Install flows only for tenants with VMs running on
         #this specific compute node
         for tenant in self._tenants.values():
-            for router in tenant.routers.values():
-                for subnet in router.subnets.values():
-                    for interface in router.data['_interfaces']:
-                        for subnet_info in interface['subnets']:
-                            if (subnet.data['id'] == subnet_info['id']
-                                    and subnet.segmentation_id != 0):
-                                self.add_subnet_binding(datapath,
-                                                        subnet,
-                                                        interface)
+            for router_port in router_ports:
+                for port_subnet in router_port['subnets']:
+                    subnet = tenant.subnets.get(port_subnet['id'])
+                    if (subnet is not None) and (subnet.segmentation_id != 0):
+                        self.add_subnet_binding(datapath,
+                                                subnet,
+                                                router_port)
 
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
@@ -1368,15 +1374,12 @@ class L3ReactiveApp(app_manager.RyuApp):
                 sub_str_port_id = str(port_id[0:11])
                 if sub_str_port_id == port_id_from_name:
                     port_data['switch_port_desc'] = switch_port_desc
-                    return (
-                        port_data['id'],
-                        mac,
-                        port_data['segmentation_id'])
+                    return port_data
         # This can happen if we received port description from OVS but didn't
         # yet received port_sync from the L3 service
         LOG.debug("Port data not found %s  num <%d> dpid <%d>", port_name,
                   port_num, dpid)
-        return 0, 0, 0
+        return None
 
     def get_ip_from_interface(self, interface):
         for fixed_ip in interface['fixed_ips']:
