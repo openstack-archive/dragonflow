@@ -24,7 +24,7 @@ class ControllerBase(object):
         pass
 
     @abc.abstractmethod
-    def sync_port(self, router):
+    def sync_port(self, port):
         pass
 
     @abc.abstractmethod
@@ -36,7 +36,7 @@ class ControllerBase(object):
         pass
 
     @abc.abstractmethod
-    def delete_port(self, router):
+    def delete_port(self, port):
         pass
 
     @abc.abstractmethod
