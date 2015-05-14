@@ -41,9 +41,8 @@ class OpenFlowController(ControllerBase):
         self.l3_app = None
         self.heartbeat = None
         self.open_flow_hand = None
-        self.start()
 
-    def start(self):
+    def initialize(self):
         app_mgr = AppManager.get_instance()
         LOG.debug(("RYU openflow stack, DragonFlow OpenFlow Controller"))
         l3app_kwargs = dict(
@@ -51,8 +50,10 @@ class OpenFlowController(ControllerBase):
             hard_timeout=self.cfg.CONF.subnet_flows_hard_timeout
         )
         self.open_flow_hand = app_mgr.instantiate(OFPHandler, None, None)
-        self.open_flow_hand.start()
         self.l3_app = app_mgr.instantiate(L3ReactiveApp, None, **l3app_kwargs)
+
+    def start(self):
+        self.open_flow_hand.start()
         self.l3_app.start()
 
     def delete_router(self, router_id):
@@ -61,7 +62,10 @@ class OpenFlowController(ControllerBase):
     def sync_router(self, router):
         self.l3_app.sync_router(router)
 
-    def sync_port(self, port):
+    # real_sync define if the port data should actually be sent
+    # as flows or if this is just a startup sync of the local
+    # L3 application data structures
+    def sync_port(self, port, real_sync=True):
         self.l3_app.sync_port(port)
 
     def delete_port(self, port):

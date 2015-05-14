@@ -586,7 +586,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                                     match=match)
             datapath.send_msg(msg)
 
-    def attach_switch_port_desc_to_port_data(self, port_data):
+    def attach_switch_port_desc_to_port_data(self, port_data,
+                                             real_sync=True):
         if 'id' in port_data:
             port_id = port_data['id']
             sub_str_port_id = str(port_id[0:11])
@@ -595,17 +596,18 @@ class L3ReactiveApp(app_manager.RyuApp):
             for switch in self.dp_list.values():
                 switch_port_desc_dict = switch.switch_port_desc_dict
                 if sub_str_port_id in switch_port_desc_dict:
-                    port_data['switch_port_desc'] = \
-                          switch_port_desc_dict[sub_str_port_id]
+                    port_data['switch_port_desc'] = (
+                        switch_port_desc_dict[sub_str_port_id])
                     port_desc = port_data['switch_port_desc']
-                    self.add_flow_metadata_by_port_num(
-                        port_desc['datapath'],
-                        0,
-                        HIGH_PRIORITY_FLOW,
-                        port_desc['local_port_num'],
-                        port_data['segmentation_id'],
-                        0xffff,
-                        self.CLASSIFIER_TABLE)
+                    if real_sync:
+                        self.add_flow_metadata_by_port_num(
+                            port_desc['datapath'],
+                            0,
+                            HIGH_PRIORITY_FLOW,
+                            port_desc['local_port_num'],
+                            port_data['segmentation_id'],
+                            0xffff,
+                            self.CLASSIFIER_TABLE)
 
     def delete_port(self, port):
         """
@@ -654,7 +656,7 @@ class L3ReactiveApp(app_manager.RyuApp):
         else:
             return None
 
-    def sync_port(self, port):
+    def sync_port(self, port, real_sync=True):
         LOG.info(_LI("sync_port--> %s\n"), port)
         segmentation_id = port.get('segmentation_id')
         if segmentation_id is None:
@@ -668,21 +670,23 @@ class L3ReactiveApp(app_manager.RyuApp):
                 segmentation_id)
 
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
-                self.subnet_added_binding_cast(subnet, port)
-                self.bootstrap_network_classifiers(subnet=subnet)
+                if real_sync:
+                    self.subnet_added_binding_cast(subnet, port)
+                    self.bootstrap_network_classifiers(subnet=subnet)
 
             cidr = subnet.cidr
-            for dp in self.dp_list.values():
-                self.add_flow_normal_local_subnet(
-                    dp.datapath,
-                    self.CLASSIFIER_TABLE,
-                    LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
-                    cidr.network.format(),
-                    str(cidr.prefixlen),
-                    subnet.segmentation_id)
+            if real_sync:
+                for dp in self.dp_list.values():
+                    self.add_flow_normal_local_subnet(
+                        dp.datapath,
+                        self.CLASSIFIER_TABLE,
+                        LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
+                        cidr.network.format(),
+                        str(cidr.prefixlen),
+                        subnet.segmentation_id)
 
         tenant_topo.mac_to_port_data[port['mac_address']] = PortData(port)
-        self.attach_switch_port_desc_to_port_data(port)
+        self.attach_switch_port_desc_to_port_data(port, real_sync)
 
     def get_port_subnets(self, port):
         subnets_ids = []

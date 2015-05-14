@@ -18,6 +18,12 @@ from oslo_config import cfg
 from dragonflow.controller import openflow_controller as of_controller
 from dragonflow.neutron.agent.l3 import df_dvr_router
 
+from neutron import context as neutron_context
+from neutron import manager
+
+from neutron.plugins.ml2 import db as l2_db
+from neutron.plugins.ml2 import driver_context
+
 from neutron.agent.l3 import agent
 from neutron.agent.l3 import namespaces
 from neutron.agent import rpc as agent_rpc
@@ -66,6 +72,47 @@ class L3ControllerAgent(agent.L3NATAgent):
             LOG.error(_LE("Southbound OVSDB Protocol not implemented yet"))
         elif cfg.CONF.net_controller_l3_southbound_protocol == "OP-FLEX":
             LOG.error(_LE("Southbound OP-FLEX Protocol not implemented yet"))
+
+        # Initialize the controller application
+        self.controller.initialize()
+
+        # Sync all ports data from neutron to the L3 Agent
+        self.sync_ports_on_startup()
+
+        # Start the controller application
+        self.controller.start()
+
+    def sync_ports_on_startup(self):
+        core_plugin = manager.NeutronManager.get_plugin()
+        ctx = neutron_context.get_admin_context()
+        subnets = {}
+
+        for subnet in core_plugin.get_subnets(ctx):
+            subnet_ctx = driver_context.SubnetContext(core_plugin, ctx,
+                                                      subnet)
+            sub = subnet_ctx.current
+            subnets[sub['id']] = sub
+
+        for port in core_plugin.get_ports(ctx):
+            _, binding = l2_db.get_locked_port_and_binding(ctx.session,
+                                                           port['id'])
+            network = core_plugin.get_network(ctx, port['network_id'])
+            port_context = driver_context.PortContext(core_plugin, ctx,
+                                                      port, network, binding,
+                                                      [])
+            segment = port_context.network.network_segments[0]
+            port_context.current['segmentation_id'] = (
+                segment['segmentation_id'])
+
+            fixed_ips = port_context.current.get('fixed_ips', [])
+            port_subnets = []
+            for fixed_ip in fixed_ips:
+                subnet_id = fixed_ip.get('subnet_id')
+                if subnet_id is not None:
+                    port_subnets.append(subnets.get(subnet_id))
+
+            port_context.current['subnets'] = port_subnets
+            self.controller.sync_port(port_context.current, real_sync=False)
 
     def _create_router(self, router_id, router):
         args = []
