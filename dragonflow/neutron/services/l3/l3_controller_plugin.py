@@ -12,8 +12,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from oslo.config import cfg
-from oslo.utils import importutils
+from oslo_config import cfg
+from oslo_utils import importutils
 
 from neutron import context as neutron_context
 from neutron import manager
@@ -61,11 +61,9 @@ def _notify_l3_agent_new_port(resource, event, trigger, **kwargs):
     update_device_up = kwargs.get('update_device_up')
     context = kwargs.get('context')
     if context is None:
-        LOG.warning(
-            'Received %s %s without context [%s]',
-            resource,
-            event,
-            port,
+        LOG.warning(_LW(
+            'Received %(resource)s %(event)s without context [%(port)s]'),
+            {'resource': resource, 'event': event, 'port': port}
         )
         return
     if mac_address_updated or update_device_up:

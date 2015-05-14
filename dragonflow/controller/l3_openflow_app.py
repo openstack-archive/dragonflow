@@ -42,7 +42,7 @@ from ryu.lib import addrconv
 from neutron import context
 
 from neutron.common import constants as const
-from neutron.i18n import _LE, _LI
+from neutron.i18n import _LE, _LI, _LW
 from oslo_log import log
 
 from dragonflow.utils.bloomfilter import BloomFilter
@@ -773,7 +773,7 @@ class L3ReactiveApp(app_manager.RyuApp):
 
     def handle_ipv4_packet_in(self, datapath, msg, pkt):
         if not self.is_known_datapath(datapath):
-            LOG.warning("Received packet from unknown datapath '%s'",
+            LOG.warning(_LW("Received packet from unknown datapath '%s'"),
                         datapath.id)
             return
 
@@ -789,13 +789,13 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         tenant = self._get_tenant_for_msg(msg, pkt)
         if tenant is None:
-            LOG.warning(_LE("No available tenant for packet %s"),
+            LOG.warning(_LW("No available tenant for packet %s"),
                         pkt.get_protocol(ethernet.ethernet).src)
 
         route = tenant.get_route(pkt)
         if route is None:
             LOG.debug(
-                _LE("No route is available for packet %(src_ip)s->%(dst_ip)s"),
+                "No route is available for packet %(src_ip)s->%(dst_ip)s",
                 {"src_ip": pkt.get_protocol(ethernet.ethernet).src,
                  "dst_ip": pkt.get_protocol(ethernet.ethernet).dst})
             return
