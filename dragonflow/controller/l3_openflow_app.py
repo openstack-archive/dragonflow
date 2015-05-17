@@ -595,6 +595,11 @@ class L3ReactiveApp(app_manager.RyuApp):
                         self.CLASSIFIER_TABLE)
 
     def delete_port(self, port):
+        """
+
+        :param port:
+        :type port: PortData
+        """
         self._handle_remove_port(PortData(port))
 
     def sync_port(self, port):
