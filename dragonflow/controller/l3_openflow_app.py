@@ -445,7 +445,11 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.hard_timeout = kwargs['hard_timeout']
 
     def get_tenant_by_id(self, tenant_id):
-        return self._tenants.setdefault(tenant_id, TenantTopology(tenant_id))
+        if tenant_id not in self._tenants:
+            return self._tenants.setdefault(tenant_id,
+                                            TenantTopology(tenant_id))
+        else:
+            return self._tenants[tenant_id]
 
     def start(self):
         LOG.info(_LI("Starting Virtual L3 Reactive OpenFlow APP "))
