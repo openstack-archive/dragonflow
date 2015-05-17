@@ -266,6 +266,19 @@ class TenantTopology(object):
         # route not found
         return None
 
+    @property
+    def unused_subnets(self):
+        unused_subnets = self.subnets.copy()
+        for port in self.mac_to_port_data.values():
+            for fixed_ip in port.fixed_ips:
+                unused_subnets.pop(fixed_ip['subnet_id'], None)
+
+            # Optimization, no need to keep filtering if it's empty
+            if len(unused_subnets) == 0:
+                break
+
+        return unused_subnets.values()
+
 
 class Router(object):
 
@@ -601,6 +614,45 @@ class L3ReactiveApp(app_manager.RyuApp):
         :type port: PortData
         """
         self._handle_remove_port(PortData(port))
+
+    def _remove_flow_local_subnet(self, subnet):
+        """
+
+        :param subnet:
+        :type subnet: Subnet
+        """
+        for dp in self.dp_list.values():
+            datapath = dp.datapath
+            ofproto = datapath.ofproto
+            parser = datapath.ofproto_parser
+            match = parser.OFPMatch()
+            match.set_dl_type(ether.ETH_TYPE_IP)
+            match.set_metadata(subnet.segmentation_id)
+            msg = parser.OFPFlowMod(datapath=datapath,
+                                    cookie=0,
+                                    cookie_mask=0,
+                                    table_id=L3ReactiveApp.CLASSIFIER_TABLE,
+                                    command=ofproto.OFPFC_DELETE,
+                                    priority=MEDIUM_PRIORITY_FLOW,
+                                    out_port=ofproto.OFPP_ANY,
+                                    out_group=ofproto.OFPG_ANY,
+                                    match=match)
+            datapath.send_msg(msg)
+
+    def _find_tenant_for_port_data(self, port_data):
+        """
+
+        :param port_data:
+        :type port_data: PortData
+        :return:
+        :rtype: TenantTopology or None
+        """
+
+        for tenant in self._tenants.values():
+            if port_data.mac_address in tenant.mac_to_port_data:
+                return tenant
+        else:
+            return None
 
     def sync_port(self, port):
         LOG.info(_LI("sync_port--> %s\n"), port)
@@ -1162,8 +1214,11 @@ class L3ReactiveApp(app_manager.RyuApp):
         :param port_data: port_data for the port that was removed
         :type port_data: PortData
         """
-        for tenant in self._tenants.values():
-            tenant.mac_to_port_data.pop(port_data.mac_address, None)
+        owner_tenant = self._find_tenant_for_port_data(port_data)
+        if owner_tenant is not None:
+            owner_tenant.mac_to_port_data.pop(port_data.mac_address, None)
+            for unused_subnet in owner_tenant.unused_subnets:
+                self._remove_flow_local_subnet(unused_subnet)
 
         cookie = CookieFilter.from_port_data(port_data).to_cookie()
         for datapath in self.dp_list.values():
