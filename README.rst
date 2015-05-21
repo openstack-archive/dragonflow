@@ -59,9 +59,11 @@ A detailed blog post describing the solution can be found Here_.
 
 How to Install
 --------------
-`Installation guide <https://github.com/stackforge/dragonflow/tree/master/doc/source>`_
-`DevStack Single node configration  <https://github.com/stackforge/dragonflow/tree/master/doc/source/single-node-conf>`_
-`DevStack Multi node configration  <https://github.com/stackforge/dragonflow/tree/master/doc/source/multi-node-conf>`_
+`Installation Guide <https://github.com/stackforge/dragonflow/tree/master/doc/source>`_
+
+`DevStack Single Node Configuration  <https://github.com/stackforge/dragonflow/tree/master/doc/source/single-node-conf>`_
+
+`DevStack Multi Node Configuration  <https://github.com/stackforge/dragonflow/tree/master/doc/source/multi-node-conf>`_
 
 
 Documentation:
