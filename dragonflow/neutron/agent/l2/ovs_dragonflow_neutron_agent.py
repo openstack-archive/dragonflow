@@ -29,8 +29,8 @@ from neutron.common import config as common_config
 from neutron.common import utils as q_utils
 
 from neutron.i18n import _, _LE, _LI
-from neutron.plugins.openvswitch.agent import ovs_neutron_agent
-from neutron.plugins.openvswitch.agent.ovs_neutron_agent import OVSNeutronAgent
+from neutron.plugins.common import constants as p_const
+from neutron.plugins.openvswitch.agent import ovs_neutron_agent as ona
 from neutron.plugins.openvswitch.common import constants
 from oslo_log import log as logging
 
@@ -48,7 +48,7 @@ agent_additional_opts = [
 cfg.CONF.register_opts(agent_additional_opts, "AGENT")
 
 
-class L2OVSControllerAgent(OVSNeutronAgent):
+class L2OVSControllerAgent(ona.OVSNeutronAgent):
     def __init__(self, integ_br, tun_br, local_ip,
                  bridge_mappings, polling_interval, tunnel_types=None,
                  veth_mtu=None, l2_population=False,
@@ -109,18 +109,39 @@ class L2OVSControllerAgent(OVSNeutronAgent):
         with self.set_controller_lock:
             bridge.del_controller()
             bridge.set_controller(ip_address_)
+            bridge.set_controllers_connection_mode("out-of-band")
             bridge.add_flow(priority=0, actions="normal")
             bridge.add_flow(table=constants.CANARY_TABLE,
                             priority=0,
                             actions="drop")
-            # Mark the tunnel ID so the data will be transferred to the
-            # br-tun virtual switch, tun id and metadata are local
-            bridge.add_flow(table="60", priority=1,
-                            actions="move:NXM_NX_TUN_ID[0..31]"
-                                    "->NXM_NX_PKT_MARK[],"
-                                    "output:%s" %
-                                    (self.patch_tun_ofport))
-            bridge.set_controllers_connection_mode("out-of-band")
+            if self.patch_tun_ofport > 0:
+                # Mark the tunnel ID so the data will be transferred to the
+                # br-tun virtual switch, tun id and metadata are local
+                bridge.add_flow(table="60", priority=1,
+                                actions="move:NXM_NX_TUN_ID[0..31]"
+                                        "->NXM_NX_PKT_MARK[],"
+                                        "output:%s" %
+                                        (self.patch_tun_ofport))
+
+            # remove the default physical flows
+            for br in self.phys_brs.values():
+                br.remove_all_flows()
+                br.add_flow(priority=1, actions="normal")
+
+            # add the vlan flows
+            cur_ports = self.int_br.get_vif_ports()
+            for port in cur_ports:
+                local_vlan_map = self.int_br.db_get_val("Port", port.port_name,
+                                                        "other_config")
+                local_vlan = self.int_br.db_get_val("Port", port.port_name,
+                                                    "tag")
+                net_uuid = local_vlan_map.get('net_uuid')
+                if (net_uuid and local_vlan != ona.DEAD_VLAN_TAG):
+                    self.provision_local_vlan2(
+                        local_vlan_map['net_uuid'],
+                        local_vlan_map['network_type'],
+                        local_vlan_map['physical_network'],
+                        local_vlan_map['segmentation_id'])
 
     def check_ovs_status(self):
         if not self.enable_l3_controller:
@@ -140,7 +161,7 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                     remote_ip,
                     tunnel_type)
         if ofport > 0:
-            ofports = (ovs_neutron_agent._ofport_set_to_str
+            ofports = (ona._ofport_set_to_str
                        (self.tun_br_ofports[tunnel_type].values()))
             if self.enable_l3_controller:
                 if ofports:
@@ -151,6 +172,38 @@ class L2OVSControllerAgent(OVSNeutronAgent):
                                         (ofports))
         return ofport
 
+    def provision_local_vlan2(self, net_uuid, network_type, physical_network,
+                             segmentation_id):
+        if network_type == p_const.TYPE_VLAN:
+            if physical_network in self.phys_brs:
+                #outbound
+                # The global vlan id is set in table 60
+                # from segmentation id/tun id
+                self.int_br.add_flow(table="60", priority=1,
+                                     actions="move:NXM_NX_TUN_ID[0..11]"
+                                     "->OXM_OF_VLAN_VID[],"
+                                     "output:%s" %
+                                     (self.int_ofports[physical_network]))
+                lvid = self.local_vlan_map.get(net_uuid).vlan
+                br = self.phys_brs[physical_network]
+                br.add_flow(priority=4,
+                            in_port=self.phys_ofports[physical_network],
+                            dl_vlan=lvid,
+                            actions="mod_vlan_vid:%s,normal" % segmentation_id)
+
+                # inbound
+                self.int_br.add_flow(priority=3,
+                                     in_port=self.
+                                     int_ofports[physical_network],
+                                     dl_vlan=segmentation_id,
+                                     actions="mod_vlan_vid:%s,normal" % lvid)
+            else:
+                LOG.error(_LE("Cannot provision VLAN network for "
+                              "net-id=%(net_uuid)s - no bridge for "
+                              "physical_network %(physical_network)s"),
+                          {'net_uuid': net_uuid,
+                           'physical_network': physical_network})
+
 
 def main():
     cfg.CONF.register_opts(ip_lib.OPTS)
@@ -160,7 +213,7 @@ def main():
     q_utils.log_opt_values(LOG)
 
     try:
-        agent_config = ovs_neutron_agent.create_agent_config_map(cfg.CONF)
+        agent_config = ona.create_agent_config_map(cfg.CONF)
     except ValueError as e:
         LOG.error(_LE('%s Agent terminated!'), e)
         sys.exit(1)

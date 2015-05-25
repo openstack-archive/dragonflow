@@ -337,10 +337,12 @@ class Subnet(object):
             return False
 
     def __repr__(self):
-        return "<Subnet id='%s' cidr='%s' gateway_ip='%s'>" % (
+        return ("<Subnet id='%s' cidr='%s' gateway_ip='%s' " +
+                "segmentation_id='%s'>") % (
             self.id,
             self.cidr,
             self.gateway_ip,
+            self.segmentation_id,
         )
 
 
@@ -1372,8 +1374,10 @@ class L3ReactiveApp(app_manager.RyuApp):
                                                        segmentation_id,
                                                        0xffff,
                                                        self.CLASSIFIER_TABLE)
-                LOG.debug("Found VM/router port %s using MAC  %s  %d",
-                          port.name, port.hw_addr, datapath.id)
+                LOG.debug("Found VM/router port %s using MAC  %s,"
+                          " datapath: %d, port_no: %d, segmentation_id: %s",
+                          port.name, port.hw_addr, datapath.id, port.port_no,
+                          segmentation_id)
             elif "patch-tun" in port.name:
                 LOG.debug("Found br-tun patch port %s %s --> NORMAL path",
                           port.name, port.hw_addr)
