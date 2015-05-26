@@ -328,7 +328,7 @@ class Subnet(object):
 
     @property
     def gateway_ip(self):
-        return self.data['gateway_ip']
+        return self.data.get('gateway_ip')
 
     def is_ipv4(self):
         try:
@@ -663,10 +663,14 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         tenant_topo = self.get_tenant_by_id(port['tenant_id'])
         for subnet_dict in port.get('subnets', []):
-            tenant_topo.subnets[subnet_dict['id']] = subnet = Subnet(
-                subnet_dict,
-                segmentation_id)
-
+            subnet = tenant_topo.subnets.get(subnet_dict['id'])
+            if subnet:
+                subnet.set_data(subnet_dict)
+                subnet.segmentation_id = segmentation_id
+            else:
+                tenant_topo.subnets[subnet_dict['id']] = subnet = Subnet(
+                    subnet_dict,
+                    segmentation_id)
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
                 self.subnet_added_binding_cast(subnet, port)
                 self.bootstrap_network_classifiers(subnet=subnet)
