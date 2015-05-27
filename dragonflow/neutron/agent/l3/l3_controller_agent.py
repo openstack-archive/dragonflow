@@ -67,6 +67,27 @@ class L3ControllerAgent(agent.L3NATAgent):
         elif cfg.CONF.net_controller_l3_southbound_protocol == "OP-FLEX":
             LOG.error(_LE("Southbound OP-FLEX Protocol not implemented yet"))
 
+        # Initialize the controller application
+        self.controller.initialize()
+
+        # Sync all ports data from neutron to the L3 Agent
+        self.sync_ports_on_startup()
+
+        # Start the controller application
+        self.controller.start()
+
+    def sync_ports_on_startup(self):
+        try:
+            routers = self.plugin_rpc.get_routers(self.context)
+        except Exception:
+            LOG.error(_LE("Failed synchronizing routers due to RPC error"))
+            raise
+
+        for router in routers:
+            for interface in router.get('_interfaces', []):
+                for subnet in interface['subnets']:
+                    self.sync_subnet_port_data(subnet['id'])
+
     def _create_router(self, router_id, router):
         args = []
         kwargs = {

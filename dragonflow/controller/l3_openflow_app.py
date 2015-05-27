@@ -595,8 +595,8 @@ class L3ReactiveApp(app_manager.RyuApp):
             for switch in self.dp_list.values():
                 switch_port_desc_dict = switch.switch_port_desc_dict
                 if sub_str_port_id in switch_port_desc_dict:
-                    port_data['switch_port_desc'] = \
-                          switch_port_desc_dict[sub_str_port_id]
+                    port_data['switch_port_desc'] = (
+                        switch_port_desc_dict[sub_str_port_id])
                     port_desc = port_data['switch_port_desc']
                     self.add_flow_metadata_by_port_num(
                         port_desc['datapath'],
