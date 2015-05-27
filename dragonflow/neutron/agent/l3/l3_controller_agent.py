@@ -81,7 +81,7 @@ class L3ControllerAgent(agent.L3NATAgent):
             routers = self.plugin_rpc.get_routers(self.context)
         except Exception:
             LOG.error(_LE("Failed synchronizing routers due to RPC error"))
-            raise
+            return
 
         for router in routers:
             for interface in router.get('_interfaces', []):
