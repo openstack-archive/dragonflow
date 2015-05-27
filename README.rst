@@ -3,9 +3,21 @@ SDN based Virtual Router add-on for Neutron OpenStack
 
 * Free software: Apache license
 * Homepage:  http://launchpad.net/dragonflow
-* Documentation: `Documentation <#Documentation>`_
 * Source: http://git.openstack.org/cgit/stackforge/dragonflow
 * Bugs: http://bugs.launchpad.net/dragonflow
+
+Documentation:
+--------------
+* `Solution Overview Presentation <http://www.slideshare.net/gampel/dragonflow-sdn-based-distributed-virtual-router-for-openstack-neutron>`_
+
+* `Solution Overview Blog Post  <http://blog.gampel.net/2015/01/neutron-dvr-sdn-way.html>`_
+
+* `Deep-Dive Introduction 1 Blog Post <http://galsagie.github.io/sdn/openstack/ovs/dragonflow/2015/05/09/dragonflow-1/>`_
+
+* `Deep-Dive Introduction 2 Blog Post <http://galsagie.github.io/sdn/openstack/ovs/dragonflow/2015/05/11/dragonflow-2/>`_
+
+* `Kilo-Release Blog Post  <http://blog.gampel.net/2015/01/dragonflow-sdn-based-distributed.html>`_
+
 
 Overview
 --------
@@ -65,19 +77,6 @@ How to Install
 
 `DevStack Multi Node Configuration  <https://github.com/stackforge/dragonflow/tree/master/doc/source/multi-node-conf>`_
 
-
-Documentation:
---------------
-* `Solution Overview Presentation <http://www.slideshare.net/gampel/dragonflow-sdn-based-distributed-virtual-router-for-openstack-neutron>`_
-
-* `Solution Overview Blog Post  <http://blog.gampel.net/2015/01/neutron-dvr-sdn-way.html>`_
-
-* `Deep-Dive Introduction 1 Blog Post <http://galsagie.github.io/sdn/openstack/ovs/dragonflow/2015/05/09/dragonflow-1/>`_
-
-* `Deep-Dive Introduction 2 Blog Post <http://galsagie.github.io/sdn/openstack/ovs/dragonflow/2015/05/11/dragonflow-2/>`_
-
-* `Kilo-Release Blog Post  <http://blog.gampel.net/2015/01/dragonflow-sdn-based-distributed.html>`_
-
 Prerequisites
 -------------
 Install DevStack with Neutron ML2 as core plugin
@@ -101,6 +100,7 @@ TODO
 ----
 
 * Add support for North-South L3 IPv4 distribution (SNAT and DNAT)
-* Remove change impact on Neutron L2 Agent by switching to OVSDB command for bootstrap sequence (set-controller and install ARP responder)
 * Add support for IPv6
 * Support for multi controllers solution
+Full description can be found in the project `Blueprints  <https://blueprints.launchpad.net/dragonflow>`_
+
