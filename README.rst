@@ -90,7 +90,7 @@ Features
 * Scalability improvement for inter-subnet network by offloading L3 East-West routing from the Network Node to all Compute Nodes
 * Reliability improvement for inter-subnet network by removal of Network Node from the East-West traffic
 * Simplified virtual routing management
-* Support for all type drivers GRE/VXLAN (Bug pending for VLAN)
+* Support for all type drivers GRE/VXLAN/VLAN
 * Support for centralized shared public network (SNAT) based on the legacy L3 implementation
 * Support for centralized floating IP (DNAT) based on the legacy L3 implementation
 * Support for HA, in case the connection to the Controller is lost, fall back to the legacy L3 implementation until recovery. Reused all the legacy L3 HA. (Controller HA will be supported in the next release).
