@@ -110,11 +110,7 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
             bridge.del_controller()
             bridge.set_controller(ip_address_)
             bridge.set_controllers_connection_mode("out-of-band")
-
-            # TODO(gsagie) change this to the API call when
-            # https://review.openstack.org/#/c/185659/ gets merged
-            bridge.ovsdb.set_fail_mode(bridge.br_name,
-                                       "standalone").execute(check_error=True)
+            bridge.set_standalone_mode()
             bridge.add_flow(priority=0, actions="normal")
             bridge.add_flow(table=constants.CANARY_TABLE,
                             priority=0,
