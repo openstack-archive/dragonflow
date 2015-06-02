@@ -17,9 +17,9 @@ import sys
 import threading
 
 import eventlet
-
 eventlet.monkey_patch()
 
+from dragonflow.neutron.common import df_ovs_bridge
 from oslo_config import cfg
 
 from neutron.agent.common import config
@@ -30,6 +30,8 @@ from neutron.common import utils as q_utils
 
 from neutron.i18n import _, _LE, _LI
 from neutron.plugins.common import constants as p_const
+from neutron.plugins.openvswitch.agent.openflow.ovs_ofctl import br_phys
+from neutron.plugins.openvswitch.agent.openflow.ovs_ofctl import br_tun
 from neutron.plugins.openvswitch.agent import ovs_neutron_agent as ona
 from neutron.plugins.openvswitch.common import constants
 from oslo_log import log as logging
@@ -49,7 +51,7 @@ cfg.CONF.register_opts(agent_additional_opts, "AGENT")
 
 
 class L2OVSControllerAgent(ona.OVSNeutronAgent):
-    def __init__(self, integ_br, tun_br, local_ip,
+    def __init__(self, bridge_classes, integ_br, tun_br, local_ip,
                  bridge_mappings, polling_interval, tunnel_types=None,
                  veth_mtu=None, l2_population=False,
                  enable_distributed_routing=False,
@@ -75,7 +77,8 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
         self.enable_l3_controller = cfg.CONF.AGENT.enable_l3_controller
 
         super(L2OVSControllerAgent, self) \
-            .__init__(integ_br,
+            .__init__(bridge_classes,
+                      integ_br,
                       tun_br, local_ip,
                       bridge_mappings,
                       polling_interval,
@@ -209,7 +212,11 @@ def main():
     common_config.init(sys.argv[1:])
     common_config.setup_logging()
     q_utils.log_opt_values(LOG)
-
+    bridge_classes = {
+            'br_int': df_ovs_bridge.DFOVSAgentBridge,
+            'br_phys': br_phys.OVSPhysicalBridge,
+            'br_tun': br_tun.OVSTunnelBridge
+                }
     try:
         agent_config = ona.create_agent_config_map(cfg.CONF)
     except ValueError as e:
@@ -222,7 +229,7 @@ def main():
         # commands target xen dom0 rather than domU.
         cfg.CONF.set_default('ip_lib_force_root', True)
 
-    agent = L2OVSControllerAgent(**agent_config)
+    agent = L2OVSControllerAgent(bridge_classes, **agent_config)
 
     signal.signal(signal.SIGTERM, agent._handle_sigterm)
 
