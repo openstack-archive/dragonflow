@@ -1683,12 +1683,12 @@ class L3ReactiveApp(app_manager.RyuApp):
         datapath.send_msg(msg)
 
     def add_flow_snat_redirect(self, datapath, snat_binding, subnet):
-        if subnet.segmentation_id == 0:
-            raise RuntimeError("Segmentation id == 0")
-
         if not subnet.is_ipv4():
             LOG.info(_LI("No support for IPV6"))
             return
+
+        if subnet.segmentation_id == 0:
+            raise RuntimeError("Segmentation id == 0")
 
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
