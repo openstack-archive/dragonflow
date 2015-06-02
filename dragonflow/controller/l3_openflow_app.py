@@ -676,17 +676,9 @@ class L3ReactiveApp(app_manager.RyuApp):
             if port['device_owner'] == const.DEVICE_OWNER_ROUTER_INTF:
                 self.subnet_added_binding_cast(subnet, port)
                 self.bootstrap_network_classifiers(subnet=subnet)
-
-            cidr = subnet.cidr
-            for dp in self.dp_list.values():
-                self.add_flow_normal_local_subnet(
-                    dp.datapath,
-                    self.CLASSIFIER_TABLE,
+            self._add_flow_normal_local_subnet_cast(
                     LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
-                    cidr.network.format(),
-                    str(cidr.prefixlen),
-                    subnet.segmentation_id)
-
+                    subnet)
         tenant_topo.mac_to_port_data[port['mac_address']] = PortData(port)
         self.attach_switch_port_desc_to_port_data(port)
 
@@ -1042,6 +1034,20 @@ class L3ReactiveApp(app_manager.RyuApp):
             hard_timeout=self.hard_timeout)
 
         return actions
+
+    def _add_flow_normal_local_subnet_cast(self, priority, subnet):
+        if not subnet.is_ipv4():
+            LOG.info(_LI("No support for IPV6"))
+            return
+        cidr = subnet.cidr
+        for dp in self.dp_list.values():
+            self.add_flow_normal_local_subnet(
+                dp.datapath,
+                self.CLASSIFIER_TABLE,
+                priority,
+                cidr.network.format(),
+                str(cidr.prefixlen),
+                subnet.segmentation_id)
 
     def add_flow_normal_local_subnet(self, datapath, table, priority,
                                      dst_net, dst_mask, seg_id):
