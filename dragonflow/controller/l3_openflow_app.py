@@ -747,13 +747,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         """Check if datapath is known to this openflow appliaction"""
         return self.dp_list.get(datapath.id) is not None
 
-    def _iter_entities_by_segmentation_id(self, segmentation_id):
-        for tenant in self._tenants.values():
-            for router in tenant.routers.values():
-                for subnet in router.subnets.values():
-                    if segmentation_id == subnet.segmentation_id:
-                        yield tenant, router, subnet
-
     def _handle_router_packet(self, datapath, pkt, route):
         """Handle packets intended for routers
 
