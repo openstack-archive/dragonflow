@@ -1617,10 +1617,9 @@ class L3ReactiveApp(app_manager.RyuApp):
         # Now find the segmentation ID for this subnet if it exists
         for tenantid in self._tenants:
             tenant = self._tenants[tenantid]
-            for router in tenant.routers.values():
-                for subnet in router.subnets.values():
-                    if subnet.id == subnet_id:
-                        self.bootstrap_snat_subnet_flow(snat_binding, subnet)
+            for subnet in tenant.subnets.values():
+                if subnet.id == subnet_id:
+                    self.bootstrap_snat_subnet_flow(snat_binding, subnet)
 
     def remove_snat_binding(self, subnet_id):
         snat_binding = self.snat_bindings.get(subnet_id)
