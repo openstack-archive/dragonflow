@@ -1686,7 +1686,8 @@ class L3ReactiveApp(app_manager.RyuApp):
             return
 
         if subnet.segmentation_id == 0:
-            raise RuntimeError("Segmentation id == 0")
+            LOG.warning(_LW("Segmentation id == 0 for subnet = %s"), subnet.id)
+            return
 
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
