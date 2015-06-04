@@ -273,6 +273,11 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
                 if "segmentation_id" in port_data:
                     segmentation_id = port_data['segmentation_id']
                 port['segmentation_id'] = segmentation_id
+                port['subnets'] = [
+                    self._core_plugin.get_subnet(
+                        context, fixed_ip['subnet_id'])
+                    for fixed_ip in port['fixed_ips']
+                ]
         return result
 
     def get_ml2_port_bond_data(self, ctx, port_id, device_id):
