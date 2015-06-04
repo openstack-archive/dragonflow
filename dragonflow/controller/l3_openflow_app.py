@@ -284,13 +284,13 @@ class Router(object):
 
     def __init__(self, data):
         self.data = data
-        self.subnets = {}
+        self.subnets = []
 
     def add_subnet(self, subnet):
-        self.subnets[subnet.id] = subnet
+        self.subnets.append(subnet.id)
 
     def remove_subnet(self, subnet):
-        del self.subnets[subnet.id]
+        self.subnets.remove(subnet.id)
 
     @property
     def id(self):
@@ -480,7 +480,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             else:
                 for interface in router.interfaces:
                     for subnet_info in router.interfaces['subnets']:
-                        subnet = router.subnets[subnet_info['id']]
+                        subnet = tenant.subnets[subnet_info['id']]
                         if subnet.segmentation_id == 0:
                             continue
 
@@ -526,7 +526,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             # Handle removed subnets
             for interface in router_old.interfaces:
                 for subnet_info in interface['subnets']:
-                    subnet = router_old.subnets[subnet_info['id']]
+                    subnet = subnets[subnet_info['id']]
                     if subnet.segmentation_id == 0:
                         continue
 
@@ -537,9 +537,11 @@ class L3ReactiveApp(app_manager.RyuApp):
                     for router in tenant_topology.routers.values():
                         if subnet.id in router.subnets:
                             break
+                    #TODO(gampel) Are we sure we want to delete the subnet
+                    #We Need to make sure that it is not needed for
+                    #L2 VM to VM proactive flow install
                     else:
                         del tenant_topology.subnets[subnet.id]
-
                     if subnet.is_ipv4():
                         self._remove_vrouter_arp_responder_cast(
                             subnet.segmentation_id,
@@ -1393,14 +1395,15 @@ class L3ReactiveApp(app_manager.RyuApp):
         #this specific compute node
         for tenant in self._tenants.values():
             for router in tenant.routers.values():
-                for subnet in router.subnets.values():
+                for subnet_id in router.subnets:
+                    subnet = tenant.subnets[subnet_id]
                     for interface in router.data['_interfaces']:
                         for subnet_info in interface['subnets']:
                             if (subnet.data['id'] == subnet_info['id']
                                     and subnet.segmentation_id != 0):
                                 self.add_subnet_binding(datapath,
-                                                        subnet,
-                                                        interface)
+                                        subnet,
+                                        interface)
 
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
