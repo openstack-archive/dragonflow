@@ -46,7 +46,6 @@ from neutron.i18n import _LE, _LI, _LW
 from oslo_log import log
 
 from dragonflow.utils.bloomfilter import BloomFilter
-
 LOG = log.getLogger(__name__)
 
 ETHERNET = ethernet.ethernet.__name__
@@ -168,8 +167,11 @@ class TenantTopology(object):
     def add_router(self, router):
         self.routers[router.id] = router
 
-    def del_router(self, router):
-        del self.routers[router.id]
+    def del_router(self, id):
+        try:
+            del self.routers[id]
+        except KeyError:
+            return -1
 
     def add_node(self, value):
         self.nodes.add(value)
@@ -479,7 +481,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                 pass
             else:
                 for interface in router.interfaces:
-                    for subnet_info in router.interfaces['subnets']:
+                    for subnet_info in interface['subnets']:
                         subnet = tenant.subnets[subnet_info['id']]
                         if subnet.segmentation_id == 0:
                             continue
@@ -488,6 +490,8 @@ class L3ReactiveApp(app_manager.RyuApp):
                             if subnet.id in router.subnets:
                                 break
                         else:
+                            #TODO(gampel) Are we sure we want to delete
+                            #the subnet see same comment below
                             del tenant.subnets[subnet.id]
 
                         if subnet.is_ipv4():
@@ -498,7 +502,6 @@ class L3ReactiveApp(app_manager.RyuApp):
 
     def sync_router(self, router_info):
         LOG.info(_LI("sync_router --> %s"), router_info)
-
         tenant_topology = self.get_tenant_by_id(router_info['tenant_id'])
 
         router = Router(router_info)
