@@ -26,7 +26,6 @@ from neutron.common import topics
 from neutron.i18n import _LE, _LI
 from neutron.openstack.common import loopingcall
 from oslo_log import log as logging
-
 EXTERNAL_DEV_PREFIX = namespaces.EXTERNAL_DEV_PREFIX
 
 LOG = logging.getLogger(__name__)
@@ -102,7 +101,14 @@ class L3ControllerAgent(agent.L3NATAgent):
         }
         return df_dvr_router.DfDvrRouter(*args, **kwargs)
 
+    def _safe_router_removed(self, router_id):
+        """Try to delete a router and return True if successful."""
+        self.controller.delete_router(router_id)
+
+        super(L3ControllerAgent, self)._safe_router_removed(router_id)
+
     def _process_router_if_compatible(self, router):
+
         self.controller.sync_router(router)
         for interface in router.get('_interfaces', ()):
             for subnet_info in interface['subnets']:
