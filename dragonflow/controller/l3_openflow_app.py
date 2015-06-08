@@ -486,14 +486,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                         if subnet.segmentation_id == 0:
                             continue
 
-                        for router in tenant.routers.values():
-                            if subnet.id in router.subnets:
-                                break
-                        else:
-                            #TODO(gampel) Are we sure we want to delete
-                            #the subnet see same comment below
-                            del tenant.subnets[subnet.id]
-
                         if subnet.is_ipv4():
                             self._remove_vrouter_arp_responder_cast(
                                 subnet.segmentation_id,
@@ -537,14 +529,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                     if subnet.id in router.subnets:
                         continue
 
-                    for router in tenant_topology.routers.values():
-                        if subnet.id in router.subnets:
-                            break
-                    #TODO(gampel) Are we sure we want to delete the subnet
-                    #We Need to make sure that it is not needed for
-                    #L2 VM to VM proactive flow install
-                    else:
-                        del tenant_topology.subnets[subnet.id]
                     if subnet.is_ipv4():
                         self._remove_vrouter_arp_responder_cast(
                             subnet.segmentation_id,
@@ -1229,6 +1213,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             owner_tenant.mac_to_port_data.pop(port_data.mac_address, None)
             for unused_subnet in owner_tenant.unused_subnets:
                 self._remove_flow_local_subnet(unused_subnet)
+                del owner_tenant.subnets[unused_subnet.id]
 
         cookie = CookieFilter.from_port_data(port_data).to_cookie()
         for datapath in self.dp_list.values():
