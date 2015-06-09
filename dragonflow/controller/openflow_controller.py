@@ -15,12 +15,7 @@
 from ryu.base.app_manager import AppManager
 from ryu.controller.ofp_handler import OFPHandler
 
-
-from neutron import context
-
 from dragonflow.controller.base_controller import ControllerBase
-from neutron.common import utils
-
 
 from oslo_log import log as logging
 
@@ -32,14 +27,7 @@ class OpenFlowController(ControllerBase):
 
     def __init__(self, conf, controllertype):
         super(OpenFlowController, self).__init__(conf, controllertype)
-        self.cfg = conf
-        self.controllertype = controllertype
-        self.ctx = context.get_admin_context()
-        self.hostname = utils.get_hostname()
-        self.sync_active_state = False
-        self.sync_all = True
         self.l3_app = None
-        self.heartbeat = None
         self.open_flow_hand = None
 
     def initialize(self):
