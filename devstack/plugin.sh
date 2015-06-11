@@ -11,8 +11,6 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
         if is_service_enabled q-df-l3; then
            echo "Cloning and installing Ryu"
            git_clone $RYU_REPO $RYU_DIR $RYU_BRANCH
-           sed -i 's/register_cli_opts/register_opts/g' $RYU_DIR/ryu/controller/controller.py
-           sed -i 's/register_cli_opts/register_opts/g' $RYU_DIR/ryu/controller/controller.py
            setup_develop $RYU_DIR
            echo "Finished installing Ryu"
         fi
