@@ -118,14 +118,6 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
             bridge.add_flow(table=constants.CANARY_TABLE,
                             priority=0,
                             actions="drop")
-            if self.patch_tun_ofport > 0:
-                # Mark the tunnel ID so the data will be transferred to the
-                # br-tun virtual switch, tun id and metadata are local
-                bridge.add_flow(table="60", priority=1,
-                                actions="move:NXM_NX_TUN_ID[0..31]"
-                                        "->NXM_NX_PKT_MARK[],"
-                                        "output:%s" %
-                                        (self.patch_tun_ofport))
 
             # add the normal flow higher priority than the drop
             for br in self.phys_brs.values():
