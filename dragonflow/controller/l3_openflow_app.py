@@ -447,6 +447,7 @@ class L3ReactiveApp(app_manager.RyuApp):
     ARP_AND_BR_TABLE = 51
     L3_VROUTER_TABLE = 52
     L3_PUBLIC_TABLE = 53
+    TUN_TRANSLATE_TABLE = 60
 
     def __init__(self, *args, **kwargs):
         super(L3ReactiveApp, self).__init__(*args, **kwargs)
@@ -997,7 +998,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             # for this flow
             field = parser.OFPActionSetField(tunnel_id=dst_seg_id)
             actions.append(field)
-            goto_inst = parser.OFPInstructionGotoTable(60)
+            goto_inst = parser.OFPInstructionGotoTable(TUN_TRANSLATE_TABLE)
             inst.append(goto_inst)
         else:
             actions.append(parser.OFPActionOutput(out_port_num,
