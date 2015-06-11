@@ -1377,8 +1377,16 @@ class L3ReactiveApp(app_manager.RyuApp):
                 switch.patch_port_num = port.port_no
                 self.add_flow_normal_by_port_num(
                     datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
+
+                #Install table 60 translation to br-tun
+                self._inst_tunid_translation_to_mark(
+                        datapath,
+                        60,
+                        port.port_no,
+                        HIGH_PRIORITY_FLOW)
         LOG.debug('OFPPortDescStatsReply received: %s', ports)
         switch.local_ports = ports
+
         #TODO(gampel) Install flows only for tenants with VMs running on
         #this specific compute node
         for tenant in self._tenants.values():
@@ -1759,6 +1767,26 @@ class L3ReactiveApp(app_manager.RyuApp):
             inst=inst,
             table_id=self.L3_VROUTER_TABLE,
             priority=EAST_WEST_TRAFFIC_TO_CONTROLLER_FLOW_PRIORITY,
+            match=match)
+
+    def _inst_tunid_translation_to_mark(self, datapath,table_id,
+            port,priority=0):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        match = parser.OFPMatch()
+        match.set_dl_type(ether.ETH_TYPE_IP)
+        actions = [parser.NXActionRegMove(src_field='tunnel_id',
+                                          dst_field='pkt_mark',
+                                          n_bits=32),
+                   parser.OFPActionOutput(port=port)]
+
+        instructions = [parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        self.mod_flow(
+            datapath,
+            inst=instructions,
+            table_id=table_id,
+            priority=priority,
             match=match)
 
 # Base static
