@@ -21,7 +21,7 @@ Quick Installation
 
 ::
 
-   enable_plugin dragonflow https://github.com/stackforge/dragonflow.git
+   enable_plugin dragonflow https://github.com/openstack/dragonflow.git
 
    Q_ENABLE_DRAGONFLOW=True
 
