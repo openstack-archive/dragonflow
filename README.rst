@@ -3,7 +3,7 @@ SDN based Virtual Router add-on for Neutron OpenStack
 
 * Free software: Apache license
 * Homepage:  http://launchpad.net/dragonflow
-* Source: http://git.openstack.org/cgit/stackforge/dragonflow
+* Source: http://git.openstack.org/cgit/openstack/dragonflow
 * Bugs: http://bugs.launchpad.net/dragonflow
 
 Documentation:
@@ -31,7 +31,7 @@ In OpenFlow these rules are called flows. To put this simply, the virtual router
 
 Dragonflow eliminates the use of namespaces in contrast to the standard DVR. A diagram showing Dragonflow components and overall architecture can be seen here:
 
-.. image:: https://raw.githubusercontent.com/stackforge/dragonflow/master/doc/images/df_components.jpg
+.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/df_components.jpg
     :alt: Solution Overview
     :width: 600
     :height: 525
@@ -56,7 +56,7 @@ The pipeline works in the following manner:
 The following diagram shows the multi-table OpenFlow pipeline installed into the OVS integration bridge `(br-int)` in order to represent the virtual router using flows only:
 
 
-.. image:: https://raw.githubusercontent.com/stackforge/dragonflow/master/doc/images/df_of_pipeline.jpg
+.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/df_of_pipeline.jpg
     :alt: Pipeline
     :width: 600
     :height: 400
@@ -71,11 +71,11 @@ A detailed blog post describing the solution can be found Here_.
 
 How to Install
 --------------
-`Installation Guide <https://github.com/stackforge/dragonflow/tree/master/doc/source>`_
+`Installation Guide <https://github.com/openstack/dragonflow/tree/master/doc/source>`_
 
-`DevStack Single Node Configuration  <https://github.com/stackforge/dragonflow/tree/master/doc/source/single-node-conf>`_
+`DevStack Single Node Configuration  <https://github.com/openstack/dragonflow/tree/master/doc/source/single-node-conf>`_
 
-`DevStack Multi Node Configuration  <https://github.com/stackforge/dragonflow/tree/master/doc/source/multi-node-conf>`_
+`DevStack Multi Node Configuration  <https://github.com/openstack/dragonflow/tree/master/doc/source/multi-node-conf>`_
 
 Prerequisites
 -------------
