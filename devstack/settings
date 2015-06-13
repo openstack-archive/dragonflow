@@ -1,4 +1,4 @@
-DRAGONFLOW_REPO=${DRAGONFLOW_REPO:-git://github.com/stackforge/dragonflow.git}
+DRAGONFLOW_REPO=${DRAGONFLOW_REPO:-git://github.com/openstack/dragonflow.git}
 DRAGONFLOW_DIR=$DEST/dragonflow
 DRAGONFLOW_BRANCH=${DRAGONFLOW_BRANCH:-master}
 
