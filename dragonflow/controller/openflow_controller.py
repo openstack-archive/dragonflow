@@ -27,6 +27,7 @@ class OpenFlowController(ControllerBase):
 
     def __init__(self, conf, controllertype):
         super(OpenFlowController, self).__init__(conf, controllertype)
+        self.cfg = conf
         self.l3_app = None
         self.open_flow_hand = None
 
