@@ -24,6 +24,7 @@ from oslo_config import cfg
 
 from neutron.agent.common import config
 from neutron.agent.linux import ip_lib
+from neutron.agent.ovsdb import api as ovsdb
 
 from neutron.common import config as common_config
 from neutron.common import utils as q_utils
@@ -111,7 +112,7 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
         with self.set_controller_lock:
             bridge.del_controller()
             bridge.set_controller(ip_address_)
-            bridge.set_controllers_connection_mode("out-of-band")
+            self.set_connection_mode(bridge, "out-of-band")
 
             bridge.ovsdb.set_fail_mode(bridge.br_name,
                                        "standalone").execute(check_error=True)
@@ -197,6 +198,12 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
                               "physical_network %(physical_network)s"),
                           {'net_uuid': net_uuid,
                            'physical_network': physical_network})
+
+    def set_connection_mode(self, bridge, mode):
+        ovsdb_api = ovsdb.API.get(bridge)
+        attrs = [('connection-mode', mode)]
+        ovsdb_api.db_set('controller', bridge.br_name, *attrs).execute(
+            check_error=True)
 
 
 def main():
