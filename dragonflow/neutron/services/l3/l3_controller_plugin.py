@@ -322,12 +322,12 @@ class ControllerL3ServicePlugin(common_db_mixin.CommonDbMixin,
         if not l3_agent:
             return False
         if self.router_scheduler:
-            unscheduled_rs = self.router_scheduler._get_routers_to_schedule(
+            unscheduled_rs = self.router_scheduler.get_routers_to_schedule(
                                             context,
                                             self,
                                             router_ids)
 
-            self.router_scheduler._bind_routers(context, self,
+            self.router_scheduler.bind_routers(context, self,
                     unscheduled_rs,
                     l3_agent)
         return
