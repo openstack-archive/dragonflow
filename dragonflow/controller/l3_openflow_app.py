@@ -46,6 +46,7 @@ from neutron.i18n import _LE, _LI, _LW
 from oslo_log import log
 
 from dragonflow.utils.bloomfilter import BloomFilter
+import ipdb
 LOG = log.getLogger(__name__)
 
 ETHERNET = ethernet.ethernet.__name__
@@ -280,6 +281,22 @@ class TenantTopology(object):
                 break
 
         return unused_subnets.values()
+
+    def get_routers_ports_by_subnet(self, subnet):
+        port_l = []
+        ipdb.set_trace()
+        try:
+            for router in self.routers.values():
+                for subnet_id in router.subnets:
+                    for interface in router.interfaces:
+                            for subnet_info in interface['subnets']:
+                                if subnet.id == subnet_info['id']:
+                                    port_l.append(interface)
+
+        except KeyError:
+            LOG.error(_LE("AttributeError: for %s"), subnet.id)
+
+        return port_l
 
 
 class Router(object):
