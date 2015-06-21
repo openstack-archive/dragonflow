@@ -398,6 +398,16 @@ class PortData(object):
             return tuple()
 
     @property
+    def get_subnets(self):
+        subnet_l = []
+        try:
+            for fixed_ip in self.fixed_ips:
+                subnet_l.append(fixed_ip['subnet_id'])
+        except KeyError:
+            break
+        return subnet_l
+
+    @property
     def segmentation_id(self):
         return self._port_data['segmentation_id']
 
