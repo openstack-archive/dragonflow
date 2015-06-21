@@ -1398,6 +1398,25 @@ class L3ReactiveApp(app_manager.RyuApp):
                                                        segmentation_id,
                                                        0xffff,
                                                        self.CLASSIFIER_TABLE)
+
+                    for subnet_id in port_data.get_subnets:
+                        subnet = tenant_data.subnets.get(subnet_id)
+                        router_ports = tenant_data.get_routers_ports_by_subnet(
+                                subnet)
+                        for interface in router_ports:
+                            self.add_subnet_binding(datapath,
+                                    subnet,
+                                    interface)
+                        if subnet.is_ipv4():
+                            cidr = subnet.cidr
+                            self.add_flow_normal_local_subnet(
+                                datapath,
+                                self.CLASSIFIER_TABLE,
+                                LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
+                                cidr.network.format(),
+                                str(cidr.prefixlen),
+                                subnet.segmentation_id)
+
                 LOG.debug("Found VM/router port %s using MAC  %s,"
                           " datapath: %d, port_no: %d, segmentation_id: %s",
                           port.name, port.hw_addr, datapath.id, port.port_no,
@@ -1410,19 +1429,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                     datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
         LOG.debug('OFPPortDescStatsReply received: %s', ports)
         switch.local_ports = ports
-        #TODO(gampel) Install flows only for tenants with VMs running on
-        #this specific compute node
-        for tenant in self._tenants.values():
-            for router in tenant.routers.values():
-                for subnet_id in router.subnets:
-                    subnet = tenant.subnets[subnet_id]
-                    for interface in router.data['_interfaces']:
-                        for subnet_info in interface['subnets']:
-                            if (subnet.data['id'] == subnet_info['id']
-                                    and subnet.segmentation_id != 0):
-                                self.add_subnet_binding(datapath,
-                                        subnet,
-                                        interface)
 
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
@@ -1556,15 +1562,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                     subnet.segmentation_id,
                     interface['mac_address'],
                     self.get_ip_from_interface(interface))
-
-        cidr = subnet.cidr
-        self.add_flow_normal_local_subnet(
-            datapath,
-            self.CLASSIFIER_TABLE,
-            LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
-            cidr.network.format(),
-            str(cidr.prefixlen),
-            subnet.segmentation_id)
 
     def subnet_added_binding_cast(self, subnet, interface):
         LOG.debug("adding %(segmentation_id)s, %(mac_address)s, "
