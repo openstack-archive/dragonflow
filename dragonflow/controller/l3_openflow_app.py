@@ -1359,7 +1359,7 @@ class L3ReactiveApp(app_manager.RyuApp):
             elif port.name.startswith('qvo') or port.name.startswith('qr'):
                 # this is a VM/qrouter port start with qvo/qr<NET-ID[:11]>
                 # update the port data with the port num and the switch dpid
-                port_data = self.update_local_port_num(
+                port_data = self._update_local_port_num(
                     port.name, port.port_no, datapath)
                 if segmentation_id != 0:
                     self.add_flow_metadata_by_port_num(datapath,
@@ -1414,7 +1414,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                   data=data)
         datapath.send_msg(out)
 
-    def update_local_port_num(self, port_name, port_num, datapath):
+    def _update_local_port_num(self, port_name, port_num, datapath):
 
         dpid = datapath.id
         port_id_from_name = port_name[3:]
