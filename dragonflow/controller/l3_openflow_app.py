@@ -1269,7 +1269,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         reason = msg.reason
         port_no = msg.desc.port_no
         datapath = ev.msg.datapath
-
         ofproto = msg.datapath.ofproto
         if reason == ofproto.OFPPR_ADD:
             LOG.info(_LI("port added %s"), port_no)
