@@ -1269,7 +1269,6 @@ class L3ReactiveApp(app_manager.RyuApp):
         reason = msg.reason
         port_no = msg.desc.port_no
         datapath = ev.msg.datapath
-
         ofproto = msg.datapath.ofproto
         if reason == ofproto.OFPPR_ADD:
             LOG.info(_LI("port added %s"), port_no)
@@ -1546,6 +1545,11 @@ class L3ReactiveApp(app_manager.RyuApp):
         if not subnet.is_ipv4():
             LOG.info(_LI("No support for IPV6"))
             return
+
+        if subnet.segmentation_id == 0:
+            LOG.info(_LI("add_subnet_binding::No segmentation_id"))
+            return
+
         self._add_vrouter_arp_responder(
                     datapath,
                     subnet.segmentation_id,
