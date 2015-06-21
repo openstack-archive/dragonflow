@@ -1359,8 +1359,9 @@ class L3ReactiveApp(app_manager.RyuApp):
             elif port.name.startswith('qvo') or port.name.startswith('qr'):
                 # this is a VM/qrouter port start with qvo/qr<NET-ID[:11]>
                 # update the port data with the port num and the switch dpid
-                (port_id, mac, segmentation_id) = self.update_local_port_num(
+                port_data, tenant_data = self.update_local_port_num(
                     port.name, port.port_no, datapath)
+                segmentation_id = port_data.segmentation_id
                 if segmentation_id != 0:
                     self.add_flow_metadata_by_port_num(datapath,
                                                        0,
@@ -1433,15 +1434,12 @@ class L3ReactiveApp(app_manager.RyuApp):
                 sub_str_port_id = str(port_id[0:11])
                 if sub_str_port_id == port_id_from_name:
                     port_data['switch_port_desc'] = switch_port_desc
-                    return (
-                        port_data['id'],
-                        mac,
-                        port_data['segmentation_id'])
+                    return port_data, tenant
         # This can happen if we received port description from OVS but didn't
         # yet received port_sync from the L3 service
         LOG.debug("Port data not found %s  num <%d> dpid <%d>", port_name,
                   port_num, dpid)
-        return 0, 0, 0
+        return 0
 
     def get_ip_from_interface(self, interface):
         for fixed_ip in interface['fixed_ips']:
