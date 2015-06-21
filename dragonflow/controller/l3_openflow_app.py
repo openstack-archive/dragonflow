@@ -281,6 +281,21 @@ class TenantTopology(object):
 
         return unused_subnets.values()
 
+    def get_routers_ports_by_subnet(self, subnet):
+        ports = []
+        try:
+            for router in self.routers.values():
+                for subnet_id in router.subnets:
+                    for interface in router.interfaces:
+                        for subnet_info in interface['subnets']:
+                            if subnet.id == subnet_info['id']:
+                                ports.append(interface)
+
+        except KeyError:
+            LOG.error(_LE("AttributeError: for %s"), subnet.id)
+
+        return ports
+
 
 class Router(object):
 
