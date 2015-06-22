@@ -1380,7 +1380,14 @@ class L3ReactiveApp(app_manager.RyuApp):
                           port.hw_addr)
                 self.add_flow_normal_by_port_num(
                     datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
-            elif port.name.startswith('qvo') or port.name.startswith('qr'):
+            elif port.name.startswith('qr'):
+                LOG.debug(("Found Legacy Router port %s using MAC %s"
+                           "One machine setup"),
+                          port.name,
+                          port.hw_addr)
+                self.add_flow_normal_by_port_num(
+                    datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
+            elif port.name.startswith('qvo'):
                 # this is a VM/qrouter port start with qvo/qr<NET-ID[:11]>
                 # update the port data with the port num and the switch dpid
                 port_data, tenant_data = self.update_local_port_num(
