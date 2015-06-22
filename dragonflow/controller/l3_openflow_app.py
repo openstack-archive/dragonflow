@@ -156,10 +156,8 @@ class TenantTopology(object):
     """Represents a tenant topology"""
 
     def __init__(self, tenant_id):
-        self.nodes = set()
         self.edges = collections.defaultdict(list)
         self.routers = {}
-        self.distances = {}
         self.mac_to_port_data = {}
         self.subnets = {}
         self.id = tenant_id
@@ -172,17 +170,6 @@ class TenantTopology(object):
             del self.routers[id]
         except KeyError:
             return -1
-
-    def add_node(self, value):
-        self.nodes.add(value)
-
-    def del_node(self, value):
-        self.nodes.remove(value)
-
-    def add_edge(self, from_node, to_node, distance):
-        self.edges[from_node].append(to_node)
-        self.edges[to_node].append(from_node)
-        self.distances[(from_node, to_node)] = distance
 
     def find_port_data_by_ip_address(self, ip_address):
         for port_data in self.mac_to_port_data.values():
@@ -696,13 +683,6 @@ class L3ReactiveApp(app_manager.RyuApp):
                     subnet)
         tenant_topo.mac_to_port_data[port['mac_address']] = PortData(port)
         self.attach_switch_port_desc_to_port_data(port)
-
-    def get_port_subnets(self, port):
-        subnets_ids = []
-        if 'fixed_ips' in port:
-            for fixed_ips in port['fixed_ips']:
-                subnets_ids.append(fixed_ips['subnet_id'])
-        return subnets_ids
 
     def _get_input_packet_handler(self, pkt):
         is_ipv4_packet = pkt.get_protocol(ipv4.ipv4) is not None
