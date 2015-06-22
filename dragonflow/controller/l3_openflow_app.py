@@ -1373,67 +1373,84 @@ class L3ReactiveApp(app_manager.RyuApp):
             self.append_port_data_to_ports(ports, port)
 
             if port.name.startswith('tap'):
-                LOG.debug(("Found DHCPD port  %s using MAC  %s"
-                           "One machine install Special"
-                           "(One Machine set up ) test use case"),
-                          port.name,
-                          port.hw_addr)
-                self.add_flow_normal_by_port_num(
-                    datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
+                self._port_desc_handler_dhcp_server_port(datapath, port)
             elif port.name.startswith('qr'):
-                LOG.debug(("Found Legacy Router port %s using MAC %s"
-                           "One machine setup"),
-                          port.name,
-                          port.hw_addr)
-                self.add_flow_normal_by_port_num(
-                    datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
+                self._port_desc_handler_legacy_router_port(datapath, port)
             elif port.name.startswith('qvo'):
-                # this is a VM/qrouter port start with qvo/qr<NET-ID[:11]>
-                # update the port data with the port num and the switch dpid
-                port_data, tenant_data = self.update_local_port_num(
-                    port.name, port.port_no, datapath)
-                segmentation_id = port_data.segmentation_id
-                if segmentation_id != 0:
-                    self.add_flow_metadata_by_port_num(datapath,
-                                                       0,
-                                                       HIGH_PRIORITY_FLOW,
-                                                       port.port_no,
-                                                       segmentation_id,
-                                                       0xffff,
-                                                       self.CLASSIFIER_TABLE)
-
-                    for subnet_id in port_data.get_subnets:
-                        subnet = tenant_data.subnets.get(subnet_id)
-                        router_ports = tenant_data.get_routers_ports_by_subnet(
-                                subnet)
-                        #Install ARP responders for Router Ports on Subnet
-                        for interface in router_ports:
-                            self.add_subnet_binding(datapath,
-                                    subnet,
-                                    interface)
-                        if subnet.is_ipv4():
-                            #Install Local flows for subnet
-                            cidr = subnet.cidr
-                            self.add_flow_normal_local_subnet(
-                                datapath,
-                                self.CLASSIFIER_TABLE,
-                                LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
-                                cidr.network.format(),
-                                str(cidr.prefixlen),
-                                subnet.segmentation_id)
-
-                LOG.debug("Found VM/router port %s using MAC  %s,"
-                          " datapath: %d, port_no: %d, segmentation_id: %s",
-                          port.name, port.hw_addr, datapath.id, port.port_no,
-                          segmentation_id)
+                self._port_desc_handler_vm_port(datapath, port)
             elif "patch-tun" in port.name:
-                LOG.debug("Found br-tun patch port %s %s --> NORMAL path",
-                          port.name, port.hw_addr)
-                switch.patch_port_num = port.port_no
-                self.add_flow_normal_by_port_num(
-                    datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
+                self._port_desc_handler_patch_tun_port(datapath, switch, port)
         LOG.debug('OFPPortDescStatsReply received: %s', ports)
         switch.local_ports = ports
+
+    def _port_desc_handler_patch_tun_port(self, datapath, switch, port):
+        LOG.debug("Found br-tun patch port %s %s --> NORMAL path",
+                  port.name, port.hw_addr)
+        switch.patch_port_num = port.port_no
+        self.add_flow_normal_by_port_num(
+            datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
+
+    def _port_desc_handler_dhcp_server_port(self, datapath, port):
+        LOG.debug(("Found DHCPD port  %s using MAC  %s"
+            "One machine install"),
+            port.name,
+            port.hw_addr)
+        self.add_flow_normal_by_port_num(
+            datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
+
+    def _port_desc_handler_legacy_router_port(self, datapath, port):
+        LOG.debug(("Found Legacy Router port %s using MAC %s"
+            "One machine setup"),
+            port.name,
+            port.hw_addr)
+        self.add_flow_normal_by_port_num(
+            datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
+
+    def _port_desc_handler_vm_port(self, datapath, port):
+        # a VM port start with qvo<NET-ID[:11]>
+        port_data, tenant_data = self.update_local_port_num(
+            port.name, port.port_no, datapath)
+        if not port_data or not tenant_data:
+            LOG.warning(_LW("No Port Data for port: <%s>"), port.name)
+            return
+        segmentation_id = port_data.segmentation_id
+        if segmentation_id != 0:
+            self.add_flow_metadata_by_port_num(datapath,
+                                               0,
+                                               HIGH_PRIORITY_FLOW,
+                                               port.port_no,
+                                               segmentation_id,
+                                               0xffff,
+                                               self.CLASSIFIER_TABLE)
+
+            for subnet_id in port_data.get_subnets:
+                subnet = tenant_data.subnets.get(subnet_id)
+                router_ports = tenant_data.get_routers_ports_by_subnet(
+                        subnet)
+                self._install_arp_responders_for_routers_ports(datapath,
+                        subnet, router_ports)
+                if subnet.is_ipv4():
+                    #Install Local flows for subnet
+                    cidr = subnet.cidr
+                    self.add_flow_normal_local_subnet(
+                        datapath,
+                        self.CLASSIFIER_TABLE,
+                        LOCAL_SUBNET_TRAFFIC_FLOW_PRIORITY,
+                        cidr.network.format(),
+                        str(cidr.prefixlen),
+                        subnet.segmentation_id)
+
+        LOG.debug("Found VM/router port %s using MAC  %s,"
+                  " datapath: %d, port_no: %d, segmentation_id: %s",
+                  port.name, port.hw_addr, datapath.id, port.port_no,
+                  segmentation_id)
+
+    def _install_arp_responders_for_routers_ports(self, datapath,
+            subnet, router_ports):
+        for port in router_ports:
+            self.add_subnet_binding(datapath,
+                    subnet,
+                    port)
 
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
