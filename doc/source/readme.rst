@@ -27,8 +27,11 @@ Quick Installation
 
    ML2_L3_PLUGIN=dragonflow.neutron.services.l3.l3_controller_plugin.ControllerL3ServicePlugin
 
-   Q_DF_CONTROLLER_IP='tcp:<your sdn controller ip>:6633' (Optinal, Default == $HOST_IP)
+   Q_DF_CONTROLLER_IP='<your sdn controller ip>' (Optional, Default == $HOST_IP)
 
+   Q_DF_CONTROLLER_PROTOCOL= tcp/ssl (Optional, Default == tcp)
+
+   Q_DF_CONTROLLER_PORT= <port number> (Optional, Default == 6633)
 
 In ENABLED_SERVICES section change q-l3 to q-df-l3
 
