@@ -383,14 +383,14 @@ class PortData(object):
             return tuple()
 
     @property
-    def get_subnets(self):
-        subnet_l = []
+    def subnets(self):
+        subnets = []
         try:
             for fixed_ip in self.fixed_ips:
-                subnet_l.append(fixed_ip['subnet_id'])
-            return subnet_l
+                subnets.append(fixed_ip['subnet_id'])
+            return subnets
         except KeyError:
-            return subnet_l
+            return subnets
 
     @property
     def segmentation_id(self):
@@ -1433,7 +1433,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                                0xffff,
                                                self.CLASSIFIER_TABLE)
 
-            for subnet_id in port_data.get_subnets:
+            for subnet_id in port_data.subnets:
                 subnet = tenant_data.subnets.get(subnet_id)
                 if not subnet:
                     continue
