@@ -1380,6 +1380,12 @@ class L3ReactiveApp(app_manager.RyuApp):
         self.add_flow_normal_by_port_num(
             datapath, 0, HIGH_PRIORITY_FLOW, port.port_no)
 
+        self._install_tunid_translation_to_mark(
+                        datapath,
+                        self.TUN_TRANSLATE_TABLE,
+                        port.port_no,
+                        HIGH_PRIORITY_FLOW)
+
     def _port_desc_handler_dhcp_server_port(self, datapath, port):
         """Handle port description event for dhcp server vport
 
@@ -1824,6 +1830,26 @@ class L3ReactiveApp(app_manager.RyuApp):
             inst=inst,
             table_id=self.L3_VROUTER_TABLE,
             priority=EAST_WEST_TRAFFIC_TO_CONTROLLER_FLOW_PRIORITY,
+            match=match)
+
+    def _install_tunid_translation_to_mark(self, datapath, table_id,
+            port, priority=0):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        match = parser.OFPMatch()
+        match.set_dl_type(ether.ETH_TYPE_IP)
+        actions = [parser.NXActionRegMove(src_field='tunnel_id',
+                                          dst_field='pkt_mark',
+                                          n_bits=32),
+                   parser.OFPActionOutput(port=port)]
+
+        instructions = [parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        self.mod_flow(
+            datapath,
+            inst=instructions,
+            table_id=table_id,
+            priority=priority,
             match=match)
 
 # Base static
