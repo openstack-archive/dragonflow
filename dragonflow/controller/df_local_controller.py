@@ -15,6 +15,7 @@
 
 
 import eventlet
+import sys
 import time
 
 from ryu.base.app_manager import AppManager
@@ -37,27 +38,35 @@ eventlet.monkey_patch()
 
 class DfLocalController(object):
 
-    ovsdb_sb = connection.Connection('tcp:10.100.100.4:6640',
-                                     10,
-                                     'OVN_Southbound')
-    ovsdb_local = connection.Connection('tcp:10.100.100.4:6640',
-                                        10,
-                                        'Open_vSwitch')
-
-    def __init__(self):
+    def __init__(self, chassis_name, ip, sb_db_ip):
         self.l3_app = None
         self.l2_app = None
         self.open_flow_app = None
-        DfLocalController.ovsdb_sb.start()
-        DfLocalController.ovsdb_local.start()
         self.next_network_id = 0
         self.networks = {}
-        self.idl_sb = DfLocalController.ovsdb_sb.idl
-        self.idl = DfLocalController.ovsdb_local.idl
-        self.chassis_name = 'df_chassis'
-        self.ip = '10.100.100.4'
+        self.local_ports = {}
+        self.remote_ports = {}
+        self.ovsdb_sb = None
+        self.ovsdb_local = None
+        self.idl = None
+        self.idl_sb = None
+        self.chassis_name = chassis_name
+        self.ip = ip
+        self.sb_db_ip = sb_db_ip
 
     def run(self):
+        sb_db_connection = ('tcp:%s:6640' % self.sb_db_ip)
+        self.ovsdb_sb = connection.Connection(sb_db_connection,
+                                              10,
+                                              'OVN_Southbound')
+        local_connection = ('tcp:%s:6640' % self.ip)
+        self.ovsdb_local = connection.Connection(local_connection,
+                                                 10,
+                                                 'Open_vSwitch')
+        self.ovsdb_sb.start()
+        self.ovsdb_local.start()
+        self.idl_sb = self.ovsdb_sb.idl
+        self.idl = self.ovsdb_local.idl
         app_mgr = AppManager.get_instance()
         self.open_flow_app = app_mgr.instantiate(OFPHandler, None, None)
         self.open_flow_app.start()
@@ -284,8 +293,14 @@ class DfLocalController(object):
         return port_ids
 
 
+# Run this application like this:
+# python df_local_controller.py <chassis_unique_name>
+# <local ip address> <southbound_db_ip_address>
 def main():
-    controller = DfLocalController()
+    chassis_name = sys.argv[1]  # unique name 'df_chassis'
+    ip = sys.argv[2]  # local ip '10.100.100.4'
+    sb_db_ip = sys.argv[3]  # remote SB DB IP '10.100.100.4'
+    controller = DfLocalController(chassis_name, ip, sb_db_ip)
     controller.run()
 
 if __name__ == "__main__":
