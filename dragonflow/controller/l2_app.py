@@ -159,32 +159,43 @@ class L2App(app_manager.RyuApp):
             priority=100,
             match=match)
 
-        # Offload MC/BC to NORMAL path
+        self._add_multicast_broadcast_handling(network_id, lport_id,
+                                               tunnel_key)
+
+    def _add_multicast_broadcast_handling(self, network_id,
+                                          lport_id, tunnel_key):
+
+        if self.dp is None:
+            return
+        parser = self.dp.ofproto_parser
+        ofproto = self.dp.ofproto
+
+        command = self.dp.ofproto.OFPFC_MODIFY
+        network = self.local_networks.get(network_id)
+        if network is None:
+            network = {}
+            self.local_networks[network_id] = network
+            command = self.dp.ofproto.OFPFC_ADD
+
+        network[lport_id] = tunnel_key
+
         match = parser.OFPMatch(eth_dst='01:00:00:00:00:00')
         addint = haddr_to_bin('01:00:00:00:00:00')
         match.set_dl_dst_masked(addint, addint)
-        actions = [
-            parser.OFPActionOutput(
-                ofproto.OFPP_NORMAL)]
-        inst = [self.dp.ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        self.mod_flow(
-            self.dp,
-            inst=inst,
-            table_id=0,
-            priority=200,
-            match=match)
+        match.set_metadata(network_id)
 
-        match = parser.OFPMatch(eth_dst='ff:ff:ff:ff:ff:ff')
-        actions = [
-            parser.OFPActionOutput(
-                ofproto.OFPP_NORMAL)]
+        actions = []
+        for tunnel_id in network.values():
+            actions.append(parser.OFPActionSetField(reg7=tunnel_id))
+            actions.append(parser.NXActionResubmitTable(0xfff8, 64))
+
         inst = [self.dp.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=0,
+            table_id=17,
+            command=command,
             priority=200,
             match=match)
 
@@ -226,6 +237,9 @@ class L2App(app_manager.RyuApp):
             table_id=64,
             priority=100,
             match=match)
+
+        self._add_multicast_broadcast_handling(network_id, lport_id,
+                                               tunnel_key)
 
     # TODO(gsagie) extract this common method (used both by L2/L3 apps)
     def mod_flow(self, datapath, cookie=0, cookie_mask=0, table_id=0,
