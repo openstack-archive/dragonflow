@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import threading
+
 from ryu.base import app_manager
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
@@ -43,6 +45,7 @@ class L2App(app_manager.RyuApp):
         self.local_ports = {}
         self.remote_ports = {}
         self.local_networks = {}
+        self.db_lock = threading.Lock()
 
     def start(self):
         super(L2App, self).start()
@@ -51,6 +54,7 @@ class L2App(app_manager.RyuApp):
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         self.dp = ev.msg.datapath
+        self._install_flows_on_switch_up()
         self.send_port_desc_stats_request(self.dp)
 
     def send_port_desc_stats_request(self, datapath):
@@ -91,10 +95,34 @@ class L2App(app_manager.RyuApp):
         #     elif port.name.startswith('tap'):
         #         print 'VM port detected'
 
+    def _create_port_dict(self, lport_id, mac, network_id, ofport,
+                          tunnel_key, is_local):
+        port = {'lport_id': lport_id,
+                'mac': mac,
+                'network_id': network_id,
+                'ofport': ofport,
+                'tunnel_key': tunnel_key,
+                'is_local': is_local}
+        return port
+
     def add_local_port(self, lport_id, mac, network_id, ofport, tunnel_key):
 
         if self.dp is None:
             return
+
+        port = self._create_port_dict(lport_id, mac, network_id, ofport,
+                                      tunnel_key, True)
+        cached_port_data = self.local_ports.get(lport_id)
+        if cached_port_data is None or port != cached_port_data:
+            with self.db_lock:
+                self.local_ports[lport_id] = port
+        else:
+            return
+
+        self._add_local_port(lport_id, mac, network_id, ofport, tunnel_key)
+
+    def _add_local_port(self, lport_id, mac, network_id, ofport, tunnel_key):
+
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
 
@@ -207,6 +235,20 @@ class L2App(app_manager.RyuApp):
 
         if self.dp is None:
             return
+
+        port = self._create_port_dict(lport_id, mac, network_id, ofport,
+                                      tunnel_key, False)
+        cached_port_data = self.remote_ports.get(lport_id)
+        if cached_port_data is None or port != cached_port_data:
+            with self.db_lock:
+                self.remote_ports[lport_id] = port
+        else:
+            return
+
+        self._add_remote_port(lport_id, mac, network_id, ofport, tunnel_key)
+
+    def _add_remote_port(self, lport_id, mac, network_id, ofport, tunnel_key):
+
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
 
@@ -244,6 +286,25 @@ class L2App(app_manager.RyuApp):
 
         self._add_multicast_broadcast_handling(network_id, lport_id,
                                                tunnel_key)
+
+    def _install_flows_on_switch_up(self):
+        # Clear local networks cache so the multicast/broadcast flows
+        # are installed correctly
+        self.local_networks.clear()
+        with self.db_lock:
+            for port in self.local_ports.values():
+                self._add_local_port(port['lport_id'],
+                                     port['mac'],
+                                     port['network_id'],
+                                     port['ofport'],
+                                     port['tunnel_key'])
+
+            for port in self.remote_ports.values():
+                self._add_remote_port(port['lport_id'],
+                                      port['mac'],
+                                      port['network_id'],
+                                      port['ofport'],
+                                      port['tunnel_key'])
 
     # TODO(gsagie) extract this common method (used both by L2/L3 apps)
     def mod_flow(self, datapath, cookie=0, cookie_mask=0, table_id=0,
