@@ -17,7 +17,6 @@ import netaddr
 import struct
 import threading
 
-from ryu.base import app_manager
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
@@ -44,6 +43,7 @@ from neutron.common import constants as const
 from neutron.i18n import _LE, _LI, _LW
 from oslo_log import log
 
+from dragonflow.controller.df_base_app import DFlowApp
 from dragonflow.utils.bloomfilter import BloomFilter
 LOG = log.getLogger(__name__)
 
@@ -448,7 +448,7 @@ class PortData(object):
         return self._port_data.__setitem__(key, value)
 
 
-class L3ReactiveApp(app_manager.RyuApp):
+class L3ReactiveApp(DFlowApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     BASE_RPC_API_VERSION = '1.0'
 
@@ -1104,48 +1104,6 @@ class L3ReactiveApp(app_manager.RyuApp):
             priority=priority,
             match=match)
 
-    def mod_flow(self, datapath, cookie=0, cookie_mask=0, table_id=0,
-                 command=None, idle_timeout=0, hard_timeout=0,
-                 priority=0xff, buffer_id=0xffffffff, match=None,
-                 actions=None, inst_type=None, out_port=None,
-                 out_group=None, flags=0, inst=None):
-
-        if command is None:
-            command = datapath.ofproto.OFPFC_ADD
-
-        if inst is None:
-            if inst_type is None:
-                inst_type = datapath.ofproto.OFPIT_APPLY_ACTIONS
-
-            inst = []
-            if actions is not None:
-                inst = [datapath.ofproto_parser.OFPInstructionActions(
-                    inst_type, actions)]
-
-                if match is None:
-                    match = datapath.ofproto_parser.OFPMatch()
-
-        if out_port is None:
-            out_port = datapath.ofproto.OFPP_ANY
-
-        if out_group is None:
-            out_group = datapath.ofproto.OFPG_ANY
-
-        message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
-                                                     cookie_mask,
-                                                     table_id, command,
-                                                     idle_timeout,
-                                                     hard_timeout,
-                                                     priority,
-                                                     buffer_id,
-                                                     out_port,
-                                                     out_group,
-                                                     flags,
-                                                     match,
-                                                     inst)
-
-        datapath.send_msg(message)
-
     def add_flow_go_to_table2(self, datapath, table, priority,
                               goto_table_id, match=None):
         inst = [datapath.ofproto_parser.OFPInstructionGotoTable(goto_table_id)]
@@ -1477,19 +1435,6 @@ class L3ReactiveApp(app_manager.RyuApp):
 
         req = ofp_parser.OFPFeaturesRequest(datapath)
         datapath.send_msg(req)
-
-    def _send_packet(self, datapath, port, pkt):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-        pkt.serialize()
-        data = pkt.data
-        actions = [parser.OFPActionOutput(port=port)]
-        out = parser.OFPPacketOut(datapath=datapath,
-                                  buffer_id=ofproto.OFP_NO_BUFFER,
-                                  in_port=ofproto.OFPP_CONTROLLER,
-                                  actions=actions,
-                                  data=data)
-        datapath.send_msg(out)
 
     def _update_local_port_num(self, port_name, port_num, datapath):
 
