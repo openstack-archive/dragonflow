@@ -44,8 +44,6 @@ class DfLocalController(object):
         self.open_flow_app = None
         self.next_network_id = 0
         self.networks = {}
-        self.local_ports = {}
-        self.remote_ports = {}
         self.ovsdb_sb = None
         self.ovsdb_local = None
         self.idl = None
