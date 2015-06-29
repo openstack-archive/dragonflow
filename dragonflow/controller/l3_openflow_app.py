@@ -1191,23 +1191,6 @@ class L3ReactiveApp(app_manager.RyuApp):
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
 
-    def add_flow(self, datapath, port, dst, actions):
-        ofproto = datapath.ofproto
-
-        match = datapath.ofproto_parser.OFPMatch(in_port=port,
-                                                 eth_dst=dst)
-        inst = [datapath.ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-
-        mod = datapath.ofproto_parser.OFPFlowMod(
-            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-            priority=0, buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
-            flags=0, match=match, instructions=inst)
-        datapath.send_msg(mod)
-
     def _handle_remove_port(self, port_data):
         """Broadcast remove commands to all datapaths
 
