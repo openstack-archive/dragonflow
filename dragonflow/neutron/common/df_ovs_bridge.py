@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.plugins.openvswitch.agent.openflow.ovs_ofctl import br_int
+from neutron.plugins.ml2.drivers.openvswitch.agent.openflow.ovs_ofctl import (
+    br_int)
 
 
 class DFOVSAgentBridge(br_int.OVSIntegrationBridge):

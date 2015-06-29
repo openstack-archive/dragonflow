@@ -24,17 +24,17 @@ from oslo_config import cfg
 
 from neutron.agent.common import config
 from neutron.agent.linux import ip_lib
-
 from neutron.common import config as common_config
 from neutron.common import utils as q_utils
-
 from neutron.i18n import _, _LE, _LI
 from neutron.plugins.common import constants as p_const
-from neutron.plugins.openvswitch.agent.openflow.ovs_ofctl import br_phys
-from neutron.plugins.openvswitch.agent.openflow.ovs_ofctl import br_tun
-from neutron.plugins.openvswitch.agent import ovs_neutron_agent as ona
-from neutron.plugins.openvswitch.common import constants
+from neutron.plugins.ml2.drivers.openvswitch.agent.openflow.ovs_ofctl import (
+    br_phys, br_tun)
+from neutron.plugins.ml2.drivers.openvswitch.agent import (
+    ovs_neutron_agent as ona)
+from neutron.plugins.ml2.drivers.openvswitch.agent.common import constants
 from oslo_log import log as logging
+
 
 LOG = logging.getLogger(__name__)
 
