@@ -15,13 +15,14 @@
 
 import threading
 
-from ryu.base import app_manager
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.controller import ofp_event
 from ryu.lib.mac import haddr_to_bin
 from ryu.ofproto import ofproto_v1_3
+
+from dragonflow.controller.df_base_app import DFlowApp
 
 from oslo_log import log
 
@@ -35,7 +36,7 @@ LOG = log.getLogger(__name__)
 OF_IN_PORT = 0xfff8
 
 
-class L2App(app_manager.RyuApp):
+class L2App(DFlowApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     BASE_RPC_API_VERSION = '1.0'
 
@@ -300,46 +301,3 @@ class L2App(app_manager.RyuApp):
                                       port['network_id'],
                                       port['ofport'],
                                       port['tunnel_key'])
-
-    # TODO(gsagie) extract this common method (used both by L2/L3 apps)
-    def mod_flow(self, datapath, cookie=0, cookie_mask=0, table_id=0,
-                 command=None, idle_timeout=0, hard_timeout=0,
-                 priority=0xff, buffer_id=0xffffffff, match=None,
-                 actions=None, inst_type=None, out_port=None,
-                 out_group=None, flags=0, inst=None):
-
-        if command is None:
-            command = datapath.ofproto.OFPFC_ADD
-
-        if inst is None:
-            if inst_type is None:
-                inst_type = datapath.ofproto.OFPIT_APPLY_ACTIONS
-
-            inst = []
-            if actions is not None:
-                inst = [datapath.ofproto_parser.OFPInstructionActions(
-                    inst_type, actions)]
-
-                if match is None:
-                    match = datapath.ofproto_parser.OFPMatch()
-
-        if out_port is None:
-            out_port = datapath.ofproto.OFPP_ANY
-
-        if out_group is None:
-            out_group = datapath.ofproto.OFPG_ANY
-
-        message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
-                                                     cookie_mask,
-                                                     table_id, command,
-                                                     idle_timeout,
-                                                     hard_timeout,
-                                                     priority,
-                                                     buffer_id,
-                                                     out_port,
-                                                     out_group,
-                                                     flags,
-                                                     match,
-                                                     inst)
-
-        datapath.send_msg(message)
