@@ -14,22 +14,18 @@
 #    under the License.
 
 
-import eventlet
 import sys
 import time
+
+import eventlet
+from oslo_log import log
 
 from ryu.base.app_manager import AppManager
 from ryu.controller.ofp_handler import OFPHandler
 
-from ovs.db import idl
-
-from neutron.agent.ovsdb.native import connection
-from neutron.agent.ovsdb.native import idlutils
-
-
 from dragonflow.controller.l2_app import L2App
+from dragonflow.db.drivers import ovsdb_nb_impl, ovsdb_vswitch_impl
 
-from oslo_log import log
 
 LOG = log.getLogger(__name__)
 
@@ -38,34 +34,25 @@ eventlet.monkey_patch()
 
 class DfLocalController(object):
 
-    def __init__(self, chassis_name, ip, sb_db_ip):
+    def __init__(self, chassis_name, ip, remote_db_ip):
         self.l3_app = None
         self.l2_app = None
         self.open_flow_app = None
         self.next_network_id = 0
         self.networks = {}
         self.ports = {}
-        self.ovsdb_sb = None
-        self.ovsdb_local = None
-        self.idl = None
-        self.idl_sb = None
+        self.nb_api = None
+        self.vswitch_api = None
         self.chassis_name = chassis_name
         self.ip = ip
-        self.sb_db_ip = sb_db_ip
+        self.remote_db_ip = remote_db_ip
 
     def run(self):
-        sb_db_connection = ('tcp:%s:6640' % self.sb_db_ip)
-        self.ovsdb_sb = connection.Connection(sb_db_connection,
-                                              10,
-                                              'OVN_Southbound')
-        local_connection = ('tcp:%s:6640' % self.ip)
-        self.ovsdb_local = connection.Connection(local_connection,
-                                                 10,
-                                                 'Open_vSwitch')
-        self.ovsdb_sb.start()
-        self.ovsdb_local.start()
-        self.idl_sb = self.ovsdb_sb.idl
-        self.idl = self.ovsdb_local.idl
+        self.nb_api = ovsdb_nb_impl.OvsdbNbApi(self.remote_db_ip)
+        self.nb_api.initialize()
+        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
+        self.vswitch_api.initialize()
+
         app_mgr = AppManager.get_instance()
         self.open_flow_app = app_mgr.instantiate(OFPHandler, None, None)
         self.open_flow_app.start()
@@ -80,8 +67,8 @@ class DfLocalController(object):
 
     def run_db_poll(self):
         try:
-            self.idl.run()
-            self.idl_sb.run()
+            self.nb_api.sync()
+            self.vswitch_api.sync()
 
             self.register_chassis()
 
@@ -93,212 +80,87 @@ class DfLocalController(object):
         except Exception:
             pass
 
-    def clean_tables(self):
-        txn = idl.Transaction(self.idl_sb)
-        for chassis in self.idl_sb.tables['Chassis'].rows.values():
-            chassis.delete()
-        for encap in self.idl_sb.tables['Encap'].rows.values():
-            encap.delete()
-        for binding in self.idl_sb.tables['Binding'].rows.values():
-            binding.delete()
-        status = txn.commit_block()
-        return status
-
     def register_chassis(self):
+        chassis = self.nb_api.get_chassis(self.chassis_name)
+        # TODO(gsagie) Support tunnel type change here ?
 
-        try:
-            chassis = idlutils.row_by_value(self.idl_sb,
-                                            'Chassis',
-                                            'name', self.chassis_name)
-            if chassis is not None:
-                # TODO(gsagie) Support tunnel type change here ?
-                return
-        except idlutils.RowNotFound:
-            txn = idl.Transaction(self.idl_sb)
-
-            encap_row = txn.insert(self.idl_sb.tables['Encap'])
-            encap_row.ip = self.ip
-            encap_row.type = 'geneve'
-
-            chassis_row = txn.insert(self.idl_sb.tables['Chassis'])
-            chassis_row.encaps = encap_row
-            chassis_row.name = self.chassis_name
-            status = txn.commit_block()
-            return status
+        if chassis is None:
+            self.nb_api.add_chassis(self.chassis_name,
+                                    self.ip,
+                                    'geneve')
 
     def create_tunnels(self):
         tunnel_ports = {}
-        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        t_ports = self.vswitch_api.get_tunnel_ports()
+        for t_port in t_ports:
+            tunnel_ports[t_port.get_chassis_id()] = t_port
 
-        for port in br_int.ports:
-            if 'df-chassis-id' in port.external_ids:
-                chassis_id = port.external_ids['df-chassis-id']
-                tunnel_ports[chassis_id] = port
-
-        for chassis in self.idl_sb.tables['Chassis'].rows.values():
-            if chassis.name in tunnel_ports:
-                # Chassis already set
-                del tunnel_ports[chassis.name]
-            elif chassis.name == self.chassis_name:
+        for chassis in self.nb_api.get_all_chassis():
+            if chassis.get_name() in tunnel_ports:
+                del tunnel_ports[chassis.get_name()]
+            elif chassis.get_name() == self.chassis_name:
                 pass
             else:
-                encap = chassis.encaps[0]
-                self.tunnel_add(br_int, chassis, encap)
+                self.vswitch_api.add_tunnel_port(chassis)
 
         # Iterate all tunnel ports that needs to be deleted
-        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
         for port in tunnel_ports.values():
-            self.delete_bridge_port(br_int, port)
-
-    def tunnel_add(self, bridge, chassis, encap):
-        txn = idl.Transaction(self.idl)
-        port_name = "df-" + chassis.name
-
-        interface = txn.insert(self.idl.tables['Interface'])
-        interface.name = port_name
-        interface.type = encap.type
-        options_dict = getattr(interface, 'options', {})
-        options_dict['remote_ip'] = encap.ip
-        options_dict['key'] = 'flow'
-        interface.options = options_dict
-
-        port = txn.insert(self.idl.tables['Port'])
-        port.name = port_name
-        port.verify('interfaces')
-        ifaces = getattr(port, 'interfaces', [])
-        ifaces.append(interface)
-        port.interfaces = ifaces
-        external_ids_dict = getattr(interface, 'external_ids', {})
-        external_ids_dict['df-chassis-id'] = chassis.name
-        port.external_ids = external_ids_dict
-
-        bridge.verify('ports')
-        ports = getattr(bridge, 'ports', [])
-        ports.append(port)
-        bridge.ports = ports
-
-        status = txn.commit_block()
-        return status
-
-    def delete_bridge_port(self, bridge, port):
-        txn = idl.Transaction(self.idl)
-        bridge.verify('ports')
-        ports = bridge.ports
-        ports.remove(port)
-        bridge.ports = ports
-
-        # Remote Port Interfaces
-        port.verify('interfaces')
-        for iface in port.interfaces:
-            self.idl.tables['Interface'].rows[iface.uuid].delete()
-
-        self.idl.tables['Port'].rows[port.uuid].delete()
-
-        status = txn.commit_block()
-        return status
+            self.vswitch_api.delete_port(port)
 
     def set_binding(self):
-        local_ports = self.get_local_ports()
-        txn = idl.Transaction(self.idl_sb)
+        local_ports = self.vswitch_api.get_local_port_ids()
+        self.nb_api.register_local_ports(self.chassis_name, local_ports)
 
-        chassis = idlutils.row_by_value(self.idl_sb,
-                                        'Chassis',
-                                        'name', self.chassis_name)
-
-        for binding in self.idl_sb.tables['Binding'].rows.values():
-            if binding.logical_port in local_ports:
-                if binding.chassis == self.chassis_name:
-                    continue
-                # Bind this port to this chassis
-                binding.chassis = chassis
-            elif binding.chassis == self.chassis_name:
-                binding.chassis = []
-
-        status = txn.commit_block()
-        return status
-
-    # TODO(gsagie) refactor this method for smaller methods
     def port_mappings(self):
-        lport_to_ofport = {}
-        chassis_to_ofport = {}
-        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
-
-        for port in br_int.ports:
-            if port.name == 'br-int':
-                continue
-            chassis_id = port.external_ids.get('df-chassis-id')
-            if chassis_id is not None and chassis_id == self.chassis_name:
-                continue
-            for interface in port.interfaces:
-                if interface.ofport is None:
-                    continue
-                ofport = interface.ofport[0]
-                if ofport < 1 or ofport > 65533:
-                    continue
-                if chassis_id is not None:
-                    chassis_to_ofport[chassis_id] = ofport
-                else:
-                    ifaceid = interface.external_ids.get('iface-id')
-                    if ifaceid is not None:
-                        lport_to_ofport[ifaceid] = ofport
+        chassis_to_ofport, lport_to_ofport = (
+            self.vswitch_api.get_local_ports_to_ofport_mapping())
 
         ports_to_remove = set(self.ports.keys())
 
-        for binding in self.idl_sb.tables['Binding'].rows.values():
-            if not binding.chassis:
-                continue
-            logical_port = binding.logical_port
-            mac_address = binding.mac[0]
-            chassis = binding.chassis[0]
-            ldp = str(binding.logical_datapath)
-            network = self.get_network_id(ldp)
-            tunnel_key = binding.tunnel_key
-            if chassis.name == self.chassis_name:
-                ofport = lport_to_ofport.get(logical_port, 0)
+        for lport in self.nb_api.get_all_logical_ports():
+            network = self.get_network_id(lport['network_id'])
+            lport['network_id'] = network
+
+            if lport['chassis'] == self.chassis_name:
+                ofport = lport_to_ofport.get(lport['id'], 0)
                 if ofport != 0:
-                    port = self._create_port_dict(logical_port,
-                                                  mac_address,
-                                                  network,
-                                                  ofport,
-                                                  tunnel_key, True)
-                    self.ports[logical_port] = port
-                    if logical_port in ports_to_remove:
-                        ports_to_remove.remove(logical_port)
-                    self.l2_app.add_local_port(logical_port,
-                                               mac_address,
-                                               network,
-                                               ofport,
-                                               tunnel_key)
+                    lport['ofport'] = ofport
+                    lport['is_local'] = True
+                    self.ports[lport['id']] = lport
+                    if lport['id'] in ports_to_remove:
+                        ports_to_remove.remove(lport['id'])
+                    self.l2_app.add_local_port(lport['id'],
+                                               lport['mac'],
+                                               lport['network_id'],
+                                               lport['ofport'],
+                                               lport['tunnel_key'])
             else:
-                ofport = chassis_to_ofport.get(chassis.name, 0)
+                ofport = chassis_to_ofport.get(lport['chassis'], 0)
                 if ofport != 0:
-                    port = self._create_port_dict(logical_port,
-                                                  mac_address,
-                                                  network,
-                                                  ofport,
-                                                  tunnel_key, False)
-                    self.ports[logical_port] = port
-                    if logical_port in ports_to_remove:
-                        ports_to_remove.remove(logical_port)
-                    self.l2_app.add_remote_port(logical_port,
-                                                mac_address,
-                                                network,
-                                                ofport,
-                                                tunnel_key)
+                    lport['ofport'] = ofport
+                    lport['is_local'] = False
+                    self.ports[lport['id']] = lport
+                    if lport['id'] in ports_to_remove:
+                        ports_to_remove.remove(lport['id'])
+                    self.l2_app.add_remote_port(lport['id'],
+                                                lport['mac'],
+                                                lport['network_id'],
+                                                lport['ofport'],
+                                                lport['tunnel_key'])
 
         # TODO(gsagie) use port dictionary in all methods in l2 app
         # and here instead of always moving all arguments
         for port_to_remove in ports_to_remove:
             p = self.ports[port_to_remove]
             if p['is_local']:
-                self.l2_app.remove_local_port(p['lport_id'],
+                self.l2_app.remove_local_port(p['id'],
                                               p['mac'],
                                               p['network_id'],
                                               p['ofport'],
                                               p['tunnel_key'])
                 del self.ports[port_to_remove]
             else:
-                self.l2_app.remove_remote_port(p['lport_id'],
+                self.l2_app.remove_remote_port(p['id'],
                                                p['mac'],
                                                p['network_id'],
                                                p['tunnel_key'])
@@ -313,31 +175,6 @@ class DfLocalController(object):
             # TODO(gsagie) verify self.next_network_id didnt wrap
             self.networks[logical_dp_id] = self.next_network_id
 
-    def get_local_ports(self):
-        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
-        port_ids = set()
-        for port in br_int.ports:
-            if port.name == 'br-int':
-                continue
-            if 'df-chassis-id' in port.external_ids:
-                continue
-
-            for interface in port.interfaces:
-                if 'iface-id' in interface.external_ids:
-                    port_ids.add(interface.external_ids['iface-id'])
-
-        return port_ids
-
-    def _create_port_dict(self, lport_id, mac, network_id, ofport,
-                          tunnel_key, is_local):
-        port = {'lport_id': lport_id,
-                'mac': mac,
-                'network_id': network_id,
-                'ofport': ofport,
-                'tunnel_key': tunnel_key,
-                'is_local': is_local}
-        return port
-
 
 # Run this application like this:
 # python df_local_controller.py <chassis_unique_name>
@@ -345,8 +182,8 @@ class DfLocalController(object):
 def main():
     chassis_name = sys.argv[1]  # unique name 'df_chassis'
     ip = sys.argv[2]  # local ip '10.100.100.4'
-    sb_db_ip = sys.argv[3]  # remote SB DB IP '10.100.100.4'
-    controller = DfLocalController(chassis_name, ip, sb_db_ip)
+    remote_db_ip = sys.argv[3]  # remote SB DB IP '10.100.100.4'
+    controller = DfLocalController(chassis_name, ip, remote_db_ip)
     controller.run()
 
 if __name__ == "__main__":
