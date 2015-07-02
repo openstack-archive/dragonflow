@@ -44,6 +44,7 @@ class DfLocalController(object):
         self.open_flow_app = None
         self.next_network_id = 0
         self.networks = {}
+        self.ports = {}
         self.ovsdb_sb = None
         self.ovsdb_local = None
         self.idl = None
@@ -216,6 +217,7 @@ class DfLocalController(object):
         status = txn.commit_block()
         return status
 
+    # TODO(gsagie) refactor this method for smaller methods
     def port_mappings(self):
         lport_to_ofport = {}
         chassis_to_ofport = {}
@@ -240,6 +242,8 @@ class DfLocalController(object):
                     if ifaceid is not None:
                         lport_to_ofport[ifaceid] = ofport
 
+        ports_to_remove = set(self.ports.keys())
+
         for binding in self.idl_sb.tables['Binding'].rows.values():
             if not binding.chassis:
                 continue
@@ -252,6 +256,14 @@ class DfLocalController(object):
             if chassis.name == self.chassis_name:
                 ofport = lport_to_ofport.get(logical_port, 0)
                 if ofport != 0:
+                    port = self._create_port_dict(logical_port,
+                                                  mac_address,
+                                                  network,
+                                                  ofport,
+                                                  tunnel_key, True)
+                    self.ports[logical_port] = port
+                    if logical_port in ports_to_remove:
+                        ports_to_remove.remove(logical_port)
                     self.l2_app.add_local_port(logical_port,
                                                mac_address,
                                                network,
@@ -260,11 +272,37 @@ class DfLocalController(object):
             else:
                 ofport = chassis_to_ofport.get(chassis.name, 0)
                 if ofport != 0:
+                    port = self._create_port_dict(logical_port,
+                                                  mac_address,
+                                                  network,
+                                                  ofport,
+                                                  tunnel_key, False)
+                    self.ports[logical_port] = port
+                    if logical_port in ports_to_remove:
+                        ports_to_remove.remove(logical_port)
                     self.l2_app.add_remote_port(logical_port,
                                                 mac_address,
                                                 network,
                                                 ofport,
                                                 tunnel_key)
+
+        # TODO(gsagie) use port dictionary in all methods in l2 app
+        # and here instead of always moving all arguments
+        for port_to_remove in ports_to_remove:
+            p = self.ports[port_to_remove]
+            if p['is_local']:
+                self.l2_app.remove_local_port(p['lport_id'],
+                                              p['mac'],
+                                              p['network_id'],
+                                              p['ofport'],
+                                              p['tunnel_key'])
+                del self.ports[port_to_remove]
+            else:
+                self.l2_app.remove_remote_port(p['lport_id'],
+                                               p['mac'],
+                                               p['network_id'],
+                                               p['tunnel_key'])
+                del self.ports[port_to_remove]
 
     def get_network_id(self, logical_dp_id):
         network_id = self.networks.get(logical_dp_id)
@@ -289,6 +327,16 @@ class DfLocalController(object):
                     port_ids.add(interface.external_ids['iface-id'])
 
         return port_ids
+
+    def _create_port_dict(self, lport_id, mac, network_id, ofport,
+                          tunnel_key, is_local):
+        port = {'lport_id': lport_id,
+                'mac': mac,
+                'network_id': network_id,
+                'ofport': ofport,
+                'tunnel_key': tunnel_key,
+                'is_local': is_local}
+        return port
 
 
 # Run this application like this:

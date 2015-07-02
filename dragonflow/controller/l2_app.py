@@ -119,6 +119,102 @@ class L2App(DFlowApp):
                 self.local_ports[lport_id] = port
             self._add_local_port(lport_id, mac, network_id, ofport, tunnel_key)
 
+    def remove_local_port(self, lport_id, mac, network_id, ofport, tunnel_key):
+        parser = self.dp.ofproto_parser
+        ofproto = self.dp.ofproto
+
+        # Remove ingress classifier for port
+        match = parser.OFPMatch()
+        match.set_in_port(ofport)
+        msg = parser.OFPFlowMod(datapath=self.dp,
+                                cookie=0,
+                                cookie_mask=0,
+                                table_id=0,
+                                command=ofproto.OFPFC_DELETE,
+                                priority=100,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY,
+                                match=match)
+        self.dp.send_msg(msg)
+
+        # Remove dispatch to local port according to unique tunnel_id
+        match = parser.OFPMatch(tunnel_id_nxm=tunnel_key)
+        msg = parser.OFPFlowMod(datapath=self.dp,
+                                cookie=0,
+                                cookie_mask=0,
+                                table_id=0,
+                                command=ofproto.OFPFC_DELETE,
+                                priority=100,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY,
+                                match=match)
+        self.dp.send_msg(msg)
+
+        # Remove destination classifier for port
+        match = parser.OFPMatch()
+        match.set_metadata(network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        msg = parser.OFPFlowMod(datapath=self.dp,
+                                cookie=0,
+                                cookie_mask=0,
+                                table_id=17,
+                                command=ofproto.OFPFC_DELETE,
+                                priority=100,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY,
+                                match=match)
+        self.dp.send_msg(msg)
+
+        # Remove egress classifier for port
+        match = parser.OFPMatch(reg7=tunnel_key)
+        msg = parser.OFPFlowMod(datapath=self.dp,
+                                cookie=0,
+                                cookie_mask=0,
+                                table_id=64,
+                                command=ofproto.OFPFC_DELETE,
+                                priority=100,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY,
+                                match=match)
+        self.dp.send_msg(msg)
+
+        self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
+
+    def remove_remote_port(self, lport_id, mac, network_id, tunnel_key):
+
+        parser = self.dp.ofproto_parser
+        ofproto = self.dp.ofproto
+
+        # Remove destination classifier for port
+        match = parser.OFPMatch()
+        match.set_metadata(network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        msg = parser.OFPFlowMod(datapath=self.dp,
+                                cookie=0,
+                                cookie_mask=0,
+                                table_id=17,
+                                command=ofproto.OFPFC_DELETE,
+                                priority=100,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY,
+                                match=match)
+        self.dp.send_msg(msg)
+
+        # Remove egress classifier for port
+        match = parser.OFPMatch(reg7=tunnel_key)
+        msg = parser.OFPFlowMod(datapath=self.dp,
+                                cookie=0,
+                                cookie_mask=0,
+                                table_id=64,
+                                command=ofproto.OFPFC_DELETE,
+                                priority=100,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY,
+                                match=match)
+        self.dp.send_msg(msg)
+
+        self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
+
     def _add_local_port(self, lport_id, mac, network_id, ofport, tunnel_key):
 
         parser = self.dp.ofproto_parser
@@ -143,8 +239,6 @@ class L2App(DFlowApp):
             match=match)
 
         # Dispatch to local port according to unique tunnel_id
-        parser = self.dp.ofproto_parser
-        ofproto = self.dp.ofproto
         match = parser.OFPMatch(tunnel_id_nxm=tunnel_key)
         actions = []
         actions.append(parser.OFPActionOutput(ofport,
@@ -189,11 +283,46 @@ class L2App(DFlowApp):
             priority=100,
             match=match)
 
-        self._add_multicast_broadcast_handling(network_id, lport_id,
-                                               tunnel_key)
+        self._add_multicast_broadcast_handling_for_port(network_id, lport_id,
+                                                        tunnel_key)
 
-    def _add_multicast_broadcast_handling(self, network_id,
-                                          lport_id, tunnel_key):
+    def _del_multicast_broadcast_handling_for_port(self, network_id,
+                                                   lport_id):
+        parser = self.dp.ofproto_parser
+        ofproto = self.dp.ofproto
+
+        command = self.dp.ofproto.OFPFC_MODIFY
+        network = self.local_networks.get(network_id)
+        if network is None:
+            # TODO(gsagie) add error here
+            return
+
+        # TODO(gsagie) check if lport in network structure?
+        del network[lport_id]
+        self.local_networks[network_id] = network
+
+        match = parser.OFPMatch(eth_dst='01:00:00:00:00:00')
+        addint = haddr_to_bin('01:00:00:00:00:00')
+        match.set_dl_dst_masked(addint, addint)
+        match.set_metadata(network_id)
+
+        actions = []
+        for tunnel_id in network.values():
+            actions.append(parser.OFPActionSetField(reg7=tunnel_id))
+            actions.append(parser.NXActionResubmitTable(OF_IN_PORT, 64))
+
+        inst = [self.dp.ofproto_parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        self.mod_flow(
+            self.dp,
+            inst=inst,
+            table_id=17,
+            command=command,
+            priority=200,
+            match=match)
+
+    def _add_multicast_broadcast_handling_for_port(self, network_id,
+                                                   lport_id, tunnel_key):
 
         if self.dp is None:
             return
@@ -280,8 +409,8 @@ class L2App(DFlowApp):
             priority=100,
             match=match)
 
-        self._add_multicast_broadcast_handling(network_id, lport_id,
-                                               tunnel_key)
+        self._add_multicast_broadcast_handling_for_port(network_id, lport_id,
+                                                        tunnel_key)
 
     def _install_flows_on_switch_up(self):
         # Clear local networks cache so the multicast/broadcast flows
