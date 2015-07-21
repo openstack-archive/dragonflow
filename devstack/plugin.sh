@@ -11,7 +11,11 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
         if is_service_enabled q-df-l3; then
            echo "Cloning and installing Ryu"
            git_clone $RYU_REPO $RYU_DIR $RYU_BRANCH
-           setup_develop $RYU_DIR
+           #Don't use setup_develop, which is for openstack global requirement
+           #compatible projects, and Ryu is not.
+           pushd $RYU_DIR
+           setup_package ./ -e
+           popd
            echo "Finished installing Ryu"
         fi
 
