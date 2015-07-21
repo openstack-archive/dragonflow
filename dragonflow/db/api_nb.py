@@ -38,6 +38,12 @@ class NbApi(object):
     def get_all_logical_ports(self):
         pass
 
+    def get_routers(self):
+        pass
+
+    def get_router_ports(self):
+        pass
+
 
 class Chassis(object):
 
@@ -59,6 +65,9 @@ class LogicalPort(object):
     def get_mac(self):
         pass
 
+    def get_ip(self):
+        pass
+
     def get_chassis(self):
         pass
 
@@ -72,4 +81,28 @@ class LogicalPort(object):
         pass
 
     def get_external_value(self, key):
+        pass
+
+
+class LogicalRouter(object):
+
+    def get_name(self):
+        pass
+
+    def get_ports(self):
+        pass
+
+
+class LogicalRouterPort(object):
+
+    def get_name(self):
+        pass
+
+    def get_ip(self):
+        pass
+
+    def get_mac(self):
+        pass
+
+    def get_network(self):
         pass

@@ -70,6 +70,9 @@ class DfLocalController(object):
     def run_db_poll(self):
         try:
             self.nb_api.sync()
+
+            self.read_routers()
+
             self.vswitch_api.sync()
 
             self.register_chassis()
@@ -179,6 +182,10 @@ class DfLocalController(object):
             self.next_network_id += 1
             # TODO(gsagie) verify self.next_network_id didnt wrap
             self.networks[logical_dp_id] = self.next_network_id
+
+    def read_routers(self):
+        for lrouter in self.nb_api.get_routers():
+            pass
 
 
 # Run this application like this:

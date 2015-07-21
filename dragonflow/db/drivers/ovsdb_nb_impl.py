@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
+
 from dragonflow.db import api_nb
 
 from ovs.db import idl
@@ -27,23 +29,30 @@ class OvsdbNbApi(api_nb.NbApi):
     def __init__(self, ip, protocol='tcp', port='6640', timeout=10):
         super(OvsdbNbApi, self).__init__()
         self.ip = ip
-        self.db_name = 'OVN_Southbound'
         self.protocol = protocol
         self.port = port
         self.timeout = timeout
         self.ovsdb = None
+        self.ovsdb_nb = None
         self.idl = None
+        self.idl_nb = None
 
     def initialize(self):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
         self.ovsdb = connection.Connection(db_connection,
                                            self.timeout,
-                                           self.db_name)
+                                           'OVN_Southbound')
+        self.ovsdb_nb = connection.Connection(db_connection,
+                                              self.timeout,
+                                              'OVN_Northbound')
         self.ovsdb.start()
+        self.ovsdb_nb.start()
         self.idl = self.ovsdb.idl
+        self.idl_nb = self.ovsdb_nb.idl
 
     def sync(self):
         self.idl.run()
+        self.idl_nb.run()
 
     def get_chassis(self, name):
         try:
@@ -97,7 +106,13 @@ class OvsdbNbApi(api_nb.NbApi):
         for binding in self.idl.tables['Binding'].rows.values():
             if not binding.chassis:
                 continue
-            res.append(OvsdbLogicalPort(binding))
+            res.append(OvsdbLogicalPort(binding, self.idl_nb))
+        return res
+
+    def get_routers(self):
+        res = []
+        for router in self.idl_nb.tables['Logical_Router'].rows.values():
+            res.append(OvsdbLogicalRouter(router, self.idl_nb))
         return res
 
 
@@ -120,19 +135,28 @@ class OvsdbChassis(api_nb.Chassis):
 
 class OvsdbLogicalPort(api_nb.LogicalPort):
 
-    def __init__(self, row):
+    def __init__(self, row, idl_nb):
         self.id = row.logical_port
         self.mac = row.mac[0]
         self.chassis = row.chassis[0].name
         self.network_id = str(row.logical_datapath)
         self.tunnel_key = row.tunnel_key
         self.external_dict = {}
+        self.idl_nb = idl_nb
+        self.lport = None
 
     def get_id(self):
         return self.id
 
     def get_mac(self):
         return self.mac
+
+    def get_ip(self):
+        self.lport = idlutils.row_by_value(self.idl_nb,
+                                           'Logical_Port',
+                                           'name', self.id)
+        ips = getattr(self.lport, 'ips', [])
+        return ips[0]
 
     def get_chassis(self):
         return self.chassis
@@ -148,3 +172,45 @@ class OvsdbLogicalPort(api_nb.LogicalPort):
 
     def get_external_value(self, key):
         return self.external_dict.get(key)
+
+
+class OvsdbLogicalRouter(api_nb.LogicalRouter):
+
+    def __init__(self, row, idl_nb):
+        self.row = row
+        self.idl_nb = idl_nb
+        self.name = row.name
+
+    def get_name(self):
+        return self.name
+
+    def get_ports(self):
+        res = []
+        lrouter_ports = getattr(self.row, 'ports', [])
+        for port in lrouter_ports:
+            res.append(OvsdbLogicalRouterPort(port, self.idl_nb))
+        return res
+
+
+class OvsdbLogicalRouterPort(api_nb.LogicalRouterPort):
+
+    def __init__(self, row, idl_nb):
+        self.row = row
+        self.idl_nb = idl_nb
+        self.name = row.name
+        self.mac = row.mac
+        self.network = row.network
+        self.cidr = netaddr.IPNetwork(row.network)
+
+    def get_name(self):
+        return self.name
+
+    def get_ip(self):
+        # TODO(gsagie) handle IPv6 differently?
+        return str(self.cidr.ip)
+
+    def get_mac(self):
+        return self.mac
+
+    def get_network(self):
+        return self.network
