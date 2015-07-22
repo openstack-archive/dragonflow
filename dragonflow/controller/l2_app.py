@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import threading
-
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
@@ -43,10 +41,8 @@ class L2App(DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L2App, self).__init__(*args, **kwargs)
         self.dp = None
-        self.local_ports = {}
-        self.remote_ports = {}
         self.local_networks = {}
-        self.db_lock = threading.Lock()
+        self.db_store = kwargs['db_store']
 
     def start(self):
         super(L2App, self).start()
@@ -95,29 +91,6 @@ class L2App(DFlowApp):
         #         print 'tunnel port detected'
         #     elif port.name.startswith('tap'):
         #         print 'VM port detected'
-
-    def _create_port_dict(self, lport_id, mac, network_id, ofport,
-                          tunnel_key, is_local):
-        port = {'lport_id': lport_id,
-                'mac': mac,
-                'network_id': network_id,
-                'ofport': ofport,
-                'tunnel_key': tunnel_key,
-                'is_local': is_local}
-        return port
-
-    def add_local_port(self, lport_id, mac, network_id, ofport, tunnel_key):
-
-        if self.dp is None:
-            return
-
-        port = self._create_port_dict(lport_id, mac, network_id, ofport,
-                                      tunnel_key, True)
-        cached_port_data = self.local_ports.get(lport_id)
-        if cached_port_data is None or port != cached_port_data:
-            with self.db_lock:
-                self.local_ports[lport_id] = port
-            self._add_local_port(lport_id, mac, network_id, ofport, tunnel_key)
 
     def remove_local_port(self, lport_id, mac, network_id, ofport, tunnel_key):
         parser = self.dp.ofproto_parser
@@ -215,7 +188,10 @@ class L2App(DFlowApp):
 
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
 
-    def _add_local_port(self, lport_id, mac, network_id, ofport, tunnel_key):
+    def add_local_port(self, lport_id, mac, network_id, ofport, tunnel_key):
+
+        if self.dp is None:
+            return
 
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
@@ -323,9 +299,6 @@ class L2App(DFlowApp):
 
     def _add_multicast_broadcast_handling_for_port(self, network_id,
                                                    lport_id, tunnel_key):
-
-        if self.dp is None:
-            return
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
 
@@ -362,17 +335,6 @@ class L2App(DFlowApp):
 
         if self.dp is None:
             return
-
-        port = self._create_port_dict(lport_id, mac, network_id, ofport,
-                                      tunnel_key, False)
-        cached_port_data = self.remote_ports.get(lport_id)
-        if cached_port_data is None or port != cached_port_data:
-            with self.db_lock:
-                self.remote_ports[lport_id] = port
-            self._add_remote_port(lport_id, mac, network_id, ofport,
-                                  tunnel_key)
-
-    def _add_remote_port(self, lport_id, mac, network_id, ofport, tunnel_key):
 
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
@@ -416,17 +378,20 @@ class L2App(DFlowApp):
         # Clear local networks cache so the multicast/broadcast flows
         # are installed correctly
         self.local_networks.clear()
-        with self.db_lock:
-            for port in self.local_ports.values():
-                self._add_local_port(port['lport_id'],
-                                     port['mac'],
-                                     port['network_id'],
-                                     port['ofport'],
-                                     port['tunnel_key'])
-
-            for port in self.remote_ports.values():
-                self._add_remote_port(port['lport_id'],
-                                      port['mac'],
-                                      port['network_id'],
-                                      port['ofport'],
-                                      port['tunnel_key'])
+        for port in self.db_store.get_ports():
+            if port.get_external_value('is_local'):
+                self.add_local_port(port.get_id(),
+                                    port.get_mac(),
+                                    port.get_external_value(
+                                        'local_network_id'),
+                                    port.get_external_value(
+                                        'ofport'),
+                                    port.get_tunnel_key())
+            else:
+                self.add_remote_port(port.get_id(),
+                                     port.get_mac(),
+                                     port.get_external_value(
+                                          'local_network_id'),
+                                     port.get_external_value(
+                                          'ofport'),
+                                     port.get_tunnel_key())

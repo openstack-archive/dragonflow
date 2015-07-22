@@ -180,16 +180,16 @@ class OvsdbLogicalRouter(api_nb.LogicalRouter):
         self.row = row
         self.idl_nb = idl_nb
         self.name = row.name
+        lrouter_ports = getattr(self.row, 'ports', [])
+        self.ports = []
+        for port in lrouter_ports:
+            self.ports.append(OvsdbLogicalRouterPort(port, self.idl_nb))
 
     def get_name(self):
         return self.name
 
     def get_ports(self):
-        res = []
-        lrouter_ports = getattr(self.row, 'ports', [])
-        for port in lrouter_ports:
-            res.append(OvsdbLogicalRouterPort(port, self.idl_nb))
-        return res
+        return self.ports
 
 
 class OvsdbLogicalRouterPort(api_nb.LogicalRouterPort):

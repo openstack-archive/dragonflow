@@ -19,12 +19,14 @@ import time
 
 import eventlet
 from oslo_log import log
-
 from ryu.base.app_manager import AppManager
 from ryu.controller.ofp_handler import OFPHandler
 
 from dragonflow.controller.l2_app import L2App
+from dragonflow.controller.l3_app import L3App
+from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_nb_impl, ovsdb_vswitch_impl
+
 
 #from dragonflow.db.drivers import etcd_nb_impl
 
@@ -40,8 +42,7 @@ class DfLocalController(object):
         self.l2_app = None
         self.open_flow_app = None
         self.next_network_id = 0
-        self.networks = {}
-        self.ports = {}
+        self.db_store = db_store.DbStore()
         self.nb_api = None
         self.vswitch_api = None
         self.chassis_name = chassis_name
@@ -58,8 +59,15 @@ class DfLocalController(object):
         app_mgr = AppManager.get_instance()
         self.open_flow_app = app_mgr.instantiate(OFPHandler, None, None)
         self.open_flow_app.start()
-        self.l2_app = app_mgr.instantiate(L2App, None, None)
+        kwargs = dict(
+            db_store=self.db_store
+        )
+        self.l2_app = app_mgr.instantiate(L2App, None, **kwargs)
         self.l2_app.start()
+        self.l3_app = app_mgr.instantiate(L3App, None, **kwargs)
+        self.l3_app.start()
+        while self.l2_app.dp is None or self.l3_app.dp is None:
+            time.sleep(5)
         self.db_sync_loop()
 
     def db_sync_loop(self):
@@ -120,7 +128,7 @@ class DfLocalController(object):
         chassis_to_ofport, lport_to_ofport = (
             self.vswitch_api.get_local_ports_to_ofport_mapping())
 
-        ports_to_remove = set(self.ports.keys())
+        ports_to_remove = self.db_store.get_port_keys()
 
         for lport in self.nb_api.get_all_logical_ports():
             network = self.get_network_id(lport.get_network_id())
@@ -131,32 +139,34 @@ class DfLocalController(object):
                 if ofport != 0:
                     lport.set_external_value('ofport', ofport)
                     lport.set_external_value('is_local', True)
-                    self.ports[lport.get_id()] = lport
                     if lport.get_id() in ports_to_remove:
                         ports_to_remove.remove(lport.get_id())
-                    self.l2_app.add_local_port(lport.get_id(),
-                                               lport.get_mac(),
-                                               network,
-                                               ofport,
-                                               lport.get_tunnel_key())
+                    else:  # TODO(gsagie) handle port modified changes
+                        self.l2_app.add_local_port(lport.get_id(),
+                                                  lport.get_mac(),
+                                                  network,
+                                                  ofport,
+                                                  lport.get_tunnel_key())
+                    self.db_store.set_port(lport.get_id(), lport)
             else:
                 ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
                 if ofport != 0:
                     lport.set_external_value('ofport', ofport)
                     lport.set_external_value('is_local', False)
-                    self.ports[lport.get_id()] = lport
                     if lport.get_id() in ports_to_remove:
                         ports_to_remove.remove(lport.get_id())
-                    self.l2_app.add_remote_port(lport.get_id(),
+                    else:  # TODO(gsagie) handle port modified changes
+                        self.l2_app.add_remote_port(lport.get_id(),
                                                 lport.get_mac(),
                                                 network,
                                                 ofport,
                                                 lport.get_tunnel_key())
+                    self.db_store.set_port(lport.get_id(), lport)
 
         # TODO(gsagie) use port dictionary in all methods in l2 app
         # and here instead of always moving all arguments
         for port_to_remove in ports_to_remove:
-            p = self.ports[port_to_remove]
+            p = self.db_store.get_port(port_to_remove)
             if p.get_external_value('is_local'):
                 self.l2_app.remove_local_port(p.get_id(),
                                               p.get_mac(),
@@ -165,27 +175,32 @@ class DfLocalController(object):
                                               p.get_external_value(
                                                   'ofport'),
                                               p.get_tunnel_key())
-                del self.ports[port_to_remove]
+                self.db_store.delete_port(port_to_remove)
             else:
                 self.l2_app.remove_remote_port(p.get_id(),
                                                p.get_mac(),
                                                p.get_external_value(
                                                    'local_network_id'),
                                                p.get_tunnel_key())
-                del self.ports[port_to_remove]
+                self.db_store.delete_port(port_to_remove)
 
     def get_network_id(self, logical_dp_id):
-        network_id = self.networks.get(logical_dp_id)
+        network_id = self.db_store.get_network_id(logical_dp_id)
         if network_id is not None:
             return network_id
         else:
             self.next_network_id += 1
             # TODO(gsagie) verify self.next_network_id didnt wrap
-            self.networks[logical_dp_id] = self.next_network_id
+            self.db_store.set_network_id(logical_dp_id, self.next_network_id)
 
     def read_routers(self):
         for lrouter in self.nb_api.get_routers():
-            pass
+            old_lrouter = self.db_store.get_router(lrouter.get_name())
+            if old_lrouter is None:
+                self._add_new_lrouter(lrouter)
+
+    def _add_new_lrouter(self, lrouter):
+        self.db_store.add_router(lrouter.get_name(), lrouter)
 
 
 # Run this application like this:
