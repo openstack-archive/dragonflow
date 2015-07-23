@@ -27,7 +27,6 @@ from dragonflow.controller.l3_app import L3App
 from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_nb_impl, ovsdb_vswitch_impl
 
-
 #from dragonflow.db.drivers import etcd_nb_impl
 
 LOG = log.getLogger(__name__)
@@ -79,8 +78,6 @@ class DfLocalController(object):
         try:
             self.nb_api.sync()
 
-            self.read_routers()
-
             self.vswitch_api.sync()
 
             self.register_chassis()
@@ -90,6 +87,8 @@ class DfLocalController(object):
             self.set_binding()
 
             self.port_mappings()
+
+            self.read_routers()
         except Exception:
             pass
 
@@ -198,9 +197,39 @@ class DfLocalController(object):
             old_lrouter = self.db_store.get_router(lrouter.get_name())
             if old_lrouter is None:
                 self._add_new_lrouter(lrouter)
+                return
+            self._update_router_interfaces(old_lrouter, lrouter)
+            self.db_store.set_router(lrouter.get_name(), lrouter)
+
+    def _update_router_interfaces(self, old_router, new_router):
+        new_router_ports = new_router.get_ports()
+        old_router_ports = old_router.get_ports()
+        for new_port in new_router_ports:
+            if new_port not in old_router_ports:
+                self._add_new_router_port(new_router, new_port)
+            else:
+                old_router_ports.remove(new_port)
+
+        for old_port in old_router_ports:
+            self._delete_router_port(old_port)
+
+    def _add_new_router_port(self, router, router_port):
+        router_lport = self.db_store.get_port(router_port.get_name())
+        local_network_id = self.db_store.get_network_id(
+            router_port.get_network_id())
+        self.db_store.attach_network_to_router(local_network_id, router)
+        self.l3_app.add_new_router_port(router, router_lport, router_port)
+
+    def _delete_router_port(self, router_port):
+        local_network_id = self.db_store.get_network_id(
+            router_port.get_network_id())
+        self.db_store.del_network_from_router(local_network_id)
+        self.l3_app.delete_router_port(router_port, local_network_id)
 
     def _add_new_lrouter(self, lrouter):
-        self.db_store.add_router(lrouter.get_name(), lrouter)
+        for new_port in lrouter.get_ports():
+            self._add_new_router_port(lrouter, new_port)
+        self.db_store.set_router(lrouter.get_name(), lrouter)
 
 
 # Run this application like this:

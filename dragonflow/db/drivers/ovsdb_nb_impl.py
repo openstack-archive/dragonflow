@@ -143,7 +143,11 @@ class OvsdbLogicalPort(api_nb.LogicalPort):
         self.tunnel_key = row.tunnel_key
         self.external_dict = {}
         self.idl_nb = idl_nb
-        self.lport = None
+        self.lport = idlutils.row_by_value(self.idl_nb,
+                                           'Logical_Port',
+                                           'name', self.id)
+        ips = getattr(self.lport, 'ips', [])
+        self.ip = ips[0]
 
     def get_id(self):
         return self.id
@@ -152,11 +156,7 @@ class OvsdbLogicalPort(api_nb.LogicalPort):
         return self.mac
 
     def get_ip(self):
-        self.lport = idlutils.row_by_value(self.idl_nb,
-                                           'Logical_Port',
-                                           'name', self.id)
-        ips = getattr(self.lport, 'ips', [])
-        return ips[0]
+        return self.ip
 
     def get_chassis(self):
         return self.chassis
@@ -183,7 +183,10 @@ class OvsdbLogicalRouter(api_nb.LogicalRouter):
         lrouter_ports = getattr(self.row, 'ports', [])
         self.ports = []
         for port in lrouter_ports:
-            self.ports.append(OvsdbLogicalRouterPort(port, self.idl_nb))
+            port = OvsdbLogicalRouterPort(port, self.idl_nb)
+            # TODO(gsagie) currently only handle IPv4
+            if port.cidr.ip.version == 4:
+                self.ports.append(port)
 
     def get_name(self):
         return self.name
@@ -201,6 +204,11 @@ class OvsdbLogicalRouterPort(api_nb.LogicalRouterPort):
         self.mac = row.mac
         self.network = row.network
         self.cidr = netaddr.IPNetwork(row.network)
+        for lswitch in self.idl_nb.tables['Logical_Switch'].rows.values():
+            rport = getattr(lswitch, 'router_port', None)
+            if rport is not None and rport != []:
+                if rport[0] == self.row:
+                    self.network_id = str(lswitch.uuid)
 
     def get_name(self):
         return self.name
@@ -209,8 +217,20 @@ class OvsdbLogicalRouterPort(api_nb.LogicalRouterPort):
         # TODO(gsagie) handle IPv6 differently?
         return str(self.cidr.ip)
 
+    def get_cidr_network(self):
+        return self.cidr.network.value
+
+    def get_cidr_netmask(self):
+        return self.cidr.netmask.value
+
     def get_mac(self):
         return self.mac
 
+    def get_network_id(self):
+        return self.network_id
+
     def get_network(self):
         return self.network
+
+    def __eq__(self, other):
+        return self.name == other.get_name()
