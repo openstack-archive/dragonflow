@@ -24,6 +24,8 @@ class DbStore(object):
         self.routers = {}
         self.lock = threading.Lock()
 
+    # This is a mapping between global logical data path id (network/lswitch)
+    # And a local assigned if for this controller
     def get_network_id(self, ldp):
         with self.lock:
             return self.networks.get(ldp)
@@ -52,10 +54,26 @@ class DbStore(object):
         with self.lock:
             del self.ports[port_id]
 
-    def add_router(self, router_id, router):
+    def update_router(self, router_id, router):
         with self.lock:
             self.routers[router_id] = router
 
     def get_router(self, router_id):
         with self.lock:
             return self.routers.get(router_id)
+
+    def get_ports_by_network_id(self, local_network_id):
+        res = []
+        with self.lock:
+            for port in self.ports.values():
+                net_id = port.get_network_id()
+                if net_id == local_network_id:
+                    res.append(port)
+        return res
+
+    def get_router_by_router_interface_mac(self, interface_mac):
+        with self.lock:
+            for router in self.routers.values():
+                for port in router.get_ports():
+                    if port.get_mac() == interface_mac:
+                        return router

@@ -104,5 +104,14 @@ class LogicalRouterPort(object):
     def get_mac(self):
         pass
 
+    def get_cidr_network(self):
+        pass
+
+    def get_cidr_netmask(self):
+        pass
+
+    def get_network_id(self):
+        pass
+
     def get_network(self):
         pass

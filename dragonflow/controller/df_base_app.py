@@ -12,7 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import struct
+
 from ryu.base import app_manager
+from ryu.lib import addrconv
 
 from oslo_log import log as logging
 
@@ -78,3 +82,16 @@ class DFlowApp(app_manager.RyuApp):
                                   actions=actions,
                                   data=data)
         datapath.send_msg(out)
+
+    def ipv4_text_to_int(self, ip_text):
+        if ip_text == 0:
+            return ip_text
+        assert isinstance(ip_text, str)
+        return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
+
+    def add_flow_go_to_table(self, datapath, table, priority,
+                             goto_table_id, match=None):
+        inst = [datapath.ofproto_parser.OFPInstructionGotoTable(
+            goto_table_id)]
+        self.mod_flow(datapath, inst=inst, table_id=table,
+                      priority=priority, match=match)
