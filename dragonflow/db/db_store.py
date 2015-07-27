@@ -77,3 +77,7 @@ class DbStore(object):
                 for port in router.get_ports():
                     if port.get_mac() == interface_mac:
                         return router
+
+    def get_routers(self):
+        with self.lock:
+            return self.routers.values()

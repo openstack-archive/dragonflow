@@ -62,6 +62,7 @@ class L3App(DFlowApp):
         self.send_port_desc_stats_request(self.dp)
         self.add_flow_go_to_table(self.dp, const.L3_LOOKUP_TABLE, 1,
                                   const.EGRESS_TABLE)
+        self._install_flows_on_switch_up()
 
     def send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
@@ -313,3 +314,9 @@ class L3App(DFlowApp):
             match=match)
 
         self.dp.send_msg(message)
+
+    def _install_flows_on_switch_up(self):
+        for lrouter in self.db_store.get_routers():
+            for router_port in lrouter.get_ports():
+                router_lport = self.db_store.get_port(router_port.get_name())
+                self.add_new_router_port(lrouter, router_lport, router_port)
