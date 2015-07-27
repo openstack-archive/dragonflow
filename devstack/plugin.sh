@@ -133,6 +133,9 @@ function install_ovn {
     cp $DEST/dragonflow/ovn-patch/plugin.py $DEST/networking-ovn/networking_ovn/plugin.py
     cp $DEST/dragonflow/ovn-patch/constants.py $DEST/networking-ovn/networking_ovn/common/constants.py
 
+    cp $DEST/dragonflow/ovn-patch/ovn-nb.ovsschema $DEST/ovs/ovn/ovn-nb.ovsschema
+    cp $DEST/dragonflow/ovn-patch/ovn-nb.xml $DEST/ovs/ovn/ovn-nb.xml
+
     echo "Installing networking-ovn"
     setup_develop $DEST/networking-ovn
 
