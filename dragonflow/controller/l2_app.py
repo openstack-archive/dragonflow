@@ -20,6 +20,7 @@ from ryu.controller import ofp_event
 from ryu.lib.mac import haddr_to_bin
 from ryu.ofproto import ofproto_v1_3
 
+from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
 from oslo_log import log
@@ -102,7 +103,7 @@ class L2App(DFlowApp):
         msg = parser.OFPFlowMod(datapath=self.dp,
                                 cookie=0,
                                 cookie_mask=0,
-                                table_id=0,
+                                table_id=const.CLASSIFICATION_DISPATCH_TABLE,
                                 command=ofproto.OFPFC_DELETE,
                                 priority=100,
                                 out_port=ofproto.OFPP_ANY,
@@ -115,7 +116,7 @@ class L2App(DFlowApp):
         msg = parser.OFPFlowMod(datapath=self.dp,
                                 cookie=0,
                                 cookie_mask=0,
-                                table_id=0,
+                                table_id=const.CLASSIFICATION_DISPATCH_TABLE,
                                 command=ofproto.OFPFC_DELETE,
                                 priority=100,
                                 out_port=ofproto.OFPP_ANY,
@@ -130,7 +131,7 @@ class L2App(DFlowApp):
         msg = parser.OFPFlowMod(datapath=self.dp,
                                 cookie=0,
                                 cookie_mask=0,
-                                table_id=17,
+                                table_id=const.L2_LOOKUP_TABLE,
                                 command=ofproto.OFPFC_DELETE,
                                 priority=100,
                                 out_port=ofproto.OFPP_ANY,
@@ -143,7 +144,7 @@ class L2App(DFlowApp):
         msg = parser.OFPFlowMod(datapath=self.dp,
                                 cookie=0,
                                 cookie_mask=0,
-                                table_id=64,
+                                table_id=const.EGRESS_TABLE,
                                 command=ofproto.OFPFC_DELETE,
                                 priority=100,
                                 out_port=ofproto.OFPP_ANY,
@@ -165,7 +166,7 @@ class L2App(DFlowApp):
         msg = parser.OFPFlowMod(datapath=self.dp,
                                 cookie=0,
                                 cookie_mask=0,
-                                table_id=17,
+                                table_id=const.L2_LOOKUP_TABLE,
                                 command=ofproto.OFPFC_DELETE,
                                 priority=100,
                                 out_port=ofproto.OFPP_ANY,
@@ -178,7 +179,7 @@ class L2App(DFlowApp):
         msg = parser.OFPFlowMod(datapath=self.dp,
                                 cookie=0,
                                 cookie_mask=0,
-                                table_id=64,
+                                table_id=const.EGRESS_TABLE,
                                 command=ofproto.OFPFC_DELETE,
                                 priority=100,
                                 out_port=ofproto.OFPP_ANY,
@@ -205,12 +206,12 @@ class L2App(DFlowApp):
         action_inst = self.dp.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
 
-        goto_inst = parser.OFPInstructionGotoTable(17)
+        goto_inst = parser.OFPInstructionGotoTable(const.L2_LOOKUP_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=0,
+            table_id=const.CLASSIFICATION_DISPATCH_TABLE,
             priority=100,
             match=match)
 
@@ -225,7 +226,7 @@ class L2App(DFlowApp):
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=0,
+            table_id=const.CLASSIFICATION_DISPATCH_TABLE,
             priority=100,
             match=match)
 
@@ -237,12 +238,12 @@ class L2App(DFlowApp):
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
         action_inst = self.dp.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(64)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=17,
+            table_id=const.L2_LOOKUP_TABLE,
             priority=100,
             match=match)
 
@@ -255,7 +256,7 @@ class L2App(DFlowApp):
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=64,
+            table_id=const.EGRESS_TABLE,
             priority=100,
             match=match)
 
@@ -285,14 +286,15 @@ class L2App(DFlowApp):
         actions = []
         for tunnel_id in network.values():
             actions.append(parser.OFPActionSetField(reg7=tunnel_id))
-            actions.append(parser.NXActionResubmitTable(OF_IN_PORT, 64))
+            actions.append(parser.NXActionResubmitTable(OF_IN_PORT,
+                                                        const.EGRESS_TABLE))
 
         inst = [self.dp.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=17,
+            table_id=const.L2_LOOKUP_TABLE,
             command=command,
             priority=200,
             match=match)
@@ -319,14 +321,15 @@ class L2App(DFlowApp):
         actions = []
         for tunnel_id in network.values():
             actions.append(parser.OFPActionSetField(reg7=tunnel_id))
-            actions.append(parser.NXActionResubmitTable(OF_IN_PORT, 64))
+            actions.append(parser.NXActionResubmitTable(OF_IN_PORT,
+                                                        const.EGRESS_TABLE))
 
         inst = [self.dp.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=17,
+            table_id=const.L2_LOOKUP_TABLE,
             command=command,
             priority=200,
             match=match)
@@ -347,12 +350,12 @@ class L2App(DFlowApp):
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
         action_inst = self.dp.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(64)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=17,
+            table_id=const.L2_LOOKUP_TABLE,
             priority=100,
             match=match)
 
@@ -367,7 +370,7 @@ class L2App(DFlowApp):
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=64,
+            table_id=const.EGRESS_TABLE,
             priority=100,
             match=match)
 

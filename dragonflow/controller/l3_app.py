@@ -26,6 +26,7 @@ from ryu.lib.packet import packet
 from ryu.ofproto import ether
 from ryu.ofproto import ofproto_v1_3
 
+from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
 from oslo_log import log
@@ -59,7 +60,8 @@ class L3App(DFlowApp):
     def switch_features_handler(self, ev):
         self.dp = ev.msg.datapath
         self.send_port_desc_stats_request(self.dp)
-        self.add_flow_go_to_table(self.dp, 20, 1, 64)
+        self.add_flow_go_to_table(self.dp, const.L3_LOOKUP_TABLE, 1,
+                                  const.EGRESS_TABLE)
 
     def send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
@@ -151,13 +153,13 @@ class L3App(DFlowApp):
         action_inst = self.dp.ofproto_parser.OFPInstructionActions(
                 ofproto.OFPIT_APPLY_ACTIONS, actions)
 
-        goto_inst = parser.OFPInstructionGotoTable(64)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
 
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=20,
+            table_id=const.L3_LOOKUP_TABLE,
             priority=300,
             match=match,
             idle_timeout=self.idle_timeout,
@@ -193,12 +195,12 @@ class L3App(DFlowApp):
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
         action_inst = self.dp.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(20)
+        goto_inst = parser.OFPInstructionGotoTable(const.L3_LOOKUP_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=17,
+            table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_MODIFY,
             priority=200,
             match=match)
@@ -209,12 +211,12 @@ class L3App(DFlowApp):
         match.set_metadata(network_id)
         dst_ip = router_port.get_ip()
         match.set_ipv4_dst(self.ipv4_text_to_int(dst_ip))
-        goto_inst = parser.OFPInstructionGotoTable(64)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [goto_inst]
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=20,
+            table_id=const.L3_LOOKUP_TABLE,
             priority=200,
             match=match)
 
@@ -240,12 +242,12 @@ class L3App(DFlowApp):
         match.set_dl_type(ether.ETH_TYPE_IP)
         match.set_metadata(network_id)
         match.set_ipv4_dst(self.ipv4_text_to_int(dst_ip))
-        goto_inst = parser.OFPInstructionGotoTable(64)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [goto_inst]
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=20,
+            table_id=const.L3_LOOKUP_TABLE,
             priority=200,
             match=match,
             idle_timeout=self.idle_timeout,
@@ -270,7 +272,7 @@ class L3App(DFlowApp):
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=20,
+            table_id=const.L3_LOOKUP_TABLE,
             priority=100,
             match=match)
 
@@ -285,7 +287,7 @@ class L3App(DFlowApp):
             datapath=self.dp,
             cookie=0,
             cookie_mask=0,
-            table_id=20,
+            table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=100,
             out_port=ofproto.OFPP_ANY,
@@ -303,7 +305,7 @@ class L3App(DFlowApp):
             datapath=self.dp,
             cookie=0,
             cookie_mask=0,
-            table_id=20,
+            table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=100,
             out_port=ofproto.OFPP_ANY,
