@@ -133,9 +133,6 @@ function install_ovn {
     cp $DEST/dragonflow/ovn-patch/plugin.py $DEST/networking-ovn/networking_ovn/plugin.py
     cp $DEST/dragonflow/ovn-patch/constants.py $DEST/networking-ovn/networking_ovn/common/constants.py
 
-    cp $DEST/dragonflow/ovn-patch/ovn-nb.ovsschema $DEST/ovs/ovn/ovn-nb.ovsschema
-    cp $DEST/dragonflow/ovn-patch/ovn-nb.xml $DEST/ovs/ovn/ovn-nb.xml
-
     echo "Installing networking-ovn"
     setup_develop $DEST/networking-ovn
 
@@ -147,6 +144,9 @@ function install_ovn {
     else
         cd $OVN_REPO_NAME
     fi
+
+    cp $DEST/dragonflow/ovn-patch/ovn-nb.ovsschema $DEST/ovs/ovn/ovn-nb.ovsschema
+    cp $DEST/dragonflow/ovn-patch/ovn-nb.xml $DEST/ovs/ovn/ovn-nb.xml
 
     # TODO: Can you create package list files like you can inside devstack?
     install_package autoconf automake libtool gcc patch
@@ -218,7 +218,8 @@ function start_ovn {
     echo "Starting OVN"
 
     if is_ovn_service_enabled ovn-controller ; then
-        run_process df-controller "python $DF_LOCAL_CONTROLLER $OVN_UUID $HOST_IP $OVN_REMOTE_IP"
+        ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
+        run_process ovn-controller "python $DF_LOCAL_CONTROLLER $OVN_UUID $HOST_IP $OVN_REMOTE_IP"
     fi
 
     if is_ovn_service_enabled ovn-northd ; then
