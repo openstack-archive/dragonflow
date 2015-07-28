@@ -984,11 +984,7 @@ class L3ReactiveApp(DFlowApp):
         parser = datapath.ofproto_parser
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
-        match.set_in_port(in_port)
         match.set_metadata(src_seg_id)
-        match.set_dl_src(haddr_to_bin(match_src_mac))
-        match.set_dl_dst(haddr_to_bin(match_dst_mac))
-        match.set_ipv4_src(ipv4_text_to_int(str(match_src_ip)))
         match.set_ipv4_dst(ipv4_text_to_int(str(match_dst_ip)))
         actions = []
         inst = []
