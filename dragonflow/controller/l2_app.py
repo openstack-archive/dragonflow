@@ -100,28 +100,30 @@ class L2App(DFlowApp):
         # Remove ingress classifier for port
         match = parser.OFPMatch()
         match.set_in_port(ofport)
-        msg = parser.OFPFlowMod(datapath=self.dp,
-                                cookie=0,
-                                cookie_mask=0,
-                                table_id=const.CLASSIFICATION_DISPATCH_TABLE,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=100,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
+        msg = parser.OFPFlowMod(
+            datapath=self.dp,
+            cookie=0,
+            cookie_mask=0,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=100,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
         self.dp.send_msg(msg)
 
         # Remove dispatch to local port according to unique tunnel_id
         match = parser.OFPMatch(tunnel_id_nxm=tunnel_key)
-        msg = parser.OFPFlowMod(datapath=self.dp,
-                                cookie=0,
-                                cookie_mask=0,
-                                table_id=const.CLASSIFICATION_DISPATCH_TABLE,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=100,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
+        msg = parser.OFPFlowMod(
+            datapath=self.dp,
+            cookie=0,
+            cookie_mask=0,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=100,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
         self.dp.send_msg(msg)
 
         # Remove destination classifier for port
@@ -206,12 +208,12 @@ class L2App(DFlowApp):
         action_inst = self.dp.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
 
-        goto_inst = parser.OFPInstructionGotoTable(const.L2_LOOKUP_TABLE)
+        goto_inst = parser.OFPInstructionGotoTable(const.SPECIAL_TRAFFIC_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=const.CLASSIFICATION_DISPATCH_TABLE,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=100,
             match=match)
 
@@ -226,7 +228,7 @@ class L2App(DFlowApp):
         self.mod_flow(
             self.dp,
             inst=inst,
-            table_id=const.CLASSIFICATION_DISPATCH_TABLE,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=100,
             match=match)
 
