@@ -149,7 +149,7 @@ function install_ovn {
     cp $DEST/dragonflow/ovn-patch/ovn-nb.xml $DEST/ovs/ovn/ovn-nb.xml
 
     # TODO: Can you create package list files like you can inside devstack?
-    install_package autoconf automake libtool gcc patch
+    install_package autoconf automake libtool gcc patch make
 
     if [ ! -f configure ] ; then
         ./boot.sh
@@ -190,7 +190,7 @@ function start_ovs {
     ovs-vsctl --no-wait init
     ovs-vsctl --no-wait set open_vswitch . system-type="devstack"
     ovs-vsctl --no-wait set open_vswitch . external-ids:system-id="$OVN_UUID"
-    if is_ovn_service_enabled ovn-controller ; then
+    if is_ovn_service_enabled df-controller ; then
         sudo modprobe openvswitch || die $LINENO "Failed to load openvswitch module"
         # TODO This needs to be a fatal error when doing multi-node testing, but
         # breaks testing in OpenStack CI where geneve isn't available.
@@ -217,9 +217,9 @@ function start_ovs {
 function start_ovn {
     echo "Starting OVN"
 
-    if is_ovn_service_enabled ovn-controller ; then
+    if is_ovn_service_enabled df-controller ; then
         ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
-        run_process ovn-controller "python $DF_LOCAL_CONTROLLER $OVN_UUID $HOST_IP $OVN_REMOTE_IP"
+        run_process df-controller "python $DF_LOCAL_CONTROLLER $OVN_UUID $HOST_IP $OVN_REMOTE_IP"
     fi
 
     if is_ovn_service_enabled ovn-northd ; then
@@ -229,7 +229,7 @@ function start_ovn {
 
 # stop_ovn() - Stop running processes (non-screen)
 function stop_ovn {
-    if is_ovn_service_enabled ovn-controller ; then
+    if is_ovn_service_enabled df-controller ; then
         stop_process df-controller
         sudo killall ovs-vswitchd
     fi
