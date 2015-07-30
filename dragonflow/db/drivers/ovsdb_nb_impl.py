@@ -184,9 +184,7 @@ class OvsdbLogicalRouter(api_nb.LogicalRouter):
         self.ports = []
         for port in lrouter_ports:
             port = OvsdbLogicalRouterPort(port, self.idl_nb)
-            # TODO(gsagie) currently only handle IPv4
-            if port.cidr.ip.version == 4:
-                self.ports.append(port)
+            self.ports.append(port)
 
     def get_name(self):
         return self.name
@@ -218,10 +216,10 @@ class OvsdbLogicalRouterPort(api_nb.LogicalRouterPort):
         return str(self.cidr.ip)
 
     def get_cidr_network(self):
-        return self.cidr.network.value
+        return str(self.cidr.network)
 
     def get_cidr_netmask(self):
-        return self.cidr.netmask.value
+        return str(self.cidr.netmask)
 
     def get_mac(self):
         return self.mac

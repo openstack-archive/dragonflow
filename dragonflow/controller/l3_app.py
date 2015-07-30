@@ -19,10 +19,10 @@ from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.controller import ofp_event
-from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 from ryu.ofproto import ofproto_v1_3
@@ -165,18 +165,23 @@ class L3App(DFlowApp):
         msg = event.msg
 
         pkt = packet.Packet(msg.data)
-        is_ipv4_packet = pkt.get_protocol(ipv4.ipv4) is not None
-        if is_ipv4_packet is None:
-            LOG.error(_LE("Received IPv6 packet in controller, "
-                          "currently only IPv4 is supported"))
+        is_pkt_ipv4 = pkt.get_protocol(ipv4.ipv4) is not None
+
+        if is_pkt_ipv4:
+            pkt_ip = pkt.get_protocol(ipv4.ipv4)
+        else:
+            pkt_ip = pkt.get_protocol(ipv6.ipv6)
+
+        if pkt_ip is None:
+            LOG.error(_LE("Received None IP Packet"))
             return
 
         network_id = msg.match.get('metadata')
-        pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
+        self.get_route(pkt_ip, pkt_ethernet, network_id, msg)
 
-        # TODO(gsagie) encapsulate this in get_route method once done
-        ip_addr = netaddr.IPAddress(pkt_ipv4.dst)
+    def get_route(self, pkt_ip, pkt_ethernet, network_id, msg):
+        ip_addr = netaddr.IPAddress(pkt_ip.dst)
         router = self.db_store.get_router_by_router_interface_mac(
             pkt_ethernet.dst)
         for router_port in router.get_ports():
@@ -189,7 +194,7 @@ class L3App(DFlowApp):
                 dst_ports = self.db_store.get_ports_by_network_id(
                     router_port.get_network_id())
                 for out_port in dst_ports:
-                    if out_port.get_ip() == pkt_ipv4.dst:
+                    if out_port.get_ip() == pkt_ip.dst:
                         self._install_l3_flow(router_port,
                                               out_port, msg,
                                               network_id)
@@ -205,10 +210,14 @@ class L3App(DFlowApp):
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
 
-        match = parser.OFPMatch()
-        match.set_dl_type(ether.ETH_TYPE_IP)
-        match.set_metadata(src_network_id)
-        match.set_ipv4_dst(self.ipv4_text_to_int(str(dst_ip)))
+        if netaddr.IPAddress(dst_ip).version == 4:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                    metadata=src_network_id,
+                                    ipv4_dst=dst_ip)
+        else:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                    metadata=src_network_id,
+                                    ipv6_dst=dst_ip)
 
         actions = []
         actions.append(parser.OFPActionDecNwTtl())
@@ -243,6 +252,7 @@ class L3App(DFlowApp):
             return
 
         # TODO(gsagie) check what happens when external gateway port added
+        # External gateway port is not being added as new router interface
 
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
@@ -251,14 +261,15 @@ class L3App(DFlowApp):
         mac = lport.get_mac()
         tunnel_key = lport.get_tunnel_key()
 
-        # Add router ARP responder
-        self._add_vrouter_arp_responder(network_id, mac, router_port.get_ip())
+        # Add router ARP responder for IPv4 Addresses
+        if netaddr.IPAddress(router_port.get_ip()).version == 4:
+            self._add_vrouter_arp_responder(network_id, mac,
+                                            router_port.get_ip())
 
         # Change destination classifier for router port to go to L3 table
         # Increase priority so L3 traffic is matched faster
-        match = parser.OFPMatch()
-        match.set_metadata(network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
+        match = parser.OFPMatch(metadata=network_id,
+                                eth_dst=mac)
         actions = []
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
         action_inst = self.dp.ofproto_parser.OFPInstructionActions(
@@ -274,11 +285,16 @@ class L3App(DFlowApp):
             match=match)
 
         # If router interface IP, send to output table
-        match = parser.OFPMatch()
-        match.set_dl_type(ether.ETH_TYPE_IP)
-        match.set_metadata(network_id)
         dst_ip = router_port.get_ip()
-        match.set_ipv4_dst(self.ipv4_text_to_int(dst_ip))
+        if netaddr.IPAddress(dst_ip).version == 4:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                    metadata=network_id,
+                                    ipv4_dst=dst_ip)
+        else:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                    metadata=network_id,
+                                    ipv6_dst=dst_ip)
+
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [goto_inst]
         self.mod_flow(
@@ -305,11 +321,17 @@ class L3App(DFlowApp):
                     router_port.get_cidr_netmask())
 
     def _install_flow_send_to_output_table(self, network_id, dst_ip):
+
         parser = self.dp.ofproto_parser
-        match = parser.OFPMatch()
-        match.set_dl_type(ether.ETH_TYPE_IP)
-        match.set_metadata(network_id)
-        match.set_ipv4_dst(self.ipv4_text_to_int(dst_ip))
+        if netaddr.IPAddress(dst_ip).version == 4:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                    metadata=network_id,
+                                    ipv4_dst=dst_ip)
+        else:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                    metadata=network_id,
+                                    ipv6_dst=dst_ip)
+
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [goto_inst]
         self.mod_flow(
@@ -326,11 +348,14 @@ class L3App(DFlowApp):
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
 
-        match = parser.OFPMatch()
-        match.set_dl_type(ether.ETH_TYPE_IP)
-        match.set_metadata(network_id)
-        match.set_ipv4_dst_masked(dst_network,
-                                  dst_netmask)
+        if netaddr.IPAddress(dst_network).version == 4:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                    metadata=network_id,
+                                    ipv4_dst=(dst_network, dst_netmask))
+        else:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                    metadata=network_id,
+                                    ipv6_dst=(dst_network, dst_netmask))
 
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
@@ -349,8 +374,9 @@ class L3App(DFlowApp):
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
 
-        self._remove_vrouter_arp_responder(local_network_id,
-                                           router_port.get_ip())
+        if netaddr.IPAddress(router_port.get_ip()).version == 4:
+            self._remove_vrouter_arp_responder(local_network_id,
+                                               router_port.get_ip())
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
@@ -369,9 +395,16 @@ class L3App(DFlowApp):
 
         dst_network = router_port.get_cidr_network()
         dst_netmask = router_port.get_cidr_netmask()
-        match = parser.OFPMatch()
-        match.set_ipv4_dst_masked(dst_network,
-                                  dst_netmask)
+
+        # TODO(gsagie) this is not correct, need router tunnel_key here
+        # Because the same address could be used for another router
+        if netaddr.IPAddress(dst_network).version == 4:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                    ipv4_dst=(dst_network, dst_netmask))
+        else:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                    ipv6_dst=(dst_network, dst_netmask))
+
         message = parser.OFPFlowMod(
             datapath=self.dp,
             cookie=0,
