@@ -11,6 +11,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
 import six
 
 from oslo_config import cfg
@@ -345,27 +346,37 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return ret_val
 
     def add_router_interface(self, context, router_id, interface_info):
-        subnet = self.get_subnet(context, interface_info['subnet_id'])
-        port = {'port': {'network_id': subnet['network_id'], 'name': '',
-                         'admin_state_up': True, 'device_id': '',
-                         'device_owner': l3_db.DEVICE_OWNER_ROUTER_INTF,
-                         'mac_address': attributes.ATTR_NOT_SPECIFIED,
-                         'fixed_ips': [{'subnet_id': subnet['id'],
-                                        'ip_address': subnet['gateway_ip']}]}}
-        port = self.create_port(context, port)
+        add_by_port, add_by_sub = self._validate_interface_info(
+            interface_info)
+        if add_by_sub:
+            subnet = self.get_subnet(context, interface_info['subnet_id'])
+            port = {'port': {'network_id': subnet['network_id'], 'name': '',
+                             'admin_state_up': True, 'device_id': '',
+                             'device_owner': l3_db.DEVICE_OWNER_ROUTER_INTF,
+                             'mac_address': attributes.ATTR_NOT_SPECIFIED,
+                             'fixed_ips': [{'subnet_id': subnet['id'],
+                                            'ip_address':
+                                                subnet['gateway_ip']}]}}
+            port = self.create_port(context, port)
+        elif add_by_port:
+            port = self.get_port(context, interface_info['port_id'])
+            subnet_id = port['fixed_ips'][0]['subnet_id']
+            subnet = self.get_subnet(context, subnet_id)
 
         lrouter = utils.ovn_name(router_id)
         lswitch = utils.ovn_name(subnet['network_id'])
-        network = subnet['gateway_ip'] + "/24"
+        cidr = netaddr.IPNetwork(subnet['cidr'])
+        network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
+                             str(cidr.prefixlen))
 
         self._ovn.add_lrouter_port(port['id'], lrouter, lswitch,
                                    mac=port['mac_address'],
                                    network=network).execute(check_error=True)
         interface_info['port_id'] = port['id']
-        del interface_info['subnet_id']
-        result = super(OVNPlugin, self).add_router_interface(
+        if 'subnet_id' in interface_info:
+            del interface_info['subnet_id']
+        return super(OVNPlugin, self).add_router_interface(
             context, router_id, interface_info)
-        return result
 
     def remove_router_interface(self, context, router_id, interface_info):
         port = self.get_port(context, interface_info['port_id'])
