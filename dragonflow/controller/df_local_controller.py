@@ -215,12 +215,18 @@ class DfLocalController(object):
 
     def _add_new_router_port(self, router, router_port):
         router_lport = self.db_store.get_port(router_port.get_name())
+        self.db_store.set_router_port_tunnel_key(router_port.get_name(),
+                                              router_lport.get_tunnel_key())
         self.l3_app.add_new_router_port(router, router_lport, router_port)
 
     def _delete_router_port(self, router_port):
         local_network_id = self.db_store.get_network_id(
             router_port.get_network_id())
-        self.l3_app.delete_router_port(router_port, local_network_id)
+        tunnel_key = self.db_store.get_router_port_tunnel_key(
+            router_port.get_name())
+        self.l3_app.delete_router_port(router_port, local_network_id,
+                                       tunnel_key)
+        self.db_store.del_router_port_tunnel_key(router_port.get_name())
 
     def _add_new_lrouter(self, lrouter):
         for new_port in lrouter.get_ports():

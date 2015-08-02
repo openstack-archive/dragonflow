@@ -230,8 +230,11 @@ class L3App(DFlowApp):
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
 
+        dst_router_intf_key = self.db_store.get_router_port_tunnel_key(
+            dst_router_port.get_name())
         self.mod_flow(
             self.dp,
+            cookie=dst_router_intf_key,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=300,
@@ -250,9 +253,6 @@ class L3App(DFlowApp):
 
         if self.dp is None:
             return
-
-        # TODO(gsagie) check what happens when external gateway port added
-        # External gateway port is not being added as new router interface
 
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
@@ -308,9 +308,12 @@ class L3App(DFlowApp):
         for port in router.get_ports():
             if port.get_name() != router_port.get_name():
                 # From this router interface to all other interfaces
+                port_lport = self.db_store.get_port(port.get_name())
+                port_tunnel_key = port_lport.get_tunnel_key()
                 self._add_subnet_send_to_controller(network_id,
                                                     port.get_cidr_network(),
-                                                    port.get_cidr_netmask())
+                                                    port.get_cidr_netmask(),
+                                                    port_tunnel_key)
 
                 # From all the other interfaces to this new interface
                 router_port_net_id = self.db_store.get_network_id(
@@ -318,7 +321,8 @@ class L3App(DFlowApp):
                 self._add_subnet_send_to_controller(
                     router_port_net_id,
                     router_port.get_cidr_network(),
-                    router_port.get_cidr_netmask())
+                    router_port.get_cidr_netmask(),
+                    tunnel_key)
 
     def _install_flow_send_to_output_table(self, network_id, dst_ip):
 
@@ -344,7 +348,7 @@ class L3App(DFlowApp):
             hard_timeout=self.hard_timeout)
 
     def _add_subnet_send_to_controller(self, network_id, dst_network,
-                                       dst_netmask):
+                                       dst_netmask, dst_router_tunnel_key):
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
 
@@ -364,12 +368,13 @@ class L3App(DFlowApp):
 
         self.mod_flow(
             self.dp,
+            cookie=dst_router_tunnel_key,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=100,
             match=match)
 
-    def delete_router_port(self, router_port, local_network_id):
+    def delete_router_port(self, router_port, local_network_id, tunnel_key):
 
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
@@ -393,22 +398,12 @@ class L3App(DFlowApp):
 
         self.dp.send_msg(message)
 
-        dst_network = router_port.get_cidr_network()
-        dst_netmask = router_port.get_cidr_netmask()
-
-        # TODO(gsagie) this is not correct, need router tunnel_key here
-        # Because the same address could be used for another router
-        if netaddr.IPAddress(dst_network).version == 4:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    ipv4_dst=(dst_network, dst_netmask))
-        else:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
-                                    ipv6_dst=(dst_network, dst_netmask))
-
+        match = parser.OFPMatch()
+        cookie = tunnel_key
         message = parser.OFPFlowMod(
             datapath=self.dp,
-            cookie=0,
-            cookie_mask=0,
+            cookie=cookie,
+            cookie_mask=cookie,
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=100,

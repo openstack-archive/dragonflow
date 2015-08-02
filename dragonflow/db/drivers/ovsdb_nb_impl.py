@@ -212,7 +212,6 @@ class OvsdbLogicalRouterPort(api_nb.LogicalRouterPort):
         return self.name
 
     def get_ip(self):
-        # TODO(gsagie) handle IPv6 differently?
         return str(self.cidr.ip)
 
     def get_cidr_network(self):
