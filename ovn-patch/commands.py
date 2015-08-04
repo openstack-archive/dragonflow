@@ -252,35 +252,35 @@ class AddLRouterPortCommand(BaseCommand):
 
 
 class DelLRouterPortCommand(BaseCommand):
-    def __init__(self, api, name, lrouter, lswitch, if_exists):
+    def __init__(self, api, lrouter, lswitch, if_exists):
         super(DelLRouterPortCommand, self).__init__(api)
-        self.name = name
         self.lrouter = lrouter
         self.lswitch = lswitch
         self.if_exists = if_exists
 
     def run_idl(self, txn):
         try:
-
             lrouter = idlutils.row_by_value(self.api.idl, 'Logical_Router',
                                             'name', self.lrouter)
             lswitch = idlutils.row_by_value(self.api.idl, 'Logical_Switch',
                                             'name', self.lswitch)
-            lrouter_ports = getattr(lrouter, 'ports', [])
+            lrouter_port = getattr(lswitch, 'router_port', None)
 
-            lrouter_port = idlutils.row_by_value(self.api.idl,
-                                                 'Logical_Router_Port',
-                                                 'name', self.name)
+            if lrouter_port is None:
+                if self.if_exists:
+                    return
+                msg = _("Logical Switch %s has no router port") % self.lswitch
+                LOG.error(msg)
+                raise RuntimeError(msg)
+
         except idlutils.RowNotFound:
             if self.if_exists:
                 return
-            msg = _("Logical Router Port %s does not exist") % self.name
+            msg = _("Logical Router %s does not exist") % self.lrouter
             LOG.error(msg)
             raise RuntimeError(msg)
 
-        new_ports = []
-        for port in lrouter_ports:
-            if port is not lrouter_port:
-                new_ports.append(port)
-        setattr(lrouter, 'ports', new_ports)
+        lrouter_ports = getattr(lrouter, 'ports', [])
+        lrouter_ports.remove(lrouter_port[0])
+        setattr(lrouter, 'ports', lrouter_ports)
         setattr(lswitch, 'router_port', [])
