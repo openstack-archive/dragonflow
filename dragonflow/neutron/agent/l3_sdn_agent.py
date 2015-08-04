@@ -18,12 +18,12 @@ import sys
 eventlet.monkey_patch()
 
 from oslo_config import cfg
+from oslo_service import service
 
 from neutron.agent.common import config
 from neutron.agent import l3_agent
 from neutron.common import config as common_config
 from neutron.common import topics
-from neutron.openstack.common import service
 from neutron import service as neutron_service
 
 
@@ -38,7 +38,7 @@ def main(manager='dragonflow.neutron.agent.l3.l3_controller_agent.'
         topic=topics.L3_AGENT,
         report_interval=cfg.CONF.AGENT.report_interval,
         manager=manager)
-    service.launch(server).wait()
+    service.launch(cfg.CONF, server).wait()
 
 if __name__ == "__main__":
     main()
