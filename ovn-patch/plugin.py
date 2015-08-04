@@ -379,10 +379,12 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             context, router_id, interface_info)
 
     def remove_router_interface(self, context, router_id, interface_info):
-        port = self.get_port(context, interface_info['port_id'])
-        self._ovn.delete_lrouter_port(interface_info['port_id'],
-                                      utils.ovn_name(router_id),
-                                      utils.ovn_name(port['network_id'])
-                                      ).execute(check_error=True)
-        return super(OVNPlugin, self).remove_router_interface(
+        new_router = super(OVNPlugin, self).remove_router_interface(
             context, router_id, interface_info)
+
+        subnet = self.get_subnet(context, new_router['subnet_id'])
+        network_id = subnet['network_id']
+
+        self._ovn.delete_lrouter_port(utils.ovn_name(router_id),
+                                      utils.ovn_name(network_id)
+                                      ).execute(check_error=True)

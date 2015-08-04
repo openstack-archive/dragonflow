@@ -191,11 +191,9 @@ class API(object):
         """
 
     @abc.abstractmethod
-    def delete_lrouter_port(self, name, lrouter, lswitch, if_exists=True):
+    def delete_lrouter_port(self, lrouter, lswitch, if_exists=True):
         """Create a command to delete an OVN lrouter port
 
-        :param name:         The name of the lrouter port
-        :type name:          string
         :param lrouter:      The unique name of the lrouter
         :type lrouter:       string
         :param lswitch:      The unique name of the lswitch
