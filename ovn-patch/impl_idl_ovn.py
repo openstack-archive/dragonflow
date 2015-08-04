@@ -107,6 +107,6 @@ class OvsdbOvnIdl(ovn_api.API):
         return cmd.AddLRouterPortCommand(self, name, lrouter, lswitch,
                                          may_exist, **columns)
 
-    def delete_lrouter_port(self, name, lrouter, lswitch, if_exists=True):
-        return cmd.DelLRouterPortCommand(self, name, lrouter, lswitch,
+    def delete_lrouter_port(self, lrouter, lswitch, if_exists=True):
+        return cmd.DelLRouterPortCommand(self, lrouter, lswitch,
                                          if_exists)
