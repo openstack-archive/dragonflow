@@ -14,6 +14,7 @@
 #
 
 from oslo_config import cfg
+from oslo_service import loopingcall
 
 from dragonflow.controller import openflow_controller as of_controller
 from dragonflow.neutron.agent.l3 import df_dvr_router
@@ -24,7 +25,6 @@ from neutron.agent import rpc as agent_rpc
 from neutron.common import constants as l3_constants
 from neutron.common import topics
 from neutron.i18n import _LE, _LI
-from neutron.openstack.common import loopingcall
 from oslo_log import log as logging
 EXTERNAL_DEV_PREFIX = namespaces.EXTERNAL_DEV_PREFIX
 
