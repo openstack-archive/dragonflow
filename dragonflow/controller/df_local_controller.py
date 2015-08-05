@@ -13,12 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import sys
 import time
 
 import eventlet
 from oslo_log import log
+
+from neutron.agent.common import config
+
 from ryu.base.app_manager import AppManager
 from ryu.controller.ofp_handler import OFPHandler
 
@@ -29,7 +31,8 @@ from dragonflow.db.drivers import ovsdb_nb_impl, ovsdb_vswitch_impl
 
 #from dragonflow.db.drivers import etcd_nb_impl
 
-LOG = log.getLogger(__name__)
+config.setup_logging()
+LOG = log.getLogger("dragonflow.controller.df_local_controller")
 
 eventlet.monkey_patch()
 
@@ -89,8 +92,9 @@ class DfLocalController(object):
             self.port_mappings()
 
             self.read_routers()
-        except Exception:
-            pass
+        except Exception as e:
+            LOG.error("run_db_poll - suppressing exception")
+            LOG.error(e)
 
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
