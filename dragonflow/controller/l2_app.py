@@ -53,15 +53,18 @@ class L2App(DFlowApp):
     def switch_features_handler(self, ev):
         self.dp = ev.msg.datapath
         self.add_flow_go_to_table(self.dp,
-                                  const.SERVICES_CLASSIFICATION_TABLE, 1,
+                                  const.SERVICES_CLASSIFICATION_TABLE,
+                                  const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
-        self.add_flow_go_to_table(self.dp, const.ARP_TABLE, 1,
+        self.add_flow_go_to_table(self.dp, const.ARP_TABLE,
+                                  const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
 
         # ARP traffic => send to ARP table
         match = self.dp.ofproto_parser.OFPMatch(eth_type=0x0806)
         self.add_flow_go_to_table(self.dp,
-                                  const.SERVICES_CLASSIFICATION_TABLE, 100,
+                                  const.SERVICES_CLASSIFICATION_TABLE,
+                                  const.PRIORITY_MEDIUM,
                                   const.ARP_TABLE, match=match)
         self._install_flows_on_switch_up()
         self.send_port_desc_stats_request(self.dp)
@@ -117,7 +120,7 @@ class L2App(DFlowApp):
             cookie_mask=0,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
@@ -131,7 +134,7 @@ class L2App(DFlowApp):
             cookie_mask=0,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
@@ -146,7 +149,7 @@ class L2App(DFlowApp):
                                 cookie_mask=0,
                                 table_id=const.L2_LOOKUP_TABLE,
                                 command=ofproto.OFPFC_DELETE,
-                                priority=100,
+                                priority=const.PRIORITY_MEDIUM,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
@@ -159,7 +162,7 @@ class L2App(DFlowApp):
                                 cookie_mask=0,
                                 table_id=const.EGRESS_TABLE,
                                 command=ofproto.OFPFC_DELETE,
-                                priority=100,
+                                priority=const.PRIORITY_MEDIUM,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
@@ -181,7 +184,7 @@ class L2App(DFlowApp):
                                 cookie_mask=0,
                                 table_id=const.L2_LOOKUP_TABLE,
                                 command=ofproto.OFPFC_DELETE,
-                                priority=100,
+                                priority=const.PRIORITY_MEDIUM,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
@@ -194,7 +197,7 @@ class L2App(DFlowApp):
                                 cookie_mask=0,
                                 table_id=const.EGRESS_TABLE,
                                 command=ofproto.OFPFC_DELETE,
-                                priority=100,
+                                priority=const.PRIORITY_MEDIUM,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
@@ -226,7 +229,7 @@ class L2App(DFlowApp):
             self.dp,
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
         # Dispatch to local port according to unique tunnel_id
@@ -241,7 +244,7 @@ class L2App(DFlowApp):
             self.dp,
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
         # Destination classifier for port
@@ -258,7 +261,7 @@ class L2App(DFlowApp):
             self.dp,
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
         # Egress classifier for port
@@ -271,7 +274,7 @@ class L2App(DFlowApp):
             self.dp,
             inst=inst,
             table_id=const.EGRESS_TABLE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
         self._add_multicast_broadcast_handling_for_port(network_id, lport_id,
@@ -310,7 +313,7 @@ class L2App(DFlowApp):
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             command=command,
-            priority=200,
+            priority=const.PRIORITY_HIGH,
             match=match)
 
     def _add_multicast_broadcast_handling_for_port(self, network_id,
@@ -345,7 +348,7 @@ class L2App(DFlowApp):
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             command=command,
-            priority=200,
+            priority=const.PRIORITY_HIGH,
             match=match)
 
     def add_remote_port(self, lport_id, mac, network_id, ofport, tunnel_key):
@@ -370,7 +373,7 @@ class L2App(DFlowApp):
             self.dp,
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
         # Egress classifier for port
@@ -385,7 +388,7 @@ class L2App(DFlowApp):
             self.dp,
             inst=inst,
             table_id=const.EGRESS_TABLE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
         self._add_multicast_broadcast_handling_for_port(network_id, lport_id,

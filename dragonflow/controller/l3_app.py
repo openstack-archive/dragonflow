@@ -61,7 +61,8 @@ class L3App(DFlowApp):
     def switch_features_handler(self, ev):
         self.dp = ev.msg.datapath
         self.send_port_desc_stats_request(self.dp)
-        self.add_flow_go_to_table(self.dp, const.L3_LOOKUP_TABLE, 1,
+        self.add_flow_go_to_table(self.dp, const.L3_LOOKUP_TABLE,
+                                  const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
         self._install_flows_on_switch_up()
 
@@ -105,7 +106,7 @@ class L3App(DFlowApp):
             msg = parser.OFPFlowMod(datapath=self.dp,
                                     table_id=const.ARP_TABLE,
                                     command=ofproto.OFPFC_ADD,
-                                    priority=100,
+                                    priority=const.PRIORITY_MEDIUM,
                                     match=match, instructions=instructions,
                                     flags=ofproto.OFPFF_SEND_FLOW_REM)
             self.dp.send_msg(msg)
@@ -122,7 +123,7 @@ class L3App(DFlowApp):
                                 cookie_mask=0,
                                 table_id=const.ARP_TABLE,
                                 command=ofproto.OFPFC_DELETE,
-                                priority=100,
+                                priority=const.PRIORITY_MEDIUM,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
@@ -237,7 +238,7 @@ class L3App(DFlowApp):
             cookie=dst_router_intf_key,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
-            priority=300,
+            priority=const.PRIORITY_VERY_HIGH,
             match=match,
             idle_timeout=self.idle_timeout,
             hard_timeout=self.hard_timeout)
@@ -281,7 +282,7 @@ class L3App(DFlowApp):
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_MODIFY,
-            priority=200,
+            priority=const.PRIORITY_HIGH,
             match=match)
 
         # If router interface IP, send to output table
@@ -301,7 +302,7 @@ class L3App(DFlowApp):
             self.dp,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
-            priority=200,
+            priority=const.PRIORITY_HIGH,
             match=match)
 
         # Match all possible routeable traffic and send to controller
@@ -342,7 +343,7 @@ class L3App(DFlowApp):
             self.dp,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
-            priority=200,
+            priority=const.PRIORITY_HIGH,
             match=match,
             idle_timeout=self.idle_timeout,
             hard_timeout=self.hard_timeout)
@@ -371,7 +372,7 @@ class L3App(DFlowApp):
             cookie=dst_router_tunnel_key,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
     def delete_router_port(self, router_port, local_network_id, tunnel_key):
@@ -391,7 +392,7 @@ class L3App(DFlowApp):
             cookie_mask=0,
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
@@ -406,7 +407,7 @@ class L3App(DFlowApp):
             cookie_mask=cookie,
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
-            priority=100,
+            priority=const.PRIORITY_MEDIUM,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
