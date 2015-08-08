@@ -942,6 +942,7 @@ class L3ReactiveApp(DFlowApp):
                 local_switch.patch_port_num,
                 dst_seg_id=dst_seg_id,
                 cookie=cookie,
+                dst_datapath=remote_switch.datapath,
             )
 
             # Remote reverse flow install
@@ -960,6 +961,7 @@ class L3ReactiveApp(DFlowApp):
                 remote_switch.patch_port_num,
                 dst_seg_id=src_seg_id,
                 cookie=cookie,
+                dst_datapath=local_switch.datapath,
             )
 
             self.handle_packet_out_l3(remote_switch.datapath,
@@ -980,7 +982,7 @@ class L3ReactiveApp(DFlowApp):
                                 src_seg_id, match_src_mac, match_dst_mac,
                                 match_dst_ip, match_src_ip, src_mac,
                                 dst_mac, out_port_num, dst_seg_id=None,
-                                cookie=0):
+                                cookie=0, dst_datapath=None):
         parser = datapath.ofproto_parser
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
@@ -1008,6 +1010,10 @@ class L3ReactiveApp(DFlowApp):
         else:
             actions.append(parser.OFPActionOutput(out_port_num,
                                               ofproto.OFPCML_NO_BUFFER))
+        if dst_datapath:
+            dst_ip_hex = self._get_dp_ip_in_hex(dst_datapath)
+            actions.append(parser.OFPActionSetField(reg0=dst_ip_hex))
+
         inst.append(datapath.ofproto_parser.OFPInstructionActions(
                         ofproto.OFPIT_APPLY_ACTIONS, actions))
         self.mod_flow(
@@ -1489,6 +1495,13 @@ class L3ReactiveApp(DFlowApp):
 
     def check_direct_routing(self, tenant, from_subnet_id, to_subnet_id):
         return
+
+    def _get_dp_ip_in_hex(self, datapath):
+        try:
+            return '%08x' % netaddr.IPAddress(datapath.address[0], version=4)
+        except Exception:
+            LOG.warn(_LW("Invalid remote IP: %s"), datapath.address)
+            return
 
     def _get_match_vrouter_arp_responder(self, datapath, segmentation_id,
                                          interface_ip):
