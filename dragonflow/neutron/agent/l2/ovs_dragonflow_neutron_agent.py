@@ -162,7 +162,7 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
                     remote_ip,
                     tunnel_type)
         if ofport > 0:
-            ofports = (ona._ofport_set_to_str
+            ofports = (br_tun.OVSTunnelBridge._ofport_set_to_str
                        (self.tun_br_ofports[tunnel_type].values()))
             if self.enable_l3_controller:
                 if ofports:
