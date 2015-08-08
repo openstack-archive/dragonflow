@@ -19,6 +19,8 @@ import threading
 import eventlet
 eventlet.monkey_patch()
 
+from six import moves
+
 from dragonflow.neutron.common import df_ovs_bridge
 from oslo_config import cfg
 
@@ -46,7 +48,10 @@ agent_additional_opts = [
                help=("L3 Controler IP list list tcp:ip_addr:port;"
                      "tcp:ip_addr:port..;..")),
     cfg.BoolOpt('enable_l3_controller', default=True,
-                help=_("L3 SDN Controller"))
+                help=_("L3 SDN Controller")),
+    cfg.IntOpt('tunnel_map_check_rate',
+               default='5',
+               help=_("Rate in multiple of the rpc loop")),
 ]
 
 cfg.CONF.register_opts(agent_additional_opts, "AGENT")
@@ -77,6 +82,7 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
         '''
         self.set_controller_lock = threading.Lock()
         self.enable_l3_controller = cfg.CONF.AGENT.enable_l3_controller
+        self.tunnel_map_check_rate = cfg.CONF.AGENT.tunnel_map_check_rate
 
         super(L2OVSControllerAgent, self) \
             .__init__(bridge_classes,
@@ -95,6 +101,10 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
                       quitting_rpc_timeout)
 
         # Initialize controller
+        self.df_available_local_vlans = set(moves.range(p_const.MIN_VLAN_TAG,
+                                                     p_const.MAX_VLAN_TAG))
+
+        self.df_local_to_vlan_map = {}
         self.controllers_ip_list = cfg.CONF.AGENT.L3controller_ip_list
         self.set_controller_for_br(self.int_br, self.controllers_ip_list)
 
@@ -144,6 +154,17 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
                         local_vlan_map['physical_network'],
                         local_vlan_map['segmentation_id'])
 
+    def check_tunnel_map_table(self):
+        if not self.df_local_to_vlan_map:
+            return
+        tunnel_flows = self.int_br.dump_flows(
+                        df_ovs_bridge.TUN_TRANSLATE_TABLE)
+        for tunnel_ip in self.df_local_to_vlan_map:
+            vlan_action = "mod_vlan_vid:%d" % (
+                    self.df_local_to_vlan_map[tunnel_ip])
+            if vlan_action not in tunnel_flows:
+                self.tunnel_sync()
+
     def check_ovs_status(self):
         if not self.enable_l3_controller:
             return super(L2OVSControllerAgent, self).check_ovs_status()
@@ -152,7 +173,41 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
         # Add lock to avoid race condition of flows
         with self.set_controller_lock:
             ret = super(L2OVSControllerAgent, self).check_ovs_status()
+            if not self.iter_num % self.tunnel_map_check_rate:
+                self.check_tunnel_map_table()
         return ret
+
+    def _claim_df_tunnel_local_vlan(self, tunnel_ip_hex):
+        lvid = None
+        if tunnel_ip_hex in self.df_local_to_vlan_map:
+            lvid = self.df_local_to_vlan_map[tunnel_ip_hex]
+        else:
+            lvid = self.df_available_local_vlans.pop()
+            self.df_local_to_vlan_map[tunnel_ip_hex] = lvid
+        return lvid
+
+    def _release_df_tunnel_local_vlan(self, tunnel_ip_hex):
+        lvid = self.df_local_to_vlan_map.pop(tunnel_ip_hex, None)
+        self.df_available_local_vlans.add(lvid)
+
+    def cleanup_tunnel_port(self, br, tun_ofport, tunnel_type):
+        items = list(self.tun_br_ofports[tunnel_type].items())
+        for remote_ip, ofport in items:
+            if ofport == tun_ofport:
+                tunnel_ip_hex = "0x%s" % self.get_ip_in_hex(remote_ip)
+                lvid = self.df_local_to_vlan_map[tunnel_ip_hex]
+                self.int_br.delete_flows(
+                                table=df_ovs_bridge.TUN_TRANSLATE_TABLE,
+                                reg7=tunnel_ip_hex)
+                br.delete_flows(
+                        table=constants.UCAST_TO_TUN,
+                        dl_vlan=lvid)
+                self._release_df_tunnel_local_vlan(tunnel_ip_hex)
+
+        return super(L2OVSControllerAgent, self).cleanup_tunnel_port(
+                br,
+                tun_ofport,
+                tunnel_type)
 
     def _setup_tunnel_port(self, br, port_name, remote_ip, tunnel_type):
         ofport = super(L2OVSControllerAgent, self) \
@@ -161,14 +216,32 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
                     port_name,
                     remote_ip,
                     tunnel_type)
+        tunnel_ip_hex = "0x%s" % self.get_ip_in_hex(remote_ip)
+        lvid = self._claim_df_tunnel_local_vlan(tunnel_ip_hex)
+        self.int_br.add_flow(
+                        table=df_ovs_bridge.TUN_TRANSLATE_TABLE,
+                        priority=2000,
+                        reg7=tunnel_ip_hex,
+                        actions="mod_vlan_vid:%s,"
+                        "load:0->NXM_NX_REG7[0..15],"
+                        "resubmit(,%s)" %
+                        (lvid, df_ovs_bridge.TUN_TRANSLATE_TABLE))
+        br.add_flow(table=constants.UCAST_TO_TUN,
+                    priority=100,
+                    dl_vlan=lvid,
+                    pkt_mark="0x80000000/0x80000000",
+                    actions="strip_vlan,move:NXM_NX_PKT_MARK[0..24]"
+                            "->NXM_NX_TUN_ID[0..24],"
+                            "output:%s" %
+                            (ofport))
         if ofport > 0:
             ofports = (br_tun.OVSTunnelBridge._ofport_set_to_str
                        (self.tun_br_ofports[tunnel_type].values()))
             if self.enable_l3_controller:
                 if ofports:
                     br.add_flow(table=constants.FLOOD_TO_TUN,
-                                actions="move:NXM_NX_PKT_MARK[]"
-                                        "->NXM_NX_TUN_ID[0..31],"
+                                actions="move:NXM_NX_PKT_MARK[0..24]"
+                                        "->NXM_NX_TUN_ID[0..24],"
                                         "output:%s" %
                                         (ofports))
         return ofport
@@ -180,7 +253,8 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
                 #outbound
                 # The global vlan id is set in table 60
                 # from segmentation id/tun id
-                self.int_br.add_flow(table="60", priority=1,
+                self.int_br.add_flow(table=df_ovs_bridge.TUN_TRANSLATE_TABLE,
+                                     priority=1,
                                      actions="move:NXM_NX_TUN_ID[0..11]"
                                      "->OXM_OF_VLAN_VID[],"
                                      "output:%s" %
