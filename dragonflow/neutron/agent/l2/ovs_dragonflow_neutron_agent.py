@@ -161,6 +161,15 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
                     port_name,
                     remote_ip,
                     tunnel_type)
+        tunnel_ip_hex = self.get_ip_in_hex(remote_ip)
+        br.add_flow(table=constants.UCAST_TO_TUN,
+                    priority=100,
+                    reg0=tunnel_ip_hex,
+                    actions="move:NXM_NX_PKT_MARK[]"
+                            "->NXM_NX_TUN_ID[0..31],"
+                            "output:%s" %
+                            (ofport))
+
         if ofport > 0:
             ofports = (br_tun.OVSTunnelBridge._ofport_set_to_str
                        (self.tun_br_ofports[tunnel_type].values()))
