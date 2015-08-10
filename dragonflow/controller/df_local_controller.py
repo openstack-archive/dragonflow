@@ -97,6 +97,78 @@ class DfLocalController(object):
             LOG.error(_LE("run_db_poll - suppressing exception"))
             LOG.error(e)
 
+    def chassis_created(self, chassis):
+        # Check if tunnel already exists to this chassis
+
+        # Create tunnel port to this chassis
+        self.vswitch_api.add_tunnel_port(chassis)
+
+    def chassis_deleted(self, chassis):
+        tunnel_ports = self.vswitch_api.get_tunnel_ports()
+        for port in tunnel_ports:
+            if port.get_chassis_id() == chassis.get_name():
+                self.vswitch_api.delete_port(port)
+                return
+
+    def logical_port_updated(self, lport):
+        if self.db_store.get_port(lport.get_id()) is not None:
+            # TODO(gsagie) support updating port
+            return
+        chassis_to_ofport, lport_to_ofport = (
+            self.vswitch_api.get_local_ports_to_ofport_mapping())
+        network = self.get_network_id(lport.get_network_id())
+        lport.set_external_value('local_network_id', network)
+
+        if lport.get_chassis() == self.chassis_name:
+            ofport = lport_to_ofport.get(lport.get_id(), 0)
+            if ofport != 0:
+                lport.set_external_value('ofport', ofport)
+                lport.set_external_value('is_local', True)
+                self.l2_app.add_local_port(lport.get_id(),
+                                           lport.get_mac(),
+                                           network,
+                                           ofport,
+                                           lport.get_tunnel_key())
+                self.db_store.set_port(lport.get_id(), lport)
+        else:
+            ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
+            if ofport != 0:
+                lport.set_external_value('ofport', ofport)
+                lport.set_external_value('is_local', False)
+                self.l2_app.add_remote_port(lport.get_id(),
+                                            lport.get_mac(),
+                                            network,
+                                            ofport,
+                                            lport.get_tunnel_key())
+                self.db_store.set_port(lport.get_id(), lport)
+
+    def logical_port_deleted(self, lport_id):
+        lport = self.db_store.get_port(lport_id)
+        if lport is None:
+            return
+        if lport.get_external_value('is_local'):
+            self.l2_app.remove_local_port(lport.get_id(),
+                                          lport.get_mac(),
+                                          lport.get_external_value(
+                                              'local_network_id'),
+                                          lport.get_external_value(
+                                              'ofport'),
+                                          lport.get_tunnel_key())
+            self.db_store.delete_port(lport.get_id())
+        else:
+            self.l2_app.remove_remote_port(lport.get_id(),
+                                           lport.get_mac(),
+                                           lport.get_external_value(
+                                               'local_network_id'),
+                                           lport.get_tunnel_key())
+            self.db_store.delete_port(lport.get_id())
+
+    def router_updated(self, router):
+        pass
+
+    def router_deleted(self, router):
+        pass
+
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
         # TODO(gsagie) Support tunnel type change here ?
@@ -118,7 +190,7 @@ class DfLocalController(object):
             elif chassis.get_name() == self.chassis_name:
                 pass
             else:
-                self.vswitch_api.add_tunnel_port(chassis)
+                self.chassis_created(chassis)
 
         # Iterate all tunnel ports that needs to be deleted
         for port in tunnel_ports.values():
@@ -129,64 +201,16 @@ class DfLocalController(object):
         self.nb_api.register_local_ports(self.chassis_name, local_ports)
 
     def port_mappings(self):
-        chassis_to_ofport, lport_to_ofport = (
-            self.vswitch_api.get_local_ports_to_ofport_mapping())
-
         ports_to_remove = self.db_store.get_port_keys()
-
         for lport in self.nb_api.get_all_logical_ports():
-            network = self.get_network_id(lport.get_network_id())
-            lport.set_external_value('local_network_id', network)
-
-            if lport.get_chassis() == self.chassis_name:
-                ofport = lport_to_ofport.get(lport.get_id(), 0)
-                if ofport != 0:
-                    lport.set_external_value('ofport', ofport)
-                    lport.set_external_value('is_local', True)
-                    if lport.get_id() in ports_to_remove:
-                        ports_to_remove.remove(lport.get_id())
-                    else:  # TODO(gsagie) handle port modified changes
-                        self.l2_app.add_local_port(lport.get_id(),
-                                                  lport.get_mac(),
-                                                  network,
-                                                  ofport,
-                                                  lport.get_tunnel_key())
-                    self.db_store.set_port(lport.get_id(), lport)
-            else:
-                ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
-                if ofport != 0:
-                    lport.set_external_value('ofport', ofport)
-                    lport.set_external_value('is_local', False)
-                    if lport.get_id() in ports_to_remove:
-                        ports_to_remove.remove(lport.get_id())
-                    else:  # TODO(gsagie) handle port modified changes
-                        self.l2_app.add_remote_port(lport.get_id(),
-                                                lport.get_mac(),
-                                                network,
-                                                ofport,
-                                                lport.get_tunnel_key())
-                    self.db_store.set_port(lport.get_id(), lport)
+            self.logical_port_updated(lport)
+            if lport.get_id() in ports_to_remove:
+                ports_to_remove.remove(lport.get_id())
 
         # TODO(gsagie) use port dictionary in all methods in l2 app
         # and here instead of always moving all arguments
         for port_to_remove in ports_to_remove:
-            p = self.db_store.get_port(port_to_remove)
-            if p.get_external_value('is_local'):
-                self.l2_app.remove_local_port(p.get_id(),
-                                              p.get_mac(),
-                                              p.get_external_value(
-                                                  'local_network_id'),
-                                              p.get_external_value(
-                                                  'ofport'),
-                                              p.get_tunnel_key())
-                self.db_store.delete_port(port_to_remove)
-            else:
-                self.l2_app.remove_remote_port(p.get_id(),
-                                               p.get_mac(),
-                                               p.get_external_value(
-                                                   'local_network_id'),
-                                               p.get_tunnel_key())
-                self.db_store.delete_port(port_to_remove)
+            self.logical_port_deleted(port_to_remove)
 
     def get_network_id(self, logical_dp_id):
         network_id = self.db_store.get_network_id(logical_dp_id)
