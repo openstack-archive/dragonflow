@@ -32,9 +32,6 @@ class NbApi(object):
     def add_chassis(self, name, ip, tunnel_type):
         pass
 
-    def register_local_ports(self, chassis, local_ports_id):
-        pass
-
     def get_all_logical_ports(self):
         pass
 
@@ -42,6 +39,36 @@ class NbApi(object):
         pass
 
     def get_router_ports(self):
+        pass
+
+    def create_lswitch(self, name, **columns):
+        pass
+
+    def set_lswitch(self, name, **columns):
+        pass
+
+    def delete_lswitch(self, name):
+        pass
+
+    def create_lport(self, name, lswitch_name, **columns):
+        pass
+
+    def set_lport(self, lport_name, **columns):
+        pass
+
+    def delete_lport(self, name):
+        pass
+
+    def create_lrouter(self, name):
+        pass
+
+    def delete_lrouter(self, name):
+        pass
+
+    def add_lrouter_port(self, name, lrouter, lswitch, **columns):
+        pass
+
+    def delete_lrouter_port(self, lrouter, lswitch):
         pass
 
 
@@ -115,3 +142,6 @@ class LogicalRouterPort(object):
 
     def get_network(self):
         pass
+
+    def __eq__(self, other):
+        return self.get_name() == other.get_name()

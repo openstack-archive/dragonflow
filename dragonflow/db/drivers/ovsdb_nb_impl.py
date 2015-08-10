@@ -89,7 +89,7 @@ class OvsdbNbApi(api_nb.NbApi):
                                         'Chassis',
                                         'name', chassis_name)
 
-        for binding in self.idl.tables['"Port_Binding"'].rows.values():
+        for binding in self.idl.tables['Binding'].rows.values():
             if binding.logical_port in local_ports_ids:
                 if binding.chassis == chassis_name:
                     continue
@@ -103,7 +103,7 @@ class OvsdbNbApi(api_nb.NbApi):
 
     def get_all_logical_ports(self):
         res = []
-        for binding in self.idl.tables['"Port_Binding"'].rows.values():
+        for binding in self.idl.tables['Binding'].rows.values():
             if not binding.chassis:
                 continue
             res.append(OvsdbLogicalPort(binding, self.idl_nb))

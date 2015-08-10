@@ -21,7 +21,6 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 from sqlalchemy.orm import exc as sa_exc
 
-
 from neutron.api.rpc.agentnotifiers import dhcp_rpc_agent_api
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import dhcp_rpc
@@ -50,25 +49,24 @@ from neutron.db import portbindings_db
 from neutron.db import securitygroups_db
 from neutron.i18n import _LE, _LI
 
-from networking_ovn.common import config
 from networking_ovn.common import constants as ovn_const
 from networking_ovn.common import utils
-from networking_ovn import ovn_nb_sync
-from networking_ovn.ovsdb import impl_idl_ovn
+
+from dragonflow.db.drivers import etcd_nb_impl
 
 
 LOG = log.getLogger(__name__)
 
 
-class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
-                securitygroups_db.SecurityGroupDbMixin,
-                l3_agentschedulers_db.L3AgentSchedulerDbMixin,
-                l3_gwmode_db.L3_NAT_db_mixin,
-                external_net_db.External_net_db_mixin,
-                portbindings_db.PortBindingMixin,
-                extradhcpopt_db.ExtraDhcpOptMixin,
-                extraroute_db.ExtraRoute_db_mixin,
-                agentschedulers_db.DhcpAgentSchedulerDbMixin):
+class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
+               securitygroups_db.SecurityGroupDbMixin,
+               l3_agentschedulers_db.L3AgentSchedulerDbMixin,
+               l3_gwmode_db.L3_NAT_db_mixin,
+               external_net_db.External_net_db_mixin,
+               portbindings_db.PortBindingMixin,
+               extradhcpopt_db.ExtraDhcpOptMixin,
+               extraroute_db.ExtraRoute_db_mixin,
+               agentschedulers_db.DhcpAgentSchedulerDbMixin):
 
     __native_bulk_support = True
     __native_pagination_support = True
@@ -83,21 +81,17 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    "router"]
 
     def __init__(self):
-        super(OVNPlugin, self).__init__()
-        LOG.info(_("Starting OVNPlugin"))
+        super(DFPlugin, self).__init__()
+        LOG.info(_LI("Starting DFPlugin"))
         self.vif_type = portbindings.VIF_TYPE_OVS
         # When set to True, Nova plugs the VIF directly into the ovs bridge
         # instead of using the hybrid mode.
         self.vif_details = {portbindings.CAP_PORT_FILTER: True}
 
-        self._ovn = impl_idl_ovn.OvsdbOvnIdl()
+        self.nb_api = etcd_nb_impl.EtcdNbApi()
+        self.nb_api.initialize()
+        self.global_id = 0
 
-        # Call the synchronization task, this sync neutron DB to OVN-NB DB
-        # only in inconsistent states
-        self.synchronizer = (
-            ovn_nb_sync.OvnNbSynchronizer(self,
-                                          self._ovn,
-                                          config.get_ovn_neutron_sync_mode()))
         self.base_binding_dict = {
             portbindings.VIF_TYPE: portbindings.VIF_TYPE_OVS,
             portbindings.VIF_DETAILS: {
@@ -105,7 +99,6 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 portbindings.CAP_PORT_FILTER:
                 'security-group' in self.supported_extension_aliases}}
 
-        self.synchronizer.sync()
         self._setup_rpc()
 
     def _setup_rpc(self):
@@ -148,38 +141,35 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                retry_on_deadlock=True)
     def create_network(self, context, network):
         with context.session.begin(subtransactions=True):
-            result = super(OVNPlugin, self).create_network(context,
-                                                           network)
+            result = super(DFPlugin, self).create_network(context,
+                                                          network)
             self._process_l3_create(context, result, network['network'])
 
-        return self.create_network_in_ovn(result)
+        return self.create_network_nb_api(result)
 
-    def create_network_in_ovn(self, network):
+    def create_network_nb_api(self, network):
         # Create a logical switch with a name equal to the Neutron network
         # UUID.  This provides an easy way to refer to the logical switch
         # without having to track what UUID OVN assigned to it.
         external_ids = {ovn_const.OVN_NETWORK_NAME_EXT_ID_KEY: network['name']}
 
-        # TODO(arosen): Undo logical switch creation on failure
-        self._ovn.create_lswitch(lswitch_name=utils.ovn_name(network['id']),
-                                 external_ids=external_ids).execute(
-                                     check_error=True)
+        # TODO(DF): Undo logical switch creation on failure
+        self.nb_api.create_lswitch(name=utils.ovn_name(network['id']),
+                                   external_ids=external_ids)
         return network
 
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
     def delete_network(self, context, network_id):
         with context.session.begin():
-            super(OVNPlugin, self).delete_network(context,
-                                                  network_id)
-        self._ovn.delete_lswitch(
-            utils.ovn_name(network_id)).execute(check_error=True)
+            super(DFPlugin, self).delete_network(context,
+                                                 network_id)
+        self.nb_api.delete_lswitch(utils.ovn_name(network_id))
 
     def _set_network_name(self, network_id, name):
         ext_id = [ovn_const.OVN_NETWORK_NAME_EXT_ID_KEY, name]
-        self._ovn.set_lswitch_ext_id(
-            utils.ovn_name(network_id),
-            ext_id).execute(check_error=True)
+        self.nb_api.set_lswitch(utils.ovn_name(network_id),
+                                external_ids=ext_id)
 
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
@@ -189,8 +179,8 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if 'name' in network['network']:
             self._set_network_name(id, network['network']['name'])
         with context.session.begin(subtransactions=True):
-            return super(OVNPlugin, self).update_network(context, network_id,
-                                                         network)
+            return super(DFPlugin, self).update_network(context, network_id,
+                                                        network)
 
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
@@ -198,8 +188,8 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self._validate_binding_profile(context, port)
         with context.session.begin(subtransactions=True):
             original_port = self._get_port(context, id)
-            updated_port = super(OVNPlugin, self).update_port(context, id,
-                                                              port)
+            updated_port = super(DFPlugin, self).update_port(context, id,
+                                                             port)
 
             self._process_portbindings_create_and_update(context,
                                                          port['port'],
@@ -212,13 +202,18 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         parent_name, tag = self._get_data_from_binding_profile(updated_port)
         allowed_macs = self._get_allowed_mac_addresses_from_port(
             updated_port)
-        self._ovn.set_lport(lport_name=updated_port['id'],
-                            macs=[updated_port['mac_address']],
-                            external_ids=external_ids,
-                            parent_name=parent_name, tag=tag,
-                            enabled=updated_port['admin_state_up'],
-                            port_security=allowed_macs).execute(
-                                check_error=True)
+
+        chassis = None
+        if 'binding:host_id' in updated_port:
+            chassis = updated_port['binding:host_id']
+
+        self.nb_api.set_lport(name=updated_port['id'],
+                              macs=[updated_port['mac_address']],
+                              external_ids=external_ids,
+                              parent_name=parent_name, tag=tag,
+                              enabled=updated_port['admin_state_up'],
+                              port_security=allowed_macs,
+                              chassis=chassis)
         return updated_port
 
     def _validate_binding_profile(self, context, port):
@@ -275,7 +270,7 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         with context.session.begin(subtransactions=True):
             self._validate_binding_profile(context, port)
             dhcp_opts = port['port'].get(edo_ext.EXTRADHCPOPTS, [])
-            db_port = super(OVNPlugin, self).create_port(context, port)
+            db_port = super(DFPlugin, self).create_port(context, port)
             sgids = self._get_security_groups_on_port(context, port)
             self._process_port_create_security_group(context, db_port,
                                                      sgids)
@@ -286,9 +281,9 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             db_port[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
             self._process_port_create_extra_dhcp_opts(context, db_port,
                                                       dhcp_opts)
-        return self.create_port_in_ovn(db_port)
+        return self.create_port_in_nb_api(db_port)
 
-    def create_port_in_ovn(self, port):
+    def create_port_in_nb_api(self, port):
         # The port name *must* be port['id'].  It must match the iface-id set
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
@@ -299,50 +294,58 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if 'fixed_ips' in port:
             if 'ip_address' in port['fixed_ips'][0]:
                 ips.append(port['fixed_ips'][0]['ip_address'])
-        self._ovn.create_lport(
-            lport_name=port['id'],
+
+        chassis = None
+        if 'binding:host_id' in port:
+            chassis = port['binding:host_id']
+
+        tunnel_key = self._allocate_tunnel_key()
+
+        self.nb_api.create_lport(
+            name=port['id'],
             lswitch_name=utils.ovn_name(port['network_id']),
             macs=[port['mac_address']], ips=ips,
             external_ids=external_ids,
             parent_name=parent_name, tag=tag,
             enabled=port.get('admin_state_up', None),
-            port_security=allowed_macs).execute(check_error=True)
+            chassis=chassis, tunnel_key=tunnel_key,
+            port_security=allowed_macs)
 
         return port
+
+    def _allocate_tunnel_key(self):
+        # TODO(gsagie) need something that can reuse deleted keys
+        self.global_id = self.global_id + 1
+        return self.global_id
 
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
     def delete_port(self, context, port_id, l3_port_check=True):
-        port = self.get_port(context, port_id)
-        self._ovn.delete_lport(port_id,
-                               utils.ovn_name(port['network_id'])
-                               ).execute(check_error=True)
+        self.nb_api.delete_lport(port_id)
         with context.session.begin():
             self.disassociate_floatingips(context, port_id)
-            super(OVNPlugin, self).delete_port(context, port_id)
+            super(DFPlugin, self).delete_port(context, port_id)
 
     def extend_port_dict_binding(self, port_res, port_db):
-        super(OVNPlugin, self).extend_port_dict_binding(port_res, port_db)
+        super(DFPlugin, self).extend_port_dict_binding(port_res, port_db)
         port_res[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
 
     def create_router(self, context, router):
-        router = super(OVNPlugin, self).create_router(
+        router = super(DFPlugin, self).create_router(
             context, router)
         router_name = utils.ovn_name(router['id'])
         external_ids = {ovn_const.OVN_ROUTER_NAME_EXT_ID_KEY:
                         router.get('name', 'no_router_name')}
-        self._ovn.create_lrouter(router_name,
-                                 external_ids=external_ids
-                                 ).execute(check_error=True)
+        self.nb_api.create_lrouter(router_name, external_ids=external_ids)
 
         # TODO(gsagie) rollback router creation on OVN failure
         return router
 
     def delete_router(self, context, router_id):
         router_name = utils.ovn_name(router_id)
-        self._ovn.delete_lrouter(router_name).execute(check_error=True)
-        ret_val = super(OVNPlugin, self).delete_router(context,
-                                                       router_id)
+        self.nb_api.delete_lrouter(router_name)
+        ret_val = super(DFPlugin, self).delete_router(context,
+                                                      router_id)
         return ret_val
 
     def add_router_interface(self, context, router_id, interface_info):
@@ -369,22 +372,21 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
 
-        self._ovn.add_lrouter_port(port['id'], lrouter, lswitch,
-                                   mac=port['mac_address'],
-                                   network=network).execute(check_error=True)
+        self.nb_api.add_lrouter_port(port['id'], lrouter, lswitch,
+                                     mac=port['mac_address'],
+                                     network=network)
         interface_info['port_id'] = port['id']
         if 'subnet_id' in interface_info:
             del interface_info['subnet_id']
-        return super(OVNPlugin, self).add_router_interface(
+        return super(DFPlugin, self).add_router_interface(
             context, router_id, interface_info)
 
     def remove_router_interface(self, context, router_id, interface_info):
-        new_router = super(OVNPlugin, self).remove_router_interface(
+        new_router = super(DFPlugin, self).remove_router_interface(
             context, router_id, interface_info)
 
         subnet = self.get_subnet(context, new_router['subnet_id'])
         network_id = subnet['network_id']
 
-        self._ovn.delete_lrouter_port(utils.ovn_name(router_id),
-                                      utils.ovn_name(network_id)
-                                      ).execute(check_error=True)
+        self.nb_api.delete_lrouter_port(utils.ovn_name(router_id),
+                                        utils.ovn_name(network_id))

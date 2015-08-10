@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import socket
 import sys
 import time
 
@@ -28,9 +29,9 @@ from ryu.controller.ofp_handler import OFPHandler
 from dragonflow.controller.l2_app import L2App
 from dragonflow.controller.l3_app import L3App
 from dragonflow.db import db_store
-from dragonflow.db.drivers import ovsdb_nb_impl, ovsdb_vswitch_impl
+from dragonflow.db.drivers import ovsdb_vswitch_impl
 
-#from dragonflow.db.drivers import etcd_nb_impl
+from dragonflow.db.drivers import etcd_nb_impl
 
 config.setup_logging()
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
@@ -53,8 +54,8 @@ class DfLocalController(object):
         self.remote_db_ip = remote_db_ip
 
     def run(self):
-        self.nb_api = ovsdb_nb_impl.OvsdbNbApi(self.remote_db_ip)
-        #self.nb_api = etcd_nb_impl.EtcdNbApi()
+        #self.nb_api = ovsdb_nb_impl.OvsdbNbApi(self.remote_db_ip)
+        self.nb_api = etcd_nb_impl.EtcdNbApi()
         self.nb_api.initialize()
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
         self.vswitch_api.initialize()
@@ -87,8 +88,6 @@ class DfLocalController(object):
             self.register_chassis()
 
             self.create_tunnels()
-
-            self.set_binding()
 
             self.port_mappings()
 
@@ -196,10 +195,6 @@ class DfLocalController(object):
         for port in tunnel_ports.values():
             self.vswitch_api.delete_port(port)
 
-    def set_binding(self):
-        local_ports = self.vswitch_api.get_local_port_ids()
-        self.nb_api.register_local_ports(self.chassis_name, local_ports)
-
     def port_mappings(self):
         ports_to_remove = self.db_store.get_port_keys()
         for lport in self.nb_api.get_all_logical_ports():
@@ -267,9 +262,9 @@ class DfLocalController(object):
 # python df_local_controller.py <chassis_unique_name>
 # <local ip address> <southbound_db_ip_address>
 def main():
-    chassis_name = sys.argv[1]  # unique name 'df_chassis'
-    ip = sys.argv[2]  # local ip '10.100.100.4'
-    remote_db_ip = sys.argv[3]  # remote SB DB IP '10.100.100.4'
+    chassis_name = socket.gethostname()
+    ip = sys.argv[1]  # local ip '10.100.100.4'
+    remote_db_ip = sys.argv[2]  # remote SB DB IP '10.100.100.4'
     controller = DfLocalController(chassis_name, ip, remote_db_ip)
     controller.run()
 
