@@ -23,9 +23,32 @@
                     "type": {"key": "string", "value": "string",
                              "min": 0, "max": "unlimited"}}},
             "isRoot": true},
+        "Chassis": {
+            "columns": {
+                "name": {"type": "string"},
+                "encaps": {"type": {"key": {"type": "uuid",
+                                            "refTable": "Encap"},
+                                    "min": 1, "max": "unlimited"}},
+            "isRoot": true,
+            "indexes": [["name"]]},
+        "Encap": {
+            "columns": {
+                "type": {"type": {"key": {
+                           "type": "string",
+                           "enum": ["set", ["geneve", "stt", "vxlan"]]}}},
+                "options": {"type": {"key": "string",
+                                     "value": "string",
+                                     "min": 0,
+                                     "max": "unlimited"}},
+                "ip": {"type": "string"}}},
         "Logical_Port": {
             "columns": {
                 "name": {"type": "string"},
+                "chassis": {"type": "string"},
+                "tunnel_key": {
+                     "type": {"key": {"type": "integer",
+                                      "minInteger": 1,
+                                      "maxInteger": 65535}}},
                 "parent_name": {"type": {"key": "string", "min": 0, "max": 1}},
                 "tag": {
                      "type": {"key": {"type": "integer",
