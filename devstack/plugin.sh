@@ -11,52 +11,16 @@ OVN_BRANCH=${OVN_BRANCH:-origin/master}
 OVN_REMOTE_IP=${OVN_REMOTE_IP:-$HOST_IP}
 OVN_REMOTE=${OVN_REMOTE:-tcp:$OVN_REMOTE_IP:6640}
 
-# A UUID to uniquely identify this system.  If one is not specified, a random
-# one will be generated.  A randomly generated UUID will be saved in a file
-# 'ovn-uuid' so that the same one will be re-used if you re-run DevStack.
-OVN_UUID=${OVN_UUID:-}
-
-# Utility Functions
-# -----------------
-
-function is_ovn_service_enabled {
-    ovn_service=$1
-    is_service_enabled ovn && return 0
-    is_service_enabled $ovn_service && return 0
-    return 1
-}
-
 
 # Entry Points
 # ------------
 
-# cleanup_ovn() - Remove residual data files, anything left over from previous
-# runs that a clean run would need to clean up
-function cleanup_ovn {
-    :
-}
-
-# configure_ovn() - Set config files, create data dirs, etc
-function configure_ovn {
-    echo "Configuring OVN"
-
-    if [ -z "$OVN_UUID" ] ; then
-        if [ -f ./ovn-uuid ] ; then
-            OVN_UUID=$(cat ovn-uuid)
-        else
-            OVN_UUID=$(uuidgen)
-            echo $OVN_UUID > ovn-uuid
-        fi
-    fi
-}
-
-function configure_ovn_plugin {
-    echo "Configuring Neutron for OVN"
+function configure_df_plugin {
+    echo "Configuring Neutron for Dragonflow"
 
     if is_service_enabled q-svc ; then
-        # NOTE(arosen) needed for tempest
         export NETWORK_API_EXTENSIONS='binding,quotas,agent,dhcp_agent_scheduler,external-net,router'
-        Q_PLUGIN_CLASS="networking_ovn.plugin.OVNPlugin"
+        Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
         iniset $NEUTRON_CONF ovn ovsdb_connection "$OVN_REMOTE"
@@ -84,15 +48,28 @@ function init_ovn {
     done
     rm -f $base_dir/.*.db.~lock~
 
-    echo "Creating OVS, OVN-Southbound and OVN-Northbound Databases"
+    echo "Creating OVS Database"
     ovsdb-tool create $base_dir/conf.db $DEST/$OVN_REPO_NAME/vswitchd/vswitch.ovsschema
-    if is_ovn_service_enabled ovn-northd ; then
-        ovsdb-tool create $base_dir/ovnsb.db $DEST/$OVN_REPO_NAME/ovn/ovn-sb.ovsschema
-        ovsdb-tool create $base_dir/ovnnb.db $DEST/$OVN_REPO_NAME/ovn/ovn-nb.ovsschema
-    fi
+    #ovsdb-tool create $base_dir/ovnnb.db $DEST/dragonflow/ovn-patch/ovn-nb.ovsschema
 }
 
 function install_df {
+    echo_summary "Installing etcd"
+    if is_service_enabled df-etcd ; then
+       rm -rf default.etcd
+       if [ ! -f "/opt/stack/etcd/etcd-v2.1.1-linux-amd64/etcd" ]; then
+           mkdir /opt/stack/etcd
+           curl -L  https://github.com/coreos/etcd/releases/download/v2.1.1/etcd-v2.1.1-linux-amd64.tar.gz -o $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz
+           tar xzvf $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz -C /opt/stack/etcd
+       fi
+
+       git_clone https://github.com/jplana/python-etcd.git /opt/stack/etcd/python-etcd
+       pushd "/opt/stack/etcd/python-etcd"
+       setup_package ./
+       popd
+       echo "Finished installing etcd"
+    fi
+
     echo_summary "Installing DragonFlow"
 
     git_clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
@@ -119,22 +96,8 @@ function install_ovn {
     done
 
     if ! is_neutron_enabled ; then
-        # networking-ovn depends on neutron, so ensure it at least gets
-        # installed.
         install_neutron
     fi
-
-    git_clone $NETWORKING_OVN_REPO $DEST/networking-ovn master
-
-    echo "Patching OVN from Dragonflow"
-    cp $DEST/dragonflow/ovn-patch/commands.py $DEST/networking-ovn/networking_ovn/ovsdb/commands.py
-    cp $DEST/dragonflow/ovn-patch/impl_idl_ovn.py $DEST/networking-ovn/networking_ovn/ovsdb/impl_idl_ovn.py
-    cp $DEST/dragonflow/ovn-patch/ovn_api.py $DEST/networking-ovn/networking_ovn/ovsdb/ovn_api.py
-    cp $DEST/dragonflow/ovn-patch/plugin.py $DEST/networking-ovn/networking_ovn/plugin.py
-    cp $DEST/dragonflow/ovn-patch/constants.py $DEST/networking-ovn/networking_ovn/common/constants.py
-
-    echo "Installing networking-ovn"
-    setup_develop $DEST/networking-ovn
 
     cd $DEST
     if [ ! -d $OVN_REPO_NAME ] ; then
@@ -144,9 +107,6 @@ function install_ovn {
     else
         cd $OVN_REPO_NAME
     fi
-
-    cp $DEST/dragonflow/ovn-patch/ovn-nb.ovsschema $DEST/ovs/ovn/ovn-nb.ovsschema
-    cp $DEST/dragonflow/ovn-patch/ovn-nb.xml $DEST/ovs/ovn/ovn-nb.xml
 
     # TODO: Can you create package list files like you can inside devstack?
     install_package autoconf automake libtool gcc patch make
@@ -173,8 +133,8 @@ function start_ovs {
 
     EXTRA_DBS=""
     OVSDB_REMOTE="--remote=ptcp:6640:$HOST_IP"
-    if is_ovn_service_enabled ovn-northd ; then
-        EXTRA_DBS="ovnsb.db ovnnb.db"
+    if is_service_enabled ovn-northd ; then
+        EXTRA_DBS="ovnnb.db"
     fi
 
     ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
@@ -188,9 +148,7 @@ function start_ovs {
     done
     echo "done."
     ovs-vsctl --no-wait init
-    ovs-vsctl --no-wait set open_vswitch . system-type="devstack"
-    ovs-vsctl --no-wait set open_vswitch . external-ids:system-id="$OVN_UUID"
-    if is_ovn_service_enabled df-controller ; then
+    if is_service_enabled df-controller ; then
         sudo modprobe openvswitch || die $LINENO "Failed to load openvswitch module"
         # TODO This needs to be a fatal error when doing multi-node testing, but
         # breaks testing in OpenStack CI where geneve isn't available.
@@ -198,11 +156,6 @@ function start_ovs {
         sudo modprobe geneve || true
         #sudo modprobe vport_geneve || die $LINENO "Failed to load vport_geneve module"
         sudo modprobe vport_geneve || true
-
-        ovs-vsctl --no-wait set open_vswitch . external-ids:ovn-remote="$OVN_REMOTE"
-        ovs-vsctl --no-wait set open_vswitch . external-ids:ovn-bridge="br-int"
-        ovs-vsctl --no-wait set open_vswitch . external-ids:ovn-encap-type="geneve"
-        ovs-vsctl --no-wait set open_vswitch . external-ids:ovn-encap-ip="$HOST_IP"
 
         _neutron_ovs_base_setup_bridge br-int
         ovs-vsctl --no-wait set bridge br-int fail-mode=secure other-config:disable-in-band=true
@@ -213,28 +166,29 @@ function start_ovs {
     cd $_pwd
 }
 
-# start_ovn() - Start running processes, including screen
-function start_ovn {
-    echo "Starting OVN"
+# start_df() - Start running processes, including screen
+function start_df {
+    echo "Starting Dragonflow"
 
-    if is_ovn_service_enabled df-controller ; then
+    if is_service_enabled df-controller ; then
         ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
-        run_process df-controller "python $DF_LOCAL_CONTROLLER $OVN_UUID $HOST_IP $OVN_REMOTE_IP"
+        run_process df-controller "python $DF_LOCAL_CONTROLLER $HOST_IP $OVN_REMOTE_IP"
     fi
 
-    if is_ovn_service_enabled ovn-northd ; then
-        run_process ovn-northd "ovn-northd --log-file"
+    if is_service_enabled df-etcd ; then
+        run_process df-etcd "$DEST/etcd/etcd-v2.1.1-linux-amd64/etcd"
     fi
 }
 
-# stop_ovn() - Stop running processes (non-screen)
-function stop_ovn {
-    if is_ovn_service_enabled df-controller ; then
+# stop_df() - Stop running processes (non-screen)
+function stop_df {
+    if is_service_enabled df-controller ; then
         stop_process df-controller
         sudo killall ovs-vswitchd
     fi
-    if is_ovn_service_enabled ovn-northd ; then
-        stop_process ovn-northd
+
+    if is_service_enabled df-etcd ; then
+        stop_process df-etcd
     fi
     sudo killall ovsdb-server
 }
@@ -259,25 +213,23 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
             install_ovn
         fi
         echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR >> $RC_DIR/.localrc.auto
-        configure_ovn
         init_ovn
         # We have to start at install time, because Neutron's post-config
         # phase runs ovs-vsctl.
         start_ovs
         disable_libvirt_apparmor
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
-        configure_ovn_plugin
+        configure_df_plugin
 
         if is_service_enabled nova; then
             create_nova_conf_neutron
         fi
 
-        start_ovn
+        start_df
     fi
 
     if [[ "$1" == "unstack" ]]; then
-        stop_ovn
-        cleanup_ovn
+        stop_df
     fi
 fi
 
