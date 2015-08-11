@@ -54,6 +54,14 @@ from dragonflow.neutron.common import constants as ovn_const
 from dragonflow.neutron.common import utils
 
 
+df_opts = [
+    cfg.StrOpt('remote_db_ip',
+               default='127.0.0.1',
+               help=_('The remote db ip address')),
+]
+
+cfg.CONF.register_opts(df_opts, 'df')
+
 LOG = log.getLogger(__name__)
 
 
@@ -87,7 +95,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # instead of using the hybrid mode.
         self.vif_details = {portbindings.CAP_PORT_FILTER: True}
 
-        self.nb_api = etcd_nb_impl.EtcdNbApi()
+        self.nb_api = etcd_nb_impl.EtcdNbApi(db_ip=cfg.CONF.df.remote_db_ip)
         self.nb_api.initialize()
         self.global_id = 0
 

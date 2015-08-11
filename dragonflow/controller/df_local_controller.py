@@ -55,7 +55,7 @@ class DfLocalController(object):
 
     def run(self):
         #self.nb_api = ovsdb_nb_impl.OvsdbNbApi(self.remote_db_ip)
-        self.nb_api = etcd_nb_impl.EtcdNbApi()
+        self.nb_api = etcd_nb_impl.EtcdNbApi(self.remote_db_ip)
         self.nb_api.initialize()
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
         self.vswitch_api.initialize()

@@ -8,8 +8,7 @@ OVN_REPO_NAME=$(basename ${OVN_REPO} | cut -f1 -d'.')
 OVN_BRANCH=${OVN_BRANCH:-origin/master}
 
 # How to connect to ovsdb-server hosting the OVN databases.
-OVN_REMOTE_IP=${OVN_REMOTE_IP:-$HOST_IP}
-OVN_REMOTE=${OVN_REMOTE:-tcp:$OVN_REMOTE_IP:6640}
+REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
 
 
 # Entry Points
@@ -23,7 +22,7 @@ function configure_df_plugin {
         Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
-        iniset $NEUTRON_CONF ovn ovsdb_connection "$OVN_REMOTE"
+        iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins ""
     fi
@@ -58,17 +57,19 @@ function install_df {
     if is_service_enabled df-etcd ; then
        rm -rf default.etcd
        if [ ! -f "/opt/stack/etcd/etcd-v2.1.1-linux-amd64/etcd" ]; then
+           echo "Installing etcd server"
            mkdir /opt/stack/etcd
            curl -L  https://github.com/coreos/etcd/releases/download/v2.1.1/etcd-v2.1.1-linux-amd64.tar.gz -o $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz
            tar xzvf $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz -C /opt/stack/etcd
        fi
-
-       git_clone https://github.com/jplana/python-etcd.git /opt/stack/etcd/python-etcd
-       pushd "/opt/stack/etcd/python-etcd"
-       setup_package ./
-       popd
-       echo "Finished installing etcd"
     fi
+
+    echo "Installing etcd client"
+    git_clone https://github.com/jplana/python-etcd.git /opt/stack/python-etcd
+    pushd "/opt/stack/python-etcd"
+    setup_package ./
+    popd
+    echo "Finished installing etcd"
 
     echo_summary "Installing DragonFlow"
 
@@ -172,11 +173,11 @@ function start_df {
 
     if is_service_enabled df-controller ; then
         ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
-        run_process df-controller "python $DF_LOCAL_CONTROLLER $HOST_IP $OVN_REMOTE_IP"
+        run_process df-controller "python $DF_LOCAL_CONTROLLER $HOST_IP $REMOTE_DB_IP"
     fi
 
     if is_service_enabled df-etcd ; then
-        run_process df-etcd "$DEST/etcd/etcd-v2.1.1-linux-amd64/etcd"
+        run_process df-etcd "$DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001"
     fi
 }
 
