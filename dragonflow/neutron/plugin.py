@@ -49,10 +49,9 @@ from neutron.db import portbindings_db
 from neutron.db import securitygroups_db
 from neutron.i18n import _LE, _LI
 
-from networking_ovn.common import constants as ovn_const
-from networking_ovn.common import utils
-
 from dragonflow.db.drivers import etcd_nb_impl
+from dragonflow.neutron.common import constants as ovn_const
+from dragonflow.neutron.common import utils
 
 
 LOG = log.getLogger(__name__)
