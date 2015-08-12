@@ -16,6 +16,8 @@
 from neutron.plugins.ml2.drivers.openvswitch.agent.openflow.ovs_ofctl import (
     br_int)
 
+TUN_TRANSLATE_TABLE = 60
+
 
 class DFOVSAgentBridge(br_int.OVSIntegrationBridge):
     """Common code for bridges used by OVS agent"""
