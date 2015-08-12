@@ -3,4 +3,5 @@
 # process, which may cause wedges in the gate later.
 
 pbr<2.0,>=1.4
+ovs>=2.4.0.dev0
 Babel>=1.3
