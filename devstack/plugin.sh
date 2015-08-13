@@ -109,6 +109,8 @@ function install_ovn {
         cd $OVN_REPO_NAME
     fi
 
+    install_package python-openvswitch
+
     # TODO: Can you create package list files like you can inside devstack?
     install_package autoconf automake libtool gcc patch make
 
@@ -171,13 +173,13 @@ function start_ovs {
 function start_df {
     echo "Starting Dragonflow"
 
+    if is_service_enabled df-etcd ; then
+        run_process df-etcd "$DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001"
+    fi
+
     if is_service_enabled df-controller ; then
         ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
         run_process df-controller "python $DF_LOCAL_CONTROLLER $HOST_IP $REMOTE_DB_IP"
-    fi
-
-    if is_service_enabled df-etcd ; then
-        run_process df-etcd "$DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001"
     fi
 }
 

@@ -52,6 +52,7 @@ class DfLocalController(object):
         self.chassis_name = chassis_name
         self.ip = ip
         self.remote_db_ip = remote_db_ip
+        self.sync_finished = False
 
     def run(self):
         #self.nb_api = ovsdb_nb_impl.OvsdbNbApi(self.remote_db_ip)
@@ -71,13 +72,16 @@ class DfLocalController(object):
         self.l3_app = app_mgr.instantiate(L3App, None, **kwargs)
         self.l3_app.start()
         while self.l2_app.dp is None or self.l3_app.dp is None:
-            time.sleep(5)
+            time.sleep(3)
         self.db_sync_loop()
 
     def db_sync_loop(self):
         while True:
             time.sleep(3)
             self.run_db_poll()
+            if self.sync_finished and (
+                    self.nb_api.support_publish_subscribe()):
+                self.nb_api.wait_for_db_changes(self)
 
     def run_db_poll(self):
         try:
@@ -92,7 +96,11 @@ class DfLocalController(object):
             self.port_mappings()
 
             self.read_routers()
+
+            self.sync_finished = True
+
         except Exception as e:
+            self.sync_finished = False
             LOG.error(_LE("run_db_poll - suppressing exception"))
             LOG.error(e)
 
@@ -102,10 +110,10 @@ class DfLocalController(object):
         # Create tunnel port to this chassis
         self.vswitch_api.add_tunnel_port(chassis)
 
-    def chassis_deleted(self, chassis):
+    def chassis_deleted(self, chassis_id):
         tunnel_ports = self.vswitch_api.get_tunnel_ports()
         for port in tunnel_ports:
-            if port.get_chassis_id() == chassis.get_name():
+            if port.get_chassis_id() == chassis_id:
                 self.vswitch_api.delete_port(port)
                 return
 
@@ -162,10 +170,15 @@ class DfLocalController(object):
                                            lport.get_tunnel_key())
             self.db_store.delete_port(lport.get_id())
 
-    def router_updated(self, router):
-        pass
+    def router_updated(self, lrouter):
+        old_lrouter = self.db_store.get_router(lrouter.get_name())
+        if old_lrouter is None:
+            self._add_new_lrouter(lrouter)
+            return
+        self._update_router_interfaces(old_lrouter, lrouter)
+        self.db_store.update_router(lrouter.get_name(), lrouter)
 
-    def router_deleted(self, router):
+    def router_deleted(self, lrouter_id):
         pass
 
     def register_chassis(self):
@@ -218,12 +231,7 @@ class DfLocalController(object):
 
     def read_routers(self):
         for lrouter in self.nb_api.get_routers():
-            old_lrouter = self.db_store.get_router(lrouter.get_name())
-            if old_lrouter is None:
-                self._add_new_lrouter(lrouter)
-                return
-            self._update_router_interfaces(old_lrouter, lrouter)
-            self.db_store.update_router(lrouter.get_name(), lrouter)
+            self.router_updated(lrouter)
 
     def _update_router_interfaces(self, old_router, new_router):
         new_router_ports = new_router.get_ports()
@@ -240,7 +248,7 @@ class DfLocalController(object):
     def _add_new_router_port(self, router, router_port):
         router_lport = self.db_store.get_port(router_port.get_name())
         self.db_store.set_router_port_tunnel_key(router_port.get_name(),
-                                              router_lport.get_tunnel_key())
+                                                 router_lport.get_tunnel_key())
         self.l3_app.add_new_router_port(router, router_lport, router_port)
 
     def _delete_router_port(self, router_port):
