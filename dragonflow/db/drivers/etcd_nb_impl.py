@@ -28,9 +28,53 @@ class EtcdNbApi(api_nb.NbApi):
         self.client = None
         self.ip = db_ip
         self.port = db_port
+        self.current_key = 0
+        self.controller = None
 
     def initialize(self):
         self.client = etcd.Client(host=self.ip, port=self.port)
+
+    def support_watch(self):
+        return True
+
+    def watch(self, controller):
+        self.controller = controller
+        while True:
+            self._poll_for_data_changes()
+
+    # TODO(gsagie) implement this to send the updates to a controller local
+    # queue which will process these updates
+    def _poll_for_data_changes(self):
+        try:
+            entry = self.client.read('/', wait=True, recursive=True,
+                                     waitIndex=self.current_key)
+
+            self.controller.vswitch_api.sync()
+            if 'lport' in entry.key:
+                if entry.action == 'set' or entry.action == 'create':
+                    lport = EtcdLogicalPort(entry.value)
+                    self.controller.logical_port_updated(lport)
+                else: # delete
+                    lport_id = entry.key.split('/')[2]
+                    self.controller.logical_port_deleted(lport_id)
+            if 'lrouter' in entry.key:
+                if entry.action == 'set' or entry.action == 'create':
+                    lrouter = EtcdLogicalRouter(entry.value)
+                    self.controller.router_updated(lrouter)
+                else: # delete
+                    lrouter_id = entry.key.split('/')[2]
+                    self.controller.router_deleted(lrouter_id)
+            if 'chassis' in entry.key:
+                if entry.action == 'set' or entry.action == 'create':
+                    chassis = EtcdChassis(entry.value)
+                    self.controller.chassis_created(chassis)
+                else: # delete
+                    chassis_id = entry.key.split('/')[2]
+                    self.controller.chassis_deleted(chassis_id)
+
+            self.current_key = entry.modifiedIndex + 1
+        except Exception:
+            pass
 
     def sync(self):
         pass

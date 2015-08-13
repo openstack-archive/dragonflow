@@ -23,6 +23,9 @@ class NbApi(object):
     def sync(self):
         pass
 
+    def support_watch(self):
+        return False
+
     def get_chassis(self, name):
         pass
 
