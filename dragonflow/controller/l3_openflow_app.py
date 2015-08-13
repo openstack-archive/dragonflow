@@ -64,6 +64,7 @@ UINT32_MAX = 0xffffffff
 UINT64_MAX = 0xffffffffffffffff
 OFPFW_NW_PROTO = 1 << 5
 
+REG_32BIT_ON_MASK = 0x80000000
 
 HIGH_PRIORITY_FLOW = 1000
 MEDIUM_PRIORITY_FLOW = 100
@@ -942,6 +943,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                 local_switch.patch_port_num,
                 dst_seg_id=dst_seg_id,
                 cookie=cookie,
+                dst_datapath=remote_switch.datapath,
             )
 
             # Remote reverse flow install
@@ -960,6 +962,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                 remote_switch.patch_port_num,
                 dst_seg_id=src_seg_id,
                 cookie=cookie,
+                dst_datapath=local_switch.datapath,
             )
 
             self.handle_packet_out_l3(remote_switch.datapath,
@@ -980,7 +983,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                                 src_seg_id, match_src_mac, match_dst_mac,
                                 match_dst_ip, match_src_ip, src_mac,
                                 dst_mac, out_port_num, dst_seg_id=None,
-                                cookie=0):
+                                cookie=0, dst_datapath=None):
         parser = datapath.ofproto_parser
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
@@ -996,11 +999,19 @@ class L3ReactiveApp(app_manager.RyuApp):
         actions.append(parser.OFPActionDecNwTtl())
         actions.append(parser.OFPActionSetField(eth_src=src_mac))
         actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
+
+        if dst_datapath:
+            dst_ip_hex = self._get_dp_ip_as_int(dst_datapath)
+            if ryu.version_info >= (3, 24):
+                #register Action set is supported only in 3.24
+                actions.append(parser.OFPActionSetField(reg7=dst_ip_hex))
+
         if dst_seg_id:
             # The dest vm is on another compute machine so we must set the
             # segmentation Id and set metadata for the tunnel bridge to
             # for this flow
-            field = parser.OFPActionSetField(tunnel_id=dst_seg_id)
+            mask_dst_seg = int(dst_seg_id) | REG_32BIT_ON_MASK
+            field = parser.OFPActionSetField(tunnel_id=mask_dst_seg)
             actions.append(field)
             goto_inst = parser.OFPInstructionGotoTable(
                     self.TUN_TRANSLATE_TABLE)
@@ -1388,7 +1399,7 @@ class L3ReactiveApp(app_manager.RyuApp):
                         datapath,
                         self.TUN_TRANSLATE_TABLE,
                         port.port_no,
-                        HIGH_PRIORITY_FLOW)
+                        LOW_PRIORITY_FLOW)
         LOG.debug('OFPPortDescStatsReply received: %s', ports)
         switch.local_ports = ports
         #TODO(gampel) Install flows only for tenants with VMs running on
@@ -1497,6 +1508,13 @@ class L3ReactiveApp(app_manager.RyuApp):
 
     def check_direct_routing(self, tenant, from_subnet_id, to_subnet_id):
         return
+
+    def _get_dp_ip_as_int(self, datapath):
+        try:
+            return int(netaddr.IPAddress(datapath.address[0], version=4))
+        except Exception:
+            LOG.warn(_LW("Invalid remote IP: %s"), datapath.address)
+            return
 
     def _get_match_vrouter_arp_responder(self, datapath, segmentation_id,
                                          interface_ip):
@@ -1780,10 +1798,9 @@ class L3ReactiveApp(app_manager.RyuApp):
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
         actions = [parser.NXActionRegMove(src_field='tunnel_id',
-                                          dst_field='pkt_mark',
-                                          n_bits=32),
+                                        dst_field='pkt_mark',
+                                        n_bits=32),
                    parser.OFPActionOutput(port=port)]
-
         instructions = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         self.mod_flow(
