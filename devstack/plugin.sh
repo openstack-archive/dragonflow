@@ -71,6 +71,14 @@ function install_df {
     popd
     echo "Finished installing etcd"
 
+    echo_summary "Installing ramcloud"
+    if is_service_enabled df-rcdb ; then
+       echo_summary  "Ramclou enabeld, cloning binaries"
+       git_clone https://github.com/dsivov/RamCloudBin.git $RAMCLOUD
+       echo export LD_LIBRARY_PATH="$RAMCLOUD_LIB":"$LD_LIBRARY_PATH" | tee -a $HOME/.bashrc
+    fi
+
+
     echo_summary "Installing DragonFlow"
 
     git_clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
@@ -179,6 +187,11 @@ function start_df {
     if is_service_enabled df-etcd ; then
         run_process df-etcd "$DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001"
     fi
+
+    if is_service_enabled df-rcdb ; then
+        run_process df-rccrdt "$RAMCLOUD_BIN/coordinator"
+        run_process df-rcmtr "$RAMCLOUD_BIN/server"
+    fi
 }
 
 # stop_df() - Stop running processes (non-screen)
@@ -190,6 +203,10 @@ function stop_df {
 
     if is_service_enabled df-etcd ; then
         stop_process df-etcd
+    fi
+    if is_service_enabled df-rcdb ; then
+        stop_process df-rccrdt
+        stop_process df-rcmtr
     fi
     sudo killall ovsdb-server
 }
