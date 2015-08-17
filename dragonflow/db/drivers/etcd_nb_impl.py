@@ -57,21 +57,21 @@ class EtcdNbApi(api_nb.NbApi):
             if entry.action == 'set' or entry.action == 'create':
                 lport = EtcdLogicalPort(entry.value)
                 self.controller.logical_port_updated(lport)
-            else: # delete
+            else:
                 lport_id = entry.key.split('/')[2]
                 self.controller.logical_port_deleted(lport_id)
         if 'lrouter' in entry.key:
             if entry.action == 'set' or entry.action == 'create':
                 lrouter = EtcdLogicalRouter(entry.value)
                 self.controller.router_updated(lrouter)
-            else: # delete
+            else:
                 lrouter_id = entry.key.split('/')[2]
                 self.controller.router_deleted(lrouter_id)
         if 'chassis' in entry.key:
             if entry.action == 'set' or entry.action == 'create':
                 chassis = EtcdChassis(entry.value)
                 self.controller.chassis_created(chassis)
-            else: # delete
+            else:
                 chassis_id = entry.key.split('/')[2]
                 self.controller.chassis_deleted(chassis_id)
 
