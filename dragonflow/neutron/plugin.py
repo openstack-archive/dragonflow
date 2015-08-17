@@ -26,7 +26,7 @@ from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import dhcp_rpc
 from neutron.api.rpc.handlers import l3_rpc
 from neutron.api.rpc.handlers import metadata_rpc
-from neutron.api.v2 import attributes
+from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as n_exc
 from neutron.extensions import extra_dhcp_opt as edo_ext
 from neutron.extensions import portbindings
@@ -192,8 +192,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
     def update_port(self, context, id, port):
-        self._validate_binding_profile(context, port)
         with context.session.begin(subtransactions=True):
+            parent_name, tag = self._get_data_from_binding_profile(
+                context, port['port'])
             original_port = self._get_port(context, id)
             updated_port = super(DFPlugin, self).update_port(context, id,
                                                              port)
@@ -206,7 +207,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         external_ids = {
             ovn_const.OVN_PORT_NAME_EXT_ID_KEY: updated_port['name']}
-        parent_name, tag = self._get_data_from_binding_profile(updated_port)
         allowed_macs = self._get_allowed_mac_addresses_from_port(
             updated_port)
 
@@ -223,15 +223,17 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  chassis=chassis)
         return updated_port
 
-    def _validate_binding_profile(self, context, port):
-        if ovn_const.OVN_PORT_BINDING_PROFILE not in port:
-            return
+    def get_data_from_binding_profile(self, context, port):
+        if (ovn_const.OVN_PORT_BINDING_PROFILE not in port or
+                not attr.is_attr_set(
+                    port[ovn_const.OVN_PORT_BINDING_PROFILE])):
+            return None, None
         parent_name = (
             port[ovn_const.OVN_PORT_BINDING_PROFILE].get('parent_name'))
         tag = port[ovn_const.OVN_PORT_BINDING_PROFILE].get('tag')
         if not any((parent_name, tag)):
             # An empty profile is fine.
-            return
+            return None, None
         if not all((parent_name, tag)):
             # If one is set, they both must be set.
             msg = _('Invalid binding:profile. parent_name and tag are '
@@ -241,7 +243,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             msg = _('Invalid binding:profile. parent_name "%s" must be '
                     'a string.') % parent_name
             raise n_exc.InvalidInput(error_message=msg)
-        if not isinstance(tag, int) or tag < 0 or tag > 4095:
+        try:
+            tag = int(tag)
+            if tag < 0 or tag > 4095:
+                raise ValueError
+        except ValueError:
             # The tag range is defined by ovn-nb.ovsschema.
             # https://github.com/openvswitch/ovs/blob/ovn/ovn/ovn-nb.ovsschema
             msg = _('Invalid binding:profile. tag "%s" must be '
@@ -251,16 +257,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # parent_name.  Just let it raise the right exception if there is a
         # problem.
         self.get_port(context, parent_name)
-
-    def _get_data_from_binding_profile(self, port):
-        parent_name = None
-        tag = None
-        if ovn_const.OVN_PORT_BINDING_PROFILE in port:
-            # If binding:profile exists, we know the contents are valid as they
-            # were validated in create_port_precommit().
-            parent_name = (
-                port[ovn_const.OVN_PORT_BINDING_PROFILE].get('parent_name'))
-            tag = port[ovn_const.OVN_PORT_BINDING_PROFILE].get('tag')
         return parent_name, tag
 
     def _get_allowed_mac_addresses_from_port(self, port):
@@ -275,7 +271,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                retry_on_deadlock=True)
     def create_port(self, context, port):
         with context.session.begin(subtransactions=True):
-            self._validate_binding_profile(context, port)
+            parent_name, tag = self._get_data_from_binding_profile(
+                context, port['port'])
             dhcp_opts = port['port'].get(edo_ext.EXTRADHCPOPTS, [])
             db_port = super(DFPlugin, self).create_port(context, port)
             sgids = self._get_security_groups_on_port(context, port)
@@ -286,16 +283,20 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                                          db_port)
 
             db_port[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
+            if (ovn_const.OVN_PORT_BINDING_PROFILE in port['port'] and
+                    attr.is_attr_set(
+                        port['port'][ovn_const.OVN_PORT_BINDING_PROFILE])):
+                db_port[ovn_const.OVN_PORT_BINDING_PROFILE] = (
+                    port['port'][ovn_const.OVN_PORT_BINDING_PROFILE])
             self._process_port_create_extra_dhcp_opts(context, db_port,
                                                       dhcp_opts)
-        return self.create_port_in_nb_api(db_port)
+        return self.create_port_in_nb_api(db_port, parent_name, tag)
 
-    def create_port_in_nb_api(self, port):
+    def create_port_in_nb_api(self, port, parent_name, tag):
         # The port name *must* be port['id'].  It must match the iface-id set
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
         external_ids = {ovn_const.OVN_PORT_NAME_EXT_ID_KEY: port['name']}
-        parent_name, tag = self._get_data_from_binding_profile(port)
         allowed_macs = self._get_allowed_mac_addresses_from_port(port)
         ips = []
         if 'fixed_ips' in port:
@@ -363,7 +364,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             port = {'port': {'network_id': subnet['network_id'], 'name': '',
                              'admin_state_up': True, 'device_id': '',
                              'device_owner': l3_db.DEVICE_OWNER_ROUTER_INTF,
-                             'mac_address': attributes.ATTR_NOT_SPECIFIED,
+                             'mac_address': attr.ATTR_NOT_SPECIFIED,
                              'fixed_ips': [{'subnet_id': subnet['id'],
                                             'ip_address':
                                                 subnet['gateway_ip']}]}}
