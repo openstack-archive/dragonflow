@@ -49,8 +49,7 @@ class EtcdNbApi(api_nb.NbApi):
     # queue which will process these updates
     def _poll_for_data_changes(self):
         entry = self.client.read('/', wait=True, recursive=True,
-                                 waitIndex=self.current_key,
-                                 timeout=10)
+                                 waitIndex=self.current_key)
 
         self.controller.vswitch_api.sync()
         if 'lport' in entry.key:

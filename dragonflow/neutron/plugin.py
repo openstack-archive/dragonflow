@@ -223,7 +223,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  chassis=chassis)
         return updated_port
 
-    def get_data_from_binding_profile(self, context, port):
+    def _get_data_from_binding_profile(self, context, port):
         if (ovn_const.OVN_PORT_BINDING_PROFILE not in port or
                 not attr.is_attr_set(
                     port[ovn_const.OVN_PORT_BINDING_PROFILE])):

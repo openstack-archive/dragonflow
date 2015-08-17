@@ -140,6 +140,10 @@ function start_ovs {
         EXTRA_DBS="ovnnb.db"
     fi
 
+    if is_service_enabled df-etcd ; then
+        $DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001 &
+    fi
+
     ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
                  --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
                  --pidfile --detach -vconsole:off --log-file $OVSDB_REMOTE \
@@ -173,10 +177,6 @@ function start_ovs {
 function start_df {
     echo "Starting Dragonflow"
 
-    if is_service_enabled df-etcd ; then
-        run_process df-etcd "$DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001"
-    fi
-
     if is_service_enabled df-controller ; then
         ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
         run_process df-controller "python $DF_LOCAL_CONTROLLER $HOST_IP $REMOTE_DB_IP"
@@ -191,8 +191,9 @@ function stop_df {
     fi
 
     if is_service_enabled df-etcd ; then
-        stop_process df-etcd
+        sudo killall etcd
     fi
+
     sudo killall ovsdb-server
 }
 
