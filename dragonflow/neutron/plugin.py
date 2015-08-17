@@ -171,6 +171,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         with context.session.begin():
             super(DFPlugin, self).delete_network(context,
                                                  network_id)
+        # TODO(gsagie) this patch is used to remove DHCP port
+        # remove when we implement distributed DHCP service and dont use
+        # q-dhcp
+        for port in self.nb_api.get_all_logical_ports():
+            if port.get_network_id() == utils.ovn_name(network_id):
+                self.nb_api.delete_lport(port.get_id())
         self.nb_api.delete_lswitch(utils.ovn_name(network_id))
 
     def _set_network_name(self, network_id, name):
