@@ -97,7 +97,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         self.nb_api = etcd_nb_impl.EtcdNbApi(db_ip=cfg.CONF.df.remote_db_ip)
         self.nb_api.initialize()
-        self.global_id = 0
+        self.global_id = self._find_current_global_id()
 
         self.base_binding_dict = {
             portbindings.VIF_TYPE: portbindings.VIF_TYPE_OVS,
@@ -107,6 +107,16 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 'security-group' in self.supported_extension_aliases}}
 
         self._setup_rpc()
+
+    def _find_current_global_id(self):
+        # TODO(gsagie) This method finds the biggest allocated id in the DB
+        # and continue to allocate starting from it, we still need to handle
+        # the case of wrap up in the id's
+        max_id = 0
+        for port in self.nb_api.get_all_logical_ports():
+            if port.get_tunnel_key() > max_id:
+                max_id = port.get_tunnel_key()
+        return max_id
 
     def _setup_rpc(self):
         self.conn = n_rpc.create_connection(new=True)
