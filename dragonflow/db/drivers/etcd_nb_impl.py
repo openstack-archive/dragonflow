@@ -23,16 +23,14 @@ from dragonflow.db import api_nb
 
 class EtcdNbApi(api_nb.NbApi):
 
-    def __init__(self, db_ip='127.0.0.1', db_port=4001):
+    def __init__(self):
         super(EtcdNbApi, self).__init__()
         self.client = None
-        self.ip = db_ip
-        self.port = db_port
         self.current_key = 0
         self.controller = None
 
-    def initialize(self):
-        self.client = etcd.Client(host=self.ip, port=self.port)
+    def initialize(self, db_ip='127.0.0.1', db_port=4001):
+        self.client = etcd.Client(host=db_ip, port=db_port)
 
     def support_publish_subscribe(self):
         return True
