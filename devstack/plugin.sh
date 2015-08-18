@@ -7,9 +7,14 @@ OVN_REPO_NAME=$(basename ${OVN_REPO} | cut -f1 -d'.')
 # The branch to use from $OVN_REPO
 OVN_BRANCH=${OVN_BRANCH:-origin/master}
 
+DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_nb_impl.EtcdNbApi"
+DEFAULT_TUNNEL_TYPE="geneve"
+
 # How to connect to ovsdb-server hosting the OVN databases.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
-
+REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
+NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
+TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 
 # Entry Points
 # ------------
@@ -23,8 +28,23 @@ function configure_df_plugin {
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
         iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
+        iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
+        iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
+        iniset $NEUTRON_CONF df local_ip "$HOST_IP"
+        iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins ""
+    fi
+
+    if ! is_service_enabled q-svc; then
+        _create_neutron_conf_dir
+        NEUTRON_CONF=/etc/neutron/neutron.conf
+        cp $NEUTRON_DIR/etc/neutron.conf $NEUTRON_CONF
+        iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
+        iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
+        iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
+        iniset $NEUTRON_CONF df local_ip "$HOST_IP"
+        iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
     fi
 }
 
@@ -55,7 +75,7 @@ function init_ovn {
 function install_df {
     echo_summary "Installing etcd"
     if is_service_enabled df-etcd ; then
-       rm -rf default.etcd
+       rm -rf $DEST/data/ovs/default.etcd
        if [ ! -f "/opt/stack/etcd/etcd-v2.1.1-linux-amd64/etcd" ]; then
            echo "Installing etcd server"
            mkdir /opt/stack/etcd
@@ -179,7 +199,7 @@ function start_df {
 
     if is_service_enabled df-controller ; then
         ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
-        run_process df-controller "python $DF_LOCAL_CONTROLLER $HOST_IP $REMOTE_DB_IP"
+        run_process df-controller "python $DF_LOCAL_CONTROLLER --config-file $NEUTRON_CONF"
     fi
 }
 

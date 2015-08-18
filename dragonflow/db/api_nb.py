@@ -17,7 +17,7 @@
 
 class NbApi(object):
 
-    def initialize(self):
+    def initialize(self, db_ip, db_port):
         pass
 
     def sync(self):
