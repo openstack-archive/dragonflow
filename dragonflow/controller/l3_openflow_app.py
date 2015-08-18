@@ -1066,12 +1066,14 @@ class L3ReactiveApp(app_manager.RyuApp):
             inst=inst,
             table_id=table,
             priority=priority,
-            match=match)
+            match=match,
+            flags=ofproto.OFPFF_SEND_FLOW_REM)
 
     def add_flow_metadata_by_port_num(self, datapath, table, priority,
                                       in_port, metadata,
                                       metadata_mask, goto_table):
         parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
         match = parser.OFPMatch()
         match.set_in_port(in_port)
         goto_inst = parser.OFPInstructionGotoTable(goto_table)
@@ -1083,7 +1085,8 @@ class L3ReactiveApp(app_manager.RyuApp):
             inst=inst,
             table_id=table,
             priority=priority,
-            match=match)
+            match=match,
+            flags=ofproto.OFPFF_SEND_FLOW_REM)
 
     def add_flow_normal(self, datapath, table, priority, match=None):
         parser = datapath.ofproto_parser
@@ -1321,6 +1324,16 @@ class L3ReactiveApp(app_manager.RyuApp):
         # until the bootstrap is done
         self.add_flow_normal(datapath, self.BASE_TABLE, 0)
         self.send_port_desc_stats_request(datapath)
+
+    @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
+    def flow_removed_handler(self, ev):
+        msg = ev.msg
+        datapath = msg.datapath
+        ofp = datapath.ofproto
+
+        if msg.reason == ofp.OFPRR_DELETE:
+            if msg.table_id == 0:
+                self.send_port_desc_stats_request(datapath)
 
     def send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
