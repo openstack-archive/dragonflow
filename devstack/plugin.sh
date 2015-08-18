@@ -22,7 +22,9 @@ if is_service_enabled df-etcd ; then
    source $DEST/dragonflow/devstack/etcd_driver
    NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_nb_impl.EtcdNbApi"
 fi
-
+if is_service_enabled df-ramcloud ; then
+   source $DEST/dragonflow/devstack/ramcloud_driver
+fi
 
 # Entry Points
 # ------------
