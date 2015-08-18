@@ -62,7 +62,7 @@ UINT32_MAX = 0xffffffff
 UINT64_MAX = 0xffffffffffffffff
 OFPFW_NW_PROTO = 1 << 5
 
-REG_32BIT_ON = 0x80000000
+REG_32BIT_ON_MASK = 0x80000000
 
 HIGH_PRIORITY_FLOW = 1000
 MEDIUM_PRIORITY_FLOW = 100
@@ -1007,7 +1007,7 @@ class L3ReactiveApp(DFlowApp):
             # The dest vm is on another compute machine so we must set the
             # segmentation Id and set metadata for the tunnel bridge to
             # for this flow
-            mask_dst_seg = int(dst_seg_id) | REG_32BIT_ON
+            mask_dst_seg = int(dst_seg_id) | REG_32BIT_ON_MASK
             field = parser.OFPActionSetField(pkt_mark=mask_dst_seg)
             actions.append(field)
             goto_inst = parser.OFPInstructionGotoTable(
