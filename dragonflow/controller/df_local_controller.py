@@ -18,30 +18,35 @@ import sys
 import time
 
 import eventlet
+
+from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import importutils
 
 from neutron.agent.common import config
+from neutron.common import config as common_config
 from neutron.i18n import _LE
 
 from ryu.base.app_manager import AppManager
 from ryu.controller.ofp_handler import OFPHandler
 
+from dragonflow.common import common_params
 from dragonflow.controller.l2_app import L2App
 from dragonflow.controller.l3_app import L3App
 from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_vswitch_impl
-
-from dragonflow.db.drivers import etcd_nb_impl
 
 config.setup_logging()
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
 
 eventlet.monkey_patch()
 
+cfg.CONF.register_opts(common_params.df_opts, 'df')
+
 
 class DfLocalController(object):
 
-    def __init__(self, chassis_name, ip, remote_db_ip):
+    def __init__(self, chassis_name):
         self.l3_app = None
         self.l2_app = None
         self.open_flow_app = None
@@ -50,14 +55,15 @@ class DfLocalController(object):
         self.nb_api = None
         self.vswitch_api = None
         self.chassis_name = chassis_name
-        self.ip = ip
-        self.remote_db_ip = remote_db_ip
+        self.ip = cfg.CONF.df.local_ip
+        self.tunnel_type = cfg.CONF.df.tunnel_type
         self.sync_finished = False
 
     def run(self):
-        #self.nb_api = ovsdb_nb_impl.OvsdbNbApi(self.remote_db_ip)
-        self.nb_api = etcd_nb_impl.EtcdNbApi(self.remote_db_ip)
-        self.nb_api.initialize()
+        nb_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        self.nb_api = nb_class()
+        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
+                               db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
         self.vswitch_api.initialize()
 
@@ -188,7 +194,7 @@ class DfLocalController(object):
         if chassis is None:
             self.nb_api.add_chassis(self.chassis_name,
                                     self.ip,
-                                    'geneve')
+                                    self.tunnel_type)
 
     def create_tunnels(self):
         tunnel_ports = {}
@@ -271,9 +277,8 @@ class DfLocalController(object):
 # <local ip address> <southbound_db_ip_address>
 def main():
     chassis_name = socket.gethostname()
-    ip = sys.argv[1]  # local ip '10.100.100.4'
-    remote_db_ip = sys.argv[2]  # remote SB DB IP '10.100.100.4'
-    controller = DfLocalController(chassis_name, ip, remote_db_ip)
+    common_config.init(sys.argv[1:])
+    controller = DfLocalController(chassis_name)
     controller.run()
 
 if __name__ == "__main__":

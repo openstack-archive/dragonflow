@@ -47,22 +47,15 @@ from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
 from neutron.db import portbindings_db
 from neutron.db import securitygroups_db
-from neutron.i18n import _LE, _LI
+from neutron.i18n import _, _LE, _LI
 
-from dragonflow.db.drivers import etcd_nb_impl
+from dragonflow.common import common_params
 from dragonflow.neutron.common import constants as ovn_const
 from dragonflow.neutron.common import utils
 
-
-df_opts = [
-    cfg.StrOpt('remote_db_ip',
-               default='127.0.0.1',
-               help=_('The remote db ip address')),
-]
-
-cfg.CONF.register_opts(df_opts, 'df')
-
 LOG = log.getLogger(__name__)
+
+cfg.CONF.register_opts(common_params.df_opts, 'df')
 
 
 class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
@@ -95,8 +88,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # instead of using the hybrid mode.
         self.vif_details = {portbindings.CAP_PORT_FILTER: True}
 
-        self.nb_api = etcd_nb_impl.EtcdNbApi(db_ip=cfg.CONF.df.remote_db_ip)
-        self.nb_api.initialize()
+        nb_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        self.nb_api = nb_class()
+        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
+                               db_port=cfg.CONF.df.remote_db_port)
         self.global_id = self._find_current_global_id()
 
         self.base_binding_dict = {
@@ -113,9 +108,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # and continue to allocate starting from it, we still need to handle
         # the case of wrap up in the id's
         max_id = 0
-        for port in self.nb_api.get_all_logical_ports():
-            if port.get_tunnel_key() > max_id:
-                max_id = port.get_tunnel_key()
+        try:
+            for port in self.nb_api.get_all_logical_ports():
+                if port.get_tunnel_key() > max_id:
+                    max_id = port.get_tunnel_key()
+        except Exception:
+            pass
         return max_id
 
     def _setup_rpc(self):
