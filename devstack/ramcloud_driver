@@ -1,0 +1,55 @@
+#!/bin/bash
+#
+#
+# ``plugin.sh`` calls the following methods in the sourced driver:
+#
+# - nb_db_driver_install_server
+# - nb_db_driver_install_client
+# - nb_db_driver_start_server
+# - nb_db_driver_stop_server
+# - nb_db_driver_clean
+
+RAMCLOUD=$DEST/ramcloud
+RAMCLOUD_LIB=$RAMCLOUD/lib
+RAMCLOUD_BIN=$RAMCLOUD/bin
+RAMCLOUD_MASTER_IP=${RAMCLOUD_MASTER_IP:-'127.0.0.1'}
+RAMCLOUD_COORDINATOR_IP=${RAMCLOUD_COORDINATOR_IP:-'127.0.0.1'}
+RAMCLOUD_MASTER_PORT=${RAMCLOUD_MASTER_PORT:-'21221'}
+RAMCLOUD_COORDINATOR_PORT=${RAMCLOUD_COORDINATOR_PORT:-'21222'}
+RAMCLUD_TRANSPORT=${RAMCLUD_TRANSPORT:-'fast+udp'}
+
+export PYTHONPATH=$PYTHONPATH:$RAMCLOUD/devstack/dragonflow/dragonflow/db/drivers
+NB_DRIVER_CLASS="ramcloud_nb_impl.RamcloudNbApi"
+
+function nb_db_driver_install_server {
+    echo "Installing RAMCloud server"
+    git_clone https://github.com/dsivov/RamCloudBin.git $RAMCLOUD
+    echo export LD_LIBRARY_PATH="$RAMCLOUD_LIB":"$LD_LIBRARY_PATH" | tee -a $HOME/.bashrc
+}
+
+function nb_db_driver_install_client {
+    echo "Installing RAMCloud client"
+    git_clone https://github.com/dsivov/RamCloudBin.git $RAMCLOUD
+}
+
+function nb_db_driver_start_server {
+    if is_service_enabled df-rccoordinator ; then
+        $RAMCLOUD_BIN/coordinator -C ${RAMCLUD_TRANSPORT}:host=${RAMCLOUD_COORDINATOR_IP},port=${RAMCLOUD_COORDINATOR_PORT}
+    fi
+
+    if is_service_enabled df-rcmaster ; then
+        $RAMCLOUD_BIN/server ${RAMCLUD_TRANSPORT}:host=${RAMCLOUD_MASTER_IP},port=${RAMCLOUD_MASTER_PORT} -C ${RAMCLUD_TRANSPORT}:host=${RAMCLOUD_COORDINATOR_IP},port=${RAMCLOUD_COORDINATOR_PORT}
+    fi
+
+    # Creates the tables in the DB
+    sudo python $RAMCLOUD/devstack/dragonflow/dragonflow/db/drivers/table_setup.py -i $RAMCLOUD_MASTER_IP -p $RAMCLOUD_MASTER_PORT
+}
+
+function nb_db_driver_stop_server {
+    if is_service_enabled df-rccoordinator ; then
+        sudo killall coordinator
+    fi
+     if is_service_enabled df-rcmaster ; then
+        sudo killall server
+    fi
+}
