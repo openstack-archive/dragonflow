@@ -232,8 +232,8 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
                         priority=100,
                         dl_vlan=lvid,
                         pkt_mark="0x80000000/0x80000000",
-                        actions="strip_vlan,move:NXM_NX_PKT_MARK[0..24]"
-                                "->NXM_NX_TUN_ID[0..24],"
+                        actions="strip_vlan,move:NXM_NX_PKT_MARK[0..30]"
+                                "->NXM_NX_TUN_ID[0..30],"
                                 "output:%s" %
                                 (ofport))
         if ofport > 0:
@@ -242,8 +242,8 @@ class L2OVSControllerAgent(ona.OVSNeutronAgent):
             if self.enable_l3_controller:
                 if ofports:
                     br.add_flow(table=constants.FLOOD_TO_TUN,
-                                actions="move:NXM_NX_PKT_MARK[0..24]"
-                                        "->NXM_NX_TUN_ID[0..24],"
+                                actions="move:NXM_NX_PKT_MARK[0..30]"
+                                        "->NXM_NX_TUN_ID[0..30],"
                                         "output:%s" %
                                         (ofports))
         return ofport
