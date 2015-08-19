@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+#
+# ``plugin.sh`` calls the following methods in the sourced driver:
+#
+# - nb_db_driver_install_server
+# - nb_db_driver_install_client
+# - nb_db_driver_start_server
+# - nb_db_driver_stop_server
+# - nb_db_driver_clean
+
+function nb_db_driver_install_server {
+    echo "Installing etcd"
+    rm -rf $DEST/data/ovs/default.etcd
+    if [ ! -f "/opt/stack/etcd/etcd-v2.1.1-linux-amd64/etcd" ]; then
+       echo "Installing etcd server"
+       mkdir /opt/stack/etcd
+       curl -L  https://github.com/coreos/etcd/releases/download/v2.1.1/etcd-v2.1.1-linux-amd64.tar.gz -o $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz
+       tar xzvf $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz -C /opt/stack/etcd
+    fi
+
+}
+
+function nb_db_driver_install_client {
+    echo "Installing etcd client"
+    git_clone https://github.com/jplana/python-etcd.git /opt/stack/python-etcd
+    pushd "/opt/stack/python-etcd"
+    setup_package ./
+    popd
+    echo "Finished installing etcd"
+}
+
+function nb_db_driver_start_server {
+    if is_service_enabled df-etcd ; then
+        $DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001 &
+    fi
+}
+
+function nb_db_driver_stop_server {
+    if is_service_enabled df-etcd ; then
+        sudo killall etcd
+    fi
+}

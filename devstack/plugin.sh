@@ -16,6 +16,14 @@ REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
 NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 
+# Pluggable DB drivers
+#----------------------
+if is_service_enabled df-etcd ; then
+   source $DEST/dragonflow/devstack/etcd_driver
+   NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_nb_impl.EtcdNbApi"
+fi
+
+
 # Entry Points
 # ------------
 
@@ -73,26 +81,12 @@ function init_ovn {
 }
 
 function install_df {
-    echo_summary "Installing etcd"
-    if is_service_enabled df-etcd ; then
-       rm -rf $DEST/data/ovs/default.etcd
-       if [ ! -f "/opt/stack/etcd/etcd-v2.1.1-linux-amd64/etcd" ]; then
-           echo "Installing etcd server"
-           mkdir /opt/stack/etcd
-           curl -L  https://github.com/coreos/etcd/releases/download/v2.1.1/etcd-v2.1.1-linux-amd64.tar.gz -o $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz
-           tar xzvf $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz -C /opt/stack/etcd
-       fi
-    fi
 
-    echo "Installing etcd client"
-    git_clone https://github.com/jplana/python-etcd.git /opt/stack/python-etcd
-    pushd "/opt/stack/python-etcd"
-    setup_package ./
-    popd
-    echo "Finished installing etcd"
+    nb_db_driver_install_server
+
+    nb_db_driver_install_client
 
     echo_summary "Installing DragonFlow"
-
     git_clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
 
     echo "Cloning and installing Ryu"
@@ -160,9 +154,7 @@ function start_ovs {
         EXTRA_DBS="ovnnb.db"
     fi
 
-    if is_service_enabled df-etcd ; then
-        $DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001 &
-    fi
+    nb_db_driver_start_server
 
     ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
                  --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
@@ -210,9 +202,7 @@ function stop_df {
         sudo killall ovs-vswitchd
     fi
 
-    if is_service_enabled df-etcd ; then
-        sudo killall etcd
-    fi
+    nb_db_driver_stop_server
 
     sudo killall ovsdb-server
 }
