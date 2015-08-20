@@ -208,6 +208,9 @@ class EtcdChassis(api_nb.Chassis):
     def get_encap_type(self):
         return self.values[2]
 
+    def __str__(self):
+        return self.values.__str__()
+
 
 class EtcdLogicalPort(api_nb.LogicalPort):
 
@@ -239,6 +242,9 @@ class EtcdLogicalPort(api_nb.LogicalPort):
     def get_external_value(self, key):
         return self.external_dict.get(key)
 
+    def __str__(self):
+        return self.lport.__str__() + self.external_dict.__str__()
+
 
 class EtcdLogicalRouter(api_nb.LogicalRouter):
 
@@ -253,6 +259,9 @@ class EtcdLogicalRouter(api_nb.LogicalRouter):
         for port in self.lrouter.get('ports'):
             res.append(EtcdLogicalRouterPort(port))
         return res
+
+    def __str__(self):
+        return self.lrouter.__str__()
 
 
 class EtcdLogicalRouterPort(api_nb.LogicalRouterPort):
@@ -281,3 +290,6 @@ class EtcdLogicalRouterPort(api_nb.LogicalRouterPort):
 
     def get_network(self):
         return self.router_port['network']
+
+    def __str__(self):
+        return self.router_port.__str__()

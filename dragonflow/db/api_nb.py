@@ -86,6 +86,9 @@ class Chassis(object):
     def get_encap_type(self):
         pass
 
+    def __str__(self):
+        return self.get_name()
+
 
 class LogicalPort(object):
 
@@ -113,6 +116,9 @@ class LogicalPort(object):
     def get_external_value(self, key):
         pass
 
+    def __str__(self):
+        return self.get_id()
+
 
 class LogicalRouter(object):
 
@@ -121,6 +127,9 @@ class LogicalRouter(object):
 
     def get_ports(self):
         pass
+
+    def __str__(self):
+        return self.get_name()
 
 
 class LogicalRouterPort(object):
@@ -148,3 +157,6 @@ class LogicalRouterPort(object):
 
     def __eq__(self, other):
         return self.get_name() == other.get_name()
+
+    def __str__(self):
+        return self.get_name()
