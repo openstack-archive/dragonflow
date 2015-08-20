@@ -25,7 +25,7 @@ from oslo_utils import importutils
 
 from neutron.agent.common import config
 from neutron.common import config as common_config
-from neutron.i18n import _LE
+from neutron.i18n import _LE, _LI
 
 from ryu.base.app_manager import AppManager
 from ryu.controller.ofp_handler import OFPHandler
@@ -104,6 +104,7 @@ class DfLocalController(object):
             self.read_routers()
 
             self.sync_finished = True
+            LOG.info(_LI("DB configuration sync finished"))
 
         except Exception as e:
             self.sync_finished = False
@@ -114,9 +115,12 @@ class DfLocalController(object):
         # Check if tunnel already exists to this chassis
 
         # Create tunnel port to this chassis
+        LOG.info(_LI("Adding tunnel to remote chassis"))
+        LOG.info(chassis.__str__())
         self.vswitch_api.add_tunnel_port(chassis)
 
     def chassis_deleted(self, chassis_id):
+        LOG.info(_LI("Deleting tunnel to remote chassis %s") % chassis_id)
         tunnel_ports = self.vswitch_api.get_tunnel_ports()
         for port in tunnel_ports:
             if port.get_chassis_id() == chassis_id:
@@ -137,6 +141,8 @@ class DfLocalController(object):
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
                 lport.set_external_value('is_local', True)
+                LOG.info(_LI("Adding new local Logical Port"))
+                LOG.info(lport.__str__())
                 self.l2_app.add_local_port(lport.get_id(),
                                            lport.get_mac(),
                                            network,
@@ -148,6 +154,8 @@ class DfLocalController(object):
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
                 lport.set_external_value('is_local', False)
+                LOG.info(_LI("Adding new remote Logical Port"))
+                LOG.info(lport.__str__())
                 self.l2_app.add_remote_port(lport.get_id(),
                                             lport.get_mac(),
                                             network,
@@ -160,6 +168,8 @@ class DfLocalController(object):
         if lport is None:
             return
         if lport.get_external_value('is_local'):
+            LOG.info(_LI("Removing local Logical Port"))
+            LOG.info(lport.__str__())
             self.l2_app.remove_local_port(lport.get_id(),
                                           lport.get_mac(),
                                           lport.get_external_value(
@@ -169,6 +179,8 @@ class DfLocalController(object):
                                           lport.get_tunnel_key())
             self.db_store.delete_port(lport.get_id())
         else:
+            LOG.info(_LI("Removing remote Logical Port"))
+            LOG.info(lport.__str__())
             self.l2_app.remove_remote_port(lport.get_id(),
                                            lport.get_mac(),
                                            lport.get_external_value(
@@ -177,6 +189,8 @@ class DfLocalController(object):
             self.db_store.delete_port(lport.get_id())
 
     def router_updated(self, lrouter):
+        LOG.info(_LI("Logical Router updated"))
+        LOG.info(lrouter.__str__())
         old_lrouter = self.db_store.get_router(lrouter.get_name())
         if old_lrouter is None:
             self._add_new_lrouter(lrouter)
@@ -252,12 +266,16 @@ class DfLocalController(object):
             self._delete_router_port(old_port)
 
     def _add_new_router_port(self, router, router_port):
+        LOG.info(_LI("Adding new logical router interface"))
+        LOG.info(router_port.__str__())
         router_lport = self.db_store.get_port(router_port.get_name())
         self.db_store.set_router_port_tunnel_key(router_port.get_name(),
                                                  router_lport.get_tunnel_key())
         self.l3_app.add_new_router_port(router, router_lport, router_port)
 
     def _delete_router_port(self, router_port):
+        LOG.info(_LI("Removing logical router interface"))
+        LOG.info(router_port.__str__())
         local_network_id = self.db_store.get_network_id(
             router_port.get_network_id())
         tunnel_key = self.db_store.get_router_port_tunnel_key(
