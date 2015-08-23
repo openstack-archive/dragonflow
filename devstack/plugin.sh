@@ -9,12 +9,14 @@ OVN_BRANCH=${OVN_BRANCH:-origin/master}
 
 DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_nb_impl.EtcdNbApi"
 DEFAULT_TUNNEL_TYPE="geneve"
+DEFAULT_APPS_LIST="l2_app.L2App,l3_app.L3App"
 
 # How to connect to ovsdb-server hosting the OVN databases.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
 REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
 NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
+DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
 
 # Pluggable DB drivers
 #----------------------
@@ -42,6 +44,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
+        iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins ""
     fi
@@ -55,6 +58,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
+        iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
     fi
 }
 

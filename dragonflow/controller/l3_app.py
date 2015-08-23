@@ -57,6 +57,9 @@ class L3App(DFlowApp):
         super(L3App, self).start()
         return 1
 
+    def is_ready(self):
+        return self.dp is not None
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         self.dp = ev.msg.datapath
