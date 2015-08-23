@@ -28,4 +28,7 @@ df_opts = [
     cfg.StrOpt('tunnel_type',
                default='geneve',
                help=_('The encapsulation type for the tunnel')),
+    cfg.StrOpt('apps_list',
+               default='l2_app.L2App,l3_app.L3App',
+               help=_('List of openflow applications classes to load')),
 ]

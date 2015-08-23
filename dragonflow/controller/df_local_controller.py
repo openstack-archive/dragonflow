@@ -27,12 +27,8 @@ from neutron.agent.common import config
 from neutron.common import config as common_config
 from neutron.i18n import _LE, _LI
 
-from ryu.base.app_manager import AppManager
-from ryu.controller.ofp_handler import OFPHandler
-
 from dragonflow.common import common_params
-from dragonflow.controller.l2_app import L2App
-from dragonflow.controller.l3_app import L3App
+from dragonflow.controller import dispatcher
 from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_vswitch_impl
 
@@ -47,9 +43,6 @@ cfg.CONF.register_opts(common_params.df_opts, 'df')
 class DfLocalController(object):
 
     def __init__(self, chassis_name):
-        self.l3_app = None
-        self.l2_app = None
-        self.open_flow_app = None
         self.next_network_id = 0
         self.db_store = db_store.DbStore()
         self.nb_api = None
@@ -58,6 +51,12 @@ class DfLocalController(object):
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
         self.sync_finished = False
+        kwargs = dict(
+            db_store=self.db_store
+        )
+        self.dispatcher = dispatcher.AppDispatcher('dragonflow.controller',
+                                                   cfg.CONF.df.apps_list,
+                                                   kwargs)
 
     def run(self):
         nb_class = importutils.import_class(cfg.CONF.df.nb_db_class)
@@ -67,18 +66,9 @@ class DfLocalController(object):
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
         self.vswitch_api.initialize()
 
-        app_mgr = AppManager.get_instance()
-        self.open_flow_app = app_mgr.instantiate(OFPHandler, None, None)
-        self.open_flow_app.start()
-        kwargs = dict(
-            db_store=self.db_store
-        )
-        self.l2_app = app_mgr.instantiate(L2App, None, **kwargs)
-        self.l2_app.start()
-        self.l3_app = app_mgr.instantiate(L3App, None, **kwargs)
-        self.l3_app.start()
-        while self.l2_app.dp is None or self.l3_app.dp is None:
-            time.sleep(3)
+        self.dispatcher.load()
+        self.dispatcher.is_ready()
+
         self.db_sync_loop()
 
     def db_sync_loop(self):
@@ -143,7 +133,7 @@ class DfLocalController(object):
                 lport.set_external_value('is_local', True)
                 LOG.info(_LI("Adding new local Logical Port"))
                 LOG.info(lport.__str__())
-                self.l2_app.add_local_port(lport)
+                self.dispatcher.dispatch('add_local_port', lport=lport)
                 self.db_store.set_port(lport.get_id(), lport)
         else:
             ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
@@ -152,7 +142,7 @@ class DfLocalController(object):
                 lport.set_external_value('is_local', False)
                 LOG.info(_LI("Adding new remote Logical Port"))
                 LOG.info(lport.__str__())
-                self.l2_app.add_remote_port(lport)
+                self.dispatcher.dispatch('add_remote_port', lport=lport)
                 self.db_store.set_port(lport.get_id(), lport)
 
     def logical_port_deleted(self, lport_id):
@@ -162,12 +152,12 @@ class DfLocalController(object):
         if lport.get_external_value('is_local'):
             LOG.info(_LI("Removing local Logical Port"))
             LOG.info(lport.__str__())
-            self.l2_app.remove_local_port(lport)
+            self.dispatcher.dispatch('remove_local_port', lport=lport)
             self.db_store.delete_port(lport.get_id())
         else:
             LOG.info(_LI("Removing remote Logical Port"))
             LOG.info(lport.__str__())
-            self.l2_app.remove_remote_port(lport)
+            self.dispatcher.dispatch('remove_remote_port', lport=lport)
             self.db_store.delete_port(lport.get_id())
 
     def router_updated(self, lrouter):
@@ -217,8 +207,6 @@ class DfLocalController(object):
             if lport.get_id() in ports_to_remove:
                 ports_to_remove.remove(lport.get_id())
 
-        # TODO(gsagie) use port dictionary in all methods in l2 app
-        # and here instead of always moving all arguments
         for port_to_remove in ports_to_remove:
             self.logical_port_deleted(port_to_remove)
 
@@ -253,7 +241,9 @@ class DfLocalController(object):
         router_lport = self.db_store.get_port(router_port.get_name())
         self.db_store.set_router_port_tunnel_key(router_port.get_name(),
                                                  router_lport.get_tunnel_key())
-        self.l3_app.add_new_router_port(router, router_lport, router_port)
+        self.dispatcher.dispatch('add_new_router_port', router=router,
+                                 lport=router_lport,
+                                 router_port=router_port)
 
     def _delete_router_port(self, router_port):
         LOG.info(_LI("Removing logical router interface"))
@@ -262,8 +252,10 @@ class DfLocalController(object):
             router_port.get_network_id())
         tunnel_key = self.db_store.get_router_port_tunnel_key(
             router_port.get_name())
-        self.l3_app.delete_router_port(router_port, local_network_id,
-                                       tunnel_key)
+        self.dispatcher.dispatch('delete_router_port',
+                                 router_port=router_port,
+                                 local_network_id=local_network_id,
+                                 tunnel_key=tunnel_key)
         self.db_store.del_router_port_tunnel_key(router_port.get_name())
 
     def _add_new_lrouter(self, lrouter):
