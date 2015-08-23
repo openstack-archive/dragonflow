@@ -31,6 +31,7 @@ from ryu.base.app_manager import AppManager
 from ryu.controller.ofp_handler import OFPHandler
 
 from dragonflow.common import common_params
+from dragonflow.controller.dhcp_app import DHCPApp
 from dragonflow.controller.l2_app import L2App
 from dragonflow.controller.l3_app import L3App
 from dragonflow.db import db_store
@@ -49,6 +50,7 @@ class DfLocalController(object):
     def __init__(self, chassis_name):
         self.l3_app = None
         self.l2_app = None
+        self.dhcp_app = None
         self.open_flow_app = None
         self.next_network_id = 0
         self.db_store = db_store.DbStore()
@@ -57,6 +59,8 @@ class DfLocalController(object):
         self.chassis_name = chassis_name
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
+        # TODO(gampel) move to conf file
+        self.enable_dhcp_app = True
         self.sync_finished = False
 
     def run(self):
@@ -77,6 +81,10 @@ class DfLocalController(object):
         self.l2_app.start()
         self.l3_app = app_mgr.instantiate(L3App, None, **kwargs)
         self.l3_app.start()
+        if self.enable_dhcp_app:
+            self.dhcp_app = app_mgr.instantiate(DHCPApp, None, **kwargs)
+            self.dhcp_app.start()
+
         while self.l2_app.dp is None or self.l3_app.dp is None:
             time.sleep(3)
         self.db_sync_loop()
@@ -142,6 +150,13 @@ class DfLocalController(object):
                                            network,
                                            ofport,
                                            lport.get_tunnel_key())
+                #TODO(gampel) (gsagie) add app event/callback registration
+                if self.enable_dhcp_app:
+                    self.dhcp_app.add_local_port(lport.get_id(),
+                                               lport.get_mac(),
+                                               network,
+                                               ofport,
+                                               lport.get_tunnel_key())
                 self.db_store.set_port(lport.get_id(), lport)
         else:
             ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
@@ -167,6 +182,16 @@ class DfLocalController(object):
                                           lport.get_external_value(
                                               'ofport'),
                                           lport.get_tunnel_key())
+            #TODO(gampel) (gsagie) add app event/callback registration
+            if self.enable_dhcp_app:
+                self.l2_app.remove_local_port(lport.get_id(),
+                                              lport.get_mac(),
+                                              lport.get_external_value(
+                                                  'local_network_id'),
+                                              lport.get_external_value(
+                                                  'ofport'),
+                                              lport.get_tunnel_key())
+
             self.db_store.delete_port(lport.get_id())
         else:
             self.l2_app.remove_remote_port(lport.get_id(),

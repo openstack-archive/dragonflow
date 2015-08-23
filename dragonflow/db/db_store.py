@@ -51,6 +51,12 @@ class DbStore(object):
         with self.lock:
             return self.ports.values()
 
+    def get_port_by_tunnel_key(self, tunnel_key):
+        with self.lock:
+            for port in self.ports.values():
+                if port.get_tunnel_key() == tunnel_key:
+                        return port
+
     def delete_port(self, port_id):
         with self.lock:
             del self.ports[port_id]
