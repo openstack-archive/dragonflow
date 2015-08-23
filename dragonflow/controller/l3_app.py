@@ -167,6 +167,8 @@ class L3App(DFlowApp):
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def OF_packet_in_handler(self, event):
         msg = event.msg
+        if msg.table_id != const.L3_LOOKUP_TABLE:
+            return
 
         pkt = packet.Packet(msg.data)
         is_pkt_ipv4 = pkt.get_protocol(ipv4.ipv4) is not None

@@ -50,6 +50,8 @@ class DfLocalController(object):
         self.chassis_name = chassis_name
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
+        # TODO(gampel) move to conf file
+        self.enable_dhcp_app = True
         self.sync_finished = False
         kwargs = dict(
             db_store=self.db_store
