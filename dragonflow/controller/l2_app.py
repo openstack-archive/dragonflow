@@ -107,7 +107,14 @@ class L2App(DFlowApp):
         #     elif port.name.startswith('tap'):
         #         print 'VM port detected'
 
-    def remove_local_port(self, lport_id, mac, network_id, ofport, tunnel_key):
+    def remove_local_port(self, lport):
+
+        lport_id = lport.get_id()
+        mac = lport.get_mac()
+        network_id = lport.get_external_value('local_network_id')
+        ofport = lport.get_external_value('ofport')
+        tunnel_key = lport.get_tunnel_key()
+
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
 
@@ -170,7 +177,12 @@ class L2App(DFlowApp):
 
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
 
-    def remove_remote_port(self, lport_id, mac, network_id, tunnel_key):
+    def remove_remote_port(self, lport):
+
+        lport_id = lport.get_id()
+        mac = lport.get_mac()
+        network_id = lport.get_external_value('local_network_id')
+        tunnel_key = lport.get_tunnel_key()
 
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
@@ -205,10 +217,16 @@ class L2App(DFlowApp):
 
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
 
-    def add_local_port(self, lport_id, mac, network_id, ofport, tunnel_key):
+    def add_local_port(self, lport):
 
         if self.dp is None:
             return
+
+        lport_id = lport.get_id()
+        mac = lport.get_mac()
+        network_id = lport.get_external_value('local_network_id')
+        ofport = lport.get_external_value('ofport')
+        tunnel_key = lport.get_tunnel_key()
 
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
@@ -351,10 +369,16 @@ class L2App(DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
-    def add_remote_port(self, lport_id, mac, network_id, ofport, tunnel_key):
+    def add_remote_port(self, lport):
 
         if self.dp is None:
             return
+
+        lport_id = lport.get_id()
+        mac = lport.get_mac()
+        network_id = lport.get_external_value('local_network_id')
+        ofport = lport.get_external_value('ofport')
+        tunnel_key = lport.get_tunnel_key()
 
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto

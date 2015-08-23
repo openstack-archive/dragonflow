@@ -143,11 +143,7 @@ class DfLocalController(object):
                 lport.set_external_value('is_local', True)
                 LOG.info(_LI("Adding new local Logical Port"))
                 LOG.info(lport.__str__())
-                self.l2_app.add_local_port(lport.get_id(),
-                                           lport.get_mac(),
-                                           network,
-                                           ofport,
-                                           lport.get_tunnel_key())
+                self.l2_app.add_local_port(lport)
                 self.db_store.set_port(lport.get_id(), lport)
         else:
             ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
@@ -156,11 +152,7 @@ class DfLocalController(object):
                 lport.set_external_value('is_local', False)
                 LOG.info(_LI("Adding new remote Logical Port"))
                 LOG.info(lport.__str__())
-                self.l2_app.add_remote_port(lport.get_id(),
-                                            lport.get_mac(),
-                                            network,
-                                            ofport,
-                                            lport.get_tunnel_key())
+                self.l2_app.add_remote_port(lport)
                 self.db_store.set_port(lport.get_id(), lport)
 
     def logical_port_deleted(self, lport_id):
@@ -170,22 +162,12 @@ class DfLocalController(object):
         if lport.get_external_value('is_local'):
             LOG.info(_LI("Removing local Logical Port"))
             LOG.info(lport.__str__())
-            self.l2_app.remove_local_port(lport.get_id(),
-                                          lport.get_mac(),
-                                          lport.get_external_value(
-                                              'local_network_id'),
-                                          lport.get_external_value(
-                                              'ofport'),
-                                          lport.get_tunnel_key())
+            self.l2_app.remove_local_port(lport)
             self.db_store.delete_port(lport.get_id())
         else:
             LOG.info(_LI("Removing remote Logical Port"))
             LOG.info(lport.__str__())
-            self.l2_app.remove_remote_port(lport.get_id(),
-                                           lport.get_mac(),
-                                           lport.get_external_value(
-                                               'local_network_id'),
-                                           lport.get_tunnel_key())
+            self.l2_app.remove_remote_port(lport)
             self.db_store.delete_port(lport.get_id())
 
     def router_updated(self, lrouter):
