@@ -25,7 +25,7 @@ from oslo_utils import importutils
 
 from neutron.agent.common import config
 from neutron.common import config as common_config
-from neutron.i18n import _LE, _LI
+from neutron.i18n import _LI, _LW
 
 from dragonflow.common import common_params
 from dragonflow.controller import dispatcher
@@ -98,8 +98,8 @@ class DfLocalController(object):
 
         except Exception as e:
             self.sync_finished = False
-            LOG.error(_LE("run_db_poll - suppressing exception"))
-            LOG.error(e)
+            LOG.warn(_LW("run_db_poll - suppressing exception"))
+            LOG.warn(e)
 
     def chassis_created(self, chassis):
         # Check if tunnel already exists to this chassis
@@ -121,6 +121,10 @@ class DfLocalController(object):
         if self.db_store.get_port(lport.get_id()) is not None:
             # TODO(gsagie) support updating port
             return
+
+        if lport.get_chassis() is None:
+            return
+
         chassis_to_ofport, lport_to_ofport = (
             self.vswitch_api.get_local_ports_to_ofport_mapping())
         network = self.get_network_id(lport.get_network_id())
@@ -135,6 +139,8 @@ class DfLocalController(object):
                 LOG.info(lport.__str__())
                 self.dispatcher.dispatch('add_local_port', lport=lport)
                 self.db_store.set_port(lport.get_id(), lport)
+            else:
+                raise RuntimeError("ofport is 0")
         else:
             ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
             if ofport != 0:
@@ -144,6 +150,8 @@ class DfLocalController(object):
                 LOG.info(lport.__str__())
                 self.dispatcher.dispatch('add_remote_port', lport=lport)
                 self.db_store.set_port(lport.get_id(), lport)
+            else:
+                raise RuntimeError("ofport is 0")
 
     def logical_port_deleted(self, lport_id):
         lport = self.db_store.get_port(lport_id)
@@ -239,6 +247,9 @@ class DfLocalController(object):
         LOG.info(_LI("Adding new logical router interface"))
         LOG.info(router_port.__str__())
         router_lport = self.db_store.get_port(router_port.get_name())
+        if router_lport is None:
+            LOG.warn(_LW("router logical port is None"))
+            return
         self.db_store.set_router_port_tunnel_key(router_port.get_name(),
                                                  router_lport.get_tunnel_key())
         self.dispatcher.dispatch('add_new_router_port', router=router,
@@ -252,6 +263,9 @@ class DfLocalController(object):
             router_port.get_network_id())
         tunnel_key = self.db_store.get_router_port_tunnel_key(
             router_port.get_name())
+        if local_network_id is None or tunnel_key is None:
+            LOG.warn(_LW("local network id or tunnel key is None"))
+            return
         self.dispatcher.dispatch('delete_router_port',
                                  router_port=router_port,
                                  local_network_id=local_network_id,

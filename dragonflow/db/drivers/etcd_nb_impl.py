@@ -16,9 +16,15 @@
 
 import etcd
 import netaddr
+
+from oslo_log import log
 from oslo_serialization import jsonutils
 
+from neutron.i18n import _LW
+
 from dragonflow.db import api_nb
+
+LOG = log.getLogger(__name__)
 
 
 class EtcdNbApi(api_nb.NbApi):
@@ -37,11 +43,13 @@ class EtcdNbApi(api_nb.NbApi):
 
     def wait_for_db_changes(self, controller):
         self.controller = controller
-        try:
-            while True:
+        while True:
+            try:
                 self._poll_for_data_changes()
-        except Exception:
-            return
+            except Exception as e:
+                if "Read timed out" not in e.message:
+                    LOG.warn(_LW("suppressing configuration exception"))
+                    LOG.warn(e)
 
     # TODO(gsagie) implement this to send the updates to a controller local
     # queue which will process these updates
