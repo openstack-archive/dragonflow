@@ -246,31 +246,20 @@ class DfLocalController(object):
     def _add_new_router_port(self, router, router_port):
         LOG.info(_LI("Adding new logical router interface"))
         LOG.info(router_port.__str__())
-        router_lport = self.db_store.get_port(router_port.get_name())
-        if router_lport is None:
-            LOG.warn(_LW("router logical port is None"))
-            return
-        self.db_store.set_router_port_tunnel_key(router_port.get_name(),
-                                                 router_lport.get_tunnel_key())
+        local_network_id = self.db_store.get_network_id(
+            router_port.get_network_id())
         self.dispatcher.dispatch('add_new_router_port', router=router,
-                                 lport=router_lport,
-                                 router_port=router_port)
+                                 router_port=router_port,
+                                 local_network_id=local_network_id)
 
     def _delete_router_port(self, router_port):
         LOG.info(_LI("Removing logical router interface"))
         LOG.info(router_port.__str__())
         local_network_id = self.db_store.get_network_id(
             router_port.get_network_id())
-        tunnel_key = self.db_store.get_router_port_tunnel_key(
-            router_port.get_name())
-        if local_network_id is None or tunnel_key is None:
-            LOG.warn(_LW("local network id or tunnel key is None"))
-            return
         self.dispatcher.dispatch('delete_router_port',
                                  router_port=router_port,
-                                 local_network_id=local_network_id,
-                                 tunnel_key=tunnel_key)
-        self.db_store.del_router_port_tunnel_key(router_port.get_name())
+                                 local_network_id=local_network_id)
 
     def _add_new_lrouter(self, lrouter):
         for new_port in lrouter.get_ports():
