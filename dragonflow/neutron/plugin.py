@@ -228,6 +228,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if 'binding:host_id' in updated_port:
             chassis = updated_port['binding:host_id']
 
+        # Router GW ports are not needed by dragonflow controller and
+        # they currently cause error as they couldnt be mapped to
+        # a valid ofport (or location)
+        if updated_port.get('device_owner') == const.DEVICE_OWNER_ROUTER_GW:
+            chassis = None
+
         self.nb_api.update_lport(name=updated_port['id'],
                                  macs=[updated_port['mac_address']],
                                  external_ids=external_ids,
@@ -322,6 +328,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             chassis = port['binding:host_id']
 
         tunnel_key = self._allocate_tunnel_key()
+
+        # Router GW ports are not needed by dragonflow controller and
+        # they currently cause error as they couldnt be mapped to
+        # a valid ofport (or location)
+        if port.get('device_owner') == const.DEVICE_OWNER_ROUTER_GW:
+            chassis = None
 
         self.nb_api.create_lport(
             name=port['id'],

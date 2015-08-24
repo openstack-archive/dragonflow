@@ -103,12 +103,6 @@ class L2App(DFlowApp):
     @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
     def port_desc_stats_reply_handler(self, ev):
         pass
-        # datapath = ev.msg.datapath
-        # for port in ev.msg.body:
-        #     if port.name.startswith('df-'):
-        #         print 'tunnel port detected'
-        #     elif port.name.startswith('tap'):
-        #         print 'VM port detected'
 
     def remove_local_port(self, lport):
 
@@ -427,18 +421,6 @@ class L2App(DFlowApp):
         self.local_networks.clear()
         for port in self.db_store.get_ports():
             if port.get_external_value('is_local'):
-                self.add_local_port(port.get_id(),
-                                    port.get_mac(),
-                                    port.get_external_value(
-                                        'local_network_id'),
-                                    port.get_external_value(
-                                        'ofport'),
-                                    port.get_tunnel_key())
+                self.add_local_port(port)
             else:
-                self.add_remote_port(port.get_id(),
-                                     port.get_mac(),
-                                     port.get_external_value(
-                                          'local_network_id'),
-                                     port.get_external_value(
-                                          'ofport'),
-                                     port.get_tunnel_key())
+                self.add_remote_port(port)
