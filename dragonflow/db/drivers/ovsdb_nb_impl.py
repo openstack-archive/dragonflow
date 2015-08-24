@@ -161,7 +161,7 @@ class OvsdbLogicalPort(api_nb.LogicalPort):
     def get_chassis(self):
         return self.chassis
 
-    def get_network_id(self):
+    def get_lswitch_id(self):
         return self.network_id
 
     def get_tunnel_key(self):
@@ -223,7 +223,7 @@ class OvsdbLogicalRouterPort(api_nb.LogicalRouterPort):
     def get_mac(self):
         return self.mac
 
-    def get_network_id(self):
+    def get_lswitch_id(self):
         return self.network_id
 
     def get_network(self):

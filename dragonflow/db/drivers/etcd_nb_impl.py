@@ -80,6 +80,13 @@ class EtcdNbApi(api_nb.NbApi):
             else:
                 chassis_id = entry.key.split('/')[2]
                 self.controller.chassis_deleted(chassis_id)
+        if 'lswitch' in entry.key:
+            if entry.action == 'set' or entry.action == 'create':
+                lswitch = EtcdLogicalSwitch(entry.value)
+                self.controller.logical_switch_updated(lswitch)
+            else:
+                lswitch_id = entry.key.split('/')[2]
+                self.controller.logical_switch_deleted(lswitch_id)
 
         self.current_key = entry.modifiedIndex + 1
 
@@ -104,9 +111,48 @@ class EtcdNbApi(api_nb.NbApi):
         chassis_value = name + ',' + ip + ',' + tunnel_type
         self.client.write('/chassis/' + name, chassis_value)
 
+    def get_lswitch(self, name):
+        try:
+            lswitch_value = self.client.read('/lswitch/' + name).value
+            return EtcdLogicalSwitch(lswitch_value)
+        except Exception:
+            return None
+
+    def add_subnet(self, id, lswitch_name, **columns):
+        lswitch_json = self.client.read('/lswitch/' + lswitch_name).value
+        lswitch = jsonutils.loads(lswitch_json)
+
+        subnet = {}
+        subnet['id'] = id
+        subnet['lswitch'] = lswitch_name
+        for col, val in columns.items():
+            subnet[col] = val
+
+        subnets = lswitch.get('subnets', [])
+        subnets.append(subnet)
+        lswitch['subnets'] = subnets
+        lswitch_json = jsonutils.dumps(lswitch)
+        self.client.write('/lswitch/' + lswitch_name, lswitch_json)
+
+    def delete_subnet(self, id, lswitch_name):
+        lswitch_json = self.client.read('/lswitch/' + lswitch_name).value
+        lswitch = jsonutils.loads(lswitch_json)
+
+        new_ports = []
+        for subnet in lswitch.get('subnets', []):
+            if subnet['id'] != id:
+                new_ports.append(subnet)
+
+        lswitch['subnets'] = new_ports
+        lswitch_json = jsonutils.dumps(lswitch)
+        self.client.write('/lswitch/' + lswitch_name, lswitch_json)
+
     def get_logical_port(self, port_id):
-        port_value = self.client.read("/lport/" + port_id).value
-        return EtcdLogicalPort(port_value)
+        try:
+            port_value = self.client.read("/lport/" + port_id).value
+            return EtcdLogicalPort(port_value)
+        except Exception:
+            return None
 
     def get_all_logical_ports(self):
         res = []
@@ -205,6 +251,13 @@ class EtcdNbApi(api_nb.NbApi):
             res.append(EtcdLogicalRouter(result.value))
         return res
 
+    def get_all_logical_switches(self):
+        res = []
+        directory = self.client.get("/lswitch")
+        for result in directory.children:
+            res.append(EtcdLogicalSwitch(result.value))
+        return res
+
 
 class EtcdChassis(api_nb.Chassis):
 
@@ -225,6 +278,42 @@ class EtcdChassis(api_nb.Chassis):
         return self.values.__str__()
 
 
+class EtcdLogicalSwitch(api_nb.LogicalSwitch):
+
+    def __init__(self, value):
+        self.lswitch = jsonutils.loads(value)
+
+    def get_id(self):
+        return self.lswitch['name']
+
+    def get_subnets(self):
+        res = []
+        for subnet in self.lswitch['subnets']:
+            res.append(EtcdSubnet(subnet))
+        return res
+
+    def __str__(self):
+        return self.lswitch.__str__()
+
+
+class EtcdSubnet(api_nb.Subnet):
+
+    def __init__(self, value):
+        self.subnet = value
+
+    def enable_dhcp(self):
+        return self.subnet['enable_dhcp']
+
+    def get_dhcp_server_address(self):
+        return self.subnet['dhcp_ip']
+
+    def get_cidr(self):
+        return self.subnet['cidr']
+
+    def get_gateway_ip(self):
+        return self.subnet['gateway_ip']
+
+
 class EtcdLogicalPort(api_nb.LogicalPort):
 
     def __init__(self, value):
@@ -243,7 +332,7 @@ class EtcdLogicalPort(api_nb.LogicalPort):
     def get_chassis(self):
         return self.lport.get('chassis')
 
-    def get_network_id(self):
+    def get_lswitch_id(self):
         return self.lport.get('lswitch')
 
     def get_tunnel_key(self):
@@ -298,7 +387,7 @@ class EtcdLogicalRouterPort(api_nb.LogicalRouterPort):
     def get_mac(self):
         return self.router_port.get('mac')
 
-    def get_network_id(self):
+    def get_lswitch_id(self):
         return self.router_port['lswitch']
 
     def get_network(self):

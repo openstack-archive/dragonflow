@@ -198,7 +198,7 @@ class L3App(DFlowApp):
                         router_port.get_ip())
                     return
                 dst_ports = self.db_store.get_ports_by_network_id(
-                    router_port.get_network_id())
+                    router_port.get_lswitch_id())
                 for out_port in dst_ports:
                     if out_port.get_ip() == pkt_ip.dst:
                         self._install_l3_flow(router_port,
@@ -322,7 +322,7 @@ class L3App(DFlowApp):
 
                 # From all the other interfaces to this new interface
                 router_port_net_id = self.db_store.get_network_id(
-                    port.get_network_id())
+                    port.get_lswitch_id())
                 self._add_subnet_send_to_controller(
                     router_port_net_id,
                     router_port.get_cidr_network(),
