@@ -89,6 +89,8 @@ class DfLocalController(object):
 
             self.create_tunnels()
 
+            self.read_switches()
+
             self.port_mappings()
 
             self.read_routers()
@@ -117,6 +119,19 @@ class DfLocalController(object):
                 self.vswitch_api.delete_port(port)
                 return
 
+    def read_switches(self):
+        for lswitch in self.nb_api.get_all_logical_switches():
+            self.logical_switch_updated(lswitch)
+
+    def logical_switch_updated(self, lswitch):
+        LOG.info(_LI("Adding Logical Switch"))
+        LOG.info(lswitch.__str__())
+        self.db_store.set_lswitch(lswitch.get_id(), lswitch)
+
+    def logical_switch_deleted(self, lswitch_id):
+        LOG.info(_LI("Removing Logical Switch %s") % lswitch_id)
+        self.db_store.del_lswitch(lswitch_id)
+
     def logical_port_updated(self, lport):
         if self.db_store.get_port(lport.get_id()) is not None:
             # TODO(gsagie) support updating port
@@ -127,7 +142,7 @@ class DfLocalController(object):
 
         chassis_to_ofport, lport_to_ofport = (
             self.vswitch_api.get_local_ports_to_ofport_mapping())
-        network = self.get_network_id(lport.get_network_id())
+        network = self.get_network_id(lport.get_lswitch_id())
         lport.set_external_value('local_network_id', network)
 
         if lport.get_chassis() == self.chassis_name:
@@ -247,7 +262,7 @@ class DfLocalController(object):
         LOG.info(_LI("Adding new logical router interface"))
         LOG.info(router_port.__str__())
         local_network_id = self.db_store.get_network_id(
-            router_port.get_network_id())
+            router_port.get_lswitch_id())
         self.dispatcher.dispatch('add_new_router_port', router=router,
                                  router_port=router_port,
                                  local_network_id=local_network_id)
@@ -256,7 +271,7 @@ class DfLocalController(object):
         LOG.info(_LI("Removing logical router interface"))
         LOG.info(router_port.__str__())
         local_network_id = self.db_store.get_network_id(
-            router_port.get_network_id())
+            router_port.get_lswitch_id())
         self.dispatcher.dispatch('delete_router_port',
                                  router_port=router_port,
                                  local_network_id=local_network_id)
