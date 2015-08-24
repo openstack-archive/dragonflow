@@ -89,6 +89,8 @@ class DfLocalController(object):
 
             self.create_tunnels()
 
+            self.read_switches()
+
             self.port_mappings()
 
             self.read_routers()
@@ -116,6 +118,19 @@ class DfLocalController(object):
             if port.get_chassis_id() == chassis_id:
                 self.vswitch_api.delete_port(port)
                 return
+
+    def read_switches(self):
+        for lswitch in self.nb_api.get_all_logical_switches():
+            self.logical_switch_updated(lswitch)
+
+    def logical_switch_updated(self, lswitch):
+        LOG.info(_LI("Adding Logical Switch"))
+        LOG.info(lswitch.__str__())
+        self.db_store.set_lswitch(lswitch.get_id(), lswitch)
+
+    def logical_switch_deleted(self, lswitch_id):
+        LOG.info(_LI("Removing Logical Switch %s") % lswitch_id)
+        self.db_store.del_lswitch(lswitch_id)
 
     def logical_port_updated(self, lport):
         if self.db_store.get_port(lport.get_id()) is not None:

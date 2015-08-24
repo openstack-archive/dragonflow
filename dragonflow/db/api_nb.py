@@ -47,10 +47,22 @@ class NbApi(object):
     def get_router_ports(self):
         pass
 
+    def add_subnet(self, id, lswitch, **columns):
+        pass
+
+    def delete_subnet(self, id, lswitch):
+        pass
+
+    def get_all_logical_switches(self):
+        pass
+
     def create_lswitch(self, name, **columns):
         pass
 
     def update_lswitch(self, name, **columns):
+        pass
+
+    def get_lswitch(self, name):
         pass
 
     def delete_lswitch(self, name):
@@ -91,6 +103,15 @@ class Chassis(object):
 
     def __str__(self):
         return self.get_name()
+
+
+class LogicalSwitch(object):
+
+    def get_id(self):
+        pass
+
+    def get_subnets(self):
+        pass
 
 
 class LogicalPort(object):
