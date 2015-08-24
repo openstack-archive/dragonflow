@@ -19,6 +19,7 @@ import threading
 class DbStore(object):
 
     def __init__(self):
+        self.lswitchs = {}
         self.networks = {}
         self.ports = {}
         self.routers = {}
@@ -34,6 +35,18 @@ class DbStore(object):
     def set_network_id(self, ldp, net_id):
         with self.lock:
             self.networks[ldp] = net_id
+
+    def set_lswitch(self, id, lswitch):
+        with self.lock:
+            self.lswitchs[id] = lswitch
+
+    def get_lswitch(self, id):
+        with self.lock:
+            return self.lswitchs.get(id)
+
+    def del_lswitch(self, id):
+        with self.lock:
+            del self.lswitchs[id]
 
     def get_port_keys(self):
         with self.lock:

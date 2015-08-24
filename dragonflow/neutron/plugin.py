@@ -154,6 +154,36 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
+    def create_subnet(self, context, subnet):
+        with context.session.begin(subtransactions=True):
+            # create subnet in DB
+            new_subnet = super(DFPlugin,
+                               self).create_subnet(context, subnet)
+            net_id = new_subnet['network_id']
+            # update df controller with subnet
+            self.nb_api.add_subnet(
+                new_subnet['id'],
+                utils.ovn_name(net_id),
+                enable_dhcp=new_subnet['enable_dhcp'],
+                cidr=new_subnet['cidr'],
+                dhcp_ip=new_subnet['allocation_pools'][0]['start'],
+                gateway_ip=new_subnet['gateway_ip'])
+
+        return new_subnet
+
+    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
+                               retry_on_deadlock=True)
+    def delete_subnet(self, context, id):
+        orig_subnet = super(DFPlugin, self).get_subnet(context, id)
+        net_id = orig_subnet['network_id']
+        with context.session.begin(subtransactions=True):
+            # delete subnet in DB
+            super(DFPlugin, self).delete_subnet(context, id)
+            # update df controller with subnet delete
+            self.nb_api.delete_subnet(id, utils.ovn_name(net_id))
+
+    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
+                               retry_on_deadlock=True)
     def create_network(self, context, network):
         with context.session.begin(subtransactions=True):
             result = super(DFPlugin, self).create_network(context,
@@ -170,7 +200,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         # TODO(DF): Undo logical switch creation on failure
         self.nb_api.create_lswitch(name=utils.ovn_name(network['id']),
-                                   external_ids=external_ids)
+                                   external_ids=external_ids,
+                                   subnets=[])
         return network
 
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
