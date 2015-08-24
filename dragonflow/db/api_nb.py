@@ -35,6 +35,9 @@ class NbApi(object):
     def add_chassis(self, name, ip, tunnel_type):
         pass
 
+    def get_logical_port(self, port_id):
+        pass
+
     def get_all_logical_ports(self):
         pass
 
@@ -153,6 +156,9 @@ class LogicalRouterPort(object):
         pass
 
     def get_network(self):
+        pass
+
+    def get_tunnel_key(self):
         pass
 
     def __eq__(self, other):

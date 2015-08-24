@@ -253,7 +253,7 @@ class L3App(DFlowApp):
                                   in_port=in_port, actions=actions, data=data)
         self.dp.send_msg(out)
 
-    def add_new_router_port(self, router, lport, router_port):
+    def add_new_router_port(self, router, router_port, local_network_id):
 
         if self.dp is None:
             return
@@ -261,18 +261,17 @@ class L3App(DFlowApp):
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
 
-        network_id = lport.get_external_value('local_network_id')
-        mac = lport.get_mac()
-        tunnel_key = lport.get_tunnel_key()
+        mac = router_port.get_mac()
+        tunnel_key = router_port.get_tunnel_key()
 
         # Add router ARP responder for IPv4 Addresses
         if netaddr.IPAddress(router_port.get_ip()).version == 4:
-            self._add_vrouter_arp_responder(network_id, mac,
+            self._add_vrouter_arp_responder(local_network_id, mac,
                                             router_port.get_ip())
 
         # Change destination classifier for router port to go to L3 table
         # Increase priority so L3 traffic is matched faster
-        match = parser.OFPMatch(metadata=network_id,
+        match = parser.OFPMatch(metadata=local_network_id,
                                 eth_dst=mac)
         actions = []
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
@@ -292,11 +291,11 @@ class L3App(DFlowApp):
         dst_ip = router_port.get_ip()
         if netaddr.IPAddress(dst_ip).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    metadata=network_id,
+                                    metadata=local_network_id,
                                     ipv4_dst=dst_ip)
         else:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
-                                    metadata=network_id,
+                                    metadata=local_network_id,
                                     ipv6_dst=dst_ip)
 
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
@@ -314,7 +313,7 @@ class L3App(DFlowApp):
                 # From this router interface to all other interfaces
                 port_lport = self.db_store.get_port(port.get_name())
                 port_tunnel_key = port_lport.get_tunnel_key()
-                self._add_subnet_send_to_controller(network_id,
+                self._add_subnet_send_to_controller(local_network_id,
                                                     port.get_cidr_network(),
                                                     port.get_cidr_netmask(),
                                                     port_tunnel_key)
@@ -378,10 +377,11 @@ class L3App(DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def delete_router_port(self, router_port, local_network_id, tunnel_key):
+    def delete_router_port(self, router_port, local_network_id):
 
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
+        tunnel_key = router_port.get_tunnel_key()
 
         if netaddr.IPAddress(router_port.get_ip()).version == 4:
             self._remove_vrouter_arp_responder(local_network_id,

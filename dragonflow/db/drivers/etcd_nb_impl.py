@@ -47,7 +47,8 @@ class EtcdNbApi(api_nb.NbApi):
             try:
                 self._poll_for_data_changes()
             except Exception as e:
-                if "Read timed out" not in e.message:
+                if "Read timed out" not in e.message and (
+                            "ofport is 0" not in e.message):
                     LOG.warn(_LW("suppressing configuration exception"))
                     LOG.warn(e)
 
@@ -102,6 +103,10 @@ class EtcdNbApi(api_nb.NbApi):
     def add_chassis(self, name, ip, tunnel_type):
         chassis_value = name + ',' + ip + ',' + tunnel_type
         self.client.write('/chassis/' + name, chassis_value)
+
+    def get_logical_port(self, port_id):
+        port_value = self.client.read("/lport/" + port_id).value
+        return EtcdLogicalPort(port_value)
 
     def get_all_logical_ports(self):
         res = []
@@ -298,6 +303,9 @@ class EtcdLogicalRouterPort(api_nb.LogicalRouterPort):
 
     def get_network(self):
         return self.router_port['network']
+
+    def get_tunnel_key(self):
+        return self.router_port['tunnel_key']
 
     def __str__(self):
         return self.router_port.__str__()

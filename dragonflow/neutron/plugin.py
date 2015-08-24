@@ -370,7 +370,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         router_name = utils.ovn_name(router['id'])
         external_ids = {ovn_const.OVN_ROUTER_NAME_EXT_ID_KEY:
                         router.get('name', 'no_router_name')}
-        self.nb_api.create_lrouter(router_name, external_ids=external_ids)
+        self.nb_api.create_lrouter(router_name, external_ids=external_ids,
+                                   ports=[])
 
         # TODO(gsagie) rollback router creation on OVN failure
         return router
@@ -406,9 +407,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
 
+        logical_port = self.nb_api.get_logical_port(port['id'])
         self.nb_api.add_lrouter_port(port['id'], lrouter, lswitch,
                                      mac=port['mac_address'],
-                                     network=network)
+                                     network=network,
+                                     tunnel_key=logical_port.get_tunnel_key())
         interface_info['port_id'] = port['id']
         if 'subnet_id' in interface_info:
             del interface_info['subnet_id']
