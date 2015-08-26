@@ -344,6 +344,9 @@ class EtcdLogicalPort(api_nb.LogicalPort):
     def get_external_value(self, key):
         return self.external_dict.get(key)
 
+    def get_device_owner(self):
+        return self.lport.get('device_owner')
+
     def __str__(self):
         return self.lport.__str__() + self.external_dict.__str__()
 

@@ -155,6 +155,9 @@ class LogicalPort(object):
     def get_external_value(self, key):
         pass
 
+    def get_device_owner(self):
+        pass
+
     def __str__(self):
         return self.get_id()
 

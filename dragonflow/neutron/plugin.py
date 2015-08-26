@@ -374,7 +374,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             parent_name=parent_name, tag=tag,
             enabled=port.get('admin_state_up', None),
             chassis=chassis, tunnel_key=tunnel_key,
-            port_security=allowed_macs)
+            port_security=allowed_macs,
+            device_owner=port.get('device_owner'))
 
         return port
 

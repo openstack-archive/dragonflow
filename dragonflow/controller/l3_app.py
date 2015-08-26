@@ -261,7 +261,6 @@ class L3App(DFlowApp):
             return
 
         parser = self.dp.ofproto_parser
-        ofproto = self.dp.ofproto
 
         mac = router_port.get_mac()
         tunnel_key = router_port.get_tunnel_key()
@@ -270,24 +269,6 @@ class L3App(DFlowApp):
         if netaddr.IPAddress(router_port.get_ip()).version == 4:
             self._add_vrouter_arp_responder(local_network_id, mac,
                                             router_port.get_ip())
-
-        # Change destination classifier for router port to go to L3 table
-        # Increase priority so L3 traffic is matched faster
-        match = parser.OFPMatch(metadata=local_network_id,
-                                eth_dst=mac)
-        actions = []
-        actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = self.dp.ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(const.L3_LOOKUP_TABLE)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            self.dp,
-            inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
-            command=ofproto.OFPFC_MODIFY,
-            priority=const.PRIORITY_HIGH,
-            match=match)
 
         # If router interface IP, send to output table
         dst_ip = router_port.get_ip()
@@ -422,5 +403,7 @@ class L3App(DFlowApp):
     def _install_flows_on_switch_up(self):
         for lrouter in self.db_store.get_routers():
             for router_port in lrouter.get_ports():
-                router_lport = self.db_store.get_port(router_port.get_name())
-                self.add_new_router_port(lrouter, router_lport, router_port)
+                local_network_id = self.db_store.get_network_id(
+                    router_port.get_lswitch_id())
+                self.add_new_router_port(lrouter, router_port,
+                                         local_network_id)
