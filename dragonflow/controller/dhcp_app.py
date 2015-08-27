@@ -52,7 +52,7 @@ class DHCPApp(DFlowApp):
         self.hard_timeout = 0
         self.db_store = kwargs['db_store']
         # TODO(gampel) move to conf file
-        self.global_dns = "8.8.8.8"
+        self.global_dns_list = "8.8.8.8,8.8.8.7"
         # TODO(gampel) support list of dns ips ip,ip,...
         self.lease_time = 86400 * 30
         self.domain_name = "openstacklocal"
@@ -140,7 +140,7 @@ class DHCPApp(DFlowApp):
     def _create_dhcp_ack(self, pkt, dhcp_packet, lport):
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
-        dns = addrconv.ipv4.text_to_bin(self.global_dns)
+        dns = self._get_dns_address_list_bin()
         dhcp_server_address = str(self._get_dhcp_server_address(lport))
         gateway_address = self._get_port_gateway_address(lport)
         netmask = self._get_port_netmask_bin(lport)
@@ -153,7 +153,7 @@ class DHCPApp(DFlowApp):
             dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT, gateway_address.packed, 4),
             dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT,
                     lease_time_bin, 4),
-            dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns, 4),
+            dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns, len(dns)),
             dhcp.option(15, domain_name_bin, len(self.domain_name))]
         options = dhcp.options(option_list=option_list, options_len=50)
         dhcp_offer_pkt = ryu_packet.Packet()
@@ -176,7 +176,7 @@ class DHCPApp(DFlowApp):
     def _create_dhcp_offer(self, pkt, dhcp_packet, lport):
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
-        dns = addrconv.ipv4.text_to_bin(self.global_dns)
+        dns = self._get_dns_address_list_bin()
         dhcp_server_address = self._get_dhcp_server_address(lport)
         netmask = self._get_port_netmask_bin(lport)
         lease_time_bin = struct.pack('!I', self.lease_time)
@@ -187,7 +187,7 @@ class DHCPApp(DFlowApp):
             dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, b'\x02', 1),
             dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask, 4),
             dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT, gateway_address.packed, 4),
-            dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns, 4),
+            dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns, len(dns)),
             dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT,
                         lease_time_bin, 4),
             dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT,
@@ -211,6 +211,13 @@ class DHCPApp(DFlowApp):
                                          xid=dhcp_packet[0].xid,
                                          options=options))
         return dhcp_offer_pkt
+
+    def _get_dns_address_list_bin(self):
+        dns_address = self.global_dns_list.split(",")
+        dns_bin = ''
+        for address in dns_address:
+            dns_bin += addrconv.ipv4.text_to_bin(address)
+        return dns_bin
 
     def _get_dhcp_message_type_opt(self, dhcp_packet):
         for opt in dhcp_packet[0].options.option_list:
