@@ -35,7 +35,7 @@ import struct
 
 from oslo_log import log
 
-from neutron.i18n import _LI, _LE
+from neutron.i18n import _LI, _LE, _LW
 
 
 LOG = log.getLogger(__name__)
@@ -153,13 +153,13 @@ class DHCPApp(DFlowApp):
         dns = self._get_dns_address_list_bin()
         dhcp_server_address = str(self._get_dhcp_server_address(lport))
         gateway_address = self._get_port_gateway_address(lport)
-        netmask = self._get_port_netmask_bin(lport)
+        netmask_bin = self._get_port_netmask(lport).packed
         domain_name_bin = struct.pack('!256s', self.domain_name)
         lease_time_bin = struct.pack('!I', self.lease_time)
 
         option_list = [
             dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, b'\x05', 1),
-            dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask, 4),
+            dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask_bin, 4),
             dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT, gateway_address.packed, 4),
             dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT,
                     lease_time_bin, 4),
@@ -188,23 +188,29 @@ class DHCPApp(DFlowApp):
         pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
         dns = self._get_dns_address_list_bin()
         dhcp_server_address = self._get_dhcp_server_address(lport)
-        netmask = self._get_port_netmask_bin(lport)
+        if not dhcp_server_address:
+            return
+        netmask_bin = self._get_port_netmask(lport).packed
         lease_time_bin = struct.pack('!I', self.lease_time)
         gateway_address = self._get_port_gateway_address(lport)
         domain_name_bin = struct.pack('!256s', self.domain_name)
 
         option_list = [
             dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, b'\x02', 1),
-            dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask, 4),
-            dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT, gateway_address.packed, 4),
+            dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask_bin, 4),
             dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns, len(dns)),
             dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT,
                         lease_time_bin, 4),
             dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT,
                         dhcp_server_address.packed, 4),
             dhcp.option(15, domain_name_bin, len(self.domain_name))]
+        if gateway_address:
+            option_list.append(dhcp.option(
+                                    dhcp.DHCP_GATEWAY_ADDR_OPT,
+                                    gateway_address.packed,
+                                    4))
 
-        options = dhcp.options(option_list=option_list, options_len=50)
+        options = dhcp.options(option_list=option_list)
         dhcp_offer_pkt = ryu_packet.Packet()
         dhcp_offer_pkt.add_protocol(ethernet.ethernet(
                                     ethertype=ether.ETH_TYPE_IP,
@@ -234,30 +240,46 @@ class DHCPApp(DFlowApp):
             if opt.tag == dhcp.DHCP_MESSAGE_TYPE_OPT:
                 return ord(opt.value)
 
-    def _get_dhcp_server_address(self, lport):
-        #TODO(gampel) get from the database once added to the db module
-        #Assuming /24 and DHCP on *.2
+    def _get_subnet_by_port(self, lport):
+        l_switch_id = lport.get_lswitch_id()
+        l_switch = self.db_store.get_lswitch(l_switch_id)
+        subnets = l_switch.get_subnets()
         ip = netaddr.IPAddress(lport.get_ip())
-        network = int(ip) & 0xFFFFFF00
-        dhcp_ip = network | 0x2
-        return netaddr.IPAddress(dhcp_ip)
+        for subnet in subnets:
+            if ip in netaddr.IPNetwork(subnet.get_cidr()):
+                return subnet
+
+    def _get_dhcp_server_address(self, lport):
+        subnet = self._get_subnet_by_port(lport)
+        if subnet:
+            return netaddr.IPAddress(subnet.get_dhcp_server_address())
+        LOG.error(_LE("No DHCP server address found for port <%s>"),
+                lport.get_id())
+        return None
 
     def _get_port_gateway_address(self, lport):
-        #TODO(gampel) get from the database once added to the db module
-        #Assuming there is and /24 and GATEWAY on *.1
-        ip = netaddr.IPAddress(lport.get_ip())
-        network = int(ip) & 0xFFFFFF00
-        gateway_ip = network | 0x1
-        return netaddr.IPAddress(gateway_ip)
+        subnet = self._get_subnet_by_port(lport)
+        if subnet:
+            return netaddr.IPAddress(subnet.get_gateway_ip())
+        LOG.info(_LI("No Gateway server address found for port <%s>"),
+                lport.get_id())
+        return None
 
-    def _get_port_netmask_bin(self, lport):
-        #TODO(gampel) get from the database once added to the db module
-        #Assuming it is  /24
-        netmask = addrconv.ipv4.text_to_bin('255.255.255.0')
-        return netmask
+    def _get_port_netmask(self, lport):
 
-    def _is_dhcp_enabled_on_network(self, net_id):
-        #TODO(gampel) get from the database once added to the db module
+        subnet = self._get_subnet_by_port(lport)
+        if subnet:
+            return netaddr.IPNetwork(subnet.get_cidr()).netmask
+        LOG.info(_LI("No Gateway server address found for port <%s>"),
+                lport.get_id())
+        return None
+
+    def _is_dhcp_enabled_on_network(self, lport, net_id):
+        subnet = self._get_subnet_by_port(lport)
+        if subnet:
+            return subnet.get_dhcp_enabled()
+        LOG.warning(_LW("No subnet for found for port <%s>"),
+                lport.get_id())
         return True
 
     def remove_local_port(self, lport):
@@ -288,7 +310,9 @@ class DHCPApp(DFlowApp):
         network_id = lport.get_external_value('local_network_id')
         if self.dp is None:
             return
-        if not self._is_dhcp_enabled_on_network(network_id):
+        #TODO(gampel) handle only VMs ports
+        #owner = lport.get_device_owner()
+        if not self._is_dhcp_enabled_on_network(lport, network_id):
             return
 
         lport_id = lport.get_id()
