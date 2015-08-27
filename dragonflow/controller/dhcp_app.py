@@ -98,7 +98,7 @@ class DHCPApp(DFlowApp):
         port_tunnel_key = msg.match.get('metadata')
         if port_tunnel_key not in self.local_tunnel_to_pid_map:
             LOG.error(
-                _LE("No lport found for tunnel_id %s for dhcp reqxi"),
+                _LE("No lport found for tunnel_id %s for dhcp req"),
                 port_tunnel_key)
             return
 
