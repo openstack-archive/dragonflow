@@ -301,7 +301,7 @@ class EtcdSubnet(api_nb.Subnet):
     def __init__(self, value):
         self.subnet = value
 
-    def enable_dhcp(self):
+    def get_dhcp_enabled(self):
         return self.subnet['enable_dhcp']
 
     def get_dhcp_server_address(self):
