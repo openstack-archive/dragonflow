@@ -94,7 +94,6 @@ class DHCPApp(DFlowApp):
             LOG.error(_LE("Received None IP Packet"))
             return
 
-        in_port = msg.match.get("in_port")
         port_tunnel_key = msg.match.get('metadata')
         if port_tunnel_key not in self.local_tunnel_to_pid_map:
             LOG.error(
@@ -109,9 +108,20 @@ class DHCPApp(DFlowApp):
                 _LE("No lport found for tunnel_id %s for dhcp req"),
                 port_tunnel_key)
             return
+        try:
+            self._handle_dhcp_request(msg, pkt, lport)
+        except Exception as exception:
+            LOG.error(_LE(
+                "Unable to handle packet %(msg)s: %(e)s")
+                % {'msg': msg, 'e': exception}
+            )
+
+    def _handle_dhcp_request(self, msg, pkt, lport):
         packet = ryu_packet.Packet(data=msg.data)
+        in_port = msg.match.get("in_port")
         dhcp_packet = dhcp.dhcp.parser(packet[3])
         dhcp_message_type = self._get_dhcp_message_type_opt(dhcp_packet)
+        send_packet = None
         if dhcp_message_type == 1:
             #DHCP DISCOVER
             send_packet = self._create_dhcp_offer(
@@ -121,7 +131,6 @@ class DHCPApp(DFlowApp):
             LOG.info(_LI("sending DHCP offer for port IP %(port_ip)s"
                 " port id %(port_id)s")
                      % {'port_ip': lport.get_ip(), 'port_id': lport.get_id()})
-            self._send_packet(self.dp, in_port, send_packet)
         elif dhcp_message_type == 3:
             #DHCP REQUEST
             send_packet = self._create_dhcp_ack(
@@ -132,10 +141,11 @@ class DHCPApp(DFlowApp):
                         " port id %(tunnel_id)s")
                         % {'port_ip': lport.get_ip(),
                         'tunnel_id': lport.get_id()})
-            self._send_packet(self.dp, in_port, send_packet)
         else:
             LOG.error(_LE("DHCP message type %d not handled"),
                 dhcp_message_type)
+        if send_packet:
+            self._send_packet(self.dp, in_port, send_packet)
 
     def _create_dhcp_ack(self, pkt, dhcp_packet, lport):
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
