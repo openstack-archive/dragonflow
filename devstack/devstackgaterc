@@ -1,0 +1,61 @@
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+#
+# This script is executed in the OpenStack CI job that runs DevStack + tempest.
+# You can find the CI job configuration here:
+#
+# http://git.openstack.org/cgit/openstack-infra/project-config/tree/jenkins/jobs/dragonflow.yaml
+#
+
+export OVERRIDE_ENABLED_SERVICES=key,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,c-sch,c-api,c-vol,horizon,rabbit,tempest,mysql,dstat,df-controller,df-etcd,df-etcd-server,q-svc,q-dhcp,q-l3
+
+# Begin list of exclusions.
+r="^(?!.*"
+
+# exclude the slow tag (part of the default for 'full')
+r="$r(?:.*\[.*\bslow\b.*\])"
+
+# exclude things that just aren't enabled:
+r="$r|(?:tempest\.api\.network\.admin\.test_quotas\.QuotasTest\.test_lbaas_quotas.*)"
+r="$r|(?:tempest\.api\.network\.test_load_balancer.*)"
+r="$r|(?:tempest\.scenario\.test_load_balancer.*)"
+r="$r|(?:tempest\.api\.network\.admin\.test_load_balancer.*)"
+r="$r|(?:tempest\.api\.network\.admin\.test_lbaas.*)"
+r="$r|(?:tempest\.api\.network\.test_fwaas_extensions.*)"
+r="$r|(?:tempest\.api\.network\.test_vpnaas_extensions.*)"
+r="$r|(?:tempest\.api\.network\.test_metering_extensions.*)"
+r="$r|(?:tempest\.thirdparty\.boto\.test_s3.*)"
+
+# skip tests that require security groups
+r="$r|(?:tempest\.thirdparty\.boto\.test_ec2_instance_run\.InstanceRunTest\.test_compute_with_volumes.*)"
+r="$r|(?:tempest\.scenario\.test_security_groups.*)"
+
+r="$r|(?:tempest\.api\.identity.*)"
+r="$r|(?:tempest\.api\.image.*)"
+r="$r|(?:tempest\.api\.volume.*)"
+
+r="$r|(?:tempest\.api\.network.test_allowed_address_pair.*)"
+
+r="$r|(?:tempest\.api\.network.admin.test_external_network_extension.*)"
+
+# Current list of failing tests that need to be triaged, have bugs filed, and
+# fixed as appropriate.
+# (none)
+
+# End list of exclusions.
+r="$r)"
+
+# only run tempest.api/scenario/thirdparty tests (part of the default for 'full')
+r="$r(tempest\.(api|scenario|thirdparty)).*$"
+
+export DEVSTACK_GATE_TEMPEST_REGEX="$r"
