@@ -42,7 +42,7 @@ class DbApi(object):
         """
 
     @abc.abstractmethod
-    def get_key(self, table, key, value):
+    def get_key(self, table, key):
         """Get the value of a specific key in a table
 
         :param table:      table name
@@ -91,11 +91,11 @@ class DbApi(object):
 
     @abc.abstractmethod
     def get_all_entries(self, table):
-        """Returns a list of all table entries
+        """Returns a list of all table entries values
 
         :param table:      table name
         :type table:       string
-        :returns:          list of type (key, value) pairs
+        :returns:          list of values
         """
 
     @abc.abstractmethod
