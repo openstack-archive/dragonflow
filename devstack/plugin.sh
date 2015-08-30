@@ -7,7 +7,7 @@ OVN_REPO_NAME=$(basename ${OVN_REPO} | cut -f1 -d'.')
 # The branch to use from $OVN_REPO
 OVN_BRANCH=${OVN_BRANCH:-origin/master}
 
-DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_nb_impl.EtcdNbApi"
+DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_app.L3App"
 
@@ -22,7 +22,7 @@ DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
 #----------------------
 if is_service_enabled df-etcd ; then
    source $DEST/dragonflow/devstack/etcd_driver
-   NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_nb_impl.EtcdNbApi"
+   NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 fi
 if is_service_enabled df-ramcloud ; then
    source $DEST/dragonflow/devstack/ramcloud_driver

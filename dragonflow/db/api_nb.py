@@ -14,194 +14,380 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
+
+from oslo_log import log
+from oslo_serialization import jsonutils
+
+from neutron.i18n import _LW
+
+LOG = log.getLogger(__name__)
+
 
 class NbApi(object):
 
-    def initialize(self, db_ip, db_port):
-        pass
+    def __init__(self, db_driver):
+        super(NbApi, self).__init__()
+        self.driver = db_driver
+        self.controller = None
+
+    def initialize(self, db_ip='127.0.0.1', db_port=4001):
+        self.driver.initialize(db_ip, db_port)
+
+    def support_publish_subscribe(self):
+        return self.driver.support_publish_subscribe()
+
+    def wait_for_db_changes(self, controller):
+        self.controller = controller
+        while True:
+            try:
+                self.driver.wait_for_db_changes(self.apply_db_change)
+            except Exception as e:
+                if "Read timed out" not in e.message and (
+                            "ofport is 0" not in e.message):
+                    LOG.warn(_LW("suppressing configuration exception"))
+                    LOG.warn(e)
+
+    # TODO(gsagie) implement this to send the updates to a controller local
+    # queue which will process these updates
+    def apply_db_change(self, table, key, action, value):
+        self.controller.vswitch_api.sync()
+        if 'lport' == table:
+            if action == 'set' or action == 'create':
+                lport = LogicalPort(value)
+                self.controller.logical_port_updated(lport)
+            else:
+                lport_id = key
+                self.controller.logical_port_deleted(lport_id)
+        if 'lrouter' == table:
+            if action == 'set' or action == 'create':
+                lrouter = LogicalRouter(value)
+                self.controller.router_updated(lrouter)
+            else:
+                lrouter_id = key
+                self.controller.router_deleted(lrouter_id)
+        if 'chassis' == table:
+            if action == 'set' or action == 'create':
+                chassis = Chassis(value)
+                self.controller.chassis_created(chassis)
+            else:
+                chassis_id = key
+                self.controller.chassis_deleted(chassis_id)
+        if 'lswitch' == table:
+            if action == 'set' or action == 'create':
+                lswitch = LogicalSwitch(value)
+                self.controller.logical_switch_updated(lswitch)
+            else:
+                lswitch_id = key
+                self.controller.logical_switch_deleted(lswitch_id)
 
     def sync(self):
         pass
 
-    def support_publish_subscribe(self):
-        return False
-
     def get_chassis(self, name):
-        pass
+        try:
+            chassis_value = self.driver.get_key('chassis', name)
+            return Chassis(chassis_value)
+        except Exception:
+            return None
 
     def get_all_chassis(self):
-        pass
+        res = []
+        for entry_value in self.driver.get_all_entries('chassis'):
+            res.append(Chassis(entry_value))
+        return res
 
     def add_chassis(self, name, ip, tunnel_type):
-        pass
-
-    def get_logical_port(self, port_id):
-        pass
-
-    def get_all_logical_ports(self):
-        pass
-
-    def get_routers(self):
-        pass
-
-    def get_router_ports(self):
-        pass
-
-    def add_subnet(self, id, lswitch, **columns):
-        pass
-
-    def delete_subnet(self, id, lswitch):
-        pass
-
-    def get_all_logical_switches(self):
-        pass
-
-    def create_lswitch(self, name, **columns):
-        pass
-
-    def update_lswitch(self, name, **columns):
-        pass
+        chassis_value = name + ',' + ip + ',' + tunnel_type
+        self.driver.create_key('chassis', name, chassis_value)
 
     def get_lswitch(self, name):
-        pass
+        try:
+            lswitch_value = self.driver.get_key('lswitch', name)
+            return LogicalSwitch(lswitch_value)
+        except Exception:
+            return None
+
+    def add_subnet(self, id, lswitch_name, **columns):
+        lswitch_json = self.driver.get_key('lswitch', lswitch_name)
+        lswitch = jsonutils.loads(lswitch_json)
+
+        subnet = {}
+        subnet['id'] = id
+        subnet['lswitch'] = lswitch_name
+        for col, val in columns.items():
+            subnet[col] = val
+
+        subnets = lswitch.get('subnets', [])
+        subnets.append(subnet)
+        lswitch['subnets'] = subnets
+        lswitch_json = jsonutils.dumps(lswitch)
+        self.driver.set_key('lswitch', lswitch_name, lswitch_json)
+
+    def delete_subnet(self, id, lswitch_name):
+        lswitch_json = self.driver.get_key('lswitch', lswitch_name)
+        lswitch = jsonutils.loads(lswitch_json)
+
+        new_ports = []
+        for subnet in lswitch.get('subnets', []):
+            if subnet['id'] != id:
+                new_ports.append(subnet)
+
+        lswitch['subnets'] = new_ports
+        lswitch_json = jsonutils.dumps(lswitch)
+        self.driver.set_key('lswitch', lswitch_name, lswitch_json)
+
+    def get_logical_port(self, port_id):
+        try:
+            port_value = self.driver.get_key('lport', port_id)
+            return LogicalPort(port_value)
+        except Exception:
+            return None
+
+    def get_all_logical_ports(self):
+        res = []
+        for lport_value in self.driver.get_all_entries('lport'):
+            lport = LogicalPort(lport_value)
+            if lport.get_chassis() is None:
+                continue
+            res.append(lport)
+        return res
+
+    def create_lswitch(self, name, **columns):
+        lswitch = {}
+        lswitch['name'] = name
+        for col, val in columns.items():
+            lswitch[col] = val
+        lswitch_json = jsonutils.dumps(lswitch)
+        self.driver.create_key('lswitch', name, lswitch_json)
+
+    def update_lswitch(self, name, **columns):
+        lswitch_json = self.driver.get_key('lswitch', name)
+        lswitch = jsonutils.loads(lswitch_json)
+        for col, val in columns.items():
+            lswitch[col] = val
+        lswitch_json = jsonutils.dumps(lswitch)
+        self.driver.set_key('lswitch', name, lswitch_json)
 
     def delete_lswitch(self, name):
-        pass
+        self.driver.delete_key('lswitch', name)
 
     def create_lport(self, name, lswitch_name, **columns):
-        pass
+        lport = {}
+        lport['name'] = name
+        lport['lswitch'] = lswitch_name
+        for col, val in columns.items():
+            lport[col] = val
+        lport_json = jsonutils.dumps(lport)
+        self.driver.create_key('lport', name, lport_json)
 
-    def update_lport(self, lport_name, **columns):
-        pass
+    def update_lport(self, name, **columns):
+        lport_json = self.driver.get_key('lport', name)
+        lport = jsonutils.loads(lport_json)
+        for col, val in columns.items():
+            lport[col] = val
+        lport_json = jsonutils.dumps(lport)
+        self.driver.set_key('lport', name, lport_json)
 
     def delete_lport(self, name):
-        pass
+        self.driver.delete_key('lport', name)
 
-    def create_lrouter(self, name):
-        pass
+    def create_lrouter(self, name, **columns):
+        lrouter = {}
+        lrouter['name'] = name
+        for col, val in columns.items():
+            lrouter[col] = val
+        lrouter_json = jsonutils.dumps(lrouter)
+        self.driver.create_key('lrouter', name, lrouter_json)
 
     def delete_lrouter(self, name):
-        pass
+        self.driver.delete_key('lrouter', name)
 
-    def add_lrouter_port(self, name, lrouter, lswitch, **columns):
-        pass
+    def add_lrouter_port(self, name, lrouter_name, lswitch, **columns):
+        lrouter_json = self.driver.get_key('lrouter', lrouter_name)
+        lrouter = jsonutils.loads(lrouter_json)
 
-    def delete_lrouter_port(self, lrouter, lswitch):
-        pass
+        lrouter_port = {}
+        lrouter_port['name'] = name
+        lrouter_port['lrouter'] = lrouter_name
+        lrouter_port['lswitch'] = lswitch
+        for col, val in columns.items():
+            lrouter_port[col] = val
+
+        router_ports = lrouter.get('ports', [])
+        router_ports.append(lrouter_port)
+        lrouter['ports'] = router_ports
+        lrouter_json = jsonutils.dumps(lrouter)
+        self.driver.set_key('lrouter', lrouter_name, lrouter_json)
+
+    def delete_lrouter_port(self, lrouter_name, lswitch):
+        lrouter_json = self.driver.get_key('lrouter', lrouter_name)
+        lrouter = jsonutils.loads(lrouter_json)
+
+        new_ports = []
+        for port in lrouter.get('ports', []):
+            if port['lswitch'] != lswitch:
+                new_ports.append(port)
+
+        lrouter['ports'] = new_ports
+        lrouter_json = jsonutils.dumps(lrouter)
+        self.driver.set_key('lrouter', lrouter_name, lrouter_json)
+
+    def get_routers(self):
+        res = []
+        for lrouter_value in self.driver.get_all_entries('lrouter'):
+            res.append(LogicalRouter(lrouter_value))
+        return res
+
+    def get_all_logical_switches(self):
+        res = []
+        for lswitch_value in self.driver.get_all_entries('lswitch'):
+            res.append(LogicalSwitch(lswitch_value))
+        return res
 
 
 class Chassis(object):
 
+    def __init__(self, value):
+        # Entry <chassis_name, chassis_ip, chassis_tunnel_type>
+        self.values = value.split(',')
+
     def get_name(self):
-        pass
+        return self.values[0]
 
     def get_ip(self):
-        pass
+        return self.values[1]
 
     def get_encap_type(self):
-        pass
+        return self.values[2]
 
     def __str__(self):
-        return self.get_name()
+        return self.values.__str__()
 
 
 class LogicalSwitch(object):
 
+    def __init__(self, value):
+        self.lswitch = jsonutils.loads(value)
+
     def get_id(self):
-        pass
+        return self.lswitch['name']
 
     def get_subnets(self):
-        pass
+        res = []
+        for subnet in self.lswitch['subnets']:
+            res.append(Subnet(subnet))
+        return res
+
+    def __str__(self):
+        return self.lswitch.__str__()
 
 
 class Subnet(object):
 
-    def get_dhcp_enabled(self):
-        pass
+    def __init__(self, value):
+        self.subnet = value
+
+    def enable_dhcp(self):
+        return self.subnet['enable_dhcp']
 
     def get_dhcp_server_address(self):
-        pass
+        return self.subnet['dhcp_ip']
 
     def get_cidr(self):
-        pass
+        return self.subnet['cidr']
 
     def get_gateway_ip(self):
-        pass
+        return self.subnet['gateway_ip']
 
 
 class LogicalPort(object):
 
-    def get_id(self):
-        pass
+    def __init__(self, value):
+        self.external_dict = {}
+        self.lport = jsonutils.loads(value)
 
-    def get_mac(self):
-        pass
+    def get_id(self):
+        return self.lport.get('name')
 
     def get_ip(self):
-        pass
+        return self.lport['ips'][0]
+
+    def get_mac(self):
+        return self.lport['macs'][0]
 
     def get_chassis(self):
-        pass
+        return self.lport.get('chassis')
 
     def get_lswitch_id(self):
-        pass
+        return self.lport.get('lswitch')
 
     def get_tunnel_key(self):
-        pass
+        return int(self.lport['tunnel_key'])
 
     def set_external_value(self, key, value):
-        pass
+        self.external_dict[key] = value
 
     def get_external_value(self, key):
-        pass
+        return self.external_dict.get(key)
 
     def get_device_owner(self):
-        pass
+        return self.lport.get('device_owner')
 
     def __str__(self):
-        return self.get_id()
+        return self.lport.__str__() + self.external_dict.__str__()
 
 
 class LogicalRouter(object):
 
+    def __init__(self, value):
+        self.lrouter = jsonutils.loads(value)
+
     def get_name(self):
-        pass
+        return self.lrouter.get('name')
 
     def get_ports(self):
-        pass
+        res = []
+        for port in self.lrouter.get('ports'):
+            res.append(LogicalRouterPort(port))
+        return res
 
     def __str__(self):
-        return self.get_name()
+        return self.lrouter.__str__()
 
 
 class LogicalRouterPort(object):
 
+    def __init__(self, value):
+        self.router_port = value
+        self.cidr = netaddr.IPNetwork(self.router_port['network'])
+
     def get_name(self):
-        pass
+        return self.router_port.get('name')
 
     def get_ip(self):
-        pass
-
-    def get_mac(self):
-        pass
+        return str(self.cidr.ip)
 
     def get_cidr_network(self):
-        pass
+        return str(self.cidr.network)
 
     def get_cidr_netmask(self):
-        pass
+        return str(self.cidr.netmask)
+
+    def get_mac(self):
+        return self.router_port.get('mac')
 
     def get_lswitch_id(self):
-        pass
+        return self.router_port['lswitch']
 
     def get_network(self):
-        pass
+        return self.router_port['network']
 
     def get_tunnel_key(self):
-        pass
+        return self.router_port['tunnel_key']
 
     def __eq__(self, other):
         return self.get_name() == other.get_name()
 
     def __str__(self):
-        return self.get_name()
+        return self.router_port.__str__()

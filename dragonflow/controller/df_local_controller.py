@@ -29,6 +29,7 @@ from neutron.i18n import _LI, _LW
 
 from dragonflow.common import common_params
 from dragonflow.controller import dispatcher
+from dragonflow.db import api_nb
 from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_vswitch_impl
 
@@ -59,8 +60,8 @@ class DfLocalController(object):
                                                    kwargs)
 
     def run(self):
-        nb_class = importutils.import_class(cfg.CONF.df.nb_db_class)
-        self.nb_api = nb_class()
+        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        self.nb_api = api_nb.NbApi(nb_driver_class())
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)

@@ -50,6 +50,7 @@ from neutron.db import securitygroups_db
 from neutron.i18n import _, _LE, _LI
 
 from dragonflow.common import common_params
+from dragonflow.db import api_nb
 from dragonflow.neutron.common import constants as ovn_const
 from dragonflow.neutron.common import utils
 
@@ -88,10 +89,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # instead of using the hybrid mode.
         self.vif_details = {portbindings.CAP_PORT_FILTER: True}
 
-        nb_class = importutils.import_class(cfg.CONF.df.nb_db_class)
-        self.nb_api = nb_class()
+        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        self.nb_api = api_nb.NbApi(nb_driver_class())
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
+
         self.global_id = self._find_current_global_id()
 
         self.base_binding_dict = {
@@ -271,7 +273,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  parent_name=parent_name, tag=tag,
                                  enabled=updated_port['admin_state_up'],
                                  port_security=allowed_macs,
-                                 chassis=chassis)
+                                 chassis=chassis,
+                                 device_owner=port.get('device_owner', None))
         return updated_port
 
     def _get_data_from_binding_profile(self, context, port):
@@ -375,7 +378,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             enabled=port.get('admin_state_up', None),
             chassis=chassis, tunnel_key=tunnel_key,
             port_security=allowed_macs,
-            device_owner=port.get('device_owner'))
+            device_owner=port.get('device_owner', None))
 
         return port
 

@@ -294,12 +294,10 @@ class L3App(DFlowApp):
         for port in router.get_ports():
             if port.get_name() != router_port.get_name():
                 # From this router interface to all other interfaces
-                port_lport = self.db_store.get_port(port.get_name())
-                port_tunnel_key = port_lport.get_tunnel_key()
                 self._add_subnet_send_to_controller(local_network_id,
                                                     port.get_cidr_network(),
                                                     port.get_cidr_netmask(),
-                                                    port_tunnel_key)
+                                                    port.get_tunnel_key())
 
                 # From all the other interfaces to this new interface
                 router_port_net_id = self.db_store.get_network_id(

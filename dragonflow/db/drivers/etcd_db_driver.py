@@ -15,10 +15,10 @@ import etcd
 from dragonflow.db import db_api
 
 
-class EtcdDbApi(db_api.DbApi):
+class EtcdDbDriver(db_api.DbApi):
 
     def __init__(self):
-        super(EtcdDbApi, self).__init__()
+        super(EtcdDbDriver, self).__init__()
         self.client = None
         self.current_key = 0
 
