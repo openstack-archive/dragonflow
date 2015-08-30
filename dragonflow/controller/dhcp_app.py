@@ -376,3 +376,7 @@ class DHCPApp(DFlowApp):
                                   const.DHCP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
+
+        for port in self.db_store.get_ports():
+            if port.get_external_value('is_local'):
+                self.add_local_port(port)
