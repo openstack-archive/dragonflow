@@ -316,7 +316,7 @@ class DHCPApp(DFlowApp):
 
     def _is_port_a_vm(self, lport):
         owner = lport.get_device_owner()
-        if "compute" not in owner:
+        if not owner or "compute" in owner:
             return True
         return False
 
