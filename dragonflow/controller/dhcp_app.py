@@ -40,6 +40,12 @@ from neutron.i18n import _LI, _LE, _LW
 
 LOG = log.getLogger(__name__)
 
+DHCP_DOMAIN_NAME_OPT = 15
+DHCP_DISCOVER = 1
+DHCP_OFFER = 2
+DHCP_REQUEST = 3
+DHCP_ACK = 5
+
 
 class DHCPApp(DFlowApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -122,7 +128,7 @@ class DHCPApp(DFlowApp):
         dhcp_packet = dhcp.dhcp.parser(packet[3])
         dhcp_message_type = self._get_dhcp_message_type_opt(dhcp_packet)
         send_packet = None
-        if dhcp_message_type == 1:
+        if dhcp_message_type == DHCP_DISCOVER:
             #DHCP DISCOVER
             send_packet = self._create_dhcp_offer(
                                 pkt,
@@ -131,7 +137,7 @@ class DHCPApp(DFlowApp):
             LOG.info(_LI("sending DHCP offer for port IP %(port_ip)s"
                 " port id %(port_id)s")
                      % {'port_ip': lport.get_ip(), 'port_id': lport.get_id()})
-        elif dhcp_message_type == 3:
+        elif dhcp_message_type == DHCP_REQUEST:
             #DHCP REQUEST
             send_packet = self._create_dhcp_ack(
                                 pkt,
@@ -164,7 +170,9 @@ class DHCPApp(DFlowApp):
             dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT,
                     lease_time_bin, 4),
             dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns, len(dns)),
-            dhcp.option(15, domain_name_bin, len(self.domain_name))]
+            dhcp.option(DHCP_DOMAIN_NAME_OPT,
+                    domain_name_bin,
+                    len(self.domain_name))]
         options = dhcp.options(option_list=option_list)
         dhcp_offer_pkt = ryu_packet.Packet()
         dhcp_offer_pkt.add_protocol(ethernet.ethernet(
