@@ -462,3 +462,4 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         self.nb_api.delete_lrouter_port(utils.ovn_name(router_id),
                                         utils.ovn_name(network_id))
+        return new_router
