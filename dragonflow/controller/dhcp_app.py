@@ -165,7 +165,7 @@ class DHCPApp(DFlowApp):
                     lease_time_bin, 4),
             dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns, len(dns)),
             dhcp.option(15, domain_name_bin, len(self.domain_name))]
-        options = dhcp.options(option_list=option_list, options_len=50)
+        options = dhcp.options(option_list=option_list)
         dhcp_offer_pkt = ryu_packet.Packet()
         dhcp_offer_pkt.add_protocol(ethernet.ethernet(
                                                 ethertype=ether.ETH_TYPE_IP,
