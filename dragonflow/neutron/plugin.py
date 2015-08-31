@@ -274,7 +274,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  enabled=updated_port['admin_state_up'],
                                  port_security=allowed_macs,
                                  chassis=chassis,
-                                 device_owner=port.get('device_owner', None))
+                                 device_owner=updated_port.get('device_owner',
+                                                               None))
         return updated_port
 
     def _get_data_from_binding_profile(self, context, port):
