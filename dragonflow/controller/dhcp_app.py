@@ -33,10 +33,11 @@ from dragonflow.controller.df_base_app import DFlowApp
 import netaddr
 import struct
 
+from oslo_config import cfg
 from oslo_log import log
 
+from neutron.agent.dhcp import config as dhcp_config
 from neutron.i18n import _LI, _LE, _LW
-
 
 LOG = log.getLogger(__name__)
 
@@ -45,6 +46,14 @@ DHCP_DISCOVER = 1
 DHCP_OFFER = 2
 DHCP_REQUEST = 3
 DHCP_ACK = 5
+
+
+DF_DHCP_OPTS = [
+    cfg.ListOpt('dhcp_dns_servers',
+                default=['8.8.8.8', '8.8.8.7'],
+                help=_('Comma-separated list of the DNS servers which will be '
+                       'used.')),
+]
 
 
 class DHCPApp(DFlowApp):
@@ -57,11 +66,12 @@ class DHCPApp(DFlowApp):
         self.idle_timeout = 30
         self.hard_timeout = 0
         self.db_store = kwargs['db_store']
-        # TODO(gampel) move to conf file
-        self.global_dns_list = "8.8.8.8,8.8.8.7"
-        # TODO(gampel) support list of dns ips ip,ip,...
-        self.lease_time = 86400 * 30
-        self.domain_name = "openstacklocal"
+
+        cfg.CONF.register_opts(DF_DHCP_OPTS)
+        cfg.CONF.register_opts(dhcp_config.DHCP_OPTS)
+        self.global_dns_list = cfg.CONF.dhcp_dns_servers
+        self.lease_time = cfg.CONF.dhcp_lease_duration
+        self.domain_name = cfg.CONF.dhcp_domain
         self.local_tunnel_to_pid_map = {}
 
     def start(self):
@@ -237,9 +247,8 @@ class DHCPApp(DFlowApp):
         return dhcp_offer_pkt
 
     def _get_dns_address_list_bin(self):
-        dns_address = self.global_dns_list.split(",")
         dns_bin = ''
-        for address in dns_address:
+        for address in self.global_dns_list:
             dns_bin += addrconv.ipv4.text_to_bin(address)
         return dns_bin
 
