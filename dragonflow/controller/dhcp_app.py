@@ -166,11 +166,15 @@ class DHCPApp(DFlowApp):
         pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
 
         subnet = self._get_subnet_by_port(lport)
-        dns = self._get_dns_address_list_bin(subnet)
+        if subnet is None:
+            LOG.error(_LE("No subnet found for port <%s>") %
+                      lport.get_id())
+            return
 
-        dhcp_server_address = str(self._get_dhcp_server_address(lport))
-        gateway_address = self._get_port_gateway_address(lport)
-        netmask_bin = self._get_port_netmask(lport).packed
+        dns = self._get_dns_address_list_bin(subnet)
+        dhcp_server_address = str(self._get_dhcp_server_address(subnet))
+        gateway_address = self._get_port_gateway_address(subnet)
+        netmask_bin = self._get_port_netmask(subnet).packed
         domain_name_bin = struct.pack('!256s', self.domain_name)
         lease_time_bin = struct.pack('!I', self.lease_time)
 
@@ -207,14 +211,16 @@ class DHCPApp(DFlowApp):
         pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
 
         subnet = self._get_subnet_by_port(lport)
-        dns = self._get_dns_address_list_bin(subnet)
-
-        dhcp_server_address = self._get_dhcp_server_address(lport)
-        if not dhcp_server_address:
+        if subnet is None:
+            LOG.error(_LE("No subnet found for port <%s>") %
+                      lport.get_id())
             return
-        netmask_bin = self._get_port_netmask(lport).packed
+
+        dns = self._get_dns_address_list_bin(subnet)
+        dhcp_server_address = self._get_dhcp_server_address(subnet)
+        netmask_bin = self._get_port_netmask(subnet).packed
         lease_time_bin = struct.pack('!I', self.lease_time)
-        gateway_address = self._get_port_gateway_address(lport)
+        gateway_address = self._get_port_gateway_address(subnet)
         domain_name_bin = struct.pack('!256s', self.domain_name)
 
         option_list = [
@@ -252,9 +258,8 @@ class DHCPApp(DFlowApp):
 
     def _get_dns_address_list_bin(self, subnet):
         dns_servers = self.global_dns_list
-        if subnet is not None:
-            if len(subnet.get_dns_name_servers()) > 0:
-                dns_servers = subnet.get_dns_name_servers()
+        if len(subnet.get_dns_name_servers()) > 0:
+            dns_servers = subnet.get_dns_name_servers()
         dns_bin = ''
         for address in dns_servers:
             dns_bin += addrconv.ipv4.text_to_bin(address)
@@ -275,30 +280,14 @@ class DHCPApp(DFlowApp):
                 return subnet
         return None
 
-    def _get_dhcp_server_address(self, lport):
-        subnet = self._get_subnet_by_port(lport)
-        if subnet:
-            return netaddr.IPAddress(subnet.get_dhcp_server_address())
-        LOG.error(_LE("No DHCP server address found for port <%s>") %
-                lport.get_id())
-        return None
+    def _get_dhcp_server_address(self, subnet):
+        return netaddr.IPAddress(subnet.get_dhcp_server_address())
 
-    def _get_port_gateway_address(self, lport):
-        subnet = self._get_subnet_by_port(lport)
-        if subnet:
-            return netaddr.IPAddress(subnet.get_gateway_ip())
-        LOG.error(_LE("No Gateway server address found for port <%s>") %
-                lport.get_id())
-        return None
+    def _get_port_gateway_address(self, subnet):
+        return netaddr.IPAddress(subnet.get_gateway_ip())
 
-    def _get_port_netmask(self, lport):
-
-        subnet = self._get_subnet_by_port(lport)
-        if subnet:
-            return netaddr.IPNetwork(subnet.get_cidr()).netmask
-        LOG.info(_LI("No netmask value found for port <%s>") %
-                lport.get_id())
-        return None
+    def _get_port_netmask(self, subnet):
+        return netaddr.IPNetwork(subnet.get_cidr()).netmask
 
     def _is_dhcp_enabled_on_network(self, lport, net_id):
         subnet = self._get_subnet_by_port(lport)
