@@ -13,6 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
+import struct
+
+from oslo_config import cfg
+from oslo_log import log
+
+from neutron.common import config as common_config
+from neutron.i18n import _LI, _LE, _LW
 
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
@@ -30,13 +38,12 @@ from ryu.ofproto import ofproto_v1_3
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
-import netaddr
-import struct
-
-from oslo_log import log
-
-from neutron.i18n import _LI, _LE, _LW
-
+DF_DHCP_OPTS = [
+    cfg.ListOpt('df_dns_servers',
+                default=['8.8.8.8', '8.8.8.7'],
+                help=_('Comma-separated list of the DNS servers which will be '
+                       'used.')),
+]
 
 LOG = log.getLogger(__name__)
 
@@ -57,11 +64,12 @@ class DHCPApp(DFlowApp):
         self.idle_timeout = 30
         self.hard_timeout = 0
         self.db_store = kwargs['db_store']
-        # TODO(gampel) move to conf file
-        self.global_dns_list = "8.8.8.8,8.8.8.7"
-        # TODO(gampel) support list of dns ips ip,ip,...
-        self.lease_time = 86400 * 30
-        self.domain_name = "openstacklocal"
+
+        cfg.CONF.register_opts(DF_DHCP_OPTS)
+        cfg.CONF.regsiter_opts(common_config.core_opts)
+        self.global_dns_list = cfg.CONF.df_dns_servers
+        self.lease_time = cfg.CONF.dhcp_lease_duration
+        self.domain_name = cfg.CONF.dns_domain
         self.local_tunnel_to_pid_map = {}
 
     def start(self):
@@ -156,7 +164,10 @@ class DHCPApp(DFlowApp):
     def _create_dhcp_ack(self, pkt, dhcp_packet, lport):
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
-        dns = self._get_dns_address_list_bin()
+
+        subnet = self._get_subnet_by_port(lport)
+        dns = self._get_dns_address_list_bin(subnet)
+
         dhcp_server_address = str(self._get_dhcp_server_address(lport))
         gateway_address = self._get_port_gateway_address(lport)
         netmask_bin = self._get_port_netmask(lport).packed
@@ -194,7 +205,10 @@ class DHCPApp(DFlowApp):
     def _create_dhcp_offer(self, pkt, dhcp_packet, lport):
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
-        dns = self._get_dns_address_list_bin()
+
+        subnet = self._get_subnet_by_port(lport)
+        dns = self._get_dns_address_list_bin(subnet)
+
         dhcp_server_address = self._get_dhcp_server_address(lport)
         if not dhcp_server_address:
             return
@@ -236,10 +250,13 @@ class DHCPApp(DFlowApp):
                                          options=options))
         return dhcp_offer_pkt
 
-    def _get_dns_address_list_bin(self):
-        dns_address = self.global_dns_list.split(",")
+    def _get_dns_address_list_bin(self, subnet):
+        dns_servers = self.global_dns_list
+        if subnet is not None:
+            if len(subnet.get_dns_name_servers()) > 0:
+                dns_servers = subnet.get_dns_name_servers()
         dns_bin = ''
-        for address in dns_address:
+        for address in dns_servers:
             dns_bin += addrconv.ipv4.text_to_bin(address)
         return dns_bin
 
@@ -256,6 +273,7 @@ class DHCPApp(DFlowApp):
         for subnet in subnets:
             if ip in netaddr.IPNetwork(subnet.get_cidr()):
                 return subnet
+        return None
 
     def _get_dhcp_server_address(self, lport):
         subnet = self._get_subnet_by_port(lport)

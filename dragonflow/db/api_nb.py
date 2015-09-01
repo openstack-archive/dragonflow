@@ -314,6 +314,9 @@ class Subnet(object):
     def get_gateway_ip(self):
         return self.subnet['gateway_ip']
 
+    def get_dns_name_servers(self):
+        return self.subnet['dns_nameservers']
+
 
 class LogicalPort(object):
 
