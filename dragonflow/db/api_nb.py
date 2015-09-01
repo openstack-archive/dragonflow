@@ -124,6 +124,20 @@ class NbApi(object):
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', lswitch_name, lswitch_json)
 
+    def update_subnet(self, id, lswitch_name, **columns):
+        lswitch_json = self.driver.get_key('lswitch', lswitch_name)
+        lswitch = jsonutils.loads(lswitch_json)
+        subnet = None
+        for s in lswitch.get('subnets', []):
+            if s['id'] == id:
+                subnet = s
+
+        for col, val in columns.items():
+            subnet[col] = val
+
+        lswitch_json = jsonutils.dumps(lswitch)
+        self.driver.set_key('lswitch', lswitch_name, lswitch_json)
+
     def delete_subnet(self, id, lswitch_name):
         lswitch_json = self.driver.get_key('lswitch', lswitch_name)
         lswitch = jsonutils.loads(lswitch_json)

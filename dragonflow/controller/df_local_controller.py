@@ -125,7 +125,7 @@ class DfLocalController(object):
             self.logical_switch_updated(lswitch)
 
     def logical_switch_updated(self, lswitch):
-        LOG.info(_LI("Adding Logical Switch"))
+        LOG.info(_LI("Adding/Updating Logical Switch"))
         LOG.info(lswitch.__str__())
         self.db_store.set_lswitch(lswitch.get_id(), lswitch)
 

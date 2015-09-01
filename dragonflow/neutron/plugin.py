@@ -169,9 +169,29 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
                 dhcp_ip=new_subnet['allocation_pools'][0]['start'],
-                gateway_ip=new_subnet['gateway_ip'])
+                gateway_ip=new_subnet['gateway_ip'],
+                dns_nameservers=new_subnet.get('dns_nameservers', []))
 
         return new_subnet
+
+    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
+                               retry_on_deadlock=True)
+    def update_subnet(self, context, id, subnet):
+        with context.session.begin(subtransactions=True):
+            # update subnet in DB
+            new_subnet = super(DFPlugin,
+                               self).update_subnet(context, id, subnet)
+            net_id = new_subnet['network_id']
+            # update df controller with subnet
+            self.nb_api.update_subnet(
+                new_subnet['id'],
+                utils.ovn_name(net_id),
+                enable_dhcp=new_subnet['enable_dhcp'],
+                cidr=new_subnet['cidr'],
+                dhcp_ip=new_subnet['allocation_pools'][0]['start'],
+                gateway_ip=new_subnet['gateway_ip'],
+                dns_nameservers=new_subnet.get('dns_nameservers', []))
+            return new_subnet
 
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
