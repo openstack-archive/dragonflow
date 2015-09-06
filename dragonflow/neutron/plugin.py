@@ -47,6 +47,7 @@ from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
 from neutron.db import portbindings_db
 from neutron.db import securitygroups_db
+from neutron.extensions import securitygroup as sec_grp
 from neutron.i18n import _, _LE, _LI
 
 from dragonflow.common import common_params
@@ -153,6 +154,40 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 with excutils.save_and_reraise_exception():
                     LOG.exception(_LE("Exception auto-deleting port %s"),
                                   port.id)
+
+    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
+                               retry_on_deadlock=True)
+    def create_security_group(self, context, security_group,
+                              default_sg=False):
+        sg = security_group.get('security_group')
+        tenant_id = self._get_tenant_id_for_create(context, sg)
+        if not default_sg:
+            self._ensure_default_security_group(context, tenant_id)
+
+        with context.session.begin(subtransactions=True):
+            sg_db = super(DFPlugin,
+                          self).create_security_group(context,
+                                                      security_group,
+                                                      default_sg)
+            self.nb_api.create_security_group(sg_db['id'], rules=[])
+            return sg_db
+
+    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
+                               retry_on_deadlock=True)
+    def delete_security_group(self, context, sg_id):
+        sg = super(DFPlugin, self).get_security_group(
+            context, sg_id)
+        if not sg:
+            raise sec_grp.SecurityGroupNotFound(id=sg_id)
+
+        if sg['name'] == 'default' and not context.is_admin:
+            raise sec_grp.SecurityGroupCannotRemoveDefault()
+
+        with context.session.begin(subtransactions=True):
+            sg_db = super(DFPlugin, self).delete_security_group(context,
+                                                                sg_id)
+            self.nb_api.delete_security_group(sg_id)
+            return sg_db
 
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
