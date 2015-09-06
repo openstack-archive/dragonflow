@@ -84,6 +84,17 @@ class NbApi(object):
     def sync(self):
         pass
 
+    def create_security_group(self, name, **columns):
+        secgroup = {}
+        secgroup['name'] = name
+        for col, val in columns.items():
+            secgroup[col] = val
+        secgroup_json = jsonutils.dumps(secgroup)
+        self.driver.create_key('secgroup', name, secgroup_json)
+
+    def delete_security_group(self, name):
+        self.driver.delete_key('secgroup', name)
+
     def get_chassis(self, name):
         try:
             chassis_value = self.driver.get_key('chassis', name)
