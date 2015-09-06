@@ -174,6 +174,42 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
+    def create_security_group_rule(self, context, security_group_rule):
+        bulk_rule = {'security_group_rules': [security_group_rule]}
+        return self.create_security_group_rule_bulk(context, bulk_rule)[0]
+
+    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
+                               retry_on_deadlock=True)
+    def create_security_group_rule_bulk(self, context, security_group_rules):
+        sg_id = self._validate_security_group_rules(context,
+                                                    security_group_rules)
+
+        # Check to make sure security group exists
+        security_group = super(DFPlugin,
+                               self).get_security_group(context,
+                                                        sg_id)
+        if not security_group:
+            raise sec_grp.SecurityGroupNotFound(id=sg_id)
+
+        with context.session.begin(subtransactions=True):
+            new_rule_list = super(DFPlugin,
+                                  self).create_security_group_rule_bulk_native(
+                context, security_group_rules)
+            self.nb_api.add_security_group_rules(sg_id, new_rule_list)
+            return new_rule_list
+
+    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
+                               retry_on_deadlock=True)
+    def delete_security_group_rule(self, context, sgr_id):
+        rule_db = self._get_security_group_rule(context, sgr_id)
+        security_group_id = rule_db['security_group_id']
+        with context.session.begin(subtransactions=True):
+            super(DFPlugin,
+                  self).delete_security_group_rule(context, sgr_id)
+            self.nb_api.delete_security_group_rule(security_group_id, sgr_id)
+
+    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
+                               retry_on_deadlock=True)
     def delete_security_group(self, context, sg_id):
         sg = super(DFPlugin, self).get_security_group(
             context, sg_id)

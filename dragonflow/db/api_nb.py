@@ -95,6 +95,27 @@ class NbApi(object):
     def delete_security_group(self, name):
         self.driver.delete_key('secgroup', name)
 
+    def add_security_group_rules(self, sg_name, new_rules):
+        secgroup_json = self.driver.get_key('secgroup', sg_name)
+        secgroup = jsonutils.loads(secgroup_json)
+        rules = secgroup.get('rules', [])
+        rules.extend(new_rules)
+        secgroup['rules'] = rules
+        secgroup_json = jsonutils.dumps(secgroup)
+        self.driver.set_key('secgroup', sg_name, secgroup_json)
+
+    def delete_security_group_rule(self, sg_name, sgr_id):
+        secgroup_json = self.driver.get_key('secgroup', sg_name)
+        secgroup = jsonutils.loads(secgroup_json)
+        rules = secgroup.get('rules')
+        new_rules = []
+        for rule in rules:
+            if rule['id'] != sgr_id:
+                new_rules.append(rule)
+        secgroup['rules'] = new_rules
+        secgroup_json = jsonutils.dumps(secgroup)
+        self.driver.set_key('secgroup', sg_name, secgroup_json)
+
     def get_chassis(self, name):
         try:
             chassis_value = self.driver.get_key('chassis', name)
