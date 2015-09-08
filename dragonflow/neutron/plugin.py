@@ -421,6 +421,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 context, port['port'])
             dhcp_opts = port['port'].get(edo_ext.EXTRADHCPOPTS, [])
             db_port = super(DFPlugin, self).create_port(context, port)
+            self._ensure_default_security_group_on_port(context, port)
             sgids = self._get_security_groups_on_port(context, port)
             self._process_port_create_security_group(context, db_port,
                                                      sgids)
@@ -436,9 +437,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     port['port'][ovn_const.OVN_PORT_BINDING_PROFILE])
             self._process_port_create_extra_dhcp_opts(context, db_port,
                                                       dhcp_opts)
-        return self.create_port_in_nb_api(db_port, parent_name, tag)
+        return self.create_port_in_nb_api(db_port, parent_name, tag, sgids)
 
-    def create_port_in_nb_api(self, port, parent_name, tag):
+    def create_port_in_nb_api(self, port, parent_name, tag, sgids):
         # The port name *must* be port['id'].  It must match the iface-id set
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
@@ -470,7 +471,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             enabled=port.get('admin_state_up', None),
             chassis=chassis, tunnel_key=tunnel_key,
             port_security=allowed_macs,
-            device_owner=port.get('device_owner', None))
+            device_owner=port.get('device_owner', None),
+            sgids=sgids)
 
         return port
 
