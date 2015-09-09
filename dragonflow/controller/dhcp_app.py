@@ -66,7 +66,7 @@ class DHCPApp(DFlowApp):
         self.db_store = kwargs['db_store']
 
         cfg.CONF.register_opts(DF_DHCP_OPTS)
-        cfg.CONF.regsiter_opts(common_config.core_opts)
+        cfg.CONF.register_opts(common_config.core_opts)
         self.global_dns_list = cfg.CONF.df_dns_servers
         self.lease_time = cfg.CONF.dhcp_lease_duration
         self.domain_name = cfg.CONF.dns_domain
@@ -292,7 +292,7 @@ class DHCPApp(DFlowApp):
     def _is_dhcp_enabled_on_network(self, lport, net_id):
         subnet = self._get_subnet_by_port(lport)
         if subnet:
-            return subnet.get_dhcp_enabled()
+            return subnet.enable_dhcp()
         LOG.warning(_LW("No subnet found for port <%s>") %
                 lport.get_id())
         return True
