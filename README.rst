@@ -43,5 +43,5 @@ DVR and can work with any ML2 mechanism and type drivers.
 
 Overview and details are available in the `Centralized Dragonflow Section`_
 
-.. _Centralized: http://docs.openstack.org/developer/dragonflow/distributed_dragonflow.html
+.. _Centralized Dragonflow Section: http://docs.openstack.org/developer/dragonflow/centralized_dragonflow.html
 

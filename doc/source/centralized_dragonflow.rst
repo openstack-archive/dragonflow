@@ -1,4 +1,6 @@
-SDN based Virtual Router add-on for Neutron OpenStack
+=======================
+Centralized Dragonflow
+=======================
 
 Overview
 --------
