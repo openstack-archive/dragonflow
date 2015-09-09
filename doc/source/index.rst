@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to dragonflow's documentation!
-========================================================
+Welcome to Dragonflow's documentation
+=====================================
 
 Contents:
 
@@ -13,6 +13,8 @@ Contents:
 
    readme
    installation
+   centralized_dragonflow
+   distributed_dragonflow
    usage
    contributing
 

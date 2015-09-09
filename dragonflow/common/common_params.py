@@ -12,6 +12,8 @@
 
 from oslo_config import cfg
 
+from neutron.i18n import _
+
 df_opts = [
     cfg.StrOpt('remote_db_ip',
                default='127.0.0.1',

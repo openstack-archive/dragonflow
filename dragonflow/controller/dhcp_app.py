@@ -20,7 +20,7 @@ from oslo_config import cfg
 from oslo_log import log
 
 from neutron.common import config as common_config
-from neutron.i18n import _LI, _LE, _LW
+from neutron.i18n import _, _LI, _LE, _LW
 
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
