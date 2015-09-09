@@ -40,14 +40,16 @@ from dragonflow.controller.df_base_app import DFlowApp
 
 DF_DHCP_OPTS = [
     cfg.ListOpt('df_dns_servers',
-                default=['8.8.8.8', '8.8.8.7'],
-                help=_('Comma-separated list of the DNS servers which will be '
-                       'used.')),
+        default=['8.8.8.8', '8.8.8.7'],
+        help=_('Comma-separated list of the DNS servers which will be used.')),
+    cfg.IntOpt('df_default_network_device_mtu', default=1460,
+        help=_('default MTU setting for interface.')),
 ]
 
 LOG = log.getLogger(__name__)
 
 DHCP_DOMAIN_NAME_OPT = 15
+DHCP_INTERFACE_MTU_OPT = 26
 DHCP_DISCOVER = 1
 DHCP_OFFER = 2
 DHCP_REQUEST = 3
@@ -70,6 +72,9 @@ class DHCPApp(DFlowApp):
         self.global_dns_list = cfg.CONF.df_dns_servers
         self.lease_time = cfg.CONF.dhcp_lease_duration
         self.domain_name = cfg.CONF.dns_domain
+        self.advertise_mtu = cfg.CONF.advertise_mtu
+        self.default_interface_mtu = cfg.CONF.df_default_network_device_mtu
+
         self.local_tunnel_to_pid_map = {}
 
     def start(self):
@@ -177,7 +182,6 @@ class DHCPApp(DFlowApp):
         netmask_bin = self._get_port_netmask(subnet).packed
         domain_name_bin = struct.pack('!256s', self.domain_name)
         lease_time_bin = struct.pack('!I', self.lease_time)
-
         option_list = [
             dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, b'\x05', 1),
             dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask_bin, 4),
@@ -188,6 +192,14 @@ class DHCPApp(DFlowApp):
             dhcp.option(DHCP_DOMAIN_NAME_OPT,
                     domain_name_bin,
                     len(self.domain_name))]
+
+        if self.advertise_mtu:
+            intreface_mtu = self._get_port_mtu(lport)
+            mtu_bin = struct.pack('!H', intreface_mtu)
+            option_list.append(dhcp.option(
+                                    DHCP_INTERFACE_MTU_OPT,
+                                    mtu_bin,
+                                    len(mtu_bin)))
         options = dhcp.options(option_list=option_list)
         dhcp_offer_pkt = ryu_packet.Packet()
         dhcp_offer_pkt.add_protocol(ethernet.ethernet(
@@ -296,6 +308,10 @@ class DHCPApp(DFlowApp):
         LOG.warning(_LW("No subnet found for port <%s>") %
                 lport.get_id())
         return True
+
+    def _get_port_mtu(self, lport):
+        #TODO(gampel) Get mtu from network object onec we add support
+        return self.default_interface_mtu
 
     def remove_local_port(self, lport):
 
