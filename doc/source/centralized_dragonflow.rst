@@ -1,33 +1,84 @@
-=======================
 Centralized Dragonflow
-=======================
+######################
 
 Overview
 --------
 Dragonflow is an implementation of a fully distributed virtual router for
-OpenStack Neutron, which is based on a Software-Defined Network Controller
-(SDNC) design.
+OpenStack Neutron that follows a Software Defined Network (SDN) Controller 
+design.
 
-The main purpose of Dragonflow is to simplify the management of the virtual
-router, while improving performance, scale and eliminating single point of
-failure and the notorious network node bottleneck.
+The *Centralized* version of Dragonflow is intended as a 100% replacement
+to the `Neutron DVR <https://wiki.openstack.org/wiki/Neutron/DVR>`_, with 
+some advantages such as greatly simplified management of the virtual router,
+improved performance, stability and scalability.
 
-The proposed method is based on the separation of the routing control plane
-from the data plane. This is accomplished by implementing the routing logic in
-distributed forwarding rules on the virtual switches. In OpenFlow these rules
-are called flows. To put this simply, the virtual router is implemented using
-OpenFlow flows.
+Architecture
+------------
 
-Dragonflow eliminates the use of namespaces in contrast to the standard DVR
-implementation. A diagram showing Dragonflow components and overall
-architecture can be seen here:
+Dragonflow SDN architecture is based on the separation of the network control 
+plane and data plane. This is accomplished by implementing the service logic
+as a pipeline of {match ,action} OpenFlow flows that are executed in the data 
+plane by the forwarding engine in the virtual switch (we rely on OVS).
+
+By leveraging these programmatic capabilities and the distributed nature of
+the virtual switches (i.e. one runs on each compute node), we were able to
+consistently remove other "moving parts" from the OpenStack deployment, and
+replace them with OpenFlow pipelines.
+
+The benefits in this approach are twofold:
+
+1. Fewer running processes == simpler maintenance == more stable environment
+2. Services run truly distributed, removing the need to trombone traffic to
+   a service node, therefore eliminating undesirable bottlenecks and greatly
+   improving the ability to scale the environment to larger number of VMs
+   and compute nodes
+
+The Hybrid Reactive-Proactive Model
+===================================
+
+Dragonflow makes extensive use of the reactive OpenFlow behavior, in which 
+the forwarding element (i.e. the virtual switch) forwards unmatched packets 
+to the software path that leads to the SDN controller.
+
+Combining this extremely powerful capability with carefully-constructed 
+proactively-deployed pipelines enabled us to balance between 
+functionality-rich slow-path logic and blazing-fast match and action engine.
+
+Deployment Models
+=================
+
+The following diagram illustrates the main Dragonflow service components, in
+its *Centralized* deployment model.
+
+Centralized Dragonflow
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/df_components.jpg
     :alt: Solution Overview
-    :width: 600
-    :height: 525
+    :width: 750
     :align: center
 
+The main principle of this model is that the Dragonflow controller is 
+deployed in one or several main locations and is separate from the
+virtual switches that it manages.
+
+The virtual switches connect to Dragonflow controller in OpenFlow and
+are remote managed.
+
+This model is suitable for small-to-medium deployments, with moderate
+rate of new "VM-to-VM" connection establishments.
+
+Advanced Services
+=================
+
+Distributed Virtual Router
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Dragonflow distributed virtual router is implemented using OpenFlow 
+flows.
+
+This allowed us to eliminate the use of namespaces, which was both slow
+(additional IP stack) and harder to maintain (more OS-level artifacts). 
 
 Perhaps the most important part of the solution is the OpenFlow pipeline which
 we install into the integration bridge upon bootstrap. This is the flow that
@@ -53,8 +104,7 @@ using flows only:
 
 .. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/df_of_pipeline.jpg
     :alt: Pipeline
-    :width: 600
-    :height: 400
+    :width: 650
     :align: center
 
 
@@ -63,8 +113,9 @@ A detailed blog post describing the solution can be found Here_.
 
 .. _Here: http://blog.gampel.net/2015/01/neutron-dvr-sdn-way.html
 
-Documentation:
---------------
+Documentation
+-------------
+
 * `Solution Overview Presentation <http://www.slideshare.net/gampel/dragonflow-sdn-based-distributed-virtual-router-for-openstack-neutron>`_
 
 * `Solution Overview Blog Post  <http://blog.gampel.net/2015/01/neutron-dvr-sdn-way.html>`_
@@ -74,10 +125,10 @@ Documentation:
 * `Deep-Dive Introduction 2 Blog Post <http://galsagie.github.io/sdn/openstack/ovs/dragonflow/2015/05/11/dragonflow-2/>`_
 
 * `Kilo-Release Blog Post  <http://blog.gampel.net/2015/01/dragonflow-sdn-based-distributed.html>`_
-
-
+ 
 How to Install
 --------------
+
 `Installation Guide <https://github.com/openstack/dragonflow/tree/master/doc/source>`_
 
 `DevStack Single Node Configuration  <https://github.com/openstack/dragonflow/tree/master/doc/source/single-node-conf>`_
@@ -86,6 +137,7 @@ How to Install
 
 Prerequisites
 -------------
+
 Install DevStack with Neutron ML2 as core plugin
 Install OVS 2.3.1 or newer
 
