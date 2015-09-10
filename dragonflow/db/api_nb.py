@@ -37,6 +37,9 @@ class NbApi(object):
     def support_publish_subscribe(self):
         return self.driver.support_publish_subscribe()
 
+    def allocate_tunnel_key(self):
+        return self.driver.allocate_unique_key()
+
     def wait_for_db_changes(self, controller):
         self.controller = controller
         while True:

@@ -27,6 +27,9 @@ from neutron.api.rpc.handlers import dhcp_rpc
 from neutron.api.rpc.handlers import l3_rpc
 from neutron.api.rpc.handlers import metadata_rpc
 from neutron.api.v2 import attributes as attr
+from neutron.callbacks import events
+from neutron.callbacks import registry
+from neutron.callbacks import resources
 from neutron.common import exceptions as n_exc
 from neutron.extensions import extra_dhcp_opt as edo_ext
 from neutron.extensions import portbindings
@@ -89,13 +92,16 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # When set to True, Nova plugs the VIF directly into the ovs bridge
         # instead of using the hybrid mode.
         self.vif_details = {portbindings.CAP_PORT_FILTER: True}
+        registry.subscribe(self.post_fork_initialize, resources.PROCESS,
+                           events.AFTER_CREATE)
 
+        self._setup_rpc()
+
+    def post_fork_initialize(self, resource, event, trigger, **kwargs):
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
         self.nb_api = api_nb.NbApi(nb_driver_class())
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
-
-        self.global_id = self._find_current_global_id()
 
         self.base_binding_dict = {
             portbindings.VIF_TYPE: portbindings.VIF_TYPE_OVS,
@@ -104,23 +110,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 portbindings.CAP_PORT_FILTER:
                 'security-group' in self.supported_extension_aliases}}
 
-        self._setup_rpc()
-
-    def _find_current_global_id(self):
-        # TODO(gsagie) This method finds the biggest allocated id in the DB
-        # and continue to allocate starting from it, we still need to handle
-        # the case of wrap up in the id's
-        max_id = 0
-        try:
-            for port in self.nb_api.get_all_logical_ports():
-                if port.get_tunnel_key() > max_id:
-                    max_id = port.get_tunnel_key()
-        except Exception:
-            pass
-        return max_id
-
     def _setup_rpc(self):
-        self.conn = n_rpc.create_connection(new=True)
         self.endpoints = [dhcp_rpc.DhcpRpcCallback(),
                           l3_rpc.L3RpcCallback(),
                           agents_db.AgentExtRpcCallback(),
@@ -135,6 +125,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         )
         self.supported_extension_aliases.extend(
             ['agent', 'dhcp_agent_scheduler'])
+
+    def start_rpc_listeners(self):
+        self.conn = n_rpc.create_connection(new=True)
         self.conn.create_consumer(topics.PLUGIN, self.endpoints,
                                   fanout=False)
         self.conn.create_consumer(topics.L3PLUGIN, self.endpoints,
@@ -454,7 +447,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if 'binding:host_id' in port:
             chassis = port['binding:host_id']
 
-        tunnel_key = self._allocate_tunnel_key()
+        tunnel_key = self.nb_api.allocate_tunnel_key()
 
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldnt be mapped to
@@ -475,11 +468,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             sgids=sgids)
 
         return port
-
-    def _allocate_tunnel_key(self):
-        # TODO(gsagie) need something that can reuse deleted keys
-        self.global_id = self.global_id + 1
-        return self.global_id
 
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
