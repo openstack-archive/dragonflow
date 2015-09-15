@@ -47,6 +47,26 @@ class EtcdDbDriver(db_api.DbApi):
             res.append(entry.value)
         return res
 
+    def _allocate_unique_key(self):
+        key = '/tunnel_key/key'
+        prev_value = 0
+        try:
+            prev_value = int(self.client.read(key).value)
+            self.client.test_and_set(key, str(prev_value + 1), str(prev_value))
+            return prev_value + 1
+        except Exception as e:
+            if prev_value == 0:
+                self.client.write(key, "1", prevExist=False)
+                return 1
+            raise e
+
+    def allocate_unique_key(self):
+        while True:
+            try:
+                return self._allocate_unique_key()
+            except Exception:
+                pass
+
     def wait_for_db_changes(self, callback):
         entry = self.client.read('/', wait=True, recursive=True,
                                  waitIndex=self.current_key)

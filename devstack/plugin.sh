@@ -60,8 +60,6 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
     fi
-
-    iniset $NEUTRON_CONF DEFAULT api_workers "0"
 }
 
 # init_ovn() - Initialize databases, etc.

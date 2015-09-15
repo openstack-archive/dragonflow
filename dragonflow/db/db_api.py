@@ -112,3 +112,11 @@ class DbApi(object):
                           value = new object value
         :returns:         None
         """
+
+    @abc.abstractmethod
+    def allocate_unique_key(self):
+        """Allocate a unique id in the system
+           Used to allocate ports unique numbers
+
+        :returns:     Unique id
+        """
