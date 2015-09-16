@@ -133,8 +133,10 @@ class NbApi(object):
         return res
 
     def add_chassis(self, name, ip, tunnel_type):
-        chassis_value = name + ',' + ip + ',' + tunnel_type
-        self.driver.create_key('chassis', name, chassis_value)
+        chassis = {'name': name, 'ip': ip,
+                   'tunnel_type': tunnel_type}
+        chassis_json = jsonutils.dumps(chassis)
+        self.driver.create_key('chassis', name, chassis_json)
 
     def get_lswitch(self, name):
         try:
@@ -298,17 +300,16 @@ class NbApi(object):
 class Chassis(object):
 
     def __init__(self, value):
-        # Entry <chassis_name, chassis_ip, chassis_tunnel_type>
-        self.values = value.split(',')
+        self.chassis = jsonutils.loads(value)
 
     def get_name(self):
-        return self.values[0]
+        return self.chassis['name']
 
     def get_ip(self):
-        return self.values[1]
+        return self.chassis['ip']
 
     def get_encap_type(self):
-        return self.values[2]
+        return self.chassis['tunnel_type']
 
     def __str__(self):
         return self.values.__str__()
