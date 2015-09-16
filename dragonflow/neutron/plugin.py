@@ -293,7 +293,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                retry_on_deadlock=True)
     def delete_network(self, context, network_id):
-        with context.session.begin():
+        with context.session.begin(subtransactions=True):
             super(DFPlugin, self).delete_network(context,
                                                  network_id)
         # TODO(gsagie) this patch is used to remove DHCP port
@@ -473,7 +473,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                retry_on_deadlock=True)
     def delete_port(self, context, port_id, l3_port_check=True):
         self.nb_api.delete_lport(port_id)
-        with context.session.begin():
+        with context.session.begin(subtransactions=True):
             self.disassociate_floatingips(context, port_id)
             super(DFPlugin, self).delete_port(context, port_id)
 
