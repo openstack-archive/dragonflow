@@ -24,10 +24,11 @@ function nb_db_driver_install_server {
 
 function nb_db_driver_install_client {
     echo "Installing etcd client"
-    git_clone https://github.com/jplana/python-etcd.git /opt/stack/python-etcd
-    pushd "/opt/stack/python-etcd"
-    setup_package ./
-    popd
+    local _pwd=$(pwd)
+    git_clone https://github.com/jplana/python-etcd.git $DEST/python-etcd
+    cd $DEST/python-etcd
+    python setup.py install
+    cd $_pwd
     echo "Finished installing etcd"
 }
 
