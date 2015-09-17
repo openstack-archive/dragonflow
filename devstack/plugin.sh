@@ -31,6 +31,13 @@ fi
 # Entry Points
 # ------------
 
+function cleanup_ovs {
+   local _pwd=$(pwd)
+   cd $DEST/$OVN_REPO_NAME
+   sudo make uninstall
+   cd $_pwd
+}
+
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
@@ -250,6 +257,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
 
     if [[ "$1" == "unstack" ]]; then
         stop_df
+        cleanup_ovs
     fi
 fi
 
