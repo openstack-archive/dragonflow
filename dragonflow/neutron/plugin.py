@@ -54,6 +54,7 @@ from neutron.extensions import securitygroup as sec_grp
 from neutron.i18n import _, _LE, _LI
 
 from dragonflow.common import common_params
+from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import api_nb
 from dragonflow.neutron.common import constants as ovn_const
 from dragonflow.neutron.common import utils
@@ -301,8 +302,16 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # q-dhcp
         for port in self.nb_api.get_all_logical_ports():
             if port.get_lswitch_id() == utils.ovn_name(network_id):
-                self.nb_api.delete_lport(port.get_id())
-        self.nb_api.delete_lswitch(utils.ovn_name(network_id))
+                try:
+                    self.nb_api.delete_lport(port.get_id())
+                except df_exceptions.DBKeyNotFound:
+                    LOG.debug("port %s is not found in DB, might have"
+                              "been deleted concurrently" % port.get_id())
+        try:
+            self.nb_api.delete_lswitch(utils.ovn_name(network_id))
+        except df_exceptions.DBKeyNotFound:
+            LOG.debug("lswitch %s is not found in DF DB, might have "
+                      "been deleted concurrently" % utils.ovn_name(network_id))
 
     def _set_network_name(self, network_id, name):
         ext_id = [ovn_const.OVN_NETWORK_NAME_EXT_ID_KEY, name]
@@ -472,7 +481,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
                                exception_checker=db_api.is_deadlock)
     def delete_port(self, context, port_id, l3_port_check=True):
-        self.nb_api.delete_lport(port_id)
+        try:
+            self.nb_api.delete_lport(port_id)
+        except df_exceptions.DBKeyNotFound:
+            LOG.debug("port %s is not found in DF DB, might have "
+                      "been deleted concurrently" % port_id)
         with context.session.begin(subtransactions=True):
             self.disassociate_floatingips(context, port_id)
             super(DFPlugin, self).delete_port(context, port_id)
@@ -495,7 +508,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     def delete_router(self, context, router_id):
         router_name = utils.ovn_name(router_id)
-        self.nb_api.delete_lrouter(router_name)
+        try:
+            self.nb_api.delete_lrouter(router_name)
+        except df_exceptions.DBKeyNotFound:
+            LOG.debug("router %s is not found in DF DB, might have "
+                      "been deleted concurrently" % router_name)
         ret_val = super(DFPlugin, self).delete_router(context,
                                                       router_id)
         return ret_val
