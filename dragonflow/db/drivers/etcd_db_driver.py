@@ -12,6 +12,7 @@
 
 import etcd
 
+from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
 
 
@@ -29,16 +30,25 @@ class EtcdDbDriver(db_api.DbApi):
         return True
 
     def get_key(self, table, key):
-        return self.client.read('/' + table + '/' + key).value
+        try:
+            return self.client.read('/' + table + '/' + key).value
+        except etcd.EtcdKeyNotFound:
+            raise df_exceptions.DBKeyNotFound(key=key)
 
     def set_key(self, table, key, value):
+        # Verify that key exists
+        self.get_key(table, key)
+
         self.client.write('/' + table + '/' + key, value)
 
     def create_key(self, table, key, value):
-        self.set_key(table, key, value)
+        self.client.write('/' + table + '/' + key, value)
 
     def delete_key(self, table, key):
-        self.client.delete('/' + table + '/' + key)
+        try:
+            self.client.delete('/' + table + '/' + key)
+        except etcd.EtcdKeyNotFound:
+            raise df_exceptions.DBKeyNotFound(key=key)
 
     def get_all_entries(self, table):
         res = []

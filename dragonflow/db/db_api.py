@@ -50,6 +50,7 @@ class DbApi(object):
         :param key:        key name
         :type key:         string
         :returns:          string - the key value
+        :raises:           DragonflowException.DBKeyNotFound if key not found
         """
 
     @abc.abstractmethod
@@ -63,6 +64,7 @@ class DbApi(object):
         :param value:      value to set for the key
         :type value:       string
         :returns:          None
+        :raises:           DragonflowException.DBKeyNotFound if key not found
         """
 
     @abc.abstractmethod
@@ -87,6 +89,7 @@ class DbApi(object):
         :param key:        key name
         :type key:         string
         :returns:          None
+        :raises:           DragonflowException.DBKeyNotFound if key not found
         """
 
     @abc.abstractmethod
