@@ -99,9 +99,13 @@ class DbApi(object):
         """
 
     @abc.abstractmethod
-    def wait_for_db_changes(self, callback):
+    def wait_for_db_changes(self, prefix, callback):
         """Wait for DB changes on caller context, DB should call
-           callback method for every change
+           callback method for every change on table with prefix=='prefix'.
+           Callback must be thread save
+
+        :param prefix:  prefix for table name to subscribe for changes
+        :type prefix :  string
 
         :param callback:  callback method to call for every db change
         :type callback :  callback method of type:

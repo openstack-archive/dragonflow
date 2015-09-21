@@ -1,0 +1,41 @@
+#!/bin/bash
+#
+#
+# ``plugin.sh`` calls the following methods in the sourced driver:
+#
+# - nb_db_driver_install_server
+# - nb_db_driver_install_client
+# - nb_db_driver_start_server
+# - nb_db_driver_stop_server
+# - nb_db_driver_clean
+NB_DRIVER_CLASS="dragonflow.db.drivers.rethinkdb_db_driver.RethinkDbDriver"
+function nb_db_driver_install_server {
+    if is_service_enabled df-rethinkdb-server ; then
+       echo "Installing RethinkDB Server"
+       osver=`gawk -F= '/^NAME/{print $2}' /etc/os-release`
+       if [ "$osver" == "Ubuntu" ]; then
+          source /etc/lsb-release && echo "deb http://download.rethinkdb.com/apt $DISTRIB_CODENAME main" | sudo tee /etc/apt/sources.list.d/rethinkdb.list
+          wget -qO- http://download.rethinkdb.com/apt/pubkey.gpg | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install rethinkdb
+       fi
+    fi
+}
+
+function nb_db_driver_install_client {
+    echo "Installing RethinkDB client"
+    sudo pip install rethinkdb
+    echo "Finished installing etcd"
+}
+
+function nb_db_driver_start_server {
+    if is_service_enabled df-rethinkdb-server ; then
+        rethinkdb &
+    fi
+}
+
+function nb_db_driver_stop_server {
+    if is_service_enabled df-rethinkdb-server ; then
+        sudo killall rethinkdb
+    fi
+}

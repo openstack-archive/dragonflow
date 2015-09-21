@@ -27,7 +27,9 @@ fi
 if is_service_enabled df-ramcloud ; then
    source $DEST/dragonflow/devstack/ramcloud_driver
 fi
-
+if is_service_enabled df-rethinkdb ; then
+   source $DEST/dragonflow/devstack/rethinkdb_driver
+fi
 # Entry Points
 # ------------
 
