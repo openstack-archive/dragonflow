@@ -128,10 +128,13 @@ class DfLocalController(object):
         LOG.info(_LI("Adding/Updating Logical Switch"))
         LOG.info(lswitch.__str__())
         self.db_store.set_lswitch(lswitch.get_id(), lswitch)
+        self.dispatcher.dispatch('logical_switch_updated', lswitch=lswitch)
 
     def logical_switch_deleted(self, lswitch_id):
         LOG.info(_LI("Removing Logical Switch %s") % lswitch_id)
         self.db_store.del_lswitch(lswitch_id)
+        self.dispatcher.dispatch('logical_switch_deleted',
+                                 lswitch_id=lswitch_id)
 
     def logical_port_updated(self, lport):
         if self.db_store.get_port(lport.get_id()) is not None:
@@ -193,6 +196,7 @@ class DfLocalController(object):
             return
         self._update_router_interfaces(old_lrouter, lrouter)
         self.db_store.update_router(lrouter.get_name(), lrouter)
+        self.dispatcher.dispatch('router_updated', lrouter=lrouter)
 
     def router_deleted(self, lrouter_id):
         pass

@@ -95,3 +95,48 @@ class DFlowApp(app_manager.RyuApp):
             goto_table_id)]
         self.mod_flow(datapath, inst=inst, table_id=table,
                       priority=priority, match=match)
+
+    # add_local_port virtual function,
+    # any subclass may reimplement as it sees fit
+    def add_local_port(self, lport):
+        pass
+
+    # add_remote_port virtual function,
+    # any subclass may reimplement as it sees fit
+    def add_remote_port(self, lport):
+        pass
+
+    # remove_local_port virtual function,
+    # any subclass may reimplement as it sees fit
+    def remove_local_port(self, lport_id):
+        pass
+
+    # remove_remote_port virtual function,
+    # any subclass may reimplement as it sees fit
+    def remove_remote_port(self, lport_id):
+        pass
+
+    # logical_switch_deleted virtual function callback
+    def logical_switch_deleted(self, lswitch_id):
+        pass
+
+    # logical_switch_updated virtual function,
+    # any subclass may reimplement as it sees fit
+    def logical_switch_updated(self, lswitch):
+        pass
+
+    # Logical Router updated virtual function callback
+    def router_updated(self, lrouter):
+        pass
+
+    # Logical Router deleted virtual function callback
+    def router_deleted(self, lrouter_id):
+        pass
+
+    # add_new_router_port virtual function callback
+    def add_new_router_port(self, router, router_port, local_network_id):
+        pass
+
+    # delete_router_port virtual function callback
+    def delete_router_port(self, router_port, local_network_id):
+        pass
