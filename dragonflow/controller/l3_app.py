@@ -405,3 +405,21 @@ class L3App(DFlowApp):
                     router_port.get_lswitch_id())
                 self.add_new_router_port(lrouter, router_port,
                                          local_network_id)
+
+    def add_local_port(self, lport):
+        pass
+
+    def add_remote_port(self, lport):
+        pass
+
+    def remove_local_port(self, lport_id):
+        pass
+
+    def remove_remote_port(self, lport_id):
+        pass
+
+    def logical_switch_deleted(self, lswitch_id):
+        pass
+
+    def logical_switch_updated(self, lswitch):
+        pass

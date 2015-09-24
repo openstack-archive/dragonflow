@@ -403,3 +403,15 @@ class DHCPApp(DFlowApp):
         for port in self.db_store.get_ports():
             if port.get_external_value('is_local'):
                 self.add_local_port(port)
+
+    def add_remote_port(self, lport):
+        pass
+
+    def remove_remote_port(self, lport_id):
+        pass
+
+    def logical_switch_deleted(self, lswitch_id):
+        pass
+
+    def logical_switch_updated(self, lswitch):
+        pass
