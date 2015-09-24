@@ -433,3 +433,15 @@ class L2App(DFlowApp):
                 self.add_local_port(port)
             else:
                 self.add_remote_port(port)
+
+    def logical_switch_deleted(self, lswitch_id):
+        pass
+
+    def logical_switch_updated(self, lswitch):
+        pass
+
+    def delete_router_port(self, router_port, local_network_id):
+        pass
+
+    def add_new_router_port(self, router, router_port, local_network_id):
+        pass
