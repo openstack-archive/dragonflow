@@ -1,0 +1,56 @@
+import abc
+import six
+
+@six.add_metaclass(abc.ABCMeta)
+class DBNotifyInterface:
+    """An interface class which provide virtual hook callback functions stubs
+    for an application wishing to be notified on db updates"""
+
+    @abc.abstractmethod
+    def add_local_port(self, lport):
+        """ add local logical port hook callback
+
+
+        :param lport:    local logical port which is added to db
+        """
+
+    @abc.abstractmethod
+    def add_remote_port(self, lport):
+        """ add remote logical port hook callback
+
+
+        :param lport:   logical port which resides on other compute node, and
+        is added to db
+        """
+
+    @abc.abstractmethod
+    def remove_local_port(self, lport_id):
+        """ remove local logical port hook callback
+
+
+        :param lport:      local logical port removed from db
+        """
+
+    @abc.abstractmethod
+    def remove_remote_port(self, lport_id):
+        """ remove remote logical port hook callback
+
+
+        :param lport:      logical port which resides on other compute node,
+        and is removed from db
+        """
+
+    @abc.abstractmethod
+    def logical_switch_deleted(self, lswitch_id):
+        """ logical switch deleted hook callback
+
+
+        :param lswitch_id: logical switch id of the deleted switch
+        """
+
+    @abc.abstractmethod
+    def logical_switch_updated(self, lswitch):
+        """ logical switch updated hook callback
+
+
+        :param lswitch_id: logical switch id of the updated switch

@@ -15,6 +15,7 @@
 
 import struct
 
+from dragonflow.controller.df_base_abc import DBNotifyInterface
 from ryu.base import app_manager
 from ryu.lib import addrconv
 
@@ -23,7 +24,7 @@ from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
 
-class DFlowApp(app_manager.RyuApp):
+class DFlowApp(app_manager.RyuApp, DBNotifyInterface):
 
     def __init__(self, *args, **kwargs):
         super(DFlowApp, self).__init__(*args, **kwargs)
