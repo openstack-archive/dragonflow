@@ -17,13 +17,14 @@ import struct
 
 from ryu.base import app_manager
 from ryu.lib import addrconv
+from dragonflow.controller.df_base_abc import DFlowAbc
 
 from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 
 
-class DFlowApp(app_manager.RyuApp):
+class DFlowApp(app_manager.RyuApp, DFlowAbc):
 
     def __init__(self, *args, **kwargs):
         super(DFlowApp, self).__init__(*args, **kwargs)
@@ -95,3 +96,4 @@ class DFlowApp(app_manager.RyuApp):
             goto_table_id)]
         self.mod_flow(datapath, inst=inst, table_id=table,
                       priority=priority, match=match)
+
