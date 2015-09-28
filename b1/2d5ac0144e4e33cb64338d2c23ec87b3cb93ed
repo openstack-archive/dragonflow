@@ -1,0 +1,10 @@
+Verified+2: Jenkins
+Code-Review+2: Kyle Mestery <mestery@mestery.com>
+Workflow+1: Kyle Mestery <mestery@mestery.com>
+Code-Review+2: Ihar Hrachyshka <ihrachys@redhat.com>
+Code-Review+1: Gal Sagie <gal.sagie@huawei.com>
+Submitted-by: Jenkins
+Submitted-at: Mon, 28 Sep 2015 20:53:44 +0000
+Reviewed-on: https://review.openstack.org/221015
+Project: openstack/dragonflow
+Branch: refs/heads/stable/kilo
