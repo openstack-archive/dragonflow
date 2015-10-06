@@ -97,16 +97,15 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.vif_details = {portbindings.CAP_PORT_FILTER: True}
         registry.subscribe(self.post_fork_initialize, resources.PROCESS,
                            events.AFTER_CREATE)
-
-        self._setup_dhcp()
-        self._start_rpc_notifiers()
-
-    def post_fork_initialize(self, resource, event, trigger, **kwargs):
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
         self.nb_api = api_nb.NbApi(nb_driver_class())
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
 
+        self._setup_dhcp()
+        self._start_rpc_notifiers()
+
+    def post_fork_initialize(self, resource, event, trigger, **kwargs):
         self.base_binding_dict = {
             portbindings.VIF_TYPE: portbindings.VIF_TYPE_OVS,
             portbindings.VIF_DETAILS: {
