@@ -81,6 +81,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     supported_extension_aliases = ["quotas",
                                    "extra_dhcp_opt",
                                    "binding",
+                                   "agent",
+                                   "dhcp_agent_scheduler",
                                    "security-group",
                                    "extraroute",
                                    "external-net",
@@ -96,7 +98,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         registry.subscribe(self.post_fork_initialize, resources.PROCESS,
                            events.AFTER_CREATE)
 
-        self._setup_rpc()
+        self._setup_dhcp()
+        self._start_rpc_notifiers()
 
     def post_fork_initialize(self, resource, event, trigger, **kwargs):
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
@@ -111,29 +114,38 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 portbindings.CAP_PORT_FILTER:
                 'security-group' in self.supported_extension_aliases}}
 
+    def _setup_dhcp(self):
+        """Initialize components to support DHCP."""
+        self.network_scheduler = importutils.import_object(
+            cfg.CONF.network_scheduler_driver
+        )
+        self.start_periodic_dhcp_agent_status_check()
+
     def _setup_rpc(self):
         self.endpoints = [dhcp_rpc.DhcpRpcCallback(),
                           l3_rpc.L3RpcCallback(),
                           agents_db.AgentExtRpcCallback(),
                           metadata_rpc.MetadataRpcCallback()]
+
+    def _start_rpc_notifiers(self):
+        """Initialize RPC notifiers for agents."""
+        self.agent_notifiers[const.AGENT_TYPE_DHCP] = (
+            dhcp_rpc_agent_api.DhcpAgentNotifyAPI()
+        )
         self.agent_notifiers[const.AGENT_TYPE_L3] = (
             l3_rpc_agent_api.L3AgentNotifyAPI()
         )
-        self.agent_notifiers[const.AGENT_TYPE_DHCP] = (
-            dhcp_rpc_agent_api.DhcpAgentNotifyAPI())
-        self.network_scheduler = importutils.import_object(
-            cfg.CONF.network_scheduler_driver
-        )
-        self.supported_extension_aliases.extend(
-            ['agent', 'dhcp_agent_scheduler'])
 
     def start_rpc_listeners(self):
+        self._setup_rpc()
         self.conn = n_rpc.create_connection(new=True)
-        self.conn.create_consumer(topics.PLUGIN, self.endpoints,
-                                  fanout=False)
+        self.conn.create_consumer(topics.PLUGIN, self.endpoints, fanout=False)
         self.conn.create_consumer(topics.L3PLUGIN, self.endpoints,
                                   fanout=False)
-        self.conn.consume_in_threads()
+        self.conn.create_consumer(topics.REPORTS,
+                                  [agents_db.AgentExtRpcCallback()],
+                                  fanout=False)
+        return self.conn.consume_in_threads()
 
     def _delete_ports(self, context, ports):
         for port in ports:
