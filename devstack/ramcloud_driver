@@ -12,14 +12,16 @@
 RAMCLOUD=$DEST/ramcloud
 RAMCLOUD_LIB=$RAMCLOUD/lib
 RAMCLOUD_BIN=$RAMCLOUD/bin
-RAMCLOUD_MASTER_IP=${RAMCLOUD_MASTER_IP:-'127.0.0.1'}
-RAMCLOUD_COORDINATOR_IP=${RAMCLOUD_COORDINATOR_IP:-'127.0.0.1'}
+RAMCLOUD_MASTER_IP=${RAMCLOUD_MASTER_IP:-"$HOST_IP"}
+RAMCLOUD_COORDINATOR_IP=${RAMCLOUD_COORDINATOR_IP:-"$HOST_IP"}
 RAMCLOUD_MASTER_PORT=${RAMCLOUD_MASTER_PORT:-'21221'}
 RAMCLOUD_COORDINATOR_PORT=${RAMCLOUD_COORDINATOR_PORT:-'21222'}
-RAMCLUD_TRANSPORT=${RAMCLUD_TRANSPORT:-'fast+udp'}
+RAMCLOUD_TRANSPORT=${RAMCLOUD_TRANSPORT:-'fast+udp'}
+RAMCLOUD_TABLE_NAMES=${RAMCLOUD_TABLE_NAMES:-'secgroup','dragonflow','chassis','lswitch','lport','lrouter','tunnel_key'}
 
-export PYTHONPATH=$PYTHONPATH:$RAMCLOUD/devstack/dragonflow/dragonflow/db/drivers
-NB_DRIVER_CLASS="ramcloud_nb_impl.RamcloudNbApi"
+
+export PYTHONPATH=$PYTHONPATH:$DEST/dragonflow/
+NB_DRIVER_CLASS="ramcloud_db_driver.RamCloudDbDriver"
 
 function nb_db_driver_install_server {
     echo "Installing RAMCloud server"
@@ -41,7 +43,7 @@ function nb_db_driver_status_server
         fi
     fi
     if is_service_enabled df-rcmaster ; then
-        TEMP_PIDS=`ps cax | grep server`
+        TEMP_PIDS=`ps cax | grep " server"`
         if [ -z "$TEMP_PIDS" ]; then
           return 1
         fi
@@ -51,22 +53,24 @@ function nb_db_driver_status_server
 
 function nb_db_driver_start_server {
     if is_service_enabled df-rccoordinator ; then
-        $RAMCLOUD_BIN/coordinator -C ${RAMCLUD_TRANSPORT}:host=${RAMCLOUD_COORDINATOR_IP},port=${RAMCLOUD_COORDINATOR_PORT}
+        $RAMCLOUD_BIN/coordinator -C ${RAMCLOUD_TRANSPORT}:host=${RAMCLOUD_COORDINATOR_IP},port=${RAMCLOUD_COORDINATOR_PORT} 2&> /dev/null || true &
     fi
-
     if is_service_enabled df-rcmaster ; then
-        $RAMCLOUD_BIN/server ${RAMCLUD_TRANSPORT}:host=${RAMCLOUD_MASTER_IP},port=${RAMCLOUD_MASTER_PORT} -C ${RAMCLUD_TRANSPORT}:host=${RAMCLOUD_COORDINATOR_IP},port=${RAMCLOUD_COORDINATOR_PORT}
+	sleep 5
+        $RAMCLOUD_BIN/server -L ${RAMCLOUD_TRANSPORT}:host=${RAMCLOUD_MASTER_IP},port=${RAMCLOUD_MASTER_PORT} -C ${RAMCLOUD_TRANSPORT}:host=${RAMCLOUD_COORDINATOR_IP},port=${RAMCLOUD_COORDINATOR_PORT} 2&> /dev/null || true &
     fi
-
-    # Creates the tables in the DB
-    sudo python $RAMCLOUD/devstack/dragonflow/dragonflow/db/drivers/table_setup.py -i $RAMCLOUD_MASTER_IP -p $RAMCLOUD_MASTER_PORT
+    echo "Sleep for 15 secs. Giving time for db to start working!!!"
+    sleep 15
+    echo "CREATING RAMCLOUD TABLES..."
+    export PYTHONPATH=$PYTHONPATH:$DEST/dragonflow/
+    python $DEST/dragonflow/dragonflow/db/drivers/table_setup.py -d ramcloud -t ${RAMCLOUD_TABLE_NAMES} -i ${RAMCLOUD_COORDINATOR_IP} -p ${RAMCLOUD_COORDINATOR_PORT} > /dev/null || true
 }
 
 function nb_db_driver_stop_server {
     if is_service_enabled df-rccoordinator ; then
-        sudo killall coordinator 2&> /dev/null
+        sudo killall coordinator 2&> /dev/null || true
     fi
-     if is_service_enabled df-rcmaster ; then
-        sudo killall server 2&> /dev/null
+    if is_service_enabled df-rcmaster ; then
+        sudo killall server 2&> /dev/null || true
     fi
 }
