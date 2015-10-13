@@ -14,6 +14,7 @@ import ramcloud
 
 from dragonflow.db import db_api
 
+
 class RamCloudDbDriver(db_api.DbApi):
 
     def __init__(self):
@@ -21,6 +22,7 @@ class RamCloudDbDriver(db_api.DbApi):
         self.client = None
         self.current_key = 0
         self.service_locator = None
+        self.db_name = 'dragonflow'
 
     def create_tables(self, tables):
         for t in tables:
@@ -29,8 +31,9 @@ class RamCloudDbDriver(db_api.DbApi):
 
     def initialize(self, db_ip, db_port, **args):
         self.client = ramcloud.RAMCloud()
-        self.service_locator = 'fast+udp:host='+db_ip+',port='+str(db_port)+''
-        self.client.connect()
+        self.service_locator = 'fast+udp:host=' + db_ip \
+                               + ',port=' + str(db_port) + ''
+        self.client.connect(self.service_locator, self.db_name)
 
     def support_publish_subscribe(self):
         return False
@@ -72,7 +75,6 @@ class RamCloudDbDriver(db_api.DbApi):
                 value, version = self.client.read(table_id, key)
                 prev_value = int(value)
                 self.client.write(table_id, key, str(prev_value + 1), version)
-                version_exception = False
                 return prev_value + 1
             except ramcloud.VersionError:
                 version_exception = True

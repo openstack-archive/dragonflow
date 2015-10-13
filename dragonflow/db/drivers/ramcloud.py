@@ -18,8 +18,8 @@
 
 import ctypes
 from ctypes.util import find_library
-import itertools
 import os
+
 
 class RejectRules(ctypes.Structure):
     _fields_ = [("given_version", ctypes.c_uint64),
@@ -71,7 +71,7 @@ def load_so():
         raise not_found
     try:
         so = ctypes.cdll.LoadLibrary(path)
-    except OSError, e:
+    except OSError as e:
         if 'No such file or directory' in str(e):
             raise not_found
         else:
@@ -97,92 +97,95 @@ def load_so():
                     return ctypes.c_uint8(1)
                 else:
                     return ctypes.c_uint8(0)
+
         ctypes.c_bool = c_bool_compat
 
     from ctypes import POINTER
 
     # argument types aliased to their names for sanity
     # alphabetical order
-    address             = ctypes.c_char_p
-    buf                 = ctypes.c_void_p
-    data                = ctypes.c_void_p
-    client              = ctypes.c_void_p
-    enumerationState    = ctypes.c_void_p
-    enum_key            = ctypes.c_void_p
-    key                 = ctypes.c_char_p
-    keyLength           = ctypes.c_uint16
-    keyLen              = ctypes.c_uint32
-    len                 = ctypes.c_uint32
-    dataLength          = ctypes.c_uint32
-    keysOnly            = ctypes.c_uint32
-    name                = ctypes.c_char_p
-    nanoseconds         = ctypes.c_uint64
-    nonce               = ctypes.c_uint64
-    rejectRules         = POINTER(RejectRules)
-    serviceLocator      = ctypes.c_char_p
-    status              = ctypes.c_int
-    table               = ctypes.c_uint64
-    version             = ctypes.c_uint64
-    serverId            = ctypes.c_uint64
+    address = ctypes.c_char_p
+    buf = ctypes.c_void_p
+    data = ctypes.c_void_p
+    client = ctypes.c_void_p
+    enumerationState = ctypes.c_void_p
+    enum_key = ctypes.c_void_p
+    key = ctypes.c_char_p
+    keyLength = ctypes.c_uint16
+    keyLen = ctypes.c_uint32
+    len = ctypes.c_uint32
+    dataLength = ctypes.c_uint32
+    keysOnly = ctypes.c_uint32
+    name = ctypes.c_char_p
+    nanoseconds = ctypes.c_uint64
+    rejectRules = POINTER(RejectRules)
+    serviceLocator = ctypes.c_char_p
+    status = ctypes.c_int
+    table = ctypes.c_uint64
+    version = ctypes.c_uint64
+    serverId = ctypes.c_uint64
 
     so.rc_connect.argtypes = [address, address, POINTER(client)]
-    so.rc_connect.restype  = status
+    so.rc_connect.restype = status
 
     so.rc_disconnect.argtypes = [client]
-    so.rc_disconnect.restype  = None
+    so.rc_disconnect.restype = None
 
     so.rc_createTable.argtypes = [client, name]
-    so.rc_createTable.restype  = status
+    so.rc_createTable.restype = status
 
     so.rc_dropTable.argtypes = [client, name]
-    so.rc_dropTable.restype  = status
+    so.rc_dropTable.restype = status
 
     so.rc_getStatus.argtypes = []
-    so.rc_getStatus.restype  = status
+    so.rc_getStatus.restype = status
 
     so.rc_getTableId.argtypes = [client, name, POINTER(table)]
-    so.rc_getTableId.restype  = status
+    so.rc_getTableId.restype = status
 
-    so.rc_enumerateTablePrepare.argtypes = [client, table, keysOnly, POINTER(enumerationState)]
+    so.rc_enumerateTablePrepare.argtypes = [client, table, keysOnly,
+                                            POINTER(enumerationState)]
     so.rc_enumerateTablePrepare.restype = None
 
-    so.rc_enumerateTableNext.argtypes = [client, enumerationState, POINTER(keyLen),
-                                         POINTER(enum_key), POINTER(dataLength), POINTER(data)]
-    so.rc_enumerateTableNextrestype  = status
+    so.rc_enumerateTableNext.argtypes = [client, enumerationState,
+                                         POINTER(keyLen), POINTER(enum_key),
+                                         POINTER(dataLength), POINTER(data)]
+    so.rc_enumerateTableNextrestype = status
 
     so.rc_enumerateTableFinalize.argtypes = [enumerationState]
     so.rc_enumerateTableFinalize.restype = None
 
-    so.rc_read.argtypes = [client, table, key, keyLength, rejectRules, POINTER(version),
-                           buf, len, POINTER(len)]
-    so.rc_read.restype  = status
+    so.rc_read.argtypes = [client, table, key, keyLength, rejectRules,
+                           POINTER(version), buf, len, POINTER(len)]
+    so.rc_read.restype = status
 
     so.rc_remove.argtypes = [client, table, key, keyLength, rejectRules,
                              POINTER(version)]
-    so.rc_remove.restype  = status
+    so.rc_remove.restype = status
 
-    so.rc_write.argtypes = [client, table, key, keyLength, buf, len, rejectRules,
-                            POINTER(version)]
-    so.rc_write.restype  = status
+    so.rc_write.argtypes = [client, table, key, keyLength, buf, len,
+                            rejectRules, POINTER(version)]
+    so.rc_write.restype = status
 
     so.rc_testing_kill.argtypes = [client, table, key, keyLength]
-    so.rc_testing_kill.restype  = status
+    so.rc_testing_kill.restype = status
 
     so.rc_testing_fill.argtypes = [client, table, key, keyLength,
                                    ctypes.c_uint32, ctypes.c_uint32]
-    so.rc_testing_fill.restype  = status
+    so.rc_testing_fill.restype = status
 
     so.rc_testing_get_server_id.argtypes = [client, table, key, keyLength,
                                             POINTER(serverId)]
-    so.rc_testing_get_server_id.restype  = status
+    so.rc_testing_get_server_id.restype = status
 
-    so.rc_testing_get_service_locator.argtypes = [client, table, key, keyLength,
-                                                  serviceLocator, ctypes.c_size_t]
-    so.rc_testing_get_service_locator.restype  = status
+    so.rc_testing_get_service_locator.argtypes = [client, table, key,
+                                                  keyLength, serviceLocator,
+                                                  ctypes.c_size_t]
+    so.rc_testing_get_service_locator.restype = status
 
     so.rc_set_runtime_option.argtypes = [client,
-                                                 ctypes.c_char_p,
-                                                 ctypes.c_char_p]
+                                         ctypes.c_char_p,
+                                         ctypes.c_char_p]
     so.rc_set_runtime_option.restype = status
 
     so.rc_testing_wait_for_all_tablets_normal.argtypes = [client, nanoseconds]
@@ -193,9 +196,11 @@ def load_so():
 
     return so
 
+
 def _ctype_copy(addr, var, width):
     ctypes.memmove(addr, ctypes.addressof(var), width)
     return addr + width
+
 
 def get_key(id):
     if type(id) is int:
@@ -203,30 +208,34 @@ def get_key(id):
     else:
         return id
 
+
 def get_keyLength(id):
-#    if type(id) is int:
-        return len(str(id))
-#    else:
-#        return len(id)
+    return len(str(id))
+
 
 class RCException(Exception):
     def __init__(self, status):
         Exception.__init__(self, 'RAMCloud error ' + str(status))
         self.status = status
+
     pass
+
 
 class NoObjectError(Exception):
     pass
 
+
 class ObjectExistsError(Exception):
     pass
+
 
 class VersionError(Exception):
     def __init__(self, want_version, got_version):
         Exception.__init__(self, "Bad version: want %d but got %d" %
-                (want_version, got_version))
+                           (want_version, got_version))
         self.want_version = want_version
         self.got_version = got_version
+
 
 class RAMCloud(object):
     def __init__(self):
@@ -234,10 +243,10 @@ class RAMCloud(object):
         self.hook = lambda: None
 
     def __del__(self):
-        if self.client.value != None:
+        if self.client.value is not None:
             so.rc_disconnect(self.client)
 
-    def handle_error(self, status, actual_version=0,given_version=0):
+    def handle_error(self, status, actual_version=0, given_version=0):
         if status == 0:
             return
         if status == 2:
@@ -256,8 +265,8 @@ class RAMCloud(object):
 
     def enumerate_table_prepare(self, table_id):
         enumeration_state = ctypes.c_void_p()
-        s= so.rc_enumerateTablePrepare(self.client, table_id, 0,
-                                       ctypes.byref(enumeration_state))
+        so.rc_enumerateTablePrepare(self.client, table_id, 0,
+                                    ctypes.byref(enumeration_state))
         return enumeration_state
 
     def enumerate_table_next(self, enumeration_state):
@@ -265,8 +274,11 @@ class RAMCloud(object):
         data_length = ctypes.c_uint32()
         data = ctypes.c_void_p()
         key = ctypes.c_void_p()
-        s= so.rc_enumerateTableNext(self.client, enumeration_state, ctypes.byref(key_length),
-                                    ctypes.byref(key), ctypes.byref(data_length), ctypes.byref(data))
+        s = so.rc_enumerateTableNext(self.client, enumeration_state,
+                                     ctypes.byref(key_length),
+                                     ctypes.byref(key),
+                                     ctypes.byref(data_length),
+                                     ctypes.byref(data))
         key_l = key_length.value
         data_l = data_length.value
         dataPtr = ctypes.cast(data, ctypes.POINTER(ctypes.c_char))
@@ -274,21 +286,21 @@ class RAMCloud(object):
         data_s = ''
         key_s = ''
         if (key_l != 0):
-            for i in range(0,data_l):
+            for i in range(0, data_l):
                 data_s = data_s + dataPtr[i]
-            for i in range(0,key_l):
+            for i in range(0, key_l):
                 key_s = key_s + keyPtr[i]
         self.handle_error(s)
         return (key_s, data_s)
 
     def enumerate_table_finalize(self, enumeration_state):
-        s= so.rc_enumerateTableFinalize(enumeration_state)
+        so.rc_enumerateTableFinalize(enumeration_state)
 
     def create(self, table_id, id, data):
         reject_rules = RejectRules(object_exists=True)
         return self.write_rr(table_id, id, data, reject_rules)
 
-    def create_table(self, name, serverSpan = 1):
+    def create_table(self, name, serverSpan=1):
         s = so.rc_createTable(self.client, name, serverSpan)
         self.handle_error(s)
 
@@ -318,7 +330,7 @@ class RAMCloud(object):
         return handle.value
 
     def ping(self, serviceLocator, nonce, nanoseconds):
-        result = ctypes.c_uint64();
+        result = ctypes.c_uint64()
         s = so.rc_ping(self.client, serviceLocator, nonce, nanoseconds,
                        ctypes.byref(result))
         self.handle_error(s)
@@ -331,18 +343,17 @@ class RAMCloud(object):
             reject_rules = RejectRules(object_doesnt_exist=True)
         return self.read_rr(table_id, id, reject_rules)
 
-
     def read_rr(self, table_id, id, reject_rules):
         max_length = 1024 * 1024 * 2
         buf = ctypes.create_string_buffer(max_length)
         actual_length = ctypes.c_uint32()
         got_version = ctypes.c_uint64()
-        reject_rules.object_doesnt_exist = False 
+        reject_rules.object_doesnt_exist = False
         self.hook()
         s = so.rc_read(self.client, table_id, get_key(id), get_keyLength(id),
                        ctypes.byref(reject_rules),
-                       ctypes.byref(got_version), ctypes.byref(buf), max_length,
-                       ctypes.byref(actual_length))
+                       ctypes.byref(got_version), ctypes.byref(buf),
+                       max_length, ctypes.byref(actual_length))
         self.handle_error(s, got_version.value)
         return (buf.raw[0:actual_length.value], got_version.value)
 
@@ -402,7 +413,7 @@ class RAMCloud(object):
     def testing_set_runtime_option(self, option, value):
         so.rc_set_runtime_option(self.client, option, value)
 
-    def testing_wait_for_all_tablets_normal(self, timeoutNs=2**64 - 1):
+    def testing_wait_for_all_tablets_normal(self, timeoutNs=2 ** 64 - 1):
         so.rc_testing_wait_for_all_tablets_normal(self.client, timeoutNs)
 
     def set_log_file(self, path):
@@ -410,5 +421,3 @@ class RAMCloud(object):
 
 
 so = load_so()
-
-
