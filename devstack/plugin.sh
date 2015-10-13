@@ -32,6 +32,21 @@ fi
 # ------------
 
 function cleanup_ovs {
+   # Remove the patch ports
+   for port in $(sudo ovs-vsctl show | grep Port | awk '{print $2}'  | cut -d '"' -f 2 | grep patch); do
+       sudo ovs-vsctl del-port ${port}
+   done
+
+   # remove all OVS ports that look like Neutron created ports
+   for port in $(sudo ovs-vsctl list port | grep -o -e tap[0-9a-f\-]* -e q[rg]-[0-9a-f\-]*); do
+       sudo ovs-vsctl del-port ${port}
+   done
+
+   # Remove all the vxlan ports
+   for port in $(sudo ovs-vsctl list port | grep name | grep vxlan | awk '{print $3}'  | cut -d '"' -f 2); do
+       sudo ovs-vsctl del-port ${port}
+   done
+
    local _pwd=$(pwd)
    cd $DEST/$OVN_REPO_NAME
    sudo make uninstall
