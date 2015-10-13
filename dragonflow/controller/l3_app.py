@@ -236,11 +236,9 @@ class L3App(DFlowApp):
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
 
-        dst_router_intf_key = self.db_store.get_router_port_tunnel_key(
-            dst_router_port.get_name())
         self.mod_flow(
             self.dp,
-            cookie=dst_router_intf_key,
+            cookie=dst_router_port.get_tunnel_key(),
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_VERY_HIGH,

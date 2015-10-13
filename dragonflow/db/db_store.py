@@ -95,15 +95,3 @@ class DbStore(object):
     def get_routers(self):
         with self.lock:
             return self.routers.values()
-
-    def set_router_port_tunnel_key(self, interface_name, tunnel_key):
-        with self.lock:
-            self.router_interface_to_key[interface_name] = tunnel_key
-
-    def get_router_port_tunnel_key(self, interface_name):
-        with self.lock:
-            return self.router_interface_to_key.get(interface_name)
-
-    def del_router_port_tunnel_key(self, interface_name):
-        with self.lock:
-            del self.router_interface_to_key[interface_name]
