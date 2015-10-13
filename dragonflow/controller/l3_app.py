@@ -184,7 +184,11 @@ class L3App(DFlowApp):
 
         network_id = msg.match.get('metadata')
         pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
-        self.get_route(pkt_ip, pkt_ethernet, network_id, msg)
+        try:
+            self.get_route(pkt_ip, pkt_ethernet, network_id, msg)
+        except Exception as e:
+            LOG.error(_LE("L3 App PacketIn exception raised"))
+            LOG.error(e)
 
     def get_route(self, pkt_ip, pkt_ethernet, network_id, msg):
         ip_addr = netaddr.IPAddress(pkt_ip.dst)
