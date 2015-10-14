@@ -312,7 +312,7 @@ class Chassis(object):
         return self.chassis['tunnel_type']
 
     def __str__(self):
-        return self.values.__str__()
+        return self.chassis.__str__()
 
 
 class LogicalSwitch(object):
