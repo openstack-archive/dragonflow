@@ -15,7 +15,6 @@ import netaddr
 import six
 
 from oslo_config import cfg
-from oslo_db import api as oslo_db_api
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -40,7 +39,6 @@ from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.db import agents_db
 from neutron.db import agentschedulers_db
-from neutron.db import api as db_api
 from neutron.db import db_base_plugin_v2
 from neutron.db import external_net_db
 from neutron.db import extradhcpopt_db
@@ -160,8 +158,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     LOG.exception(_LE("Exception auto-deleting port %s"),
                                   port.id)
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def create_security_group(self, context, security_group,
                               default_sg=False):
         sg = security_group.get('security_group')
@@ -177,14 +173,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self.nb_api.create_security_group(sg_db['id'], rules=[])
             return sg_db
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def create_security_group_rule(self, context, security_group_rule):
         bulk_rule = {'security_group_rules': [security_group_rule]}
         return self.create_security_group_rule_bulk(context, bulk_rule)[0]
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def create_security_group_rule_bulk(self, context, security_group_rules):
         sg_id = self._validate_security_group_rules(context,
                                                     security_group_rules)
@@ -203,8 +195,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self.nb_api.add_security_group_rules(sg_id, new_rule_list)
             return new_rule_list
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def delete_security_group_rule(self, context, sgr_id):
         rule_db = self._get_security_group_rule(context, sgr_id)
         security_group_id = rule_db['security_group_id']
@@ -213,8 +203,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                   self).delete_security_group_rule(context, sgr_id)
             self.nb_api.delete_security_group_rule(security_group_id, sgr_id)
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def delete_security_group(self, context, sg_id):
         sg = super(DFPlugin, self).get_security_group(
             context, sg_id)
@@ -230,8 +218,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self.nb_api.delete_security_group(sg_id)
             return sg_db
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def create_subnet(self, context, subnet):
         with context.session.begin(subtransactions=True):
             # create subnet in DB
@@ -250,8 +236,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         return new_subnet
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def update_subnet(self, context, id, subnet):
         with context.session.begin(subtransactions=True):
             # update subnet in DB
@@ -269,8 +253,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 dns_nameservers=new_subnet.get('dns_nameservers', []))
             return new_subnet
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def delete_subnet(self, context, id):
         orig_subnet = super(DFPlugin, self).get_subnet(context, id)
         net_id = orig_subnet['network_id']
@@ -280,8 +262,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             # update df controller with subnet delete
             self.nb_api.delete_subnet(id, utils.ovn_name(net_id))
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def create_network(self, context, network):
         with context.session.begin(subtransactions=True):
             result = super(DFPlugin, self).create_network(context,
@@ -302,8 +282,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    subnets=[])
         return network
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def delete_network(self, context, network_id):
         with context.session.begin(subtransactions=True):
             super(DFPlugin, self).delete_network(context,
@@ -329,8 +307,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.nb_api.update_lswitch(utils.ovn_name(network_id),
                                    external_ids=ext_id)
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def update_network(self, context, network_id, network):
         pnet._raise_if_updates_provider_attributes(network['network'])
         # FIXME(arosen) - rollback...
@@ -340,8 +316,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             return super(DFPlugin, self).update_network(context, network_id,
                                                         network)
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def update_port(self, context, id, port):
         with context.session.begin(subtransactions=True):
             parent_name, tag = self._get_data_from_binding_profile(
@@ -426,8 +400,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             allowed_macs.add(allowed_address['mac_address'])
         return list(allowed_macs)
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def create_port(self, context, port):
         with context.session.begin(subtransactions=True):
             parent_name, tag = self._get_data_from_binding_profile(
@@ -489,8 +461,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         return port
 
-    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
-                               exception_checker=db_api.is_deadlock)
     def delete_port(self, context, port_id, l3_port_check=True):
         try:
             self.nb_api.delete_lport(port_id)
