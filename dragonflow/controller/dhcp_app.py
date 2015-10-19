@@ -138,7 +138,12 @@ class DHCPApp(DFlowApp):
     def _handle_dhcp_request(self, msg, pkt, lport):
         packet = ryu_packet.Packet(data=msg.data)
         in_port = msg.match.get("in_port")
-        dhcp_packet = dhcp.dhcp.parser(packet[3])
+
+        if isinstance(packet[3], str):
+            dhcp_packet = dhcp.dhcp.parser(packet[3])
+        else:
+            dhcp_packet = [packet[3]]
+
         dhcp_message_type = self._get_dhcp_message_type_opt(dhcp_packet)
         send_packet = None
         if dhcp_message_type == DHCP_DISCOVER:
