@@ -140,9 +140,9 @@ class DHCPApp(DFlowApp):
         in_port = msg.match.get("in_port")
 
         if isinstance(packet[3], str):
-            dhcp_packet = dhcp.dhcp.parser(packet[3])
+            dhcp_packet = dhcp.dhcp.parser(packet[3])[0]
         else:
-            dhcp_packet = [packet[3]]
+            dhcp_packet = packet[3]
 
         dhcp_message_type = self._get_dhcp_message_type_opt(dhcp_packet)
         send_packet = None
@@ -217,9 +217,9 @@ class DHCPApp(DFlowApp):
         dhcp_offer_pkt.add_protocol(udp.udp(src_port=67, dst_port=68))
         dhcp_offer_pkt.add_protocol(dhcp.dhcp(op=2, chaddr=pkt_ethernet.src,
                                          siaddr=dhcp_server_address,
-                                         boot_file=dhcp_packet[0].boot_file,
+                                         boot_file=dhcp_packet.boot_file,
                                          yiaddr=lport.get_ip(),
-                                         xid=dhcp_packet[0].xid,
+                                         xid=dhcp_packet.xid,
                                          options=options))
         return dhcp_offer_pkt
 
@@ -267,9 +267,9 @@ class DHCPApp(DFlowApp):
         dhcp_offer_pkt.add_protocol(udp.udp(src_port=67, dst_port=68))
         dhcp_offer_pkt.add_protocol(dhcp.dhcp(op=2, chaddr=pkt_ethernet.src,
                                          siaddr=str(dhcp_server_address),
-                                         boot_file=dhcp_packet[0].boot_file,
+                                         boot_file=dhcp_packet.boot_file,
                                          yiaddr=lport.get_ip(),
-                                         xid=dhcp_packet[0].xid,
+                                         xid=dhcp_packet.xid,
                                          options=options))
         return dhcp_offer_pkt
 
@@ -283,7 +283,7 @@ class DHCPApp(DFlowApp):
         return dns_bin
 
     def _get_dhcp_message_type_opt(self, dhcp_packet):
-        for opt in dhcp_packet[0].options.option_list:
+        for opt in dhcp_packet.options.option_list:
             if opt.tag == dhcp.DHCP_MESSAGE_TYPE_OPT:
                 return ord(opt.value)
 
