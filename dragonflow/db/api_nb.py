@@ -19,7 +19,7 @@ import netaddr
 from oslo_log import log
 from oslo_serialization import jsonutils
 
-from neutron.i18n import _LW
+from neutron.i18n import _LI
 
 LOG = log.getLogger(__name__)
 
@@ -42,14 +42,15 @@ class NbApi(object):
 
     def wait_for_db_changes(self, controller):
         self.controller = controller
+        LOG.info(_LI("DB configuration sync finished, waiting for changes"))
         while True:
             try:
                 self.driver.wait_for_db_changes(self.apply_db_change)
             except Exception as e:
                 if "Read timed out" not in e.message and (
                             "ofport is 0" not in e.message):
-                    LOG.warn(_LW("suppressing configuration exception"))
                     LOG.warn(e)
+                return
 
     # TODO(gsagie) implement this to send the updates to a controller local
     # queue which will process these updates
