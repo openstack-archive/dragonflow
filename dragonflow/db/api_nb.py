@@ -332,6 +332,12 @@ class LogicalSwitch(object):
     def __str__(self):
         return self.lswitch.__str__()
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.lswitch == other.lswitch
+        else:
+            return False
+
 
 class Subnet(object):
 
