@@ -97,7 +97,6 @@ class DfLocalController(object):
             self.read_routers()
 
             self.sync_finished = True
-            LOG.info(_LI("DB configuration sync finished"))
 
         except Exception as e:
             self.sync_finished = False
@@ -188,10 +187,10 @@ class DfLocalController(object):
             self.db_store.delete_port(lport.get_id())
 
     def router_updated(self, lrouter):
-        LOG.info(_LI("Logical Router updated"))
-        LOG.info(lrouter.__str__())
         old_lrouter = self.db_store.get_router(lrouter.get_name())
         if old_lrouter is None:
+            LOG.info(_LI("Logical Router created"))
+            LOG.info(lrouter.__str__())
             self._add_new_lrouter(lrouter)
             return
         self._update_router_interfaces(old_lrouter, lrouter)
