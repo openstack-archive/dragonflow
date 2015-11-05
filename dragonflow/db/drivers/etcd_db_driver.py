@@ -27,7 +27,7 @@ class EtcdDbDriver(db_api.DbApi):
         self.client = etcd.Client(host=db_ip, port=db_port)
 
     def support_publish_subscribe(self):
-        return False
+        return True
 
     def get_key(self, table, key):
         try:
