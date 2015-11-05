@@ -156,7 +156,7 @@ class DfLocalController(object):
                 LOG.info(_LI("Adding new local Logical Port"))
                 LOG.info(lport.__str__())
                 self.dispatcher.dispatch('add_local_port', lport=lport)
-                self.db_store.set_port(lport.get_id(), lport)
+                self.db_store.set_port(lport.get_id(), lport, True)
             else:
                 raise RuntimeError("ofport is 0")
         else:
@@ -167,7 +167,7 @@ class DfLocalController(object):
                 LOG.info(_LI("Adding new remote Logical Port"))
                 LOG.info(lport.__str__())
                 self.dispatcher.dispatch('add_remote_port', lport=lport)
-                self.db_store.set_port(lport.get_id(), lport)
+                self.db_store.set_port(lport.get_id(), lport, False)
             else:
                 raise RuntimeError("ofport is 0")
 
@@ -179,12 +179,12 @@ class DfLocalController(object):
             LOG.info(_LI("Removing local Logical Port"))
             LOG.info(lport.__str__())
             self.dispatcher.dispatch('remove_local_port', lport=lport)
-            self.db_store.delete_port(lport.get_id())
+            self.db_store.delete_port(lport.get_id(), True)
         else:
             LOG.info(_LI("Removing remote Logical Port"))
             LOG.info(lport.__str__())
             self.dispatcher.dispatch('remove_remote_port', lport=lport)
-            self.db_store.delete_port(lport.get_id())
+            self.db_store.delete_port(lport.get_id(), False)
 
     def router_updated(self, lrouter):
         old_lrouter = self.db_store.get_router(lrouter.get_name())
