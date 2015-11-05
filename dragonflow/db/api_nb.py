@@ -47,6 +47,9 @@ class NbApi(object):
             try:
                 self.driver.wait_for_db_changes(self.apply_db_change)
             except Exception as e:
+                if "Read timed out" not in e.message and (
+                            "ofport is 0" not in e.message):
+                        LOG.warn(e)
                 return
 
     # TODO(gsagie) implement this to send the updates to a controller local
