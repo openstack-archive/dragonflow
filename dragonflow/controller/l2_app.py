@@ -83,23 +83,27 @@ class L2App(DFlowApp):
         msg = ev.msg
         reason = msg.reason
         port_no = msg.desc.port_no
+        port_name = msg.desc.name
         datapath = ev.msg.datapath
 
         ofproto = msg.datapath.ofproto
         if reason == ofproto.OFPPR_ADD:
             LOG.info(_LI("port added %s"), port_no)
+            lport = self.db_store.get_local_port_by_name(port_name)
+            if lport:
+                lport.set_external_value('ofport', port_no)
+                self.add_local_port(lport)
         elif reason == ofproto.OFPPR_DELETE:
             LOG.info(_LI("port deleted %s"), port_no)
+            lport = self.db_store.get_local_port_by_name(port_name)
+            if lport:
+                self.remove_local_port(lport)
+                # Leave the last correct OF port number of this port
         elif reason == ofproto.OFPPR_MODIFY:
             LOG.info(_LI("port modified %s"), port_no)
         else:
             LOG.info(_LI("Illeagal port state %(port_no)s %(reason)s")
                      % {'port_no': port_no, 'reason': reason})
-        LOG.info(_LI(" Updating flow table on agents got port update "))
-        if self.dp:
-            self.send_port_desc_stats_request(datapath)
-            if reason == ofproto.OFPPR_DELETE:
-                pass
 
     @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
     def port_desc_stats_reply_handler(self, ev):
@@ -315,7 +319,9 @@ class L2App(DFlowApp):
             # TODO(gsagie) add error here
             return
 
-        # TODO(gsagie) check if lport in network structure?
+        if lport_id not in network:
+            return
+
         del network[lport_id]
         self.local_networks[network_id] = network
 

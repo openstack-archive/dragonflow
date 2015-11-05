@@ -22,6 +22,7 @@ class DbStore(object):
         self.lswitchs = {}
         self.networks = {}
         self.ports = {}
+        self.local_ports = {}
         self.routers = {}
         self.router_interface_to_key = {}
         self.lock = threading.Lock()
@@ -52,9 +53,11 @@ class DbStore(object):
         with self.lock:
             return set(self.ports.keys())
 
-    def set_port(self, port_id, port):
+    def set_port(self, port_id, port, is_local):
         with self.lock:
             self.ports[port_id] = port
+            if is_local:
+                self.local_ports[port_id] = port
 
     def get_port(self, port_id):
         with self.lock:
@@ -64,9 +67,17 @@ class DbStore(object):
         with self.lock:
             return self.ports.values()
 
-    def delete_port(self, port_id):
+    def delete_port(self, port_id, is_local):
         with self.lock:
             del self.ports[port_id]
+            if is_local:
+                del self.local_ports[port_id]
+
+    def get_local_port_by_name(self, port_name):
+        port_id_prefix = port_name[3:]
+        for lport in self.local_ports.values():
+            if lport.get_id().startswith(port_id_prefix):
+                return lport
 
     def update_router(self, router_id, router):
         with self.lock:
