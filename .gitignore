@@ -54,3 +54,5 @@ ChangeLog
 .*sw?
 .idea
 
+# Vagrant
+.vagrant
