@@ -320,7 +320,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         with context.session.begin(subtransactions=True):
             parent_name, tag = self._get_data_from_binding_profile(
                 context, port['port'])
-            original_port = self._get_port(context, id)
+            original_port = self.get_port(context, id)
             updated_port = super(DFPlugin, self).update_port(context, id,
                                                              port)
 
