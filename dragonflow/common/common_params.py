@@ -18,7 +18,7 @@ df_opts = [
     cfg.StrOpt('remote_db_ip',
                default='127.0.0.1',
                help=_('The remote db server ip address')),
-    cfg.PortOpt('remote_db_port',
+    cfg.IntOpt('remote_db_port',
                 default=4001,
                 help=_('The remote db server port')),
     cfg.StrOpt('nb_db_class',
