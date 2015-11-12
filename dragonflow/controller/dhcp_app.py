@@ -40,7 +40,7 @@ from dragonflow.controller.df_base_app import DFlowApp
 
 DF_DHCP_OPTS = [
     cfg.ListOpt('df_dns_servers',
-        default=['8.8.8.8', '8.8.8.7'],
+        default=['8.8.8.8', '8.8.4.4'],
         help=_('Comma-separated list of the DNS servers which will be used.')),
     cfg.IntOpt('df_default_network_device_mtu', default=1460,
         help=_('default MTU setting for interface.')),
