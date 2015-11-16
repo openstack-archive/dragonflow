@@ -32,6 +32,15 @@ function nb_db_driver_install_client {
     git_clone https://github.com/dsivov/RamCloudBin.git $RAMCLOUD
 }
 
+function nb_db_driver_status_server
+{
+    TEMP_PIDS=`ps cax | grep ramcloud`
+    if [ -z "$TEMP_PIDS" ]; then
+      return 1
+    fi
+    return 0
+}
+
 function nb_db_driver_start_server {
     if is_service_enabled df-rccoordinator ; then
         $RAMCLOUD_BIN/coordinator -C ${RAMCLUD_TRANSPORT}:host=${RAMCLOUD_COORDINATOR_IP},port=${RAMCLOUD_COORDINATOR_PORT}
