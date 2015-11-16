@@ -85,19 +85,19 @@ function configure_df_plugin {
     fi
 }
 
-# init_ovn() - Initialize databases, etc.
-function init_ovn {
+# init_ovs() - Initialize databases, etc.
+function init_ovs {
     # clean up from previous (possibly aborted) runs
     # create required data files
 
     # Assumption: this is a dedicated test system and there is nothing important
-    # in the ovn, ovn-nb, or ovs databases.  We're going to trash them and
+    #  ovs databases.  We're going to trash them and
     # create new ones on each devstack run.
 
     base_dir=$DATA_DIR/ovs
     mkdir -p $base_dir
 
-    for db in conf.db ovnsb.db ovnnb.db ; do
+    for db in conf.db  ; do
         if [ -f $base_dir/$db ] ; then
             rm -f $base_dir/$db
         fi
@@ -106,7 +106,6 @@ function init_ovn {
 
     echo "Creating OVS Database"
     ovsdb-tool create $base_dir/conf.db $DEST/$OVN_REPO_NAME/vswitchd/vswitch.ovsschema
-    #ovsdb-tool create $base_dir/ovnnb.db $DEST/dragonflow/ovn-patch/ovn-nb.ovsschema
 }
 
 function install_df {
@@ -126,8 +125,8 @@ function install_df {
     echo "Finished installing Ryu"
 }
 
-# install_ovn() - Collect source and prepare
-function install_ovn {
+# install_ovs() - Collect source and prepare
+function install_ovs {
     local _pwd=$(pwd)
     echo "Installing OVN and dependent packages"
 
@@ -180,9 +179,6 @@ function start_ovs {
 
     EXTRA_DBS=""
     OVSDB_REMOTE="--remote=ptcp:6640:$HOST_IP"
-    if is_service_enabled ovn-northd ; then
-        EXTRA_DBS="ovnnb.db"
-    fi
 
     nb_db_driver_start_server
 
@@ -254,10 +250,10 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
         if [[ "$OFFLINE" != "True" ]]; then
             install_df
-            install_ovn
+            install_ovs
         fi
         echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR >> $RC_DIR/.localrc.auto
-        init_ovn
+        init_ovs
         # We have to start at install time, because Neutron's post-config
         # phase runs ovs-vsctl.
         start_ovs
