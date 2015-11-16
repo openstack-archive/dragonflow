@@ -221,6 +221,7 @@ function start_df {
     if is_service_enabled df-controller ; then
         ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
         run_process df-controller "python $DF_LOCAL_CONTROLLER --config-file $NEUTRON_CONF"
+        run_process db-ext-services "bash $DEST/dragonflow/devstack/df-ext-services.sh"
     fi
 }
 
