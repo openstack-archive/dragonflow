@@ -40,6 +40,6 @@ function nb_db_driver_start_server {
 
 function nb_db_driver_stop_server {
     if is_service_enabled df-etcd-server ; then
-        sudo killall etcd
+        sudo killall etcd 2&> /dev/null
     fi
 }
