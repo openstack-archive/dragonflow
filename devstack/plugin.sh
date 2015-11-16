@@ -18,6 +18,13 @@ NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
 
+#ovs related pid files
+OVS_DB_SERVICE="ovsdb-server"
+OVS_VSWITCHD_SERVICE="ovs-vswitchd"
+OVS_DIR="/usr/local/var/run/openvswitch"
+OVS_DB_PID=$OVS_DIR"/"$OVS_DB_SERVICE".pid"
+OVS_VSWITCHD_PID=$OVS_DIR"/"$OVS_VSWITCHD_SERVICE".pid"
+
 # Pluggable DB drivers
 #----------------------
 if is_service_enabled df-etcd ; then
@@ -165,10 +172,63 @@ function install_ovn {
     fi
     make -j$[$(nproc) + 1]
     sudo make install
-    sudo chown $(whoami) /usr/local/var/run/openvswitch
+    sudo chown $(whoami) $OVS_DIR
     sudo chown $(whoami) /usr/local/var/log/openvswitch
 
     cd $_pwd
+}
+
+function stop_ovs
+{
+  # Stop ovs db
+  ovs_service_stop $OVS_DB_SERVICE
+  # Stop ovs vswitch
+  ovs_service_stop $OVS_VSWITCHD_SERVICE
+
+  while ovs_service_status $OVS_DB_SERVICE; do
+    echo "Waiting for the $OVS_DB_SERVICE to be stopped..."
+    sleep 1
+    ovs_service_stop $OVS_DB_SERVICE
+  done
+
+  while ovs_service_status $OVS_VSWITCHD_SERVICE; do
+    echo "Waiting for the ovsdb-vswitchd to be stopped..."
+    sleep 1
+    ovs_service_stop $OVS_VSWITCHD_SERVICE
+  done
+}
+
+# The following returns "0" when service is live.
+# Zero (0) is considered a TRUE value in bash.
+function ovs_service_status
+{
+  TEMP_PID=$OVS_DIR$1".pid"
+  #echo "Service pid file "$TEMP_PID
+  if [ -e $TEMP_PID ]
+  then
+    TEMP_PID_VALUE=$(cat $TEMP_PID  2>/dev/null)
+    if [ -e /proc/$TEMP_PID_VALUE ]
+    then
+      #echo "service alive"
+      return 0
+    fi
+  fi
+  # service is dead
+  return 1
+}
+
+# Kills a service
+function ovs_service_stop
+{
+  TEMP_PID=$OVS_DIR$1".pid"
+  if [ -e $TEMP_PID ]
+  then
+    TEMP_PID_VALUE=$(cat $TEMP_PID  2>/dev/null)
+    if [ -e /proc/$TEMP_PID_VALUE ]
+    then
+      sudo kill $TEMP_PID_VALUE
+    fi
+  fi
 }
 
 function start_ovs {
@@ -185,13 +245,13 @@ function start_ovs {
 
     nb_db_driver_start_server
 
-    ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
+    $OVS_DB_SERVICE --remote=punix:$OVS_DIR"/db.sock" \
                  --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
-                 --pidfile --detach -vconsole:off --log-file $OVSDB_REMOTE \
+                 --pidfile=$OVS_DB_PID --detach -vconsole:off --log-file $OVSDB_REMOTE \
                  conf.db ${EXTRA_DBS}
 
-    echo -n "Waiting for ovsdb-server to start ... "
-    while ! test -e /usr/local/var/run/openvswitch/db.sock ; do
+    echo -n "Waiting for $OVS_DB_SERVICE to start ... "
+    while ! test -e $OVS_DIR"/db.sock" ; do
         sleep 1
     done
     echo "done."
@@ -208,7 +268,7 @@ function start_ovs {
         _neutron_ovs_base_setup_bridge br-int
         ovs-vsctl --no-wait set bridge br-int fail-mode=secure other-config:disable-in-band=true
 
-        sudo ovs-vswitchd --pidfile --detach -vconsole:off --log-file
+        sudo $OVS_VSWITCHD_SERVICE --pidfile=$OVS_VSWITCHD_PID --detach -vconsole:off --log-file
     fi
 
     cd $_pwd
@@ -221,6 +281,7 @@ function start_df {
     if is_service_enabled df-controller ; then
         ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
         run_process df-controller "python $DF_LOCAL_CONTROLLER --config-file $NEUTRON_CONF"
+        run_process db-ext-services "bash $DEST/dragonflow/devstack/df-ext-services.sh"
     fi
 }
 
@@ -228,12 +289,12 @@ function start_df {
 function stop_df {
     if is_service_enabled df-controller ; then
         stop_process df-controller
-        sudo killall ovs-vswitchd
+        ovs_service_stop $OVS_VSWITCHD_SERVICE
     fi
 
     nb_db_driver_stop_server
 
-    sudo killall ovsdb-server
+    ovs_service_stop $OVS_DB_SERVICE
 }
 
 function disable_libvirt_apparmor {
