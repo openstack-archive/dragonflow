@@ -1,17 +1,17 @@
 # dragonflow.sh - Devstack extras script to install Dragonflow
 
 # The git repo to use
-OVN_REPO=${OVN_REPO:-http://github.com/openvswitch/ovs.git}
-OVN_REPO_NAME=$(basename ${OVN_REPO} | cut -f1 -d'.')
+OVS_REPO=${OVS_REPO:-http://github.com/openvswitch/ovs.git}
+OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
 
-# The branch to use from $OVN_REPO
-OVN_BRANCH=${OVN_BRANCH:-origin/master}
+# The branch to use from $OVS_REPO
+OVS_BRANCH=${OVS_BRANCH:-origin/master}
 
 DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_app.L3App,dhcp_app.DHCPApp"
 
-# How to connect to ovsdb-server hosting the OVN databases.
+# How to connect to ovsdb-server hosting the OVS databases.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
 REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
 NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
@@ -48,7 +48,7 @@ function cleanup_ovs {
    done
 
    local _pwd=$(pwd)
-   cd $DEST/$OVN_REPO_NAME
+   cd $DEST/$OVS_REPO_NAME
    sudo make uninstall
    cd $_pwd
 }
@@ -85,19 +85,19 @@ function configure_df_plugin {
     fi
 }
 
-# init_ovn() - Initialize databases, etc.
-function init_ovn {
+# init_ovs() - Initialize databases, etc.
+function init_ovs {
     # clean up from previous (possibly aborted) runs
     # create required data files
 
     # Assumption: this is a dedicated test system and there is nothing important
-    # in the ovn, ovn-nb, or ovs databases.  We're going to trash them and
+    #  ovs databases.  We're going to trash them and
     # create new ones on each devstack run.
 
     base_dir=$DATA_DIR/ovs
     mkdir -p $base_dir
 
-    for db in conf.db ovnsb.db ovnnb.db ; do
+    for db in conf.db  ; do
         if [ -f $base_dir/$db ] ; then
             rm -f $base_dir/$db
         fi
@@ -105,8 +105,7 @@ function init_ovn {
     rm -f $base_dir/.*.db.~lock~
 
     echo "Creating OVS Database"
-    ovsdb-tool create $base_dir/conf.db $DEST/$OVN_REPO_NAME/vswitchd/vswitch.ovsschema
-    #ovsdb-tool create $base_dir/ovnnb.db $DEST/dragonflow/ovn-patch/ovn-nb.ovsschema
+    ovsdb-tool create $base_dir/conf.db $DEST/$OVS_REPO_NAME/vswitchd/vswitch.ovsschema
 }
 
 function install_df {
@@ -126,10 +125,10 @@ function install_df {
     echo "Finished installing Ryu"
 }
 
-# install_ovn() - Collect source and prepare
-function install_ovn {
+# install_ovs() - Collect source and prepare
+function install_ovs {
     local _pwd=$(pwd)
-    echo "Installing OVN and dependent packages"
+    echo "Installing OVS and dependent packages"
 
     # If OVS is already installed, remove it, because we're about to re-install
     # it from source.
@@ -144,12 +143,12 @@ function install_ovn {
     fi
 
     cd $DEST
-    if [ ! -d $OVN_REPO_NAME ] ; then
-        git clone $OVN_REPO
-        cd $OVN_REPO_NAME
-        git checkout $OVN_BRANCH
+    if [ ! -d $OVS_REPO_NAME ] ; then
+        git clone $OVS_REPO
+        cd $OVS_REPO_NAME
+        git checkout $OVS_BRANCH
     else
-        cd $OVN_REPO_NAME
+        cd $OVS_REPO_NAME
     fi
 
     install_package python-openvswitch
@@ -180,9 +179,6 @@ function start_ovs {
 
     EXTRA_DBS=""
     OVSDB_REMOTE="--remote=ptcp:6640:$HOST_IP"
-    if is_service_enabled ovn-northd ; then
-        EXTRA_DBS="ovnnb.db"
-    fi
 
     nb_db_driver_start_server
 
@@ -254,10 +250,10 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
         if [[ "$OFFLINE" != "True" ]]; then
             install_df
-            install_ovn
+            install_ovs
         fi
         echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR >> $RC_DIR/.localrc.auto
-        init_ovn
+        init_ovs
         # We have to start at install time, because Neutron's post-config
         # phase runs ovs-vsctl.
         start_ovs
