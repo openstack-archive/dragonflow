@@ -161,10 +161,11 @@ function install_ovn {
         ./boot.sh
     fi
     if [ ! -f config.status ] || [ configure -nt config.status ] ; then
-        ./configure
+        ./configure --with-linux=/lib/modules/`uname -r`/build
     fi
     make -j$[$(nproc) + 1]
     sudo make install
+    sudo make modules_install
     sudo chown $(whoami) /usr/local/var/run/openvswitch
     sudo chown $(whoami) /usr/local/var/log/openvswitch
 
