@@ -410,7 +410,39 @@ class DHCPApp(DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def _install_dhcp_match_flow(self):
+    def logical_switch_updated(self, lswitch):
+        subnets = lswitch.get_subnets()
+        lswitch_id = lswitch.get_id()
+        network_id = self.db_store.get_network_id(lswitch_id)
+        self._remove_dhcp_unicast_match_flow(network_id)
+        for subnet in subnets:
+            if self._is_ipv4(subnet) and subnet.enable_dhcp():
+                dhcp_addr = subnet.get_dhcp_server_address()
+                self._install_dhcp_unicast_match_flow(dhcp_addr, network_id)
+
+    def logical_switch_deleted(self, lswitch):
+        network_id = self.db_store.get_network_id(lswitch.get_id())
+        self._remove_dhcp_unicast_match_flow(network_id)
+
+    def _remove_dhcp_unicast_match_flow(self, network_id):
+        parser = self.dp.ofproto_parser
+        ofproto = self.dp.ofproto
+
+        match = parser.OFPMatch(metadata=network_id)
+
+        msg = parser.OFPFlowMod(
+            datapath=self.dp,
+            cookie=0,
+            cookie_mask=0,
+            table_id=const.SERVICES_CLASSIFICATION_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
+        self.dp.send_msg(msg)
+
+    def _install_dhcp_broadcast_match_flow(self):
         parser = self.dp.ofproto_parser
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -425,7 +457,7 @@ class DHCPApp(DFlowApp):
                                   const.DHCP_TABLE, match=match)
 
     def _install_flows_on_switch_up(self):
-        self._install_dhcp_match_flow()
+        self._install_dhcp_broadcast_match_flow()
         self.add_flow_go_to_table(self.dp,
                                   const.DHCP_TABLE,
                                   const.PRIORITY_DEFAULT,
@@ -434,3 +466,23 @@ class DHCPApp(DFlowApp):
         for port in self.db_store.get_ports():
             if port.get_external_value('is_local'):
                 self.add_local_port(port)
+
+    def _install_dhcp_unicast_match_flow(self, ip_addr, network_id):
+        parser = self.dp.ofproto_parser
+        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                            ipv4_dst=ip_addr,
+                            ip_proto=17,
+                            udp_src=68,
+                            udp_dst=67,
+                            metadata=network_id)
+
+        self.add_flow_go_to_table(self.dp,
+                                  const.SERVICES_CLASSIFICATION_TABLE,
+                                  const.PRIORITY_MEDIUM,
+                                  const.DHCP_TABLE, match=match)
+
+    def _is_ipv4(self, subnet):
+        try:
+            return (netaddr.IPNetwork(subnet.get_cidr()).version == 4)
+        except TypeError:
+            return False
