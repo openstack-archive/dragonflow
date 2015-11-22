@@ -106,3 +106,7 @@ class DbStore(object):
     def get_routers(self):
         with self.lock:
             return self.routers.values()
+
+    def get_lswitchs(self):
+        with self.lock:
+            return self.lswitchs.values()
