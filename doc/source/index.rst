@@ -18,6 +18,14 @@ Contents:
    usage
    contributing
 
+Dragonflow Specs
+=================
+
+.. toctree::
+   :maxdepth: 1
+
+   specs/index
+
 Indices and tables
 ==================
 
