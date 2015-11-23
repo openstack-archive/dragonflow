@@ -115,11 +115,11 @@ function install_df {
 
     nb_db_driver_install_client
 
-    echo_summary "Installing DragonFlow"
-    git_clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
+    #echo_summary "Installing DragonFlow"
+    #git clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
 
     echo "Cloning and installing Ryu"
-    git_clone $RYU_REPO $RYU_DIR $RYU_BRANCH
+    git clone $RYU_REPO $RYU_DIR
     pushd $RYU_DIR
     setup_package ./ -e
     popd
