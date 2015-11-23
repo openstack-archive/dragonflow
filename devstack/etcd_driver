@@ -13,11 +13,13 @@ function nb_db_driver_install_server {
     if is_service_enabled df-etcd-server ; then
        echo "Installing etcd"
        rm -rf $DEST/data/ovs/default.etcd
-       if [ ! -f "/opt/stack/etcd/etcd-v2.1.1-linux-amd64/etcd" ]; then
+       if [ ! -f "$DEST/etcd/etcd-v2.1.1-linux-amd64/etcd" ]; then
           echo "Installing etcd server"
-          mkdir /opt/stack/etcd
-          curl -L  https://github.com/coreos/etcd/releases/download/v2.1.1/etcd-v2.1.1-linux-amd64.tar.gz -o $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz
-          tar xzvf $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz -C /opt/stack/etcd
+          mkdir $DEST/etcd
+          #curl -L  https://github.com/coreos/etcd/releases/download/v2.1.1/etcd-v2.1.1-linux-amd64.tar.gz -o $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz
+          #cp $DEST/dragonflow/libs/etcd-v2.1.1-linux-amd64.tar.gz $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz
+          wget https://github.com/coreos/etcd/releases/download/v2.1.1/etcd-v2.1.1-linux-amd64.tar.gz -O $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz
+          tar xzvf $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz -C $DEST/etcd
        fi
     fi
 }
@@ -25,7 +27,7 @@ function nb_db_driver_install_server {
 function nb_db_driver_install_client {
     echo "Installing etcd client"
     local _pwd=$(pwd)
-    git_clone https://github.com/jplana/python-etcd.git $DEST/python-etcd
+    git clone https://github.com/jplana/python-etcd.git $DEST/python-etcd
     cd $DEST/python-etcd
     sudo python setup.py install
     cd $_pwd
