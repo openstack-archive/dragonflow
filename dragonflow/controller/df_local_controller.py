@@ -249,6 +249,7 @@ class DfLocalController(object):
             self.next_network_id += 1
             # TODO(gsagie) verify self.next_network_id didnt wrap
             self.db_store.set_network_id(logical_dp_id, self.next_network_id)
+            return self.next_network_id
 
     def read_routers(self):
         for lrouter in self.nb_api.get_routers():
