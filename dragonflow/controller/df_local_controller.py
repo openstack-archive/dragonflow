@@ -127,16 +127,18 @@ class DfLocalController(object):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
         if old_lswitch == lswitch:
             return
-        LOG.info(_LI("Adding/Updating Logical Switch"))
-        LOG.info(lswitch.__str__())
+        #Make sure we have a local network_id mapped before we dispatch
+        network_id = self.get_network_id(lswitch.get_id())
+        LOG.info(_LI("Adding/Updating Logical Switch id = %s") % network_id)
         self.db_store.set_lswitch(lswitch.get_id(), lswitch)
         self.dispatcher.dispatch('logical_switch_updated', lswitch=lswitch)
 
     def logical_switch_deleted(self, lswitch_id):
         LOG.info(_LI("Removing Logical Switch %s") % lswitch_id)
-        self.db_store.del_lswitch(lswitch_id)
+        lswitch = self.db_store.get_lswitch(lswitch_id)
         self.dispatcher.dispatch('logical_switch_deleted',
-                                 lswitch_id=lswitch_id)
+                                 lswitch=lswitch)
+        self.db_store.del_lswitch(lswitch_id)
 
     def logical_port_updated(self, lport):
         if self.db_store.get_port(lport.get_id()) is not None:

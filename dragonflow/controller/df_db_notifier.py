@@ -34,14 +34,14 @@ class DBNotifyInterface(object):
         is added to db
         """
 
-    def remove_local_port(self, lport_id):
+    def remove_local_port(self, lport):
         """remove local logical port hook callback
 
 
         :param lport_id:     id of local logical port that is removed from db
         """
 
-    def remove_remote_port(self, lport_id):
+    def remove_remote_port(self, lport):
         """remove remote logical port hook callback
 
 
@@ -68,7 +68,7 @@ class DBNotifyInterface(object):
         port belongs to
         """
 
-    def logical_switch_deleted(self, lswitch_id):
+    def logical_switch_deleted(self, lswitch):
         """logical switch deleted hook callback
 
 
