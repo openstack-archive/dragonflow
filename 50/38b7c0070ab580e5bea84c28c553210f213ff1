@@ -1,0 +1,8 @@
+Verified+2: Jenkins
+Code-Review+2: Gal Sagie <gal.sagie@huawei.com>
+Workflow+1: Gal Sagie <gal.sagie@huawei.com>
+Submitted-by: Jenkins
+Submitted-at: Mon, 23 Nov 2015 12:53:00 +0000
+Reviewed-on: https://review.openstack.org/248641
+Project: openstack/dragonflow
+Branch: refs/heads/master
