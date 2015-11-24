@@ -20,7 +20,6 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 from sqlalchemy.orm import exc as sa_exc
 
-from neutron.api.rpc.agentnotifiers import dhcp_rpc_agent_api
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import dhcp_rpc
 from neutron.api.rpc.handlers import l3_rpc
@@ -56,6 +55,7 @@ from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import api_nb
 from dragonflow.neutron.common import constants as ovn_const
 from dragonflow.neutron.common import utils
+from dragonflow.neutron import dhcp_notifiers
 
 LOG = log.getLogger(__name__)
 
@@ -99,7 +99,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.nb_api = api_nb.NbApi(nb_driver_class())
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
-
         self._setup_dhcp()
         self._start_rpc_notifiers()
 
@@ -113,22 +112,27 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     def _setup_dhcp(self):
         """Initialize components to support DHCP."""
-        self.network_scheduler = importutils.import_object(
-            cfg.CONF.network_scheduler_driver
-        )
-        self.start_periodic_dhcp_agent_status_check()
+        if cfg.CONF.df.use_centralized_ipv6_DHCP:
+            self.network_scheduler = importutils.import_object(
+                cfg.CONF.network_scheduler_driver
+            )
+            self.start_periodic_dhcp_agent_status_check()
 
     def _setup_rpc(self):
-        self.endpoints = [dhcp_rpc.DhcpRpcCallback(),
-                          l3_rpc.L3RpcCallback(),
+
+        self.endpoints = [l3_rpc.L3RpcCallback(),
                           agents_db.AgentExtRpcCallback(),
                           metadata_rpc.MetadataRpcCallback()]
+        if cfg.CONF.df.use_centralized_ipv6_DHCP:
+            self.endpoints.append(dhcp_rpc.DhcpRpcCallback())
 
     def _start_rpc_notifiers(self):
         """Initialize RPC notifiers for agents."""
+
         self.agent_notifiers[const.AGENT_TYPE_DHCP] = (
-            dhcp_rpc_agent_api.DhcpAgentNotifyAPI()
+            dhcp_notifiers.DFDhcpNotifyAPI()
         )
+
         self.agent_notifiers[const.AGENT_TYPE_L3] = (
             l3_rpc_agent_api.L3AgentNotifyAPI()
         )
@@ -224,13 +228,16 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             new_subnet = super(DFPlugin,
                                self).create_subnet(context, subnet)
             net_id = new_subnet['network_id']
+            dhcp_address = self._handle_create_subnet_dhcp(
+                                context,
+                                new_subnet)
             # update df controller with subnet
             self.nb_api.add_subnet(
                 new_subnet['id'],
                 utils.ovn_name(net_id),
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
-                dhcp_ip=new_subnet['allocation_pools'][0]['start'],
+                dhcp_ip=dhcp_address,
                 gateway_ip=new_subnet['gateway_ip'],
                 dns_nameservers=new_subnet.get('dns_nameservers', []))
 
@@ -239,8 +246,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def update_subnet(self, context, id, subnet):
         with context.session.begin(subtransactions=True):
             # update subnet in DB
+            original_subnet = super(DFPlugin, self).get_subnet(context, id)
             new_subnet = super(DFPlugin,
                                self).update_subnet(context, id, subnet)
+            dhcp_address = self._update_subnet_dhcp(
+                    context,
+                    original_subnet,
+                    new_subnet)
             net_id = new_subnet['network_id']
             # update df controller with subnet
             self.nb_api.update_subnet(
@@ -248,7 +260,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 utils.ovn_name(net_id),
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
-                dhcp_ip=new_subnet['allocation_pools'][0]['start'],
+                dhcp_ip=dhcp_address,
                 gateway_ip=new_subnet['gateway_ip'],
                 dns_nameservers=new_subnet.get('dns_nameservers', []))
             return new_subnet
@@ -548,3 +560,90 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.nb_api.delete_lrouter_port(utils.ovn_name(router_id),
                                         utils.ovn_name(network_id))
         return new_router
+
+    def _create_dhcp_server_port(self, context, subnet):
+        """Create and return dhcp port information.
+
+        If an expected failure occurs, a None port is returned.
+
+        """
+        port = {'port': {'network_id': subnet['network_id'], 'name': '',
+                         'admin_state_up': True, 'device_id': '',
+                         'device_owner': const.DEVICE_OWNER_DHCP,
+                         'mac_address': attr.ATTR_NOT_SPECIFIED,
+                         'fixed_ips': [{'subnet_id': subnet['id']}]}}
+        port = self.create_port(context, port)
+
+        return port
+
+    def _get_ports_by_subnet_and_owner(self, context, subnet_id, device_owner):
+        """Used to get all port in a subnet by the device owner"""
+        LOG.debug("Dragonflow : subnet_id: %s", subnet_id)
+        filters = {'fixed_ips': {'subnet_id': [subnet_id]},
+                   'device_owner': [const.DEVICE_OWNER_DHCP]}
+        return self.get_ports(context, filters=filters)
+
+    def _get_dhcp_port_for_subnet(self, context, subnet_id):
+        ports = self._get_ports_by_subnet_and_owner(
+                context,
+                subnet_id,
+                const.DEVICE_OWNER_DHCP)
+        try:
+            return ports[0]
+        except IndexError:
+            return None
+
+    def _get_ip_from_port(self, port):
+        if not port:
+            return None
+        for fixed_ip in port['fixed_ips']:
+            if "ip_address" in fixed_ip:
+                return fixed_ip['ip_address']
+
+    def _update_subnet_dhcp_centralized(self, context, subnet):
+        """Update the dhcp configration for the subnet
+
+        Returns the dhcp server ip address if configured
+        """
+        if subnet['enable_dhcp']:
+            port = self._get_dhcp_port_for_subnet(
+                    context,
+                    subnet['id'])
+            return self._get_ip_from_port(port)
+        else:
+            return subnet['allocation_pools'][0]['start']
+
+    def _update_subnet_dhcp(self, context, old_subnet, new_subnet):
+        """Update the dhcp configration for.
+
+        Returns the dhcp server ip address if configured
+        """
+        if cfg.CONF.df.use_centralized_ipv6_DHCP:
+            return self._update_subnet_dhcp_centralized(context, new_subnet)
+
+        if old_subnet['enable_dhcp']:
+            port = self._get_dhcp_port_for_subnet(
+                    context,
+                    old_subnet['id'])
+        if not new_subnet['enable_dhcp']:
+            if old_subnet['enable_dhcp']:
+                if port:
+                    self.delete_port(context, port['id'])
+            return None
+        if new_subnet['enable_dhcp'] and not old_subnet['enable_dhcp']:
+            port = self._create_dhcp_server_port(context, new_subnet)
+
+        return self._get_ip_from_port(port)
+
+    def _handle_create_subnet_dhcp(self, context, subnet):
+        """Create the dhcp configration for the subnet
+
+        Returns the dhcp server ip address if configured
+        """
+        if subnet['enable_dhcp']:
+            if cfg.CONF.df.use_centralized_ipv6_DHCP:
+                return subnet['allocation_pools'][0]['start']
+            else:
+                dhcp_port = self._create_dhcp_server_port(context, subnet)
+                return self._get_ip_from_port(dhcp_port)
+        return None
