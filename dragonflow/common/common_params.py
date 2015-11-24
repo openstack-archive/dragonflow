@@ -33,4 +33,7 @@ df_opts = [
     cfg.StrOpt('apps_list',
                default='l2_app.L2App,l3_app.L3App',
                help=_('List of openflow applications classes to load')),
+    cfg.BoolOpt('use_centralized_ipv6_DHCP',
+                default=False,
+                help=_("Enable IPv6 DHCP by using DHCP agent"))
 ]
