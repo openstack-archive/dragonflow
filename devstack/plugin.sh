@@ -83,6 +83,12 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF DEFAULT service_plugins ""
     fi
 
+    if is_service_enabled q-dhcp ; then
+        iniset $NEUTRON_CONF df use_centralized_ipv6_DHCP "True"
+    else
+        iniset $NEUTRON_CONF DEFAULT dhcp_agent_notification "False"
+    fi
+
     if ! is_service_enabled q-svc; then
         _create_neutron_conf_dir
         NEUTRON_CONF=/etc/neutron/neutron.conf
