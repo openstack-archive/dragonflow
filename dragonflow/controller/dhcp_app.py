@@ -125,7 +125,6 @@ class DHCPApp(DFlowApp):
         msg = event.msg
         if msg.table_id != const.DHCP_TABLE:
             return
-
         pkt = ryu_packet.Packet(msg.data)
         is_pkt_ipv4 = pkt.get_protocol(ipv4.ipv4) is not None
 
