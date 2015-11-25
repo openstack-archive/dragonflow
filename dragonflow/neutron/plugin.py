@@ -311,7 +311,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         pnet._raise_if_updates_provider_attributes(network['network'])
         # FIXME(arosen) - rollback...
         if 'name' in network['network']:
-            self._set_network_name(id, network['network']['name'])
+            self._set_network_name(network_id, network['network']['name'])
         with context.session.begin(subtransactions=True):
             return super(DFPlugin, self).update_network(context, network_id,
                                                         network)
