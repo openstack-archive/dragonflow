@@ -20,6 +20,12 @@ class SwitchApi(object):
     def sync(self):
         pass
 
+    def set_controllers(self, bridge, targets):
+        pass
+
+    def del_controller(self, bridge):
+        pass
+
     def get_tunnel_ports(self):
         pass
 
