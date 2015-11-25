@@ -35,6 +35,10 @@ if is_service_enabled df-ramcloud ; then
    source $DEST/dragonflow/devstack/ramcloud_driver
 fi
 
+# Dragonflow installation uses functions from these files
+source $TOP_DIR/lib/neutron_plugins/ovs_base
+source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
+
 # Entry Points
 # ------------
 
