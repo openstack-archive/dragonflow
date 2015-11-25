@@ -330,6 +330,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self.update_security_group_on_port(
                 context, id, port, original_port, updated_port)
 
+            self._update_extra_dhcp_opts_on_port(
+                    context,
+                    id,
+                    port,
+                    updated_port=updated_port)
         external_ids = {
             ovn_const.OVN_PORT_NAME_EXT_ID_KEY: updated_port['name']}
         allowed_macs = self._get_allowed_mac_addresses_from_port(
