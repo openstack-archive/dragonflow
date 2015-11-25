@@ -67,6 +67,11 @@ class DfLocalController(object):
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
         self.vswitch_api.initialize()
 
+        self.vswitch_api.sync()
+        self.vswitch_api.del_controller('br-int').execute()
+        self.vswitch_api.set_controllers(
+            'br-int', ['tcp:' + self.ip + ':6633']).execute()
+
         self.dispatcher.load()
         self.dispatcher.is_ready()
 

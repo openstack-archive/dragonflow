@@ -18,6 +18,8 @@ from dragonflow.db import api_vswitch
 
 from ovs.db import idl
 
+from neutron.agent.ovsdb import impl_idl
+from neutron.agent.ovsdb.native.commands import BaseCommand
 from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import idlutils
 
@@ -42,8 +44,20 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.ovsdb.start()
         self.idl = self.ovsdb.idl
 
+    def transaction(self, check_error=False, log_errors=True, **kwargs):
+        return impl_idl.Transaction(self,
+                                    self.ovsdb,
+                                    self.timeout,
+                                    check_error, log_errors)
+
     def sync(self):
         self.idl.run()
+
+    def del_controller(self, bridge):
+        return DelControllerCommand(self, bridge)
+
+    def set_controllers(self, bridge, targets):
+        return SetControllerCommand(self, bridge, targets)
 
     def get_tunnel_ports(self):
         res = []
@@ -168,3 +182,30 @@ class OvsdbTunnelPort(OvsdbSwitchPort):
 
     def get_chassis_id(self):
         return self.chassis_id
+
+
+class DelControllerCommand(BaseCommand):
+    def __init__(self, api, bridge):
+        super(DelControllerCommand, self).__init__(api)
+        self.bridge = bridge
+
+    def run_idl(self, txn):
+        br = idlutils.row_by_value(self.api.idl, 'Bridge', 'name', self.bridge)
+        br.controller = []
+
+
+class SetControllerCommand(BaseCommand):
+    def __init__(self, api, bridge, targets):
+        super(SetControllerCommand, self).__init__(api)
+        self.bridge = bridge
+        self.targets = targets
+
+    def run_idl(self, txn):
+        br = idlutils.row_by_value(self.api.idl, 'Bridge', 'name', self.bridge)
+        controllers = []
+        for target in self.targets:
+            controller = txn.insert(self.api.idl.tables['Controller'])
+            controller.target = target
+            controllers.append(controller)
+        br.verify('controller')
+        br.controller = controllers
