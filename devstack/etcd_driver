@@ -12,7 +12,7 @@
 function nb_db_driver_install_server {
     if is_service_enabled df-etcd-server ; then
        echo "Installing etcd"
-       rm -rf $DEST/data/ovs/default.etcd
+       rm -rf $DEST/etcd/db.etcd
        if [ ! -f "$DEST/etcd/etcd-v2.1.1-linux-amd64/etcd" ]; then
           echo "Installing etcd server"
           mkdir $DEST/etcd
@@ -43,7 +43,7 @@ function nb_db_driver_status_server
 
 function nb_db_driver_start_server {
     if is_service_enabled df-etcd-server ; then
-        $DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001 &
+        $DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001 --data-dir $DEST/etcd/db.etcd &
     fi
 }
 
