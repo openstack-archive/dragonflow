@@ -16,8 +16,6 @@
 
 from dragonflow.db import api_vswitch
 
-from ovs.db import idl
-
 from neutron.agent.ovsdb import impl_idl
 from neutron.agent.ovsdb.native.commands import BaseCommand
 from neutron.agent.ovsdb.native import connection
@@ -70,55 +68,10 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         return res
 
     def add_tunnel_port(self, chassis):
-        bridge = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
-
-        txn = idl.Transaction(self.idl)
-        port_name = "df-" + chassis.get_name()
-
-        interface = txn.insert(self.idl.tables['Interface'])
-        interface.name = port_name
-        interface.type = chassis.get_encap_type()
-        options_dict = getattr(interface, 'options', {})
-        options_dict['remote_ip'] = chassis.get_ip()
-        options_dict['key'] = 'flow'
-        interface.options = options_dict
-
-        port = txn.insert(self.idl.tables['Port'])
-        port.name = port_name
-        port.verify('interfaces')
-        ifaces = getattr(port, 'interfaces', [])
-        ifaces.append(interface)
-        port.interfaces = ifaces
-        external_ids_dict = getattr(interface, 'external_ids', {})
-        external_ids_dict['df-chassis-id'] = chassis.get_name()
-        port.external_ids = external_ids_dict
-
-        bridge.verify('ports')
-        ports = getattr(bridge, 'ports', [])
-        ports.append(port)
-        bridge.ports = ports
-
-        status = txn.commit_block()
-        return status
+        return AddTunnelPort(self, chassis)
 
     def delete_port(self, switch_port):
-        port = switch_port.port_row
-        bridge = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
-        txn = idl.Transaction(self.idl)
-        bridge.verify('ports')
-        ports = bridge.ports
-        ports.remove(port)
-        bridge.ports = ports
-
-        # Remote Port Interfaces
-        port.verify('interfaces')
-        for iface in port.interfaces:
-            self.idl.tables['Interface'].rows[iface.uuid].delete()
-
-        self.idl.tables['Port'].rows[port.uuid].delete()
-
-        status = txn.commit_block()
-        return status
+        return DeleteSwitchPort(self, switch_port)
 
     def get_local_port_ids(self):
         br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
@@ -209,3 +162,59 @@ class SetControllerCommand(BaseCommand):
             controllers.append(controller)
         br.verify('controller')
         br.controller = controllers
+
+
+class DeleteSwitchPort(BaseCommand):
+    def __init__(self, api, switch_port):
+        super(DeleteSwitchPort, self).__init__(api)
+        self.switch_port = switch_port
+
+    def run_idl(self, txn):
+        port = self.switch_port.port_row
+        bridge = idlutils.row_by_value(self.api.idl, 'Bridge',
+                                       'name', 'br-int')
+        bridge.verify('ports')
+        ports = bridge.ports
+        ports.remove(port)
+        bridge.ports = ports
+
+        # Remote Port Interfaces
+        port.verify('interfaces')
+        for iface in port.interfaces:
+            self.api.idl.tables['Interface'].rows[iface.uuid].delete()
+
+        self.api.idl.tables['Port'].rows[port.uuid].delete()
+
+
+class AddTunnelPort(BaseCommand):
+    def __init__(self, api, chassis):
+        super(AddTunnelPort, self).__init__(api)
+        self.chassis = chassis
+
+    def run_idl(self, txn):
+        bridge = idlutils.row_by_value(self.api.idl, 'Bridge',
+                                       'name', 'br-int')
+        port_name = "df-" + self.chassis.get_name()
+
+        interface = txn.insert(self.api.idl.tables['Interface'])
+        interface.name = port_name
+        interface.type = self.chassis.get_encap_type()
+        options_dict = getattr(interface, 'options', {})
+        options_dict['remote_ip'] = self.chassis.get_ip()
+        options_dict['key'] = 'flow'
+        interface.options = options_dict
+
+        port = txn.insert(self.api.idl.tables['Port'])
+        port.name = port_name
+        port.verify('interfaces')
+        ifaces = getattr(port, 'interfaces', [])
+        ifaces.append(interface)
+        port.interfaces = ifaces
+        external_ids_dict = getattr(interface, 'external_ids', {})
+        external_ids_dict['df-chassis-id'] = self.chassis.get_name()
+        port.external_ids = external_ids_dict
+
+        bridge.verify('ports')
+        ports = getattr(bridge, 'ports', [])
+        ports.append(port)
+        bridge.ports = ports
