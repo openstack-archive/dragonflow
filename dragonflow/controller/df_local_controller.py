@@ -114,14 +114,14 @@ class DfLocalController(object):
         # Create tunnel port to this chassis
         LOG.info(_LI("Adding tunnel to remote chassis"))
         LOG.info(chassis.__str__())
-        self.vswitch_api.add_tunnel_port(chassis)
+        self.vswitch_api.add_tunnel_port(chassis).execute()
 
     def chassis_deleted(self, chassis_id):
         LOG.info(_LI("Deleting tunnel to remote chassis %s") % chassis_id)
         tunnel_ports = self.vswitch_api.get_tunnel_ports()
         for port in tunnel_ports:
             if port.get_chassis_id() == chassis_id:
-                self.vswitch_api.delete_port(port)
+                self.vswitch_api.delete_port(port).execute()
                 return
 
     def read_switches(self):
@@ -234,7 +234,7 @@ class DfLocalController(object):
 
         # Iterate all tunnel ports that needs to be deleted
         for port in tunnel_ports.values():
-            self.vswitch_api.delete_port(port)
+            self.vswitch_api.delete_port(port).execute()
 
     def port_mappings(self):
         ports_to_remove = self.db_store.get_port_keys()
