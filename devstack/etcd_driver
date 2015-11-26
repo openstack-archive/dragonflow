@@ -9,15 +9,17 @@
 # - nb_db_driver_stop_server
 # - nb_db_driver_clean
 
+ETCD_VERSION=v2.2.2
+
 function nb_db_driver_install_server {
     if is_service_enabled df-etcd-server ; then
        echo "Installing etcd"
        rm -rf $DEST/etcd/db.etcd
-       if [ ! -f "$DEST/etcd/etcd-v2.1.1-linux-amd64/etcd" ]; then
+       if [ ! -f "$DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd" ]; then
           echo "Installing etcd server"
           mkdir $DEST/etcd
-          wget https://github.com/coreos/etcd/releases/download/v2.1.1/etcd-v2.1.1-linux-amd64.tar.gz -O $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz
-          tar xzvf $DEST/etcd/etcd-v2.1.1-linux-amd64.tar.gz -C $DEST/etcd
+          wget https://github.com/coreos/etcd/releases/download/$ETCD_VERSION/etcd-$ETCD_VERSION-linux-amd64.tar.gz -O $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz
+          tar xzvf $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz -C $DEST/etcd
        fi
     fi
 }
@@ -43,7 +45,7 @@ function nb_db_driver_status_server
 
 function nb_db_driver_start_server {
     if is_service_enabled df-etcd-server ; then
-        $DEST/etcd/etcd-v2.1.1-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001 --data-dir $DEST/etcd/db.etcd &
+        $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001 --data-dir $DEST/etcd/db.etcd &
     fi
 }
 
