@@ -129,11 +129,13 @@ function install_df {
     #git clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
 
     echo "Cloning and installing Ryu"
-    git clone $RYU_REPO $RYU_DIR
-    pushd $RYU_DIR
-    setup_package ./ -e
-    popd
-    echo "Finished installing Ryu"
+    if [ ! -d $RYU_DIR ] ; then
+        git clone $RYU_REPO $RYU_DIR
+        pushd $RYU_DIR
+        setup_package ./ -e
+        popd
+        echo "Finished installing Ryu"
+    fi
 }
 
 # install_ovs() - Collect source and prepare
