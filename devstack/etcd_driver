@@ -25,7 +25,9 @@ function nb_db_driver_install_server {
 function nb_db_driver_install_client {
     echo "Installing etcd client"
     local _pwd=$(pwd)
-    git clone https://github.com/jplana/python-etcd.git $DEST/python-etcd
+    if [ ! -d $DEST/python-etcd ] ; then
+        git clone https://github.com/jplana/python-etcd.git $DEST/python-etcd
+    fi
     cd $DEST/python-etcd
     sudo python setup.py install
     cd $_pwd

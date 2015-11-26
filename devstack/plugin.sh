@@ -129,7 +129,9 @@ function install_df {
     #git clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
 
     echo "Cloning and installing Ryu"
-    git clone $RYU_REPO $RYU_DIR
+    if [ ! -d $RYU_DIR ] ; then
+        git clone $RYU_REPO $RYU_DIR
+    fi
     pushd $RYU_DIR
     setup_package ./ -e
     popd
