@@ -1,0 +1,100 @@
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import sys
+
+from oslo_config import cfg
+from oslo_utils import importutils
+
+from neutron.common import config as common_config
+
+from dragonflow.common import common_params
+
+cfg.CONF.register_opts(common_params.df_opts, 'df')
+
+db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
+             'tunnel_key']
+
+usage_str = "The following commands are supported:\n" \
+            "1) df_db ls  - print all the db tables \n" \
+            "2) df_db ls <table_name> - print all the keys for specific table \n" \
+            "3) df_db get <table_name> <key> - print value for specific key"
+
+
+def print_tables():
+    print (' ')
+    print ('DB Tables')
+    print ('----------')
+    for table in db_tables:
+        print table
+    print(' ')
+
+
+def print_table(db_driver, table):
+    keys = db_driver.get_all_keys(table)
+    print (' ')
+    print ('Keys for table ' + table)
+    print ('------------------------------------------------------------')
+    for key in keys:
+        print key
+    print (' ')
+
+
+def print_key(db_driver, table, key):
+    value = db_driver.get_key(table, key)
+    print (' ')
+    print ('Table = ' + table + ' , Key = ' + key)
+    print ('------------------------------------------------------------')
+    print value
+    print (' ')
+
+
+def main():
+    if len(sys.argv) < 2:
+        print usage_str
+        return
+
+    common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
+    db_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+    db_driver = db_driver_class()
+    db_driver.initialize(db_ip=cfg.CONF.df.remote_db_ip,
+                         db_port=cfg.CONF.df.remote_db_port)
+
+    action = sys.argv[1]
+
+    if action == 'ls':
+        if len(sys.argv) == 2:
+            print_tables()
+            return
+        table = sys.argv[2]
+        if table not in db_tables:
+            print "<table> must be one of the following:"
+            print db_tables
+            return
+        print_table(db_driver, table)
+        return
+
+    if action == 'get':
+        table = sys.argv[2]
+        if len(sys.argv) < 5:
+            print "must supply a key"
+            print usage_str
+            return
+        key = sys.argv[3]
+        print_key(db_driver, table, key)
+        return
+
+    print usage_str
+
+
+if __name__ == "__main__":
+    main()

@@ -102,6 +102,15 @@ class DbApi(object):
         """
 
     @abc.abstractmethod
+    def get_all_keys(self, table):
+        """Returns a list of all table entries keys
+
+        :param table:      table name
+        :type table:       string
+        :returns:          list of keys
+        """
+
+    @abc.abstractmethod
     def wait_for_db_changes(self, callback):
         """Wait for DB changes on caller context, DB should call
            callback method for every change
