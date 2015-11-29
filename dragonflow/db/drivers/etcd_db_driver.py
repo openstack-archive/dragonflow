@@ -57,6 +57,14 @@ class EtcdDbDriver(db_api.DbApi):
             res.append(entry.value)
         return res
 
+    def get_all_keys(self, table):
+        res = []
+        directory = self.client.get("/" + table)
+        for entry in directory.children:
+            table_name_size = len(table) + 2
+            res.append(entry.key[table_name_size:])
+        return res
+
     def _allocate_unique_key(self):
         key = '/tunnel_key/key'
         prev_value = 0
