@@ -127,6 +127,7 @@ function install_df {
 
     #echo_summary "Installing DragonFlow"
     #git clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
+    setup_package $DRAGONFLOW_DIR
 
     if [ ! -d $RYU_DIR ] ; then
         echo "Cloning and installing Ryu"
