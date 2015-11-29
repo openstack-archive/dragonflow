@@ -129,7 +129,7 @@ Documentation
 How to Install
 --------------
 
-`Installation Guide <https://github.com/openstack/dragonflow/tree/master/doc/source>`_
+`Installation Guide <https://github.com/openstack/dragonflow/tree/master/doc/source/centralized_readme.rst>`_
 
 `DevStack Single Node Configuration  <https://github.com/openstack/dragonflow/tree/master/doc/source/single-node-conf>`_
 
