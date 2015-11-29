@@ -34,6 +34,7 @@ Spec Template
 
     skeleton
     template
+    distributed_dnat
 
 
 Indices and tables
