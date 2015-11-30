@@ -54,7 +54,7 @@ from neutron.i18n import _, _LE, _LI
 from dragonflow.common import common_params
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import api_nb
-from dragonflow.neutron.common import constants as ovn_const
+from dragonflow.neutron.common import constants as df_const
 
 LOG = log.getLogger(__name__)
 
@@ -270,10 +270,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return self.create_network_nb_api(result)
 
     def create_network_nb_api(self, network):
-        # Create a logical switch with a name equal to the Neutron network
-        # UUID.  This provides an easy way to refer to the logical switch
-        # without having to track what UUID OVN assigned to it.
-        external_ids = {ovn_const.OVN_NETWORK_NAME_EXT_ID_KEY: network['name']}
+        external_ids = {df_const.DF_NETWORK_NAME_EXT_ID_KEY: network['name']}
 
         # TODO(DF): Undo logical switch creation on failure
         self.nb_api.create_lswitch(name=network['id'],
@@ -302,13 +299,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                       "been deleted concurrently" % network_id)
 
     def _set_network_name(self, network_id, name):
-        ext_id = [ovn_const.OVN_NETWORK_NAME_EXT_ID_KEY, name]
+        ext_id = [df_const.DF_NETWORK_NAME_EXT_ID_KEY, name]
         self.nb_api.update_lswitch(network_id,
                                    external_ids=ext_id)
 
     def update_network(self, context, network_id, network):
         pnet._raise_if_updates_provider_attributes(network['network'])
-        # FIXME(arosen) - rollback...
+        # TODO(gsagie) rollback needed
         if 'name' in network['network']:
             self._set_network_name(network_id, network['network']['name'])
         with context.session.begin(subtransactions=True):
@@ -335,7 +332,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     port,
                     updated_port=updated_port)
         external_ids = {
-            ovn_const.OVN_PORT_NAME_EXT_ID_KEY: updated_port['name']}
+            df_const.DF_PORT_NAME_EXT_ID_KEY: updated_port['name']}
         allowed_macs = self._get_allowed_mac_addresses_from_port(
             updated_port)
 
@@ -361,13 +358,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return updated_port
 
     def _get_data_from_binding_profile(self, context, port):
-        if (ovn_const.OVN_PORT_BINDING_PROFILE not in port or
+        if (df_const.DF_PORT_BINDING_PROFILE not in port or
                 not attr.is_attr_set(
-                    port[ovn_const.OVN_PORT_BINDING_PROFILE])):
+                    port[df_const.DF_PORT_BINDING_PROFILE])):
             return None, None
         parent_name = (
-            port[ovn_const.OVN_PORT_BINDING_PROFILE].get('parent_name'))
-        tag = port[ovn_const.OVN_PORT_BINDING_PROFILE].get('tag')
+            port[df_const.DF_PORT_BINDING_PROFILE].get('parent_name'))
+        tag = port[df_const.DF_PORT_BINDING_PROFILE].get('tag')
         if not any((parent_name, tag)):
             # An empty profile is fine.
             return None, None
@@ -385,8 +382,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             if tag < 0 or tag > 4095:
                 raise ValueError
         except ValueError:
-            # The tag range is defined by ovn-nb.ovsschema.
-            # https://github.com/openvswitch/ovs/blob/ovn/ovn/ovn-nb.ovsschema
             msg = _('Invalid binding:profile. tag "%s" must be '
                     'an int between 1 and 4096, inclusive.') % tag
             raise n_exc.InvalidInput(error_message=msg)
@@ -419,11 +414,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                                          db_port)
 
             db_port[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
-            if (ovn_const.OVN_PORT_BINDING_PROFILE in port['port'] and
+            if (df_const.DF_PORT_BINDING_PROFILE in port['port'] and
                     attr.is_attr_set(
-                        port['port'][ovn_const.OVN_PORT_BINDING_PROFILE])):
-                db_port[ovn_const.OVN_PORT_BINDING_PROFILE] = (
-                    port['port'][ovn_const.OVN_PORT_BINDING_PROFILE])
+                        port['port'][df_const.DF_PORT_BINDING_PROFILE])):
+                db_port[df_const.DF_PORT_BINDING_PROFILE] = (
+                    port['port'][df_const.DF_PORT_BINDING_PROFILE])
             self._process_port_create_extra_dhcp_opts(context, db_port,
                                                       dhcp_opts)
         return self.create_port_in_nb_api(db_port, parent_name, tag, sgids)
@@ -432,7 +427,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # The port name *must* be port['id'].  It must match the iface-id set
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
-        external_ids = {ovn_const.OVN_PORT_NAME_EXT_ID_KEY: port['name']}
+        external_ids = {df_const.DF_PORT_NAME_EXT_ID_KEY: port['name']}
         allowed_macs = self._get_allowed_mac_addresses_from_port(port)
         ips = []
         if 'fixed_ips' in port:
@@ -483,12 +478,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         router = super(DFPlugin, self).create_router(
             context, router)
         router_name = router['id']
-        external_ids = {ovn_const.OVN_ROUTER_NAME_EXT_ID_KEY:
+        external_ids = {df_const.DF_ROUTER_NAME_EXT_ID_KEY:
                         router.get('name', 'no_router_name')}
         self.nb_api.create_lrouter(router_name, external_ids=external_ids,
                                    ports=[])
 
-        # TODO(gsagie) rollback router creation on OVN failure
+        # TODO(gsagie) rollback router creation on failure
         return router
 
     def delete_router(self, context, router_id):
