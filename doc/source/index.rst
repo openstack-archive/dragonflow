@@ -15,6 +15,7 @@ Contents:
    installation
    centralized_dragonflow
    distributed_dragonflow
+   distributed_dhcp
    usage
    contributing
 

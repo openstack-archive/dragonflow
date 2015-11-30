@@ -82,6 +82,7 @@ Dragonflow Pluggable DB
 
 Distributed DHCP Application
 ============================
+`Distributed DHCP Application <https://github.com/openstack/dragonflow/tree/master/doc/source/distributed_dhcp.rst>`_
 
 Containers and Dragonflow
 =========================
