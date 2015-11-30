@@ -79,6 +79,7 @@ Dragonflow Pipeline
 
 Dragonflow Pluggable DB
 =======================
+`Pluggable DB <https://github.com/openstack/dragonflow/tree/master/doc/source/pluggable_db.rst>`_
 
 Distributed DHCP Application
 ============================
