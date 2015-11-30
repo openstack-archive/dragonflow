@@ -55,7 +55,6 @@ from dragonflow.common import common_params
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import api_nb
 from dragonflow.neutron.common import constants as ovn_const
-from dragonflow.neutron.common import utils
 
 LOG = log.getLogger(__name__)
 
@@ -227,7 +226,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             # update df controller with subnet
             self.nb_api.add_subnet(
                 new_subnet['id'],
-                utils.ovn_name(net_id),
+                net_id,
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
                 dhcp_ip=new_subnet['allocation_pools'][0]['start'],
@@ -245,7 +244,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             # update df controller with subnet
             self.nb_api.update_subnet(
                 new_subnet['id'],
-                utils.ovn_name(net_id),
+                net_id,
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
                 dhcp_ip=new_subnet['allocation_pools'][0]['start'],
@@ -260,7 +259,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             # delete subnet in DB
             super(DFPlugin, self).delete_subnet(context, id)
             # update df controller with subnet delete
-            self.nb_api.delete_subnet(id, utils.ovn_name(net_id))
+            self.nb_api.delete_subnet(id, net_id)
 
     def create_network(self, context, network):
         with context.session.begin(subtransactions=True):
@@ -277,7 +276,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         external_ids = {ovn_const.OVN_NETWORK_NAME_EXT_ID_KEY: network['name']}
 
         # TODO(DF): Undo logical switch creation on failure
-        self.nb_api.create_lswitch(name=utils.ovn_name(network['id']),
+        self.nb_api.create_lswitch(name=network['id'],
                                    external_ids=external_ids,
                                    subnets=[])
         return network
@@ -290,21 +289,21 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # remove when we implement distributed DHCP service and dont use
         # q-dhcp
         for port in self.nb_api.get_all_logical_ports():
-            if port.get_lswitch_id() == utils.ovn_name(network_id):
+            if port.get_lswitch_id() == network_id:
                 try:
                     self.nb_api.delete_lport(port.get_id())
                 except df_exceptions.DBKeyNotFound:
                     LOG.debug("port %s is not found in DB, might have"
                               "been deleted concurrently" % port.get_id())
         try:
-            self.nb_api.delete_lswitch(utils.ovn_name(network_id))
+            self.nb_api.delete_lswitch(network_id)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
-                      "been deleted concurrently" % utils.ovn_name(network_id))
+                      "been deleted concurrently" % network_id)
 
     def _set_network_name(self, network_id, name):
         ext_id = [ovn_const.OVN_NETWORK_NAME_EXT_ID_KEY, name]
-        self.nb_api.update_lswitch(utils.ovn_name(network_id),
+        self.nb_api.update_lswitch(network_id,
                                    external_ids=ext_id)
 
     def update_network(self, context, network_id, network):
@@ -454,7 +453,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         self.nb_api.create_lport(
             name=port['id'],
-            lswitch_name=utils.ovn_name(port['network_id']),
+            lswitch_name=port['network_id'],
             macs=[port['mac_address']], ips=ips,
             external_ids=external_ids,
             parent_name=parent_name, tag=tag,
@@ -483,7 +482,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def create_router(self, context, router):
         router = super(DFPlugin, self).create_router(
             context, router)
-        router_name = utils.ovn_name(router['id'])
+        router_name = router['id']
         external_ids = {ovn_const.OVN_ROUTER_NAME_EXT_ID_KEY:
                         router.get('name', 'no_router_name')}
         self.nb_api.create_lrouter(router_name, external_ids=external_ids,
@@ -493,7 +492,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return router
 
     def delete_router(self, context, router_id):
-        router_name = utils.ovn_name(router_id)
+        router_name = router_id
         try:
             self.nb_api.delete_lrouter(router_name)
         except df_exceptions.DBKeyNotFound:
@@ -521,8 +520,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             subnet_id = port['fixed_ips'][0]['subnet_id']
             subnet = self.get_subnet(context, subnet_id)
 
-        lrouter = utils.ovn_name(router_id)
-        lswitch = utils.ovn_name(subnet['network_id'])
+        lrouter = router_id
+        lswitch = subnet['network_id']
         cidr = netaddr.IPNetwork(subnet['cidr'])
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
@@ -545,6 +544,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         subnet = self.get_subnet(context, new_router['subnet_id'])
         network_id = subnet['network_id']
 
-        self.nb_api.delete_lrouter_port(utils.ovn_name(router_id),
-                                        utils.ovn_name(network_id))
+        self.nb_api.delete_lrouter_port(router_id,
+                                        network_id)
         return new_router
