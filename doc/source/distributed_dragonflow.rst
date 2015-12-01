@@ -73,9 +73,20 @@ The following sections each describe a specific topic/functionality in Dragonflo
 
 Dragonflow Supported Features
 =============================
+1) L2 core API, IPv4 , IPv6
+    Supports GRE/VxLAN/Geneve tunneling protocols
+
+2) Distributed virtual Router L3
+    Supports a hybrid of proactive and reactive flow installation
+
+3) Distributed DHCP (with just 400 lines of code!)
+
+4) Pluggable Distributed Data Base
+    ETCD, RethinkDB, RAMCloud, OVSDB
 
 Dragonflow Pipeline
 ===================
+`Dragonflow Pipeline <https://github.com/openstack/dragonflow/tree/master/doc/source/pipeline.rst>`_
 
 Dragonflow Pluggable DB
 =======================
@@ -87,6 +98,7 @@ Distributed DHCP Application
 
 Containers and Dragonflow
 =========================
+`Dragonflow and Containers <https://github.com/openstack/dragonflow/tree/master/doc/source/containers.rst>`_
 
 Dragonflow Roadmap
 ==================
