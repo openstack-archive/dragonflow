@@ -15,13 +15,51 @@
 #    under the License.
 
 import netaddr
+import time
+
+from six.moves import queue as Queue
 
 from oslo_log import log
 from oslo_serialization import jsonutils
+from oslo_utils import timeutils
 
 from neutron.i18n import _LI
 
 LOG = log.getLogger(__name__)
+
+
+class DbUpdate(object):
+    """Encapsulates a DB update
+
+    An instance of this object carries the information necessary to prioritize
+    and process a request to update a DB entry.
+    Lower value is higher priority !
+    """
+    def __init__(self, table, key, action, value, priority=5,
+                 timestamp=None):
+        self.priority = priority
+        self.timestamp = timestamp
+        if not timestamp:
+            self.timestamp = timeutils.utcnow()
+        self.key = key
+        self.action = action
+        self.table = table
+        self.value = value
+
+    def __lt__(self, other):
+        """Implements priority among updates
+
+        Lower numerical priority always gets precedence.  When comparing two
+        updates of the same priority then the one with the earlier timestamp
+        gets procedence.  In the unlikely event that the timestamps are also
+        equal it falls back to a simple comparison of ids meaning the
+        precedence is essentially random.
+        """
+        if self.priority != other.priority:
+            return self.priority < other.priority
+        if self.timestamp != other.timestamp:
+            return self.timestamp < other.timestamp
+        return self.key < other.key
 
 
 class NbApi(object):
@@ -30,6 +68,8 @@ class NbApi(object):
         super(NbApi, self).__init__()
         self.driver = db_driver
         self.controller = None
+        self._queue = Queue.PriorityQueue()
+        self.db_apply_failed = False
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port)
@@ -40,20 +80,33 @@ class NbApi(object):
     def allocate_tunnel_key(self):
         return self.driver.allocate_unique_key()
 
-    def wait_for_db_changes(self, controller):
+    def register_notification_callback(self, controller):
         self.controller = controller
         LOG.info(_LI("DB configuration sync finished, waiting for changes"))
-        while True:
-            try:
-                self.driver.wait_for_db_changes(self.apply_db_change)
-            except Exception as e:
-                if "Read timed out" not in e.message and (
-                            "ofport is 0" not in e.message):
-                    LOG.warn(e)
-                return
+        self.driver.register_notification_callback(
+            self.db_change_callback)
+        self._read_db_changes_from_queue()
 
-    # TODO(gsagie) implement this to send the updates to a controller local
-    # queue which will process these updates
+    def db_change_callback(self, table, key, action, value):
+        update = DbUpdate(table, key, action, value)
+        self._queue.put(update)
+
+    def _read_db_changes_from_queue(self):
+        while True:
+            if not self.db_apply_failed:
+                self.next_update = self._queue.get()
+            try:
+                self.apply_db_change(self.next_update.table,
+                                     self.next_update.key,
+                                     self.next_update.action,
+                                     self.next_update.value)
+                self.db_apply_failed = False
+            except Exception as e:
+                if "ofport is 0" not in e.message:
+                    LOG.warn(e)
+                self.db_apply_failed = True
+                time.sleep(1)
+
     def apply_db_change(self, table, key, action, value):
         self.controller.vswitch_api.sync()
         if 'lport' == table:
