@@ -55,7 +55,7 @@ High Level Architecture
 .. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/dragonflow_distributed_architecture.png
     :alt: Solution Overview
     :width: 600
-    :height: 525
+    :height: 455
     :align: center
 
 Dragonflow environment consist of a local controller running at each of the
