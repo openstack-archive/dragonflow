@@ -17,6 +17,8 @@ Contents:
    distributed_dragonflow
    distributed_dhcp
    pluggable_db
+   pipeline
+   containers
    usage
    contributing
 
