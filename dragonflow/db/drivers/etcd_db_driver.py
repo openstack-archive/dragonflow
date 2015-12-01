@@ -11,9 +11,14 @@
 #    under the License.
 
 import etcd
+import eventlet
+
+from oslo_log import log
 
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
+
+LOG = log.getLogger(__name__)
 
 
 class EtcdDbDriver(db_api.DbApi):
@@ -22,6 +27,8 @@ class EtcdDbDriver(db_api.DbApi):
         super(EtcdDbDriver, self).__init__()
         self.client = None
         self.current_key = 0
+        self.callback = None
+        self.pool = eventlet.GreenPool(size=1)
 
     def initialize(self, db_ip, db_port, **args):
         self.client = etcd.Client(host=db_ip, port=db_port)
@@ -86,8 +93,17 @@ class EtcdDbDriver(db_api.DbApi):
                 pass
 
     def wait_for_db_changes(self, callback):
-        entry = self.client.read('/', wait=True, recursive=True,
-                                 waitIndex=self.current_key)
-        keys = entry.key.split('/')
-        callback(keys[1], keys[2], entry.action, entry.value)
-        self.current_key = entry.modifiedIndex + 1
+        self.callback = callback
+        self.pool.spawn_n(self._db_changes_updater)
+
+    def _db_changes_updater(self):
+        while True:
+            try:
+                entry = self.client.read('/', wait=True, recursive=True,
+                                         waitIndex=self.current_key)
+                keys = entry.key.split('/')
+                self.callback(keys[1], keys[2], entry.action, entry.value)
+                self.current_key = entry.modifiedIndex + 1
+            except Exception as e:
+                if "Read timed out" not in e.message:
+                    LOG.warn(e)

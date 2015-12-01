@@ -112,8 +112,10 @@ class DbApi(object):
 
     @abc.abstractmethod
     def wait_for_db_changes(self, callback):
-        """Wait for DB changes on caller context, DB should call
-           callback method for every change
+        """Wait for DB changes, DB should call
+           callback method for every change.
+           DB driver is responsible to start the appropriate listener
+           threads on DB changes and send changes to callback.
 
         :param callback:  callback method to call for every db change
         :type callback :  callback method of type:
