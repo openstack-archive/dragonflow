@@ -46,12 +46,15 @@ Choose one of the following Database drivers in your local.conf
 Etcd Database:
 
     enable_service df-etcd
+
     enable_service df-etcd-server
 
 Ram Cloud Database
 
     enable_service df-ramcloud
+
     enable_service df-rccoordinator
+
     enable_service df-rcmaster
 
 Detailed Installation

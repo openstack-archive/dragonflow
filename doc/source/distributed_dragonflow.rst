@@ -5,59 +5,50 @@ Distributed Dragonflow
 Dragonflow is a distributed SDN controller for OpenStack® Neutron™
 supporting distributed Switching, Routing, DHCP and more.
 
-Our project mission is to Implement advanced networking services in a
+Our project mission is to implement advanced networking services in a
 manner that is efficient, elegant and simple.
 
-Designed to support large scale deployments with focus on latency and
-performance.
+Dragonflow is designed to support large scale deployments with a focus on
+latency and performance, as well as providing advanced innovative
+services that run locally on each compute node, with container technology
+in mind.
 
-Designed to introduce advanced innovative services locally on each compute
-node, and with containers deployment in mind.
+Mission Statement
+-----------------
 
-Dragonflow is a full Neutron implementation that is done the SDN way, our
-motivation for creating yet another Neutron implementation:
-
-1) We wanted to create an SDN implementation that is integral part of
-   OpenStack, meaning both the plugin and the implementation are
-   fully under OpenStack project and governance.
-
-2) Dragonflow is fully open source and we welcome new contributors
-   and partners to share a mutual vision.
-
-3) We wanted Dragonflow to be VERY lightweight and simple in terms
-   of size and code complexity, we want the entry point for new
-   users/contributors to be very simple and fast.
-
-4) Dragonflow is designed to support peformance intensive environments
-   where latency is a big deal.
-
-5) Dragonflow should be easily extensible
-
-6) We believe in a distributed control plane
-
+* Implement Neutron APIs using SDN principles, while keeping both
+  Plug-in and Implementation fully under OpenStack project and
+  governance.
+* 100% open source, contributors are welcome to partner and share
+  a mutual vision.
+* Lightweight and Simple in terms of code size and complexity, so
+  new users / contributors have a simple and fast ramp-up.
+* Aim for performance-intensive environments, where latency is a
+  big deal, while being small and intuitive enough to run on
+  small ones as well.
+* Completely pluggable design, easy to extend and enhance.
+* We *truly* believe in a distributed control plane.
 
 Key Design Guidelines
------------------------
-1) DB plug-ability, Determines scalability, lookup performance and latency
-
-2) Synchronization of policy-level/topology abstraction to the Compute Node
-
-3) Support reactiveness in the local DF controller, in cases it make sense
-
-4) Loadable Network Services Framework
-
+---------------------
+* Pluggable database, determines scale, lookup performance and latency
+* Policy-level/Topology abstraction synchronization to the Compute Node
+* Local Dragonflow Controller uses Reactive model (where it makes sense)
+* Loadable Network Services Framework
 
 High Level Architecture
 -----------------------
 
-.. _Distributed Dragonflow Section: http://docs.openstack.org/developer/dragonflow/distributed_dragonflow.html
-
-.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/dragonflow_distributed_architecture.png
+.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/
+    dragonflow_distributed_architecture.png
     :alt: Solution Overview
     :width: 600
     :height: 455
     :align: center
 
+^^^^^^^^
+Overview
+^^^^^^^^
 Dragonflow environment consist of a local controller running at each of the
 compute nodes in the setup.
 
@@ -90,11 +81,14 @@ Dragonflow Pipeline
 
 Dragonflow Pluggable DB
 =======================
-`Pluggable DB <https://github.com/openstack/dragonflow/tree/master/doc/source/pluggable_db.rst>`_
+`Pluggable DB
+<https://github.com/openstack/dragonflow/tree/master/doc/source/pluggable_db.rst>`_
 
 Distributed DHCP Application
 ============================
-`Distributed DHCP Application <https://github.com/openstack/dragonflow/tree/master/doc/source/distributed_dhcp.rst>`_
+
+`Distributed DHCP Application
+<https://github.com/openstack/dragonflow/tree/master/doc/source/distributed_dhcp.rst>`_
 
 Containers and Dragonflow
 =========================
@@ -102,6 +96,7 @@ Containers and Dragonflow
 
 Dragonflow Roadmap
 ==================
+
 The following topics are areas we are examining for future features and
 roadmap into Dragonflow project
 
@@ -113,3 +108,26 @@ roadmap into Dragonflow project
 - Hierarchical Port Binding (SDN ToR)
 - Inter Cloud Connectivity (Boarder Gateway / L2GW)
 - Fault Detection
+
+How to Install
+--------------
+
+- `Installation Guide <https://github.com/openstack/dragonflow/tree/master/doc/source/readme.rst>`_
+- `DevStack Single Node Configuration
+  <https://github.com/openstack/dragonflow/tree/master/doc/source/single-node-conf>`_
+- `DevStack Multi Node Configuration
+  <https://github.com/openstack/dragonflow/tree/master/doc/source/multi-node-conf>`_
+
+More Useful Reading
+-------------------
+
+- `Distributed DHCP Service in Dragonflow
+  <http://blog.gampel.net/2015/09/dragonflow-distributed-dhcp-for.html>`_
+- `Centralized vs. Distributed SDN Controller in Dragonflow
+  <http://blog.gampel.net/2015/08/centralized-vs-distributed-sdn-control.html>`_
+- `Dragonflow in OpenStack Libery
+  <http://galsagie.github.io/sdn/openstack/ovs/dragonflow/2015/10/14/dragonflow-liberty/>`_
+- `Dragonflow Distributed Database
+  <http://galsagie.github.io/sdn/openstack/ovs/ovn/dragonflow/2015/08/03/df-distributed-db/>`_
+- `Topology Service Injection
+  <http://galsagie.github.io/sdn/nfv/openstack/ovs/dragonflow/2015/11/10/topology-service-injection/>`_
