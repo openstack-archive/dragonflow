@@ -59,7 +59,10 @@ class EtcdDbDriver(db_api.DbApi):
 
     def get_all_keys(self, table):
         res = []
-        directory = self.client.get("/" + table)
+        try:
+            directory = self.client.get("/" + table)
+        except etcd.EtcdKeyNotFound:
+            raise df_exceptions.DBKeyNotFound(key=table)
         for entry in directory.children:
             table_name_size = len(table) + 2
             res.append(entry.key[table_name_size:])
