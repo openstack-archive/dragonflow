@@ -19,6 +19,8 @@ from neutron.common import config as common_config
 
 from dragonflow.common import common_params
 
+from dragonflow.common import exceptions as df_exceptions
+
 cfg.CONF.register_opts(common_params.df_opts, 'df')
 
 db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
@@ -40,7 +42,11 @@ def print_tables():
 
 
 def print_table(db_driver, table):
-    keys = db_driver.get_all_keys(table)
+    try:
+        keys = db_driver.get_all_keys(table)
+    except df_exceptions.DBKeyNotFound:
+        print('Table not found: ' + table)
+        return
     print (' ')
     print ('Keys for table ' + table)
     print ('------------------------------------------------------------')
@@ -50,7 +56,11 @@ def print_table(db_driver, table):
 
 
 def print_key(db_driver, table, key):
-    value = db_driver.get_key(table, key)
+    try:
+        value = db_driver.get_key(table, key)
+    except df_exceptions.DBKeyNotFound:
+        print('Table not found: ' + table)
+        return
     print (' ')
     print ('Table = ' + table + ' , Key = ' + key)
     print ('------------------------------------------------------------')
@@ -84,10 +94,14 @@ def main():
         return
 
     if action == 'get':
-        table = sys.argv[2]
-        if len(sys.argv) < 5:
+        if len(sys.argv) < 4:
             print "must supply a key"
             print usage_str
+            return
+        table = sys.argv[2]
+        if table not in db_tables:
+            print "<table> must be one of the following:"
+            print db_tables
             return
         key = sys.argv[3]
         print_key(db_driver, table, key)
