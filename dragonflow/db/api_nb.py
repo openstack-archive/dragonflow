@@ -108,6 +108,10 @@ class NbApi(object):
                 time.sleep(1)
 
     def apply_db_change(self, table, key, action, value):
+        if action == 'sync':
+            self.controller.run_sync()
+            return
+
         self.controller.vswitch_api.sync()
         if 'lport' == table:
             if action == 'set' or action == 'create':
