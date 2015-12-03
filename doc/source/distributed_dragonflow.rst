@@ -77,22 +77,22 @@ Dragonflow Supported Features
 
 Dragonflow Pipeline
 ===================
-`Dragonflow Pipeline <https://github.com/openstack/dragonflow/tree/master/doc/source/pipeline.rst>`_
+`Dragonflow Pipeline <http://docs.openstack.org/developer/dragonflow/pipeline.html>`_
 
 Dragonflow Pluggable DB
 =======================
 `Pluggable DB
-<https://github.com/openstack/dragonflow/tree/master/doc/source/pluggable_db.rst>`_
+<http://docs.openstack.org/developer/dragonflow/pluggable_db.html>`_
 
 Distributed DHCP Application
 ============================
 
 `Distributed DHCP Application
-<https://github.com/openstack/dragonflow/tree/master/doc/source/distributed_dhcp.rst>`_
+<http://docs.openstack.org/developer/dragonflow/distributed_dhcp.html>`_
 
 Containers and Dragonflow
 =========================
-`Dragonflow and Containers <https://github.com/openstack/dragonflow/tree/master/doc/source/containers.rst>`_
+`Dragonflow and Containers <http://docs.openstack.org/developer/dragonflow/containers.html>`_
 
 Dragonflow Roadmap
 ==================
