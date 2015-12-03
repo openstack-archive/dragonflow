@@ -146,6 +146,7 @@ class NbApi(object):
         pass
 
     def create_security_group(self, name, **columns):
+        return
         secgroup = {}
         secgroup['name'] = name
         for col, val in columns.items():
@@ -154,9 +155,11 @@ class NbApi(object):
         self.driver.create_key('secgroup', name, secgroup_json)
 
     def delete_security_group(self, name):
+        return
         self.driver.delete_key('secgroup', name)
 
     def add_security_group_rules(self, sg_name, new_rules):
+        return
         secgroup_json = self.driver.get_key('secgroup', sg_name)
         secgroup = jsonutils.loads(secgroup_json)
         rules = secgroup.get('rules', [])
@@ -166,6 +169,7 @@ class NbApi(object):
         self.driver.set_key('secgroup', sg_name, secgroup_json)
 
     def delete_security_group_rule(self, sg_name, sgr_id):
+        return
         secgroup_json = self.driver.get_key('secgroup', sg_name)
         secgroup = jsonutils.loads(secgroup_json)
         rules = secgroup.get('rules')
