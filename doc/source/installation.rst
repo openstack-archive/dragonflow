@@ -2,14 +2,16 @@
 Installation
 ============
 
-At the command line::
+``git clone https://git.openstack.org/openstack-dev/devstack``
 
-    $ pip install dragonflow
+Copy one of the folwoing as your local.conf to your devstack folder
 
-Or, if you have virtualenvwrapper installed::
 
-    $ mkvirtualenv dragonflow
-    $ pip install dragonflow
+- `DevStack Single Node Configuration <https://github.com/openstack/dragonflow/tree/master/doc/source/single-node-conf>`_
+
+- `DevStack Multi Node Configuration <https://github.com/openstack/dragonflow/tree/master/doc/source/multi-node-conf>`_
+
+  Run ./stack
 
 ============================================
  Automated setup using Vagrant + Virtualbox
