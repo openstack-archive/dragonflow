@@ -117,12 +117,16 @@ class DbApi(object):
            DB driver is responsible to start the appropriate listener
            threads on DB changes and send changes to callback.
 
+           Returning the callback with action=='sync' will trigger
+           a full sync process by the controller
+           (Reading all entries for all tables)
+
         :param callback:  callback method to call for every db change
         :type callback :  callback method of type:
                           callback(table, key, action, value)
                           table - table name
                           key - object key
-                          action = 'create' / 'set' / 'delete'
+                          action = 'create' / 'set' / 'delete' / 'sync'
                           value = new object value
         :returns:         None
         """

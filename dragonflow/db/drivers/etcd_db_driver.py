@@ -108,3 +108,5 @@ class EtcdDbDriver(db_api.DbApi):
             except Exception as e:
                 if "Read timed out" not in e.message:
                     LOG.warn(e)
+                self.notify_callback(None, None, 'sync',
+                                     None)

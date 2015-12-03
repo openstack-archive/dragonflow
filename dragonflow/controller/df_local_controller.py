@@ -85,6 +85,14 @@ class DfLocalController(object):
                     self.nb_api.support_publish_subscribe()):
                 self.nb_api.register_notification_callback(self)
 
+    def run_sync(self):
+        self.sync_finished = True
+        while True:
+            time.sleep(1)
+            self.run_db_poll()
+            if self.sync_finished:
+                return
+
     def run_db_poll(self):
         try:
             self.nb_api.sync()
