@@ -83,7 +83,7 @@ class DfLocalController(object):
             self.run_db_poll()
             if self.sync_finished and (
                     self.nb_api.support_publish_subscribe()):
-                self.nb_api.wait_for_db_changes(self)
+                self.nb_api.register_notification_callback(self)
 
     def run_db_poll(self):
         try:

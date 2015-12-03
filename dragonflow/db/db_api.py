@@ -36,7 +36,7 @@ class DbApi(object):
         """Return if this DB support publish-subscribe
 
            If this method returns True, the DB driver needs to
-           implement wait_for_db_changes() API in this class
+           implement register_notification_callback() API in this class
 
         :returns:          boolean (True or False)
         """
@@ -111,9 +111,11 @@ class DbApi(object):
         """
 
     @abc.abstractmethod
-    def wait_for_db_changes(self, callback):
-        """Wait for DB changes on caller context, DB should call
-           callback method for every change
+    def register_notification_callback(self, callback):
+        """Register for DB changes notifications, DB driver should
+           call callback method for every change.
+           DB driver is responsible to start the appropriate listener
+           threads on DB changes and send changes to callback.
 
         :param callback:  callback method to call for every db change
         :type callback :  callback method of type:
