@@ -33,8 +33,37 @@ currently supported DB frameworks:
 Classes in the DB Layer
 ========================
 
+The following sections describe the two main classes that are part of the
+DB layer.
+
 Applicative N/B DB Adapter Layer
 ----------------------------------
+This component is the translator layer between the data model elements
+to the DB driver which is generic.
+
+This class should be used by all Dragonflow users that need to interact
+with the DB (write/read).
+For example: Dragonflow Neutron plugin, the Dragonflow local controller, external applications.
+
+This component was added for one main reason:
+We didnt want to expose the DB driver to the internal data schema/model of
+Dragonflow.
+We didnt want that every new feature in Dragonflow will trigger changes in the various
+different DB drivers.
+
+This component has an interface to add/set/delete elements in our model (like logical
+switches, logical routers and so on) and translate these APIs to a simple, generic
+key/value operations that are done by the DB driver.
+
+This component also define the Dragonflow data model objects and which fields each
+one of the logical elements has.
+
+The N/B DB Adapter has a reference to a DB Driver instance which is used to interact
+with the DB framework.
+We have identified that different DB frameworks might have different features and
+capabilities, this layer is in charge of understanding the features exposed by the driver
+and using them if possible.
+
 
 DB Driver API
 --------------
