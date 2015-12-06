@@ -91,12 +91,46 @@ DB framework looking for changes.
 
 Modes of DB
 ============
+There are three different modes for the interaction between Dragonflow and the DB.
 
 Full Proactive
 --------------
+In this mode, all the DB data (policy and topology) is synced with all the local
+Dragonflow controllers (each compute node).
+Dragonflow saves in a local in-memory cache all the data that was synced from the
+DB in order to do fast lookups.
 
 Selective Proactive
 -------------------
+.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/db2.jpg
+    :alt: Pluggable DB architecture
+    :width: 600
+    :height: 525
+    :align: center
+
+We have identified that in virtualized environments today with tenant isolation, full
+proactive mode is not really needed.
+We only need to synchronize each compute node (local-controller) with the relevant
+data depending on the local ports of this compute node.
+This mode is called selective proactive.
+
+The following diagram depicts why this is needed:
+
+.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/db3.jpg
+    :alt: Pluggable DB architecture
+    :width: 600
+    :height: 525
+    :align: center
+
+We can see from the diagram that each compute node has VMs from one network, and in the
+topology we can see that the networks are isolated, meaning VMs from one network can not
+communicate with VMs from another.
+
+It is obvious than that each compute node only needs to get the topology and policy
+of the network and VMs that are local.
+(If there was a router connecting between these two networks, this statement was no
+longer correct, but we kept it simple in order to demonstrate that in setups today there
+are many isolated topologies)
 
 Reactive
 ---------
