@@ -67,6 +67,26 @@ and using them if possible.
 
 DB Driver API
 --------------
+DB Driver is an interface class that list the methods needed to be implemented
+in order to connect a certain DB framework to work with Dragonflow as a backend.
+
+The DB driver is a very minimalistic interface that uses a simple key/value
+approach and can fit to almost all DB frameworks.
+
+In order for Dragonflow to be able to leverage "advance" features of the DB,
+the driver has a way to indicate if a specific feature is implemented or not, and if
+it is, provide an API to consume it.
+
+Using this method, the applicative DB adapter can choose the best way to manage
+the way it interact with the DB.
+
+For example: the driver can state if it support publish-subscribe on its tables,
+If it does, the local controller will register a callback method to the driver to
+receive any DB notifications and instead of polling the DB for changes, wait for the
+driver to send them.
+
+If the driver doesnt support publish-subscribe, the controller will keep polling the
+DB framework looking for changes.
 
 
 Modes of DB
