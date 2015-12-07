@@ -161,6 +161,11 @@ class DfLocalController(object):
         if lport.get_chassis() is None:
             return
 
+        if 'is_public' in lport.lport and lport.lport['is_public']:
+            # TODO(shlomo) support public ports
+            LOG.info(_LI("Port update on public port ignoring"))
+            return
+
         chassis_to_ofport, lport_to_ofport = (
             self.vswitch_api.get_local_ports_to_ofport_mapping())
         network = self.get_network_id(lport.get_lswitch_id())

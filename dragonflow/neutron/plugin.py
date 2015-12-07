@@ -359,6 +359,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if updated_port.get('device_owner') == const.DEVICE_OWNER_ROUTER_GW:
             chassis = None
 
+        net_id = self.get_external_network_id(context)
+        is_public = False
+        if updated_port['network_id'] in net_id:
+            is_public = True
+        else:
+            is_public = False
+
         self.nb_api.update_lport(name=updated_port['id'],
                                  macs=[updated_port['mac_address']],
                                  external_ids=external_ids,
@@ -366,6 +373,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  enabled=updated_port['admin_state_up'],
                                  port_security=allowed_macs,
                                  chassis=chassis,
+                                 is_public=is_public,
                                  device_owner=updated_port.get('device_owner',
                                                                None))
         return updated_port
@@ -434,9 +442,17 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     port['port'][df_const.DF_PORT_BINDING_PROFILE])
             self._process_port_create_extra_dhcp_opts(context, db_port,
                                                       dhcp_opts)
-        return self.create_port_in_nb_api(db_port, parent_name, tag, sgids)
+        net_id = self.get_external_network_id(context)
+        is_public = False
+        if db_port['network_id'] in net_id:
+            is_public = True
+        else:
+            is_public = False
 
-    def create_port_in_nb_api(self, port, parent_name, tag, sgids):
+        return self.create_port_in_nb_api(db_port, parent_name, tag,
+                                          sgids, is_public)
+
+    def create_port_in_nb_api(self, port, parent_name, tag, sgids, is_public):
         # The port name *must* be port['id'].  It must match the iface-id set
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
@@ -469,7 +485,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             chassis=chassis, tunnel_key=tunnel_key,
             port_security=allowed_macs,
             device_owner=port.get('device_owner', None),
-            sgids=sgids)
+            sgids=sgids,
+            is_public=is_public)
 
         return port
 
