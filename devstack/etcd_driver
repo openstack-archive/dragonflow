@@ -9,31 +9,51 @@
 # - nb_db_driver_stop_server
 # - nb_db_driver_clean
 
-ETCD_VERSION=v2.2.2
+
+function install_configure_etcd {
+    # Install etcd from package sources (=> our PPA).
+    install_package etcd
+
+    # Stop the etcd service:
+    sudo service etcd stop || true
+
+    # Delete any existing etcd database:
+    sudo rm -rf /var/lib/etcd/*
+
+    # Mount a RAM disk at /var/lib/etcd:
+    sudo mount -t tmpfs -o size=512m tmpfs /var/lib/etcd
+
+    # Add the following to the bottom of /etc/fstab so that the RAM
+    # disk gets reinstated at boot time:
+    # tmpfs /var/lib/etcd tmpfs nodev,nosuid,noexec,nodiratime,size=512M 0 0
+
+    IP=`hostname -I | awk '{print $1}'`
+
+    # Edit /etc/init/etcd.conf: Find the line which begins exec
+    # /usr/bin/etcd and edit it, substituting for <controller_fqdn>
+    # and <controller_ip> appropriately.
+	# Configure an etcd master node.
+	sudo sed -i "s/exec.*/exec \/usr\/bin\/etcd --name=\"$HOSTNAME\" \
+  --advertise-client-urls=\"http:\/\/$REMOTE_DB_IP:2379,http:\/\/$REMOTE_DB_IP:4001\" \
+  --listen-client-urls=\"http:\/\/$REMOTE_DB_IP:2379,http:\/\/$REMOTE_DB_IP:4001\" \
+  --listen-peer-urls \"http:\/\/0.0.0.0:2380\" \
+  --initial-advertise-peer-urls \"http:\/\/$REMOTE_DB_IP:2380\" \
+  --initial-cluster-token \"$TOKEN\" \
+  --initial-cluster \"$HOSTNAME=http:\/\/$REMOTE_DB_IP:2380\" \
+  --initial-cluster-state \"new\"/" /etc/init/etcd.conf
+
+    # Start the etcd service:
+    sudo service etcd start
+}
 
 function nb_db_driver_install_server {
-    if is_service_enabled df-etcd-server ; then
-       echo "Installing etcd"
-       rm -rf $DEST/etcd/db.etcd
-       if [ ! -f "$DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd" ]; then
-          echo "Installing etcd server"
-          mkdir -p $DEST/etcd
-          wget https://github.com/coreos/etcd/releases/download/$ETCD_VERSION/etcd-$ETCD_VERSION-linux-amd64.tar.gz -O $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz
-          tar xzvf $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz -C $DEST/etcd
-       fi
-    fi
+    sudo apt-add-repository -y ppa:project-calico/kilo-testing
+    REPOS_UPDATED=False
+    install_configure_etcd
 }
 
 function nb_db_driver_install_client {
-    local _pwd=$(pwd)
-    if [ ! -d $DEST/python-etcd ] ; then
-        echo "Installing etcd client"
-        git clone https://github.com/jplana/python-etcd.git $DEST/python-etcd
-        cd $DEST/python-etcd
-        sudo python setup.py install
-        cd $_pwd
-        echo "Finished installing etcd"
-    fi
+   pip_install -I git+git://github.com/projectcalico/python-etcd.git
 }
 
 function nb_db_driver_status_server
@@ -46,13 +66,13 @@ function nb_db_driver_status_server
 }
 
 function nb_db_driver_start_server {
-    if is_service_enabled df-etcd-server ; then
-        $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd --listen-client-urls http://$REMOTE_DB_IP:4001 --advertise-client-urls http://$REMOTE_DB_IP:4001 --data-dir $DEST/etcd/db.etcd &
-    fi
+
+   return 0
 }
 
+
 function nb_db_driver_stop_server {
-    if is_service_enabled df-etcd-server ; then
-        sudo killall etcd 2&> /dev/null
-    fi
+    sudo service etcd stop || true
+    sudo umount /var/lib/etcd
 }
+
