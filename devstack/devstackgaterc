@@ -40,9 +40,17 @@ r="$r|(?:tempest\.thirdparty\.boto\.test_s3.*)"
 r="$r|(?:tempest\.thirdparty\.boto\.test_ec2_instance_run\.InstanceRunTest\.test_compute_with_volumes.*)"
 r="$r|(?:tempest\.scenario\.test_security_groups.*)"
 
-r="$r|(?:tempest\.api\.identity.*)"
-r="$r|(?:tempest\.api\.image.*)"
-r="$r|(?:tempest\.api\.volume.*)"
+# skip tests unrelated to dragonflow
+r="$r|(?:tempest\.api\.identity*)"
+r="$r|(?:tempest\.api\.image*)"
+r="$r|(?:tempest\.api\.volume*)"
+r="$r|(?:tempest\.api\.compute\.images*)"
+r="$r|(?:tempest\.api\.compute\.keypairs*)"
+r="$r|(?:tempest\.api\.compute\.certificates*)"
+r="$r|(?:tempest\.api\.compute\.flavors*)"
+r="$r|(?:tempest\.api\.compute\.test_quotas*)"
+r="$r|(?:tempest\.api\.compute\.test_versions*)"
+r="$r|(?:tempest\.api\.compute\.volumes*)"
 
 r="$r|(?:tempest\.api\.network.test_allowed_address_pair.*)"
 
