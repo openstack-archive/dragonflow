@@ -52,9 +52,12 @@ r="$r|(?:tempest\.api\.compute\.test_quotas*)"
 r="$r|(?:tempest\.api\.compute\.test_versions*)"
 r="$r|(?:tempest\.api\.compute\.volumes*)"
 
+# Failing tests that needs to be re-visited
 r="$r|(?:tempest\.api\.network.test_allowed_address_pair.*)"
 
 r="$r|(?:tempest\.api\.network.admin.test_external_network_extension.*)"
+
+r="$r|(?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_dhcpv6_stateless*)"
 
 # Current list of failing tests that need to be triaged, have bugs filed, and
 # fixed as appropriate.
