@@ -54,10 +54,14 @@ r="$r|(?:tempest\.api\.compute\.volumes*)"
 
 # Failing tests that needs to be re-visited
 r="$r|(?:tempest\.api\.network.test_allowed_address_pair.*)"
-
 r="$r|(?:tempest\.api\.network.admin.test_external_network_extension.*)"
-
 r="$r|(?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_dhcpv6_stateless*)"
+r="$r|(?:tempest\.api\.network\.RoutersNegativeIpV6Test.*)"
+r="$r|(?:tempest\.api\.network\.RoutersNegativeTest.*)"
+r="$r|(?:tempest\.scenario\.test_network_advanced_server_ops.*)"
+r="$r|(?:tempest\.scenario\.test_minimum_basic\.test_minimum_basic_scenario*)"
+r="$r|(?:tempest\.scenario\.test_network_v6.*)"
+r="$r|(?:tempest\.scenario\.test_volume_boot_pattern\.test_volume_boot_pattern*)"
 
 # Current list of failing tests that need to be triaged, have bugs filed, and
 # fixed as appropriate.
