@@ -349,6 +349,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         allowed_macs = self._get_allowed_mac_addresses_from_port(
             updated_port)
 
+        ips = []
+        if 'fixed_ips' in updated_port:
+            ips = [ip['ip_address'] for ip in updated_port['fixed_ips']]
+
         chassis = None
         if 'binding:host_id' in updated_port:
             chassis = updated_port['binding:host_id']
@@ -360,7 +364,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             chassis = None
 
         self.nb_api.update_lport(name=updated_port['id'],
-                                 macs=[updated_port['mac_address']],
+                                 macs=[updated_port['mac_address']], ips=ips,
                                  external_ids=external_ids,
                                  parent_name=parent_name, tag=tag,
                                  enabled=updated_port['admin_state_up'],
@@ -444,8 +448,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         allowed_macs = self._get_allowed_mac_addresses_from_port(port)
         ips = []
         if 'fixed_ips' in port:
-            if 'ip_address' in port['fixed_ips'][0]:
-                ips.append(port['fixed_ips'][0]['ip_address'])
+            ips = [ip['ip_address'] for ip in port['fixed_ips']]
 
         chassis = None
         if 'binding:host_id' in port:
