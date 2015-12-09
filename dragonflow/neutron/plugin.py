@@ -555,8 +555,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         subnet = self.get_subnet(context, new_router['subnet_id'])
         network_id = subnet['network_id']
 
-        self.nb_api.delete_lrouter_port(router_id,
-                                        network_id)
+        try:
+            self.nb_api.delete_lrouter_port(router_id,
+                                            network_id)
+        except df_exceptions.DBKeyNotFound:
+            LOG.debug("logical router %s is not found in DF DB, suppressing "
+                      " delete_lrouter_port exception" % router_id)
+
         return new_router
 
     def _create_dhcp_server_port(self, context, subnet):
