@@ -112,7 +112,7 @@ roadmap into Dragonflow project
 How to Install
 --------------
 
-- `Installation Guide <https://github.com/openstack/dragonflow/tree/master/doc/source/readme.rst>`_
+- `Installation Guide <http://docs.openstack.org/developer/dragonflow/readme.html>`_
 - `DevStack Single Node Configuration
   <https://github.com/openstack/dragonflow/tree/master/doc/source/single-node-conf>`_
 - `DevStack Multi Node Configuration
