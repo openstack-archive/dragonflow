@@ -33,10 +33,26 @@ Quick Installation
 
    enable_service q-l3
 
+   disable_service q-agt
+
+   disable_service n-net
+
+DHCP configuration (IPv4 Only Environment):
+-------------------------------------------
+
+   no configration needed
+
+DHCP configuration (mixed IPv4/IPv6 or pure IPv6):
+----------------------
+
    enable_service q-dhcp
 
-   disable_service q-agt
-   disable_service n-net
+   If the q-dhcp is installed on a diffrent Node from the q-svc
+
+   Please add the following flag to the neutron.conf on the q-svc node
+
+   use_centralized_ipv6_DHCP=True
+
 
 Database configuration:
 -------------------
