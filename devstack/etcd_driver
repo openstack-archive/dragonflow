@@ -66,8 +66,7 @@ function nb_db_driver_status_server
 }
 
 function nb_db_driver_start_server {
-
-   return 0
+    sudo service etcd restart || true
 }
 
 
