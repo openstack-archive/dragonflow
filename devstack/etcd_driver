@@ -20,9 +20,6 @@ function install_configure_etcd {
     # Delete any existing etcd database:
     sudo rm -rf /var/lib/etcd/*
 
-    # Mount a RAM disk at /var/lib/etcd:
-    sudo mount -t tmpfs -o size=512m tmpfs /var/lib/etcd
-
     # Add the following to the bottom of /etc/fstab so that the RAM
     # disk gets reinstated at boot time:
     # tmpfs /var/lib/etcd tmpfs nodev,nosuid,noexec,nodiratime,size=512M 0 0
@@ -41,9 +38,6 @@ function install_configure_etcd {
   --initial-cluster-token \"$TOKEN\" \
   --initial-cluster \"$HOSTNAME=http:\/\/$REMOTE_DB_IP:2380\" \
   --initial-cluster-state \"new\"/" /etc/init/etcd.conf
-
-    # Start the etcd service:
-    sudo service etcd start
 }
 
 function nb_db_driver_install_server {
@@ -66,12 +60,16 @@ function nb_db_driver_status_server
 }
 
 function nb_db_driver_start_server {
+    # Mount a RAM disk at /var/lib/etcd:
+    sudo mount -t tmpfs -o size=512m tmpfs /var/lib/etcd
 
-   return 0
+    # Start the etcd service
+    sudo service etcd restart || true
 }
 
 
 function nb_db_driver_stop_server {
+    # Stop the etcd service and umount the RAM disk
     sudo service etcd stop || true
     sudo umount /var/lib/etcd
 }
