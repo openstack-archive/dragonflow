@@ -10,5 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
-eventlet.monkey_patch()
+from dragonflow.controller import df_local_controller
+
+
+def main():
+    df_local_controller.main()
+
+if __name__ == "__main__":
+    main()
