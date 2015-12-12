@@ -12,12 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
+
 import signal
 import sys
 import threading
-
-import eventlet
-eventlet.monkey_patch()
 
 from six import moves
 
@@ -306,7 +304,3 @@ def main():
     # Start everything.
     LOG.info(_LI("Agent initialized successfully, now running... "))
     agent.daemon_loop()
-
-
-if __name__ == "__main__":
-    main()

@@ -13,9 +13,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import eventlet
+
 import sys
-eventlet.monkey_patch()
 
 from oslo_config import cfg
 from oslo_service import service
@@ -39,6 +38,3 @@ def main(manager='dragonflow.neutron.agent.l3.l3_controller_agent.'
         report_interval=cfg.CONF.AGENT.report_interval,
         manager=manager)
     service.launch(cfg.CONF, server).wait()
-
-if __name__ == "__main__":
-    main()
