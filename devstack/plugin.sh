@@ -290,14 +290,17 @@ function verify_ryu_version {
 }
 
 function start_pubsub_service {
-    PUBLISHER_SERVICE=$DRAGONFLOW_DIR/dragonflow/controller/df_publisher_service.py
-    set python $PUBLISHER_SERVICE
-    set "$@" --config-file $NEUTRON_CONF
-    run_process df-publisher-service "$*"
+    echo "Starting Dragonflow publisher service"
+
+    if is_service_enabled df-l3-agent ; then
+        run_process df-publisher-service "python $DF_PUBLISHER_SERVICE --config-file $NEUTRON_CONF"
+    fi
 }
 
 function stop_pubsub_service {
-    stop_process df-publisher-service
+    if is_service_enabled df-publisher-service ; then
+        stop_process df-publisher-service
+    fi
 }
 
 # start_df_l3_agent() - Start running processes, including screen
