@@ -28,8 +28,6 @@ from dragonflow.db import db_common
 
 LOG = logging.getLogger(__name__)
 
-eventlet.monkey_patch(socket=False)
-
 PUBLISHER_TABLE = 'publisher'
 
 MONITOR_TABLES = ['chassis', PUBLISHER_TABLE]
