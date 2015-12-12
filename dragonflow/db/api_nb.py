@@ -29,8 +29,6 @@ from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC
 from dragonflow.db import pub_sub_api
 from dragonflow.neutron.common import constants as const
 
-eventlet.monkey_patch()
-
 LOG = log.getLogger(__name__)
 
 

@@ -11,7 +11,7 @@
 #    under the License.
 
 import eventlet
-from Queue import Queue
+from eventlet.queue import Queue
 import sys
 import time
 import traceback
@@ -30,8 +30,6 @@ from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import pub_sub_api
-
-eventlet.monkey_patch()
 
 LOG = logging.getLogger(__name__)
 
@@ -156,6 +154,3 @@ def main():
     service = PublisherService()
     service.initialize()
     service.run()
-
-if __name__ == "__main__":
-    main()

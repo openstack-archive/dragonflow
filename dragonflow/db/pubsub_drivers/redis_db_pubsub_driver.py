@@ -21,9 +21,8 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import redis
-LOG = logging.getLogger(__name__)
 
-eventlet.monkey_patch()
+LOG = logging.getLogger(__name__)
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
 
