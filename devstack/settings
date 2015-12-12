@@ -5,9 +5,7 @@ DRAGONFLOW_BRANCH=${DRAGONFLOW_BRANCH:-master}
 
 DF_L3_SERVICE_PLUGIN="dragonflow.neutron.services.l3.l3_controller_plugin.ControllerL3ServicePlugin"
 
-DF_L2_AGENT=$DRAGONFLOW_DIR/dragonflow/neutron/agent/l2/ovs_dragonflow_neutron_agent.py
-DF_L3_AGENT=$DRAGONFLOW_DIR/dragonflow/neutron/agent/l3_sdn_agent.py
-DF_LOCAL_CONTROLLER=$DRAGONFLOW_DIR/dragonflow/controller/df_local_controller.py
+DF_LOCAL_CONTROLLER=$DRAGONFLOW_DIR/dragonflow/cmd/eventlet/df_local_controller.py
 
 DF_L2_RESPONDER=${DF_L2_RESPONDER:-'True'}
 DF_PUB_SUB=${DF_PUB_SUB:-'False'}
