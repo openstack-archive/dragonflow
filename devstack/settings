@@ -8,8 +8,9 @@ DRAGONFLOW_BRANCH=${DRAGONFLOW_BRANCH:-master}
 
 DF_L3_SERVICE_PLUGIN="dragonflow.neutron.services.l3.l3_controller_plugin.ControllerL3ServicePlugin"
 
-DF_LOCAL_CONTROLLER=$DRAGONFLOW_DIR/dragonflow/controller/df_local_controller.py
-DF_L3_BINARY=${DF_L3_BINARY:-"$NEUTRON_BIN_DIR/df-l3-agent"}
+DF_L3_BINARY=$NEUTRON_BIN_DIR/df-l3-agent
+DF_LOCAL_CONTROLLER_BINARY=$NEUTRON_BIN_DIR/df-local-controller
+DF_PUBLISHER_SERVICE_BINARY=$NEUTRON_BIN_DIR/df-publisher-service
 
 DF_L2_RESPONDER=${DF_L2_RESPONDER:-'True'}
 

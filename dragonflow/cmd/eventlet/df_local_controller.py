@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.common import eventlet_utils
+from dragonflow.controller import df_local_controller
 
-eventlet_utils.monkey_patch()
+
+def main():
+    df_local_controller.main()

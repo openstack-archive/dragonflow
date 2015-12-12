@@ -30,8 +30,6 @@ from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC, \
                                      DB_SYNC_MINIMUM_INTERVAL
 from dragonflow.db import pub_sub_api
 
-eventlet.monkey_patch()
-
 LOG = log.getLogger(__name__)
 
 
