@@ -29,8 +29,6 @@ import six
 DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
 LOG = logging.getLogger(__name__)
 
-eventlet.monkey_patch()
-
 
 def load_driver(driver_cfg, namespace):
     try:
