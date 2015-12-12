@@ -156,6 +156,3 @@ def main():
     service = PublisherService()
     service.initialize()
     service.run()
-
-if __name__ == "__main__":
-    main()
