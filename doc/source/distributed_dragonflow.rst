@@ -121,11 +121,13 @@ How to Install
 More Useful Reading
 -------------------
 
+- `Dragonflow Introduction Video - OpenStack Tokyo Summit
+  <https://www.youtube.com/watch?v=wo1Q-BL3nII>`_
 - `Distributed DHCP Service in Dragonflow
   <http://blog.gampel.net/2015/09/dragonflow-distributed-dhcp-for.html>`_
 - `Centralized vs. Distributed SDN Controller in Dragonflow
   <http://blog.gampel.net/2015/08/centralized-vs-distributed-sdn-control.html>`_
-- `Dragonflow in OpenStack Libery
+- `Dragonflow in OpenStack Liberty
   <http://galsagie.github.io/sdn/openstack/ovs/dragonflow/2015/10/14/dragonflow-liberty/>`_
 - `Dragonflow Distributed Database
   <http://galsagie.github.io/sdn/openstack/ovs/ovn/dragonflow/2015/08/03/df-distributed-db/>`_
