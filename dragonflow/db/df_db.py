@@ -29,7 +29,8 @@ db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
 usage_str = "The following commands are supported:\n" \
             "1) df_db ls  - print all the db tables \n" \
             "2) df_db ls <table_name> - print all the keys for specific table \n" \
-            "3) df_db get <table_name> <key> - print value for specific key"
+            "3) df_db get <table_name> <key> - print value for specific key\n" \
+            "4) df_db dump - dump all tables\n"
 
 
 def print_tables():
@@ -52,6 +53,23 @@ def print_table(db_driver, table):
     print ('------------------------------------------------------------')
     for key in keys:
         print key
+    print (' ')
+
+
+def print_whole_table(db_driver, table):
+    try:
+        keys = db_driver.get_all_keys(table)
+    except df_exceptions.DBKeyNotFound:
+        print('Table not found: ' + table)
+        return
+    print (' ')
+    print ('------------------------------------------------------------')
+    print ('Table = ' + table)
+    print ('------------------------------------------------------------')
+    for key in keys:
+        value = db_driver.get_key(table, key)
+        if value:
+            print ('Key = ' + key + ' , Value = ' + value)
     print (' ')
 
 
@@ -105,6 +123,11 @@ def main():
             return
         key = sys.argv[3]
         print_key(db_driver, table, key)
+        return
+
+    if action == 'dump':
+        for table in db_tables:
+            print_whole_table(db_driver, table)
         return
 
     print usage_str
