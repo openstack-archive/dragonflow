@@ -37,10 +37,6 @@ from neutron.i18n import _LI, _LE
 
 LOG = log.getLogger(__name__)
 
-# TODO(gsagie) currently the number set in Ryu for this
-# (OFPP_IN_PORT) is not working, use this until resolved
-OF_IN_PORT = 0xfff8
-
 
 class L3App(DFlowApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
