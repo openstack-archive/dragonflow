@@ -33,6 +33,9 @@ LOG = log.getLogger(__name__)
 
 # TODO(gsagie) currently the number set in Ryu for this
 # (OFPP_IN_PORT) is not working, use this until resolved
+# NOTE(yamamoto): Many of Nicira extensions, including
+# NXAST_RESUBMIT_TABLE, take 16-bit (OpenFlow 1.0 style) port number,
+# regardless of the OpenFlow version being used.
 OF_IN_PORT = 0xfff8
 
 
