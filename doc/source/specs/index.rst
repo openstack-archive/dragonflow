@@ -35,6 +35,7 @@ Spec Template
     skeleton
     template
     distributed_dnat
+    securitygroup
 
 
 Indices and tables
