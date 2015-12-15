@@ -138,7 +138,7 @@ function install_df {
 
     if [ ! -d $RYU_DIR ] ; then
         echo "Cloning and installing Ryu"
-        git clone $RYU_REPO $RYU_DIR
+        git_clone $RYU_REPO $RYU_DIR
         pushd $RYU_DIR
         setup_package ./ -e
         popd
@@ -165,7 +165,7 @@ function install_ovs {
 
     cd $DEST
     if [ ! -d $OVS_REPO_NAME ] ; then
-        git clone $OVS_REPO
+        git_clone $OVS_REPO
         cd $OVS_REPO_NAME
         git checkout $OVS_BRANCH
     else
