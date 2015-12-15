@@ -128,6 +128,9 @@ function init_ovs {
 
 function install_df {
 
+    # Obtain devstack directory for df-ext-services.sh
+    sed -i "/^TOP_DIR=/cTOP_DIR=$TOP_DIR" $DEST/dragonflow/devstack/df-ext-services.sh
+
     nb_db_driver_install_server
 
     nb_db_driver_install_client

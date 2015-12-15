@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Locate devstack directory
+TOP_DIR=
+
 # Detect path for this script file
 DF_DIR=$(cd $(dirname "$0") && pwd)
 
