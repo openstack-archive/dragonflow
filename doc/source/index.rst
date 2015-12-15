@@ -21,6 +21,7 @@ Contents:
    containers
    usage
    contributing
+   releasenotes
 
 Dragonflow Specs
 =================
