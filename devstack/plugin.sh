@@ -35,6 +35,9 @@ if is_service_enabled df-ramcloud ; then
    source $DEST/dragonflow/devstack/ramcloud_driver
    NB_DRIVER_CLASS="dragonflow.db.drivers.ramcloud_db_driver.RamCloudDbDriver"
 fi
+if is_service_enabled df-rethinkdb ; then
+   source $DEST/dragonflow/devstack/rethinkdb_driver
+fi
 
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
