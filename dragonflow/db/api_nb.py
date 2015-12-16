@@ -71,7 +71,19 @@ class NbApi(object):
         self.db_apply_failed = False
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
-        self.driver.initialize(db_ip, db_port)
+        cnt = 60
+        while (cnt > 0):
+            try:
+                self.driver.initialize(db_ip, db_port)
+            except Exception as e:
+                if cnt == 0:
+                    LOG.warn(e)
+                    return None
+                else:
+                    cnt -= 1
+                    time.sleep(1)
+                    continue
+            return
 
     def support_publish_subscribe(self):
         return self.driver.support_publish_subscribe()
