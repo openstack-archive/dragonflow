@@ -89,6 +89,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         super(DFPlugin, self).__init__()
         LOG.info(_LI("Starting DFPlugin"))
         self.vif_type = portbindings.VIF_TYPE_OVS
+        self._set_base_port_binding()
         # When set to True, Nova plugs the VIF directly into the ovs bridge
         # instead of using the hybrid mode.
         self.vif_details = {portbindings.CAP_PORT_FILTER: True}
@@ -102,6 +103,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self._start_rpc_notifiers()
 
     def post_fork_initialize(self, resource, event, trigger, **kwargs):
+        self._set_base_port_binding()
+
+    def _set_base_port_binding(self):
         self.base_binding_dict = {
             portbindings.VIF_TYPE: portbindings.VIF_TYPE_OVS,
             portbindings.VIF_DETAILS: {
@@ -344,6 +348,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     id,
                     port,
                     updated_port=updated_port)
+            self._process_portbindings_create_and_update(context,
+                                                         port['port'],
+                                                         updated_port)
         external_ids = {
             df_const.DF_PORT_NAME_EXT_ID_KEY: updated_port['name']}
         allowed_macs = self._get_allowed_mac_addresses_from_port(
