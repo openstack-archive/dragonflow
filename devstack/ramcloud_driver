@@ -19,16 +19,26 @@ RAMCLOUD_COORDINATOR_PORT=${RAMCLOUD_COORDINATOR_PORT:-'21222'}
 RAMCLOUD_TRANSPORT=${RAMCLOUD_TRANSPORT:-'fast+udp'}
 RAMCLOUD_TABLE_NAMES=${RAMCLOUD_TABLE_NAMES:-'secgroup','dragonflow','chassis','lswitch','lport','lrouter','tunnel_key'}
 
+LIB_BOOST_MAJOR_VERSION=1
+LIB_BOOST_MINOR_VERSION=54
+
 function nb_db_driver_install_server {
     if is_service_enabled df-rcmaster ; then
         echo "Installing Dependencies"
         if is_ubuntu; then
-            install_package libboost-program-options1.54 libprotobuf8 libboost-filesystem1.54.0
+            boost_program=libboost-program-options"$LIB_BOOST_MAJOR_VERSION"."$LIB_BOOST_MINOR_VERSION"
+            boost_filesystem=libboost-program-options"$LIB_BOOST_MAJOR_VERSION"."$LIB_BOOST_MINOR_VERSION"
+            protobuf_lib=libprotobuf8
         elif is_suse || is_oraclelinux; then
-            install_package libboost_program_options1_54_0 libprotobuf8 libboost_filesystem1_54_0
+            boost_program=libboost_program_options"$LIB_BOOST_MAJOR_VERSION"_"$LIB_BOOST_MINOR_VERSION"_0
+            boost_filesystem=libboost_filesystem"$LIB_BOOST_MAJOR_VERSION"_"$LIB_BOOST_MINOR_VERSION"_0
+            protobuf_lib=libprotobuf8
         elif is_fedora; then
-            install_package libboost_program_options1_54_0 protobuf libboost_filesystem1_54_0
+            boost_program=libboost_program_options"$LIB_BOOST_MAJOR_VERSION"_"$LIB_BOOST_MINOR_VERSION"_0
+            boost_filesystem=libboost_filesystem"$LIB_BOOST_MAJOR_VERSION"_"$LIB_BOOST_MINOR_VERSION"_0
+            protobuf_lib=protobuf
         fi
+        install_package "$boost_program" "$boost_filesystem" "$protobuf_lib"
         echo "Installing RAMCloud server"
         git_clone https://github.com/dsivov/RamCloudBin.git $RAMCLOUD
         echo export LD_LIBRARY_PATH="$RAMCLOUD_LIB":"$LD_LIBRARY_PATH" | tee -a $HOME/.bashrc
