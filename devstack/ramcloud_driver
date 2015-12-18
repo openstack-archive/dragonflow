@@ -34,8 +34,13 @@ function nb_db_driver_install_server {
             boost_filesystem=libboost_filesystem"$LIB_BOOST_MAJOR_VERSION"_"$LIB_BOOST_MINOR_VERSION"_0
             protobuf_lib=libprotobuf8
         elif is_fedora; then
-            boost_program=libboost_program_options"$LIB_BOOST_MAJOR_VERSION"_"$LIB_BOOST_MINOR_VERSION"_0
-            boost_filesystem=libboost_filesystem"$LIB_BOOST_MAJOR_VERSION"_"$LIB_BOOST_MINOR_VERSION"_0
+            if [[ "$os_RELEASE" -ge "21" ]]; then
+                echo "Boost version 54 is not available for fedora > 20"
+                #TODO(gampel) add support for fedora > 20
+            else
+                boost_program=boost_program_options"$LIB_BOOST_MAJOR_VERSION"_"$LIB_BOOST_MINOR_VERSION"_0
+                boost_filesystem=boost_filesystem"$LIB_BOOST_MAJOR_VERSION"_"$LIB_BOOST_MINOR_VERSION"_0
+            fi
             protobuf_lib=protobuf
         fi
         install_package "$boost_program" "$boost_filesystem" "$protobuf_lib"
