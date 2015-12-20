@@ -10,16 +10,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from dragonflow.common import common_params
-from dragonflow.common import exceptions as df_exceptions
+import time
+
+import os_client_config
+from oslo_config import cfg
+from oslo_utils import importutils
+
 from neutron.common import config as common_config
 from neutron.tests import base
 from neutronclient.neutron import client
-import os_client_config
-from oslo_config import cfg
-from oslo_serialization import jsonutils
-from oslo_utils import importutils
 
+from dragonflow.common import common_params
+from dragonflow.db import api_nb
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
 
@@ -39,24 +41,53 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         super(TestNeutronAPIandDB, self).setUp()
         creds = credentials()
         tenant_name = creds['project_name']
-        auth_url = creds['auth_url'] + "/v2.0"
+        auth_url = creds['auth_url'] #+ "/v2.0"
         self.neutron = client.Client('2.0', username=creds['username'],
              password=creds['password'], auth_url=auth_url,
              tenant_name=tenant_name)
         self.neutron.format = 'json'
         common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
+
         db_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
-        self.db_driver = db_driver_class()
-        self.db_driver.initialize(db_ip=cfg.CONF.df.remote_db_ip,
+        self.nb_api = api_nb.NbApi(db_driver_class())
+        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
             db_port=cfg.CONF.df.remote_db_port)
 
     def test_create_network(self):
-        test_network = 'mynetwork1'
-        network = {'name': test_network, 'admin_state_up': True}
+        network = {'name': 'mynetwork1', 'admin_state_up': True}
         network = self.neutron.create_network({'network': network})
         network_id = network['network']['id']
-        value = self.db_driver.get_key('lswitch', network_id)
-        self.assertIsNotNone(value)
+        value = self.nb_api.get_lswitch(network_id)
         self.neutron.delete_network(network_id)
+        self.assertIsNotNone(value)
+
+    def test_dhcp_port_created(self):
+        network = {'name': 'mynetwork1', 'admin_state_up': True}
+        network = self.neutron.create_network({'network': network})
+        network_id = network['network']['id']
+        subnet = {'network_id': network_id,
+            'cidr': '10.1.0.0/24',
+            'gateway_ip': '10.1.0.1',
+            'ip_version': 4,
+            'name': 'subnet-test',
+            'enable_dhcp': True}
+        subnet = self.neutron.create_subnet({'subnet': subnet})
+        # Sleep is needed in order to let Neutron create the port
+        time.sleep(5)
+        ports = self.nb_api.get_all_logical_ports()
+        dhcp_ports_found = 0
+        for port in ports:
+            if port.get_lswitch_id() == network_id:
+                if port.get_device_owner() == 'network:dhcp':
+                    dhcp_ports_found += 1
+        self.neutron.delete_network(network_id)
+        self.assertEquals(dhcp_ports_found, 1)
+        ports = self.nb_api.get_all_logical_ports()
+        dhcp_ports_found = 0
+        for port in ports:
+            if port.get_lswitch_id() == network_id:
+                if port.get_device_owner() == 'network:dhcp':
+                    dhcp_ports_found += 1
+        self.assertEquals(dhcp_ports_found, 0)
 
 
