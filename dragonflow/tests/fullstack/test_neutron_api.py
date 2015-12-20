@@ -54,19 +54,9 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         test_network = 'mynetwork1'
         network = {'name': test_network, 'admin_state_up': True}
         network = self.neutron.create_network({'network': network})
-        if not network or not network['network']:
-            self.fail("Failed to create network using neutron API")
         network_id = network['network']['id']
-        table = 'lswitch'
-        try:
-            value = self.db_driver.get_key(table, network_id)
-        except df_exceptions.DBKeyNotFound:
-            self.fail("Failed to create network using neutron API")
-            return
-        value2 = jsonutils.loads(value)
-        if 'external_ids' in value2:
-            if (value2['external_ids']['neutron:network_name'] ==
-                test_network):
-                self.neutron.delete_network(network_id)
-                return
-        self.fail("Failed to find newly created network in Dragonflow DB")
+        value = self.db_driver.get_key('lswitch', network_id)
+        self.assertIsNotNone(value)
+        self.neutron.delete_network(network_id)
+
+
