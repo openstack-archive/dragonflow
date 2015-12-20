@@ -41,7 +41,7 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         super(TestNeutronAPIandDB, self).setUp()
         creds = credentials()
         tenant_name = creds['project_name']
-        auth_url = creds['auth_url'] + "/v2.0"
+        auth_url = creds['auth_url'] #+ "/v2.0"
         self.neutron = client.Client('2.0', username=creds['username'],
              password=creds['password'], auth_url=auth_url,
              tenant_name=tenant_name)
@@ -89,5 +89,23 @@ class TestNeutronAPIandDB(base.BaseTestCase):
                 if port.get_device_owner() == 'network:dhcp':
                     dhcp_ports_found += 1
         self.assertEquals(dhcp_ports_found, 0)
+
+    def test_create_delete_router(self):
+        router = {'name': 'myrouter', 'admin_state_up': True}
+        new_router = self.neutron.create_router({'router': router})
+        router_id = new_router['router']['id']
+        routers = self.nb_api.get_routers()
+        router_found = False
+        for router in routers:
+            if router.get_name() == router_id:
+                router_found = True
+        self.assertTrue(router_found)
+        self.neutron.delete_router(router_id)
+        routers = self.nb_api.get_routers()
+        router_found = False
+        for router in routers:
+            if router.get_name() == router_id:
+                router_found = True
+        self.assertFalse(router_found)
 
 
