@@ -70,3 +70,26 @@ class TestNeutronAPIandDB(base.BaseTestCase):
                 self.neutron.delete_network(network_id)
                 return
         self.fail("Failed to find newly created network in Dragonflow DB")
+
+    def test_create_router(self):
+        test_router = 'myrouter1'
+        table = 'lrouter'
+        router = {'name': test_router, 'admin_state_up': True}
+        newrouter = self.neutron.create_router({'router': router})
+        if not newrouter or not newrouter['router']:
+            self.fail("Failed to create router using neutron API")
+        router_id = newrouter['router']['id']
+        try:
+            self.db_driver.get_key(table, router_id)
+        except df_exceptions.DBKeyNotFound:
+            self.fail("Failed to find router in dragonflow db after creation")
+            self.neutron.delete_router(router_id)
+            return
+        self.neutron.delete_router(router_id)
+        try:
+            self.db_driver.get_key(table, router_id)
+        except df_exceptions.DBKeyNotFound:
+            # it is expected behaviour
+            return
+        self.fail("Found router leftover in dragonflow db after deletion")
+        return
