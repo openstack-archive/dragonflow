@@ -52,6 +52,7 @@ from neutron.extensions import securitygroup as sec_grp
 from neutron.i18n import _, _LE, _LI
 
 from dragonflow.common import common_params
+from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import api_nb
 from dragonflow.neutron.common import constants as df_const
@@ -579,7 +580,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         """
         port = {'port': {'network_id': subnet['network_id'], 'name': '',
-                         'binding:host_id': 'DragonflowVirtualPort',
+                         'binding:host_id': (
+                             df_common_const.DRAGONFLOW_VIRTUAL_PORT),
                          'admin_state_up': True, 'device_id': '',
                          'device_owner': const.DEVICE_OWNER_DHCP,
                          'mac_address': attr.ATTR_NOT_SPECIFIED,

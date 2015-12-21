@@ -28,6 +28,7 @@ from neutron.common import config as common_config
 from neutron.i18n import _LI, _LW
 
 from dragonflow.common import common_params
+from dragonflow.common import constants
 from dragonflow.controller import dispatcher
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
@@ -158,7 +159,8 @@ class DfLocalController(object):
             # TODO(gsagie) support updating port
             return
 
-        if lport.get_chassis() is None:
+        if lport.get_chassis() is None or (
+                    lport.get_chassis() == constants.DRAGONFLOW_VIRTUAL_PORT):
             return
 
         chassis_to_ofport, lport_to_ofport = (
