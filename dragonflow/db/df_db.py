@@ -10,15 +10,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import socket
 import sys
 
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 from oslo_utils import importutils
 
 from neutron.common import config as common_config
 
 from dragonflow.common import common_params
-
 from dragonflow.common import exceptions as df_exceptions
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
@@ -86,6 +87,15 @@ def print_key(db_driver, table, key):
     print (' ')
 
 
+def bind_port_to_localhost(db_driver, port_id):
+    lport_str = db_driver.get_key('lport', port_id)
+    lport = jsonutils.loads(lport_str)
+    chassis_name = socket.gethostname()
+    lport['chassis'] = chassis_name
+    lport_json = jsonutils.dumps(lport)
+    db_driver.set_key('lport', port_id, lport_json)
+
+
 def main():
     if len(sys.argv) < 2:
         print usage_str
@@ -128,6 +138,11 @@ def main():
     if action == 'dump':
         for table in db_tables:
             print_whole_table(db_driver, table)
+        return
+
+    if action == 'bind':
+        port_id = sys.argv[2]
+        bind_port_to_localhost(db_driver, port_id)
         return
 
     print usage_str
