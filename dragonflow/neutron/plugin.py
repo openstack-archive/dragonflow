@@ -299,9 +299,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         with context.session.begin(subtransactions=True):
             super(DFPlugin, self).delete_network(context,
                                                  network_id)
-        # TODO(gsagie) this patch is used to remove DHCP port
-        # remove when we implement distributed DHCP service and dont use
-        # q-dhcp
+        # TODO(gsagie) this fix is used to remove DHCP port
+        # both in the case of q-dhcp and in the case of
+        # distributed virtual DHCP port created by DF
+        # Need to revisit
         for port in self.nb_api.get_all_logical_ports():
             if port.get_lswitch_id() == network_id:
                 try:
@@ -578,6 +579,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         """
         port = {'port': {'network_id': subnet['network_id'], 'name': '',
+                         'binding:host_id': 'DragonflowVirtualPort',
                          'admin_state_up': True, 'device_id': '',
                          'device_owner': const.DEVICE_OWNER_DHCP,
                          'mac_address': attr.ATTR_NOT_SPECIFIED,
