@@ -39,7 +39,7 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         super(TestNeutronAPIandDB, self).setUp()
         creds = credentials()
         tenant_name = creds['project_name']
-        auth_url = creds['auth_url'] + "/v2.0"
+        auth_url = creds['auth_url'] #+ "/v2.0"
         self.neutron = client.Client('2.0', username=creds['username'],
              password=creds['password'], auth_url=auth_url,
              tenant_name=tenant_name)
