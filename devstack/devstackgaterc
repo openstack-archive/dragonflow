@@ -66,6 +66,10 @@ r="$r|(?:tempest\.scenario\.test_snapshot_pattern.*)"
 
 r="$r|(?:tempest\.api\.network\.test_routers_negative.*)"
 
+# These tests are used for the DHCP agent scheduler, which is not used by default in Dragonflow
+r="$r|(?:tempest\.api\.network.admin.test_dhcp_agent_scheduler.DHCPAgentSchedulersTestJSON.test_add_remove_network_from_dhcp_agent)"
+r="$r|(?:tempest\.api\.network.admin.test_dhcp_agent_scheduler.DHCPAgentSchedulersTestJSON.test_list_networks_hosted_by_one_dhcp)"
+
 # Current list of failing tests that need to be triaged, have bugs filed, and
 # fixed as appropriate.
 # (none)
