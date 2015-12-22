@@ -56,3 +56,6 @@ ChangeLog
 
 # Vagrant
 .vagrant
+
+# etcd Configuration
+/devstack/etcd.override

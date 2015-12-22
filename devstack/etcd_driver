@@ -9,45 +9,48 @@
 # - nb_db_driver_stop_server
 # - nb_db_driver_clean
 
+ETCD_VERSION=v2.2.2
 
-function install_configure_etcd {
-    # Install etcd from package sources (=> our PPA).
-    install_package etcd
-
-    # Stop the etcd service:
-    sudo service etcd stop || true
+function configure_etcd {
 
     # Delete any existing etcd database:
-    sudo rm -rf /var/lib/etcd/*
+    sudo rm -rf /var/etcd
 
-    # Add the following to the bottom of /etc/fstab so that the RAM
-    # disk gets reinstated at boot time:
-    # tmpfs /var/lib/etcd tmpfs nodev,nosuid,noexec,nodiratime,size=512M 0 0
+    OVERRIDE_FILE=$DEST/dragonflow/devstack/etcd.override
+    sudo rm $OVERRIDE_FILE
 
-    IP=`hostname -I | awk '{print $1}'`
+cat <<EOF > $OVERRIDE_FILE
+# Override file for etcd Upstart script providing some environment variables
+env ETCD_INITIAL_CLUSTER="$HOSTNAME=http://$REMOTE_DB_IP:2380"
+env ETCD_INITIAL_CLUSTER_STATE="new"
+env ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-01"
+env ETCD_INITIAL_ADVERTISE_PEER_URLS="http://$REMOTE_DB_IP:2380"
+env ETCD_DATA_DIR="/var/etcd"
+env ETCD_LISTEN_PEER_URLS="http://0.0.0.0:2380"
+env ETCD_LISTEN_CLIENT_URLS="http://$REMOTE_DB_IP:4001"
+env ETCD_ADVERTISE_CLIENT_URLS="http://$REMOTE_DB_IP:4001"
+env ETCD_NAME="$HOSTNAME"
+EOF
 
-    # Edit /etc/init/etcd.conf: Find the line which begins exec
-    # /usr/bin/etcd and edit it, substituting for <controller_fqdn>
-    # and <controller_ip> appropriately.
-	# Configure an etcd master node.
-	sudo sed -i "s/exec.*/exec \/usr\/bin\/etcd --name=\"$HOSTNAME\" \
-  --advertise-client-urls=\"http:\/\/$REMOTE_DB_IP:2379,http:\/\/$REMOTE_DB_IP:4001\" \
-  --listen-client-urls=\"http:\/\/$REMOTE_DB_IP:2379,http:\/\/$REMOTE_DB_IP:4001\" \
-  --listen-peer-urls \"http:\/\/0.0.0.0:2380\" \
-  --initial-advertise-peer-urls \"http:\/\/$REMOTE_DB_IP:2380\" \
-  --initial-cluster-token \"$TOKEN\" \
-  --initial-cluster \"$HOSTNAME=http:\/\/$REMOTE_DB_IP:2380\" \
-  --initial-cluster-state \"new\"/" /etc/init/etcd.conf
+    sudo cp $OVERRIDE_FILE /etc/init/etcd.override
 }
 
 function nb_db_driver_install_server {
-    sudo apt-add-repository -y ppa:project-calico/kilo-testing
-    REPOS_UPDATED=False
-    install_configure_etcd
+    if is_service_enabled df-etcd-server ; then
+       echo "Installing etcd"
+       if [ ! -f "$DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd" ]; then
+          mkdir $DEST/etcd
+          wget https://github.com/coreos/etcd/releases/download/$ETCD_VERSION/etcd-$ETCD_VERSION-linux-amd64.tar.gz -O $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz
+          tar xzvf $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz -C $DEST/etcd
+          sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
+          sudo cp $DEST/dragonflow/devstack/etcd.conf /etc/init/etcd.conf
+       fi
+       configure_etcd
+    fi
 }
 
 function nb_db_driver_install_client {
-   pip_install -I git+git://github.com/projectcalico/python-etcd.git
+   sudo pip install python-etcd
 }
 
 function nb_db_driver_status_server
@@ -60,17 +63,10 @@ function nb_db_driver_status_server
 }
 
 function nb_db_driver_start_server {
-    # Mount a RAM disk at /var/lib/etcd:
-    sudo mount -t tmpfs -o size=512m tmpfs /var/lib/etcd
-
-    # Start the etcd service
-    sudo service etcd restart || true
+   sudo initctl start etcd
 }
 
-
 function nb_db_driver_stop_server {
-    # Stop the etcd service and umount the RAM disk
-    sudo service etcd stop || true
-    sudo umount /var/lib/etcd
+   sudo initctl stop etcd
 }
 
