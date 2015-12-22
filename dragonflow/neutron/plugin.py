@@ -48,7 +48,6 @@ from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
 from neutron.db import portbindings_db
 from neutron.db import securitygroups_db
-from neutron.extensions import securitygroup as sec_grp
 from neutron.i18n import _, _LE, _LI
 
 from dragonflow.common import common_params
@@ -169,63 +168,33 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     def create_security_group(self, context, security_group,
                               default_sg=False):
-        sg = security_group.get('security_group')
-        tenant_id = self._get_tenant_id_for_create(context, sg)
-        if not default_sg:
-            self._ensure_default_security_group(context, tenant_id)
-
-        with context.session.begin(subtransactions=True):
-            sg_db = super(DFPlugin,
-                          self).create_security_group(context,
-                                                      security_group,
-                                                      default_sg)
-            self.nb_api.create_security_group(sg_db['id'], rules=[])
-            return sg_db
+        sg_db = super(DFPlugin,
+                      self).create_security_group(context, security_group,
+                                                  default_sg)
+        self.nb_api.create_security_group(sg_db['id'], rules=[])
+        return sg_db
 
     def create_security_group_rule(self, context, security_group_rule):
-        bulk_rule = {'security_group_rules': [security_group_rule]}
-        return self.create_security_group_rule_bulk(context, bulk_rule)[0]
+        # TODO(gsagie) add update logic to NB DB
+        sg_rule = super(DFPlugin, self).create_security_group_rule(
+            context, security_group_rule)
+        #rule = security_group_rule['security_group_rule']
+        #sg_id = rule['security_group_id']
+        #self.nb_api.add_security_group_rules(sg_id, new_rule_list)
+        return sg_rule
 
-    def create_security_group_rule_bulk(self, context, security_group_rules):
-        sg_id = self._validate_security_group_rules(context,
-                                                    security_group_rules)
-
-        # Check to make sure security group exists
-        security_group = super(DFPlugin,
-                               self).get_security_group(context,
-                                                        sg_id)
-        if not security_group:
-            raise sec_grp.SecurityGroupNotFound(id=sg_id)
-
-        with context.session.begin(subtransactions=True):
-            new_rule_list = super(DFPlugin,
-                                  self).create_security_group_rule_bulk_native(
-                context, security_group_rules)
-            self.nb_api.add_security_group_rules(sg_id, new_rule_list)
-            return new_rule_list
-
-    def delete_security_group_rule(self, context, sgr_id):
-        rule_db = self._get_security_group_rule(context, sgr_id)
-        security_group_id = rule_db['security_group_id']
-        with context.session.begin(subtransactions=True):
-            super(DFPlugin,
-                  self).delete_security_group_rule(context, sgr_id)
-            self.nb_api.delete_security_group_rule(security_group_id, sgr_id)
+    def delete_security_group_rule(self, context, id):
+        # TODO(gsagie) add update logic to NB DB
+        #security_group_rule = self.get_security_group_rule(context, id)
+        #sg_id = security_group_rule['security_group_id']
+        super(DFPlugin, self).delete_security_group_rule(context, id)
+        #self.nb_api.delete_security_group_rule(security_group_id, sg_id)
 
     def delete_security_group(self, context, sg_id):
-        sg = super(DFPlugin, self).get_security_group(
-            context, sg_id)
-        if not sg:
-            raise sec_grp.SecurityGroupNotFound(id=sg_id)
-
-        if sg['name'] == 'default' and not context.is_admin:
-            raise sec_grp.SecurityGroupCannotRemoveDefault()
-
-        with context.session.begin(subtransactions=True):
-            sg_db = super(DFPlugin, self).delete_security_group(context,
-                                                                sg_id)
-            self.nb_api.delete_security_group(sg_id)
-            return sg_db
+        sg_db = super(DFPlugin, self).delete_security_group(context,
+                                                            sg_id)
+        self.nb_api.delete_security_group(sg_id)
+        return sg_db
 
     def create_subnet(self, context, subnet):
         with context.session.begin(subtransactions=True):
@@ -431,7 +400,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 context, port['port'])
             dhcp_opts = port['port'].get(edo_ext.EXTRADHCPOPTS, [])
             db_port = super(DFPlugin, self).create_port(context, port)
-            self._ensure_default_security_group_on_port(context, port)
             sgids = self._get_security_groups_on_port(context, port)
             self._process_port_create_security_group(context, db_port,
                                                      sgids)
