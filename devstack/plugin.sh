@@ -131,6 +131,10 @@ function install_df {
     # Obtain devstack directory for df-ext-services.sh
     sed -i "/^TOP_DIR=/cTOP_DIR=$TOP_DIR" $DEST/dragonflow/devstack/df-ext-services.sh
 
+    if is_service_enabled df-pubsub ; then
+       sudo pip install serf-python
+    fi
+
     nb_db_driver_install_server
 
     nb_db_driver_install_client
@@ -295,6 +299,10 @@ function start_ovs {
 function start_df {
     echo "Starting Dragonflow"
 
+    if is_service_enabled df-pubsub ; then
+       run_process df-pubsub "$DEST/dragonflow/serf agent -node $HOSTNAME -bind $HOST_IP:7946 -rpc-addr=$HOST_IP:7373 -join $REMOTE_DB_IP:7946"
+    fi
+
     if is_service_enabled df-controller ; then
         ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
         run_process df-controller "python $DF_LOCAL_CONTROLLER --config-file $NEUTRON_CONF"
@@ -304,6 +312,11 @@ function start_df {
 
 # stop_df() - Stop running processes (non-screen)
 function stop_df {
+
+    if is_service_enabled df-pubsub ; then
+       stop_process df-pubsub
+    fi
+
     if is_service_enabled df-controller ; then
         stop_process df-controller
         ovs_service_stop $OVS_VSWITCHD_SERVICE
