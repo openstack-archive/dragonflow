@@ -20,6 +20,7 @@ from neutronclient.neutron import client
 
 from dragonflow.common import common_params
 from dragonflow.db import api_nb
+import test_objects as objects
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
 
@@ -50,19 +51,21 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         self.nb_api = api_nb.NbApi(db_driver_class())
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
             db_port=cfg.CONF.df.remote_db_port)
+        self.test_router_name = 'myrouter1'
+        self.test_network_name = 'mynetwork1'
+        #self.clean_all()
 
     def test_create_network(self):
-        network = {'name': 'mynetwork1', 'admin_state_up': True}
-        network = self.neutron.create_network({'network': network})
-        network_id = network['network']['id']
-        value = self.nb_api.get_lswitch(network_id)
-        self.neutron.delete_network(network_id)
-        self.assertIsNotNone(value)
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network.create()
+        self.assertTrue(network.exists())
+        network.delete()
+        self.assertFalse(network.exists())
 
     def test_dhcp_port_created(self):
-        network = {'name': 'mynetwork1', 'admin_state_up': True}
-        network = self.neutron.create_network({'network': network})
-        network_id = network['network']['id']
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network_id = network.create()
+        self.assertTrue(network.exists())
         subnet = {'network_id': network_id,
             'cidr': '10.1.0.0/24',
             'gateway_ip': '10.1.0.1',
@@ -76,7 +79,7 @@ class TestNeutronAPIandDB(base.BaseTestCase):
             if port.get_lswitch_id() == network_id:
                 if port.get_device_owner() == 'network:dhcp':
                     dhcp_ports_found += 1
-        self.neutron.delete_network(network_id)
+        network.delete()
         self.assertEqual(dhcp_ports_found, 1)
         ports = self.nb_api.get_all_logical_ports()
         dhcp_ports_found = 0
@@ -87,19 +90,26 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         self.assertEqual(dhcp_ports_found, 0)
 
     def test_create_delete_router(self):
-        router = {'name': 'myrouter', 'admin_state_up': True}
-        new_router = self.neutron.create_router({'router': router})
-        router_id = new_router['router']['id']
-        routers = self.nb_api.get_routers()
-        router_found = False
-        for router in routers:
-            if router.get_name() == router_id:
-                router_found = True
-        self.assertTrue(router_found)
-        self.neutron.delete_router(router_id)
-        routers = self.nb_api.get_routers()
-        router_found = False
-        for router in routers:
-            if router.get_name() == router_id:
-                router_found = True
-        self.assertFalse(router_found)
+        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
+        router.create()
+        self.assertTrue(router.exists())
+        router.delete()
+        self.assertFalse(router.exists())
+
+    def test_create_router_interface(self):
+        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network_id = network.create()
+        self.assertTrue(network.exists())
+        subnet = {'subnets': [{'cidr': '192.168.199.0/24',
+                  'ip_version': 4, 'network_id': network_id}]}
+        subnets = self.neutron.create_subnet(body=subnet)
+        subnet = subnets['subnets'][0]
+        router_id = router.create()
+        self.assertTrue(router.exists())
+        subnet_msg = {'subnet_id': subnet['id']}
+        self.neutron.add_interface_router(router_id, body=subnet_msg)
+        router.delete()
+        network.delete()
+        self.assertFalse(router.exists())
+        self.assertFalse(network.exists())
