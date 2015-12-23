@@ -10,20 +10,40 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
 import serf
 
 
 class PubSubAgent(object):
 
-    def __init__(self, db_driver, ip):
+    def __init__(self, ip, db_driver, db_changes_callback):
         super(PubSubAgent, self).__init__()
         self.db_driver = db_driver
+        self.db_changes_callback = db_changes_callback
         self.client = serf.Client(ip + ':7373')
         self.client.connect()
+        self.pool = eventlet.GreenPool(size=1)
+
+    def send_event(self, table, key, action):
+        entry = action + ":" + key
+        self.client.event(
+            Name=table,
+            Payload=entry,
+            Coalesce=False).request()
 
     def _callback(self, response):
-        print response.body['Name']
-        print response.body['Payload']
+        table = response.body['Name']
+        entry = response.body['Payload']
+        fields = entry.split(':')
+        action = fields[0]
+        key = fields[1]
+        if action == 'delete':
+            self.db_changes_callback(table, key,
+                                     'delete', None)
+            return
+
+        value = self.db_driver.get_key(table, key)
+        self.db_changes_callback(table, key, action, value)
 
     def run(self):
         while True:
@@ -33,11 +53,8 @@ class PubSubAgent(object):
             except Exception:
                 pass
 
-    def send_event(self):
-        self.client.event(
-            Name='event_i_am_alive-%s' % 4,
-            Payload='test',
-            Coalesce=False).request()
+    def daemonize(self):
+        self.pool.spawn_n(self.run)
 
 
 def main():
