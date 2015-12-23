@@ -300,7 +300,7 @@ function start_df {
     echo "Starting Dragonflow"
 
     if is_service_enabled df-pubsub ; then
-       run_process df-pubsub "$DEST/dragonflow/serf agent -node $HOSTNAME -bind $HOST_IP:7946 -rpc-addr=$HOST_IP:7373 -join $REMOTE_DB_IP:7946"
+       run_process df-pubsub "$DEST/dragonflow/serf agent -node $HOSTNAME -bind $HOST_IP:7946 -rpc-addr=127.0.0.1:7373 -join $REMOTE_DB_IP:7946"
     fi
 
     if is_service_enabled df-controller ; then
