@@ -17,7 +17,7 @@ function configure_etcd {
     sudo rm -rf /var/etcd
 
     OVERRIDE_FILE=$DEST/dragonflow/devstack/etcd.override
-    sudo rm $OVERRIDE_FILE
+    sudo rm -f $OVERRIDE_FILE
 
 cat <<EOF > $OVERRIDE_FILE
 # Override file for etcd Upstart script providing some environment variables
