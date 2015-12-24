@@ -61,7 +61,8 @@ class EtcdDbDriver(db_api.DbApi):
         res = []
         directory = self.client.get("/" + table)
         for entry in directory.children:
-            res.append(entry.value)
+            if entry.value:
+                res.append(entry.value)
         return res
 
     def get_all_keys(self, table):
