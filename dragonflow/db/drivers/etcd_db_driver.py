@@ -44,9 +44,11 @@ class EtcdDbDriver(db_api.DbApi):
 
     def set_key(self, table, key, value):
         # Verify that key exists
-        self.get_key(table, key)
+        result = self.get_key(table, key)
 
-        self.client.write('/' + table + '/' + key, value)
+        # Atomically update the key
+        result.value = value
+        self.client.update(result)
 
     def create_key(self, table, key, value):
         self.client.write('/' + table + '/' + key, value)
