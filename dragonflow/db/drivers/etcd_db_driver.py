@@ -43,10 +43,14 @@ class EtcdDbDriver(db_api.DbApi):
             raise df_exceptions.DBKeyNotFound(key=key)
 
     def set_key(self, table, key, value):
-        # Verify that key exists
-        self.get_key(table, key)
-
-        self.client.write('/' + table + '/' + key, value)
+        try:
+            # Verify that key exists
+            result = self.client.read('/' + table + '/' + key)
+            # Atomically update the key
+            result.value = value
+            self.client.update(result)
+        except etcd.EtcdKeyNotFound:
+            raise df_exceptions.DBKeyNotFound(key=key)
 
     def create_key(self, table, key, value):
         self.client.write('/' + table + '/' + key, value)
