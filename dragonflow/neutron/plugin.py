@@ -246,7 +246,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             # delete subnet in DB
             super(DFPlugin, self).delete_subnet(context, id)
             # update df controller with subnet delete
-            self.nb_api.delete_subnet(id, net_id)
+            try:
+                self.nb_api.delete_subnet(id, net_id)
+            except df_exceptions.DBKeyNotFound:
+                LOG.debug("network %s is not found in DB, might have "
+                          "been deleted concurrently" % net_id)
 
     def create_network(self, context, network):
         with context.session.begin(subtransactions=True):
