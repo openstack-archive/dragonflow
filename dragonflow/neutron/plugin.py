@@ -246,7 +246,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             # delete subnet in DB
             super(DFPlugin, self).delete_subnet(context, id)
             # update df controller with subnet delete
-            self.nb_api.delete_subnet(id, net_id)
+            try:
+                self.nb_api.delete_subnet(id, net_id)
+            except df_exceptions.DBKeyNotFound:
+                LOG.debug("network %s is not found in DB, might have "
+                          "been deleted concurrently" % net_id)
 
     def create_network(self, context, network):
         with context.session.begin(subtransactions=True):
@@ -273,14 +277,14 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # both in the case of q-dhcp and in the case of
         # distributed virtual DHCP port created by DF
         # Need to revisit
-        for port in self.nb_api.get_all_logical_ports():
-            if port.get_lswitch_id() == network_id:
-                try:
-                    self.nb_api.delete_lport(port.get_id())
-                except df_exceptions.DBKeyNotFound:
-                    LOG.debug("port %s is not found in DB, might have"
-                              "been deleted concurrently" % port.get_id())
         try:
+            for port in self.nb_api.get_all_logical_ports():
+                if port.get_lswitch_id() == network_id:
+                    try:
+                        self.nb_api.delete_lport(port.get_id())
+                    except df_exceptions.DBKeyNotFound:
+                        LOG.debug("port %s is not found in DB, might have"
+                                  "been deleted concurrently" % port.get_id())
             self.nb_api.delete_lswitch(network_id)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
