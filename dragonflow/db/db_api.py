@@ -99,6 +99,7 @@ class DbApi(object):
         :param table:      table name
         :type table:       string
         :returns:          list of values
+        :raises:           DragonflowException.DBKeyNotFound if key not found
         """
 
     @abc.abstractmethod
