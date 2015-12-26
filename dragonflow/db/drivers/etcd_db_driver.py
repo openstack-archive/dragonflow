@@ -63,7 +63,10 @@ class EtcdDbDriver(db_api.DbApi):
 
     def get_all_entries(self, table):
         res = []
-        directory = self.client.get("/" + table)
+        try:
+            directory = self.client.get("/" + table)
+        except etcd.EtcdKeyNotFound:
+            return res
         for entry in directory.children:
             if entry.value:
                 res.append(entry.value)
