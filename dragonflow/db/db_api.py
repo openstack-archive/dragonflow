@@ -65,6 +65,7 @@ class DbApi(object):
         :type value:       string
         :returns:          None
         :raises:           DragonflowException.DBKeyNotFound if key not found
+                           DragonflowException.DBValueOutOfBounds
         """
 
     @abc.abstractmethod
@@ -77,6 +78,7 @@ class DbApi(object):
         :type key:         string
         :param value:      value to set for the created key
         :type value:       string
+        :raises:           DragonflowException.DBValueOutOfBounds
         :returns:          None
         """
 
@@ -99,6 +101,7 @@ class DbApi(object):
         :param table:      table name
         :type table:       string
         :returns:          list of values
+        :raises:           DragonflowException.DBKeyNotFound if key not found
         """
 
     @abc.abstractmethod

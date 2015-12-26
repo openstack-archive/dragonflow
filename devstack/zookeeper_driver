@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+#
+# ``plugin.sh`` calls the following methods in the sourced driver:
+#
+# - nb_db_driver_install_server
+# - nb_db_driver_install_client
+# - nb_db_driver_start_server
+# - nb_db_driver_stop_server
+# - nb_db_driver_clean
+
+HOSTNAME=`hostname -f`
+
+ZOOKEEPER_VERSION="3.4.7"
+ZOOKEEPER_IP=${REMOTE_DB_IP}
+ZOOKEEPER_PORT=${REMOTE_DB_PORT}
+ZOOKEEPER_DIR="${DEST}/zookeeper"
+ZOOKEEPER_DEST="${DEST}/zookeeper/zookeeper-${ZOOKEEPER_VERSION}"
+ZOOKEEPER_DATA_DIR="${ZOOKEEPER_DEST}/data"
+ZOOKEEPER_CONF_DIR="${ZOOKEEPER_DEST}/conf"
+ZOOKEEPER_BIN_DIR="${ZOOKEEPER_DEST}/bin"
+ZOOKEEPER_CONF="${ZOOKEEPER_CONF_DIR}/zoo.cfg"
+ZOOKEEPER_TABLE_NAMES=${ZOOKEEPER_TABLE_NAMES:-'secgroup','dragonflow','chassis','lswitch','lport','lrouter','tunnel_key'}
+
+function nb_db_driver_install_server {
+    if is_service_enabled df-zookeeper ; then
+        echo "Installing Dependencies"
+        if is_ubuntu; then
+            jdk_program="openjdk-7-jdk"
+        elif is_fedora || is_suse || is_oraclelinux; then
+            jdk_program="java-1.7.0-openjdk"
+        fi
+        install_package "$jdk_program"
+
+        echo "Installing Zookeeper server"
+        mkdir -p $ZOOKEEPER_DIR
+        rm -rf $ZOOKEEPER_DEST
+        if [ ! -f "${ZOOKEEPER_DIR}/zookeeper-$ZOOKEEPER_VERSION.tar.gz" ]; then
+            wget http://www.us.apache.org/dist/zookeeper/zookeeper-$ZOOKEEPER_VERSION/zookeeper-$ZOOKEEPER_VERSION.tar.gz -O $ZOOKEEPER_DIR/zookeeper-$ZOOKEEPER_VERSION.tar.gz
+        fi
+        tar xzvf $ZOOKEEPER_DIR/zookeeper-$ZOOKEEPER_VERSION.tar.gz -C $ZOOKEEPER_DIR
+
+        echo "Configuring Zookeeper"
+        mkdir -p $ZOOKEEPER_DATA_DIR
+        echo '1' > $ZOOKEEPER_DATA_DIR/myid
+        cp $ZOOKEEPER_CONF_DIR/zoo_sample.cfg $ZOOKEEPER_CONF
+        sed -i "s/^dataDir=/dataDir=${ZOOKEEPER_DATA_DIR}" $ZOOKEEPER_CONF
+        echo "server.1=${HOSTNAME}:2888:3888" >> $ZOOKEEPER_CONF	
+        echo export PATH="$ZOOKEEPER_BIN_DIR":"$PATH" | tee -a $HOME/.bashrc
+        source $HOME/.bashrc
+    fi
+}
+
+function nb_db_driver_install_client {
+    echo "Installing Kazoo client"
+    sudo pip install kazoo
+}
+
+function nb_db_driver_status_server
+{
+    if is_service_enabled df-zookeeper ; then
+        TEMP_PIDS=`ps cax | grep "zookeeper"`
+        if [ -z "$TEMP_PIDS" ]; then
+            return 1
+        fi
+    fi
+    return 0
+}
+
+function nb_db_driver_start_server {
+    if is_service_enabled df-zookeeper ; then
+        zkServer.sh start
+    fi
+}
+
+function nb_db_driver_stop_server {
+    if is_service_enabled df-zookeeper ; then
+        zkServer.sh stop
+    fi
+}
