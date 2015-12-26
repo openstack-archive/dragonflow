@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+#
+# ``plugin.sh`` calls the following methods in the sourced driver:
+#
+# - nb_db_driver_install_server
+# - nb_db_driver_install_client
+# - nb_db_driver_start_server
+# - nb_db_driver_stop_server
+# - nb_db_driver_clean
+
+HOSTNAME=`hostname -f`
+
+ZOOKEEPER_IP=${REMOTE_DB_IP:-${HOST_IP}}
+ZOOKEEPER_PORT=${REMOTE_DB_PORT:-2181}
+ZOOKEEPER_DATA_DIR="/var/lib/zookeeper"
+ZOOKEEPER_LOG_DIR="/var/log/zookeeper"
+ZOOKEEPER_DIR="/etc/zookeeper"
+ZOOKEEPER_CONF_DIR="${ZOOKEEPER_DIR}/conf"
+ZOOKEEPER_CONF_FILE="${ZOOKEEPER_CONF_DIR}/zoo.cfg"
+ZOOKEEPER_TABLE_NAMES=${ZOOKEEPER_TABLE_NAMES:-'secgroup','dragonflow','chassis','lswitch','lport','lrouter','tunnel_key'}
+
+function nb_db_driver_install_server {
+    if is_service_enabled df-zookeeper ; then
+        echo "Configuring Software Source"
+        if is_ubuntu; then
+            echo "Installing Zookeeper server"
+            sudo mkdir -p $ZOOKEEPER_DATA_DIR
+            sudo mkdir -p $ZOOKEEPER_LOG_DIR
+            sudo mkdir -p $ZOOKEEPER_CONF_DIR
+            install_package "zookeeperd"
+            sudo service zookeeper stop || true
+            
+            echo "Configuring Zookeeper"
+            sudo sed -i "/^dataDir=/c dataDir=${ZOOKEEPER_DATA_DIR}" $ZOOKEEPER_CONF_FILE
+            sudo sed -i "/^dataLogDir=/c dataLogDir=${ZOOKEEPER_LOG_DIR}" $ZOOKEEPER_CONF_FILE
+            sudo sed -i "/^server.1=/c server.1=${HOSTNAME}:2888:3888" $ZOOKEEPER_CONF_FILE
+            echo "1" | sudo tee $ZOOKEEPER_CONF_DIR/myid
+        else
+            die $LINENO "Other distributions are not supported"
+        fi
+    fi
+}
+
+function nb_db_driver_install_client {
+    echo "Installing Kazoo client"
+    sudo pip install kazoo
+}
+
+function nb_db_driver_status_server
+{
+    if is_service_enabled df-zookeeper ; then
+        TEMP_PIDS=`pgrep -f "zookeeper"`
+        if [ -z "$TEMP_PIDS" ]; then
+            return 1
+        fi
+    fi
+    return 0
+}
+
+function nb_db_driver_start_server {
+    if is_service_enabled df-zookeeper ; then
+        if is_ubuntu; then
+            sudo service zookeeper restart
+        fi
+    fi
+}
+
+function nb_db_driver_stop_server {
+    if is_service_enabled df-zookeeper ; then
+        if is_ubuntu; then
+            sudo service zookeeper stop || true
+        fi
+    fi
+}
