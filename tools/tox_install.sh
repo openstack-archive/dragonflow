@@ -41,4 +41,5 @@ fi
 
 pip install -U $*
 pip install python-etcd
+pip install -I git+git://github.com/tonysimpson/nanomsg-python.git
 exit $?
