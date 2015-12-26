@@ -63,8 +63,8 @@ class DfLocalController(object):
     def run(self):
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
         self.nb_api = api_nb.NbApi(nb_driver_class())
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                               db_port=cfg.CONF.df.remote_db_port)
+        db_ip, db_port = common_params.parse_remote_db_hosts(cfg)
+        self.nb_api.initialize(db_ip, db_port)
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
         self.vswitch_api.initialize()
 

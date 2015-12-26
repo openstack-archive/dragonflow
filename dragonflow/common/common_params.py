@@ -10,7 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import random
+
 from oslo_config import cfg
+from oslo_utils import netutils
 
 from neutron.i18n import _
 
@@ -21,6 +24,9 @@ df_opts = [
     cfg.IntOpt('remote_db_port',
                default=4001,
                help=_('The remote db server port')),
+    cfg.ListOpt('remote_db_hosts',
+                default=['$remote_db_ip:$remote_db_port'],
+                help=_('Remote DB cluster host:port pairs.')),
     cfg.StrOpt('nb_db_class',
                default='dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver',
                help=_('The driver class for the NB DB driver')),
@@ -37,3 +43,17 @@ df_opts = [
                 default=False,
                 help=_("Enable IPv6 DHCP by using DHCP agent"))
 ]
+
+
+def _parse_host(host):
+    return host.split(':')[0] if ':' in host else host
+
+def parse_remote_db_hosts(config):
+    """Returns a tuple of selected remote db ip:port pair
+    """
+    hosts = config.CONF.df.remote_db_hosts
+    if len(hosts) > 1:
+        random.shuffle(hosts)
+    db_host, db_port = netutils.parse_host_port(
+        hosts[0], default_port=config.CONF.df.remote_db_port)
+    return (_parse_host(db_host), db_port)

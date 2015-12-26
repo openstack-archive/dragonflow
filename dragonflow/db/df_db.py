@@ -104,8 +104,8 @@ def main():
     common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
     db_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
     db_driver = db_driver_class()
-    db_driver.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                         db_port=cfg.CONF.df.remote_db_port)
+    db_ip, db_port = common_params.parse_remote_db_hosts(cfg)
+    db_driver.initialize(db_ip, db_port)
 
     action = sys.argv[1]
 
