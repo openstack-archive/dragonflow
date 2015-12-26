@@ -49,3 +49,7 @@ class DragonflowException(Exception):
 
 class DBKeyNotFound(DragonflowException):
     message = _('DB Key not found, key=%(key)s')
+
+
+class DBValueOutOfBounds(DragonflowException):
+    message = _('DB Value out of bounds, key=%(key)s, value=%(value)s')
