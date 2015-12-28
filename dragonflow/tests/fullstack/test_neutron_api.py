@@ -14,6 +14,7 @@ import os_client_config
 from oslo_config import cfg
 from oslo_utils import importutils
 
+from neutron.agent.common import utils
 from neutron.common import config as common_config
 from neutron.tests import base
 from neutronclient.neutron import client
@@ -23,6 +24,8 @@ from dragonflow.db import api_nb
 import test_objects as objects
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
+
+EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK = 21
 
 
 def get_cloud_config(cloud='devstack-admin'):
@@ -114,3 +117,16 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         network.delete()
         self.assertFalse(router.exists())
         self.assertFalse(network.exists())
+
+    def _get_ovs_flows(self):
+        full_args = ["ovs-ofctl", "dump-flows", 'br-int']
+        flows = utils.execute(full_args, run_as_root=True,
+                              process_input=None)
+        return flows
+
+    def test_number_of_flows(self):
+        flows = self._get_ovs_flows()
+        flow_list = flows.split("\n")[1:]
+        flows_count = len(flow_list) - 1
+        self.assertEqual(flows_count,
+                         EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK)
