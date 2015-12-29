@@ -119,7 +119,7 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         self.assertFalse(network.exists())
 
     def _get_ovs_flows(self):
-        full_args = ["ovs-ofctl", "dump-flows", 'br-int']
+        full_args = ["ovs-ofctl", "dump-flows", 'br-int', '-O Openflow13']
         flows = utils.execute(full_args, run_as_root=True,
                               process_input=None)
         return flows
@@ -130,3 +130,18 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         flows_count = len(flow_list) - 1
         self.assertEqual(flows_count,
                          EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK)
+
+    def _parse_ovs_flows(self):
+        flows = self._get_ovs_flows()
+        flow_list = flows.split("\n")[1:]
+        flows_as_dicts = []
+        for flow in flow_list:
+            fs = flow.split(' ')
+            res = {}
+            res['table'] = fs[3].split('=')[1]
+            res['match'] = fs[6]
+            res['packets'] = fs[4].split('=')[1]
+            res['actions'] = fs[7].split('=')[1]
+            res['cookie'] = fs[1].split('=')[1]
+            flows_as_dicts.append(res)
+        return flows_as_dicts
