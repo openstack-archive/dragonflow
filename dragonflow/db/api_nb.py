@@ -18,6 +18,7 @@ import eventlet
 import netaddr
 import time
 
+from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
@@ -71,7 +72,7 @@ class NbApi(object):
         self.db_apply_failed = False
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
-        self.driver.initialize(db_ip, db_port)
+        self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
 
     def support_publish_subscribe(self):
         return self.driver.support_publish_subscribe()
