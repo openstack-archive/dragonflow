@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
 import netaddr
 import time
 
@@ -68,7 +69,7 @@ class NbApi(object):
         super(NbApi, self).__init__()
         self.driver = db_driver
         self.controller = None
-        self._queue = Queue.PriorityQueue()
+        self._queue = eventlet.queue.PriorityQueue()
         self.db_apply_failed = False
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
