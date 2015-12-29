@@ -262,6 +262,13 @@ class NbApi(object):
             res.append(lport)
         return res
 
+    def get_all_ports(self):
+        res = []
+        for lport_value in self.driver.get_all_entries('lport'):
+            lport = LogicalPort(lport_value)
+            res.append(lport)
+        return res
+
     def create_lswitch(self, name, **columns):
         lswitch = {}
         lswitch['name'] = name
@@ -404,6 +411,9 @@ class Subnet(object):
 
     def enable_dhcp(self):
         return self.subnet['enable_dhcp']
+
+    def get_id(self):
+        return self.subnet['id']
 
     def get_dhcp_server_address(self):
         return self.subnet['dhcp_ip']
