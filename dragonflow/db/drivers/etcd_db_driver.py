@@ -21,6 +21,69 @@ from dragonflow.db import db_api
 LOG = log.getLogger(__name__)
 
 
+# Monkey patch urllib3 to close connections that time out.  Otherwise
+# etcd will leak socket handles when we time out watches.
+from contextlib import contextmanager
+from socket import timeout as SocketTimeout
+import urllib3
+from urllib3.connection import HTTPException, BaseSSLError
+from urllib3.exceptions import ReadTimeoutError, ProtocolError
+
+
+@contextmanager
+def _error_catcher(self):
+    """
+    Catch low-level python exceptions, instead re-raising urllib3
+    variants, so that low-level exceptions are not leaked in the
+    high-level api.
+    On exit, release the connection back to the pool.
+    """
+    try:
+        try:
+            yield
+
+        except SocketTimeout:
+            # FIXME: Ideally we'd like to include the url in the
+            # ReadTimeoutError but there is yet no clean way to
+            # get at it from this context.
+            raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+
+        except BaseSSLError as e:
+            # FIXME: Is there a better way to differentiate between SSLErrors?
+            if 'read operation timed out' not in str(e):  # Defensive:
+                # This shouldn't happen but just in case we're missing an edge
+                # case, let's avoid swallowing SSL errors.
+                raise
+
+            raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+
+        except HTTPException as e:
+            # This includes IncompleteRead.
+            raise ProtocolError('Connection broken: %r' % e, e)
+    except Exception:
+        # The response may not be closed but we're not going to use it anymore
+        # so close it now to ensure that the connection is released back to the
+        #  pool.
+        if self._original_response and not self._original_response.isclosed():
+            self._original_response.close()
+
+        # Before returning the socket, close it.  From the server's
+        # point of view,
+        # this socket is in the middle of handling an SSL handshake/HTTP
+        # request so it we were to try and re-use the connection later,
+        #  we'd see undefined behaviour.
+        #
+        # Still return the connection to the pool (it will be
+        # re-established next time it is used).
+        self._connection.close()
+
+        raise
+    finally:
+        if self._original_response and self._original_response.isclosed():
+            self.release_conn()
+urllib3.HTTPResponse._error_catcher = _error_catcher
+
+
 class EtcdDbDriver(db_api.DbApi):
 
     def __init__(self):
@@ -103,7 +166,8 @@ class EtcdDbDriver(db_api.DbApi):
         while True:
             try:
                 entry = self.client.read('/', wait=True, recursive=True,
-                                         waitIndex=self.current_key)
+                                         waitIndex=self.current_key,
+                                         timeout=5)
                 keys = entry.key.split('/')
                 self.notify_callback(keys[1], keys[2], entry.action,
                                      entry.value)
