@@ -39,7 +39,7 @@ function nb_db_driver_install_server {
     if is_service_enabled df-etcd-server ; then
        echo "Installing etcd"
        if [ ! -f "$DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd" ]; then
-          mkdir $DEST/etcd
+          mkdir -p $DEST/etcd
           wget https://github.com/coreos/etcd/releases/download/$ETCD_VERSION/etcd-$ETCD_VERSION-linux-amd64.tar.gz -O $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz
           tar xzvf $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz -C $DEST/etcd
           sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
