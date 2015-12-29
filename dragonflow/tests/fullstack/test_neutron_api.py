@@ -118,6 +118,21 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         self.assertFalse(router.exists())
         self.assertFalse(network.exists())
 
+    def test_create_port(self):
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network_id = network.create()
+        self.assertTrue(network.exists())
+        port = {'admin_state_up': True, 'name': 'port1',
+                'network_id': network_id}
+        port = self.neutron.create_port(body={'port': port})
+        port2 = self.nb_api.get_logical_port(port['port']['id'])
+        self.assertIsNotNone(port2)
+        self.neutron.delete_port(port['port']['id'])
+        port2 = self.nb_api.get_logical_port(port['port']['id'])
+        self.assertIsNone(port2)
+        network.delete()
+        self.assertFalse(network.exists())
+
     def _get_ovs_flows(self):
         full_args = ["ovs-ofctl", "dump-flows", 'br-int', '-O Openflow13']
         flows = utils.execute(full_args, run_as_root=True,
