@@ -9,6 +9,10 @@ DEBIAN_FRONTEND=noninteractive sudo apt-get install -qqy build-essential
 sudo pip install -U pbr
 echo export LC_ALL=en_US.UTF-8 >> ~/.bash_profile
 echo export LANG=en_US.UTF-8 >> ~/.bash_profile
-git clone https://github.com/openstack-dev/devstack
+if [ ! -d "devstack" ]; then
+    git clone https://github.com/openstack-dev/devstack
+fi
 # for a local deployment, this repo folder is shared between the host and the guests
-git clone http://git.openstack.org/openstack/dragonflow.git
+if [ ! -d "dragonflow" ]; then
+    git clone http://git.openstack.org/openstack/dragonflow.git
+fi
