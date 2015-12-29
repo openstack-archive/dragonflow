@@ -20,6 +20,8 @@ from dragonflow.db import db_api
 
 LOG = log.getLogger(__name__)
 
+ATOMIC_RETRIES = 3
+
 
 class EtcdDbDriver(db_api.DbApi):
 
@@ -43,9 +45,32 @@ class EtcdDbDriver(db_api.DbApi):
             raise df_exceptions.DBKeyNotFound(key=key)
 
     def set_key(self, table, key, value):
-        # Verify that key exists
-        self.get_key(table, key)
-        self.client.write('/' + table + '/' + key, value)
+        # NOTE(nick-ma-z): The atomic update operation here seems to break
+        #                  the pipeline due to sync problem. Moreover, the
+        #                  lock primitives provided by python-etcd is not
+        #                  supported since etcd 2.0. As a result, we
+        #                  implement it based on compare-and-swap method.
+        retries = ATOMIC_RETRIES
+        while retries:
+            try:
+                # Verify that key exists
+                pre_val = self.get_key(table, key)
+                # Apply compare-and-swap atomic operation
+                self.client.write('/' + table + '/' + key,
+                                  value, prevValue=pre_val)
+                return
+            except df_exceptions.DBKeyNotFound:
+                # Re-raise exceptions from get_key operation
+                raise df_exceptions.DBKeyNotFound(key=key)
+            except etcd.EtcdKeyNotFound:
+                # Raise key-not-found exceptions from write operation
+                raise df_exceptions.DBKeyNotFound(key=key)
+            except Exception as e:
+                # Otherwise, retry it.
+                LOG.warn(e)
+                retries = retries - 1
+                if retries <= 0:
+                    raise e
 
     def create_key(self, table, key, value):
         self.client.write('/' + table + '/' + key, value)
