@@ -27,7 +27,7 @@ class DbApi(object):
         :type db_port:     int
         :param args:       Additional args that were read from configuration
                            file
-        :type args:        dictionary of <string, string>
+        :type args:        dictionary of <string, object>
         :returns:          None
         """
 
