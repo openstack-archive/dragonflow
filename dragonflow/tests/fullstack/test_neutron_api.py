@@ -114,3 +114,22 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         network.delete()
         self.assertFalse(router.exists())
         self.assertFalse(network.exists())
+
+    def test_create_port(self):
+        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network_id = network.create()
+        self.assertTrue(network.exists())
+        router_id = router.create()
+        self.assertTrue(router.exists())
+        port = {'admin_state_up': True, 'device_id': router_id,
+                'name': 'port1', 'network_id': network_id}
+        port = self.neutron.create_port(body={'port': port})
+        port2 = self.nb_api.get_logical_port(port['port']['id'])
+        self.assertIsNotNone(port2)
+        router.delete()
+        port2 = self.nb_api.get_logical_port(port['port']['id'])
+        self.assertIsNone(port2)
+        network.delete()
+        self.assertFalse(router.exists())
+        self.assertFalse(network.exists())
