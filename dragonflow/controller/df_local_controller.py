@@ -121,12 +121,11 @@ class DfLocalController(object):
         # Check if tunnel already exists to this chassis
 
         # Create tunnel port to this chassis
-        LOG.info(_LI("Adding tunnel to remote chassis"))
-        LOG.info(chassis.__str__())
+        LOG.info(_LI("Adding tunnel to remote chassis = %s") % chassis)
         self.vswitch_api.add_tunnel_port(chassis).execute()
 
     def chassis_deleted(self, chassis_id):
-        LOG.info(_LI("Deleting tunnel to remote chassis %s") % chassis_id)
+        LOG.info(_LI("Deleting tunnel to remote chassis = %s") % chassis_id)
         tunnel_ports = self.vswitch_api.get_tunnel_ports()
         for port in tunnel_ports:
             if port.get_chassis_id() == chassis_id:
@@ -143,13 +142,14 @@ class DfLocalController(object):
             return
         #Make sure we have a local network_id mapped before we dispatch
         network_id = self.get_network_id(lswitch.get_id())
-        LOG.info(_LI("Adding/Updating Logical Switch id = %s") % network_id)
+        lswitch_conf = {'network_id': network_id, 'lswitch': lswitch}
+        LOG.info(_LI("Adding/Updating Logical Switch = %s") % lswitch_conf)
         self.db_store.set_lswitch(lswitch.get_id(), lswitch)
         self.dispatcher.dispatch('logical_switch_updated', lswitch=lswitch)
 
     def logical_switch_deleted(self, lswitch_id):
-        LOG.info(_LI("Removing Logical Switch %s") % lswitch_id)
         lswitch = self.db_store.get_lswitch(lswitch_id)
+        LOG.info(_LI("Removing Logical Switch = %s") % lswitch)
         self.dispatcher.dispatch('logical_switch_deleted',
                                  lswitch=lswitch)
         self.db_store.del_lswitch(lswitch_id)
@@ -173,8 +173,7 @@ class DfLocalController(object):
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
                 lport.set_external_value('is_local', True)
-                LOG.info(_LI("Adding new local Logical Port"))
-                LOG.info(lport.__str__())
+                LOG.info(_LI("Adding new local Logical Port = %s") % lport)
                 self.dispatcher.dispatch('add_local_port', lport=lport)
                 self.db_store.set_port(lport.get_id(), lport, True)
             else:
@@ -184,8 +183,7 @@ class DfLocalController(object):
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
                 lport.set_external_value('is_local', False)
-                LOG.info(_LI("Adding new remote Logical Port"))
-                LOG.info(lport.__str__())
+                LOG.info(_LI("Adding new remote Logical Port = %s") % lport)
                 self.dispatcher.dispatch('add_remote_port', lport=lport)
                 self.db_store.set_port(lport.get_id(), lport, False)
             else:
@@ -196,21 +194,18 @@ class DfLocalController(object):
         if lport is None:
             return
         if lport.get_external_value('is_local'):
-            LOG.info(_LI("Removing local Logical Port"))
-            LOG.info(lport.__str__())
+            LOG.info(_LI("Removing local Logical Port = %s") % lport)
             self.dispatcher.dispatch('remove_local_port', lport=lport)
             self.db_store.delete_port(lport.get_id(), True)
         else:
-            LOG.info(_LI("Removing remote Logical Port"))
-            LOG.info(lport.__str__())
+            LOG.info(_LI("Removing remote Logical Port = %s") % lport)
             self.dispatcher.dispatch('remove_remote_port', lport=lport)
             self.db_store.delete_port(lport.get_id(), False)
 
     def router_updated(self, lrouter):
         old_lrouter = self.db_store.get_router(lrouter.get_name())
         if old_lrouter is None:
-            LOG.info(_LI("Logical Router created"))
-            LOG.info(lrouter.__str__())
+            LOG.info(_LI("Logical Router created = %s") % lrouter)
             self._add_new_lrouter(lrouter)
             return
         self._update_router_interfaces(old_lrouter, lrouter)
@@ -283,8 +278,7 @@ class DfLocalController(object):
             self._delete_router_port(old_port)
 
     def _add_new_router_port(self, router, router_port):
-        LOG.info(_LI("Adding new logical router interface"))
-        LOG.info(router_port.__str__())
+        LOG.info(_LI("Adding new logical router interface = %s") % router_port)
         local_network_id = self.db_store.get_network_id(
             router_port.get_lswitch_id())
         self.dispatcher.dispatch('add_new_router_port', router=router,
@@ -292,8 +286,7 @@ class DfLocalController(object):
                                  local_network_id=local_network_id)
 
     def _delete_router_port(self, router_port):
-        LOG.info(_LI("Removing logical router interface"))
-        LOG.info(router_port.__str__())
+        LOG.info(_LI("Removing logical router interface = %s") % router_port)
         local_network_id = self.db_store.get_network_id(
             router_port.get_lswitch_id())
         self.dispatcher.dispatch('delete_router_port',
