@@ -63,10 +63,14 @@ function nb_db_driver_status_server
 }
 
 function nb_db_driver_start_server {
-   sudo initctl start etcd
+   if is_service_enabled df-etcd-server ; then
+      sudo initctl start etcd
+   fi
 }
 
 function nb_db_driver_stop_server {
-   sudo initctl stop etcd
+   if is_service_enabled df-etcd-server ; then
+      sudo initctl stop etcd
+   fi
 }
 
