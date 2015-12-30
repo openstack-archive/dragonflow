@@ -37,40 +37,40 @@ EOF
 
 function nb_db_driver_install_server {
     if is_service_enabled df-etcd-server ; then
-       echo "Installing etcd"
-       if [ ! -f "$DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd" ]; then
-          mkdir -p $DEST/etcd
-          wget https://github.com/coreos/etcd/releases/download/$ETCD_VERSION/etcd-$ETCD_VERSION-linux-amd64.tar.gz -O $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz
-          tar xzvf $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz -C $DEST/etcd
-          sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
-          sudo cp $DEST/dragonflow/devstack/etcd.conf /etc/init/etcd.conf
-       fi
-       configure_etcd
+        echo "Installing etcd"
+        if [ ! -f "$DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd" ]; then
+            mkdir -p $DEST/etcd
+            wget https://github.com/coreos/etcd/releases/download/$ETCD_VERSION/etcd-$ETCD_VERSION-linux-amd64.tar.gz -O $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz
+            tar xzvf $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz -C $DEST/etcd
+            sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
+            sudo cp $DEST/dragonflow/devstack/etcd.conf /etc/init/etcd.conf
+        fi
+        configure_etcd
     fi
 }
 
 function nb_db_driver_install_client {
-   sudo pip install python-etcd
+    sudo pip install python-etcd
 }
 
 function nb_db_driver_status_server
 {
-   TEMP_PIDS=`ps cax | grep etcd`
-   if [ -z "$TEMP_PIDS" ]; then
-     return 1
-   fi
-   return 0
+    TEMP_PIDS=`ps cax | grep etcd`
+    if [ -z "$TEMP_PIDS" ]; then
+        return 1
+    fi
+    return 0
 }
 
 function nb_db_driver_start_server {
-   if is_service_enabled df-etcd-server ; then
-      sudo initctl start etcd
-   fi
+    if is_service_enabled df-etcd-server ; then
+        sudo initctl start etcd
+    fi
 }
 
 function nb_db_driver_stop_server {
-   if is_service_enabled df-etcd-server ; then
-      sudo initctl stop etcd
-   fi
+    if is_service_enabled df-etcd-server ; then
+        sudo initctl stop etcd
+    fi
 }
 

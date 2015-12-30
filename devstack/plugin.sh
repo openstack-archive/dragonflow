@@ -28,12 +28,12 @@ OVS_VSWITCHD_PID=$OVS_DIR"/"$OVS_VSWITCHD_SERVICE".pid"
 # Pluggable DB drivers
 #----------------------
 if is_service_enabled df-etcd ; then
-   source $DEST/dragonflow/devstack/etcd_driver
-   NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
+    source $DEST/dragonflow/devstack/etcd_driver
+    NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 fi
 if is_service_enabled df-ramcloud ; then
-   source $DEST/dragonflow/devstack/ramcloud_driver
-   NB_DRIVER_CLASS="dragonflow.db.drivers.ramcloud_db_driver.RamCloudDbDriver"
+    source $DEST/dragonflow/devstack/ramcloud_driver
+    NB_DRIVER_CLASS="dragonflow.db.drivers.ramcloud_db_driver.RamCloudDbDriver"
 fi
 
 # Dragonflow installation uses functions from these files
@@ -44,25 +44,25 @@ source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
 # ------------
 
 function cleanup_ovs {
-   # Remove the patch ports
-   for port in $(sudo ovs-vsctl show | grep Port | awk '{print $2}'  | cut -d '"' -f 2 | grep patch); do
-       sudo ovs-vsctl del-port ${port}
-   done
+    # Remove the patch ports
+    for port in $(sudo ovs-vsctl show | grep Port | awk '{print $2}'  | cut -d '"' -f 2 | grep patch); do
+        sudo ovs-vsctl del-port ${port}
+    done
 
-   # remove all OVS ports that look like Neutron created ports
-   for port in $(sudo ovs-vsctl list port | grep -o -e tap[0-9a-f\-]* -e q[rg]-[0-9a-f\-]*); do
-       sudo ovs-vsctl del-port ${port}
-   done
+    # remove all OVS ports that look like Neutron created ports
+    for port in $(sudo ovs-vsctl list port | grep -o -e tap[0-9a-f\-]* -e q[rg]-[0-9a-f\-]*); do
+        sudo ovs-vsctl del-port ${port}
+    done
 
-   # Remove all the vxlan ports
-   for port in $(sudo ovs-vsctl list port | grep name | grep vxlan | awk '{print $3}'  | cut -d '"' -f 2); do
-       sudo ovs-vsctl del-port ${port}
-   done
+    # Remove all the vxlan ports
+    for port in $(sudo ovs-vsctl list port | grep name | grep vxlan | awk '{print $3}'  | cut -d '"' -f 2); do
+        sudo ovs-vsctl del-port ${port}
+    done
 
-   local _pwd=$(pwd)
-   cd $DEST/$OVS_REPO_NAME
-   sudo make uninstall
-   cd $_pwd
+    local _pwd=$(pwd)
+    cd $DEST/$OVS_REPO_NAME
+    sudo make uninstall
+    cd $_pwd
 }
 
 function configure_df_plugin {
@@ -197,53 +197,53 @@ function install_ovs {
 
 function stop_ovs
 {
-  # Stop ovs db
-  ovs_service_stop $OVS_DB_SERVICE
-  # Stop ovs vswitch
-  ovs_service_stop $OVS_VSWITCHD_SERVICE
-
-  while ovs_service_status $OVS_DB_SERVICE; do
-    echo "Waiting for the $OVS_DB_SERVICE to be stopped..."
-    sleep 1
+    # Stop ovs db
     ovs_service_stop $OVS_DB_SERVICE
-  done
-
-  while ovs_service_status $OVS_VSWITCHD_SERVICE; do
-    echo "Waiting for the ovsdb-vswitchd to be stopped..."
-    sleep 1
+    # Stop ovs vswitch
     ovs_service_stop $OVS_VSWITCHD_SERVICE
-  done
+
+    while ovs_service_status $OVS_DB_SERVICE; do
+        echo "Waiting for the $OVS_DB_SERVICE to be stopped..."
+        sleep 1
+        ovs_service_stop $OVS_DB_SERVICE
+    done
+
+    while ovs_service_status $OVS_VSWITCHD_SERVICE; do
+        echo "Waiting for the ovsdb-vswitchd to be stopped..."
+        sleep 1
+        ovs_service_stop $OVS_VSWITCHD_SERVICE
+    done
 }
 
 # The following returns "0" when service is live.
 # Zero (0) is considered a TRUE value in bash.
 function ovs_service_status
 {
-  TEMP_PID=$OVS_DIR"/"$1".pid"
-  if [ -e $TEMP_PID ]
-  then
-    TEMP_PID_VALUE=$(cat $TEMP_PID  2>/dev/null)
-    if [ -e /proc/$TEMP_PID_VALUE ]
+    TEMP_PID=$OVS_DIR"/"$1".pid"
+    if [ -e $TEMP_PID ]
     then
-      return 0
+        TEMP_PID_VALUE=$(cat $TEMP_PID  2>/dev/null)
+        if [ -e /proc/$TEMP_PID_VALUE ]
+        then
+            return 0
+        fi
     fi
-  fi
-  # service is dead
-  return 1
+    # service is dead
+    return 1
 }
 
 # Kills a service
 function ovs_service_stop
 {
-  TEMP_PID=$OVS_DIR"/"$1".pid"
-  if [ -e $TEMP_PID ]
-  then
-    TEMP_PID_VALUE=$(cat $TEMP_PID  2>/dev/null)
-    if [ -e /proc/$TEMP_PID_VALUE ]
+    TEMP_PID=$OVS_DIR"/"$1".pid"
+    if [ -e $TEMP_PID ]
     then
-      sudo kill $TEMP_PID_VALUE
+        TEMP_PID_VALUE=$(cat $TEMP_PID  2>/dev/null)
+        if [ -e /proc/$TEMP_PID_VALUE ]
+        then
+            sudo kill $TEMP_PID_VALUE
+        fi
     fi
-  fi
 }
 
 function start_ovs {
@@ -256,36 +256,36 @@ function start_ovs {
     OVSDB_REMOTE="--remote=ptcp:6640:$HOST_IP"
 
     if ! ovs_service_status $OVS_DB_SERVICE; then
-      #echo "Going to start $OVS_DB_SERVICE"
-      $OVS_DB_SERVICE --remote=punix:$OVS_DIR"/db.sock" \
-                 --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
-                 --pidfile=$OVS_DB_PID --detach -vconsole:off --log-file $OVSDB_REMOTE \
-                 conf.db ${EXTRA_DBS}
+        #echo "Going to start $OVS_DB_SERVICE"
+        $OVS_DB_SERVICE --remote=punix:$OVS_DIR"/db.sock" \
+                --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
+                --pidfile=$OVS_DB_PID --detach -vconsole:off --log-file $OVSDB_REMOTE \
+                conf.db ${EXTRA_DBS}
 
-      echo -n "Waiting for $OVS_DB_SERVICE to start ... "
-      while ! test -e $OVS_DIR"/db.sock" ; do
-        sleep 1
-      done
-      echo "done."
-      ovs-vsctl --no-wait init
+        echo -n "Waiting for $OVS_DB_SERVICE to start ... "
+        while ! test -e $OVS_DIR"/db.sock" ; do
+            sleep 1
+        done
+        echo "done."
+        ovs-vsctl --no-wait init
     fi
 
     if is_service_enabled df-controller ; then
-      if ! ovs_service_status $OVS_VSWITCHD_SERVICE; then
-        #echo "Going to start $OVS_VSWITCHD_SERVICE"
-        sudo modprobe openvswitch || die $LINENO "Failed to load openvswitch module"
-        # TODO This needs to be a fatal error when doing multi-node testing, but
-        # breaks testing in OpenStack CI where geneve isn't available.
-        #sudo modprobe geneve || die $LINENO "Failed to load geneve module"
-        sudo modprobe geneve || true
-        #sudo modprobe vport_geneve || die $LINENO "Failed to load vport_geneve module"
-        sudo modprobe vport_geneve || true
+        if ! ovs_service_status $OVS_VSWITCHD_SERVICE; then
+            #echo "Going to start $OVS_VSWITCHD_SERVICE"
+            sudo modprobe openvswitch || die $LINENO "Failed to load openvswitch module"
+            # TODO This needs to be a fatal error when doing multi-node testing, but
+            # breaks testing in OpenStack CI where geneve isn't available.
+            #sudo modprobe geneve || die $LINENO "Failed to load geneve module"
+            sudo modprobe geneve || true
+            #sudo modprobe vport_geneve || die $LINENO "Failed to load vport_geneve module"
+            sudo modprobe vport_geneve || true
 
-        _neutron_ovs_base_setup_bridge br-int
-        ovs-vsctl --no-wait set bridge br-int fail-mode=secure other-config:disable-in-band=true
+            _neutron_ovs_base_setup_bridge br-int
+            ovs-vsctl --no-wait set bridge br-int fail-mode=secure other-config:disable-in-band=true
 
-        sudo $OVS_VSWITCHD_SERVICE --pidfile=$OVS_VSWITCHD_PID --detach -vconsole:off --log-file
-      fi
+            sudo $OVS_VSWITCHD_SERVICE --pidfile=$OVS_VSWITCHD_PID --detach -vconsole:off --log-file
+        fi
     fi
 
     cd $_pwd
@@ -365,21 +365,21 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
         git_clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
 
         if is_service_enabled q-df-l3; then
-           echo "Cloning and installing Ryu"
-           git_clone $RYU_REPO $RYU_DIR $RYU_BRANCH
-           #Don't use setup_develop, which is for openstack global requirement
-           #compatible projects, and Ryu is not.
-           pushd $RYU_DIR
-           setup_package ./ -e
-           popd
-           echo "Finished installing Ryu"
+            echo "Cloning and installing Ryu"
+            git_clone $RYU_REPO $RYU_DIR $RYU_BRANCH
+            # Don't use setup_develop, which is for openstack global requirement
+            # compatible projects, and Ryu is not.
+            pushd $RYU_DIR
+            setup_package ./ -e
+            popd
+            echo "Finished installing Ryu"
         fi
 
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         echo_summary "Configure DragonFlow"
 
         if is_service_enabled q-df-l3; then
-           _configure_neutron_l3_agent
+            _configure_neutron_l3_agent
         fi
 
         iniset $NEUTRON_CONF DEFAULT L3controller_ip_list $Q_DF_CONTROLLER_IP
@@ -409,7 +409,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
     if [[ "$1" == "unstack" ]]; then
 
         if is_service_enabled q-df-l3; then
-           stop_process q-df-l3
+            stop_process q-df-l3
         fi
     fi
 fi
