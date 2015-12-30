@@ -39,6 +39,7 @@ from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.db import agents_db
 from neutron.db import agentschedulers_db
+from neutron.db import api as db_api
 from neutron.db import db_base_plugin_v2
 from neutron.db import external_net_db
 from neutron.db import extradhcpopt_db
@@ -168,10 +169,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     def create_security_group(self, context, security_group,
                               default_sg=False):
-        sg_db = super(DFPlugin,
-                      self).create_security_group(context, security_group,
+        sg_db = None
+        with db_api.autonested_transaction(context.session):
+            sg_db = super(DFPlugin,
+                          self).create_security_group(context, security_group,
                                                   default_sg)
-        self.nb_api.create_security_group(sg_db['id'], rules=[])
+            self.nb_api.create_security_group(sg_db['id'], rules=[])
         return sg_db
 
     def create_security_group_rule(self, context, security_group_rule):
@@ -191,13 +194,16 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         #self.nb_api.delete_security_group_rule(security_group_id, sg_id)
 
     def delete_security_group(self, context, sg_id):
-        sg_db = super(DFPlugin, self).delete_security_group(context,
-                                                            sg_id)
-        self.nb_api.delete_security_group(sg_id)
+        sg_db = None
+        with db_api.autonested_transaction(context.session):
+            sg_db = super(DFPlugin, self).delete_security_group(context,
+                                                                sg_id)
+            self.nb_api.delete_security_group(sg_id)
         return sg_db
 
     def create_subnet(self, context, subnet):
-        with context.session.begin(subtransactions=True):
+        new_subnet = None
+        with db_api.autonested_transaction(context.session):
             # create subnet in DB
             new_subnet = super(DFPlugin,
                                self).create_subnet(context, subnet)
@@ -214,11 +220,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 dhcp_ip=dhcp_address,
                 gateway_ip=new_subnet['gateway_ip'],
                 dns_nameservers=new_subnet.get('dns_nameservers', []))
-
         return new_subnet
 
     def update_subnet(self, context, id, subnet):
-        with context.session.begin(subtransactions=True):
+        new_subnet = None
+        with db_api.autonested_transaction(context.session):
             # update subnet in DB
             original_subnet = super(DFPlugin, self).get_subnet(context, id)
             new_subnet = super(DFPlugin,
@@ -237,12 +243,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 dhcp_ip=dhcp_address,
                 gateway_ip=new_subnet['gateway_ip'],
                 dns_nameservers=new_subnet.get('dns_nameservers', []))
-            return new_subnet
+        return new_subnet
 
     def delete_subnet(self, context, id):
         orig_subnet = super(DFPlugin, self).get_subnet(context, id)
         net_id = orig_subnet['network_id']
-        with context.session.begin(subtransactions=True):
+        with db_api.autonested_transaction(context.session):
             # delete subnet in DB
             super(DFPlugin, self).delete_subnet(context, id)
             # update df controller with subnet delete
@@ -253,12 +259,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                           "been deleted concurrently" % net_id)
 
     def create_network(self, context, network):
-        with context.session.begin(subtransactions=True):
-            result = super(DFPlugin, self).create_network(context,
-                                                          network)
-            self._process_l3_create(context, result, network['network'])
-
-        return self.create_network_nb_api(result)
+        new_net = None
+        with db_api.autonested_transaction(context.session):
+            new_net = super(DFPlugin, self).create_network(context,
+                                                           network)
+            self._process_l3_create(context, new_net, network['network'])
+            self.create_network_nb_api(new_net)
+        return new_net
 
     def create_network_nb_api(self, network):
         external_ids = {df_const.DF_NETWORK_NAME_EXT_ID_KEY: network['name']}
@@ -270,25 +277,25 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return network
 
     def delete_network(self, context, network_id):
-        with context.session.begin(subtransactions=True):
+        with db_api.autonested_transaction(context.session):
             super(DFPlugin, self).delete_network(context,
                                                  network_id)
-        # TODO(gsagie) this fix is used to remove DHCP port
-        # both in the case of q-dhcp and in the case of
-        # distributed virtual DHCP port created by DF
-        # Need to revisit
-        for port in self.nb_api.get_all_logical_ports():
-            if port.get_lswitch_id() == network_id:
-                try:
-                    self.nb_api.delete_lport(port.get_id())
-                except df_exceptions.DBKeyNotFound:
-                    LOG.debug("port %s is not found in DB, might have"
-                              "been deleted concurrently" % port.get_id())
-        try:
-            self.nb_api.delete_lswitch(network_id)
-        except df_exceptions.DBKeyNotFound:
-            LOG.debug("lswitch %s is not found in DF DB, might have "
-                      "been deleted concurrently" % network_id)
+            # TODO(gsagie) this fix is used to remove DHCP port
+            # both in the case of q-dhcp and in the case of
+            # distributed virtual DHCP port created by DF
+            # Need to revisit
+            for port in self.nb_api.get_all_logical_ports():
+                if port.get_lswitch_id() == network_id:
+                    try:
+                        self.nb_api.delete_lport(port.get_id())
+                    except df_exceptions.DBKeyNotFound:
+                        LOG.debug("port %s is not found in DB, might have"
+                                  "been deleted concurrently" % port.get_id())
+            try:
+                self.nb_api.delete_lswitch(network_id)
+            except df_exceptions.DBKeyNotFound:
+                LOG.debug("lswitch %s is not found in DF DB, might have "
+                          "been deleted concurrently" % network_id)
 
     def _set_network_name(self, network_id, name):
         ext_id = [df_const.DF_NETWORK_NAME_EXT_ID_KEY, name]
@@ -300,12 +307,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # TODO(gsagie) rollback needed
         if 'name' in network['network']:
             self._set_network_name(network_id, network['network']['name'])
-        with context.session.begin(subtransactions=True):
+        with db_api.autonested_transaction(context.session):
             return super(DFPlugin, self).update_network(context, network_id,
                                                         network)
 
     def update_port(self, context, id, port):
-        with context.session.begin(subtransactions=True):
+        with db_api.autonested_transaction(context.session):
             parent_name, tag = self._get_data_from_binding_profile(
                 context, port['port'])
             original_port = self.get_port(context, id)
@@ -326,34 +333,36 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self._process_portbindings_create_and_update(context,
                                                          port['port'],
                                                          updated_port)
-        external_ids = {
-            df_const.DF_PORT_NAME_EXT_ID_KEY: updated_port['name']}
-        allowed_macs = self._get_allowed_mac_addresses_from_port(
-            updated_port)
+            external_ids = {
+                df_const.DF_PORT_NAME_EXT_ID_KEY: updated_port['name']}
+            allowed_macs = self._get_allowed_mac_addresses_from_port(
+                updated_port)
 
-        ips = []
-        if 'fixed_ips' in updated_port:
-            ips = [ip['ip_address'] for ip in updated_port['fixed_ips']]
+            ips = []
+            if 'fixed_ips' in updated_port:
+                ips = [ip['ip_address'] for ip in updated_port['fixed_ips']]
 
-        chassis = None
-        if 'binding:host_id' in updated_port:
-            chassis = updated_port['binding:host_id']
-
-        # Router GW ports are not needed by dragonflow controller and
-        # they currently cause error as they couldnt be mapped to
-        # a valid ofport (or location)
-        if updated_port.get('device_owner') == const.DEVICE_OWNER_ROUTER_GW:
             chassis = None
+            if 'binding:host_id' in updated_port:
+                chassis = updated_port['binding:host_id']
 
-        self.nb_api.update_lport(name=updated_port['id'],
-                                 macs=[updated_port['mac_address']], ips=ips,
-                                 external_ids=external_ids,
-                                 parent_name=parent_name, tag=tag,
-                                 enabled=updated_port['admin_state_up'],
-                                 port_security=allowed_macs,
-                                 chassis=chassis,
-                                 device_owner=updated_port.get('device_owner',
-                                                               None))
+            # Router GW ports are not needed by dragonflow controller and
+            # they currently cause error as they couldnt be mapped to
+            # a valid ofport (or location)
+            if updated_port.get('device_owner') ==\
+                    const.DEVICE_OWNER_ROUTER_GW:
+                chassis = None
+
+            self.nb_api.update_lport(name=updated_port['id'],
+                                     macs=[updated_port['mac_address']],
+                                     ips=ips,
+                                     external_ids=external_ids,
+                                     parent_name=parent_name, tag=tag,
+                                     enabled=updated_port['admin_state_up'],
+                                     port_security=allowed_macs,
+                                     chassis=chassis,
+                                     device_owner=updated_port.get(
+                                         'device_owner', None))
         return updated_port
 
     def _get_data_from_binding_profile(self, context, port):
@@ -399,7 +408,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return list(allowed_macs)
 
     def create_port(self, context, port):
-        with context.session.begin(subtransactions=True):
+        db_port = None
+        with db_api.autonested_transaction(context.session):
             parent_name, tag = self._get_data_from_binding_profile(
                 context, port['port'])
             dhcp_opts = port['port'].get(edo_ext.EXTRADHCPOPTS, [])
@@ -419,7 +429,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     port['port'][df_const.DF_PORT_BINDING_PROFILE])
             self._process_port_create_extra_dhcp_opts(context, db_port,
                                                       dhcp_opts)
-        return self.create_port_in_nb_api(db_port, parent_name, tag, sgids)
+            self.create_port_in_nb_api(db_port, parent_name, tag, sgids)
+        return db_port
 
     def create_port_in_nb_api(self, port, parent_name, tag, sgids):
         # The port name *must* be port['id'].  It must match the iface-id set
@@ -458,91 +469,98 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return port
 
     def delete_port(self, context, port_id, l3_port_check=True):
-        try:
-            self.nb_api.delete_lport(port_id)
-        except df_exceptions.DBKeyNotFound:
-            LOG.debug("port %s is not found in DF DB, might have "
-                      "been deleted concurrently" % port_id)
-        with context.session.begin(subtransactions=True):
+        with db_api.autonested_transaction(context.session):
             self.disassociate_floatingips(context, port_id)
             super(DFPlugin, self).delete_port(context, port_id)
+            try:
+                self.nb_api.delete_lport(port_id)
+            except df_exceptions.DBKeyNotFound:
+                LOG.debug("port %s is not found in DF DB, might have "
+                          "been deleted concurrently" % port_id)
 
     def extend_port_dict_binding(self, port_res, port_db):
         super(DFPlugin, self).extend_port_dict_binding(port_res, port_db)
         port_res[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
 
     def create_router(self, context, router):
-        router = super(DFPlugin, self).create_router(
-            context, router)
-        router_name = router['id']
-        external_ids = {df_const.DF_ROUTER_NAME_EXT_ID_KEY:
-                        router.get('name', 'no_router_name')}
-        self.nb_api.create_lrouter(router_name, external_ids=external_ids,
-                                   ports=[])
-
-        # TODO(gsagie) rollback router creation on failure
+        with db_api.autonested_transaction(context.session):
+            router = super(DFPlugin, self).create_router(
+                context, router)
+            router_name = router['id']
+            external_ids = {df_const.DF_ROUTER_NAME_EXT_ID_KEY:
+                            router.get('name', 'no_router_name')}
+            self.nb_api.create_lrouter(router_name, external_ids=external_ids,
+                                       ports=[])
         return router
 
     def delete_router(self, context, router_id):
-        router_name = router_id
-        try:
-            self.nb_api.delete_lrouter(router_name)
-        except df_exceptions.DBKeyNotFound:
-            LOG.debug("router %s is not found in DF DB, might have "
-                      "been deleted concurrently" % router_name)
-        ret_val = super(DFPlugin, self).delete_router(context,
-                                                      router_id)
+        ret_val = None
+        with db_api.autonested_transaction(context.session):
+            router_name = router_id
+            ret_val = super(DFPlugin, self).delete_router(context,
+                                                          router_id)
+            try:
+                self.nb_api.delete_lrouter(router_name)
+            except df_exceptions.DBKeyNotFound:
+                LOG.debug("router %s is not found in DF DB, might have "
+                          "been deleted concurrently" % router_name)
         return ret_val
 
     def add_router_interface(self, context, router_id, interface_info):
-        add_by_port, add_by_sub = self._validate_interface_info(
-            interface_info)
-        if add_by_sub:
-            subnet = self.get_subnet(context, interface_info['subnet_id'])
-            port = {'port': {'network_id': subnet['network_id'], 'name': '',
-                             'admin_state_up': True, 'device_id': '',
-                             'device_owner': l3_db.DEVICE_OWNER_ROUTER_INTF,
-                             'mac_address': attr.ATTR_NOT_SPECIFIED,
-                             'fixed_ips': [{'subnet_id': subnet['id'],
-                                            'ip_address':
-                                                subnet['gateway_ip']}]}}
-            port = self.create_port(context, port)
-        elif add_by_port:
-            port = self.get_port(context, interface_info['port_id'])
-            subnet_id = port['fixed_ips'][0]['subnet_id']
-            subnet = self.get_subnet(context, subnet_id)
+        with db_api.autonested_transaction(context.session):
+            add_by_port, add_by_sub = self._validate_interface_info(
+                interface_info)
+            if add_by_sub:
+                subnet = self.get_subnet(context, interface_info['subnet_id'])
+                port = {'port': {'network_id': subnet['network_id'],
+                                 'name': '',
+                                 'admin_state_up': True, 'device_id': '',
+                                 'device_owner':
+                                     l3_db.DEVICE_OWNER_ROUTER_INTF,
+                                 'mac_address': attr.ATTR_NOT_SPECIFIED,
+                                 'fixed_ips':
+                                     [{'subnet_id': subnet['id'],
+                                       'ip_address': subnet['gateway_ip']}]}}
+                port = self.create_port(context, port)
+            elif add_by_port:
+                port = self.get_port(context, interface_info['port_id'])
+                subnet_id = port['fixed_ips'][0]['subnet_id']
+                subnet = self.get_subnet(context, subnet_id)
 
-        lrouter = router_id
-        lswitch = subnet['network_id']
-        cidr = netaddr.IPNetwork(subnet['cidr'])
-        network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
-                             str(cidr.prefixlen))
+            lrouter = router_id
+            lswitch = subnet['network_id']
+            cidr = netaddr.IPNetwork(subnet['cidr'])
+            network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
+                                 str(cidr.prefixlen))
 
-        logical_port = self.nb_api.get_logical_port(port['id'])
-        self.nb_api.add_lrouter_port(port['id'], lrouter, lswitch,
-                                     mac=port['mac_address'],
-                                     network=network,
-                                     tunnel_key=logical_port.get_tunnel_key())
-        interface_info['port_id'] = port['id']
-        if 'subnet_id' in interface_info:
-            del interface_info['subnet_id']
+            logical_port = self.nb_api.get_logical_port(port['id'])
+            self.nb_api.add_lrouter_port(port['id'], lrouter, lswitch,
+                                         mac=port['mac_address'],
+                                         network=network,
+                                         tunnel_key=logical_port.
+                                         get_tunnel_key())
+            interface_info['port_id'] = port['id']
+            if 'subnet_id' in interface_info:
+                del interface_info['subnet_id']
         return super(DFPlugin, self).add_router_interface(
-            context, router_id, interface_info)
+                context, router_id, interface_info)
 
     def remove_router_interface(self, context, router_id, interface_info):
-        new_router = super(DFPlugin, self).remove_router_interface(
-            context, router_id, interface_info)
+        new_router = None
+        with db_api.autonested_transaction(context.session):
+            new_router = super(DFPlugin, self).remove_router_interface(
+                context, router_id, interface_info)
 
-        subnet = self.get_subnet(context, new_router['subnet_id'])
-        network_id = subnet['network_id']
+            subnet = self.get_subnet(context, new_router['subnet_id'])
+            network_id = subnet['network_id']
 
-        try:
-            self.nb_api.delete_lrouter_port(router_id,
-                                            network_id)
-        except df_exceptions.DBKeyNotFound:
-            LOG.debug("logical router %s is not found in DF DB, suppressing "
-                      " delete_lrouter_port exception" % router_id)
-
+            try:
+                self.nb_api.delete_lrouter_port(router_id,
+                                                network_id)
+            except df_exceptions.DBKeyNotFound:
+                LOG.debug("logical router %s is not found in DF DB, "
+                          "suppressing delete_lrouter_port "
+                          "exception" % router_id)
         return new_router
 
     def _create_dhcp_server_port(self, context, subnet):
