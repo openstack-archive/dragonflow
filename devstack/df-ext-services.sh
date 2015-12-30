@@ -7,7 +7,7 @@ TOP_DIR=
 DF_DIR=$(cd $(dirname "$0") && pwd)
 
 # Main include for all openstack functions
-source openrc
+source $TOP_DIR/openrc
 
 # Include other dragonflow scripts
 source $DF_DIR/settings
