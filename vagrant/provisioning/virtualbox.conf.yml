@@ -5,8 +5,13 @@ devstack_controller:
   ip: "192.168.33.101"
   memory: 8192
   cpus: 2
-devstack_compute:
+devstack_compute1:
   host_name: compute.devstack.dev
   ip: "192.168.33.102"
+  memory: 1024
+  cpus: 1
+devstack_compute2:
+  host_name: compute.devstack.dev
+  ip: "192.168.33.103"
   memory: 1024
   cpus: 1
