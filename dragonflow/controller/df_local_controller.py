@@ -106,6 +106,8 @@ class DfLocalController(object):
 
             self.read_switches()
 
+            self.read_secgroups()
+
             self.port_mappings()
 
             self.read_routers()
@@ -228,6 +230,16 @@ class DfLocalController(object):
     def router_deleted(self, lrouter_id):
         pass
 
+    def secgroup_updated(self, secgroup):
+        old_secgroup = self.db_store.get_secgroup(secgroup.name)
+        if old_secgroup is None:
+            LOG.info(_LI("Security Group created = %s") %
+                     secgroup())
+            self._add_new_secgroup(secgroup)
+            return
+        self._update_secgroup_rules(old_secgroup, secgroup)
+        self.db_store.update_secgroup(secgroup.name, secgroup)
+
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
         # TODO(gsagie) Support tunnel type change here ?
@@ -313,6 +325,39 @@ class DfLocalController(object):
         for new_port in lrouter.get_ports():
             self._add_new_router_port(lrouter, new_port)
         self.db_store.update_router(lrouter.get_name(), lrouter)
+
+    def read_secgroups(self):
+        for secgroup in self.nb_api.get_secgroups():
+            self.secgroup_updated(secgroup)
+
+    def _update_secgroup_rules(self, old_secgroup, new_secgroup):
+        new_secgroup_rules = new_secgroup.rules
+        old_secgroup_rules = old_secgroup.rules
+        for new_rule in new_secgroup_rules:
+            if new_rule not in old_secgroup_rules:
+                self._add_new_secgroup_rule(new_secgroup, new_rule)
+            else:
+                old_secgroup_rules.remove(new_rule)
+
+        for old_rule in old_secgroup_rules:
+            self._delete_secgroup_rule(old_secgroup, old_rule)
+
+    def _add_new_secgroup(self, secgroup):
+        for new_rule in secgroup.rules:
+            self._add_new_secgroup_rule(secgroup, new_rule)
+        self.db_store.update_secgroup(secgroup.name, secgroup)
+
+    def _add_new_secgroup_rule(self, secgroup, secgroup_rule):
+        LOG.info(_LI("Adding new secgroup rule = %s") %
+                 secgroup_rule)
+        self.dispatcher.dispatch('add_new_secgroup_rule', secgroup=secgroup,
+                                 secgroup_rule=secgroup_rule)
+
+    def _delete_secgroup_rule(self, secgroup, secgroup_rule):
+        LOG.info(_LI("Removing secgroup rule = %s") %
+                 secgroup_rule)
+        self.dispatcher.dispatch('delete_secgroup_rule', secgroup=secgroup,
+                                 secgroup_rule=secgroup_rule)
 
 
 # Run this application like this:

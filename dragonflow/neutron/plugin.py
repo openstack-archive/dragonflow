@@ -171,24 +171,24 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         sg_db = super(DFPlugin,
                       self).create_security_group(context, security_group,
                                                   default_sg)
-        self.nb_api.create_security_group(sg_db['id'], rules=[])
+        sg_name = sg_db['id']
+        rules = sg_db.get('security_group_rules')
+        self.nb_api.create_security_group(sg_name, rules=rules)
+
         return sg_db
 
     def create_security_group_rule(self, context, security_group_rule):
-        # TODO(gsagie) add update logic to NB DB
         sg_rule = super(DFPlugin, self).create_security_group_rule(
             context, security_group_rule)
-        #rule = security_group_rule['security_group_rule']
-        #sg_id = rule['security_group_id']
-        #self.nb_api.add_security_group_rules(sg_id, new_rule_list)
+        sg_id = sg_rule['security_group_id']
+        self.nb_api.add_security_group_rules(sg_id, [sg_rule])
         return sg_rule
 
     def delete_security_group_rule(self, context, id):
-        # TODO(gsagie) add update logic to NB DB
-        #security_group_rule = self.get_security_group_rule(context, id)
-        #sg_id = security_group_rule['security_group_id']
+        security_group_rule = self.get_security_group_rule(context, id)
+        sg_id = security_group_rule['security_group_id']
         super(DFPlugin, self).delete_security_group_rule(context, id)
-        #self.nb_api.delete_security_group_rule(security_group_id, sg_id)
+        self.nb_api.delete_security_group_rule(sg_id, id)
 
     def delete_security_group(self, context, sg_id):
         sg_db = super(DFPlugin, self).delete_security_group(context,
@@ -344,6 +344,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if updated_port.get('device_owner') == const.DEVICE_OWNER_ROUTER_GW:
             chassis = None
 
+        if updated_port.get('security_groups') == []:
+            sgids = None
+        else:
+            sgids = updated_port.get('security_groups', None)
+
         self.nb_api.update_lport(name=updated_port['id'],
                                  macs=[updated_port['mac_address']], ips=ips,
                                  external_ids=external_ids,
@@ -352,7 +357,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  port_security=allowed_macs,
                                  chassis=chassis,
                                  device_owner=updated_port.get('device_owner',
-                                                               None))
+                                                               None),
+                                 sgids=sgids)
         return updated_port
 
     def _get_data_from_binding_profile(self, context, port):
