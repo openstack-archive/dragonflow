@@ -82,15 +82,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins ""
-    fi
-
-    if is_service_enabled q-dhcp ; then
-        iniset $NEUTRON_CONF df use_centralized_ipv6_DHCP "True"
     else
-        iniset $NEUTRON_CONF DEFAULT dhcp_agent_notification "False"
-    fi
-
-    if ! is_service_enabled q-svc; then
         _create_neutron_conf_dir
         NEUTRON_CONF=/etc/neutron/neutron.conf
         cp $NEUTRON_DIR/etc/neutron.conf $NEUTRON_CONF
@@ -100,6 +92,12 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
+    fi
+
+    if is_service_enabled q-dhcp ; then
+        iniset $NEUTRON_CONF df use_centralized_ipv6_DHCP "True"
+    else
+        iniset $NEUTRON_CONF DEFAULT dhcp_agent_notification "False"
     fi
 }
 
