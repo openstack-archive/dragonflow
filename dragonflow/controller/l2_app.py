@@ -398,6 +398,14 @@ class L2App(DFlowApp):
         ofproto = self.dp.ofproto
 
         # Destination classifier for port
+        priority = const.PRIORITY_MEDIUM
+        goto_table = const.EGRESS_TABLE
+
+        # Router MAC's go to L3 table and have higher priority
+        if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
+            priority = const.PRIORITY_HIGH
+            goto_table = const.L3_LOOKUP_TABLE
+
         match = parser.OFPMatch()
         match.set_metadata(network_id)
         match.set_dl_dst(haddr_to_bin(mac))
@@ -405,13 +413,13 @@ class L2App(DFlowApp):
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
         action_inst = self.dp.ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
+        goto_inst = parser.OFPInstructionGotoTable(goto_table)
         inst = [action_inst, goto_inst]
         self.mod_flow(
             self.dp,
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
-            priority=const.PRIORITY_MEDIUM,
+            priority=priority,
             match=match)
 
         # Egress classifier for port
