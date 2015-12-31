@@ -110,6 +110,8 @@ class DfLocalController(object):
 
             self.read_routers()
 
+            self.read_secgroups()
+
             self.sync_finished = True
 
         except Exception as e:
@@ -217,6 +219,16 @@ class DfLocalController(object):
     def router_deleted(self, lrouter_id):
         pass
 
+    def secgroup_updated(self, secgroup):
+        old_secgroup = self.db_store.get_secgroup(secgroup.get_name())
+        if old_secgroup is None:
+            LOG.info(_LI("Security Group created = %s") %
+                     secgroup.__str__())
+            self._add_new_secgroup(secgroup)
+            return
+        self._update_secgroup_rules(old_secgroup, secgroup)
+        self.db_store.update_secgroup(secgroup.get_name(), secgroup)
+
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
         # TODO(gsagie) Support tunnel type change here ?
@@ -303,7 +315,54 @@ class DfLocalController(object):
             self._add_new_router_port(lrouter, new_port)
         self.db_store.update_router(lrouter.get_name(), lrouter)
 
+    def read_secgroups(self):
+        for secgroup in self.nb_api.get_secgroups():
+            self.secgroup_updated(secgroup)
 
+    def _update_secgroup_rules(self, old_secgroup, new_secgroup):
+        new_secgroup_rules = new_secgroup.get_rules()
+        old_secgroup_rules = old_secgroup.get_rules()
+        for new_rule in new_secgroup_rules:
+            if new_rule not in old_secgroup_rules:
+                self._add_new_secgroup_rule(new_secgroup, new_rule)
+            else:
+                old_secgroup_rules.remove(new_rule)
+
+        for old_rule in old_secgroup_rules:
+            self._delete_secgroup_rule(old_secgroup, old_rule)
+
+    def _add_new_secgroup(self, secgroup):
+        for new_rule in secgroup.get_rules():
+            self._add_new_secgroup_rule(secgroup, new_rule)
+        self.db_store.update_secgroup(secgroup.get_name(), secgroup)
+
+    def _add_new_secgroup_rule(self, secgroup, secgroup_rule):
+        LOG.info(_LI("Adding new secgroup rule = %s") %
+                 secgroup_rule.__str__())
+        local_secgroup_id = secgroup.get_id()
+        remote_secgroup = secgroup_rule.get_remote_group_id()
+        if remote_secgroup != None:
+            remote_secgroup_id = self.db_store.get_secgroup(
+                remote_secgroup).get_id()
+        else:
+            remote_secgroup_id = None
+        self.dispatcher.dispatch('add_new_secgroup_rule', secgroup=secgroup,
+                                 local_secgroup_id=local_secgroup_id,
+                                 remote_secgroup_id=remote_secgroup_id)
+
+    def _delete_secgroup_rule(self, secgroup, secgroup_rule):
+        LOG.info(_LI("Removing secgroup rule = %s") %
+                 secgroup_rule.__str__())
+        local_secgroup_id = secgroup.get_id()
+        remote_secgroup = secgroup_rule.get_remote_group_id()
+        if remote_secgroup != None:
+            remote_secgroup_id = self.db_store.get_secgroup(
+                remote_secgroup).get_id()
+        else:
+            remote_secgroup_id = None
+        self.dispatcher.dispatch('delete_secgroup_rule', secgroup=secgroup,
+                                 local_secgroup_id=local_secgroup_id,
+                                 remote_secgroup_id=remote_secgroup_id)
 # Run this application like this:
 # python df_local_controller.py <chassis_unique_name>
 # <local ip address> <southbound_db_ip_address>
