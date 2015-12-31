@@ -51,6 +51,56 @@ class RouterTestWrapper(object):
         return False
 
 
+class SecGroupTestWrapper(object):
+
+    def __init__(self, neutron, nb_api):
+        self.secgroup_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.deleted = False
+
+    def create(self, secgroup={'name': 'mysecgroup1'}):
+        new_secgroup = self.neutron.create_security_group({'security_group':
+                                                           secgroup})
+        self.secgroup_id = new_secgroup['security_group']['id']
+        return self.secgroup_id
+
+    def __del__(self):
+        if self.deleted or self.secgroup_id is None:
+            return
+        self.delete()
+
+    def delete(self):
+        self.neutron.delete_security_group(self.secgroup_id)
+        self.deleted = True
+
+    def exists(self):
+        secgroups = self.nb_api.get_secgroups()
+        for secgroup in secgroups:
+            if secgroup.name == self.secgroup_id:
+                return True
+        return False
+
+    def rule_create(self, secrule={'ethertype': 'IPv4',
+                                   'direction': 'ingress'}):
+        secrule['security_group_id'] = self.secgroup_id
+        new_secrule = self.neutron.create_security_group_rule(
+                        {'security_group_rule': secrule})
+        return new_secrule['security_group_rule']['id']
+
+    def rule_delete(self, secrule_id):
+        self.neutron.delete_security_group_rule(secrule_id)
+
+    def rule_exists(self, secrule_id):
+        secgroups = self.nb_api.get_secgroups()
+        for secgroup in secgroups:
+            if secgroup.name == self.secgroup_id:
+                for rule in secgroup.rules:
+                    if rule.id == secrule_id:
+                        return True
+        return False
+
+
 class NetworkTestWrapper(object):
 
     def __init__(self, neutron, nb_api):
