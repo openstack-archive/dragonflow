@@ -130,6 +130,23 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(router.exists())
         self.assertFalse(network.exists())
 
+    def test_create_delete_security_group(self):
+        secgroup = objects.SecGroupTestWrapper(self.neutron, self.nb_api)
+        secgroup.create()
+        self.assertTrue(secgroup.exists())
+        secgroup.delete()
+        self.assertFalse(secgroup.exists())
+
+    def test_create_delete_security_group_rule(self):
+        secgroup = objects.SecGroupTestWrapper(self.neutron, self.nb_api)
+        secgroup.create()
+        self.assertTrue(secgroup.exists())
+        secrule_id = secgroup.rule_create()
+        self.assertTrue(secgroup.rule_exists(secrule_id))
+        secgroup.rule_delete(secrule_id)
+        self.assertFalse(secgroup.rule_exists(secrule_id))
+        secgroup.delete()
+        self.assertFalse(secgroup.exists())
 
 '''
 The following tests are for list networks/routers/ports/subnets API.
