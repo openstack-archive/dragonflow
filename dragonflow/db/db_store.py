@@ -25,6 +25,7 @@ class DbStore(object):
         self.local_ports = {}
         self.routers = {}
         self.router_interface_to_key = {}
+        self.secgroups = {}
         self.lock = threading.Lock()
 
     # This is a mapping between global logical data path id (network/lswitch)
@@ -114,6 +115,22 @@ class DbStore(object):
     def get_routers(self):
         with self.lock:
             return self.routers.values()
+
+    def update_security_group(self, secgroup_id, secgroup):
+        with self.lock:
+            self.secgroups[secgroup_id] = secgroup
+
+    def delete_security_group(self, id):
+        with self.lock:
+            del self.secgroups[id]
+
+    def get_security_group(self, secgroup_id):
+        with self.lock:
+            return self.secgroups.get(secgroup_id)
+
+    def get_security_group_keys(self):
+        with self.lock:
+            return set(self.secgroups.keys())
 
     def get_lswitchs(self):
         with self.lock:

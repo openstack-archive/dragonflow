@@ -100,6 +100,16 @@ class RyuDFAdapter(OFPHandler):
                 router_port=router_port,
                 local_network_id=local_network_id)
 
+    def notify_add_security_group_rule(self, secgroup, secgroup_rule):
+        self.dispatcher.dispatch('add_security_group_rule',
+                secgroup=secgroup,
+                secgroup_rule=secgroup_rule)
+
+    def notify_remove_security_group_rule(self, secgroup, secgroup_rule):
+        self.dispatcher.dispatch('remove_security_group_rule',
+                secgroup=secgroup,
+                secgroup_rule=secgroup_rule)
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         # TODO(oanson) is there a better way to get the datapath?
