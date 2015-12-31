@@ -176,8 +176,6 @@ class DfLocalController(object):
                 LOG.info(_LI("Adding new local Logical Port = %s") % lport)
                 self.dispatcher.dispatch('add_local_port', lport=lport)
                 self.db_store.set_port(lport.get_id(), lport, True)
-            else:
-                raise RuntimeError("ofport is 0")
         else:
             ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
             if ofport != 0:
@@ -186,8 +184,6 @@ class DfLocalController(object):
                 LOG.info(_LI("Adding new remote Logical Port = %s") % lport)
                 self.dispatcher.dispatch('add_remote_port', lport=lport)
                 self.db_store.set_port(lport.get_id(), lport, False)
-            else:
-                raise RuntimeError("ofport is 0")
 
     def logical_port_deleted(self, lport_id):
         lport = self.db_store.get_port(lport_id)
