@@ -127,6 +127,7 @@ class TestNeutronAPIandDB(base.BaseTestCase):
     def test_number_of_flows(self):
         flows = self._get_ovs_flows()
         flow_list = flows.split("\n")[1:]
+        print flow_list
         flows_count = len(flow_list) - 1
         self.assertEqual(flows_count,
                          EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK)
