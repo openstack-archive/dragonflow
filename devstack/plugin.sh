@@ -82,18 +82,25 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins ""
-    fi
 
-    if is_service_enabled q-dhcp ; then
-        iniset $NEUTRON_CONF df use_centralized_ipv6_DHCP "True"
+        if is_service_enabled q-dhcp ; then
+            iniset $NEUTRON_CONF df use_centralized_ipv6_DHCP "True"
+        else
+            iniset $NEUTRON_CONF DEFAULT dhcp_agent_notification "False"
+        fi
     else
-        iniset $NEUTRON_CONF DEFAULT dhcp_agent_notification "False"
-    fi
-
-    if ! is_service_enabled q-svc; then
         _create_neutron_conf_dir
+        # NOTE: We need to manually generate the neutron.conf file here. This
+        #       is normally done by a call to _configure_neutron_common in
+        #       neutron-lib, but we don't call that for compute nodes here.
+        # Uses oslo config generator to generate core sample configuration files
+        local _pwd=$(pwd)
+        (cd $NEUTRON_DIR && exec ./tools/generate_config_file_samples.sh)
+        cd $_pwd
+
+        cp $NEUTRON_DIR/etc/neutron.conf.sample $NEUTRON_CONF
+
         NEUTRON_CONF=/etc/neutron/neutron.conf
-        cp $NEUTRON_DIR/etc/neutron.conf $NEUTRON_CONF
         iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
         iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
