@@ -141,8 +141,8 @@ class EtcdDbDriver(db_api.DbApi):
             res.append(entry.key[table_name_size:])
         return res
 
-    def _allocate_unique_key(self):
-        key = '/tunnel_key/key'
+    def _allocate_unique_key(self, group):
+        key = '/%s/key' % group
         prev_value = 0
         try:
             prev_value = int(self.client.read(key).value)
@@ -154,10 +154,10 @@ class EtcdDbDriver(db_api.DbApi):
                 return 1
             raise e
 
-    def allocate_unique_key(self):
+    def allocate_unique_key(self, group):
         while True:
             try:
-                return self._allocate_unique_key()
+                return self._allocate_unique_key(group)
             except Exception:
                 pass
 
