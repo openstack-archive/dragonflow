@@ -78,7 +78,10 @@ class NbApi(object):
         return self.driver.support_publish_subscribe()
 
     def allocate_tunnel_key(self):
-        return self.driver.allocate_unique_key()
+        return self.driver.allocate_unique_key('tunnel_key')
+
+    def allocate_secgroup_key(self):
+        return self.driver.allocate_unique_key('secgroup_key')
 
     def register_notification_callback(self, controller):
         self.controller = controller
@@ -348,6 +351,12 @@ class NbApi(object):
             res.append(LogicalRouter(lrouter_value))
         return res
 
+    def get_secgroups(self):
+        res = []
+        for secgroup_value in self.driver.get_all_entries('secgroup'):
+            res.append(SecGroup(secgroup_value))
+        return res
+
     def get_all_logical_switches(self):
         res = []
         for lswitch_value in self.driver.get_all_entries('lswitch'):
@@ -511,3 +520,63 @@ class LogicalRouterPort(object):
 
     def __str__(self):
         return self.router_port.__str__()
+
+
+class SecGroup(object):
+
+    def __init__(self, value):
+        self.secgroup = jsonutils.loads(value)
+
+    def get_name(self):
+        return self.secgroup.get('name')
+
+    def get_id(self):
+        return self.secgroup.get('id')
+
+    def get_rules(self):
+        res = []
+        for rule in self.secgroup.get('rules'):
+            res.append(SecRule(rule))
+        return res
+
+    def __str__(self):
+        return self.secgroup.__str__()
+
+
+class SecRule(object):
+
+    def __init__(self, value):
+        self.secrule = value
+
+    def get_direction(self):
+        return self.secrule['direction']
+
+    def get_ethertype(self):
+        return self.secrule['ethertype']
+
+    def get_id(self):
+        return self.secrule['id']
+
+    def get_port_range_max(self):
+        return self.secrule['port_range_max']
+
+    def get_port_range_min(self):
+        return self.secrule['port_range_min']
+
+    def get_protocol(self):
+        return self.secrule['protocol']
+
+    def get_remote_group_id(self):
+        return self.secrule['remote_group_id']
+
+    def get_remote_ip_prefix(self):
+        return self.secrule['remote_ip_prefix']
+
+    def get_security_group_id(self):
+        return self.secrule['security_group_id']
+
+    def __eq__(self, other):
+        return self.get_id() == other.get_id()
+
+    def __str__(self):
+        return self.secrule.__str__()

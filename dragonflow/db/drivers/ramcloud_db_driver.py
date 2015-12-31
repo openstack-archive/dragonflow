@@ -78,8 +78,8 @@ class RamCloudDbDriver(db_api.DbApi):
         self.client.enumerate_table_finalize(enumeration_state)
         return res
 
-    def _allocate_unique_key(self):
-        table_id = self.client.get_table_id('tunnel_key')
+    def _allocate_unique_key(self, group):
+        table_id = self.client.get_table_id(group)
         key = 1
         version_exception = True
         while version_exception:
@@ -93,8 +93,8 @@ class RamCloudDbDriver(db_api.DbApi):
             except ramcloud.ObjectExistsError:
                 self.client.write(table_id, key, str(0))
 
-    def allocate_unique_key(self):
-        return self._allocate_unique_key()
+    def allocate_unique_key(self, group):
+        return self._allocate_unique_key(group)
 
     def register_notification_callback(self, callback):
         return

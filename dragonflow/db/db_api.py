@@ -133,9 +133,9 @@ class DbApi(object):
         """
 
     @abc.abstractmethod
-    def allocate_unique_key(self):
-        """Allocate a unique id in the system
-           Used to allocate ports unique numbers
+    def allocate_unique_key(self, group):
+        """Allocate a unique id of the group in the system
+           Used to allocate ports and security groups unique numbers
 
         :returns:     Unique id
         """
