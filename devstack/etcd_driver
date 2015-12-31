@@ -11,8 +11,35 @@
 
 ETCD_VERSION=v2.2.2
 
+function configure_etcd_systemd_service {
+    ETCD_CONF_DIR=/etc/etcd
+    ETCD_CONF=$ETCD_CONF_DIR/etcd.conf
+    ETCD_DATA_DIR="/var/lib/etcd"
+    # Delete any existing etcd database:
+    sudo rm -rf $ETCD_DATA_DIR
+    sudo mkdir -p $ETCD_DATA_DIR
+
+    sudo rm -rf $ETCD_CONF_DIR
+    sudo install -d -o $STACK_USER $ETCD_CONF_DIR
+    cp $DEST/dragonflow/devstack/etcd.service.conf $ETCD_CONF
+
+    iniset $ETCD_CONF   DEFAULT ETCD_INITIAL_CLUSTER "$HOSTNAME=http://$REMOTE_DB_IP:2380"
+    iniset $ETCD_CONF   DEFAULT ETCD_INITIAL_CLUSTER_STATE "new"
+    iniset $ETCD_CONF   DEFAULT ETCD_INITIAL_CLUSTER_TOKEN "etcd-cluster-01"
+    iniset $ETCD_CONF   DEFAULT ETCD_INITIAL_ADVERTISE_PEER_URLS "http://$REMOTE_DB_IP:2380"
+    iniset $ETCD_CONF   DEFAULT ETCD_DATA_DIR "$ETCD_DATA_DIR"
+    iniset $ETCD_CONF  DEFAULT ETCD_LISTEN_PEER_URLS "http://0.0.0.0:2380"
+    iniset $ETCD_CONF  DEFAULT ETCD_LISTEN_CLIENT_URLS "http://$REMOTE_DB_IP:4001"
+    iniset $ETCD_CONF DEFAULT ETCD_ADVERTISE_CLIENT_URLS "http://$REMOTE_DB_IP:4001"
+    iniset $ETCD_CONF DEFAULT ETCD_NAME "$HOSTNAME"
+
+    sudo cp $DEST/dragonflow/devstack/etcd.service  /lib/systemd/system/
+    sudo systemctl enable etcd
+}
+
 function configure_etcd {
 
+    sudo cp $DEST/dragonflow/devstack/etcd.conf /etc/init/etcd.conf
     # Delete any existing etcd database:
     sudo rm -rf /var/etcd
 
@@ -43,9 +70,13 @@ function nb_db_driver_install_server {
             wget https://github.com/coreos/etcd/releases/download/$ETCD_VERSION/etcd-$ETCD_VERSION-linux-amd64.tar.gz -O $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz
             tar xzvf $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz -C $DEST/etcd
             sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
-            sudo cp $DEST/dragonflow/devstack/etcd.conf /etc/init/etcd.conf
         fi
-        configure_etcd
+
+        if is_ubuntu; then
+            configure_etcd
+        elif is_fedora; then
+            configure_etcd_systemd_service
+        fi
     fi
 }
 
@@ -64,13 +95,21 @@ function nb_db_driver_status_server
 
 function nb_db_driver_start_server {
     if is_service_enabled df-etcd-server ; then
-        sudo initctl start etcd
+        if is_ubuntu; then
+            sudo initctl start etcd
+        elif is_fedora; then
+            sudo systemctl start etcd
+        fi
     fi
 }
 
 function nb_db_driver_stop_server {
     if is_service_enabled df-etcd-server ; then
-        sudo initctl stop etcd
+        if is_ubuntu; then
+            sudo initctl stop etcd
+        elif is_fedora; then
+            sudo systemctl stop etcd
+        fi
     fi
 }
 
