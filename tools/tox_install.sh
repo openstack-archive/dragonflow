@@ -41,4 +41,5 @@ fi
 
 pip install -U $*
 pip install python-etcd
+pip install ovs
 exit $?
