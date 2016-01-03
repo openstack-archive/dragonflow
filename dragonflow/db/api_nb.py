@@ -405,6 +405,9 @@ class Subnet(object):
     def enable_dhcp(self):
         return self.subnet['enable_dhcp']
 
+    def get_id(self):
+        return self.subnet['id']
+
     def get_dhcp_server_address(self):
         return self.subnet['dhcp_ip']
 
