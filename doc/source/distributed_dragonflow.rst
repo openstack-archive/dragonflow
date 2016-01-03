@@ -133,3 +133,5 @@ More Useful Reading
   <http://galsagie.github.io/sdn/openstack/ovs/ovn/dragonflow/2015/08/03/df-distributed-db/>`_
 - `Topology Service Injection
   <http://galsagie.github.io/sdn/nfv/openstack/ovs/dragonflow/2015/11/10/topology-service-injection/>`_
+- `Dragonflow Security Groups Design at Scale
+  <http://galsagie.github.io/sdn/openstack/ovs/dragonflow/2015/12/28/dragonflow-security-groups/>`_
