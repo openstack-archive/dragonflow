@@ -161,3 +161,65 @@ class TestNeutronAPIandDB(base.BaseTestCase):
             res['cookie'] = fs[1].split('=')[1]
             flows_as_dicts.append(res)
         return flows_as_dicts
+
+    def test_list_networks(self):
+        networks = self.neutron.list_networks()
+        networks = networks['networks']
+        #print("networks", networks)
+        networks2 = list()
+        for network in networks:
+            networks2.append(network['id'])
+        networks2.sort()
+        switches = self.nb_api.get_all_logical_switches()
+        switches2 = list()
+        for switch in switches:
+            switches2.append(switch.get_id())
+        switches2.sort()
+        self.assertEqual(networks2, switches2)
+
+    def test_list_subnets(self):
+        subnets = self.neutron.list_subnets(retrieve_all=True)
+        subnets = subnets['subnets']
+        #print("subnets", subnets)
+        subnets2 = list()
+        for subnet in subnets:
+            subnets2.append(subnet['id'])
+        subnets2.sort()
+        switches = self.nb_api.get_all_logical_switches()
+        subnets3 = list()
+        for switch in switches:
+            subnets = switch.get_subnets()
+            for subnet in subnets:
+                subnets3.append(subnet.get_id())
+        subnets3.sort()
+        self.assertEqual(subnets2, subnets3)
+
+    def test_list_local_ports(self):
+        ports = self.neutron.list_ports(retrieve_all=True)
+        ports = ports['ports']
+        ports2 = list()
+        for port in ports:
+            if port['binding:host_id'] is not None:
+               if port['device_owner'] != 'network:router_gateway':
+                  ports2.append(port['id'])
+        ports2.sort()
+        lports = self.nb_api.get_all_logical_ports()
+        lports2 = list()
+        for lport in lports:
+            lports2.append(lport.get_id())
+        lports2.sort()
+        self.assertEqual(ports2, lports2)
+
+    def test_list_routers(self):
+        routers = self.neutron.list_routers(retrieve_all=True)
+        routers = routers['routers']
+        routers1 = list()
+        for router in routers:
+            routers1.append(router['id'])
+        routers1.sort()
+        routers_in_db = self.nb_api.get_routers()
+        routers2 = list()
+        for router in routers_in_db:
+            routers2.append(router.get_name())
+        routers2.sort()
+        self.assertEqual(routers1, routers2)
