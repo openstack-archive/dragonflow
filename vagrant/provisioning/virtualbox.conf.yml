@@ -6,12 +6,12 @@ devstack_controller:
   memory: 8192
   cpus: 2
 devstack_compute1:
-  host_name: compute.devstack.dev
+  host_name: compute1.devstack.dev
   ip: "192.168.33.102"
   memory: 1024
   cpus: 1
 devstack_compute2:
-  host_name: compute.devstack.dev
+  host_name: compute2.devstack.dev
   ip: "192.168.33.103"
   memory: 1024
   cpus: 1
