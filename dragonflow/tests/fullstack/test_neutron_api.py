@@ -25,7 +25,7 @@ import test_objects as objects
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
 
-EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK = 21
+EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK = 26
 
 
 def get_cloud_config(cloud='devstack-admin'):
