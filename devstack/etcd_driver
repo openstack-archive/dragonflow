@@ -71,8 +71,10 @@ function nb_db_driver_install_server {
             tar xzvf $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz -C $DEST/etcd
             sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
         fi
-
-        if is_ubuntu; then
+        if [ ! -f "/usr/local/bin/etcd" ]; then
+            sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
+        fi
+	if is_ubuntu; then
             configure_etcd
         elif is_fedora; then
             configure_etcd_systemd_service
