@@ -323,9 +323,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     id,
                     port,
                     updated_port=updated_port)
-            self._process_portbindings_create_and_update(context,
-                                                         port['port'],
-                                                         updated_port)
         external_ids = {
             df_const.DF_PORT_NAME_EXT_ID_KEY: updated_port['name']}
         allowed_macs = self._get_allowed_mac_addresses_from_port(
