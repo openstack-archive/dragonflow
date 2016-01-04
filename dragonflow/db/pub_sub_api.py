@@ -1,0 +1,231 @@
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import abc
+import eventlet
+import msgpack
+import multiprocessing
+import six
+import threading
+
+from oslo_log import log as logging
+from oslo_serialization import jsonutils
+
+from dragonflow.common import utils as df_utils
+from dragonflow.db import db_common
+
+LOG = logging.getLogger(__name__)
+
+eventlet.monkey_patch(socket=False)
+
+
+@six.add_metaclass(abc.ABCMeta)
+class PubSubApi(object):
+
+    @abc.abstractmethod
+    def get_publisher(self):
+        """Return a Publisher Driver Object
+
+        :returns: an PublisherApi Object
+        """
+
+    @abc.abstractmethod
+    def get_subscriber(self):
+        """Return a Subscriber Driver Object
+
+        :returns: an PublisherApi Object
+        """
+
+
+@six.add_metaclass(abc.ABCMeta)
+class PublisherApi(object):
+
+    @abc.abstractmethod
+    def initialize(self, multiprocessing_queue, endpoint, trasport_proto):
+        """Initialize the DB client
+
+        :param ip:      Publiser IP address
+        :type ip:       string
+        :param is_neutron_server: Publisher is part of the neutron server
+        :type is_neutron_server: boolean (True or False)
+        :param publish_port:    Publisher server port number
+        :type publisher_port:     int
+        :returns:          None
+        """
+
+    @abc.abstractmethod
+    def send_event(self, update, topic):
+        """Publish the update
+
+        :param update:  Encapsulates a Publisher update
+        :type update:   DbUpdate object
+        :param topic:   topic to send event to
+        :type topic:    string
+        :returns:       None
+        """
+
+
+@six.add_metaclass(abc.ABCMeta)
+class SubscriberApi(object):
+
+    @abc.abstractmethod
+    def initialize(self, callback, **args):
+        """Initialize the DB client
+
+        :param callback:  callback method to call for every db change
+        :type callback :  callback method of type:
+                          callback(table, key, action, value)
+                          table - table name
+                          key - object key
+                          action = 'create' / 'set' / 'delete' / 'sync'
+                          value = new object value
+        :param args:       Additional args that were read from configuration
+                           file
+        :type args:        dictionary of <string, object>
+        :returns:          None
+        """
+
+    @abc.abstractmethod
+    def register_listen_address(self, uri):
+        """Will register publisher address to listen on
+
+        NOTE Must be called prior to calling daemonize
+        :parm uri:  uri to connect to
+        :type string:   '<protocol>:address:port;....'
+        """
+
+    @abc.abstractmethod
+    def run(self):
+        """Method that will run in the Subscriber thread
+        """
+
+    @abc.abstractmethod
+    def daemonize(self):
+        """Start the Subscriber thread
+        """
+
+    @abc.abstractmethod
+    def stop(self):
+        """Stop the Subscriber thread
+        """
+
+    @abc.abstractmethod
+    def register_topic(self, topic):
+        """Add a topic to the subsciber listening list
+
+        :param topic:  topic to listen to
+        :type topic:   string
+        """
+
+    @abc.abstractmethod
+    def unregister_topic(self, topic):
+        """Remove a topic to the subsciber listening list
+
+        :param topic:  topic to remove
+        :type topic:   string
+        """
+
+
+class PublisherAgentBase(PublisherApi):
+
+    def initialize(self, multiprocessing_queue, endpoint, trasport_proto):
+        self.endpoint = endpoint
+        self.pub_socket = None
+        if multiprocessing_queue:
+            self.lock = multiprocessing.Lock()
+        else:
+            self.lock = threading.Lock()
+        self.trasport_proto = trasport_proto
+        self.daemon = df_utils.DFDaemon()
+        self.initialized = False
+
+    def pack_message(self, message):
+        data = None
+        try:
+            data = msgpack.packb(message, encoding='utf-8')
+        except Exception as e:
+            LOG.warning(e)
+        return data
+
+
+class SubscriberAgentBase(SubscriberApi):
+
+    def __init__(self):
+        super(SubscriberAgentBase, self).__init__()
+        self.topic_list = []
+        self.uri_list = []
+        self.topic_list.append(db_common.SEND_ALL_TOPIC)
+
+    def initialize(self, callback, **args):
+        self.db_changes_callback = callback
+        self.daemon = df_utils.DFDaemon()
+
+    def register_listen_address(self, uri):
+        self.uri_list.append(uri)
+
+    def unpack_message(self, message):
+        entry = None
+        try:
+            entry = msgpack.unpackb(message, encoding='utf-8')
+        except Exception as e:
+            LOG.warning(e)
+        return entry
+
+    def daemonize(self):
+        self.daemon.daemonize(self.run)
+
+    @property
+    def is_daemonize(self):
+        return self.daemon.is_daemonize
+
+    def stop(self):
+        self.daemon.stop()
+
+    def register_topic(self, topic):
+        self.topic_list.append(topic)
+
+    def unregister_topic(self, topic):
+        self.topic_list.remove(topic)
+
+
+class ChassisPublisher(object):
+
+    def __init__(self, driver, publisher, polling_time=10):
+        super(ChassisPublisher, self).__init__()
+        self.driver = driver
+        self.daemon = df_utils.DFDaemon()
+        self.chassis = {}
+        self.polling_time = polling_time
+        self.publisher = publisher
+
+    def daemonize(self):
+        self.daemon.daemonize(self.run)
+
+    def stop(self):
+        self.daemon.stop()
+
+    def run(self):
+        eventlet.sleep(0)
+        while True:
+            eventlet.sleep(self.polling_time)
+            all_chassis = self.driver.get_all_entries('chassis')
+            for chassis_unicode in all_chassis:
+                chassis = jsonutils.loads(chassis_unicode)
+                chassis_name = chassis['name']
+                if chassis_name not in self.chassis:
+                    self.chassis[chassis_name] = chassis
+                    update = db_common.DbUpdate(
+                                        'chassis',
+                                        chassis_name,
+                                        'create',
+                                        chassis)
+                    self.publisher.send_event(update)
