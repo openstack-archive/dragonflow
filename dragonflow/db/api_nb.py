@@ -13,7 +13,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 import eventlet
 import netaddr
 import time
@@ -24,6 +23,11 @@ from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 
 from neutron.i18n import _LI
+
+from dragonflow.db import db_publisher
+from dragonflow.db import db_subscriber
+
+eventlet.monkey_patch()
 
 LOG = log.getLogger(__name__)
 
@@ -46,6 +50,9 @@ class DbUpdate(object):
         self.table = table
         self.value = value
 
+    def __str__(self):
+        return"Action:%s, Value:%s" % (self.action, self.value)
+
     def __lt__(self, other):
         """Implements priority among updates
 
@@ -64,18 +71,40 @@ class DbUpdate(object):
 
 class NbApi(object):
 
-    def __init__(self, db_driver):
+    def __init__(self, db_driver, use_pubsub=True, is_plugin=False):
         super(NbApi, self).__init__()
         self.driver = db_driver
         self.controller = None
         self._queue = eventlet.queue.PriorityQueue()
         self.db_apply_failed = False
+        self.use_pubsub = use_pubsub
+        self.publiser = None
+        self.is_plugin = is_plugin
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
+        if self.use_pubsub:
+            self.publiser = db_publisher.PublisherAgent(
+                                        db_ip,
+                                        self.driver,
+                                        self.db_change_callback,
+                                        self.is_plugin)
+            self.publiser.daemonize()
+            if not self.is_plugin:
+                self.subscriber = db_subscriber.SubscriberAgent(
+                                                db_ip,
+                                                self.driver,
+                                                self.db_change_callback,
+                                                self.is_plugin)
 
     def support_publish_subscribe(self):
+        if self.use_pubsub:
+            return True
         return self.driver.support_publish_subscribe()
+
+    def _send_db_change_event(self, table, key, action, value):
+        if self.use_pubsub:
+            self.publiser.send_event(table, key, action, value)
 
     def allocate_tunnel_key(self):
         return self.driver.allocate_unique_key()
@@ -83,24 +112,32 @@ class NbApi(object):
     def register_notification_callback(self, controller):
         self.controller = controller
         LOG.info(_LI("DB configuration sync finished, waiting for changes"))
-        self.driver.register_notification_callback(
-            self.db_change_callback)
+        if self.use_pubsub:
+            self.subscriber.daemonize()
+        else:
+            self.driver.register_notification_callback(
+                self.db_change_callback)
         self._read_db_changes_from_queue()
 
     def db_change_callback(self, table, key, action, value):
         update = DbUpdate(table, key, action, value)
+        LOG.info(_LI("Pushing Update to Queue: %s"), update)
         self._queue.put(update)
+        eventlet.sleep(0.1)
 
     def _read_db_changes_from_queue(self):
         while True:
             if not self.db_apply_failed:
-                self.next_update = self._queue.get()
+                self.next_update = self._queue.get(block=True)
+                LOG.info(_LI("Event update: %s"),
+                        self.next_update)
             try:
                 self.apply_db_change(self.next_update.table,
                                      self.next_update.key,
                                      self.next_update.action,
                                      self.next_update.value)
                 self.db_apply_failed = False
+                self._queue.task_done()
             except Exception as e:
                 if "ofport is 0" not in e.message:
                     LOG.warning(e)
@@ -111,7 +148,6 @@ class NbApi(object):
         if action == 'sync':
             self.controller.run_sync()
             return
-
         self.controller.vswitch_api.sync()
         if 'lport' == table:
             if action == 'set' or action == 'create':
@@ -152,9 +188,11 @@ class NbApi(object):
             secgroup[col] = val
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.create_key('secgroup', name, secgroup_json)
+        self._send_db_change_event('secgroup', name, 'create', secgroup_json)
 
     def delete_security_group(self, name):
         self.driver.delete_key('secgroup', name)
+        self._send_db_change_event('secgroup', name, 'delete', name)
 
     def add_security_group_rules(self, sg_name, new_rules):
         secgroup_json = self.driver.get_key('secgroup', sg_name)
@@ -164,6 +202,7 @@ class NbApi(object):
         secgroup['rules'] = rules
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.set_key('secgroup', sg_name, secgroup_json)
+        self._send_db_change_event('secgroup', sg_name, 'set', secgroup_json)
 
     def delete_security_group_rule(self, sg_name, sgr_id):
         secgroup_json = self.driver.get_key('secgroup', sg_name)
@@ -176,6 +215,7 @@ class NbApi(object):
         secgroup['rules'] = new_rules
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.set_key('secgroup', sg_name, secgroup_json)
+        self._send_db_change_event('secgroup', sg_name, 'set', secgroup_json)
 
     def get_chassis(self, name):
         try:
@@ -195,6 +235,7 @@ class NbApi(object):
                    'tunnel_type': tunnel_type}
         chassis_json = jsonutils.dumps(chassis)
         self.driver.create_key('chassis', name, chassis_json)
+        self._send_db_change_event('chassis', name, 'create', chassis_json)
 
     def get_lswitch(self, name):
         try:
@@ -218,6 +259,8 @@ class NbApi(object):
         lswitch['subnets'] = subnets
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', lswitch_name, lswitch_json)
+        self._send_db_change_event('lswitch', lswitch_name, 'set',
+                                   lswitch_json)
 
     def update_subnet(self, id, lswitch_name, **columns):
         lswitch_json = self.driver.get_key('lswitch', lswitch_name)
@@ -232,6 +275,8 @@ class NbApi(object):
 
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', lswitch_name, lswitch_json)
+        self._send_db_change_event('lswitch', lswitch_name, 'set',
+                                   lswitch_json)
 
     def delete_subnet(self, id, lswitch_name):
         lswitch_json = self.driver.get_key('lswitch', lswitch_name)
@@ -245,6 +290,8 @@ class NbApi(object):
         lswitch['subnets'] = new_ports
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', lswitch_name, lswitch_json)
+        self._send_db_change_event('lswitch', lswitch_name, 'set',
+                                   lswitch_json)
 
     def get_logical_port(self, port_id):
         try:
@@ -269,17 +316,22 @@ class NbApi(object):
             lswitch[col] = val
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.create_key('lswitch', name, lswitch_json)
+        self._send_db_change_event('lswitch', name, 'create', lswitch_json)
 
     def update_lswitch(self, name, **columns):
+        self._send_db_change_event('lswitch', 'name', 'set', 'lswitch_json')
+
         lswitch_json = self.driver.get_key('lswitch', name)
         lswitch = jsonutils.loads(lswitch_json)
         for col, val in columns.items():
             lswitch[col] = val
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', name, lswitch_json)
+        self._send_db_change_event('lswitch', name, 'set', lswitch_json)
 
     def delete_lswitch(self, name):
         self.driver.delete_key('lswitch', name)
+        self._send_db_change_event('lswitch', name, 'delete', name)
 
     def create_lport(self, name, lswitch_name, **columns):
         lport = {}
@@ -289,6 +341,7 @@ class NbApi(object):
             lport[col] = val
         lport_json = jsonutils.dumps(lport)
         self.driver.create_key('lport', name, lport_json)
+        self._send_db_change_event('lport', name, 'create', lport_json)
 
     def update_lport(self, name, **columns):
         lport_json = self.driver.get_key('lport', name)
@@ -297,9 +350,11 @@ class NbApi(object):
             lport[col] = val
         lport_json = jsonutils.dumps(lport)
         self.driver.set_key('lport', name, lport_json)
+        self._send_db_change_event('lport', name, 'set', lport_json)
 
     def delete_lport(self, name):
         self.driver.delete_key('lport', name)
+        self._send_db_change_event('lport', name, 'delete', name)
 
     def create_lrouter(self, name, **columns):
         lrouter = {}
@@ -308,9 +363,11 @@ class NbApi(object):
             lrouter[col] = val
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.create_key('lrouter', name, lrouter_json)
+        self._send_db_change_event('lrouter', name, 'create', lrouter_json)
 
     def delete_lrouter(self, name):
         self.driver.delete_key('lrouter', name)
+        self._send_db_change_event('lrouter', name, 'delete', name)
 
     def add_lrouter_port(self, name, lrouter_name, lswitch, **columns):
         lrouter_json = self.driver.get_key('lrouter', lrouter_name)
@@ -328,6 +385,8 @@ class NbApi(object):
         lrouter['ports'] = router_ports
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.set_key('lrouter', lrouter_name, lrouter_json)
+        self._send_db_change_event('lrouter', lrouter_name, 'set',
+                                   lrouter_json)
 
     def delete_lrouter_port(self, lrouter_name, lswitch):
         lrouter_json = self.driver.get_key('lrouter', lrouter_name)
@@ -341,6 +400,8 @@ class NbApi(object):
         lrouter['ports'] = new_ports
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.set_key('lrouter', lrouter_name, lrouter_json)
+        self._send_db_change_event('lrouter', lrouter_name, 'set',
+                                   lrouter_json)
 
     def get_routers(self):
         res = []

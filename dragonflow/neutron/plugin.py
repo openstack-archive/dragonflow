@@ -96,13 +96,20 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         registry.subscribe(self.post_fork_initialize, resources.PROCESS,
                            events.AFTER_CREATE)
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
-        self.nb_api = api_nb.NbApi(nb_driver_class())
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                               db_port=cfg.CONF.df.remote_db_port)
+
+        self.nb_api = api_nb.NbApi(
+                nb_driver_class(),
+                use_pubsub=cfg.CONF.df.use_df_pub_sub,
+                is_plugin=True)
+
         self._setup_dhcp()
         self._start_rpc_notifiers()
 
     def post_fork_initialize(self, resource, event, trigger, **kwargs):
+        #NOTE(gampel) we spawn a thread for the publisher.
+        #The thread and the publisher queue must be initialized after the fork
+        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
+                               db_port=cfg.CONF.df.remote_db_port)
         self._set_base_port_binding()
 
     def _set_base_port_binding(self):
