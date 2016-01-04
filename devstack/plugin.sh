@@ -133,10 +133,35 @@ function init_ovs {
     ovsdb-tool create $base_dir/conf.db $DEST/$OVS_REPO_NAME/vswitchd/vswitch.ovsschema
 }
 
+function install_nanomsg {
+
+   local _pwd=$(pwd)
+
+   if [ ! -f "$DEST/nanomsg" ]; then
+      mkdir $DEST/nanomsg
+      wget https://github.com/nanomsg/nanomsg/releases/download/0.8-beta/nanomsg-0.8-beta.tar.gz -O $DEST/nanomsg/nanomsg-0.8-beta.tar.gz
+      tar xzvf $DEST/nanomsg/nanomsg-0.8-beta.tar.gz -C $DEST/nanomsg
+      cd $DEST/nanomsg/nanomsg-0.8-beta/
+      ./configure
+      make
+      sudo make install
+
+      if [ -f "/usr/local/lib/libnanomsg.so" ]; then
+         sudo cp /usr/local/lib/libnanomsg.so /usr/lib/.
+      fi
+
+      sudo pip install -I git+git://github.com/tonysimpson/nanomsg-python.git
+   fi
+
+   cd $_pwd
+}
+
 function install_df {
 
     # Obtain devstack directory for df-ext-services.sh
     sed -i "/^TOP_DIR=/cTOP_DIR=$TOP_DIR" $DEST/dragonflow/devstack/df-ext-services.sh
+
+    install_nanomsg
 
     nb_db_driver_install_server
 
