@@ -38,5 +38,11 @@ df_opts = [
                help=_('List of openflow applications classes to load')),
     cfg.BoolOpt('use_centralized_ipv6_DHCP',
                 default=False,
-                help=_("Enable IPv6 DHCP by using DHCP agent"))
+                help=_("Enable IPv6 DHCP by using DHCP agent")),
+    cfg.BoolOpt('use_df_pub_sub',
+                default=True,
+                help=_("Enable use of Dragonflow built-in pub/sub")),
+    cfg.StrOpt('pub_sub_driver',
+               default='zmq_pubsub_driver',
+               help=_('Drivers to use for the Dragonflow pub/sub'))
 ]

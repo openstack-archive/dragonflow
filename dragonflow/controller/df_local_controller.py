@@ -63,7 +63,9 @@ class DfLocalController(object):
 
     def run(self):
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
-        self.nb_api = api_nb.NbApi(nb_driver_class())
+        self.nb_api = api_nb.NbApi(
+                nb_driver_class(),
+                use_pubsub=cfg.CONF.df.use_df_pub_sub)
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
@@ -229,7 +231,6 @@ class DfLocalController(object):
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
         # TODO(gsagie) Support tunnel type change here ?
-
         if chassis is None:
             self.nb_api.add_chassis(self.chassis_name,
                                     self.ip,
