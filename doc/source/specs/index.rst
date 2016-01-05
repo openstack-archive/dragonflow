@@ -41,6 +41,7 @@ Spec Template
     ovsdb_monitor
     igmp_application_and_multicast_support
     redis_db_driver
+    publish_subscribe_abstraction
 
 
 Indices and tables
