@@ -83,7 +83,7 @@ function nb_db_driver_install_server {
 }
 
 function nb_db_driver_install_client {
-    sudo pip install python-etcd
+    pip_install python-etcd
 }
 
 function nb_db_driver_status_server

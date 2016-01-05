@@ -150,7 +150,7 @@ function install_nanomsg {
          sudo cp /usr/local/lib/libnanomsg.so /usr/lib/.
       fi
 
-      sudo pip install -I git+git://github.com/tonysimpson/nanomsg-python.git
+      pip_install -I git+git://github.com/tonysimpson/nanomsg-python.git
    fi
 
    cd $_pwd
