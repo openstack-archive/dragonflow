@@ -298,11 +298,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def update_network(self, context, network_id, network):
         pnet._raise_if_updates_provider_attributes(network['network'])
         # TODO(gsagie) rollback needed
-        if 'name' in network['network']:
-            self._set_network_name(network_id, network['network']['name'])
         with context.session.begin(subtransactions=True):
-            return super(DFPlugin, self).update_network(context, network_id,
-                                                        network)
+            result = super(DFPlugin, self).update_network(context, network_id,
+                                                          network)
+            self._process_l3_update(context, result, network['network'])
+            if 'name' in network['network']:
+                self._set_network_name(network_id, network['network']['name'])
+            return result
 
     def update_port(self, context, id, port):
         with context.session.begin(subtransactions=True):
