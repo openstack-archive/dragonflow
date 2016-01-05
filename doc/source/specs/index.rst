@@ -35,6 +35,7 @@ Spec Template
     skeleton
     template
     distributed_dnat
+    publish_subscribe_abstraction
 
 
 Indices and tables
