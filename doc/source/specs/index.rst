@@ -36,6 +36,7 @@ Spec Template
     template
     distributed_dnat
     mac_spoofing
+    publish_subscribe_abstraction
 
 
 Indices and tables
