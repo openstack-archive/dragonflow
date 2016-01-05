@@ -39,6 +39,7 @@ Spec Template
     selective_topo_dist
     performance_testing
     ovsdb_monitor
+    publish_subscribe_abstraction
 
 
 Indices and tables
