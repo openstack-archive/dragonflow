@@ -301,8 +301,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if 'name' in network['network']:
             self._set_network_name(network_id, network['network']['name'])
         with context.session.begin(subtransactions=True):
-            return super(DFPlugin, self).update_network(context, network_id,
-                                                        network)
+            result = super(DFPlugin, self).update_network(context, network_id,
+                                                          network)
+            self._process_l3_update(context, result, network['network'])
+            return result
 
     def update_port(self, context, id, port):
         with context.session.begin(subtransactions=True):
