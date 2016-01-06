@@ -137,7 +137,7 @@ function install_nanomsg {
 
    local _pwd=$(pwd)
 
-   if [ ! -f "$DEST/nanomsg" ]; then
+   if [ ! -d "$DEST/nanomsg" ]; then
       mkdir $DEST/nanomsg
       wget https://github.com/nanomsg/nanomsg/releases/download/0.8-beta/nanomsg-0.8-beta.tar.gz -O $DEST/nanomsg/nanomsg-0.8-beta.tar.gz
       tar xzvf $DEST/nanomsg/nanomsg-0.8-beta.tar.gz -C $DEST/nanomsg
