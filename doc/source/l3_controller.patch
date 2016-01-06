@@ -349,8 +349,8 @@ index 4fd77e3..dce7feb 100644
          canary_flow = self.int_br.dump_flows_for_table(constants.CANARY_TABLE)
 +        self.set_controller_lock.release()
          if canary_flow == '':
-             LOG.warn(_LW("OVS is restarted. OVSNeutronAgent will reset "
-                          "bridges and recover ports."))
+             LOG.warning(_LW("OVS is restarted. OVSNeutronAgent will reset "
+                             "bridges and recover ports."))
 @@ -1467,6 +1577,12 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
                              len(port_info.get('updated', [])))
                          port_stats['regular']['removed'] = (

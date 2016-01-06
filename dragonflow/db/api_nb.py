@@ -102,7 +102,7 @@ class NbApi(object):
                 self.db_apply_failed = False
             except Exception as e:
                 if "ofport is 0" not in e.message:
-                    LOG.warn(e)
+                    LOG.warning(e)
                 self.db_apply_failed = True
                 time.sleep(1)
 
