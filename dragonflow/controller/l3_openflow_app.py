@@ -1502,7 +1502,7 @@ class L3ReactiveApp(DFlowApp):
         try:
             return int(netaddr.IPAddress(datapath.address[0], version=4))
         except Exception:
-            LOG.warn(_LW("Invalid remote IP: %s"), datapath.address)
+            LOG.warning(_LW("Invalid remote IP: %s"), datapath.address)
             return
 
     def _get_match_vrouter_arp_responder(self, datapath, segmentation_id,
