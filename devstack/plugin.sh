@@ -12,9 +12,10 @@ DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_app.L3App,dhcp_app.DHCPApp"
 
-# How to connect to ovsdb-server hosting the OVS databases.
+# How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
 REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
+REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
 NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
@@ -76,6 +77,7 @@ function configure_df_plugin {
         NEUTRON_CONF=/etc/neutron/neutron.conf
         iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
         iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
+        iniset $NEUTRON_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
@@ -104,6 +106,7 @@ function configure_df_plugin {
 
         iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
         iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
+        iniset $NEUTRON_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
