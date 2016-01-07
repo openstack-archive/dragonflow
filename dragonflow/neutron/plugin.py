@@ -27,6 +27,7 @@ from neutron.api.rpc.handlers import l3_rpc
 from neutron.api.rpc.handlers import metadata_rpc
 from neutron.api.v2 import attributes as attr
 from neutron.callbacks import events
+from neutron.callbacks import exceptions
 from neutron.callbacks import registry
 from neutron.callbacks import resources
 from neutron.common import exceptions as n_exc
@@ -456,7 +457,27 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         return port
 
+    def _pre_delete_port(self, context, port_id, port_check):
+        """Do some preliminary operations before deleting the port."""
+        LOG.debug("Deleting port %s", port_id)
+        try:
+            # notify interested parties of imminent port deletion;
+            # a failure here prevents the operation from happening
+            kwargs = {
+                'context': context,
+                'port_id': port_id,
+                'port_check': port_check
+            }
+            self.
+            registry.notify(
+                resources.PORT, events.BEFORE_DELETE, self, **kwargs)
+        except exceptions.CallbackFailure as e:
+            if len(e.errors) == 1:
+                raise e.errors[0].error
+            raise n_exc.ServicePortInUse(port_id=port_id, reason=e)
+
     def delete_port(self, context, port_id, l3_port_check=True):
+        self._pre_delete_port(context, port_id, l3_port_check)
         try:
             self.nb_api.delete_lport(port_id)
         except df_exceptions.DBKeyNotFound:
