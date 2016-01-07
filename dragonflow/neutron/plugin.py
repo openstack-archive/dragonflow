@@ -579,7 +579,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def _get_ip_from_port(self, port):
         """Get The first Ip address from the port.
 
-        Returns the fisrt fixed_ip address for port
+        Returns the first fixed_ip address for a port
         """
         if not port:
             return None
