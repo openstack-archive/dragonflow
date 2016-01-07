@@ -12,6 +12,7 @@
 
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
+from neutronclient.common import exceptions as n_exc
 
 
 class TestNeutronAPIandDB(test_base.DFTestBase):
@@ -97,6 +98,43 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertIsNone(port2)
         network.delete()
         self.assertFalse(network.exists())
+
+    def test_delete_router_interface_port(self):
+        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network_id = network.create(network={'name': 'test_net',
+                                             'admin_state_up': True
+                                             })
+        self.assertTrue(network.exists())
+        subnet = {'subnets': [{'cidr': '91.126.188.0/24',
+                  'ip_version': 4, 'network_id': network_id}]}
+        subnet = self.neutron.create_subnet(body=subnet)
+        router_id = router.create()
+        self.assertTrue(router.exists())
+        interface_msg = {'subnet_id': subnet['subnets'][0]['id']}
+        router_l = self.neutron.add_interface_router(router_id,
+                                                     body=interface_msg)
+        routers = self.nb_api.get_routers()
+        router2 = None
+        for r in routers:
+            if r.get_name() == router_l['id']:
+                router2 = r
+                break
+        self.assertIsNotNone(router2)
+        interface_port = self.neutron.show_port(router_l['port_id'])
+        self.assertRaises(n_exc.Conflict, self.neutron.delete_port,
+                          interface_port['port']['id'])
+        self.assertIsNotNone(self.nb_api.
+                             get_logical_port(interface_port['port']['id']))
+        self.neutron.remove_interface_router(router.router_id,
+                                             body=interface_msg)
+        port2 = self.nb_api.get_logical_port(interface_port['port']['id'])
+        self.assertIsNone(port2)
+        router.delete()
+        network.delete()
+        self.assertFalse(router.exists())
+        self.assertFalse(network.exists())
+
 
 '''
 The following tests are for list networks/routers/ports/subnets API.

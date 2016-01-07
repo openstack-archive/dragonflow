@@ -33,6 +33,8 @@ class RouterTestWrapper(object):
         ports = self.neutron.list_ports(device_id=self.router_id)
         ports = ports['ports']
         for port in ports:
+            if port['device_owner'] == 'network:router_interface':
+                continue
             self.neutron.delete_port(port['id'])
         self.neutron.delete_router(self.router_id)
         self.deleted = True
