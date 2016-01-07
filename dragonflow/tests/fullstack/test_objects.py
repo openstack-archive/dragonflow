@@ -64,11 +64,6 @@ class NetworkTestWrapper(object):
         self.delete()
 
     def delete(self):
-        subnets = self.neutron.list_subnets(device_id=self.network_id)
-        subnets = subnets['subnets']
-        #for subnet in subnets:
-        #print("delete sub-network", subnet['id'], subnet)
-        #self.neutron.delete_subnet( subnet['id'] )
         self.neutron.delete_network(self.network_id)
         self.deleted = True
 

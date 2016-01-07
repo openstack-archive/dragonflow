@@ -10,50 +10,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os_client_config
-from oslo_config import cfg
-from oslo_utils import importutils
-
-from neutron.agent.common import utils
-from neutron.common import config as common_config
-from neutron.tests import base
-from neutronclient.neutron import client
-
-from dragonflow.common import common_params
-from dragonflow.db import api_nb
-import test_objects as objects
-
-cfg.CONF.register_opts(common_params.df_opts, 'df')
-
-EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK = 26
+from dragonflow.tests.fullstack import test_base
+from dragonflow.tests.fullstack import test_objects as objects
 
 
-def get_cloud_config(cloud='devstack-admin'):
-    return os_client_config.OpenStackConfig().get_one_cloud(cloud=cloud)
-
-
-def credentials(cloud='devstack-admin'):
-    """Retrieves credentials to run functional tests"""
-    return get_cloud_config(cloud=cloud).get_auth_args()
-
-
-class TestNeutronAPIandDB(base.BaseTestCase):
+class TestNeutronAPIandDB(test_base.DFTestBase):
 
     def setUp(self):
         super(TestNeutronAPIandDB, self).setUp()
-        creds = credentials()
-        tenant_name = creds['project_name']
-        auth_url = creds['auth_url'] + "/v2.0"
-        self.neutron = client.Client('2.0', username=creds['username'],
-             password=creds['password'], auth_url=auth_url,
-             tenant_name=tenant_name)
-        self.neutron.format = 'json'
-        common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
-
-        db_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
-        self.nb_api = api_nb.NbApi(db_driver_class())
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-            db_port=cfg.CONF.df.remote_db_port)
 
     def test_create_network(self):
         network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
@@ -133,34 +97,6 @@ class TestNeutronAPIandDB(base.BaseTestCase):
         self.assertIsNone(port2)
         network.delete()
         self.assertFalse(network.exists())
-
-    def _get_ovs_flows(self):
-        full_args = ["ovs-ofctl", "dump-flows", 'br-int', '-O Openflow13']
-        flows = utils.execute(full_args, run_as_root=True,
-                              process_input=None)
-        return flows
-
-    def test_number_of_flows(self):
-        flows = self._get_ovs_flows()
-        flow_list = flows.split("\n")[1:]
-        flows_count = len(flow_list) - 1
-        self.assertEqual(flows_count,
-                         EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK)
-
-    def _parse_ovs_flows(self):
-        flows = self._get_ovs_flows()
-        flow_list = flows.split("\n")[1:]
-        flows_as_dicts = []
-        for flow in flow_list:
-            fs = flow.split(' ')
-            res = {}
-            res['table'] = fs[3].split('=')[1]
-            res['match'] = fs[6]
-            res['packets'] = fs[4].split('=')[1]
-            res['actions'] = fs[7].split('=')[1]
-            res['cookie'] = fs[1].split('=')[1]
-            flows_as_dicts.append(res)
-        return flows_as_dicts
 
 '''
 The following tests are for list networks/routers/ports/subnets API.
