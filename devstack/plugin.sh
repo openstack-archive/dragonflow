@@ -137,6 +137,20 @@ function init_ovs {
     ovsdb-tool create $base_dir/conf.db $DEST/$OVS_REPO_NAME/vswitchd/vswitch.ovsschema
 }
 
+function install_zeromq {
+    if is_fedora; then
+        install_package zeromq python-zmq
+    elif is_ubuntu; then
+        install_package libzmq1 python-zmq
+    elif is_suse; then
+        install_package libzmq1 python-pyzmq
+    fi
+    # Necessary directory for socket location.
+    sudo mkdir -p /var/run/openstack
+    sudo chown $STACK_USER /var/run/openstack
+}
+
+
 function install_nanomsg {
 
    local _pwd=$(pwd)
@@ -166,6 +180,8 @@ function install_df {
     sed -i "/^TOP_DIR=/cTOP_DIR=$TOP_DIR" $DEST/dragonflow/devstack/df-ext-services.sh
 
     install_nanomsg
+
+    install_zeromq
 
     nb_db_driver_install_server
 
