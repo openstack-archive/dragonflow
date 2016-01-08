@@ -496,7 +496,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             interface_info)
         if add_by_sub:
             subnet = self.get_subnet(context, interface_info['subnet_id'])
-            port = {'port': {'network_id': subnet['network_id'], 'name': '',
+            port = {'port': {'tenant_id': context.tenant_id,
+                             'network_id': subnet['network_id'], 'name': '',
                              'admin_state_up': True, 'device_id': '',
                              'device_owner': l3_db.DEVICE_OWNER_ROUTER_INTF,
                              'mac_address': attr.ATTR_NOT_SPECIFIED,
@@ -548,7 +549,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         If an expected failure occurs, a None port is returned.
 
         """
-        port = {'port': {'network_id': subnet['network_id'], 'name': '',
+        port = {'port': {'tenant_id': context.tenant_id,
+                         'network_id': subnet['network_id'], 'name': '',
                          'binding:host_id': (
                              df_common_const.DRAGONFLOW_VIRTUAL_PORT),
                          'admin_state_up': True, 'device_id': '',
