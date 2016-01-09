@@ -150,36 +150,10 @@ function install_zeromq {
     sudo chown $STACK_USER /var/run/openstack
 }
 
-
-function install_nanomsg {
-
-   local _pwd=$(pwd)
-
-   if [ ! -d "$DEST/nanomsg" ]; then
-      mkdir $DEST/nanomsg
-      wget https://github.com/nanomsg/nanomsg/releases/download/0.8-beta/nanomsg-0.8-beta.tar.gz -O $DEST/nanomsg/nanomsg-0.8-beta.tar.gz
-      tar xzvf $DEST/nanomsg/nanomsg-0.8-beta.tar.gz -C $DEST/nanomsg
-      cd $DEST/nanomsg/nanomsg-0.8-beta/
-      ./configure
-      make
-      sudo make install
-
-      if [ -f "/usr/local/lib/libnanomsg.so" ]; then
-         sudo cp /usr/local/lib/libnanomsg.so /usr/lib/.
-      fi
-
-      sudo pip install -I git+git://github.com/tonysimpson/nanomsg-python.git
-   fi
-
-   cd $_pwd
-}
-
 function install_df {
 
     # Obtain devstack directory for df-ext-services.sh
     sed -i "/^TOP_DIR=/cTOP_DIR=$TOP_DIR" $DEST/dragonflow/devstack/df-ext-services.sh
-
-    install_nanomsg
 
     install_zeromq
 
