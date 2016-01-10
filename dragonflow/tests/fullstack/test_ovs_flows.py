@@ -10,11 +10,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.agent.common import utils
-
 from dragonflow.tests.fullstack import test_base
+from dragonflow.tests.fullstack import test_objects as objects
+from neutron.agent.common import utils
+import re
+import time
 
 EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK = 26
+DEFAULT_CMD_TIMEOUT = 5
 
 
 class TestOVSFlows(test_base.DFTestBase):
@@ -28,24 +31,192 @@ class TestOVSFlows(test_base.DFTestBase):
                               process_input=None)
         return flows
 
-    def test_number_of_flows(self):
-        flows = self._get_ovs_flows()
-        flow_list = flows.split("\n")[1:]
-        flows_count = len(flow_list) - 1
-        self.assertEqual(flows_count,
-                         EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK)
+#    def test_number_of_flows(self):
+#        flows = self._get_ovs_flows()
+#        flow_list = flows.split("\n")[1:]
+#        flows_count = len(flow_list) - 1
+#        self.assertEqual(flows_count,
+#                         EXPECTED_NUMBER_OF_FLOWS_AFTER_GATE_DEVSTACK)
 
-    def _parse_ovs_flows(self):
-        flows = self._get_ovs_flows()
+    def _parse_ovs_flows(self, flows):
         flow_list = flows.split("\n")[1:]
         flows_as_dicts = []
         for flow in flow_list:
+            if len(flow) == 0:
+                continue
             fs = flow.split(' ')
             res = {}
             res['table'] = fs[3].split('=')[1]
-            res['match'] = fs[6]
-            res['packets'] = fs[4].split('=')[1]
-            res['actions'] = fs[7].split('=')[1]
+            res['match'] = fs[-2]
+            # no need for number of packets for now
+            #res['packets'] = fs[4].split('=')[1]
+            res['actions'] = fs[-1].split('=')[1]
             res['cookie'] = fs[1].split('=')[1]
+            m = re.search('priority=(\d+)', res['match'])
+            if m:
+                res['priority'] = m.group(1)
+                res['match'] = re.sub(r'priority=(\d+),?', '', res['match'])
             flows_as_dicts.append(res)
         return flows_as_dicts
+
+    def _diff_flows(self, list1, list2):
+        result = [v for v in list2 if v not in list1]
+        return result
+
+    def get_ovs_flows(self):
+        flows = self._get_ovs_flows()
+        return self._parse_ovs_flows(flows)
+
+    def test_create_delete_network(self):
+        flows1 = self.get_ovs_flows()
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network.create()
+        flows2 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows2)
+        # nothing should be changed on not-attached port creation
+        self.assertEqual(diff, [])
+        network.delete()
+        flows3 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows3)
+        # nothing should be changed when port is delated
+        self.assertEqual(diff, [])
+
+    def test_create_delete_router(self):
+        flows1 = self.get_ovs_flows()
+        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
+        router.create()
+        flows2 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows2)
+        self.assertEqual(diff, [])
+        router.delete()
+        flows3 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows3)
+        self.assertEqual(diff, [])
+
+    def test_create_port(self):
+        flows1 = self.get_ovs_flows()
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network_id = network.create()
+        self.assertTrue(network.exists())
+        port = {'admin_state_up': True, 'name': 'port1',
+                'network_id': network_id}
+        port = self.neutron.create_port(body={'port': port})
+        flows2 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows2)
+        self.assertEqual(diff, [])
+        self.neutron.delete_port(port['port']['id'])
+        network.delete()
+        flows3 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows3)
+        self.assertEqual(diff, [])
+
+    def test_dhcp_port_created(self):
+        flows1 = self.get_ovs_flows()
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network_id = network.create()
+        subnet = {'network_id': network_id,
+            'cidr': '10.1.0.0/24',
+            'gateway_ip': '10.1.0.1',
+            'ip_version': 4,
+            'name': 'subnet-test',
+            'enable_dhcp': True}
+        self.neutron.create_subnet({'subnet': subnet})
+        time.sleep(DEFAULT_CMD_TIMEOUT)
+        flows2 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows2)
+        # we must have only one new row
+        self.assertEqual(len(diff), 1)
+        diff = diff[0]
+        self.assertEqual(diff['table'], '9,')
+        self.assertEqual(diff['actions'], 'goto_table:11')
+        self.assertIn('nw_dst=10.1.0.2', diff['match'])
+        network.delete()
+        time.sleep(DEFAULT_CMD_TIMEOUT)
+        flows3 = self.get_ovs_flows()
+        self.assertEqual(flows1, flows3)
+
+    def test_create_router_interface(self):
+        flows1 = self.get_ovs_flows()
+        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network_id = network.create()
+        subnet = {'subnets': [{'cidr': '192.168.199.0/24',
+                  'ip_version': 4, 'network_id': network_id}]}
+        subnets = self.neutron.create_subnet(body=subnet)
+        subnet = subnets['subnets'][0]
+        router_id = router.create()
+        self.assertTrue(router.exists())
+        subnet_msg = {'subnet_id': subnet['id']}
+        self.neutron.add_interface_router(router_id, body=subnet_msg)
+        time.sleep(DEFAULT_CMD_TIMEOUT)
+        flows2 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows2)
+        self.assertEqual(len(diff), 3)
+        self.assertEqual([diff[0]['table'], diff[1]['table'],
+                   diff[2]['table']], ['9,', '10,', '20,'])
+        self.assertIn('tp_src=68,tp_dst=67', diff[0]['match'])
+        self.assertIn('arp', diff[1]['match'])
+        self.assertIn('nw_dst=192.168.199.1', diff[2]['match'])
+        self.assertEqual(['goto_table:11', 'goto_table:64'],
+                   [diff[0]['actions'], diff[2]['actions']])
+        self.assertIn('IN_PORT', diff[1]['actions'])
+        self.neutron.remove_interface_router(router_id, body=subnet_msg)
+        router.delete()
+        network.delete()
+        time.sleep(DEFAULT_CMD_TIMEOUT)
+        flows3 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows3)
+        self.assertEqual(diff, [])
+
+    def test_simple_private_vm(self):
+        flows1 = self.get_ovs_flows()
+        vm = objects.VMTestWrapper(self)
+        vm.create()
+        self.assertTrue(vm.exists())
+        time.sleep(DEFAULT_CMD_TIMEOUT)
+        #print("xxxxxxxxxxxxxxxxxxxxxxxxxxx")
+        #print(vm.dump())
+        #vm.shell()
+        flows2 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows2)
+        self.assertEqual(len(diff), 6)
+        self.assertEqual([diff[0]['table'], diff[1]['table'],
+                          diff[2]['table'], diff[3]['table'],
+                          diff[4]['table'], diff[5]['table']],
+                         ['0,', '0,', '11,', '17,', '17,', '64,'])
+        self.assertIn('reg7=', diff[5]['match'])
+        self.assertIn('output:', diff[5]['actions'])
+        m = re.search('reg7=(0x[0-9a-fA-F]+)', diff[5]['match'])
+        tunnel_id = m.group(1)
+        m = re.search('output:(\d+)', diff[5]['actions'])
+        vm_port_id = m.group(1)
+        self.assertIn('in_port=' + vm_port_id, diff[0]['match'])
+        self.assertIn('set_field:' + tunnel_id + '->reg6', diff[0]['actions'])
+        self.assertIn('tun_id=' + tunnel_id, diff[1]['match'])
+        self.assertIn('output:' + vm_port_id, diff[1]['actions'])
+        self.assertIn('in_port=' + vm_port_id, diff[2]['match'])
+        self.assertIn('CONTROLLER:', diff[2]['actions'])
+        self.assertIn('set_field:' + tunnel_id + '->reg7,goto_table:64',
+                      diff[3]['actions'])
+        self.assertIn('dl_dst=01:00:00:00:00:00/01:00:00:00:00:00',
+                      diff[4]['match'])
+        self.assertIn('set_field:' + tunnel_id + '->reg7,resubmit(,64)',
+                      diff[4]['actions'])
+        #for d in diff:
+        #    print d
+        vm.delete()
+        time.sleep(DEFAULT_CMD_TIMEOUT * 2)
+        flows3 = self.get_ovs_flows()
+        diff = self._diff_flows(flows1, flows3)
+        self.assertEqual(diff, [])
+
+    def test_vm_ping(self):
+        vm = objects.VMTestWrapper(self)
+        cmd = "#!/bin/bash\n"
+        cmd = cmd + "echo 'Hello World'\n"
+        cmd = cmd + "ping 10.0.0.1\n"
+        cmd = cmd + "exit 0\n"
+        vm.create(cmd)
+        self.assertTrue(vm.exists())
+        time.sleep(DEFAULT_CMD_TIMEOUT)
+        vm.delete()
