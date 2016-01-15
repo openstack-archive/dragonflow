@@ -35,6 +35,7 @@ Spec Template
     skeleton
     template
     distributed_dnat
+    keep_db_consistency
 
 
 Indices and tables
