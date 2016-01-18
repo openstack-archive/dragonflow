@@ -105,7 +105,8 @@ def main():
     db_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
     db_driver = db_driver_class()
     db_driver.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                         db_port=cfg.CONF.df.remote_db_port)
+                         db_port=cfg.CONF.df.remote_db_port,
+                         config=cfg.CONF.df)
 
     action = sys.argv[1]
 
