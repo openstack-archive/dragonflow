@@ -456,7 +456,31 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         return port
 
+    def _pre_delete_port(self, context, port_id, port_check):
+        """Do some preliminary operations before deleting the port."""
+        LOG.debug("Deleting port %s", port_id)
+        if not port_check:
+            return
+        try:
+            port = self.get_port(context, port_id)
+        except n_exc.PortNotFound:
+            return
+        if port['device_owner'] in ['network:router_interface',
+                                    'network:router_gateway',
+                                    'network:floatingip']:
+            fixed_ips = port['fixed_ips']
+            if fixed_ips:
+                reason = _('has device owner %s') % port['device_owner']
+                raise n_exc.ServicePortInUse(port_id=port['id'],
+                                             reason=reason)
+            else:
+                LOG.debug("Port %(port_id)s has owner %(port_owner)s, but "
+                          "no IP address, so it can be deleted",
+                          {'port_id': port['id'],
+                           'port_owner': port['device_owner']})
+
     def delete_port(self, context, port_id, l3_port_check=True):
+        self._pre_delete_port(context, port_id, l3_port_check)
         try:
             self.nb_api.delete_lport(port_id)
         except df_exceptions.DBKeyNotFound:
