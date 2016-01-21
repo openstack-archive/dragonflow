@@ -398,27 +398,11 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
 
         git_clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
 
-        if is_service_enabled q-df-l3; then
-            echo "Cloning and installing Ryu"
-            git_clone $RYU_REPO $RYU_DIR $RYU_BRANCH
-            # Don't use setup_develop, which is for openstack global requirement
-            # compatible projects, and Ryu is not.
-            pushd $RYU_DIR
-            setup_package ./ -e
-            popd
-            echo "Finished installing Ryu"
-        fi
 
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         echo_summary "Configure DragonFlow"
 
-        if is_service_enabled q-df-l3; then
-            _configure_neutron_l3_agent
-        fi
 
-        iniset $NEUTRON_CONF DEFAULT L3controller_ip_list $Q_DF_CONTROLLER_IP
-        iniset /$Q_PLUGIN_CONF_FILE agent enable_l3_controller "True"
-        iniset /$Q_PLUGIN_CONF_FILE agent L3controller_ip_list $Q_DF_CONTROLLER_IP
 
         echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR >> $RC_DIR/.localrc.auto
 
@@ -435,15 +419,9 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         echo_summary "Initializing DragonFlow"
 
-        if is_service_enabled q-df-l3; then
-            run_process q-df-l3 "python $DF_L3_AGENT --config-file $NEUTRON_CONF --config-file=$Q_L3_CONF_FILE"
-        fi
     fi
 
     if [[ "$1" == "unstack" ]]; then
-
-        if is_service_enabled q-df-l3; then
-            stop_process q-df-l3
-        fi
+        echo_summary "Unstack DragonFlow"
     fi
 fi
