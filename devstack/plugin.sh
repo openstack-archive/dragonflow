@@ -164,15 +164,6 @@ function install_df {
     #echo_summary "Installing DragonFlow"
     #git clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
     setup_package $DRAGONFLOW_DIR
-
-    if [ ! -d $RYU_DIR ] ; then
-        echo "Cloning and installing Ryu"
-        git clone $RYU_REPO $RYU_DIR
-        pushd $RYU_DIR
-        setup_package ./ -e
-        popd
-        echo "Finished installing Ryu"
-    fi
 }
 
 # install_ovs() - Collect source and prepare
@@ -360,14 +351,24 @@ function disable_libvirt_apparmor {
     sudo aa-complain /etc/apparmor.d/usr.sbin.libvirtd
 }
 
+function verify_ryu_version {
+    # Verify ryu is installed. Version greater than 3.29. Does not return
+    # on failure.
+    RYU_VER=`ryu --version 2>&1 | head -n 1 | cut -d' ' -f2`
+    if [ `vercmp_numbers "$RYU_VER" "3.29.1"` -lt 0 ]; then
+        die $LINENO "ryu version $RYU_VER too low. Version 3.29.1+ is required for Dragonflow."
+    fi
+}
+
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
+    verify_ryu_version
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
         if [[ "$OFFLINE" != "True" ]]; then
             install_df
             install_ovs
         fi
-        echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR >> $RC_DIR/.localrc.auto
+        echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR >> $RC_DIR/.localrc.auto
         init_ovs
         # We have to start at install time, because Neutron's post-config
         # phase runs ovs-vsctl.
@@ -398,17 +399,6 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
 
         git_clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
 
-        if is_service_enabled q-df-l3; then
-            echo "Cloning and installing Ryu"
-            git_clone $RYU_REPO $RYU_DIR $RYU_BRANCH
-            # Don't use setup_develop, which is for openstack global requirement
-            # compatible projects, and Ryu is not.
-            pushd $RYU_DIR
-            setup_package ./ -e
-            popd
-            echo "Finished installing Ryu"
-        fi
-
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         echo_summary "Configure DragonFlow"
 
@@ -420,7 +410,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW" == "True" ]]; then
         iniset /$Q_PLUGIN_CONF_FILE agent enable_l3_controller "True"
         iniset /$Q_PLUGIN_CONF_FILE agent L3controller_ip_list $Q_DF_CONTROLLER_IP
 
-        echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR >> $RC_DIR/.localrc.auto
+        echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR >> $RC_DIR/.localrc.auto
 
         OVS_VERSION=`ovs-vsctl --version | head -n 1 | grep -E -o "[0-9]+\.[0-9]+\.[0-9]"`
         if [ `vercmp_numbers "$OVS_VERSION" "2.3.1"` -lt "0" ] && is_service_enabled q-agt ; then
