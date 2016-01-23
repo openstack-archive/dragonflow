@@ -88,6 +88,17 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
 
         return port_ids
 
+    def get_local_port_id_from_name(self, name):
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        for port in br_int.ports:
+            if port.name != name:
+                continue
+            for interface in port.interfaces:
+                if 'iface-id' in interface.external_ids:
+                    return interface.external_ids['iface-id']
+
+        return None
+
     def get_local_ports_to_ofport_mapping(self):
         lport_to_ofport = {}
         chassis_to_ofport = {}

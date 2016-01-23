@@ -48,6 +48,7 @@ class L2App(DFlowApp):
         self.dp = None
         self.local_networks = {}
         self.db_store = kwargs['db_store']
+        self.vswitch_api = kwargs['vswitch_api']
 
     def start(self):
         super(L2App, self).start()
@@ -87,17 +88,20 @@ class L2App(DFlowApp):
         reason = msg.reason
         port_no = msg.desc.port_no
         port_name = msg.desc.name
-
         ofproto = msg.datapath.ofproto
         if reason == ofproto.OFPPR_ADD:
             LOG.info(_LI("port added %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
+            port_id = self.vswitch_api.get_local_port_id_from_name(port_name)
+            lport = self.db_store.get_port(port_id)
             if lport:
                 lport.set_external_value('ofport', port_no)
+                lport.set_external_value('is_local', True)
                 self.add_local_port(lport)
+                self.db_store.set_port(lport.get_id(), lport, True)
         elif reason == ofproto.OFPPR_DELETE:
             LOG.info(_LI("port deleted %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
+            port_id = self.vswitch_api.get_local_port_id_from_name(port_name)
+            lport = self.db_store.get_port(port_id)
             if lport:
                 self.remove_local_port(lport)
                 # Leave the last correct OF port number of this port
