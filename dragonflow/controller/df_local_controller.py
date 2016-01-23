@@ -53,8 +53,12 @@ class DfLocalController(object):
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
         self.sync_finished = False
+        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
+        self.vswitch_api.initialize()
+
         kwargs = dict(
-            db_store=self.db_store
+            db_store=self.db_store,
+            vswitch_api=self.vswitch_api
         )
         self.dispatcher = dispatcher.AppDispatcher('dragonflow.controller',
                                                    cfg.CONF.df.apps_list,
@@ -65,8 +69,6 @@ class DfLocalController(object):
         self.nb_api = api_nb.NbApi(nb_driver_class())
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
-        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
-        self.vswitch_api.initialize()
 
         self.vswitch_api.sync()
         self.vswitch_api.del_controller('br-int').execute()

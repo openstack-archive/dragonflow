@@ -66,6 +66,7 @@ class DHCPApp(DFlowApp):
         self.idle_timeout = 30
         self.hard_timeout = 0
         self.db_store = kwargs['db_store']
+        self.vswitch_api = kwargs['vswitch_api']
 
         cfg.CONF.register_opts(DF_DHCP_OPTS)
         cfg.CONF.register_opts(common_config.core_opts)
@@ -100,13 +101,16 @@ class DHCPApp(DFlowApp):
         ofproto = msg.datapath.ofproto
         if reason == ofproto.OFPPR_ADD:
             LOG.info(_LI("port added %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
+            port_id = self.vswitch_api.get_local_port_id_from_name(port_name)
+            lport = self.db_store.get_port(port_id)
             if lport:
                 lport.set_external_value('ofport', port_no)
+                lport.set_external_value('is_local', True)
                 self.add_local_port(lport)
         elif reason == ofproto.OFPPR_DELETE:
             LOG.info(_LI("port deleted %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
+            port_id = self.vswitch_api.get_local_port_id_from_name(port_name)
+            lport = self.db_store.get_local_port_by_name(port_id)
             if lport:
                 self.remove_local_port(lport)
                 # Leave the last correct OF port number of this port

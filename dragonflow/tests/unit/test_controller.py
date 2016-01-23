@@ -19,6 +19,7 @@ from neutron.tests import base as tests_base
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import dispatcher
 from dragonflow.db import db_store
+from dragonflow.db.drivers import ovsdb_vswitch_impl
 
 
 class TestDfController(tests_base.BaseTestCase):
@@ -28,9 +29,9 @@ class TestDfController(tests_base.BaseTestCase):
         dispatcher.AppDispatcher = mock.Mock()
         db_store.DbStore = mock.Mock()
         cfg.CONF = mock.Mock()
+        ovsdb_vswitch_impl.OvsdbSwitchApi = mock.Mock()
         self.controller = df_local_controller.DfLocalController('fakechassis')
         self.controller.nb_api = mock.Mock()
-        self.controller.vswitch_api = mock.Mock()
 
     def test_something(self):
         pass
