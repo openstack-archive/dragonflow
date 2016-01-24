@@ -99,7 +99,7 @@ You can find example configuration files in the multi-node-conf or the single-no
  Automated setup using Vagrant + Virtualbox
 ============================================
 
-`Vagrant Installation Guide <https://github.com/openstack/dragonflow/tree/master/doc/source/installation.rst>`_
+`Vagrant Installation Guide <http://docs.openstack.org/developer/dragonflow/installation.html>`_
 
 Troubleshooting
 ----------------
