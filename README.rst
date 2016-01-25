@@ -39,15 +39,3 @@ Overview and details are available in the `Distributed Dragonflow Section`_
     :width: 600
     :height: 525
     :align: center
-
-
-Centralized Dragonflow
-======================
-
-An implementation of a fully distributed virtual router, which replaces
-DVR and can work with any ML2 mechanism and type drivers.
-
-Overview and details are available in the `Centralized Dragonflow Section`_
-
-.. _Centralized Dragonflow Section: http://docs.openstack.org/developer/dragonflow/centralized_dragonflow.html
-
