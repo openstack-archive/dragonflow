@@ -13,23 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log
-
 from neutron.common import constants as common_const
-from neutron.i18n import _LI
 
-from ryu.controller.handler import CONFIG_DISPATCHER
-from ryu.controller.handler import MAIN_DISPATCHER
-from ryu.controller.handler import set_ev_cls
-from ryu.controller import ofp_event
 from ryu.lib.mac import haddr_to_bin
-from ryu.ofproto import ofproto_v1_3
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
-
-
-LOG = log.getLogger(__name__)
 
 # TODO(gsagie) currently the number set in Ryu for this
 # (OFPP_IN_PORT) is not working, use this until resolved
@@ -40,76 +29,28 @@ OF_IN_PORT = 0xfff8
 
 
 class L2App(DFlowApp):
-    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
-    BASE_RPC_API_VERSION = '1.0'
 
     def __init__(self, *args, **kwargs):
         super(L2App, self).__init__(*args, **kwargs)
-        self.dp = None
         self.local_networks = {}
-        self.db_store = kwargs['db_store']
 
-    def start(self):
-        super(L2App, self).start()
-        return 1
-
-    def is_ready(self):
-        return self.dp is not None
-
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
-        self.dp = ev.msg.datapath
         self.add_flow_go_to_table(self.dp,
-                                  const.SERVICES_CLASSIFICATION_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.L2_LOOKUP_TABLE)
-        self.add_flow_go_to_table(self.dp, const.ARP_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.L2_LOOKUP_TABLE)
+                const.SERVICES_CLASSIFICATION_TABLE,
+                const.PRIORITY_DEFAULT,
+                const.L2_LOOKUP_TABLE)
+        self.add_flow_go_to_table(self.dp,
+                const.ARP_TABLE,
+                const.PRIORITY_DEFAULT,
+                const.L2_LOOKUP_TABLE)
 
         # ARP traffic => send to ARP table
         match = self.dp.ofproto_parser.OFPMatch(eth_type=0x0806)
         self.add_flow_go_to_table(self.dp,
-                                  const.SERVICES_CLASSIFICATION_TABLE,
-                                  const.PRIORITY_MEDIUM,
-                                  const.ARP_TABLE, match=match)
+                const.SERVICES_CLASSIFICATION_TABLE,
+                const.PRIORITY_MEDIUM,
+                const.ARP_TABLE, match=match)
         self._install_flows_on_switch_up()
-        self.send_port_desc_stats_request(self.dp)
-
-    def send_port_desc_stats_request(self, datapath):
-        ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
-        datapath.send_msg(req)
-
-    @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
-    def _port_status_handler(self, ev):
-        msg = ev.msg
-        reason = msg.reason
-        port_no = msg.desc.port_no
-        port_name = msg.desc.name
-
-        ofproto = msg.datapath.ofproto
-        if reason == ofproto.OFPPR_ADD:
-            LOG.info(_LI("port added %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
-            if lport:
-                lport.set_external_value('ofport', port_no)
-                self.add_local_port(lport)
-        elif reason == ofproto.OFPPR_DELETE:
-            LOG.info(_LI("port deleted %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
-            if lport:
-                self.remove_local_port(lport)
-                # Leave the last correct OF port number of this port
-        elif reason == ofproto.OFPPR_MODIFY:
-            LOG.info(_LI("port modified %s"), port_no)
-        else:
-            LOG.info(_LI("Illeagal port state %(port_no)s %(reason)s")
-                     % {'port_no': port_no, 'reason': reason})
-
-    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
-    def port_desc_stats_reply_handler(self, ev):
-        pass
 
     def remove_local_port(self, lport):
 
