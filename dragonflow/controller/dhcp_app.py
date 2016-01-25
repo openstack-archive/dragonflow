@@ -22,10 +22,6 @@ from oslo_log import log
 from neutron.common import config as common_config
 from neutron.i18n import _, _LI, _LE, _LW
 
-from ryu.controller.handler import CONFIG_DISPATCHER
-from ryu.controller.handler import MAIN_DISPATCHER
-from ryu.controller.handler import set_ev_cls
-from ryu.controller import ofp_event
 from ryu.lib import addrconv
 from ryu.lib.packet import dhcp
 from ryu.lib.packet import ethernet
@@ -33,7 +29,6 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import packet as ryu_packet
 from ryu.lib.packet import udp
 from ryu.ofproto import ether
-from ryu.ofproto import ofproto_v1_3
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
@@ -57,15 +52,10 @@ DHCP_ACK = 5
 
 
 class DHCPApp(DFlowApp):
-    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
-    BASE_RPC_API_VERSION = '1.0'
-
     def __init__(self, *args, **kwargs):
         super(DHCPApp, self).__init__(*args, **kwargs)
-        self.dp = None
         self.idle_timeout = 30
         self.hard_timeout = 0
-        self.db_store = kwargs['db_store']
 
         cfg.CONF.register_opts(DF_DHCP_OPTS)
         cfg.CONF.register_opts(common_config.core_opts)
@@ -76,55 +66,15 @@ class DHCPApp(DFlowApp):
         self.default_interface_mtu = cfg.CONF.df_default_network_device_mtu
 
         self.local_tunnel_to_pid_map = {}
+        self.api.register_table_handler(const.DHCP_TABLE,
+                self.packet_in_handler)
 
-    def start(self):
-        super(DHCPApp, self).start()
-        return 1
-
-    def is_ready(self):
-        return self.dp is not None
-
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
-        self.dp = ev.msg.datapath
         self._install_flows_on_switch_up()
         # TODO(gampel) handle network changes
 
-    @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
-    def _port_status_handler(self, ev):
-        msg = ev.msg
-        reason = msg.reason
-        port_no = msg.desc.port_no
-        port_name = msg.desc.name
-
-        ofproto = msg.datapath.ofproto
-        if reason == ofproto.OFPPR_ADD:
-            LOG.info(_LI("port added %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
-            if lport:
-                lport.set_external_value('ofport', port_no)
-                self.add_local_port(lport)
-        elif reason == ofproto.OFPPR_DELETE:
-            LOG.info(_LI("port deleted %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
-            if lport:
-                self.remove_local_port(lport)
-                # Leave the last correct OF port number of this port
-        elif reason == ofproto.OFPPR_MODIFY:
-            LOG.info(_LI("port modified %s"), port_no)
-        else:
-            LOG.info(_LI("Illeagal port state %(port_no)s %(reason)s")
-                     % {'port_no': port_no, 'reason': reason})
-
-    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
-    def port_desc_stats_reply_handler(self, ev):
-        pass
-
-    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
-    def OF_packet_in_handler(self, event):
+    def packet_in_handler(self, event):
         msg = event.msg
-        if msg.table_id != const.DHCP_TABLE:
-            return
 
         pkt = ryu_packet.Packet(msg.data)
         is_pkt_ipv4 = pkt.get_protocol(ipv4.ipv4) is not None
@@ -132,7 +82,7 @@ class DHCPApp(DFlowApp):
         if is_pkt_ipv4:
             pkt_ip = pkt.get_protocol(ipv4.ipv4)
         else:
-            LOG.error(_LE("No support for none IpV4 protocol"))
+            LOG.error(_LE("No support for non IpV4 protocol"))
             return
 
         if pkt_ip is None:
@@ -410,7 +360,7 @@ class DHCPApp(DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def logical_switch_updated(self, lswitch):
+    def update_logical_switch(self, lswitch):
         subnets = lswitch.get_subnets()
         lswitch_id = lswitch.get_id()
         network_id = self.db_store.get_network_id(lswitch_id)
@@ -420,7 +370,7 @@ class DHCPApp(DFlowApp):
                 dhcp_addr = subnet.get_dhcp_server_address()
                 self._install_dhcp_unicast_match_flow(dhcp_addr, network_id)
 
-    def logical_switch_deleted(self, lswitch):
+    def remove_logical_switch(self, lswitch):
         network_id = self.db_store.get_network_id(lswitch.get_id())
         self._remove_dhcp_unicast_match_flow(network_id)
 
@@ -464,7 +414,7 @@ class DHCPApp(DFlowApp):
                                   const.L2_LOOKUP_TABLE)
 
         for lswitch in self.db_store.get_lswitchs():
-            self.logical_switch_updated(lswitch)
+            self.update_logical_switch(lswitch)
 
         for port in self.db_store.get_ports():
             if port.get_external_value('is_local'):

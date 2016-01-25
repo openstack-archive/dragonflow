@@ -17,51 +17,29 @@ from oslo_utils import importutils
 
 from neutron.i18n import _, _LE
 
-from ryu.base.app_manager import AppManager
-from ryu.controller.ofp_handler import OFPHandler
-
 LOG = log.getLogger(__name__)
 
 
 class AppDispatcher(object):
 
-    def __init__(self, apps_location_prefix, app_list, params):
+    def __init__(self, apps_location_prefix, app_list):
         self.apps_location_prefix = apps_location_prefix
         self.apps_list = app_list.split(',')
-        self.params = params
         self.apps = []
 
-    def load(self):
-        app_mgr = AppManager.get_instance()
-        self.open_flow_app = app_mgr.instantiate(OFPHandler, None, None)
-        self.open_flow_app.start()
-
+    def load(self, *args, **kwargs):
         for app in self.apps_list:
             app_class_name = self.apps_location_prefix + "." + app
             try:
                 app_class = importutils.import_class(app_class_name)
-                app = app_mgr.instantiate(app_class, None, **self.params)
-                app.start()
+                app = app_class(*args, **kwargs)
                 self.apps.append(app)
             except ImportError as e:
                 LOG.exception(_LE("Error loading application by class, %s"), e)
                 raise ImportError(_("Application class not found."))
 
-    def dispatch(self, method, **args):
+    def dispatch(self, method, *args, **kwargs):
         for app in self.apps:
             handler = getattr(app, method, None)
             if handler is not None:
-                handler(**args)
-
-    def is_ready(self):
-        while not self._is_ready():
-            time.sleep(3)
-
-    def _is_ready(self):
-        for app in self.apps:
-            handler = getattr(app, 'is_ready')
-            if handler is not None:
-                is_ready = handler()
-                if not is_ready:
-                    return False
-        return True
+                handler(*args, **kwargs)
