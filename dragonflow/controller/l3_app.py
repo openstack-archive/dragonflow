@@ -15,52 +15,35 @@
 
 import netaddr
 
-from ryu.controller.handler import CONFIG_DISPATCHER
-from ryu.controller.handler import MAIN_DISPATCHER
-from ryu.controller.handler import set_ev_cls
-from ryu.controller import ofp_event
 from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
-from ryu.ofproto import ofproto_v1_3
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
 from oslo_log import log
 
-from neutron.i18n import _LI, _LE
+from neutron.i18n import _LE
 
 
 LOG = log.getLogger(__name__)
 
 
 class L3App(DFlowApp):
-    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
-    BASE_RPC_API_VERSION = '1.0'
-
     def __init__(self, *args, **kwargs):
         super(L3App, self).__init__(*args, **kwargs)
-        self.dp = None
         self.idle_timeout = 30
         self.hard_timeout = 0
-        self.db_store = kwargs['db_store']
+        self.api.register_table_handler(const.L3_LOOKUP_TABLE,
+                self.packet_in_handler)
 
-    def start(self):
-        super(L3App, self).start()
-        return 1
-
-    def is_ready(self):
-        return self.dp is not None
-
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
-        self.dp = ev.msg.datapath
-        self.send_port_desc_stats_request(self.dp)
-        self.add_flow_go_to_table(self.dp, const.L3_LOOKUP_TABLE,
+        self.add_flow_go_to_table(self.dp,
+                                  const.L3_LOOKUP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
         self._install_flows_on_switch_up()
@@ -133,38 +116,8 @@ class L3App(DFlowApp):
         req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
 
-    @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
-    def _port_status_handler(self, ev):
-        msg = ev.msg
-        reason = msg.reason
-        port_no = msg.desc.port_no
-        datapath = ev.msg.datapath
-
-        ofproto = msg.datapath.ofproto
-        if reason == ofproto.OFPPR_ADD:
-            LOG.info(_LI("port added %s"), port_no)
-        elif reason == ofproto.OFPPR_DELETE:
-            LOG.info(_LI("port deleted %s"), port_no)
-        elif reason == ofproto.OFPPR_MODIFY:
-            LOG.info(_LI("port modified %s"), port_no)
-        else:
-            LOG.info(_LI("Illeagal port state %(port_no)s %(reason)s")
-                     % {'port_no': port_no, 'reason': reason})
-        LOG.info(_LI(" Updating flow table on agents got port update "))
-        if self.dp:
-            self.send_port_desc_stats_request(datapath)
-            if reason == ofproto.OFPPR_DELETE:
-                pass
-
-    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
-    def port_desc_stats_reply_handler(self, ev):
-        pass
-
-    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
-    def OF_packet_in_handler(self, event):
+    def packet_in_handler(self, event):
         msg = event.msg
-        if msg.table_id != const.L3_LOOKUP_TABLE:
-            return
 
         pkt = packet.Packet(msg.data)
         is_pkt_ipv4 = pkt.get_protocol(ipv4.ipv4) is not None
@@ -253,7 +206,7 @@ class L3App(DFlowApp):
                                   in_port=in_port, actions=actions, data=data)
         self.dp.send_msg(out)
 
-    def add_new_router_port(self, router, router_port, local_network_id):
+    def add_router_port(self, router, router_port, local_network_id):
 
         if self.dp is None:
             return
@@ -356,7 +309,7 @@ class L3App(DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def delete_router_port(self, router_port, local_network_id):
+    def remove_router_port(self, router_port, local_network_id):
 
         parser = self.dp.ofproto_parser
         ofproto = self.dp.ofproto
@@ -401,5 +354,5 @@ class L3App(DFlowApp):
             for router_port in lrouter.get_ports():
                 local_network_id = self.db_store.get_network_id(
                     router_port.get_lswitch_id())
-                self.add_new_router_port(lrouter, router_port,
-                                         local_network_id)
+                self.add_router_port(lrouter, router_port,
+                        local_network_id)

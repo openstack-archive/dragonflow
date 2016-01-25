@@ -16,7 +16,6 @@
 import struct
 
 from dragonflow.controller.df_db_notifier import DBNotifyInterface
-from ryu.base import app_manager
 from ryu.lib import addrconv
 
 from oslo_log import log as logging
@@ -24,10 +23,24 @@ from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
 
-class DFlowApp(app_manager.RyuApp, DBNotifyInterface):
+class DFlowApp(DBNotifyInterface):
+    def __init__(self, api, db_store=None):
+        self.api = api
+        self.db_store = db_store
 
-    def __init__(self, *args, **kwargs):
-        super(DFlowApp, self).__init__(*args, **kwargs)
+    def getDatapath(self):
+        return self.api.datapath
+
+    @property
+    def dp(self):
+        # For backwards compatibility
+        return self.getDatapath()
+
+    def add_flow_go_to_table(self, datapath,
+            table, priority, goto_table_id, match=None):
+        inst = [datapath.ofproto_parser.OFPInstructionGotoTable(goto_table_id)]
+        self.mod_flow(datapath, inst=inst, table_id=table,
+                      priority=priority, match=match)
 
     def mod_flow(self, datapath, cookie=0, cookie_mask=0, table_id=0,
                  command=None, idle_timeout=0, hard_timeout=0,
@@ -71,6 +84,10 @@ class DFlowApp(app_manager.RyuApp, DBNotifyInterface):
 
         datapath.send_msg(message)
 
+    def send_packet(self, *args, **kwargs):
+        datapath = self.getDatapath()
+        self._send_packet(datapath, *args, **kwargs)
+
     def _send_packet(self, datapath, port, pkt):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -84,15 +101,17 @@ class DFlowApp(app_manager.RyuApp, DBNotifyInterface):
                                   data=data)
         datapath.send_msg(out)
 
+    def send_port_desc_stats_request(self):
+        self._send_port_desc_stats_request(self.datapath)
+
+    def _send_port_desc_stats_request(self, datapath):
+        ofp_parser = datapath.ofproto_parser
+        req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
+        datapath.send_msg(req)
+
+    # TODO(oanson) Move somewhere else
     def ipv4_text_to_int(self, ip_text):
         if ip_text == 0:
             return ip_text
         assert isinstance(ip_text, str)
         return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
-
-    def add_flow_go_to_table(self, datapath, table, priority,
-                             goto_table_id, match=None):
-        inst = [datapath.ofproto_parser.OFPInstructionGotoTable(
-            goto_table_id)]
-        self.mod_flow(datapath, inst=inst, table_id=table,
-                      priority=priority, match=match)
