@@ -29,10 +29,12 @@ from neutron.i18n import _LI, _LW
 
 from dragonflow.common import common_params
 from dragonflow.common import constants
-from dragonflow.controller import dispatcher
+from dragonflow.controller.ryu_base_app import RyuDFAdapter
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_vswitch_impl
+
+from ryu.base.app_manager import AppManager
 
 config.setup_logging()
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
@@ -56,9 +58,8 @@ class DfLocalController(object):
         kwargs = dict(
             db_store=self.db_store
         )
-        self.dispatcher = dispatcher.AppDispatcher('dragonflow.controller',
-                                                   cfg.CONF.df.apps_list,
-                                                   kwargs)
+        app_mgr = AppManager.get_instance()
+        self.open_flow_app = app_mgr.instantiate(RyuDFAdapter, **kwargs)
 
     def run(self):
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
@@ -73,9 +74,7 @@ class DfLocalController(object):
         self.vswitch_api.set_controllers(
             'br-int', ['tcp:' + self.ip + ':6633']).execute()
 
-        self.dispatcher.load()
-        self.dispatcher.is_ready()
-
+        self.open_flow_app.start()
         self.db_sync_loop()
 
     def db_sync_loop(self):
@@ -147,13 +146,12 @@ class DfLocalController(object):
             lswitch.__str__()}
         LOG.info(_LI("Adding/Updating Logical Switch = %s") % lswitch_conf)
         self.db_store.set_lswitch(lswitch.get_id(), lswitch)
-        self.dispatcher.dispatch('logical_switch_updated', lswitch=lswitch)
+        self.open_flow_app.notify_update_logical_switch(lswitch)
 
     def logical_switch_deleted(self, lswitch_id):
         lswitch = self.db_store.get_lswitch(lswitch_id)
         LOG.info(_LI("Removing Logical Switch = %s") % lswitch.__str__())
-        self.dispatcher.dispatch('logical_switch_deleted',
-                                 lswitch=lswitch)
+        self.open_flow_app.notify_remove_logical_switch(lswitch)
         self.db_store.del_lswitch(lswitch_id)
 
     def logical_port_updated(self, lport):
@@ -178,7 +176,7 @@ class DfLocalController(object):
                 lport.set_external_value('is_local', True)
                 LOG.info(_LI("Adding new local Logical Port = %s") %
                          lport.__str__())
-                self.dispatcher.dispatch('add_local_port', lport=lport)
+                self.open_flow_app.notify_add_local_port(lport)
                 self.db_store.set_port(lport.get_id(), lport, True)
             else:
                 LOG.info(_LI("Logical Local Port %s was not created yet ") %
@@ -191,7 +189,7 @@ class DfLocalController(object):
                 lport.set_external_value('is_local', False)
                 LOG.info(_LI("Adding new remote Logical Port = %s") %
                          lport.__str__())
-                self.dispatcher.dispatch('add_remote_port', lport=lport)
+                self.open_flow_app.notify_add_remote_port(lport)
                 self.db_store.set_port(lport.get_id(), lport, False)
             else:
                 #TODO(gampel) add handling for this use case
@@ -207,12 +205,12 @@ class DfLocalController(object):
         if lport.get_external_value('is_local'):
             LOG.info(_LI("Removing local Logical Port = %s") %
                      lport.__str__())
-            self.dispatcher.dispatch('remove_local_port', lport=lport)
+            self.open_flow_app.notify_remove_local_port(lport)
             self.db_store.delete_port(lport.get_id(), True)
         else:
             LOG.info(_LI("Removing remote Logical Port = %s") %
                      lport.__str__())
-            self.dispatcher.dispatch('remove_remote_port', lport=lport)
+            self.open_flow_app.notify_remove_remote_port(lport)
             self.db_store.delete_port(lport.get_id(), False)
 
     def router_updated(self, lrouter):
@@ -295,19 +293,17 @@ class DfLocalController(object):
         LOG.info(_LI("Adding new logical router interface = %s") %
                  router_port.__str__())
         local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id())
-        self.dispatcher.dispatch('add_new_router_port', router=router,
-                                 router_port=router_port,
-                                 local_network_id=local_network_id)
+                router_port.get_lswitch_id())
+        self.open_flow_app.notify_add_router_port(
+                router, router_port, local_network_id)
 
     def _delete_router_port(self, router_port):
         LOG.info(_LI("Removing logical router interface = %s") %
                  router_port.__str__())
         local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id())
-        self.dispatcher.dispatch('delete_router_port',
-                                 router_port=router_port,
-                                 local_network_id=local_network_id)
+                router_port.get_lswitch_id())
+        self.open_flow_app.notify_remove_router_port(
+                router_port, local_network_id)
 
     def _add_new_lrouter(self, lrouter):
         for new_port in lrouter.get_ports():
