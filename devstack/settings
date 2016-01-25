@@ -3,10 +3,6 @@ NETWORKING_OVN_REPO=${NETWORKING_OVN_REPO:-git://github.com/openstack/networking
 DRAGONFLOW_DIR=$DEST/dragonflow
 DRAGONFLOW_BRANCH=${DRAGONFLOW_BRANCH:-master}
 
-RYU_REPO=${RYU_REPO:-git://github.com/osrg/ryu.git}
-RYU_DIR=$DEST/ryu
-RYU_BRANCH=${RYU_BRANCH:-master}
-
 DF_L3_SERVICE_PLUGIN="dragonflow.neutron.services.l3.l3_controller_plugin.ControllerL3ServicePlugin"
 
 DF_L2_AGENT=$DRAGONFLOW_DIR/dragonflow/neutron/agent/l2/ovs_dragonflow_neutron_agent.py
@@ -19,4 +15,3 @@ Q_DF_CONTROLLER_IP=${Q_DF_CONTROLLER_IP:-''$HOST_IP''}
 Q_DF_CONTROLLER_IP=''$Q_DF_CONTROLLER_PROTOCOL':'$Q_DF_CONTROLLER_IP':'$Q_DF_CONTROLLER_PORT''
 
 export PYTHONPATH=$PYTHONPATH:$DRAGONFLOW_DIR
-export PYTHONPATH=$PYTHONPATH:$RYU_DIR

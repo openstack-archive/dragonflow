@@ -164,15 +164,6 @@ function install_df {
     #echo_summary "Installing DragonFlow"
     #git clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
     setup_package $DRAGONFLOW_DIR
-
-    if [ ! -d $RYU_DIR ] ; then
-        echo "Cloning and installing Ryu"
-        git clone $RYU_REPO $RYU_DIR
-        pushd $RYU_DIR
-        setup_package ./ -e
-        popd
-        echo "Finished installing Ryu"
-    fi
 }
 
 # install_ovs() - Collect source and prepare
@@ -360,14 +351,26 @@ function disable_libvirt_apparmor {
     sudo aa-complain /etc/apparmor.d/usr.sbin.libvirtd
 }
 
+function verify_ryu_version {
+    # Verify ryu is installed. Version greater than 3.29. Does not return
+    # on failure.
+    RYU_VER_LINE=`ryu --version 2>&1 | head -n 1`
+    RYU_VER=`echo $RYU_VER_LINE | cut -d' ' -f2`
+    echo "Found ryu version $RYU_VER ($RYU_VER_LINE)"
+    if [ `vercmp_numbers "$RYU_VER" "3.29.1"` -lt 0 ]; then
+        die $LINENO "ryu version $RYU_VER too low. Version 3.29.1+ is required for Dragonflow."
+    fi
+}
+
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
+    verify_ryu_version
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
         if [[ "$OFFLINE" != "True" ]]; then
             install_df
             install_ovs
         fi
-        echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR:$RYU_DIR >> $RC_DIR/.localrc.auto
+        echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR >> $RC_DIR/.localrc.auto
         init_ovs
         # We have to start at install time, because Neutron's post-config
         # phase runs ovs-vsctl.
