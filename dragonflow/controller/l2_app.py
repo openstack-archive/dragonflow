@@ -13,23 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log
-
 from neutron.common import constants as common_const
-from neutron.i18n import _LI
 
-from ryu.controller.handler import CONFIG_DISPATCHER
-from ryu.controller.handler import MAIN_DISPATCHER
-from ryu.controller.handler import set_ev_cls
-from ryu.controller import ofp_event
 from ryu.lib.mac import haddr_to_bin
-from ryu.ofproto import ofproto_v1_3
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
-
-
-LOG = log.getLogger(__name__)
 
 # TODO(gsagie) currently the number set in Ryu for this
 # (OFPP_IN_PORT) is not working, use this until resolved
@@ -40,76 +29,28 @@ OF_IN_PORT = 0xfff8
 
 
 class L2App(DFlowApp):
-    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
-    BASE_RPC_API_VERSION = '1.0'
 
     def __init__(self, *args, **kwargs):
         super(L2App, self).__init__(*args, **kwargs)
-        self.dp = None
         self.local_networks = {}
-        self.db_store = kwargs['db_store']
 
-    def start(self):
-        super(L2App, self).start()
-        return 1
-
-    def is_ready(self):
-        return self.dp is not None
-
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
-        self.dp = ev.msg.datapath
-        self.add_flow_go_to_table(self.dp,
-                                  const.SERVICES_CLASSIFICATION_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.L2_LOOKUP_TABLE)
-        self.add_flow_go_to_table(self.dp, const.ARP_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.L2_LOOKUP_TABLE)
+        self.add_flow_go_to_table(self.get_datapath(),
+                const.SERVICES_CLASSIFICATION_TABLE,
+                const.PRIORITY_DEFAULT,
+                const.L2_LOOKUP_TABLE)
+        self.add_flow_go_to_table(self.get_datapath(),
+                const.ARP_TABLE,
+                const.PRIORITY_DEFAULT,
+                const.L2_LOOKUP_TABLE)
 
         # ARP traffic => send to ARP table
-        match = self.dp.ofproto_parser.OFPMatch(eth_type=0x0806)
-        self.add_flow_go_to_table(self.dp,
-                                  const.SERVICES_CLASSIFICATION_TABLE,
-                                  const.PRIORITY_MEDIUM,
-                                  const.ARP_TABLE, match=match)
+        match = self.get_datapath().ofproto_parser.OFPMatch(eth_type=0x0806)
+        self.add_flow_go_to_table(self.get_datapath(),
+                const.SERVICES_CLASSIFICATION_TABLE,
+                const.PRIORITY_MEDIUM,
+                const.ARP_TABLE, match=match)
         self._install_flows_on_switch_up()
-        self.send_port_desc_stats_request(self.dp)
-
-    def send_port_desc_stats_request(self, datapath):
-        ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
-        datapath.send_msg(req)
-
-    @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
-    def _port_status_handler(self, ev):
-        msg = ev.msg
-        reason = msg.reason
-        port_no = msg.desc.port_no
-        port_name = msg.desc.name
-
-        ofproto = msg.datapath.ofproto
-        if reason == ofproto.OFPPR_ADD:
-            LOG.info(_LI("port added %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
-            if lport:
-                lport.set_external_value('ofport', port_no)
-                self.add_local_port(lport)
-        elif reason == ofproto.OFPPR_DELETE:
-            LOG.info(_LI("port deleted %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
-            if lport:
-                self.remove_local_port(lport)
-                # Leave the last correct OF port number of this port
-        elif reason == ofproto.OFPPR_MODIFY:
-            LOG.info(_LI("port modified %s"), port_no)
-        else:
-            LOG.info(_LI("Illeagal port state %(port_no)s %(reason)s")
-                     % {'port_no': port_no, 'reason': reason})
-
-    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
-    def port_desc_stats_reply_handler(self, ev):
-        pass
 
     def remove_local_port(self, lport):
 
@@ -119,14 +60,14 @@ class L2App(DFlowApp):
         ofport = lport.get_external_value('ofport')
         tunnel_key = lport.get_tunnel_key()
 
-        parser = self.dp.ofproto_parser
-        ofproto = self.dp.ofproto
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
 
         # Remove ingress classifier for port
         match = parser.OFPMatch()
         match.set_in_port(ofport)
         msg = parser.OFPFlowMod(
-            datapath=self.dp,
+            datapath=self.get_datapath(),
             cookie=0,
             cookie_mask=0,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
@@ -135,12 +76,12 @@ class L2App(DFlowApp):
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
-        self.dp.send_msg(msg)
+        self.get_datapath().send_msg(msg)
 
         # Remove dispatch to local port according to unique tunnel_id
         match = parser.OFPMatch(tunnel_id_nxm=tunnel_key)
         msg = parser.OFPFlowMod(
-            datapath=self.dp,
+            datapath=self.get_datapath(),
             cookie=0,
             cookie_mask=0,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
@@ -149,13 +90,13 @@ class L2App(DFlowApp):
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
-        self.dp.send_msg(msg)
+        self.get_datapath().send_msg(msg)
 
         # Remove destination classifier for port
         match = parser.OFPMatch()
         match.set_metadata(network_id)
         match.set_dl_dst(haddr_to_bin(mac))
-        msg = parser.OFPFlowMod(datapath=self.dp,
+        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
                                 cookie=0,
                                 cookie_mask=0,
                                 table_id=const.L2_LOOKUP_TABLE,
@@ -164,11 +105,11 @@ class L2App(DFlowApp):
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
-        self.dp.send_msg(msg)
+        self.get_datapath().send_msg(msg)
 
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
-        msg = parser.OFPFlowMod(datapath=self.dp,
+        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
                                 cookie=0,
                                 cookie_mask=0,
                                 table_id=const.EGRESS_TABLE,
@@ -177,7 +118,7 @@ class L2App(DFlowApp):
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
-        self.dp.send_msg(msg)
+        self.get_datapath().send_msg(msg)
 
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
 
@@ -188,14 +129,14 @@ class L2App(DFlowApp):
         network_id = lport.get_external_value('local_network_id')
         tunnel_key = lport.get_tunnel_key()
 
-        parser = self.dp.ofproto_parser
-        ofproto = self.dp.ofproto
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
 
         # Remove destination classifier for port
         match = parser.OFPMatch()
         match.set_metadata(network_id)
         match.set_dl_dst(haddr_to_bin(mac))
-        msg = parser.OFPFlowMod(datapath=self.dp,
+        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
                                 cookie=0,
                                 cookie_mask=0,
                                 table_id=const.L2_LOOKUP_TABLE,
@@ -204,11 +145,11 @@ class L2App(DFlowApp):
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
-        self.dp.send_msg(msg)
+        self.get_datapath().send_msg(msg)
 
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
-        msg = parser.OFPFlowMod(datapath=self.dp,
+        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
                                 cookie=0,
                                 cookie_mask=0,
                                 table_id=const.EGRESS_TABLE,
@@ -217,13 +158,13 @@ class L2App(DFlowApp):
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
-        self.dp.send_msg(msg)
+        self.get_datapath().send_msg(msg)
 
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
 
     def add_local_port(self, lport):
 
-        if self.dp is None:
+        if self.get_datapath() is None:
             return
 
         lport_id = lport.get_id()
@@ -232,8 +173,8 @@ class L2App(DFlowApp):
         ofport = lport.get_external_value('ofport')
         tunnel_key = lport.get_tunnel_key()
 
-        parser = self.dp.ofproto_parser
-        ofproto = self.dp.ofproto
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
 
         # Ingress classifier for port
         match = parser.OFPMatch()
@@ -241,14 +182,14 @@ class L2App(DFlowApp):
         actions = []
         actions.append(parser.OFPActionSetField(reg6=tunnel_key))
         actions.append(parser.OFPActionSetField(metadata=network_id))
-        action_inst = self.dp.ofproto_parser.OFPInstructionActions(
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
 
         goto_inst = parser.OFPInstructionGotoTable(
             const.SERVICES_CLASSIFICATION_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            self.dp,
+            self.get_datapath(),
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -259,11 +200,11 @@ class L2App(DFlowApp):
         actions = []
         actions.append(parser.OFPActionOutput(ofport,
                                               ofproto.OFPCML_NO_BUFFER))
-        action_inst = self.dp.ofproto_parser.OFPInstructionActions(
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
         self.mod_flow(
-            self.dp,
+            self.get_datapath(),
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -283,12 +224,12 @@ class L2App(DFlowApp):
         match.set_dl_dst(haddr_to_bin(mac))
         actions = []
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = self.dp.ofproto_parser.OFPInstructionActions(
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(goto_table)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            self.dp,
+            self.get_datapath(),
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             priority=priority,
@@ -297,11 +238,11 @@ class L2App(DFlowApp):
         # Egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
         actions = [parser.OFPActionOutput(port=ofport)]
-        action_inst = self.dp.ofproto_parser.OFPInstructionActions(
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
         self.mod_flow(
-            self.dp,
+            self.get_datapath(),
             inst=inst,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -312,10 +253,10 @@ class L2App(DFlowApp):
 
     def _del_multicast_broadcast_handling_for_port(self, network_id,
                                                    lport_id):
-        parser = self.dp.ofproto_parser
-        ofproto = self.dp.ofproto
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
 
-        command = self.dp.ofproto.OFPFC_MODIFY
+        command = self.get_datapath().ofproto.OFPFC_MODIFY
         network = self.local_networks.get(network_id)
         if network is None:
             # TODO(gsagie) add error here
@@ -338,10 +279,10 @@ class L2App(DFlowApp):
             actions.append(parser.NXActionResubmitTable(OF_IN_PORT,
                                                         const.EGRESS_TABLE))
 
-        inst = [self.dp.ofproto_parser.OFPInstructionActions(
+        inst = [self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         self.mod_flow(
-            self.dp,
+            self.get_datapath(),
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             command=command,
@@ -350,15 +291,15 @@ class L2App(DFlowApp):
 
     def _add_multicast_broadcast_handling_for_port(self, network_id,
                                                    lport_id, tunnel_key):
-        parser = self.dp.ofproto_parser
-        ofproto = self.dp.ofproto
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
 
-        command = self.dp.ofproto.OFPFC_MODIFY
+        command = self.get_datapath().ofproto.OFPFC_MODIFY
         network = self.local_networks.get(network_id)
         if network is None:
             network = {}
             self.local_networks[network_id] = network
-            command = self.dp.ofproto.OFPFC_ADD
+            command = self.get_datapath().ofproto.OFPFC_ADD
 
         network[lport_id] = tunnel_key
 
@@ -373,10 +314,10 @@ class L2App(DFlowApp):
             actions.append(parser.NXActionResubmitTable(OF_IN_PORT,
                                                         const.EGRESS_TABLE))
 
-        inst = [self.dp.ofproto_parser.OFPInstructionActions(
+        inst = [self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         self.mod_flow(
-            self.dp,
+            self.get_datapath(),
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             command=command,
@@ -385,7 +326,7 @@ class L2App(DFlowApp):
 
     def add_remote_port(self, lport):
 
-        if self.dp is None:
+        if self.get_datapath() is None:
             return
 
         lport_id = lport.get_id()
@@ -394,8 +335,8 @@ class L2App(DFlowApp):
         ofport = lport.get_external_value('ofport')
         tunnel_key = lport.get_tunnel_key()
 
-        parser = self.dp.ofproto_parser
-        ofproto = self.dp.ofproto
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
 
         # Destination classifier for port
         priority = const.PRIORITY_MEDIUM
@@ -411,12 +352,12 @@ class L2App(DFlowApp):
         match.set_dl_dst(haddr_to_bin(mac))
         actions = []
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = self.dp.ofproto_parser.OFPInstructionActions(
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(goto_table)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            self.dp,
+            self.get_datapath(),
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             priority=priority,
@@ -427,11 +368,11 @@ class L2App(DFlowApp):
         actions = []
         actions.append(parser.OFPActionSetField(tunnel_id_nxm=tunnel_key))
         actions.append(parser.OFPActionOutput(port=ofport))
-        action_inst = self.dp.ofproto_parser.OFPInstructionActions(
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
         self.mod_flow(
-            self.dp,
+            self.get_datapath(),
             inst=inst,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_MEDIUM,
