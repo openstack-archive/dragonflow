@@ -36,6 +36,7 @@ Spec Template
     template
     distributed_dnat
     mac_spoofing
+    performance_testing
 
 
 Indices and tables
