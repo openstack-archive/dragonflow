@@ -25,10 +25,16 @@ from ryu.ofproto import ether
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
+from oslo_config import cfg
 from oslo_log import log
 
 from neutron.i18n import _LE
 
+DF_L3_APP_OPTS = [
+    cfg.BoolOpt('df_arp_responder',
+        default=True,
+        help=_('Install OVS flows to respond to ARP requests.'))
+]
 
 LOG = log.getLogger(__name__)
 
@@ -40,6 +46,8 @@ class L3App(DFlowApp):
         self.hard_timeout = 0
         self.api.register_table_handler(const.L3_LOOKUP_TABLE,
                 self.packet_in_handler)
+        cfg.CONF.register_opts(DF_L3_APP_OPTS)
+        self.is_arp_responder = cfg.CONF.df_arp_responder
 
     def switch_features_handler(self, ev):
         self.add_flow_go_to_table(self.get_datapath(),
@@ -48,8 +56,7 @@ class L3App(DFlowApp):
                                   const.EGRESS_TABLE)
         self._install_flows_on_switch_up()
 
-    def _get_match_vrouter_arp_responder(self, datapath, network_id,
-                                         interface_ip):
+    def _get_match_arp_responder(self, datapath, network_id, interface_ip):
         parser = datapath.ofproto_parser
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_ARP)
@@ -58,8 +65,11 @@ class L3App(DFlowApp):
         match.set_metadata(network_id)
         return match
 
-    def _get_inst_vrouter_arp_responder(self, datapath,
-                                        mac_address, interface_ip):
+    def _get_inst_arp_responder(self,
+            datapath,
+            mac_address,
+            interface_ip,
+            is_unicast=False):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         actions = [parser.OFPActionSetField(arp_op=arp.ARP_REPLY),
@@ -68,21 +78,29 @@ class L3App(DFlowApp):
                                           n_bits=48),
                    parser.NXActionRegMove(src_field='arp_spa',
                                           dst_field='arp_tpa',
-                                          n_bits=32),
-                   parser.OFPActionSetField(eth_src=mac_address),
-                   parser.OFPActionSetField(arp_sha=mac_address),
-                   parser.OFPActionSetField(arp_spa=interface_ip),
-                   parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
+                                          n_bits=32)]
+        if is_unicast:
+            actions.append(parser.NXActionRegMove(src_field='eth_src',
+                    dst_field='eth_dst',
+                    n_bits=48))
+        actions.extend([
+                parser.OFPActionSetField(eth_src=mac_address),
+                parser.OFPActionSetField(arp_sha=mac_address),
+                parser.OFPActionSetField(arp_spa=interface_ip),
+                parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)])
         instructions = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         return instructions
 
-    def _add_vrouter_arp_responder(self, network_id, mac_address,
-                                   interface_ip):
-            match = self._get_match_vrouter_arp_responder(
+    def _add_arp_responder(self,
+            network_id,
+            mac_address,
+            interface_ip,
+            is_unicast=False):
+            match = self._get_match_arp_responder(
                 self.get_datapath(), network_id, interface_ip)
-            instructions = self._get_inst_vrouter_arp_responder(
-                self.get_datapath(), mac_address, interface_ip)
+            instructions = self._get_inst_arp_responder(
+                self.get_datapath(), mac_address, interface_ip, is_unicast)
             ofproto = self.get_datapath().ofproto
             parser = self.get_datapath().ofproto_parser
             msg = parser.OFPFlowMod(datapath=self.get_datapath(),
@@ -93,12 +111,12 @@ class L3App(DFlowApp):
                                     flags=ofproto.OFPFF_SEND_FLOW_REM)
             self.get_datapath().send_msg(msg)
 
-    def _remove_vrouter_arp_responder(self,
-                                      network_id,
-                                      interface_ip):
+    def _remove_arp_responder(self,
+            network_id,
+            interface_ip):
         ofproto = self.get_datapath().ofproto
         parser = self.get_datapath().ofproto_parser
-        match = self._get_match_vrouter_arp_responder(
+        match = self._get_match_arp_responder(
             self.get_datapath(), network_id, interface_ip)
         msg = parser.OFPFlowMod(datapath=self.get_datapath(),
                                 cookie=0,
@@ -221,8 +239,8 @@ class L3App(DFlowApp):
 
         # Add router ARP responder for IPv4 Addresses
         if netaddr.IPAddress(router_port.get_ip()).version == 4:
-            self._add_vrouter_arp_responder(local_network_id, mac,
-                                            router_port.get_ip())
+            self._add_arp_responder(local_network_id, mac,
+                    router_port.get_ip())
 
         # If router interface IP, send to output table
         dst_ip = router_port.get_ip()
@@ -319,8 +337,8 @@ class L3App(DFlowApp):
         tunnel_key = router_port.get_tunnel_key()
 
         if netaddr.IPAddress(router_port.get_ip()).version == 4:
-            self._remove_vrouter_arp_responder(local_network_id,
-                                               router_port.get_ip())
+            self._remove_arp_responder(local_network_id,
+                    router_port.get_ip())
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
@@ -359,3 +377,35 @@ class L3App(DFlowApp):
                     router_port.get_lswitch_id())
                 self.add_router_port(lrouter, router_port,
                         local_network_id)
+
+    def add_port(self, lport):
+        if not self.is_arp_responder:
+            return
+        ip = lport.get_ip()
+        if netaddr.IPAddress(ip).version != 4:
+            return
+        network_id = lport.get_external_value('local_network_id')
+        mac = lport.get_mac()
+        self._add_arp_responder(network_id, mac, ip, True)
+
+    def remove_port(self, lport):
+        if not self.is_arp_responder:
+            return
+        ip = lport.get_ip()
+        if netaddr.IPAddress(ip).version != 4:
+            return
+        network_id = lport.get_external_value('local_network_id')
+        mac = lport.get_mac()
+        self._remove_arp_responder(network_id, mac, ip)
+
+    def add_local_port(self, lport):
+        self.add_port(lport)
+
+    def add_remote_port(self, lport):
+        self.add_port(lport)
+
+    def remove_local_port(self, lport):
+        self.remove_port(lport)
+
+    def remove_remote_port(self, lport):
+        self.remove_port(lport)
