@@ -13,10 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import struct
-
 from dragonflow.controller.df_db_notifier import DBNotifyInterface
-from ryu.lib import addrconv
 
 from oslo_log import log as logging
 
@@ -103,10 +100,3 @@ class DFlowApp(DBNotifyInterface):
         ofp_parser = datapath.ofproto_parser
         req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
-
-    # TODO(oanson) Move somewhere else
-    def ipv4_text_to_int(self, ip_text):
-        if ip_text == 0:
-            return ip_text
-        assert isinstance(ip_text, str)
-        return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
