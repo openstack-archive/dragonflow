@@ -13,12 +13,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
+
 from neutron.common import constants as common_const
 
 from ryu.lib.mac import haddr_to_bin
 
+from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
+
+from oslo_config import cfg
+
+DF_L2_APP_OPTS = [
+    cfg.BoolOpt(
+        'df_l2_responder',
+        default=True,
+        help=_('Install OVS flows to respond to ARP requests.'))
+]
 
 # TODO(gsagie) currently the number set in Ryu for this
 # (OFPP_IN_PORT) is not working, use this until resolved
@@ -33,6 +45,8 @@ class L2App(DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L2App, self).__init__(*args, **kwargs)
         self.local_networks = {}
+        cfg.CONF.register_opts(DF_L2_APP_OPTS)
+        self.is_install_arp_responder = cfg.CONF.df_l2_responder
 
     def switch_features_handler(self, ev):
         self.add_flow_go_to_table(self.get_datapath(),
@@ -51,6 +65,25 @@ class L2App(DFlowApp):
                 const.PRIORITY_MEDIUM,
                 const.ARP_TABLE, match=match)
         self._install_flows_on_switch_up()
+
+    def add_arp_responder(self, lport):
+        if not self.is_install_arp_responder:
+            return
+        ip = lport.get_ip()
+        if netaddr.IPAddress(ip).version != 4:
+            return
+        network_id = lport.get_external_value('local_network_id')
+        mac = lport.get_mac()
+        ArpResponder(self.get_datapath(), network_id, ip, mac).add()
+
+    def remove_arp_responder(self, lport):
+        if not self.is_install_arp_responder:
+            return
+        ip = lport.get_ip()
+        if netaddr.IPAddress(ip).version != 4:
+            return
+        network_id = lport.get_external_value('local_network_id')
+        ArpResponder(self.get_datapath(), network_id, ip).remove()
 
     def remove_local_port(self, lport):
 
@@ -122,6 +155,8 @@ class L2App(DFlowApp):
 
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
 
+        self.remove_arp_responder(lport)
+
     def remove_remote_port(self, lport):
 
         lport_id = lport.get_id()
@@ -161,6 +196,8 @@ class L2App(DFlowApp):
         self.get_datapath().send_msg(msg)
 
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
+
+        self.remove_arp_responder(lport)
 
     def add_local_port(self, lport):
 
@@ -250,6 +287,8 @@ class L2App(DFlowApp):
 
         self._add_multicast_broadcast_handling_for_port(network_id, lport_id,
                                                         tunnel_key)
+
+        self.add_arp_responder(lport)
 
     def _del_multicast_broadcast_handling_for_port(self, network_id,
                                                    lport_id):
@@ -380,6 +419,8 @@ class L2App(DFlowApp):
 
         self._add_multicast_broadcast_handling_for_port(network_id, lport_id,
                                                         tunnel_key)
+
+        self.add_arp_responder(lport)
 
     def _install_flows_on_switch_up(self):
         # Clear local networks cache so the multicast/broadcast flows

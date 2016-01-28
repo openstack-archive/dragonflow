@@ -26,6 +26,7 @@ class TestOVSFlows(test_base.DFTestBase):
         full_args = ["ovs-ofctl", "dump-flows", 'br-int', '-O Openflow13']
         flows = utils.execute(full_args, run_as_root=True,
                               process_input=None)
+        print "TestOVSFlows: {}".format(flows)
         return flows
 
     def test_number_of_flows(self):
