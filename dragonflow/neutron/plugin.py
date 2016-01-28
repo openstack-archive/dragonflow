@@ -633,7 +633,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         Returns the dhcp server ip address if configured
         """
-        if cfg.CONF.df.use_centralized_ipv6_DHCP:
+        if (cfg.CONF.df.use_centralized_ipv6_DHCP
+            and netaddr.IPNetwork(new_subnet['cidr']).version == 6):
             return self._update_subnet_dhcp_centralized(context, new_subnet)
 
         if old_subnet['enable_dhcp']:
@@ -656,9 +657,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         Returns the dhcp server ip address if configured
         """
         if subnet['enable_dhcp']:
-            if cfg.CONF.df.use_centralized_ipv6_DHCP:
+            if (cfg.CONF.df.use_centralized_ipv6_DHCP
+                and netaddr.IPNetwork(subnet['cidr']).version == 6):
                 return subnet['allocation_pools'][0]['start']
             else:
                 dhcp_port = self._create_dhcp_server_port(context, subnet)
                 return self._get_ip_from_port(dhcp_port)
-        return None
