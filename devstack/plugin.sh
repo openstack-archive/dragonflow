@@ -86,6 +86,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
+        iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins ""
@@ -115,6 +116,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
+        iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
     fi
 }
 
