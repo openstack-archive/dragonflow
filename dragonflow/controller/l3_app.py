@@ -15,13 +15,13 @@
 
 import netaddr
 
-from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
+from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
@@ -47,69 +47,6 @@ class L3App(DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
         self._install_flows_on_switch_up()
-
-    def _get_match_vrouter_arp_responder(self, datapath, network_id,
-                                         interface_ip):
-        parser = datapath.ofproto_parser
-        match = parser.OFPMatch()
-        match.set_dl_type(ether.ETH_TYPE_ARP)
-        match.set_arp_tpa(self.ipv4_text_to_int(str(interface_ip)))
-        match.set_arp_opcode(arp.ARP_REQUEST)
-        match.set_metadata(network_id)
-        return match
-
-    def _get_inst_vrouter_arp_responder(self, datapath,
-                                        mac_address, interface_ip):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-        actions = [parser.OFPActionSetField(arp_op=arp.ARP_REPLY),
-                   parser.NXActionRegMove(src_field='arp_sha',
-                                          dst_field='arp_tha',
-                                          n_bits=48),
-                   parser.NXActionRegMove(src_field='arp_spa',
-                                          dst_field='arp_tpa',
-                                          n_bits=32),
-                   parser.OFPActionSetField(eth_src=mac_address),
-                   parser.OFPActionSetField(arp_sha=mac_address),
-                   parser.OFPActionSetField(arp_spa=interface_ip),
-                   parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
-        instructions = [parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        return instructions
-
-    def _add_vrouter_arp_responder(self, network_id, mac_address,
-                                   interface_ip):
-            match = self._get_match_vrouter_arp_responder(
-                self.get_datapath(), network_id, interface_ip)
-            instructions = self._get_inst_vrouter_arp_responder(
-                self.get_datapath(), mac_address, interface_ip)
-            ofproto = self.get_datapath().ofproto
-            parser = self.get_datapath().ofproto_parser
-            msg = parser.OFPFlowMod(datapath=self.get_datapath(),
-                                    table_id=const.ARP_TABLE,
-                                    command=ofproto.OFPFC_ADD,
-                                    priority=const.PRIORITY_MEDIUM,
-                                    match=match, instructions=instructions,
-                                    flags=ofproto.OFPFF_SEND_FLOW_REM)
-            self.get_datapath().send_msg(msg)
-
-    def _remove_vrouter_arp_responder(self,
-                                      network_id,
-                                      interface_ip):
-        ofproto = self.get_datapath().ofproto
-        parser = self.get_datapath().ofproto_parser
-        match = self._get_match_vrouter_arp_responder(
-            self.get_datapath(), network_id, interface_ip)
-        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
-                                cookie=0,
-                                cookie_mask=0,
-                                table_id=const.ARP_TABLE,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_MEDIUM,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
-        self.get_datapath().send_msg(msg)
 
     def send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
@@ -211,21 +148,21 @@ class L3App(DFlowApp):
 
     def add_router_port(self, router, router_port, local_network_id):
 
-        if self.get_datapath() is None:
+        datapath = self.get_datapath()
+        if datapath is None:
             return
 
-        parser = self.get_datapath().ofproto_parser
+        parser = datapath.ofproto_parser
 
         mac = router_port.get_mac()
         tunnel_key = router_port.get_tunnel_key()
+        dst_ip = router_port.get_ip()
 
         # Add router ARP responder for IPv4 Addresses
         if netaddr.IPAddress(router_port.get_ip()).version == 4:
-            self._add_vrouter_arp_responder(local_network_id, mac,
-                                            router_port.get_ip())
+            ArpResponder(datapath, local_network_id, dst_ip, mac).add()
 
         # If router interface IP, send to output table
-        dst_ip = router_port.get_ip()
         if netaddr.IPAddress(dst_ip).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     metadata=local_network_id,
@@ -238,7 +175,7 @@ class L3App(DFlowApp):
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [goto_inst]
         self.mod_flow(
-            self.get_datapath(),
+            datapath,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_HIGH,
@@ -319,8 +256,8 @@ class L3App(DFlowApp):
         tunnel_key = router_port.get_tunnel_key()
 
         if netaddr.IPAddress(router_port.get_ip()).version == 4:
-            self._remove_vrouter_arp_responder(local_network_id,
-                                               router_port.get_ip())
+            ip = router_port.get_ip()
+            ArpResponder(self.get_datapath(), local_network_id, ip).remove()
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
