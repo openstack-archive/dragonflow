@@ -10,6 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+
+from novaclient import client as novaclient
+
+from dragonflow.tests.fullstack import test_base
+
 
 class RouterTestWrapper(object):
 
@@ -78,3 +84,61 @@ class NetworkTestWrapper(object):
         if network:
             return True
         return False
+
+
+class VMTestWrapper(object):
+
+    def __init__(self, parent):
+        self.server = None
+        self.deleted = False
+        self.parent = parent
+        creds = test_base.credentials()
+        auth_url = creds['auth_url'] + "/v2.0"
+        self.nova = novaclient.Client('2', creds['username'],
+                        creds['password'], 'demo', auth_url)
+
+    def create(self, script=None):
+        image = self.nova.images.find(name="cirros-0.3.4-x86_64-uec")
+        self.parent.assertIsNotNone(image)
+        flavor = self.nova.flavors.find(name="m1.tiny")
+        self.parent.assertIsNotNone(flavor)
+        network = self.nova.networks.find(label='private')
+        self.parent.assertIsNotNone(network)
+        nics = [{'net-id': network.id}]
+        self.server = self.nova.servers.create(name='test', image=image.id,
+                           flavor=flavor.id, nics=nics, user_data=script)
+        self.parent.assertIsNotNone(self.server)
+        server_is_ready = self._wait_for_server_ready(30)
+        self.parent.assertTrue(server_is_ready)
+        return self.server.id
+
+    def _wait_for_server_ready(self, timeout):
+        if self.server is None:
+            return False
+        while timeout > 0:
+            server = self.nova.servers.find(id=self.server.id)
+            if server is not None and server.status == 'ACTIVE':
+                return True
+            time.sleep(1)
+            timeout = timeout - 1
+        return False
+
+    def __del__(self):
+        if self.deleted or self.server is None:
+            return
+        self.delete()
+
+    def delete(self):
+        self.nova.servers.delete(self.server)
+        self.deleted = True
+
+    def exists(self):
+        if self.server is None:
+            return False
+        server = self.nova.servers.find(id=self.server.id)
+        if server is None:
+            return False
+        return True
+
+    def dump(self):
+        return self.nova.servers.get_console_output(self.server)
