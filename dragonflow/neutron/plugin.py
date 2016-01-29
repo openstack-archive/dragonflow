@@ -30,15 +30,19 @@ from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
 from neutron.common import exceptions as n_exc
+from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import extra_dhcp_opt as edo_ext
 from neutron.extensions import portbindings
+from neutron.extensions import portsecurity as psec
 from neutron.extensions import providernet as pnet
 
 from neutron.common import constants as const
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
+from neutron.common import utils
 from neutron.db import agents_db
 from neutron.db import agentschedulers_db
+from neutron.db import allowedaddresspairs_db as addr_pair_db
 from neutron.db import db_base_plugin_v2
 from neutron.db import external_net_db
 from neutron.db import extradhcpopt_db
@@ -49,6 +53,7 @@ from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
 from neutron.db import models_v2
 from neutron.db import portbindings_db
+from neutron.db import portsecurity_db_common
 from neutron.db import securitygroups_db
 from neutron.quota import resource_registry
 
@@ -81,6 +86,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                l3_attrs_db.ExtraAttributesMixin,
                external_net_db.External_net_db_mixin,
                portbindings_db.PortBindingMixin,
+               portsecurity_db_common.PortSecurityDbCommon,
+               addr_pair_db.AllowedAddressPairsMixin,
                extradhcpopt_db.ExtraDhcpOptMixin,
                extraroute_db.ExtraRoute_db_mixin,
                agentschedulers_db.DhcpAgentSchedulerDbMixin):
@@ -337,7 +344,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         with context.session.begin(subtransactions=True):
             result = super(DFPlugin, self).create_network(context,
                                                           network)
-            self._process_l3_create(context, result, network['network'])
+            data = network['network']
+            if psec.PORTSECURITY not in data:
+                data[psec.PORTSECURITY] = \
+                    (psec.EXTENDED_ATTRIBUTES_2_0['networks']
+                     [psec.PORTSECURITY]['default'])
+            self._process_network_port_security_create(context, data, result)
+            self._process_l3_create(context, result, data)
         self.create_network_nb_api(context, result)
         return result
 
@@ -382,6 +395,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         with context.session.begin(subtransactions=True):
             result = super(DFPlugin, self).update_network(context, network_id,
                                                           network)
+            if psec.PORTSECURITY in network['network']:
+                self._process_network_port_security_update(context,
+                                                           network['network'],
+                                                           result)
             self._process_l3_update(context, result, network['network'])
         return result
 
@@ -394,11 +411,29 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             updated_port = super(DFPlugin, self).update_port(context, id,
                                                              port)
 
+            # TODO(yuanwei): in ML2 plugin, security_groups and
+            # allow_address_pairs configuration depend on portsec switch is
+            # enabled.
+            if psec.PORTSECURITY in port['port']:
+                self._process_port_port_security_update(
+                    context, port['port'], updated_port)
+            else:
+                updated_port[psec.PORTSECURITY] = \
+                    original_port.get(psec.PORTSECURITY, None)
+
             self._process_portbindings_create_and_update(context,
                                                          port['port'],
                                                          updated_port)
             self.update_security_group_on_port(
                 context, id, port, original_port, updated_port)
+
+            address_pairs_updated = False
+            if addr_pair.ADDRESS_PAIRS in port['port']:
+                address_pairs_updated = self.update_address_pairs_on_port(
+                    context, id, port, original_port, updated_port)
+            if not address_pairs_updated:
+                updated_port[addr_pair.ADDRESS_PAIRS] = original_port.get(
+                    addr_pair.ADDRESS_PAIRS, [])
 
             self._update_extra_dhcp_opts_on_port(
                     context,
@@ -408,8 +443,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         external_ids = {
             df_const.DF_PORT_NAME_EXT_ID_KEY: updated_port['name']}
-        allowed_macs = self._get_allowed_mac_addresses_from_port(
-            updated_port)
 
         ips = []
         if 'fixed_ips' in updated_port:
@@ -438,11 +471,14 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  parent_name=parent_name, tag=tag,
                                  enabled=updated_port['admin_'
                                                       'state_up'],
-                                 port_security=allowed_macs,
                                  chassis=chassis,
                                  device_owner=updated_port.get(
                                      'device_owner', None),
-                                 security_groups=security_groups)
+                                 security_groups=security_groups,
+                                 port_security_enabled=updated_port[
+                                     psec.PORTSECURITY],
+                                 allowed_address_pairs=updated_port[
+                                     addr_pair.ADDRESS_PAIRS])
         return updated_port
 
     def _get_data_from_binding_profile(self, context, port):
@@ -479,13 +515,22 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.get_port(context, parent_name)
         return parent_name, tag
 
-    def _get_allowed_mac_addresses_from_port(self, port):
-        allowed_macs = set()
-        allowed_macs.add(port['mac_address'])
-        allowed_address_pairs = port.get('allowed_address_pairs', [])
-        for allowed_address in allowed_address_pairs:
-            allowed_macs.add(allowed_address['mac_address'])
-        return list(allowed_macs)
+    def _determine_port_security(self, context, port):
+        """Returns a boolean (port_security_enabled).
+
+        Port_security is the value associated with the port if one is present
+        otherwise the value associated with the network is returned.
+        """
+        if port.get('device_owner') and utils.is_port_trusted(port):
+            return False
+
+        if attr.is_attr_set(port.get(psec.PORTSECURITY)):
+            port_security_enabled = port[psec.PORTSECURITY]
+        else:
+            port_security_enabled = self._get_network_security_binding(
+                context, port['network_id'])
+
+        return port_security_enabled
 
     @lock_db.wrap_db_lock()
     def create_port(self, context, port):
@@ -494,6 +539,16 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 context, port['port'])
             dhcp_opts = port['port'].get(edo_ext.EXTRADHCPOPTS, [])
             db_port = super(DFPlugin, self).create_port(context, port)
+            # TODO(yuanwei): in ML2 plugin, security_groups and
+            # allow_address_pairs configuration depend on portsec switch is
+            # enabled.
+            portsec_tmp = {
+                psec.PORTSECURITY:
+                    self._determine_port_security(context, port['port'])
+            }
+            self._process_port_port_security_create(context, portsec_tmp,
+                                                    db_port)
+
             sgids = self._get_security_groups_on_port(context, port)
             self._process_port_create_security_group(context, db_port,
                                                      sgids)
@@ -507,6 +562,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                         port['port'][df_const.DF_PORT_BINDING_PROFILE])):
                 db_port[df_const.DF_PORT_BINDING_PROFILE] = (
                     port['port'][df_const.DF_PORT_BINDING_PROFILE])
+            db_port[addr_pair.ADDRESS_PAIRS] = (
+                self._process_create_allowed_address_pairs(
+                    context, db_port,
+                    port['port'].get(addr_pair.ADDRESS_PAIRS)))
             self._process_port_create_extra_dhcp_opts(context, db_port,
                                                       dhcp_opts)
         # This extra lookup is necessary to get the latest db model
@@ -521,7 +580,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
         external_ids = {df_const.DF_PORT_NAME_EXT_ID_KEY: port['name']}
-        allowed_macs = self._get_allowed_mac_addresses_from_port(port)
         ips = []
         if 'fixed_ips' in port:
             ips = [ip['ip_address'] for ip in port['fixed_ips']]
@@ -547,9 +605,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             parent_name=parent_name, tag=tag,
             enabled=port.get('admin_state_up', None),
             chassis=chassis, tunnel_key=tunnel_key,
-            port_security=allowed_macs,
             device_owner=port.get('device_owner', None),
-            security_groups=port.get('security_groups', None))
+            security_groups=port.get('security_groups', None),
+            port_security_enabled=port[psec.PORTSECURITY],
+            allowed_address_pairs=port[addr_pair.ADDRESS_PAIRS])
 
         return port
 
