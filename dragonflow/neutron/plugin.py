@@ -30,6 +30,7 @@ from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
 from neutron.common import exceptions as n_exc
+from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import extra_dhcp_opt as edo_ext
 from neutron.extensions import portbindings
 from neutron.extensions import providernet as pnet
@@ -39,6 +40,7 @@ from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.db import agents_db
 from neutron.db import agentschedulers_db
+from neutron.db import allowedaddresspairs_db as addr_pair_db
 from neutron.db import db_base_plugin_v2
 from neutron.db import external_net_db
 from neutron.db import extradhcpopt_db
@@ -67,6 +69,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                l3_gwmode_db.L3_NAT_db_mixin,
                external_net_db.External_net_db_mixin,
                portbindings_db.PortBindingMixin,
+               addr_pair_db.AllowedAddressPairsMixin,
                extradhcpopt_db.ExtraDhcpOptMixin,
                extraroute_db.ExtraRoute_db_mixin,
                agentschedulers_db.DhcpAgentSchedulerDbMixin):
@@ -83,7 +86,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    "security-group",
                                    "extraroute",
                                    "external-net",
-                                   "router"]
+                                   "router",
+                                   "allowed-address-pairs"]
 
     def __init__(self):
         super(DFPlugin, self).__init__()
@@ -320,6 +324,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self.update_security_group_on_port(
                 context, id, port, original_port, updated_port)
 
+            if addr_pair.ADDRESS_PAIRS in port['port']:
+                self.update_address_pairs_on_port(context, id, port,
+                                                  original_port,
+                                                  updated_port)
             self._update_extra_dhcp_opts_on_port(
                     context,
                     id,
@@ -327,12 +335,16 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     updated_port=updated_port)
         external_ids = {
             df_const.DF_PORT_NAME_EXT_ID_KEY: updated_port['name']}
-        allowed_macs = self._get_allowed_mac_addresses_from_port(
+
+        allowed_address_pairs = self._get_allowed_address_pairs_from_port(
             updated_port)
 
         ips = []
         if 'fixed_ips' in updated_port:
             ips = [ip['ip_address'] for ip in updated_port['fixed_ips']]
+            for ip in port['fixed_ips']:
+                allowed_address_pairs.add({'ip': ip,
+                                           'mac': port['mac_address']})
 
         chassis = None
         if 'binding:host_id' in updated_port:
@@ -349,7 +361,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  external_ids=external_ids,
                                  parent_name=parent_name, tag=tag,
                                  enabled=updated_port['admin_state_up'],
-                                 port_security=allowed_macs,
+                                 port_security=allowed_address_pairs,
                                  chassis=chassis,
                                  device_owner=updated_port.get('device_owner',
                                                                None))
@@ -389,13 +401,14 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.get_port(context, parent_name)
         return parent_name, tag
 
-    def _get_allowed_mac_addresses_from_port(self, port):
-        allowed_macs = set()
-        allowed_macs.add(port['mac_address'])
+    def _get_allowed_address_pairs_from_port(self, port):
+        address_pairs = list()
         allowed_address_pairs = port.get('allowed_address_pairs', [])
         for allowed_address in allowed_address_pairs:
-            allowed_macs.add(allowed_address['mac_address'])
-        return list(allowed_macs)
+            mac = allowed_address.get('mac_address', port['mac_address'])
+            address_pairs.add({'ip': allowed_address['ip_address'],
+                               'mac': mac})
+        return address_pairs
 
     def create_port(self, context, port):
         with context.session.begin(subtransactions=True):
@@ -409,6 +422,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self._process_portbindings_create_and_update(context,
                                                          port['port'],
                                                          db_port)
+            db_port[addr_pair.ADDRESS_PAIRS] = (
+                self._process_create_allowed_address_pairs(
+                    context, db_port,
+                    port.get(addr_pair.ADDRESS_PAIRS)))
 
             db_port[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
             if (df_const.DF_PORT_BINDING_PROFILE in port['port'] and
@@ -425,10 +442,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
         external_ids = {df_const.DF_PORT_NAME_EXT_ID_KEY: port['name']}
-        allowed_macs = self._get_allowed_mac_addresses_from_port(port)
+        allowed_address_pairs = self._get_allowed_address_pairs_from_port(port)
         ips = []
         if 'fixed_ips' in port:
             ips = [ip['ip_address'] for ip in port['fixed_ips']]
+            for ip in port['fixed_ips']:
+                allowed_address_pairs.add({'ip': ip,
+                                           'mac': port['mac_address']})
 
         chassis = None
         if 'binding:host_id' in port:
@@ -450,7 +470,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             parent_name=parent_name, tag=tag,
             enabled=port.get('admin_state_up', None),
             chassis=chassis, tunnel_key=tunnel_key,
-            port_security=allowed_macs,
+            port_security=allowed_address_pairs,
             device_owner=port.get('device_owner', None),
             sgids=sgids)
 
