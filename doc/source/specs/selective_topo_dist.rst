@@ -10,16 +10,20 @@
 Selective Topology Distribution
 ===============================
 
+The URL of your launchpad Blueprint:
+
+https://blueprints.launchpad.net/dragonflow/+spec/selective-topo-dist
+
 This spec describe the design of a topology distributing mechanism. It push
 topology info only to Dragonflow local controllers that need the info.
 
 Problem Description
 ===================
-Currently, Dragonflow local controller caches all the topology info, for example
-all the networks, ports and routers etc. In fact,one compute node only have dozens
-of virtual machines and topology info used by these VMs is merely a tiny part of
-the topology of the whole data center networks. Most of the info cached by Dragonflow
-local controller will never be used by the controller.
+Currently, Dragonflow local controller caches all the topology info, such as
+all the networks, ports and routers etc. In fact, one compute node only have dozens
+of VMs. Topology info used by these VMs is merely a tiny part of the topology of
+the whole data center networks. Most of the info cached by Dragonflow local controller
+will never be used by the controller.
 
 Moreover, in order to keep all the cached topology info up to date, local controllers
 have to repeatedly communicate with the Dragonflow database. With the increase of
@@ -85,7 +89,7 @@ sent to this topic.
 
 **Pros**
 
-Easier for Publisher to decide which topic to public.
+Easier for Publisher to decide which topic to publish.
 
 Easier for Subscriber to decide which topic to subscribe.
 
@@ -116,7 +120,7 @@ Detailed design
 ---------------
 
 Northbound Topology Change
-""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When a tenant named tenant1 create a port through neutron's northbound api,
 neutron's Dragonflow plugin will publish a event to tenant's topic in the sub/pub
@@ -146,12 +150,16 @@ Processing of other northbound topology change, such as creating, deleting or
 modifying router, network and port are same as the above example.
 
 Southbound Topology Change
-""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-When nova startup a VM on a host, it will insert a port on the corresponding OVS
-bridge. On knowing a new OVS port online, Dragonflow local controller queries
-port's topology from database and knows which tenant the port belongs to. After
-that, local controller will subscribe the tenant's topic.
+When nova startup a VM on a compute node, it will insert a port on the corresponding
+OVS bridge. On knowing a new OVS port online, Dragonflow local controller queries
+port's topology from Dragonflow database and knows which tenant the port belongs
+to. After that, it query local cache to find out are there any other local ports
+belong to the same tenant. If there already are local ports of the same tenant,
+local controller should have subscribed the tenant's topic, it will not subscribe
+the topic again. It the new port is the only local port in the compute node belongs
+to the tenant, local controller will subscribe the tenant's topic.
 
 +----------------+ +------------------+
 | sub/pub server | | Dragonflow local |
@@ -173,6 +181,19 @@ that, local controller will subscribe the tenant's topic.
        +                    +
 
 If nova remove a port from OVS bridge, local controller will check if it's the
-tenant's last port on the host. If it is, local controller will unsubscribe the
-tenant's topic and will not receive any further event of the tenant's topology
+tenant's last port on the compute node. If it is, local controller will unsubscribe
+the tenant's topic and will not receive any further event of the tenant's topology
 change.
+
+Dragonflow Local Controller Startup
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+On startup, local controller will get all local ports being attached to OVS by
+querying OVSDB. Once getting all these local ports, local controller will query
+port's topology from Dragonflow database and subscribe the responding topic of
+the port. This is done for every local port, as described in the previous section.
+
+Dragonflow Local Controller offline
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+If one local controller offline, it should be removed from all topics it has
+subscribed. Some module outside the compute node has to do this job. This problem
+will be dressed on another spec.
