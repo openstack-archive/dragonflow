@@ -40,6 +40,7 @@ Spec Template
     performance_testing
     ovsdb_monitor
     igmp_application_and_multicast_support
+    local_controller_reliability
 
 
 Indices and tables
