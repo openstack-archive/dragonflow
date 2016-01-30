@@ -42,6 +42,7 @@ Spec Template
     igmp_application_and_multicast_support
     redis_db_driver
     keep_db_consistency
+	local_controller_reliability
 
 
 Indices and tables
