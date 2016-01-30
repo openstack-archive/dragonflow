@@ -39,6 +39,7 @@ Spec Template
     selective_topo_dist
     performance_testing
     ovsdb_monitor
+    redis_db_driver
 
 
 Indices and tables
