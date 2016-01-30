@@ -35,6 +35,7 @@ Spec Template
     skeleton
     template
     distributed_dnat
+    db cluster consist
 
 
 Indices and tables
