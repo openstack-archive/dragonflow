@@ -28,8 +28,8 @@ class DFlowApp(DBNotifyInterface):
     def get_datapath(self):
         return self.api.datapath
 
-    def add_flow_go_to_table(self, datapath,
-            table, priority, goto_table_id, match=None):
+    def add_flow_go_to_table(
+            self, datapath, table, priority, goto_table_id, match=None):
         inst = [datapath.ofproto_parser.OFPInstructionGotoTable(goto_table_id)]
         self.mod_flow(datapath, inst=inst, table_id=table,
                       priority=priority, match=match)
