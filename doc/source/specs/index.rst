@@ -38,6 +38,7 @@ Spec Template
     mac_spoofing
     selective_topo_dist
     performance_testing
+    redis_db_driver
 
 
 Indices and tables
