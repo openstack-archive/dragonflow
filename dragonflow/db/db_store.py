@@ -83,6 +83,10 @@ class DbStore(object):
         with self.lock:
             self.routers[router_id] = router
 
+    def delete_router(self, id):
+        with self.lock:
+            del self.routers[id]
+
     def get_router(self, router_id):
         with self.lock:
             return self.routers.get(router_id)

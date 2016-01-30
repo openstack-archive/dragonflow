@@ -224,7 +224,13 @@ class DfLocalController(object):
         self.db_store.update_router(lrouter.get_name(), lrouter)
 
     def router_deleted(self, lrouter_id):
-        pass
+        old_lrouter = self.db_store.get_router(lrouter_id)
+        if old_lrouter is None:
+            return
+        old_router_ports = old_lrouter.get_ports()
+        for old_port in old_router_ports:
+            self._delete_router_port(old_port)
+        self.db_store.delete_router(lrouter_id)
 
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
