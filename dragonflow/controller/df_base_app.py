@@ -24,6 +24,7 @@ class DFlowApp(DBNotifyInterface):
     def __init__(self, api, db_store=None):
         self.api = api
         self.db_store = db_store
+        self.cookie = 0
 
     def get_datapath(self):
         return self.api.datapath
@@ -92,3 +93,7 @@ class DFlowApp(DBNotifyInterface):
                                   actions=actions,
                                   data=data)
         datapath.send_msg(out)
+
+    def set_cookie(self, cookie_fragment, mask):
+        self.cookie &= ~mask
+        self.cookie |= (cookie_fragment & mask)

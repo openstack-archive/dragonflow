@@ -126,6 +126,17 @@ class RyuDFAdapter(OFPHandler):
         req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
 
+    def notify_start_aging(self, datapath):
+        self.dispatcher.dispatch('start_aging',
+                                 datapath=datapath)
+
+    def notify_delete_stale_flows(self, ev=None):
+        self.dispatcher.dispatch('delete_stale_flows', ev=ev)
+
+    @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
+    def stats_reply_handler(self, ev):
+        self.notify_delete_stale_flows(ev)
+
     @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
     def _port_status_handler(self, ev):
         msg = ev.msg

@@ -38,6 +38,7 @@ Spec Template
     mac_spoofing
     selective_topo_dist
     performance_testing
+	local_controller_reliability
 
 
 Indices and tables
