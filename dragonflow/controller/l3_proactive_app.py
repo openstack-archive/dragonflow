@@ -21,6 +21,7 @@ from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
 from oslo_log import log
+import aging
 
 
 LOG = log.getLogger(__name__)
@@ -146,9 +147,12 @@ class L3ProactiveApp(DFlowApp):
 
         inst = [action_inst, goto_inst]
 
+        tunnel_cookie = (dst_router_tunnel_key <<
+                         const.LOCAL_TUNNEL_KEY_SHIFT_LEN)
         self.mod_flow(
             self.get_datapath(),
-            cookie=dst_router_tunnel_key,
+            cookie=aging.flap_aging_cookie(tunnel_cookie),
+            cookie_mask=const.LOCAL_TUNNEL_KEY_COOKIE,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -298,6 +302,6 @@ class L3ProactiveApp(DFlowApp):
                 local_network_id = self.db_store.get_network_id(
                     router_port.get_lswitch_id())
                 self.add_router_port(lrouter, router_port,
-                        local_network_id)
+                                     local_network_id)
         for lport in self.db_store.get_ports():
             self._add_port(lport)
