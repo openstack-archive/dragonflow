@@ -34,7 +34,8 @@ Spec Template
 
     skeleton
     template
-    distributed_dnat
+    distributed_dnatd
+	local_controller_reliability
 
 
 Indices and tables
