@@ -182,22 +182,22 @@ class DHCPApp(DFlowApp):
                                     mtu_bin,
                                     len(mtu_bin)))
         options = dhcp.options(option_list=option_list)
-        dhcp_offer_pkt = ryu_packet.Packet()
-        dhcp_offer_pkt.add_protocol(ethernet.ethernet(
+        dhcp_ack_pkt = ryu_packet.Packet()
+        dhcp_ack_pkt.add_protocol(ethernet.ethernet(
                                                 ethertype=ether.ETH_TYPE_IP,
                                                 dst=pkt_ethernet.src,
                                                 src=pkt_ethernet.dst))
-        dhcp_offer_pkt.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
-                                   src=dhcp_server_address,
-                                   proto=pkt_ipv4.proto))
-        dhcp_offer_pkt.add_protocol(udp.udp(src_port=67, dst_port=68))
-        dhcp_offer_pkt.add_protocol(dhcp.dhcp(op=2, chaddr=pkt_ethernet.src,
+        dhcp_ack_pkt.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
+                                  src=dhcp_server_address,
+                                  proto=pkt_ipv4.proto))
+        dhcp_ack_pkt.add_protocol(udp.udp(src_port=67, dst_port=68))
+        dhcp_ack_pkt.add_protocol(dhcp.dhcp(op=2, chaddr=pkt_ethernet.src,
                                          siaddr=dhcp_server_address,
                                          boot_file=dhcp_packet.boot_file,
                                          yiaddr=lport.get_ip(),
                                          xid=dhcp_packet.xid,
                                          options=options))
-        return dhcp_offer_pkt
+        return dhcp_ack_pkt
 
     def _create_dhcp_offer(self, pkt, dhcp_packet, lport):
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
