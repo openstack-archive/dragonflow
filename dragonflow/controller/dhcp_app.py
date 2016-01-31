@@ -291,7 +291,7 @@ class DHCPApp(DFlowApp):
         return True
 
     def _get_port_mtu(self, lport):
-        #TODO(gampel) Get mtu from network object onec we add support
+        #TODO(gampel) Get mtu from network object once we add support
         return self.default_interface_mtu
 
     def remove_local_port(self, lport):
