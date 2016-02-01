@@ -25,8 +25,8 @@ from oslo_utils import importutils
 
 from neutron.agent.common import config
 from neutron.common import config as common_config
-from neutron.i18n import _LI, _LW
 
+from dragonflow._i18n import _LI, _LW
 from dragonflow.common import common_params
 from dragonflow.common import constants
 from dragonflow.controller.ryu_base_app import RyuDFAdapter

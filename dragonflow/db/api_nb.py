@@ -23,7 +23,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 
-from neutron.i18n import _LI
+from dragonflow._i18n import _LI
 
 LOG = log.getLogger(__name__)
 

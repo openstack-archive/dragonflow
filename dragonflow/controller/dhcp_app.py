@@ -20,7 +20,6 @@ from oslo_config import cfg
 from oslo_log import log
 
 from neutron.common import config as common_config
-from neutron.i18n import _, _LI, _LE, _LW
 
 from ryu.lib import addrconv
 from ryu.lib.packet import dhcp
@@ -30,6 +29,7 @@ from ryu.lib.packet import packet as ryu_packet
 from ryu.lib.packet import udp
 from ryu.ofproto import ether
 
+from dragonflow._i18n import _, _LI, _LE, _LW
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 

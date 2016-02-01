@@ -13,7 +13,7 @@
 from oslo_log import log
 from oslo_utils import importutils
 
-from neutron.i18n import _, _LE
+from dragonflow._i18n import _, _LE
 
 LOG = log.getLogger(__name__)
 

@@ -18,8 +18,6 @@ import time
 from oslo_config import cfg
 from oslo_log import log
 
-from neutron.i18n import _LI
-
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
@@ -27,6 +25,7 @@ from ryu.controller import ofp_event
 from ryu.controller.ofp_handler import OFPHandler
 from ryu.ofproto import ofproto_v1_3
 
+from dragonflow._i18n import _LI
 from dragonflow.controller.dispatcher import AppDispatcher
 
 

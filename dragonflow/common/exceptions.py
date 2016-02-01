@@ -13,7 +13,7 @@
 from oslo_utils import excutils
 import six
 
-from neutron.i18n import _
+from dragonflow._i18n import _
 
 
 class DragonflowException(Exception):

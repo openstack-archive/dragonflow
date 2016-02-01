@@ -48,8 +48,8 @@ from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
 from neutron.db import portbindings_db
 from neutron.db import securitygroups_db
-from neutron.i18n import _, _LE, _LI
 
+from dragonflow._i18n import _, _LE, _LI
 from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions

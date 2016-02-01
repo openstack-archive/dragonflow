@@ -21,13 +21,12 @@ from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
+from dragonflow._i18n import _LE
 from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
 from oslo_log import log
-
-from neutron.i18n import _LE
 
 
 LOG = log.getLogger(__name__)
