@@ -54,6 +54,22 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                     dhcp_ports_found += 1
         self.assertEqual(dhcp_ports_found, 0)
 
+    def test_create_delete_subnet(self):
+        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network_id = network.create()
+        self.assertTrue(network.exists())
+        subnet = objects.SubnetTestWrapper(
+            self.neutron,
+            self.nb_api,
+            network_id,
+        )
+        subnet_id = subnet.create()
+        self.assertTrue(subnet.exists())
+        self.assertEqual(subnet_id, subnet.get_subnet().get_id())
+        subnet.delete()
+        self.assertFalse(subnet.exists())
+        network.delete()
+
     def test_create_delete_router(self):
         router = objects.RouterTestWrapper(self.neutron, self.nb_api)
         router.create()
@@ -66,13 +82,15 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
         network_id = network.create()
         self.assertTrue(network.exists())
-        subnet = {'subnets': [{'cidr': '192.168.199.0/24',
-                  'ip_version': 4, 'network_id': network_id}]}
-        subnets = self.neutron.create_subnet(body=subnet)
-        subnet = subnets['subnets'][0]
+        subnet = objects.SubnetTestWrapper(
+            self.neutron,
+            self.nb_api,
+            network_id,
+        )
+        subnet_id = subnet.create()
         router_id = router.create()
         self.assertTrue(router.exists())
-        subnet_msg = {'subnet_id': subnet['id']}
+        subnet_msg = {'subnet_id': subnet_id}
         port = self.neutron.add_interface_router(router_id, body=subnet_msg)
         port2 = self.nb_api.get_logical_port(port['port_id'])
         self.assertIsNotNone(port2)
@@ -101,12 +119,19 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
         network_id = network.create()
         self.assertTrue(network.exists())
-        subnet = {'subnets': [{'cidr': '91.126.188.0/24',
-                  'ip_version': 4, 'network_id': network_id}]}
-        subnet = self.neutron.create_subnet(body=subnet)
+        subnet = objects.SubnetTestWrapper(
+            self.neutron,
+            self.nb_api,
+            network_id,
+        )
+        subnet_id = subnet.create({
+            'cidr': '91.126.188.0/24',
+            'ip_version': 4,
+            'network_id': network_id
+        })
         router_id = router.create()
         self.assertTrue(router.exists())
-        interface_msg = {'subnet_id': subnet['subnets'][0]['id']}
+        interface_msg = {'subnet_id': subnet_id}
         router_l = self.neutron.add_interface_router(router_id,
                                                      body=interface_msg)
         routers = self.nb_api.get_routers()
