@@ -144,6 +144,44 @@ class VMTestWrapper(object):
         return self.nova.servers.get_console_output(self.server)
 
 
+class SubnetTestWrapper(object):
+    def __init__(self, neutron, nb_api, network_id=None):
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.network_id = network_id
+        self.subnet_id = None
+
+    def create(self, subnet=None):
+        if not subnet:
+            subnet = {
+                'cidr': '192.168.199.0/24',
+                'ip_version': 4,
+                'network_id': self.network_id
+            }
+        subnet = self.neutron.create_subnet(body={'subnet': subnet})
+        self.subnet_id = subnet['subnet']['id']
+        return self.subnet_id
+
+    def get_subnet(self):
+        network = self.nb_api.get_lswitch(self.network_id)
+        if not network:
+            return None
+        subnets = network.get_subnets()
+        for subnet in subnets:
+            if subnet.get_id() == self.subnet_id:
+                return subnet
+        return None
+
+    def exists(self):
+        subnet = self.get_subnet()
+        if subnet:
+            return True
+        return False
+
+    def delete(self):
+        self.neutron.delete_subnet(self.subnet_id)
+
+
 class PortTestWrapper(object):
     def __init__(self, neutron, nb_api, network_id=None):
         self.neutron = neutron
