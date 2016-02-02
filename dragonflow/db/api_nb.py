@@ -262,9 +262,10 @@ class NbApi(object):
             res.append(lport)
         return res
 
-    def create_lswitch(self, name, **columns):
+    def create_lswitch(self, name, topic, **columns):
         lswitch = {}
         lswitch['name'] = name
+        lswitch['topic'] = topic
         for col, val in columns.items():
             lswitch[col] = val
         lswitch_json = jsonutils.dumps(lswitch)
@@ -278,13 +279,14 @@ class NbApi(object):
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', name, lswitch_json)
 
-    def delete_lswitch(self, name):
+    def delete_lswitch(self, name, topic):
         self.driver.delete_key('lswitch', name)
 
-    def create_lport(self, name, lswitch_name, **columns):
+    def create_lport(self, name, lswitch_name, topic, **columns):
         lport = {}
         lport['name'] = name
         lport['lswitch'] = lswitch_name
+        lport['topic'] = topic
         for col, val in columns.items():
             lport[col] = val
         lport_json = jsonutils.dumps(lport)
@@ -298,18 +300,19 @@ class NbApi(object):
         lport_json = jsonutils.dumps(lport)
         self.driver.set_key('lport', name, lport_json)
 
-    def delete_lport(self, name):
+    def delete_lport(self, name, topic):
         self.driver.delete_key('lport', name)
 
-    def create_lrouter(self, name, **columns):
+    def create_lrouter(self, name, topic, **columns):
         lrouter = {}
         lrouter['name'] = name
+        lrouter['topic'] = topic
         for col, val in columns.items():
             lrouter[col] = val
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.create_key('lrouter', name, lrouter_json)
 
-    def delete_lrouter(self, name):
+    def delete_lrouter(self, name, topic):
         self.driver.delete_key('lrouter', name)
 
     def add_lrouter_port(self, name, lrouter_name, lswitch, **columns):
