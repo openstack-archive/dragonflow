@@ -153,6 +153,7 @@ class DfLocalController(object):
         LOG.info(_LI("Removing Logical Switch = %s") % lswitch.__str__())
         self.open_flow_app.notify_remove_logical_switch(lswitch)
         self.db_store.del_lswitch(lswitch_id)
+        self.db_store.del_network_id(lswitch_id)
 
     def logical_port_updated(self, lport):
         if self.db_store.get_port(lport.get_id()) is not None:
