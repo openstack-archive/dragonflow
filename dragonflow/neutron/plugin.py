@@ -48,6 +48,8 @@ from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
 from neutron.db import portbindings_db
 from neutron.db import securitygroups_db
+from neutron import manager
+from neutron.plugins.common import constants as service_constants
 
 from dragonflow._i18n import _, _LE, _LI
 from dragonflow.common import common_params
@@ -265,12 +267,15 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         # TODO(DF): Undo logical switch creation on failure
         self.nb_api.create_lswitch(name=network['id'],
+                                   topic=network['tenant_id'],
                                    external_ids=external_ids,
                                    subnets=[])
         return network
 
     def delete_network(self, context, network_id):
         with context.session.begin(subtransactions=True):
+            network = self.get_network(context, network_id)
+            tenant_id = network['tenant_id']
             super(DFPlugin, self).delete_network(context,
                                                  network_id)
         # TODO(gsagie) this fix is used to remove DHCP port
@@ -280,12 +285,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         for port in self.nb_api.get_all_logical_ports():
             if port.get_lswitch_id() == network_id:
                 try:
-                    self.nb_api.delete_lport(port.get_id())
+                    self.nb_api.delete_lport(name=port.get_id(),
+                                             topic=tenant_id)
                 except df_exceptions.DBKeyNotFound:
                     LOG.debug("port %s is not found in DB, might have"
                               "been deleted concurrently" % port.get_id())
         try:
-            self.nb_api.delete_lswitch(network_id)
+            self.nb_api.delete_lswitch(name=network_id, topic=tenant_id)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
                       "been deleted concurrently" % network_id)
@@ -445,6 +451,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.nb_api.create_lport(
             name=port['id'],
             lswitch_name=port['network_id'],
+            topic=port['tenant_id'],
             macs=[port['mac_address']], ips=ips,
             external_ids=external_ids,
             parent_name=parent_name, tag=tag,
@@ -482,7 +489,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def delete_port(self, context, port_id, l3_port_check=True):
         self._pre_delete_port(context, port_id, l3_port_check)
         try:
-            self.nb_api.delete_lport(port_id)
+            port = self.get_port(context, port_id)
+            topic = port['tenant_id']
+            self.nb_api.delete_lport(name=port_id, topic=topic)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("port %s is not found in DF DB, might have "
                       "been deleted concurrently" % port_id)
@@ -498,9 +507,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         router = super(DFPlugin, self).create_router(
             context, router)
         router_name = router['id']
+        tenant_id = router['tenant_id']
         external_ids = {df_const.DF_ROUTER_NAME_EXT_ID_KEY:
                         router.get('name', 'no_router_name')}
-        self.nb_api.create_lrouter(router_name, external_ids=external_ids,
+        self.nb_api.create_lrouter(router_name, topic=tenant_id,
+                                   external_ids=external_ids,
                                    ports=[])
 
         # TODO(gsagie) rollback router creation on failure
@@ -509,7 +520,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def delete_router(self, context, router_id):
         router_name = router_id
         try:
-            self.nb_api.delete_lrouter(router_name)
+            router = self.get_router(context, router_id)
+            self.nb_api.delete_lrouter(name=router_name,
+                                       topic=router['tenant_id'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("router %s is not found in DF DB, might have "
                       "been deleted concurrently" % router_name)
