@@ -87,15 +87,12 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
         network_id = network.create()
         self.assertTrue(network.exists())
-        port = {'admin_state_up': True, 'name': 'port1',
-                'network_id': network_id}
-        port = self.neutron.create_port(body={'port': port})
-        port2 = self.nb_api.get_logical_port(port['port']['id'])
-        self.assertIsNotNone(port2)
-        self.assertEqual(network_id, port2.get_lswitch_id())
-        self.neutron.delete_port(port['port']['id'])
-        port2 = self.nb_api.get_logical_port(port['port']['id'])
-        self.assertIsNone(port2)
+        port = objects.PortTestWrapper(self.neutron, self.nb_api, network_id)
+        port.create()
+        self.assertTrue(port.exists())
+        self.assertEqual(network_id, port.get_logical_port().get_lswitch_id())
+        port.delete()
+        self.assertFalse(port.exists())
         network.delete()
         self.assertFalse(network.exists())
 

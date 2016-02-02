@@ -142,3 +142,34 @@ class VMTestWrapper(object):
 
     def dump(self):
         return self.nova.servers.get_console_output(self.server)
+
+
+class PortTestWrapper(object):
+    def __init__(self, neutron, nb_api, network_id=None):
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.network_id = network_id
+        self.port_id = None
+
+    def create(self, port=None):
+        if not port:
+            port = {
+                'admin_state_up': True,
+                'name': 'port1',
+                'network_id': self.network_id,
+            }
+        port = self.neutron.create_port(body={'port': port})
+        self.port_id = port['port']['id']
+        return self.port_id
+
+    def get_logical_port(self):
+        return self.nb_api.get_logical_port(self.port_id)
+
+    def exists(self):
+        port = self.get_logical_port()
+        if port:
+            return True
+        return False
+
+    def delete(self):
+        self.neutron.delete_port(self.port_id)
