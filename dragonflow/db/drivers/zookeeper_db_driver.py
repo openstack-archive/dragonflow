@@ -135,7 +135,6 @@ class ZookeeperDbDriver(db_api.DbApi):
 
     def _allocate_unique_key(self):
         path = self._generate_path('tunnel_key', 'key')
-        self.client.ensure_path(path)
 
         prev_value = 0
         version_exception = True
