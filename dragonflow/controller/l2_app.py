@@ -251,6 +251,28 @@ class L2App(DFlowApp):
         self._add_multicast_broadcast_handling_for_port(network_id, lport_id,
                                                         tunnel_key)
 
+    def remove_logical_switch(self, lswitch):
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+
+        network_id = self.db_store.get_network_id(lswitch.get_id())
+        match = parser.OFPMatch(eth_dst='01:00:00:00:00:00')
+        addint = haddr_to_bin('01:00:00:00:00:00')
+        match.set_dl_dst_masked(addint, addint)
+        match.set_metadata(network_id)
+
+        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
+                                cookie=0,
+                                cookie_mask=0,
+                                table_id=const.L2_LOOKUP_TABLE,
+                                command=ofproto.OFPFC_DELETE,
+                                priority=const.PRIORITY_HIGH,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY,
+                                match=match)
+
+        self.get_datapath().send_msg(msg)
+
     def _del_multicast_broadcast_handling_for_port(self, network_id,
                                                    lport_id):
         parser = self.get_datapath().ofproto_parser

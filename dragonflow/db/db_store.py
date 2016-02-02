@@ -37,6 +37,10 @@ class DbStore(object):
         with self.lock:
             self.networks[ldp] = net_id
 
+    def del_network_id(self, ldp):
+        with self.lock:
+            del self.networks[ldp]
+
     def set_lswitch(self, id, lswitch):
         with self.lock:
             self.lswitchs[id] = lswitch
