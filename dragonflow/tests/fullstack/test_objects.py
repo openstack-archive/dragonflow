@@ -56,6 +56,14 @@ class RouterTestWrapper(object):
                 return True
         return False
 
+    def add_interface(self, port_id=None, subnet_id=None):
+        body = {}
+        if port_id:
+            body['port_id'] = port_id
+        if subnet_id:
+            body['subnet_id'] = subnet_id
+        return self.neutron.add_interface_router(self.router_id, body=body)
+
 
 class NetworkTestWrapper(object):
 
