@@ -14,3 +14,6 @@ testrepository>=0.0.18 # Apache-2.0/BSD
 testscenarios>=0.4 # Apache-2.0/BSD
 testtools>=1.4.0 # MIT
 reno>=0.1.1 # Apache2
+python-pytun>=2.2.1
+scapy>=2.3.2
+pcapy>=0.10.9
