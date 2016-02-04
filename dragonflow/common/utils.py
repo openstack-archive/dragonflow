@@ -18,6 +18,7 @@ from stevedore import driver
 import sys
 
 from dragonflow._i18n import _, _LE
+import greenlet
 
 DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
 LOG = logging.getLogger(__name__)
@@ -68,3 +69,14 @@ class DFDaemon(object):
             eventlet.sleep(0)
             self.thread = None
             self.is_daemonize = False
+
+    def wait(self, timeout=None):
+        if timeout and timeout > 0:
+            timeout_obj = eventlet.Timeout(timeout)
+        try:
+            self.thread.wait()
+        except greenlet.GreenletExit:
+            return True  # Good news
+        finally:
+            if timeout_obj:
+                timeout_obj.cancel()
