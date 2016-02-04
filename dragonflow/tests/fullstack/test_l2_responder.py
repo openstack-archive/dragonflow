@@ -60,33 +60,26 @@ class ArpResponderTest(test_base.DFTestBase):
         """
         Add a VM. Verify it's ARP flow is there.
         """
-        try:
-            ovs_flows_parser = OvsFlowsParser()
-            flows_before = ovs_flows_parser.dump()
-            flows_before = [flow for flow in flows_before
-                    if flow['table'] == str(const.ARP_TABLE) + ',']
+        ovs_flows_parser = OvsFlowsParser()
+        flows_before = ovs_flows_parser.dump()
+        flows_before = [flow for flow in flows_before
+                if flow['table'] == str(const.ARP_TABLE) + ',']
 
-            vm = objects.VMTestWrapper(self)
-            vm.create()
-            ip = self._get_first_ipv4(vm.server.networks['private'])
-            self.assertIsNotNone(ip)
+        vm = self.store(objects.VMTestWrapper(self))
+        vm.create()
+        ip = self._get_first_ipv4(vm.server.networks['private'])
+        self.assertIsNotNone(ip)
 
-            flows_middle = ovs_flows_parser.dump()
-            flows_middle = [flow for flow in flows_middle
-                    if flow['table'] == str(const.ARP_TABLE) + ',']
+        flows_middle = ovs_flows_parser.dump()
+        flows_middle = [flow for flow in flows_middle
+                if flow['table'] == str(const.ARP_TABLE) + ',']
 
-            vm.server.stop()
-            vm.delete()
-            vm = None
+        vm.server.stop()
+        vm.delete()
 
-            flows_delta = [flow for flow in flows_middle
-                    if flow not in flows_before]
-            self.assertIsNotNone(
-                self._find_arp_responder_flow_by_ip(flows_delta, ip)
-            )
-            self.assertTrue(self._wait_for_flow_removal(flows_before, 30))
-        finally:
-            try:
-                vm.delete()
-            except Exception:
-                pass  # Ignore
+        flows_delta = [flow for flow in flows_middle
+                if flow not in flows_before]
+        self.assertIsNotNone(
+            self._find_arp_responder_flow_by_ip(flows_delta, ip)
+        )
+        self.assertTrue(self._wait_for_flow_removal(flows_before, 30))

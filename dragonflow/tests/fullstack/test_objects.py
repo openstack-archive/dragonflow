@@ -17,7 +17,7 @@ from novaclient import client as novaclient
 from dragonflow.tests.fullstack import test_base
 
 
-class RouterTestWrapper(object):
+class RouterTestObj(object):
 
     def __init__(self, neutron, nb_api):
         self.router_id = None
@@ -30,12 +30,9 @@ class RouterTestWrapper(object):
         self.router_id = new_router['router']['id']
         return self.router_id
 
-    def __del__(self):
+    def delete(self):
         if self.deleted or self.router_id is None:
             return
-        self.delete()
-
-    def delete(self):
         ports = self.neutron.list_ports(device_id=self.router_id)
         ports = ports['ports']
         for port in ports:
@@ -57,7 +54,7 @@ class RouterTestWrapper(object):
         return False
 
 
-class NetworkTestWrapper(object):
+class NetworkTestObj(object):
 
     def __init__(self, neutron, nb_api):
         self.network_id = None
@@ -70,12 +67,9 @@ class NetworkTestWrapper(object):
         self.network_id = network['network']['id']
         return self.network_id
 
-    def __del__(self):
+    def delete(self):
         if self.deleted or self.network_id is None:
             return
-        self.delete()
-
-    def delete(self):
         self.neutron.delete_network(self.network_id)
         self.deleted = True
 
@@ -86,7 +80,7 @@ class NetworkTestWrapper(object):
         return False
 
 
-class VMTestWrapper(object):
+class VMTestObj(object):
 
     def __init__(self, parent):
         self.server = None
@@ -123,12 +117,9 @@ class VMTestWrapper(object):
             timeout = timeout - 1
         return False
 
-    def __del__(self):
+    def delete(self):
         if self.deleted or self.server is None:
             return
-        self.delete()
-
-    def delete(self):
         self.nova.servers.delete(self.server)
         self.deleted = True
 
@@ -144,12 +135,13 @@ class VMTestWrapper(object):
         return self.nova.servers.get_console_output(self.server)
 
 
-class SubnetTestWrapper(object):
+class SubnetTestObj(object):
     def __init__(self, neutron, nb_api, network_id=None):
         self.neutron = neutron
         self.nb_api = nb_api
         self.network_id = network_id
         self.subnet_id = None
+        self.deleted = False
 
     def create(self, subnet=None):
         if not subnet:
@@ -179,15 +171,20 @@ class SubnetTestWrapper(object):
         return False
 
     def delete(self):
+        if self.deleted or self.subnet_id is None:
+            return
         self.neutron.delete_subnet(self.subnet_id)
+        self.deleted = True
 
 
-class PortTestWrapper(object):
+class PortTestObj(object):
+
     def __init__(self, neutron, nb_api, network_id=None):
         self.neutron = neutron
         self.nb_api = nb_api
         self.network_id = network_id
         self.port_id = None
+        self.deleted = False
 
     def create(self, port=None):
         if not port:
@@ -210,4 +207,7 @@ class PortTestWrapper(object):
         return False
 
     def delete(self):
+        if self.deleted or self.port_id is None:
+            return
         self.neutron.delete_port(self.port_id)
+        self.deleted = True

@@ -21,14 +21,14 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         super(TestNeutronAPIandDB, self).setUp()
 
     def test_create_network(self):
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network.create()
         self.assertTrue(network.exists())
         network.delete()
         self.assertFalse(network.exists())
 
     def test_dhcp_port_created(self):
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
         subnet = {'network_id': network_id,
@@ -55,14 +55,14 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertEqual(dhcp_ports_found, 0)
 
     def test_create_delete_subnet(self):
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
         network_id = network.create()
         self.assertTrue(network.exists())
-        subnet = objects.SubnetTestWrapper(
+        subnet = self.store(objects.SubnetTestObj(
             self.neutron,
             self.nb_api,
             network_id,
-        )
+        ))
         subnet_id = subnet.create()
         self.assertTrue(subnet.exists())
         self.assertEqual(subnet_id, subnet.get_subnet().get_id())
@@ -71,22 +71,22 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network.delete()
 
     def test_create_delete_router(self):
-        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         router.create()
         self.assertTrue(router.exists())
         router.delete()
         self.assertFalse(router.exists())
 
     def test_create_router_interface(self):
-        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
-        subnet = objects.SubnetTestWrapper(
+        subnet = self.store(objects.SubnetTestObj(
             self.neutron,
             self.nb_api,
             network_id,
-        )
+        ))
         subnet_id = subnet.create()
         router_id = router.create()
         self.assertTrue(router.exists())
@@ -102,10 +102,11 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(network.exists())
 
     def test_create_port(self):
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
-        port = objects.PortTestWrapper(self.neutron, self.nb_api, network_id)
+        port = self.store(objects.PortTestObj(self.neutron,
+                                  self.nb_api, network_id))
         port.create()
         self.assertTrue(port.exists())
         self.assertEqual(network_id, port.get_logical_port().get_lswitch_id())
@@ -115,15 +116,15 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(network.exists())
 
     def test_delete_router_interface_port(self):
-        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
-        subnet = objects.SubnetTestWrapper(
+        subnet = self.store(objects.SubnetTestObj(
             self.neutron,
             self.nb_api,
             network_id,
-        )
+        ))
         subnet_id = subnet.create({
             'cidr': '91.126.188.0/24',
             'ip_version': 4,
@@ -154,7 +155,6 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network.delete()
         self.assertFalse(router.exists())
         self.assertFalse(network.exists())
-
 
 '''
 The following tests are for list networks/routers/ports/subnets API.
