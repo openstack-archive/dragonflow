@@ -11,14 +11,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from oslo_log import log as logging
+from oslo_utils import importutils
 
 import eventlet
+from stevedore import driver
+import sys
 
-from dragonflow._i18n import _LE
+from dragonflow._i18n import _, _LE
 
+DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
 LOG = logging.getLogger(__name__)
 
 eventlet.monkey_patch()
+
+
+def load_driver(driver_cfg, namespace):
+    try:
+        # Try to resolve by alias
+        mgr = driver.DriverManager(namespace, driver_cfg)
+        class_to_load = mgr.driver
+    except RuntimeError:
+        e1_info = sys.exc_info()
+        # try with name
+        try:
+            class_to_load = importutils.import_class(driver_cfg)
+        except (ImportError, ValueError):
+            LOG.error(_LE("Error loading class %(class)s by alias e: %(e)s")
+                    % {'class': driver_cfg, 'e': e1_info},
+                    exc_info=e1_info)
+            LOG.error(_LE("Error loading class by class name"),
+                      exc_info=True)
+            raise ImportError(_("Class not found."))
+    return class_to_load()
 
 
 class DFDaemon(object):
