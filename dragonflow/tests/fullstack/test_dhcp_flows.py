@@ -57,7 +57,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
     def test_create_update_subnet_with_dhcp(self):
         ovs = utils.OvsFlowsParser()
         flows_before_change = ovs.dump()
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         subnet = {'network_id': network_id,
             'cidr': '10.10.0.0/24',
@@ -84,7 +84,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
     def test_create_update_subnet_without_dhcp(self):
         ovs = utils.OvsFlowsParser()
         flows_before_change = ovs.dump()
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         subnet = {'network_id': network_id,
             'cidr': '10.20.0.0/24',
@@ -114,8 +114,8 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
     def test_create_router_interface(self):
         ovs = utils.OvsFlowsParser()
         flows_before_change = ovs.dump()
-        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         subnet = {'network_id': network_id,
             'cidr': '10.30.0.0/24',

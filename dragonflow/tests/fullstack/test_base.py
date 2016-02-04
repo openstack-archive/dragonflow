@@ -50,3 +50,13 @@ class DFTestBase(base.BaseTestCase):
         self.nb_api = api_nb.NbApi(db_driver_class())
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
             db_port=cfg.CONF.df.remote_db_port)
+        self.kids = []
+
+    def store(self, obj):
+        self.kids.append(obj)
+        return obj
+
+    def tearDown(self):
+        for obj in reversed(self.kids):
+            obj.delete()
+        super(DFTestBase, self).tearDown()
