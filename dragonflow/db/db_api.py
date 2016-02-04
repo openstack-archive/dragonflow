@@ -42,19 +42,21 @@ class DbApi(object):
         """
 
     @abc.abstractmethod
-    def get_key(self, table, key):
+    def get_key(self, table, key, topic=None):
         """Get the value of a specific key in a table
 
         :param table:      table name
         :type table:       string
         :param key:        key name
         :type key:         string
+        :param topic:      topic for key
+        :type topic:       string
         :returns:          string - the key value
         :raises:           DragonflowException.DBKeyNotFound if key not found
         """
 
     @abc.abstractmethod
-    def set_key(self, table, key, value):
+    def set_key(self, table, key, value, topic=None):
         """Set a specific key in a table with value
 
         :param table:      table name
@@ -63,12 +65,14 @@ class DbApi(object):
         :type key:         string
         :param value:      value to set for the key
         :type value:       string
+        :param topic:      topic for key
+        :type topic:       string
         :returns:          None
         :raises:           DragonflowException.DBKeyNotFound if key not found
         """
 
     @abc.abstractmethod
-    def create_key(self, table, key, value):
+    def create_key(self, table, key, value, topic=None):
         """Create a specific key in a table with value
 
         :param table:      table name
@@ -77,43 +81,51 @@ class DbApi(object):
         :type key:         string
         :param value:      value to set for the created key
         :type value:       string
+        :param topic:      topic for key
+        :type topic:       string
         :returns:          None
         """
 
     @abc.abstractmethod
-    def delete_key(self, table, key):
+    def delete_key(self, table, key, topic=None):
         """Delete a specific key from a table
 
         :param table:      table name
         :type table:       string
         :param key:        key name
         :type key:         string
+        :param topic:      topic for key
+        :type topic:       string
         :returns:          None
         :raises:           DragonflowException.DBKeyNotFound if key not found
         """
 
     @abc.abstractmethod
-    def get_all_entries(self, table):
+    def get_all_entries(self, table, topic=None):
         """Returns a list of all table entries values
 
         :param table:      table name
         :type table:       string
+        :param topic:      get only entries matching this topic
+        :type topic:       string
         :returns:          list of values
         :raises:           DragonflowException.DBKeyNotFound if key not found
         """
 
     @abc.abstractmethod
-    def get_all_keys(self, table):
+    def get_all_keys(self, table, topic=None):
         """Returns a list of all table entries keys
 
         :param table:      table name
         :type table:       string
+        :param topic:      get all keys matching this topic
+        :type topic:       string
         :returns:          list of keys
         :raises:           DragonflowException.DBKeyNotFound if key not found
         """
 
     @abc.abstractmethod
-    def register_notification_callback(self, callback):
+    def register_notification_callback(self, callback, topics=None):
         """Register for DB changes notifications, DB driver should
            call callback method for every change.
            DB driver is responsible to start the appropriate listener
@@ -130,7 +142,27 @@ class DbApi(object):
                           key - object key
                           action = 'create' / 'set' / 'delete' / 'sync'
                           value = new object value
+        :param topics:    topics to register for DB notifications
+        :type topics :     list of strings (topics)
         :returns:         None
+        """
+
+    @abc.abstractmethod
+    def register_topic_for_notification(self, topic):
+        """Register new topic, start receiving updates on this topic
+
+        :param topic:  topic to register for DB notifications
+        :type topic :  string
+        :returns:      None
+        """
+
+    @abc.abstractmethod
+    def unregister_topic_for_notification(self, topic):
+        """Un-register topic, stop receiving updates on this topic
+
+        :param topic:  topic to un-register for DB notifications
+        :type topic :  string
+        :returns:      None
         """
 
     @abc.abstractmethod

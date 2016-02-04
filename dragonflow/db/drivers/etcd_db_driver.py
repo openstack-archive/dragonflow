@@ -163,6 +163,14 @@ class EtcdDbDriver(db_api.DbApi):
         self.notify_callback = callback
         self.pool.spawn_n(self._db_changes_updater)
 
+    def register_topic_for_notification(self, topic):
+        # TODO(gsagie) implement this
+        pass
+
+    def unregister_topic_for_notification(self, topic):
+        # TODO(gsagie) implement this
+        pass
+
     def _db_changes_updater(self):
         while True:
             try:

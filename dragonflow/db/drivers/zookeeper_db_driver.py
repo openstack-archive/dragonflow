@@ -167,3 +167,11 @@ class ZookeeperDbDriver(db_api.DbApi):
         #                 Please set 'use_df_pub_sub=True' in the configuration
         #                 to enable the build-in pub-sub function.
         return
+
+    def register_topic_for_notification(self, topic):
+        # Not needed until register notification callback is implemented
+        pass
+
+    def unregister_topic_for_notification(self, topic):
+        # Not needed until register notification callback is implemented
+        pass
