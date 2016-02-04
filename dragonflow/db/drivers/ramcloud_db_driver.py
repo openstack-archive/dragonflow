@@ -97,4 +97,12 @@ class RamCloudDbDriver(db_api.DbApi):
         return self._allocate_unique_key()
 
     def register_notification_callback(self, callback):
-        return
+        pass
+
+    def register_topic_for_notification(self, topic):
+        # Not needed until register notification callback is implemented
+        pass
+
+    def unregister_topic_for_notification(self, topic):
+        # Not needed until register notification callback is implemented
+        pass
