@@ -64,38 +64,30 @@ class ArpResponderTest(test_base.DFTestBase):
         """
         Add a VM. Verify it's ARP flow is there.
         """
-        try:
-            flows_before = self._get_arp_table_flows()
+        flows_before = self._get_arp_table_flows()
 
-            vm = objects.VMTestWrapper(self)
-            vm.create()
-            ip = self._get_first_ipv4(vm.server.networks['private'])
-            self.assertIsNotNone(ip)
+        vm = self.store(objects.VMTestObj(self))
+        vm.create()
+        ip = self._get_first_ipv4(vm.server.networks['private'])
+        self.assertIsNotNone(ip)
 
-            flows_middle = self._get_arp_table_flows()
+        flows_middle = self._get_arp_table_flows()
 
-            vm.server.stop()
-            vm.delete()
-            vm = None
-
-            flows_delta = [flow for flow in flows_middle
+        vm.server.stop()
+        vm.close()
+        flows_delta = [flow for flow in flows_middle
+                if flow not in flows_before]
+        self.assertIsNotNone(
+            self._find_arp_responder_flow_by_ip(flows_delta, ip)
+        )
+        if not self._wait_for_flow_removal(flows_before, 30):
+            print 'Flows before and after the test are not the same:'
+            print 'Before: ', flows_before
+            print 'After: ', self._get_arp_table_flows()
+            print 'Verifying we have removed the l2 responder flows.'
+            flows_after = self._get_arp_table_flows()
+            flows_delta = [flow for flow in flows_after
                     if flow not in flows_before]
-            self.assertIsNotNone(
+            self.assertIsNone(
                 self._find_arp_responder_flow_by_ip(flows_delta, ip)
             )
-            if not self._wait_for_flow_removal(flows_before, 30):
-                print 'Flows before and after the test are not the same:'
-                print 'Before: ', flows_before
-                print 'After: ', self._get_arp_table_flows()
-                print 'Verifying we have removed the l2 responder flows.'
-                flows_after = self._get_arp_table_flows()
-                flows_delta = [flow for flow in flows_after
-                        if flow not in flows_before]
-                self.assertIsNone(
-                    self._find_arp_responder_flow_by_ip(flows_delta, ip)
-                )
-        finally:
-            try:
-                vm.delete()
-            except Exception:
-                pass  # Ignore

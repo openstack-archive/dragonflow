@@ -57,7 +57,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
     def test_create_update_subnet_with_dhcp(self):
         ovs = utils.OvsFlowsParser()
         flows_before_change = ovs.dump()
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         subnet = {'network_id': network_id,
             'cidr': '10.10.0.0/24',
@@ -79,12 +79,12 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         time.sleep(DEFAULT_CMD_TIMEOUT)
         flows_after_update = ovs.dump()
         self.assertFalse(self.check_dhcp_rule(flows_after_update, dhcp_ip))
-        network.delete()
+        network.close()
 
     def test_create_update_subnet_without_dhcp(self):
         ovs = utils.OvsFlowsParser()
         flows_before_change = ovs.dump()
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         subnet = {'network_id': network_id,
             'cidr': '10.20.0.0/24',
@@ -106,7 +106,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         time.sleep(DEFAULT_CMD_TIMEOUT)
         flows_after_update = ovs.dump()
         self.assertTrue(self.check_dhcp_rule(flows_after_update, dhcp_ip))
-        network.delete()
+        network.close()
         time.sleep(DEFAULT_CMD_TIMEOUT)
         flows_after_cleanup = ovs.dump()
         self.assertFalse(self.check_dhcp_rule(flows_after_cleanup, dhcp_ip))
@@ -114,8 +114,8 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
     def test_create_router_interface(self):
         ovs = utils.OvsFlowsParser()
         flows_before_change = ovs.dump()
-        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         subnet = {'network_id': network_id,
             'cidr': '10.30.0.0/24',
@@ -136,8 +136,8 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         self.assertFalse(self.check_dhcp_rule(flows_before_change, dhcp_ip))
         self.assertTrue(self.check_dhcp_rule(flows_after_change, dhcp_ip))
         self.neutron.remove_interface_router(router_id, body=subnet_msg)
-        router.delete()
-        network.delete()
+        router.close()
+        network.close()
         time.sleep(DEFAULT_CMD_TIMEOUT)
         flows_after_cleanup = ovs.dump()
         self.assertFalse(self.check_dhcp_rule(flows_after_cleanup, dhcp_ip))
