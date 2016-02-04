@@ -21,14 +21,14 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         super(TestNeutronAPIandDB, self).setUp()
 
     def test_create_network(self):
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network.create()
         self.assertTrue(network.exists())
-        network.delete()
+        network.close()
         self.assertFalse(network.exists())
 
     def test_dhcp_port_created(self):
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
         subnet = {'network_id': network_id,
@@ -44,7 +44,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             if port.get_lswitch_id() == network_id:
                 if port.get_device_owner() == 'network:dhcp':
                     dhcp_ports_found += 1
-        network.delete()
+        network.close()
         self.assertEqual(dhcp_ports_found, 1)
         ports = self.nb_api.get_all_logical_ports()
         dhcp_ports_found = 0
@@ -55,38 +55,38 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertEqual(dhcp_ports_found, 0)
 
     def test_create_delete_subnet(self):
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
-        subnet = objects.SubnetTestWrapper(
+        subnet = self.store(objects.SubnetTestObj(
             self.neutron,
             self.nb_api,
             network_id,
-        )
+        ))
         subnet_id = subnet.create()
         self.assertTrue(subnet.exists())
         self.assertEqual(subnet_id, subnet.get_subnet().get_id())
-        subnet.delete()
+        subnet.close()
         self.assertFalse(subnet.exists())
-        network.delete()
+        network.close()
 
     def test_create_delete_router(self):
-        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         router.create()
         self.assertTrue(router.exists())
-        router.delete()
+        router.close()
         self.assertFalse(router.exists())
 
     def test_create_router_interface(self):
-        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
-        subnet = objects.SubnetTestWrapper(
+        subnet = self.store(objects.SubnetTestObj(
             self.neutron,
             self.nb_api,
             network_id,
-        )
+        ))
         subnet_id = subnet.create()
         router_id = router.create()
         self.assertTrue(router.exists())
@@ -94,36 +94,38 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         port = self.neutron.add_interface_router(router_id, body=subnet_msg)
         port2 = self.nb_api.get_logical_port(port['port_id'])
         self.assertIsNotNone(port2)
-        router.delete()
+        router.close()
         port2 = self.nb_api.get_logical_port(port['port_id'])
         self.assertIsNone(port2)
-        network.delete()
+        subnet.close()
+        network.close()
         self.assertFalse(router.exists())
         self.assertFalse(network.exists())
 
     def test_create_port(self):
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
-        port = objects.PortTestWrapper(self.neutron, self.nb_api, network_id)
+        port = self.store(objects.PortTestObj(self.neutron,
+                                  self.nb_api, network_id))
         port.create()
         self.assertTrue(port.exists())
         self.assertEqual(network_id, port.get_logical_port().get_lswitch_id())
-        port.delete()
+        port.close()
         self.assertFalse(port.exists())
-        network.delete()
+        network.close()
         self.assertFalse(network.exists())
 
     def test_delete_router_interface_port(self):
-        router = objects.RouterTestWrapper(self.neutron, self.nb_api)
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
-        subnet = objects.SubnetTestWrapper(
+        subnet = self.store(objects.SubnetTestObj(
             self.neutron,
             self.nb_api,
             network_id,
-        )
+        ))
         subnet_id = subnet.create({
             'cidr': '91.126.188.0/24',
             'ip_version': 4,
@@ -150,27 +152,30 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                                              body=interface_msg)
         port2 = self.nb_api.get_logical_port(interface_port['port']['id'])
         self.assertIsNone(port2)
-        router.delete()
-        network.delete()
+        subnet.close()
+        router.close()
+        network.close()
         self.assertFalse(router.exists())
         self.assertFalse(network.exists())
 
     def test_create_delete_security_group(self):
-        secgroup = objects.SecGroupTestWrapper(self.neutron, self.nb_api)
+        secgroup = self.store(
+                        objects.SecGroupTestObj(self.neutron, self.nb_api))
         secgroup.create()
         self.assertTrue(secgroup.exists())
-        secgroup.delete()
+        secgroup.close()
         self.assertFalse(secgroup.exists())
 
     def test_create_delete_security_group_rule(self):
-        secgroup = objects.SecGroupTestWrapper(self.neutron, self.nb_api)
+        secgroup = self.store(
+                        objects.SecGroupTestObj(self.neutron, self.nb_api))
         secgroup.create()
         self.assertTrue(secgroup.exists())
         secrule_id = secgroup.rule_create()
         self.assertTrue(secgroup.rule_exists(secrule_id))
         secgroup.rule_delete(secrule_id)
         self.assertFalse(secgroup.rule_exists(secrule_id))
-        secgroup.delete()
+        secgroup.close()
         self.assertFalse(secgroup.exists())
 
 '''
