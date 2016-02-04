@@ -17,25 +17,22 @@ from novaclient import client as novaclient
 from dragonflow.tests.fullstack import test_base
 
 
-class RouterTestWrapper(object):
+class RouterTestObj(object):
 
     def __init__(self, neutron, nb_api):
         self.router_id = None
         self.neutron = neutron
         self.nb_api = nb_api
-        self.deleted = False
+        self.closed = False
 
     def create(self, router={'name': 'myrouter1', 'admin_state_up': True}):
         new_router = self.neutron.create_router({'router': router})
         self.router_id = new_router['router']['id']
         return self.router_id
 
-    def __del__(self):
-        if self.deleted or self.router_id is None:
+    def close(self):
+        if self.closed or self.router_id is None:
             return
-        self.delete()
-
-    def delete(self):
         ports = self.neutron.list_ports(device_id=self.router_id)
         ports = ports['ports']
         for port in ports:
@@ -47,7 +44,7 @@ class RouterTestWrapper(object):
             else:
                 self.neutron.delete_port(port['id'])
         self.neutron.delete_router(self.router_id)
-        self.deleted = True
+        self.closed = True
 
     def exists(self):
         routers = self.nb_api.get_routers()
@@ -65,13 +62,13 @@ class RouterTestWrapper(object):
         return self.neutron.add_interface_router(self.router_id, body=body)
 
 
-class SecGroupTestWrapper(object):
+class SecGroupTestObj(object):
 
     def __init__(self, neutron, nb_api):
         self.secgroup_id = None
         self.neutron = neutron
         self.nb_api = nb_api
-        self.deleted = False
+        self.closed = False
 
     def create(self, secgroup={'name': 'mysecgroup1'}):
         new_secgroup = self.neutron.create_security_group({'security_group':
@@ -79,14 +76,11 @@ class SecGroupTestWrapper(object):
         self.secgroup_id = new_secgroup['security_group']['id']
         return self.secgroup_id
 
-    def __del__(self):
-        if self.deleted or self.secgroup_id is None:
+    def close(self):
+        if self.closed or self.secgroup_id is None:
             return
-        self.delete()
-
-    def delete(self):
         self.neutron.delete_security_group(self.secgroup_id)
-        self.deleted = True
+        self.closed = True
 
     def exists(self):
         secgroups = self.nb_api.get_security_groups()
@@ -115,27 +109,24 @@ class SecGroupTestWrapper(object):
         return False
 
 
-class NetworkTestWrapper(object):
+class NetworkTestObj(object):
 
     def __init__(self, neutron, nb_api):
         self.network_id = None
         self.neutron = neutron
         self.nb_api = nb_api
-        self.deleted = False
+        self.closed = False
 
     def create(self, network={'name': 'mynetwork1', 'admin_state_up': True}):
         network = self.neutron.create_network({'network': network})
         self.network_id = network['network']['id']
         return self.network_id
 
-    def __del__(self):
-        if self.deleted or self.network_id is None:
+    def close(self):
+        if self.closed or self.network_id is None:
             return
-        self.delete()
-
-    def delete(self):
         self.neutron.delete_network(self.network_id)
-        self.deleted = True
+        self.closed = True
 
     def exists(self):
         network = self.nb_api.get_lswitch(self.network_id)
@@ -144,11 +135,11 @@ class NetworkTestWrapper(object):
         return False
 
 
-class VMTestWrapper(object):
+class VMTestObj(object):
 
     def __init__(self, parent):
         self.server = None
-        self.deleted = False
+        self.closed = False
         self.parent = parent
         creds = test_base.credentials()
         auth_url = creds['auth_url'] + "/v2.0"
@@ -181,14 +172,11 @@ class VMTestWrapper(object):
             timeout = timeout - 1
         return False
 
-    def __del__(self):
-        if self.deleted or self.server is None:
+    def close(self):
+        if self.closed or self.server is None:
             return
-        self.delete()
-
-    def delete(self):
         self.nova.servers.delete(self.server)
-        self.deleted = True
+        self.closed = True
 
     def exists(self):
         if self.server is None:
@@ -202,12 +190,13 @@ class VMTestWrapper(object):
         return self.nova.servers.get_console_output(self.server)
 
 
-class SubnetTestWrapper(object):
+class SubnetTestObj(object):
     def __init__(self, neutron, nb_api, network_id=None):
         self.neutron = neutron
         self.nb_api = nb_api
         self.network_id = network_id
         self.subnet_id = None
+        self.closed = False
 
     def create(self, subnet=None):
         if not subnet:
@@ -236,16 +225,21 @@ class SubnetTestWrapper(object):
             return True
         return False
 
-    def delete(self):
+    def close(self):
+        if self.closed or self.subnet_id is None:
+            return
         self.neutron.delete_subnet(self.subnet_id)
+        self.closed = True
 
 
-class PortTestWrapper(object):
+class PortTestObj(object):
+
     def __init__(self, neutron, nb_api, network_id=None):
         self.neutron = neutron
         self.nb_api = nb_api
         self.network_id = network_id
         self.port_id = None
+        self.closed = False
 
     def create(self, port=None):
         if not port:
@@ -267,5 +261,8 @@ class PortTestWrapper(object):
             return True
         return False
 
-    def delete(self):
+    def close(self):
+        if self.closed or self.port_id is None:
+            return
         self.neutron.delete_port(self.port_id)
+        self.closed = True
