@@ -38,15 +38,15 @@ class DBNotifyInterface(object):
         """remove local logical port hook callback
 
 
-        :param lport_id:     id of local logical port that is removed from db
+        :param lport: local logical port that is removed from db
         """
 
     def remove_remote_port(self, lport):
         """remove remote logical port hook callback
 
 
-        :param lport_id:      id of logical port which resides on other
-        compute node, and is removed from db
+        :param lport:  logical port which resides on other
+                       compute node, and is removed from db
         """
 
     def add_new_router_port(self, router, router_port, local_network_id):
