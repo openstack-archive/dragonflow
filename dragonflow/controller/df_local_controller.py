@@ -105,6 +105,8 @@ class DfLocalController(object):
 
             self.read_switches()
 
+            self.read_security_groups()
+
             self.port_mappings()
 
             self.read_routers()
@@ -233,6 +235,22 @@ class DfLocalController(object):
             self._delete_router_port(old_port)
         self.db_store.delete_router(lrouter_id)
 
+    def security_group_updated(self, secgroup):
+        old_secgroup = self.db_store.get_security_group(secgroup.name)
+        if old_secgroup is None:
+            LOG.info(_LI("Security Group created = %s") %
+                     secgroup)
+            self._add_new_security_group(secgroup)
+            return
+        self._update_security_group_rules(old_secgroup, secgroup)
+        self.db_store.update_security_group(secgroup.name, secgroup)
+
+    def security_group_deleted(self, secgroup_id):
+        old_secgroup = self.db_store.get_security_group(secgroup_id)
+        if old_secgroup is None:
+            return
+        self._delete_old_security_group(old_secgroup)
+
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
         # TODO(gsagie) Support tunnel type change here ?
@@ -316,6 +334,51 @@ class DfLocalController(object):
         for new_port in lrouter.get_ports():
             self._add_new_router_port(lrouter, new_port)
         self.db_store.update_router(lrouter.get_name(), lrouter)
+
+    def read_security_groups(self):
+        secgroups_to_remove = self.db_store.get_security_group_keys()
+
+        for secgroup in self.nb_api.get_security_groups():
+            self.security_group_updated(secgroup)
+            if secgroup.name in secgroups_to_remove:
+                secgroups_to_remove.remove(secgroup.name)
+
+        for secgroup_to_remove in secgroups_to_remove:
+            self._delete_old_security_group(secgroup_to_remove)
+
+    def _update_security_group_rules(self, old_secgroup, new_secgroup):
+        new_secgroup_rules = new_secgroup.rules
+        old_secgroup_rules = old_secgroup.rules
+        for new_rule in new_secgroup_rules:
+            if new_rule not in old_secgroup_rules:
+                self._add_new_security_group_rule(new_secgroup, new_rule)
+            else:
+                old_secgroup_rules.remove(new_rule)
+
+        for old_rule in old_secgroup_rules:
+            self._delete_security_group_rule(old_secgroup, old_rule)
+
+    def _add_new_security_group(self, secgroup):
+        for new_rule in secgroup.rules:
+            self._add_new_security_group_rule(secgroup, new_rule)
+        self.db_store.update_security_group(secgroup.name, secgroup)
+
+    def _delete_old_security_group(self, secgroup):
+        for rule in secgroup.rules:
+            self._delete_security_group_rule(secgroup, rule)
+        self.db_store.delete_security_group(secgroup.name)
+
+    def _add_new_security_group_rule(self, secgroup, secgroup_rule):
+        LOG.info(_LI("Adding new secgroup rule = %s") %
+                 secgroup_rule)
+        self.open_flow_app.notify_add_security_group_rule(
+                 secgroup, secgroup_rule)
+
+    def _delete_security_group_rule(self, secgroup, secgroup_rule):
+        LOG.info(_LI("Removing secgroup rule = %s") %
+                 secgroup_rule)
+        self.open_flow_app.notify_remove_security_group_rule(
+                 secgroup, secgroup_rule)
 
 
 # Run this application like this:

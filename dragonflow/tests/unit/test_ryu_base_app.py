@@ -40,6 +40,8 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
                 'remove_remote_port',
                 'add_router_port',
                 'remove_router_port',
+                'add_security_group_rule',
+                'remove_security_group_rule',
                 'switch_features_handler',
                 'port_desc_stats_reply_handler',
                 'packet_in_handler'
@@ -62,6 +64,10 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
                 router=7, router_port=8, local_network_id=9)
         self.ryu_df_adapter.notify_remove_router_port(
                 router_port=10, local_network_id=11)
+        self.ryu_df_adapter.notify_add_security_group_rule(
+                secgroup=12, secgroup_rule=13)
+        self.ryu_df_adapter.notify_remove_security_group_rule(
+                secgroup=14, secgroup_rule=15)
         self.mock_app.assert_has_calls([
                 mock.call.update_logical_switch(lswitch=1),
                 mock.call.remove_logical_switch(lswitch=2),
@@ -72,7 +78,11 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
                 mock.call.add_router_port(
                         local_network_id=9, router=7, router_port=8),
                 mock.call.remove_router_port(
-                        local_network_id=11, router_port=10)])
+                        local_network_id=11, router_port=10),
+                mock.call.add_security_group_rule(
+                        secgroup=12, secgroup_rule=13),
+                mock.call.remove_security_group_rule(
+                        secgroup=14, secgroup_rule=15)])
 
     def test_switch_features_handler(self):
         self.mock_app.reset_mock()

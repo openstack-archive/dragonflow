@@ -113,6 +113,13 @@ class NbApi(object):
             return
 
         self.controller.vswitch_api.sync()
+        if 'secgroup' == table:
+            if action == 'set' or action == 'create':
+                secgroup = SecurityGroup(value)
+                self.controller.security_group_updated(secgroup)
+            else:
+                secgroup_id = key
+                self.controller.security_group_deleted(secgroup_id)
         if 'lport' == table:
             if action == 'set' or action == 'create':
                 lport = LogicalPort(value)
@@ -351,6 +358,12 @@ class NbApi(object):
             res.append(LogicalRouter(lrouter_value))
         return res
 
+    def get_security_groups(self):
+        res = []
+        for secgroup_value in self.driver.get_all_entries('secgroup'):
+            res.append(SecurityGroup(secgroup_value))
+        return res
+
     def get_all_logical_switches(self):
         res = []
         for lswitch_value in self.driver.get_all_entries('lswitch'):
@@ -514,3 +527,75 @@ class LogicalRouterPort(object):
 
     def __str__(self):
         return self.router_port.__str__()
+
+
+class SecurityGroup(object):
+
+    def __init__(self, value):
+        self.secgroup = jsonutils.loads(value)
+
+    @property
+    def name(self):
+        return self.secgroup.get('name')
+
+    @property
+    def id(self):
+        return self.secgroup.get('id')
+
+    @property
+    def rules(self):
+        res = []
+        for rule in self.secgroup.get('rules'):
+            res.append(SecurityGroupRule(rule))
+        return res
+
+    def __str__(self):
+        return self.secgroup.__str__()
+
+
+class SecurityGroupRule(object):
+
+    def __init__(self, value):
+        self.secrule = value
+
+    @property
+    def direction(self):
+        return self.secrule['direction']
+
+    @property
+    def ethertype(self):
+        return self.secrule['ethertype']
+
+    @property
+    def id(self):
+        return self.secrule['id']
+
+    @property
+    def port_range_max(self):
+        return self.secrule['port_range_max']
+
+    @property
+    def port_range_min(self):
+        return self.secrule['port_range_min']
+
+    @property
+    def protocol(self):
+        return self.secrule['protocol']
+
+    @property
+    def remote_group_id(self):
+        return self.secrule['remote_group_id']
+
+    @property
+    def remote_ip_prefix(self):
+        return self.secrule['remote_ip_prefix']
+
+    @property
+    def security_group_id(self):
+        return self.secrule['security_group_id']
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+    def __str__(self):
+        return self.secrule.__str__()
