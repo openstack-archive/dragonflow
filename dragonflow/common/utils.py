@@ -18,6 +18,7 @@ from stevedore import driver
 import sys
 
 from dragonflow._i18n import _, _LE
+import greenlet
 
 DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
 LOG = logging.getLogger(__name__)
@@ -47,18 +48,22 @@ def load_driver(driver_cfg, namespace):
 
 class DFDaemon(object):
 
-    def __init__(self):
+    def __init__(self, is_not_light=False):
         super(DFDaemon, self).__init__()
         self.pool = eventlet.GreenPool()
         self.is_daemonize = False
         self.thread = None
+        self.is_not_light = is_not_light
 
     def daemonize(self, run):
         if self.is_daemonize:
             LOG.error(_LE("already daemonized"))
             return
         self.is_daemonize = True
-        self.thread = self.pool.spawn_n(run)
+        if self.is_not_light:
+            self.thread = self.pool.spawn(run)
+        else:
+            self.thread = self.pool.spawn_n(run)
         eventlet.sleep(0)
         return self.thread
 
@@ -68,3 +73,16 @@ class DFDaemon(object):
             eventlet.sleep(0)
             self.thread = None
             self.is_daemonize = False
+
+    def wait(self, timeout=None):
+        if not self.is_daemonize or not self.thread:
+            return False
+        if timeout and timeout > 0:
+            timeout_obj = eventlet.Timeout(timeout)
+        try:
+            self.thread.wait()
+        except greenlet.GreenletExit:
+            return True  # Good news
+        finally:
+            if timeout_obj:
+                timeout_obj.cancel()
