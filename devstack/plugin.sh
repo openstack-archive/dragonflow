@@ -20,6 +20,9 @@ NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
 
+#pubsub
+PUBLISHERS_HOSTS=${PUBLISHERS_HOSTS:-"$SERVICE_HOST"}
+
 #ovs related pid files
 OVS_DB_SERVICE="ovsdb-server"
 OVS_VSWITCHD_SERVICE="ovs-vswitchd"
@@ -117,6 +120,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
         iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
+        iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"
     fi
 }
 
