@@ -44,12 +44,16 @@ class ArpResponderTest(test_base.DFTestBase):
                 return ip
         return None
 
-    def _wait_for_flow_removal(self, flows_before, timeout):
+    def _get_arp_table_flows(self):
         ovs_flows_parser = OvsFlowsParser()
+        flows = ovs_flows_parser.dump()
+        flows = [flow for flow in flows
+                if flow['table'] == str(const.ARP_TABLE) + ',']
+        return flows
+
+    def _wait_for_flow_removal(self, flows_before, timeout):
         while timeout > 0:
-            flows_after = ovs_flows_parser.dump()
-            flows_after = [flow for flow in flows_after
-                    if flow['table'] == str(const.ARP_TABLE) + ',']
+            flows_after = self._get_arp_table_flows()
             if flows_after == flows_before:
                 return True
             timeout -= 1
@@ -61,19 +65,14 @@ class ArpResponderTest(test_base.DFTestBase):
         Add a VM. Verify it's ARP flow is there.
         """
         try:
-            ovs_flows_parser = OvsFlowsParser()
-            flows_before = ovs_flows_parser.dump()
-            flows_before = [flow for flow in flows_before
-                    if flow['table'] == str(const.ARP_TABLE) + ',']
+            flows_before = self._get_arp_table_flows()
 
             vm = objects.VMTestWrapper(self)
             vm.create()
             ip = self._get_first_ipv4(vm.server.networks['private'])
             self.assertIsNotNone(ip)
 
-            flows_middle = ovs_flows_parser.dump()
-            flows_middle = [flow for flow in flows_middle
-                    if flow['table'] == str(const.ARP_TABLE) + ',']
+            flows_middle = self._get_arp_table_flows()
 
             vm.server.stop()
             vm.delete()
@@ -84,6 +83,17 @@ class ArpResponderTest(test_base.DFTestBase):
             self.assertIsNotNone(
                 self._find_arp_responder_flow_by_ip(flows_delta, ip)
             )
+            if not self._wait_for_flow_removal(flows_before, 30):
+                print 'Flows before and after the test are not the same:'
+                print 'Before: ', flows_before
+                print 'After: ', self._get_arp_table_flows()
+                print 'Verifying we have removed the l2 responder flows.'
+                flows_after = self._get_arp_table_flows()
+                flows_delta = [flow for flow in flows_after
+                        if flow not in flows_before]
+                self.assertIsNone(
+                    self._find_arp_responder_flow_by_ip(flows_delta, ip)
+                )
             self.assertTrue(self._wait_for_flow_removal(flows_before, 30))
         finally:
             try:
