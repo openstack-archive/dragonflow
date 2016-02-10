@@ -35,6 +35,7 @@ Spec Template
     skeleton
     template
     distributed_dnat
+    igmp_application_and_multicast_support
 
 
 Indices and tables
