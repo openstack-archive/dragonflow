@@ -118,7 +118,15 @@ class DfLocalController(object):
 
     def chassis_created(self, chassis):
         # Check if tunnel already exists to this chassis
-
+        t_ports = self.vswitch_api.get_tunnel_ports()
+        remote_chassis_name = chassis.get_name()
+        if self.chassis_name == remote_chassis_name:
+            return
+        for t_port in t_ports:
+            if t_port.get_chassis_id() == remote_chassis_name:
+                LOG.info(_LI("remote Chassis Tunnel already installed  = %s") %
+                     chassis.__str__())
+                return
         # Create tunnel port to this chassis
         LOG.info(_LI("Adding tunnel to remote chassis = %s") %
                  chassis.__str__())
