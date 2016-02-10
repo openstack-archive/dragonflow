@@ -47,11 +47,6 @@ class L3App(DFlowApp):
                                   const.EGRESS_TABLE)
         self._install_flows_on_switch_up()
 
-    def send_port_desc_stats_request(self, datapath):
-        ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
-        datapath.send_msg(req)
-
     def packet_in_handler(self, event):
         msg = event.msg
 

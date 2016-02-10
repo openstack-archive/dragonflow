@@ -118,8 +118,13 @@ class RyuDFAdapter(OFPHandler):
         version = self.datapath.ofproto.OFP_VERSION
         if version < RyuDFAdapter.OF_AUTO_PORT_DESC_STATS_REQ_VER:
             # Otherwise, this is done automatically by OFPHandler
-            self.send_port_desc_stats_request(self.datapath)
+            self._send_port_desc_stats_request(self.datapath)
         self.dispatcher.dispatch('switch_features_handler', ev)
+
+    def _send_port_desc_stats_request(self, datapath):
+        ofp_parser = datapath.ofproto_parser
+        req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
+        datapath.send_msg(req)
 
     @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
     def _port_status_handler(self, ev):
