@@ -38,6 +38,7 @@ Spec Template
     mac_spoofing
     selective_topo_dist
     performance_testing
+    igmp_application_and_multicast_support
 
 
 Indices and tables
