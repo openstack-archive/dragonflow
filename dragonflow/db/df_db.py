@@ -17,7 +17,10 @@ from oslo_config import cfg
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
 
+current_dir = sys.path[0]
+del sys.path[0]
 from neutron.common import config as common_config
+sys.path.insert(0, current_dir)
 
 from dragonflow.common import common_params
 from dragonflow.common import exceptions as df_exceptions
