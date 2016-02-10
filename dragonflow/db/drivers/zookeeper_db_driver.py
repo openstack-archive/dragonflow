@@ -164,8 +164,8 @@ class ZookeeperDbDriver(db_api.DbApi):
         #                 events. The DataWatch of Kazoo is also not that
         #                 stable and easy to use. Thanks to build-in pub-sub
         #                 of dragonflow, we don't need to work hard on zk side.
-        #                 Please set 'use_df_pub_sub=True' in the configuration
-        #                 to enable the build-in pub-sub function.
+        #                 Please set 'enable_df_pub_sub=True' in the
+        #                 configuration to enable the build-in pubsub function.
         return
 
     def register_topic_for_notification(self, topic):
