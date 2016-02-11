@@ -13,11 +13,14 @@
 import abc
 import eventlet
 import msgpack
+import random
 import six
 
 from oslo_log import log as logging
 
 from dragonflow.common import utils as df_utils
+from oslo_serialization import jsonutils
+
 from dragonflow.db import db_common
 
 LOG = logging.getLogger(__name__)
@@ -231,3 +234,38 @@ class SubscriberAgentBase(SubscriberApi):
 
     def unregister_listen_address(self, topic):
         self.uri_list.remove(topic)
+
+
+class ChassisPublisher(object):
+
+    def __init__(self, driver, publisher, polling_time=30):
+        super(ChassisPublisher, self).__init__()
+        self.driver = driver
+        self.daemon = df_utils.DFDaemon()
+        self.chassis = {}
+        self.polling_time = polling_time
+        self.publisher = publisher
+
+    def daemonize(self):
+        self.daemon.daemonize(self.run)
+
+    def stop(self):
+        self.daemon.stop()
+
+    def run(self):
+        eventlet.sleep(0)
+        while True:
+            eventlet.sleep(self.polling_time)
+            all_chassis = self.driver.get_all_entries('chassis')
+            for chassis_unicode in all_chassis:
+                chassis = jsonutils.loads(chassis_unicode)
+                chassis_name = chassis['name']
+                if chassis_name not in self.chassis:
+                    self.chassis[chassis_name] = chassis
+                    update = db_common.DbUpdate(
+                                        'chassis',
+                                        chassis_name,
+                                        'create',
+                                        chassis)
+                    self.publisher.send_event(update)
+                    eventlet.sleep(random.randint(100, 1000) / 1000)
