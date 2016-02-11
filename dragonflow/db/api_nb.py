@@ -25,6 +25,8 @@ from oslo_serialization import jsonutils
 from dragonflow._i18n import _LI
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate
+from dragonflow.db import pub_sub_api
+
 eventlet.monkey_patch()
 
 LOG = log.getLogger(__name__)
@@ -55,10 +57,17 @@ class NbApi(object):
                 #TODO(gampel) Move plugin publish_port and
                 #controller port to conf settings
                 self._start_publisher()
+                self._start_chassis_polling_publisher()
             else:
                 #NOTE(gampel) we want to start queuing event as soon
                 #as possible
                 self._start_subsciber()
+
+    def _start_chassis_polling_publisher(self):
+        self.chassis_pub = pub_sub_api.ChassisPublisher(
+                                        self.driver,
+                                        self.publisher)
+        self.chassis_pub.daemonize()
 
     def _start_publisher(self, trasport_proto='tcp'):
         endpoint = '*:%s' % cfg.CONF.df.publisher_port
