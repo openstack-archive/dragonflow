@@ -44,6 +44,8 @@ class RouterTestWrapper(object):
                     subnet_msg = {'subnet_id': fip['subnet_id']}
                     self.neutron.remove_interface_router(
                          self.router_id, body=subnet_msg)
+            elif port['device_owner'] == 'network:router_gateway':
+                pass
             else:
                 self.neutron.delete_port(port['id'])
         self.neutron.delete_router(self.router_id)
@@ -269,3 +271,42 @@ class PortTestWrapper(object):
 
     def delete(self):
         self.neutron.delete_port(self.port_id)
+
+
+class FloatingipTestWrapper(object):
+
+    def __init__(self, neutron, nb_api):
+        self.floatingip_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.deleted = False
+
+    def create(self, floatingip):
+        floatingip = self.neutron.create_floatingip(
+            {'floatingip': floatingip})
+        self.floatingip_id = floatingip['floatingip']['id']
+        return floatingip['floatingip']
+
+    def update(self, floatingip):
+        floatingip = self.neutron.update_floatingip(
+            self.floatingip_id,
+            {'floatingip': floatingip})
+        return floatingip['floatingip']
+
+    def __del__(self):
+        if self.deleted or self.floatingip_id is None:
+            return
+        self.delete()
+
+    def delete(self):
+        self.neutron.delete_floatingip(self.floatingip_id)
+        self.deleted = True
+
+    def get_floatingip(self):
+        return self.nb_api.get_floatingip(self.floatingip_id)
+
+    def exists(self):
+        floatingip = self.nb_api.get_floatingip(self.floatingip_id)
+        if floatingip:
+            return True
+        return False
