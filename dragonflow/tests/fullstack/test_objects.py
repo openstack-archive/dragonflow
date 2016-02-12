@@ -269,3 +269,39 @@ class PortTestWrapper(object):
 
     def delete(self):
         self.neutron.delete_port(self.port_id)
+
+
+class FloatingipTestWrapper(object):
+
+    def __init__(self, neutron, nb_api):
+        self.floatingip_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.deleted = False
+
+    def create(self, floatingip):
+        floatingip = self.neutron.create_floatingip(
+            {'floatingips': floatingip})
+        self.floatingip_id = floatingip['floatingips']['id']
+        return floatingip['floatingips']
+
+    def update(self, id, floatingip):
+        floatingip = self.neutron.update_floatingip(
+            id,
+            {'floatingips': floatingip})
+        return floatingip
+
+    def __del__(self):
+        if self.deleted or self.floatingip_id is None:
+            return
+        self.delete()
+
+    def delete(self):
+        self.neutron.delete_floatingip(self.floatingip_id)
+        self.deleted = True
+
+    def exists(self):
+        floatingip = self.nb_api.get_floatingip(self.floatingip_id)
+        if floatingip:
+            return True
+        return False

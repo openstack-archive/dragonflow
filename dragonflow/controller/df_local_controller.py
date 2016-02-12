@@ -111,6 +111,8 @@ class DfLocalController(object):
 
             self.read_routers()
 
+            self.read_floatingip()
+
             self.sync_finished = True
 
         except Exception as e:
@@ -379,6 +381,53 @@ class DfLocalController(object):
                  secgroup_rule)
         self.open_flow_app.notify_remove_security_group_rule(
                  secgroup, secgroup_rule)
+
+    def read_floatingip(self):
+        for floatingip in self.nb_api.get_floatingips():
+            self.floatingip_updated(floatingip)
+
+    def floatingip_updated(self, floatingip):
+        lport_id = floatingip.get_lport_id()
+        # check whether this floatingip is associated with a lport or not
+        if not lport_id:
+            return
+        if not self.db_store.get_local_port(lport_id):
+            return
+
+        lrouter = self.db_store.get_router(floatingip.get_lrouter_id())
+        # Currently, to implement DNAT for DVR on compute node only
+        # if distributed is False, DNAT is done on centralized vrouter
+        if not lrouter.is_distributed():
+            return
+        old_floatingip = self.db_store.get_floatingip(floatingip.get_name())
+        if old_floatingip is None:
+            LOG.info(_LI("Floatingip is created = %s") %
+                     floatingip.__str__())
+            self._assicate_floatingip(floatingip)
+            return
+        self._update_floatingip(old_floatingip, floatingip)
+
+    def floatingip_deleted(self, floatingip_id):
+        floatingip = self.db_store.get_floatingip(floatingip_id)
+        if not floatingip:
+            return
+        self._disassicate_floatingip(floatingip)
+
+    def _assicate_floatingip(self, floatingip):
+        self.dispatcher.dispatch('assicate_floatingip',
+                                 floatingip=floatingip)
+        self.db_store.update_floatingip(floatingip.get_name(), floatingip)
+
+    def _disassicate_floatingip(self, floatingip):
+        self.dispatcher.dispatch('disassicate_floatingip',
+                                 floatingip=floatingip)
+        self.db_store.delete_floatingip(floatingip.get_name())
+
+    def _update_floatingip(self, old_floatingip, new_floatingip):
+        if new_floatingip.get_lport_id() != old_floatingip.get_lport_id()\
+            or new_floatingip.get_fixed_ip() != old_floatingip.get_fixed_ip():
+            self._disassicate_floatingip(old_floatingip)
+            self._assicate_floatingip(new_floatingip)
 
 
 # Run this application like this:
