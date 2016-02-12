@@ -178,6 +178,164 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         secgroup.close()
         self.assertFalse(secgroup.exists())
 
+    def test_associate_floatingip(self):
+        network = self.store(
+            objects.NetworkTestObj(self.neutron, self.nb_api))
+        router = self.store(
+            objects.RouterTestObj(self.neutron, self.nb_api))
+        fip = self.store(
+            objects.FloatingipTestObj(self.neutron, self.nb_api))
+
+        # external network
+        external_net_para = {'name': 'public', 'router:external': True}
+        external_network_id = network.create(network=external_net_para)
+        self.assertTrue(network.exists())
+        # external subnet
+        ext_subnet = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            external_network_id,
+        ))
+        external_subnet_para = {'cidr': '192.168.199.0/24',
+                  'ip_version': 4, 'network_id': external_network_id}
+        ext_subnet.create(external_subnet_para)
+        self.assertTrue(ext_subnet.exists())
+
+        router_para = {'name': 'myrouter1', 'admin_state_up': True,
+                 'external_gateway_info': {"network_id": external_network_id}}
+        router.create(router=router_para)
+        self.assertTrue(router.exists())
+
+        # private network
+        private_network = self.store(
+            objects.NetworkTestObj(self.neutron, self.nb_api))
+        private_network_id = private_network.create(
+            network={'name': 'private'})
+        self.assertTrue(private_network.exists())
+        # private subnet
+        priv_subnet = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            private_network_id,
+        ))
+        private_subnet_para = {'cidr': '10.0.0.0/24',
+                  'ip_version': 4, 'network_id': private_network_id}
+        priv_subnet_id = priv_subnet.create(private_subnet_para)
+        self.assertTrue(priv_subnet.exists())
+        router_interface = router.add_interface(subnet_id=priv_subnet_id)
+        router_lport = self.nb_api.get_logical_port(
+            router_interface['port_id'])
+        self.assertIsNotNone(router_lport)
+
+        port = self.store(
+            objects.PortTestObj(self.neutron,
+                                self.nb_api, private_network_id))
+        port_id = port.create()
+        self.assertIsNotNone(port.get_logical_port())
+
+        fip_para = {'floating_network_id': external_network_id}
+        # create
+        fip.create(fip_para)
+        self.assertTrue(fip.exists())
+
+        # associate with port
+        fip.update({'port_id': port_id})
+        fip_obj = fip.get_floatingip()
+        self.assertEqual(fip_obj.get_lport_id(), port_id)
+
+        fip.close()
+        self.assertFalse(fip.exists())
+        port.close()
+        self.assertFalse(port.exists())
+        router.close()
+        self.assertFalse(router.exists())
+        ext_subnet.close()
+        self.assertFalse(ext_subnet.exists())
+        priv_subnet.close()
+        self.assertFalse(priv_subnet.exists())
+        network.close()
+        self.assertFalse(network.exists())
+
+    def test_disassociate_floatingip(self):
+        network = self.store(
+            objects.NetworkTestObj(self.neutron, self.nb_api))
+        router = self.store(
+            objects.RouterTestObj(self.neutron, self.nb_api))
+        fip = self.store(
+            objects.FloatingipTestObj(self.neutron, self.nb_api))
+
+        # external network
+        external_net_para = {'name': 'public', 'router:external': True}
+        external_network_id = network.create(network=external_net_para)
+        self.assertTrue(network.exists())
+        # external subnet
+        ext_subnet = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            external_network_id,
+        ))
+        external_subnet_para = {'cidr': '192.168.199.0/24',
+                  'ip_version': 4, 'network_id': external_network_id}
+        ext_subnet.create(external_subnet_para)
+        self.assertTrue(ext_subnet.exists())
+
+        router_para = {'name': 'myrouter1', 'admin_state_up': True,
+                 'external_gateway_info': {"network_id": external_network_id}}
+        router.create(router=router_para)
+        self.assertTrue(router.exists())
+
+        # private network
+        private_network = self.store(
+            objects.NetworkTestObj(self.neutron, self.nb_api))
+        private_network_id = private_network.create(
+            network={'name': 'private'})
+        self.assertTrue(private_network.exists())
+        # private subnet
+        priv_subnet = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            private_network_id,
+        ))
+        private_subnet_para = {'cidr': '10.0.0.0/24',
+                  'ip_version': 4, 'network_id': private_network_id}
+        priv_subnet_id = priv_subnet.create(private_subnet_para)
+        self.assertTrue(priv_subnet.exists())
+        router_interface = router.add_interface(subnet_id=priv_subnet_id)
+        router_lport = self.nb_api.get_logical_port(
+            router_interface['port_id'])
+        self.assertIsNotNone(router_lport)
+
+        port = self.store(
+            objects.PortTestObj(self.neutron,
+                                self.nb_api, private_network_id))
+        port_id = port.create()
+        self.assertIsNotNone(port.get_logical_port())
+
+        fip_para = {'floating_network_id': external_network_id,
+            'port_id': port_id}
+        # create
+        fip.create(fip_para)
+        self.assertTrue(fip.exists())
+
+        # disassociate with port
+        fip.update({})
+        fip_obj = fip.get_floatingip()
+        self.assertIsNone(fip_obj.get_lport_id())
+
+        fip.close()
+        self.assertFalse(fip.exists())
+        port.close()
+        self.assertFalse(port.exists())
+        router.close()
+        self.assertFalse(router.exists())
+        ext_subnet.close()
+        self.assertFalse(ext_subnet.exists())
+        priv_subnet.close()
+        self.assertFalse(priv_subnet.exists())
+        network.close()
+        self.assertFalse(network.exists())
+
+
 '''
 The following tests are for list networks/routers/ports/subnets API.
 They require seqential execution because another running test can break them.

@@ -513,10 +513,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             context, router)
         router_name = router['id']
         tenant_id = router['tenant_id']
+        is_distributed = router.get('distributed', False)
         external_ids = {df_const.DF_ROUTER_NAME_EXT_ID_KEY:
                         router.get('name', 'no_router_name')}
         self.nb_api.create_lrouter(router_name, topic=tenant_id,
                                    external_ids=external_ids,
+                                   distributed=is_distributed,
                                    ports=[])
 
         # TODO(gsagie) rollback router creation on failure
@@ -680,3 +682,42 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 dhcp_port = self._create_dhcp_server_port(context, subnet)
                 return self._get_ip_from_port(dhcp_port)
         return None
+
+    def create_floatingip(self, context, floatingip):
+        with context.session.begin(subtransactions=True):
+            floatingip_dict = super(DFPlugin, self).create_floatingip(
+                context, floatingip,
+                initial_status=const.FLOATINGIP_STATUS_DOWN)
+            self.nb_api.create_floatingip(
+                name=floatingip_dict['id'],
+                floating_ip_address=floatingip_dict['floating_ip_address'],
+                floating_network_id=floatingip_dict['floating_network_id'],
+                router_id=floatingip_dict['router_id'],
+                port_id=floatingip_dict['port_id'],
+                fixed_ip_address=floatingip_dict['fixed_ip_address'],
+                status=floatingip_dict['status'])
+
+        return floatingip_dict
+
+    def update_floatingip(self, context, id, floatingip):
+        with context.session.begin(subtransactions=True):
+            floatingip_dict = super(DFPlugin, self).update_floatingip(
+                context, id, floatingip)
+            self.nb_api.update_floatingip(
+                name=floatingip_dict['id'],
+                router_id=floatingip_dict['router_id'],
+                port_id=floatingip_dict['port_id'],
+                fixed_ip_address=floatingip_dict['fixed_ip_address'],
+                status=floatingip_dict['status'])
+
+        return floatingip_dict
+
+    def delete_floatingip(self, context, id):
+        with context.session.begin(subtransactions=True):
+            super(DFPlugin, self).delete_floatingip(context, id)
+
+        try:
+            self.nb_api.delete_floatingip(name=id)
+        except df_exceptions.DBKeyNotFound:
+            LOG.debug("floatingip %s is not found in DF DB, might have "
+                      "been deleted concurrently" % id)
