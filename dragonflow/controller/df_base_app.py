@@ -92,11 +92,3 @@ class DFlowApp(DBNotifyInterface):
                                   actions=actions,
                                   data=data)
         datapath.send_msg(out)
-
-    def send_port_desc_stats_request(self):
-        self._send_port_desc_stats_request(self.get_datapath())
-
-    def _send_port_desc_stats_request(self, datapath):
-        ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
-        datapath.send_msg(req)
