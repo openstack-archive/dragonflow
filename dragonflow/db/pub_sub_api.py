@@ -13,10 +13,12 @@
 import abc
 import eventlet
 import msgpack
+import random
 import six
 
 from oslo_log import log as logging
 
+from dragonflow._i18n import _LW
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 
@@ -231,3 +233,62 @@ class SubscriberAgentBase(SubscriberApi):
 
     def unregister_listen_address(self, topic):
         self.uri_list.remove(topic)
+
+
+class DatabasePollingTableMonitorPublisher(object):
+    def __init__(self, table_name, driver, publisher, polling_time=10):
+        self.driver = driver
+        self.publisher = publisher
+        self.polling_time = polling_time
+        self.daemon = df_utils.DFDaemon()
+        self.table_name = table_name
+        self.cache = {}
+        pass
+
+    def daemonize(self):
+        return self.daemon.daemonize(self.run)
+
+    def stop(self):
+        return self.daemon.stop()
+
+    def run(self):
+        eventlet.sleep(0)
+        while True:
+            try:
+                eventlet.sleep(self.polling_time)
+                # NOTE(oanson) Make sure we get a copy
+                all_entry_keys = list(
+                    self.driver.get_all_keys(self.table_name))
+                new_cache = {}
+                for entry_key in all_entry_keys:
+                    entry_value = self.driver.get_key(
+                        self.table_name,
+                        entry_key)
+                    old_value = self.cache.pop(entry_key, None)
+                    if old_value is None:
+                        self._send_event('create', entry_key, entry_value)
+                    elif old_value != entry_value:
+                            self._send_event('update', entry_key, entry_value)
+                    new_cache[entry_key] = entry_value
+                for entry_key in self.cache:
+                    self._send_event('delete', entry_key, None)
+                self.cache = new_cache
+            except Exception as e:
+                LOG.warning(_LW("Error when polling table {}: {}").format(
+                    self.table_name,
+                    repr(e)
+                ))
+
+    def _send_event(self, action, entry_id, entry_value):
+        db_update = db_common.DbUpdate(
+            self.table_name,
+            entry_id,
+            action,
+            entry_value,
+        )
+        self.publisher.send_event(db_update)
+        self._sleep_randomly()
+
+    def _sleep_randomly(self, sleep_time=0.5):
+        sleep_time = random.uniform(0, sleep_time)
+        eventlet.sleep(sleep_time)
