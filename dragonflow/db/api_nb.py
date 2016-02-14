@@ -25,6 +25,7 @@ from oslo_serialization import jsonutils
 from dragonflow._i18n import _LI
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate
+from dragonflow.db.pub_sub_api import TableMonitor
 eventlet.monkey_patch()
 
 LOG = log.getLogger(__name__)
@@ -41,6 +42,7 @@ class NbApi(object):
         self.use_pubsub = use_pubsub
         self.publisher = None
         self.is_neutron_server = is_neutron_server
+        self.db_table_monitors = None
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
@@ -55,6 +57,7 @@ class NbApi(object):
                 #TODO(gampel) Move plugin publish_port and
                 #controller port to conf settings
                 self._start_publisher()
+                self._start_db_table_monitors()
             else:
                 #NOTE(gampel) we want to start queuing event as soon
                 #as possible
@@ -67,6 +70,29 @@ class NbApi(object):
                         trasport_proto=trasport_proto,
                         config=cfg.CONF.df)
         self.publisher.daemonize()
+
+    def _start_db_table_monitors(self):
+        if not cfg.CONF.df.is_monitor_tables:
+            return
+        self.db_table_monitors = [self._start_db_table_monitor(table_name)
+            for table_name in cfg.CONF.df.monitor_tables]
+
+    def _start_db_table_monitor(self, table_name):
+        table_monitor = TableMonitor(
+            table_name,
+            self.driver,
+            self.publisher,
+            cfg.CONF.df.monitor_table_poll_time,
+        )
+        table_monitor.daemonize()
+        return table_monitor
+
+    def _stop_db_table_monitors(self):
+        if not self.db_table_monitors:
+            return
+        for monitor in self.db_table_monitors:
+            monitor.stop()
+        self.db_table_monitors = None
 
     def _start_subsciber(self):
         self.subscriber.initialize(
