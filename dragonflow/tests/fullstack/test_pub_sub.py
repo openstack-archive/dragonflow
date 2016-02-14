@@ -17,6 +17,7 @@ from oslo_config import cfg
 
 from dragonflow.common import utils as df_utils
 from dragonflow.db import api_nb
+from dragonflow.db.pub_sub_api import TableMonitor
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
@@ -232,3 +233,106 @@ class TestPubSub(test_base.DFTestBase):
         self.assertEqual(self.events_action_t, None)
         subscriber.stop()
         publisher.stop()
+
+
+class TestDbTableMonitors(test_base.DFTestBase):
+    def setUp(self):
+        super(TestDbTableMonitors, self).setUp()
+        self.events_num = 0
+        enable_df_pub_sub = cfg.CONF.df.enable_df_pub_sub
+        is_monitor_tables = cfg.CONF.df.is_monitor_tables
+        self.do_test = enable_df_pub_sub and is_monitor_tables
+        self.pub_sub_driver = df_utils.load_driver(
+            cfg.CONF.df.pub_sub_driver,
+            df_utils.DF_PUBSUB_DRIVER_NAMESPACE
+        )
+        cfg.CONF.df.publisher_port = 8888
+        self.namespace = Namespace()
+        self.namespace.events = []
+        self.publisher = self._create_publisher()
+        self.subscriber = self._create_subscriber()
+        self.monitor = self._create_monitor('chassis')
+
+    def tearDown(self):
+        self.monitor.stop()
+        self.publisher.stop()
+        self.subscriber.stop()
+        super(TestDbTableMonitors, self).tearDown()
+
+    def _create_publisher(self):
+        publisher = self.pub_sub_driver.get_publisher()
+        endpoint = '*:%s' % cfg.CONF.df.publisher_port
+        publisher.initialize(
+            multiprocessing_queue=False,
+            endpoint=endpoint,
+            trasport_proto='tcp',
+            config=cfg.CONF.df)
+        publisher.daemonize()
+        return publisher
+
+    def _db_change_callback(self, table, key, action, value):
+        self.namespace.events.append({
+            'table': table,
+            'key': key,
+            'action': action,
+            'value': value,
+        })
+
+    def _create_subscriber(self):
+        subscriber = self.pub_sub_driver.get_subscriber()
+        subscriber.initialize(self._db_change_callback)
+        uri = 'tcp://%s:%s' % ('127.0.0.1',
+                cfg.CONF.df.publisher_port)
+        subscriber.register_listen_address(uri)
+        subscriber.daemonize()
+        return subscriber
+
+    def _create_monitor(self, table_name):
+        table_monitor = TableMonitor(
+            table_name,
+            self.nb_api.driver,
+            self.publisher,
+            1,
+        )
+        table_monitor.daemonize()
+        return table_monitor
+
+    def test_operations(self):
+        expected_event = {
+            'table': unicode('chassis'),
+            'key': unicode('chassis-1'),
+            'action': unicode('create'),
+            # Due to the current implementation, value is not sent in event
+            'value': None,
+        }
+        self.assertNotIn(expected_event, self.namespace.events)
+        self.nb_api.driver.create_key(
+            'chassis',
+            'chassis-1',
+            'chassis-1-data-1')
+        eventlet.sleep(2)
+        self.assertIn(expected_event, self.namespace.events)
+
+        expected_event = {
+            'table': unicode('chassis'),
+            'key': unicode('chassis-1'),
+            'action': unicode('update'),
+            # Due to the current implementation, value is not sent in event
+            'value': None,
+        }
+        self.assertNotIn(expected_event, self.namespace.events)
+        self.nb_api.driver.set_key('chassis', 'chassis-1', 'chassis-1-data-2')
+        eventlet.sleep(2)
+        self.assertIn(expected_event, self.namespace.events)
+
+        expected_event = {
+            'table': unicode('chassis'),
+            'key': unicode('chassis-1'),
+            'action': unicode('delete'),
+            # Due to the current implementation, value is not sent in event
+            'value': None,
+        }
+        self.assertNotIn(expected_event, self.namespace.events)
+        self.nb_api.driver.delete_key('chassis', 'chassis-1')
+        eventlet.sleep(2)
+        self.assertIn(expected_event, self.namespace.events)
