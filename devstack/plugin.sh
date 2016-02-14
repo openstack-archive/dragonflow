@@ -214,7 +214,7 @@ function install_ovs {
 
     sudo make INSTALL_MOD_DIR=kernel/net/openvswitch modules_install
     sudo modprobe -r vport_geneve
-    sudo modprobe -r openvswitch
+    sudo modprobe -r openvswitch 2>/dev/null || true
 
     sudo modprobe openvswitch || (dmesg && die $LINENO "FAILED TO LOAD openvswitch")
     sudo modprobe vport-geneve || (echo "FAILED TO LOAD vport_geneve" && dmesg)
