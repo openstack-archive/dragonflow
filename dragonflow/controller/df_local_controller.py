@@ -363,9 +363,8 @@ class DfLocalController(object):
             if secgroup.name in secgroups_to_remove:
                 secgroups_to_remove.remove(secgroup.name)
 
-        for secgroup_id in secgroups_to_remove:
-            secgroup_to_remove = self.db_store.get_security_group(secgroup_id)
-            self._delete_old_security_group(secgroup_to_remove)
+        for secgroup_to_remove in secgroups_to_remove:
+            self.security_group_deleted(secgroup_to_remove)
 
     def _update_security_group_rules(self, old_secgroup, new_secgroup):
         new_secgroup_rules = new_secgroup.rules
