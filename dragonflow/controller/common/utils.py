@@ -47,9 +47,8 @@ def get_aging_cookie():
 
 
 def set_aging_cookie_bits(cookie):
-    c = cookie
     # clear aging bits before using
-    c &= (0 & const.GLOBAL_AGING_COOKIE_MASK)
+    c = cookie & (~const.GLOBAL_AGING_COOKIE_MASK)
     c |= (_aging_cookie & const.GLOBAL_AGING_COOKIE_MASK)
     return c
 
