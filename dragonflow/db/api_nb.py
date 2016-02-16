@@ -69,7 +69,6 @@ class NbApi(object):
                         endpoint=endpoint,
                         trasport_proto=trasport_proto,
                         config=cfg.CONF.df)
-        self.publisher.daemonize()
 
     def _start_db_table_monitors(self):
         if not cfg.CONF.df.is_monitor_tables:

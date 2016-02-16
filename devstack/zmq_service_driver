@@ -1,0 +1,11 @@
+#!/bin/bash
+
+ZMQ_SERVICE=$DRAGONFLOW_DIR/dragonflow/db/pubsub_drivers/zmq_pubsub_driver.py
+function start_pubsub_service {
+    run_process df-zmq-service "python $ZMQ_SERVICE --config-file $NEUTRON_CONF"
+}
+
+function stop_pubsub_service {
+    stop_process df-zmq-service
+}
+
