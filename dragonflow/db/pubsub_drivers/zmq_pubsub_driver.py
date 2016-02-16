@@ -96,7 +96,7 @@ class ZMQPublisherAgent(pub_sub_api.PublisherAgentBase):
                 event = inproc_server.recv()
                 event_json = jsonutils.loads(event)
                 topic = event_json['topic'].encode('utf8')
-                data = self.pack_message(event_json)
+                data = pub_sub_api.pack_message(event_json)
                 socket.send_multipart([topic, data])
                 LOG.debug("sending %s" % event)
                 eventlet.sleep(0)
@@ -146,7 +146,7 @@ class ZMQSubscriberAgent(pub_sub_api.SubscriberAgentBase):
             try:
                 eventlet.sleep(0)
                 [topic, data] = self.sub_socket.recv_multipart()
-                entry_json = self.unpack_message(data)
+                entry_json = pub_sub_api.unpack_message(data)
                 self.db_changes_callback(
                         entry_json['table'],
                         entry_json['key'],

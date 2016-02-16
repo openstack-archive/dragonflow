@@ -25,6 +25,22 @@ LOG = logging.getLogger(__name__)
 
 eventlet.monkey_patch(socket=False)
 
+def pack_message(self, message):
+    data = None
+    try:
+        data = msgpack.packb(message, encoding='utf-8')
+    except Exception as e:
+        LOG.warning(e)
+    return data
+
+def unpack_message(self, message):
+    entry = None
+    try:
+        entry = msgpack.unpackb(message, encoding='utf-8')
+    except Exception as e:
+        LOG.warning(e)
+    return entry
+
 
 @six.add_metaclass(abc.ABCMeta)
 class PubSubApi(object):
@@ -171,14 +187,6 @@ class PublisherAgentBase(PublisherApi):
         self.daemon = df_utils.DFDaemon()
         self.config = config
 
-    def pack_message(self, message):
-        data = None
-        try:
-            data = msgpack.packb(message, encoding='utf-8')
-        except Exception as e:
-            LOG.warning(e)
-        return data
-
     def daemonize(self):
         self.daemon.daemonize(self.run)
 
@@ -205,14 +213,6 @@ class SubscriberAgentBase(SubscriberApi):
 
     def register_listen_address(self, uri):
         self.uri_list.append(uri)
-
-    def unpack_message(self, message):
-        entry = None
-        try:
-            entry = msgpack.unpackb(message, encoding='utf-8')
-        except Exception as e:
-            LOG.warning(e)
-        return entry
 
     def daemonize(self):
         self.daemon.daemonize(self.run)
