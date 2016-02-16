@@ -1,0 +1,34 @@
+#!/bin/bash
+
+ZMQ_SERVICE=$DRAGONFLOW_DIR/dragonflow/db/pubsub_drivers/zmq_pubsub_driver.py
+ZMQ_CONF_DIR=/etc/zmq
+ZMQ_CONF_FILE=$ZMQ_CONF_DIR/zmq_pubsub_service.conf
+ZMQ_IPC_SOCKET=${ZMQ_IPC_SOCKET:-"/var/run/zmq_pubsub/zmq-publisher-socket"}
+
+function conditional_iniset {
+    VALUE=$3
+    if [ $VALUE ]; then
+        iniset "$@"
+    fi
+}
+
+function configure_pubsub_service {
+    sudo install -d -o $STACK_USER $ZMQ_CONF_DIR
+    conditional_iniset $ZMQ_CONF_FILE df ipc_socket $ZMQ_IPC_SOCKET
+    conditional_iniset $NEUTRON_CONF df ipc_socket $ZMQ_IPC_SOCKET
+}
+
+function start_pubsub_service {
+    SOCKET_DIR=`dirname $ZMQ_IPC_SOCKET`
+    sudo mkdir -p $SOCKET_DIR
+    sudo chown $STACK_USER $SOCKET_DIR
+    set python $ZMQ_SERVICE
+    set "$@" --config-file $NEUTRON_CONF
+    set "$@" --config-file $ZMQ_CONF_FILE
+    run_process df-zmq-service "$*"
+}
+
+function stop_pubsub_service {
+    stop_process df-zmq-service
+}
+

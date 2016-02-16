@@ -69,7 +69,6 @@ class NbApi(object):
                         endpoint=endpoint,
                         trasport_proto=trasport_proto,
                         config=cfg.CONF.df)
-        self.publisher.daemonize()
 
     def _start_db_table_monitors(self):
         if not cfg.CONF.df.is_monitor_tables:
@@ -100,7 +99,11 @@ class NbApi(object):
                         config=cfg.CONF.df)
         publishers_ips = cfg.CONF.df.publishers_ips
         for ip in publishers_ips:
-            uri = 'tcp://%s:%s' % (ip, cfg.CONF.df.publisher_port)
+            uri = '%s://%s:%s' % (
+                cfg.CONF.df.publisher_transport,
+                ip,
+                cfg.CONF.df.publisher_port
+            )
             self.subscriber.register_listen_address(uri)
         self.subscriber.daemonize()
 

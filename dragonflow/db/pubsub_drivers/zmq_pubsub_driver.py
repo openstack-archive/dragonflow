@@ -12,18 +12,35 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import sys
+
 import eventlet
 from eventlet.green import zmq
 
-from dragonflow._i18n import _LI, _LE
+from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
+from neutron.agent.common import config
+from neutron.common import config as common_config
+
+from dragonflow._i18n import _, _LI, _LE
+from dragonflow.common import common_params
 from dragonflow.db import pub_sub_api
 
 LOG = logging.getLogger(__name__)
 
 eventlet.monkey_patch()
+
+ZMQ_PUBLISHER_OPTS = [
+    cfg.StrOpt(
+        'ipc_socket',
+        default='/var/run/zmq_pubsub//zmq-pulisher-socket',
+        help=_('Neutron Server Publisher ZMQ inter-process socket address')
+    ),
+]
+
+cfg.CONF.register_opts(ZMQ_PUBLISHER_OPTS, group='zmq_publisher')
 
 
 class ZMQPubSub(pub_sub_api.PubSubApi):
@@ -38,28 +55,60 @@ class ZMQPubSub(pub_sub_api.PubSubApi):
     def get_subscriber(self):
         return self.subscriber
 
+SUPPORTED_TRANSPORTS = set(['tcp', 'epgm'])
+
+class ZMQPublisherService(object):
+    def __init__(self):
+        self._ipc_socket = cfg.CONF.zmq_publisher.ipc_socket
+        port = cfg.CONF.df.publisher_port
+        transport_proto = cfg.CONF.df.publisher_transport
+        bind_address = cfg.CONF.df.publisher_bind_address
+        self._endpoint = "{}://{}:{}".format(
+            transport_proto,
+            bind_address,
+            port
+        )
+        if transport_proto not in SUPPORTED_TRANSPORTS:
+            LOG.error(_LE("ZMQ driver does not support trasport %s") %
+                    transport_proto)
+            raise Excpetion("ZMQ driver does not support trasport %s" %
+                    transport_proto)
+
+            return
+
+    def run(self):
+        context = zmq.Context()
+        inproc_server = context.socket(zmq.PULL)
+        LOG.debug("about to bind to IPC socket: %s" % self._ipc_socket)
+        inproc_server.bind('ipc://%s' % self._ipc_socket)
+        socket = context.socket(zmq.PUB)
+        LOG.debug("about to bind to network socket: %s" % self._endpoint)
+        socket.bind(self._endpoint)
+
+        while True:
+            try:
+                event = inproc_server.recv()
+                event_json = jsonutils.loads(event)
+                topic = event_json['topic'].encode('utf8')
+                data = pub_sub_api.pack_message(event_json)
+                socket.send_multipart([topic, data])
+                LOG.debug("sending %s" % event)
+            except Exception as e:
+                LOG.error(_LE("Got exception %s in ZMQ publisher") % e)
+
 
 class ZMQPublisherAgent(pub_sub_api.PublisherAgentBase):
 
-    def initialize(self, endpoint, trasport_proto, **args):
-        super(ZMQPublisherAgent, self).initialize(
-                                        endpoint,
-                                        trasport_proto,
-                                        **args)
+    def initialize(self, **args):
+        super(ZMQPublisherAgent, self).initialize(**args)
         self.inproc_client = None
-        if self.config:
-            #TODO(gampel)remove once we enable zmq inproc trasport
-            self.inproc_port = self.config.publisher_port + 1
-        else:
-            self.inproc_port = '8867'
+        self.ipc_socket = cfg.CONF.zmq_publisher.ipc_socket
 
     def send_event(self, update, topic=None):
         if not self.inproc_client:
             context = zmq.Context()
             self.inproc_client = context.socket(zmq.PUSH)
-            #TODO(gampel)inproc is not working with eventlet
-            #self.inproc_client.connect('inproc://publiser')
-            self.inproc_client.connect('tcp://127.0.0.1:%d' % self.inproc_port)
+            self.inproc_client.connect('ipc://%s' % self.ipc_socket)
         #NOTE(gampel) In this reference implementation we develop a trigger
         #based pub sub without sending the value mainly in order to avoid
         #consistency issues in th cost of extra latency i.e get
@@ -70,38 +119,6 @@ class ZMQPublisherAgent(pub_sub_api.PublisherAgentBase):
         event_json = jsonutils.dumps(update.to_array())
         self.inproc_client.send(event_json)
         LOG.debug("sending %s" % update)
-        eventlet.sleep(0)
-
-    def run(self):
-        context = zmq.Context()
-        socket = context.socket(zmq.PUB)
-        inproc_server = context.socket(zmq.PULL)
-        inproc_server.bind('tcp://127.0.0.1:%d' % self.inproc_port)
-        #TODO(gampel)inproc is not working with eventlet
-        #inproc_server.bind('inproc://publiser')
-        if self.trasport_proto == 'tcp':
-            #TODO(gampel) Handle address in use exception
-            socket.bind("tcp://%s" % self.endpoint)
-        elif self.trasport_proto == 'epgm':
-            socket.connect("epgm://%s" % self.endpoint)
-        else:
-            LOG.error(_LE("ZMQ driver does not support trasport %s") %
-                    self.trasport_proto)
-            return
-
-        eventlet.sleep(0.2)
-        while True:
-            try:
-                event = None
-                event = inproc_server.recv()
-                event_json = jsonutils.loads(event)
-                topic = event_json['topic'].encode('utf8')
-                data = pub_sub_api.pack_message(event_json)
-                socket.send_multipart([topic, data])
-                LOG.debug("sending %s" % event)
-                eventlet.sleep(0)
-            except Exception as e:
-                LOG.error(_LE("Got exception %s in ZMQ publisher") % e)
 
 
 class ZMQSubscriberAgent(pub_sub_api.SubscriberAgentBase):
@@ -158,3 +175,13 @@ class ZMQSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                 self.sub_socket = self._connect()
                 self.db_changes_callback(None, None, 'sync',
                                          None)
+
+def main():
+    cfg.CONF.register_opts(common_params.df_opts, 'df')
+    common_config.init(sys.argv[1:])
+    config.setup_logging()
+    service = ZMQPublisherService()
+    service.run()
+
+if __name__ == "__main__":
+    main()
