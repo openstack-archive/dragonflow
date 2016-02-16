@@ -65,6 +65,19 @@ class L2App(DFlowApp):
                 const.SERVICES_CLASSIFICATION_TABLE,
                 const.PRIORITY_MEDIUM,
                 const.ARP_TABLE, match=match)
+
+        # Default: traffic => send to service classification table
+        self.add_flow_go_to_table(self.get_datapath(),
+                const.EGRESS_PRE_CONNTRACK_TABLE,
+                const.PRIORITY_DEFAULT,
+                const.SERVICES_CLASSIFICATION_TABLE)
+
+        # Default: traffic => send to dispatch table
+        self.add_flow_go_to_table(self.get_datapath(),
+                const.INGRESS_PRE_CONNTRACK_TABLE,
+                const.PRIORITY_DEFAULT,
+                const.INGRESS_DISPATCH_TABLE)
+
         self._install_flows_on_switch_up()
 
     def _add_arp_responder(self, lport):
@@ -224,7 +237,25 @@ class L2App(DFlowApp):
             ofproto.OFPIT_APPLY_ACTIONS, actions)
 
         goto_inst = parser.OFPInstructionGotoTable(
-            const.SERVICES_CLASSIFICATION_TABLE)
+            const.EGRESS_PRE_CONNTRACK_TABLE)
+        inst = [action_inst, goto_inst]
+        self.mod_flow(
+            self.get_datapath(),
+            inst=inst,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match)
+
+        # Go to dispatch table according to unique tunnel_id
+        match = parser.OFPMatch(tunnel_id_nxm=tunnel_key)
+        actions = []
+        goto_inst = parser.OFPInstructionGotoTable(
+            const.INGRESS_PRE_CONNTRACK_TABLE)
+        
+        actions = []
+        actions.append(parser.OFPActionSetField(metadata=network_id))
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst, goto_inst]
         self.mod_flow(
             self.get_datapath(),
@@ -234,7 +265,6 @@ class L2App(DFlowApp):
             match=match)
 
         # Dispatch to local port according to unique tunnel_id
-        match = parser.OFPMatch(tunnel_id_nxm=tunnel_key)
         actions = []
         actions.append(parser.OFPActionOutput(ofport,
                                               ofproto.OFPCML_NO_BUFFER))
@@ -244,7 +274,7 @@ class L2App(DFlowApp):
         self.mod_flow(
             self.get_datapath(),
             inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=const.INGRESS_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
