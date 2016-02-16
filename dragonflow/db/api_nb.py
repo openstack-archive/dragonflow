@@ -602,6 +602,9 @@ class LogicalPort(object):
     def get_tunnel_key(self):
         return int(self.lport['tunnel_key'])
 
+    def get_security_groups(self):
+        return self.lport['sgids']
+
     def set_external_value(self, key, value):
         self.external_dict[key] = value
 
