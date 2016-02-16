@@ -66,7 +66,7 @@ class PubSubApi(object):
 class PublisherApi(object):
 
     @abc.abstractmethod
-    def initialize(self, endpoint, trasport_proto, **args):
+    def initialize(self, **args):
         """Initialize the DB client
 
         :param endpoint: ip:port
@@ -87,21 +87,6 @@ class PublisherApi(object):
         :param topic:   topic to send event to
         :type topic:    string
         :returns:       None
-        """
-
-    @abc.abstractmethod
-    def run(self):
-        """Method that will run in the Subscriber thread
-        """
-
-    @abc.abstractmethod
-    def daemonize(self):
-        """Start the Subscriber thread
-        """
-
-    @abc.abstractmethod
-    def stop(self):
-        """Stop the Publisher thread
         """
 
 
@@ -178,26 +163,11 @@ class PublisherAgentBase(PublisherApi):
 
     def __init__(self):
         super(PublisherAgentBase, self).__init__()
-        self.endpoint = None
-        self.trasport_proto = None
-        self.daemon = None
         self.config = None
 
-    def initialize(self, endpoint, trasport_proto, config=None, **args):
-        self.endpoint = endpoint
-        self.trasport_proto = trasport_proto
+    def initialize(self, config=None, **args):
         self.daemon = df_utils.DFDaemon()
         self.config = config
-
-    def daemonize(self):
-        self.daemon.daemonize(self.run)
-
-    @property
-    def is_daemonize(self):
-        return self.daemon.is_daemonize
-
-    def stop(self):
-        self.daemon.stop()
 
 
 class SubscriberAgentBase(SubscriberApi):
