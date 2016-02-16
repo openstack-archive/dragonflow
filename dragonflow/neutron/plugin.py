@@ -514,9 +514,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         port_model = self._get_port(context, db_port['id'])
         self._apply_dict_extend_functions('ports', db_port, port_model)
 
-        return self.create_port_in_nb_api(db_port, parent_name, tag, sgids)
+        return self.create_port_in_nb_api(db_port, parent_name, tag)
 
-    def create_port_in_nb_api(self, port, parent_name, tag, sgids):
+    def create_port_in_nb_api(self, port, parent_name, tag):
         # The port name *must* be port['id'].  It must match the iface-id set
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
@@ -549,7 +549,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             chassis=chassis, tunnel_key=tunnel_key,
             port_security=allowed_macs,
             device_owner=port.get('device_owner', None),
-            sgids=sgids)
+            security_groups=port.get('security_groups', None))
 
         return port
 
