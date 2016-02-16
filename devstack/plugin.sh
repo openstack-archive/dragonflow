@@ -196,41 +196,18 @@ function install_ovs {
         install_neutron
     fi
 
-    cd $DEST
-    if [ ! -d $OVS_REPO_NAME ] ; then
-        git clone $OVS_REPO
-        cd $OVS_REPO_NAME
-        git checkout $OVS_BRANCH
-    else
-        cd $OVS_REPO_NAME
-    fi
-
     install_package python-openvswitch
-
-    # TODO: Can you create package list files like you can inside devstack?
-    install_package autoconf automake libtool gcc patch make
-
-    if [ ! -f configure ] ; then
-        ./boot.sh
-    fi
-    if [ ! -f config.status ] || [ configure -nt config.status ] ; then
-        ./configure --with-linux=/lib/modules/`uname -r`/build
-    fi
-    make -j$[$(nproc) + 1]
-    sudo make install
-
-    sudo make INSTALL_MOD_DIR=kernel/net/openvswitch modules_install
-    sudo modprobe -r vport_geneve
-    sudo modprobe -r openvswitch
-
-    sudo modprobe openvswitch || (dmesg && die $LINENO "FAILED TO LOAD openvswitch")
-    sudo modprobe vport-geneve || (echo "FAILED TO LOAD vport_geneve" && dmesg)
-    dmesg | tail
-
-    sudo chown $(whoami) $OVS_DIR
+    source $NEUTRON_DIR/devstack/lib/ovs
+    compile_ovs True
+    sudo chown $(whoami) /usr/local/var/run/openvswitch
     sudo chown $(whoami) /usr/local/var/log/openvswitch
+}
 
-    cd $_pwd
+# stop_ovs_dp() - Stop OVS datapath
+function stop_ovs_dp {
+    sudo ovs-dpctl dump-dps | sudo xargs -n1 ovs-dpctl del-dp
+        sudo rmmod vport_geneve
+            sudo rmmod openvswitch
 }
 
 function stop_ovs
@@ -401,6 +378,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
 
     if [[ "$1" == "unstack" ]]; then
         stop_df
+        stop_ovs_dp
         cleanup_ovs
     fi
 fi
