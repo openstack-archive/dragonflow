@@ -67,9 +67,10 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
             'enable_dhcp': True}
         subnet = self.neutron.create_subnet({'subnet': subnet})
         subnet_id = subnet['subnet']['id']
-        dhcp_ip = self.get_dhcp_ip(network_id, subnet_id)
-        self.assertIsNotNone(dhcp_ip)
-        time.sleep(DEFAULT_CMD_TIMEOUT)
+        dhcp_ip = utils.wait_until_is_and_return(
+            lambda: self.get_dhcp_ip(network_id, subnet_id),
+            exception=Exception('DHCP IP was not generated')
+        )
         flows_after_change = ovs.dump()
         self.assertFalse(self.check_dhcp_rule(flows_before_change, dhcp_ip))
         self.assertTrue(self.check_dhcp_rule(flows_after_change, dhcp_ip))
@@ -99,11 +100,12 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         # change dhcp
         updated_subnet = {'enable_dhcp': True}
         self.neutron.update_subnet(subnet_id, {'subnet': updated_subnet})
-        dhcp_ip = self.get_dhcp_ip(network_id, subnet_id)
-        self.assertIsNotNone(dhcp_ip)
+        dhcp_ip = utils.wait_until_is_and_return(
+            lambda: self.get_dhcp_ip(network_id, subnet_id),
+            exception=Exception('DHCP IP was not generated')
+        )
         self.assertFalse(self.check_dhcp_rule(flows_before_change, dhcp_ip))
         self.assertFalse(self.check_dhcp_rule(flows_after_change, dhcp_ip))
-        time.sleep(DEFAULT_CMD_TIMEOUT)
         flows_after_update = ovs.dump()
         self.assertTrue(self.check_dhcp_rule(flows_after_update, dhcp_ip))
         network.close()
@@ -128,10 +130,12 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         router_id = router.create()
         self.assertTrue(router.exists())
         subnet_msg = {'subnet_id': subnet_id}
-        self.neutron.add_interface_router(router_id, body=subnet_msg)
-        dhcp_ip = self.get_dhcp_ip(network_id, subnet_id)
-        self.assertIsNotNone(dhcp_ip)
         time.sleep(DEFAULT_CMD_TIMEOUT)
+        self.neutron.add_interface_router(router_id, body=subnet_msg)
+        dhcp_ip = utils.wait_until_is_and_return(
+            lambda: self.get_dhcp_ip(network_id, subnet_id),
+            exception=Exception('DHCP IP was not generated')
+        )
         flows_after_change = ovs.dump()
         self.assertFalse(self.check_dhcp_rule(flows_before_change, dhcp_ip))
         self.assertTrue(self.check_dhcp_rule(flows_after_change, dhcp_ip))
