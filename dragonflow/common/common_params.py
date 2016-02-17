@@ -50,5 +50,14 @@ df_opts = [
                 help=_('List of the Neutron Server Publisher IPs.')),
     cfg.PortOpt('publisher_port',
                 default=8866,
-                help=_('Neutron Server Publishers Port'))
+                help=_('Neutron Server Publishers Port')),
+    cfg.BoolOpt('is_monitor_tables',
+                default='$enable_df_pub_sub',
+                help=_('Manually monitor Dragonflow database tables')),
+    cfg.ListOpt('monitor_tables',
+                default=['chassis'],
+                help=_('Monitor these tables for chages in DF database')),
+    cfg.FloatOpt('monitor_table_poll_time',
+                default=30,
+                help=_('Poll monitored tables every this number of seconds')),
 ]

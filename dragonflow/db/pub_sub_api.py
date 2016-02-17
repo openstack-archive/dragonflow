@@ -17,6 +17,7 @@ import six
 
 from oslo_log import log as logging
 
+from dragonflow._i18n import _LW
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 
@@ -231,3 +232,57 @@ class SubscriberAgentBase(SubscriberApi):
 
     def unregister_listen_address(self, topic):
         self.uri_list.remove(topic)
+
+
+class TableMonitor(object):
+    def __init__(self, table_name, driver, publisher, polling_time=10):
+        self._driver = driver
+        self._publisher = publisher
+        self._polling_time = polling_time
+        self._daemon = df_utils.DFDaemon()
+        self._table_name = table_name
+        pass
+
+    def daemonize(self):
+        return self._daemon.daemonize(self.run)
+
+    def stop(self):
+        return self._daemon.stop()
+
+    def run(self):
+        cache = {}
+        while True:
+            try:
+                eventlet.sleep(self._polling_time)
+                cache = self._update_cache(cache)
+            except Exception as e:
+                LOG.warning(_LW("Error when polling table {}: {}").format(
+                    self._table_name,
+                    repr(e)
+                ))
+
+    def _update_cache(self, old_cache):
+        """Create a new cache and send events for changes from the old cache"""
+        new_cache = {}
+        for entry_key in self._driver.get_all_keys(self._table_name):
+            entry_value = self._driver.get_key(
+                self._table_name,
+                entry_key)
+            old_value = old_cache.pop(entry_key, None)
+            if old_value is None:
+                self._send_event('create', entry_key, entry_value)
+            elif old_value != entry_value:
+                    self._send_event('update', entry_key, entry_value)
+            new_cache[entry_key] = entry_value
+        for entry_key in old_cache:
+            self._send_event('delete', entry_key, None)
+        return new_cache
+
+    def _send_event(self, action, entry_id, entry_value):
+        db_update = db_common.DbUpdate(
+            self._table_name,
+            entry_id,
+            action,
+            entry_value,
+        )
+        self._publisher.send_event(db_update)
