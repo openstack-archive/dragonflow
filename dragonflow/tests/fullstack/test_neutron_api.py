@@ -13,6 +13,10 @@
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 from neutronclient.common import exceptions as n_exc
+import time
+
+
+DEFAULT_CMD_TIMEOUT = 5
 
 
 class TestNeutronAPIandDB(test_base.DFTestBase):
@@ -38,6 +42,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             'name': 'subnet-test',
             'enable_dhcp': True}
         self.neutron.create_subnet({'subnet': subnet})
+        time.sleep(DEFAULT_CMD_TIMEOUT)
         ports = self.nb_api.get_all_logical_ports()
         dhcp_ports_found = 0
         for port in ports:
@@ -95,6 +100,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         port2 = self.nb_api.get_logical_port(port['port_id'])
         self.assertIsNotNone(port2)
         router.close()
+        time.sleep(DEFAULT_CMD_TIMEOUT)
         port2 = self.nb_api.get_logical_port(port['port_id'])
         self.assertIsNone(port2)
         subnet.close()
