@@ -38,7 +38,7 @@ Spec Template
     mac_spoofing
     selective_topo_dist
     performance_testing
-
+    external_gw_mac_learning_for_distributed_dnat
 
 Indices and tables
 ------------------
