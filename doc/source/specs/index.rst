@@ -38,7 +38,6 @@ Spec Template
     mac_spoofing
     selective_topo_dist
 
-
 Indices and tables
 ------------------
 
