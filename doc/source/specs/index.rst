@@ -36,6 +36,7 @@ Spec Template
     template
     distributed_dnat
     mac_spoofing
+	local_controller_reliability
 
 
 Indices and tables
