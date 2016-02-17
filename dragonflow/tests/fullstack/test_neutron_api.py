@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 from neutronclient.common import exceptions as n_exc
@@ -38,7 +39,10 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             'name': 'subnet-test',
             'enable_dhcp': True}
         self.neutron.create_subnet({'subnet': subnet})
-        ports = self.nb_api.get_all_logical_ports()
+        ports = utils.wait_until_is_and_return(
+            lambda: self.nb_api.get_all_logical_ports(),
+            exception=Exception('No ports assigned in subnet')
+        )
         dhcp_ports_found = 0
         for port in ports:
             if port.get_lswitch_id() == network_id:
@@ -95,8 +99,10 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         port2 = self.nb_api.get_logical_port(port['port_id'])
         self.assertIsNotNone(port2)
         router.close()
-        port2 = self.nb_api.get_logical_port(port['port_id'])
-        self.assertIsNone(port2)
+        utils.wait_until_none(
+            lambda: self.nb_api.get_logical_port(port['port_id']),
+            exception=Exception('Port was not deleted')
+        )
         subnet.close()
         network.close()
         self.assertFalse(router.exists())
