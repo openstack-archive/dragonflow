@@ -10,9 +10,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron.agent.linux.utils import wait_until_true
 from neutron.agent.common import utils
 import re
 
+
+def wait_until_is_and_return(predicate, timeout=5, sleep=1, exception=None):
+    container = {}
+
+    def internal_predicate():
+        container['value'] = predicate()
+        return container['value']
+
+    wait_until_true(internal_predicate, timeout, sleep, exception)
+    return container.get('value')
 
 class OvsFlowsParser(object):
 
