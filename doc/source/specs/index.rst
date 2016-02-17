@@ -36,7 +36,7 @@ Spec Template
     template
     distributed_dnat
     mac_spoofing
-
+    external_gw_mac_learning_for_distributed_dnat
 
 Indices and tables
 ------------------
