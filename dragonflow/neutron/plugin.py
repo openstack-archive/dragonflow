@@ -434,9 +434,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     port['port'][df_const.DF_PORT_BINDING_PROFILE])
             self._process_port_create_extra_dhcp_opts(context, db_port,
                                                       dhcp_opts)
-        return self.create_port_in_nb_api(db_port, parent_name, tag, sgids)
+        return self.(db_port, parent_name, tag, sgids)
 
-    def create_port_in_nb_api(self, port, parent_name, tag, sgids):
+    def create_port_in_nb_apicreate_port_in_nb_api(self, port, parent_name, tag, sgids):
         # The port name *must* be port['id'].  It must match the iface-id set
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
