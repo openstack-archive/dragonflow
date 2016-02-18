@@ -396,7 +396,8 @@ class NbApi(object):
         self.driver.delete_key('lrouter', name)
         self._send_db_change_event('lrouter', name, 'delete', name)
 
-    def add_lrouter_port(self, name, lrouter_name, lswitch, **columns):
+    def add_lrouter_port(self, name, lrouter_name,
+                         lswitch, **columns):
         lrouter_json = self.driver.get_key('lrouter', lrouter_name)
         lrouter = jsonutils.loads(lrouter_json)
 
