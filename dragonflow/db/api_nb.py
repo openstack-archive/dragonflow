@@ -21,7 +21,7 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
 
-from dragonflow._i18n import _LI
+from dragonflow._i18n import _LI, _LE
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate
 from dragonflow.db import pub_sub_api
@@ -168,41 +168,55 @@ class NbApi(object):
             else:
                 secgroup_id = key
                 self.controller.security_group_deleted(secgroup_id)
-        if 'lport' == table:
+        elif 'lport' == table:
             if action == 'set' or action == 'create':
                 lport = LogicalPort(value)
                 self.controller.logical_port_updated(lport)
             else:
                 lport_id = key
                 self.controller.logical_port_deleted(lport_id)
-        if 'lrouter' == table:
+        elif 'lrouter' == table:
             if action == 'set' or action == 'create':
                 lrouter = LogicalRouter(value)
                 self.controller.router_updated(lrouter)
             else:
                 lrouter_id = key
                 self.controller.router_deleted(lrouter_id)
-        if 'chassis' == table:
+        elif 'chassis' == table:
             if action == 'set' or action == 'create':
                 chassis = Chassis(value)
                 self.controller.chassis_created(chassis)
             else:
                 chassis_id = key
                 self.controller.chassis_deleted(chassis_id)
-        if 'lswitch' == table:
+        elif 'lswitch' == table:
             if action == 'set' or action == 'create':
                 lswitch = LogicalSwitch(value)
                 self.controller.logical_switch_updated(lswitch)
             else:
                 lswitch_id = key
                 self.controller.logical_switch_deleted(lswitch_id)
-        if 'floatingip' == table:
+        elif 'floatingip' == table:
             if action == 'set' or action == 'create':
                 floatingip = Floatingip(value)
                 self.controller.floatingip_updated(floatingip)
             else:
                 floatingip_id = key
                 self.controller.floatingip_deleted(floatingip_id)
+
+        elif 'ovsinterface' == table:
+            if action == 'set' or action == 'create':
+                ovs_port = OvsPort(value)
+                self.controller.ovs_port_updated(ovs_port)
+            elif action == 'sync_finished':
+                self.controller.ovs_sync_finished()
+            elif action == 'sync_started':
+                self.controller.ovs_sync_started()
+            else:
+                ovs_port_id = key
+                self.controller.ovs_port_deleted(ovs_port_id)
+        else:
+            LOG.error(_LE('Unknown table %s'), table)
 
     def sync(self):
         pass
@@ -544,6 +558,9 @@ class LogicalSwitch(object):
             res.append(Subnet(subnet))
         return res
 
+    def get_topic(self):
+        return self.lswitch['topic']
+
     def __str__(self):
         return self.lswitch.__str__()
 
@@ -577,6 +594,9 @@ class Subnet(object):
     def get_dns_name_servers(self):
         return self.subnet['dns_nameservers']
 
+    def get_topic(self):
+        return self.subnet['topic']
+
 
 class LogicalPort(object):
 
@@ -602,6 +622,9 @@ class LogicalPort(object):
     def get_tunnel_key(self):
         return int(self.lport['tunnel_key'])
 
+    def get_security_groups(self):
+        return self.lport['sgids']
+
     def set_external_value(self, key, value):
         self.external_dict[key] = value
 
@@ -610,6 +633,9 @@ class LogicalPort(object):
 
     def get_device_owner(self):
         return self.lport.get('device_owner')
+
+    def get_topic(self):
+        return self.lport.get('topic')
 
     def __str__(self):
         return self.lport.__str__() + self.external_dict.__str__()
@@ -631,6 +657,9 @@ class LogicalRouter(object):
 
     def is_distributed(self):
         return self.lrouter.get('distributed', False)
+
+    def get_topic(self):
+        return self.lrouter.get('topic')
 
     def __str__(self):
         return self.lrouter.__str__()
@@ -666,6 +695,9 @@ class LogicalRouterPort(object):
     def get_tunnel_key(self):
         return self.router_port['tunnel_key']
 
+    def get_topic(self):
+        return self.router_port['topic']
+
     def __eq__(self, other):
         return self.get_name() == other.get_name()
 
@@ -692,6 +724,10 @@ class SecurityGroup(object):
         for rule in self.secgroup.get('rules'):
             res.append(SecurityGroupRule(rule))
         return res
+
+    @property
+    def topic(self):
+        return self.secgroup.get('topic')
 
     def __str__(self):
         return self.secgroup.__str__()
@@ -765,5 +801,52 @@ class Floatingip(object):
     def get_lrouter_id(self):
         return self.floatingip['router_id']
 
+    def get_topic(self):
+        return self.floatingip['topic']
+
     def __str__(self):
         return self.floatingip.__str__()
+
+
+class OvsPort(object):
+
+    TYPE_VM = 'vm'
+    TYPE_TUNNEL = 'tunnel'
+    TYPE_BRIDGE = 'bridge'
+    TYPE_PATCH = 'patch'
+
+    def __init__(self, value):
+        self.ovs_port = value
+
+    def get_id(self):
+        return self.ovs_port.get_uuid()
+
+    def get_ofport(self):
+        return self.ovs_port.get_ofport()
+
+    def get_name(self):
+        return self.ovs_port.get_name()
+
+    def get_admin_state(self):
+        return self.ovs_port.get_admin_state()
+
+    def get_type(self):
+        return self.ovs_port.get_type()
+
+    def get_iface_id(self):
+        return self.ovs_port.get_iface_id()
+
+    def get_peer(self):
+        return self.ovs_port.get_peer()
+
+    def get_attached_mac(self):
+        return self.ovs_port.get_attached_mac()
+
+    def get_remote_ip(self):
+        return self.ovs_port.get_remote_ip()
+
+    def get_tunnel_type(self):
+        return self.ovs_port.get_tunnel_type()
+
+    def __str__(self):
+        return str(self.ovs_port)
