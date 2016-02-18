@@ -26,6 +26,8 @@ from dragonflow._i18n import _LI
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate
 from dragonflow.db.pub_sub_api import TableMonitor
+from dragonflow.db import versioned_obj as vo
+
 eventlet.monkey_patch()
 
 LOG = log.getLogger(__name__)
@@ -206,6 +208,7 @@ class NbApi(object):
         secgroup['name'] = name
         for col, val in columns.items():
             secgroup[col] = val
+        secgroup = vo.create_version(secgroup)
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.create_key('secgroup', name, secgroup_json)
         self._send_db_change_event('secgroup', name, 'create', secgroup_json)
@@ -214,17 +217,19 @@ class NbApi(object):
         self.driver.delete_key('secgroup', name)
         self._send_db_change_event('secgroup', name, 'delete', name)
 
-    def add_security_group_rules(self, sg_name, new_rules):
+    def add_security_group_rules(self, sg_name, old_version, new_rules):
         secgroup_json = self.driver.get_key('secgroup', sg_name)
         secgroup = jsonutils.loads(secgroup_json)
         rules = secgroup.get('rules', [])
         rules.extend(new_rules)
         secgroup['rules'] = rules
+        secgroup = vo.compare_and_increment_version(sg_name, secgroup,
+                                                    old_version)
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.set_key('secgroup', sg_name, secgroup_json)
         self._send_db_change_event('secgroup', sg_name, 'set', secgroup_json)
 
-    def delete_security_group_rule(self, sg_name, sgr_id):
+    def delete_security_group_rule(self, sg_name, old_version, sgr_id):
         secgroup_json = self.driver.get_key('secgroup', sg_name)
         secgroup = jsonutils.loads(secgroup_json)
         rules = secgroup.get('rules')
@@ -233,6 +238,8 @@ class NbApi(object):
             if rule['id'] != sgr_id:
                 new_rules.append(rule)
         secgroup['rules'] = new_rules
+        secgroup = vo.compare_and_increment_version(sg_name, secgroup,
+                                                    old_version)
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.set_key('secgroup', sg_name, secgroup_json)
         self._send_db_change_event('secgroup', sg_name, 'set', secgroup_json)
@@ -263,7 +270,7 @@ class NbApi(object):
         except Exception:
             return None
 
-    def add_subnet(self, id, lswitch_name, **columns):
+    def add_subnet(self, id, lswitch_name, old_version, **columns):
         lswitch_json = self.driver.get_key('lswitch', lswitch_name)
         lswitch = jsonutils.loads(lswitch_json)
 
@@ -276,12 +283,14 @@ class NbApi(object):
         subnets = lswitch.get('subnets', [])
         subnets.append(subnet)
         lswitch['subnets'] = subnets
+        lswitch = vo.compare_and_increment_version(lswitch_name, lswitch,
+                                                   old_version)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', lswitch_name, lswitch_json)
         self._send_db_change_event('lswitch', lswitch_name, 'set',
                                    lswitch_json)
 
-    def update_subnet(self, id, lswitch_name, **columns):
+    def update_subnet(self, id, lswitch_name, old_version, **columns):
         lswitch_json = self.driver.get_key('lswitch', lswitch_name)
         lswitch = jsonutils.loads(lswitch_json)
         subnet = None
@@ -292,12 +301,14 @@ class NbApi(object):
         for col, val in columns.items():
             subnet[col] = val
 
+        lswitch = vo.compare_and_increment_version(lswitch_name, lswitch,
+                                                   old_version)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', lswitch_name, lswitch_json)
         self._send_db_change_event('lswitch', lswitch_name, 'set',
                                    lswitch_json)
 
-    def delete_subnet(self, id, lswitch_name):
+    def delete_subnet(self, id, lswitch_name, old_version):
         lswitch_json = self.driver.get_key('lswitch', lswitch_name)
         lswitch = jsonutils.loads(lswitch_json)
 
@@ -307,6 +318,8 @@ class NbApi(object):
                 new_ports.append(subnet)
 
         lswitch['subnets'] = new_ports
+        lswitch = vo.compare_and_increment_version(lswitch_name, lswitch,
+                                                   old_version)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', lswitch_name, lswitch_json)
         self._send_db_change_event('lswitch', lswitch_name, 'set',
@@ -334,15 +347,18 @@ class NbApi(object):
         lswitch['topic'] = topic
         for col, val in columns.items():
             lswitch[col] = val
+        lswitch = vo.create_version(lswitch)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.create_key('lswitch', name, lswitch_json)
         self._send_db_change_event('lswitch', name, 'create', lswitch_json)
 
-    def update_lswitch(self, name, **columns):
+    def update_lswitch(self, name, old_version, **columns):
         lswitch_json = self.driver.get_key('lswitch', name)
         lswitch = jsonutils.loads(lswitch_json)
         for col, val in columns.items():
             lswitch[col] = val
+        lswitch = vo.compare_and_increment_version(name, lswitch,
+                                                   old_version)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', name, lswitch_json)
         self._send_db_change_event('lswitch', name, 'set', lswitch_json)
@@ -358,15 +374,17 @@ class NbApi(object):
         lport['topic'] = topic
         for col, val in columns.items():
             lport[col] = val
+        lport = vo.create_version(lport)
         lport_json = jsonutils.dumps(lport)
         self.driver.create_key('lport', name, lport_json)
         self._send_db_change_event('lport', name, 'create', lport_json)
 
-    def update_lport(self, name, **columns):
+    def update_lport(self, name, old_version, **columns):
         lport_json = self.driver.get_key('lport', name)
         lport = jsonutils.loads(lport_json)
         for col, val in columns.items():
             lport[col] = val
+        lport = vo.compare_and_increment_version(name, lport, old_version)
         lport_json = jsonutils.dumps(lport)
         self.driver.set_key('lport', name, lport_json)
         self._send_db_change_event('lport', name, 'set', lport_json)
@@ -381,6 +399,7 @@ class NbApi(object):
         lrouter['topic'] = topic
         for col, val in columns.items():
             lrouter[col] = val
+        lrouter = vo.create_version(lrouter)
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.create_key('lrouter', name, lrouter_json)
         self._send_db_change_event('lrouter', name, 'create', lrouter_json)
@@ -389,7 +408,8 @@ class NbApi(object):
         self.driver.delete_key('lrouter', name)
         self._send_db_change_event('lrouter', name, 'delete', name)
 
-    def add_lrouter_port(self, name, lrouter_name, lswitch, **columns):
+    def add_lrouter_port(self, name, lrouter_name, old_version,
+                         lswitch, **columns):
         lrouter_json = self.driver.get_key('lrouter', lrouter_name)
         lrouter = jsonutils.loads(lrouter_json)
 
@@ -403,12 +423,14 @@ class NbApi(object):
         router_ports = lrouter.get('ports', [])
         router_ports.append(lrouter_port)
         lrouter['ports'] = router_ports
+        lrouter = vo.compare_and_increment_version(lrouter_name, lrouter,
+                                                   old_version)
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.set_key('lrouter', lrouter_name, lrouter_json)
         self._send_db_change_event('lrouter', lrouter_name, 'set',
                                    lrouter_json)
 
-    def delete_lrouter_port(self, lrouter_name, lswitch):
+    def delete_lrouter_port(self, lrouter_name, old_version, lswitch):
         lrouter_json = self.driver.get_key('lrouter', lrouter_name)
         lrouter = jsonutils.loads(lrouter_json)
 
@@ -418,6 +440,8 @@ class NbApi(object):
                 new_ports.append(port)
 
         lrouter['ports'] = new_ports
+        lrouter = vo.compare_and_increment_version(lrouter_name, lrouter,
+                                                   old_version)
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.set_key('lrouter', lrouter_name, lrouter_json)
         self._send_db_change_event('lrouter', lrouter_name, 'set',
