@@ -30,6 +30,7 @@ from dragonflow._i18n import _LI, _LW
 from dragonflow.common import common_params
 from dragonflow.common import constants
 from dragonflow.controller.ryu_base_app import RyuDFAdapter
+from dragonflow.controller.topology import Topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_vswitch_impl
@@ -54,12 +55,17 @@ class DfLocalController(object):
         self.chassis_name = chassis_name
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
+
         self.sync_finished = False
         kwargs = dict(
             db_store=self.db_store
         )
         app_mgr = AppManager.get_instance()
         self.open_flow_app = app_mgr.instantiate(RyuDFAdapter, **kwargs)
+
+        self.topology = None
+        self.enable_selective_topo_dist = \
+            cfg.CONF.df.enable_selective_topo_dist
 
     def run(self):
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
@@ -70,6 +76,8 @@ class DfLocalController(object):
                                db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
         self.vswitch_api.initialize()
+
+        self.topology = Topology(self, self.enable_selective_topo_dist)
 
         self.vswitch_api.sync()
         self.vswitch_api.del_controller('br-int').execute()
@@ -105,15 +113,17 @@ class DfLocalController(object):
 
             self.create_tunnels()
 
-            self.read_switches()
+            if not self.enable_selective_topo_dist:
 
-            self.read_security_groups()
+                self.read_switches()
 
-            self.port_mappings()
+                self.read_security_groups()
 
-            self.read_routers()
+                self.port_mappings()
 
-            self.read_floatingip()
+                self.read_routers()
+
+                self.read_floatingip()
 
             self.sync_finished = True
 
@@ -438,6 +448,24 @@ class DfLocalController(object):
             or new_floatingip.get_fixed_ip() != old_floatingip.get_fixed_ip():
             self._disassociate_floatingip(old_floatingip)
             self._associate_floatingip(new_floatingip)
+
+    def ovs_port_updated(self, ovs_port):
+        self.topology.ovs_port_updated(ovs_port)
+
+    def ovs_port_deleted(self, ovs_port_id):
+        self.topology.ovs_port_deleted(ovs_port_id)
+
+    def get_nb_api(self):
+        return self.nb_api
+
+    def get_db_store(self):
+        return self.db_store
+
+    def get_openflow_app(self):
+        return self.open_flow_app
+
+    def get_chassis_name(self):
+        return self.chassis_name
 
 
 # Run this application like this:

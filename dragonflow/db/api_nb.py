@@ -109,10 +109,10 @@ class NbApi(object):
             return True
         return self.driver.support_publish_subscribe()
 
-    def _send_db_change_event(self, table, key, action, value):
+    def _send_db_change_event(self, table, key, action, value, topic=None):
         if self.use_pubsub:
             update = DbUpdate(table, key, action, value)
-            self.publisher.send_event(update)
+            self.publisher.send_event(update, topic)
             eventlet.sleep(0)
 
     def allocate_tunnel_key(self):
@@ -204,6 +204,14 @@ class NbApi(object):
             else:
                 floatingip_id = key
                 self.controller.floatingip_deleted(floatingip_id)
+
+        if 'ovsport' == table:
+            if action == 'set' or action == 'create':
+                ovs_port = OvsPort(value)
+                self.controller.ovs_port_updated(ovs_port)
+            else:
+                ovs_port_id = key
+                self.controller.ovs_port_deleted(ovs_port_id)
 
     def sync(self):
         pass
@@ -376,7 +384,8 @@ class NbApi(object):
             lport[col] = val
         lport_json = jsonutils.dumps(lport)
         self.driver.set_key('lport', name, lport_json)
-        self._send_db_change_event('lport', name, 'set', lport_json)
+        self._send_db_change_event('lport', name, 'set', lport_json,
+                                   lport.get_tenant_id())
 
     def delete_lport(self, name, topic):
         self.driver.delete_key('lport', name)
@@ -586,6 +595,9 @@ class LogicalPort(object):
     def get_device_owner(self):
         return self.lport.get('device_owner')
 
+    def get_tenant_id(self):
+        return self.lport.get('tenant_id')
+
     def __str__(self):
         return self.lport.__str__() + self.external_dict.__str__()
 
@@ -742,3 +754,47 @@ class Floatingip(object):
 
     def __str__(self):
         return self.floatingip.__str__()
+
+
+class OvsPort(object):
+
+    TYPE_VM_PORT = 1
+    TYPE_TUNNEL_PORT = 2
+    TYPE_BRIDGE_PORT = 3
+    TYPE_PATCH_PORT = 4
+
+    def __init__(self, value):
+        self.ovs_port = jsonutils.loads(value)
+
+    def get_id(self):
+        return self.ovs_port['uuid']
+
+    def get_ofport(self):
+        return self.ovs_port['ofport']
+
+    def get_name(self):
+        return self.ovs_port['name']
+
+    def get_admin_state(self):
+        return self.ovs_port['admin_state']
+
+    def get_type(self):
+        return self.ovs_port['type']
+
+    def get_iface_id(self):
+        return self.ovs_port['iface_id']
+
+    def get_peer(self):
+        return self.ovs_port['peer']
+
+    def get_attached_mac(self):
+        return self.ovs_port['attached_mac']
+
+    def get_remote_ip(self):
+        return self.ovs_port['remote_ip']
+
+    def get_tunnel_type(self):
+        return self.ovs_port['tunnel_type']
+
+    def __str__(self):
+        return self.ovs_port.__str__()
