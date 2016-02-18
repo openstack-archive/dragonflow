@@ -204,6 +204,16 @@ class NbApi(object):
                 floatingip_id = key
                 self.controller.floatingip_deleted(floatingip_id)
 
+        if 'linterface' == table:
+            if action == 'set' or action == 'create':
+                ovs_port = OvsPort(value)
+                self.controller.ovs_port_updated(ovs_port)
+            elif action == 'sync_finished':
+                self.controller.ovs_sync_finished()
+            else:
+                ovs_port_id = key
+                self.controller.ovs_port_deleted(ovs_port_id)
+
     def sync(self):
         pass
 
@@ -267,7 +277,10 @@ class NbApi(object):
         chassis = {'name': name, 'ip': ip,
                    'tunnel_type': tunnel_type}
         chassis_json = jsonutils.dumps(chassis)
+
         self.driver.create_key('chassis', name, chassis_json, None)
+        self._send_db_change_event('chassis', name, 'set',
+                                   chassis_json, 'chassis')
 
     def get_lswitch(self, name, topic=None):
         try:
@@ -544,6 +557,9 @@ class LogicalSwitch(object):
             res.append(Subnet(subnet))
         return res
 
+    def get_topic(self):
+        return self.lswitch['topic']
+
     def __str__(self):
         return self.lswitch.__str__()
 
@@ -577,6 +593,9 @@ class Subnet(object):
     def get_dns_name_servers(self):
         return self.subnet['dns_nameservers']
 
+    def get_topic(self):
+        return self.subnet['topic']
+
 
 class LogicalPort(object):
 
@@ -602,6 +621,9 @@ class LogicalPort(object):
     def get_tunnel_key(self):
         return int(self.lport['tunnel_key'])
 
+    def get_security_groups(self):
+        return self.lport['sgids']
+
     def set_external_value(self, key, value):
         self.external_dict[key] = value
 
@@ -610,6 +632,9 @@ class LogicalPort(object):
 
     def get_device_owner(self):
         return self.lport.get('device_owner')
+
+    def get_topic(self):
+        return self.lport.get('topic')
 
     def __str__(self):
         return self.lport.__str__() + self.external_dict.__str__()
@@ -631,6 +656,9 @@ class LogicalRouter(object):
 
     def is_distributed(self):
         return self.lrouter.get('distributed', False)
+
+    def get_topic(self):
+        return self.lrouter.get('topic')
 
     def __str__(self):
         return self.lrouter.__str__()
@@ -666,6 +694,9 @@ class LogicalRouterPort(object):
     def get_tunnel_key(self):
         return self.router_port['tunnel_key']
 
+    def get_topic(self):
+        return self.router_port['topic']
+
     def __eq__(self, other):
         return self.get_name() == other.get_name()
 
@@ -692,6 +723,10 @@ class SecurityGroup(object):
         for rule in self.secgroup.get('rules'):
             res.append(SecurityGroupRule(rule))
         return res
+
+    @property
+    def topic(self):
+        return self.secgroup.get('topic')
 
     def __str__(self):
         return self.secgroup.__str__()
@@ -765,5 +800,52 @@ class Floatingip(object):
     def get_lrouter_id(self):
         return self.floatingip['router_id']
 
+    def get_topic(self):
+        return self.floatingip['topic']
+
     def __str__(self):
         return self.floatingip.__str__()
+
+
+class OvsPort(object):
+
+    TYPE_VM = 'vm'
+    TYPE_TUNNEL = 'tunnel'
+    TYPE_BRIDGE = 'bridge'
+    TYPE_PATCH = 'patch'
+
+    def __init__(self, value):
+        self.ovs_port = value
+
+    def get_id(self):
+        return self.ovs_port.get_uuid()
+
+    def get_ofport(self):
+        return self.ovs_port.get_ofport()
+
+    def get_name(self):
+        return self.ovs_port.get_name()
+
+    def get_admin_state(self):
+        return self.ovs_port.get_admin_state()
+
+    def get_type(self):
+        return self.ovs_port.get_type()
+
+    def get_iface_id(self):
+        return self.ovs_port.get_iface_id()
+
+    def get_peer(self):
+        return self.ovs_port.get_peer()
+
+    def get_attached_mac(self):
+        return self.ovs_port.get_attached_mac()
+
+    def get_remote_ip(self):
+        return self.ovs_port.get_remote_ip()
+
+    def get_tunnel_type(self):
+        return self.ovs_port.get_tunnel_type()
+
+    def __str__(self):
+        return self.ovs_port.__str__()
