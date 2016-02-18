@@ -49,3 +49,7 @@ class DragonflowException(Exception):
 
 class DBKeyNotFound(DragonflowException):
     message = _('DB Key not found, key=%(key)s')
+
+
+class DBKeyBadVersionException(DragonflowException):
+    message = _('DB Key bad version of object id=%(id)s')
