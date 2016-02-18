@@ -57,3 +57,7 @@ class UnsupportedTransportException(DragonflowException):
     not supported.
     """
     message = _("Transport protocol is not supported: %(transport)s")
+
+
+class DBKeyBadVersionException(DragonflowException):
+    message = _('DB Key bad version of object id=%(id)s')
