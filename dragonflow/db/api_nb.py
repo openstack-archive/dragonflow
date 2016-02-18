@@ -109,10 +109,10 @@ class NbApi(object):
             return True
         return self.driver.support_publish_subscribe()
 
-    def _send_db_change_event(self, table, key, action, value):
+    def _send_db_change_event(self, table, key, action, value, topic=None):
         if self.use_pubsub:
             update = DbUpdate(table, key, action, value)
-            self.publisher.send_event(update)
+            self.publisher.send_event(update, topic)
             eventlet.sleep(0)
 
     def allocate_tunnel_key(self):
@@ -376,7 +376,8 @@ class NbApi(object):
             lport[col] = val
         lport_json = jsonutils.dumps(lport)
         self.driver.set_key('lport', name, lport_json)
-        self._send_db_change_event('lport', name, 'set', lport_json)
+        self._send_db_change_event('lport', name, 'set', lport_json,
+                                   lport.get_tenant_id())
 
     def delete_lport(self, name, topic):
         self.driver.delete_key('lport', name)
@@ -585,6 +586,9 @@ class LogicalPort(object):
 
     def get_device_owner(self):
         return self.lport.get('device_owner')
+
+    def get_tenant_id(self):
+        return self.lport.get('tenant_id')
 
     def __str__(self):
         return self.lport.__str__() + self.external_dict.__str__()
