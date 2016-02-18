@@ -133,6 +133,10 @@ class DbStore(object):
         with self.lock:
             return self.secgroups.get(secgroup_id)
 
+    def get_security_groups(self):
+        with self.lock:
+            return self.secgroups.values()
+
     def get_security_group_keys(self):
         with self.lock:
             return set(self.secgroups.keys())
@@ -152,3 +156,7 @@ class DbStore(object):
     def delete_floatingip(self, floatingip_id):
         with self.lock:
             del self.floatingips[floatingip_id]
+
+    def get_floatingips(self):
+        with self.lock:
+            return self.floatingips.values()

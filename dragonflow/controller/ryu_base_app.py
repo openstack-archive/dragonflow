@@ -110,6 +110,12 @@ class RyuDFAdapter(OFPHandler):
                 secgroup=secgroup,
                 secgroup_rule=secgroup_rule)
 
+    def notify_ovs_sync_finished(self):
+        self.dispatcher.dispatch('ovs_sync_finished')
+
+    def notify_ovs_sync_started(self):
+        self.dispatcher.dispatch('ovs_sync_started')
+
     @set_ev_handler(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         # TODO(oanson) is there a better way to get the datapath?
