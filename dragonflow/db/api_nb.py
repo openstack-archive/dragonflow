@@ -26,6 +26,8 @@ from dragonflow._i18n import _LI
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate
 from dragonflow.db.pub_sub_api import TableMonitor
+from dragonflow.db import versioned_obj as vo
+
 eventlet.monkey_patch()
 
 LOG = log.getLogger(__name__)
@@ -206,6 +208,7 @@ class NbApi(object):
         secgroup['name'] = name
         for col, val in columns.items():
             secgroup[col] = val
+        vo.create_version(secgroup)
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.create_key('secgroup', name, secgroup_json)
         self._send_db_change_event('secgroup', name, 'create', secgroup_json)
@@ -220,6 +223,7 @@ class NbApi(object):
         rules = secgroup.get('rules', [])
         rules.extend(new_rules)
         secgroup['rules'] = rules
+        vo.increment_version(secgroup)
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.set_key('secgroup', sg_name, secgroup_json)
         self._send_db_change_event('secgroup', sg_name, 'set', secgroup_json)
@@ -233,6 +237,7 @@ class NbApi(object):
             if rule['id'] != sgr_id:
                 new_rules.append(rule)
         secgroup['rules'] = new_rules
+        vo.increment_version(secgroup)
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.set_key('secgroup', sg_name, secgroup_json)
         self._send_db_change_event('secgroup', sg_name, 'set', secgroup_json)
@@ -253,6 +258,7 @@ class NbApi(object):
     def add_chassis(self, name, ip, tunnel_type):
         chassis = {'name': name, 'ip': ip,
                    'tunnel_type': tunnel_type}
+        vo.increment_version(chassis)
         chassis_json = jsonutils.dumps(chassis)
         self.driver.create_key('chassis', name, chassis_json)
 
@@ -276,6 +282,7 @@ class NbApi(object):
         subnets = lswitch.get('subnets', [])
         subnets.append(subnet)
         lswitch['subnets'] = subnets
+        vo.increment_version(lswitch)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', lswitch_name, lswitch_json)
         self._send_db_change_event('lswitch', lswitch_name, 'set',
@@ -292,6 +299,7 @@ class NbApi(object):
         for col, val in columns.items():
             subnet[col] = val
 
+        vo.increment_version(lswitch)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', lswitch_name, lswitch_json)
         self._send_db_change_event('lswitch', lswitch_name, 'set',
@@ -307,6 +315,7 @@ class NbApi(object):
                 new_ports.append(subnet)
 
         lswitch['subnets'] = new_ports
+        vo.increment_version(lswitch)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', lswitch_name, lswitch_json)
         self._send_db_change_event('lswitch', lswitch_name, 'set',
@@ -334,6 +343,7 @@ class NbApi(object):
         lswitch['topic'] = topic
         for col, val in columns.items():
             lswitch[col] = val
+        vo.create_version(lswitch)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.create_key('lswitch', name, lswitch_json)
         self._send_db_change_event('lswitch', name, 'create', lswitch_json)
@@ -343,6 +353,7 @@ class NbApi(object):
         lswitch = jsonutils.loads(lswitch_json)
         for col, val in columns.items():
             lswitch[col] = val
+        vo.increment_version(lswitch)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key('lswitch', name, lswitch_json)
         self._send_db_change_event('lswitch', name, 'set', lswitch_json)
@@ -358,6 +369,7 @@ class NbApi(object):
         lport['topic'] = topic
         for col, val in columns.items():
             lport[col] = val
+        vo.create_version(lport)
         lport_json = jsonutils.dumps(lport)
         self.driver.create_key('lport', name, lport_json)
         self._send_db_change_event('lport', name, 'create', lport_json)
@@ -367,6 +379,7 @@ class NbApi(object):
         lport = jsonutils.loads(lport_json)
         for col, val in columns.items():
             lport[col] = val
+        vo.increment_version(lport)
         lport_json = jsonutils.dumps(lport)
         self.driver.set_key('lport', name, lport_json)
         self._send_db_change_event('lport', name, 'set', lport_json)
@@ -381,6 +394,7 @@ class NbApi(object):
         lrouter['topic'] = topic
         for col, val in columns.items():
             lrouter[col] = val
+        vo.create_version(lrouter)
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.create_key('lrouter', name, lrouter_json)
         self._send_db_change_event('lrouter', name, 'create', lrouter_json)
@@ -403,6 +417,7 @@ class NbApi(object):
         router_ports = lrouter.get('ports', [])
         router_ports.append(lrouter_port)
         lrouter['ports'] = router_ports
+        vo.increment_version(lrouter)
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.set_key('lrouter', lrouter_name, lrouter_json)
         self._send_db_change_event('lrouter', lrouter_name, 'set',
@@ -418,6 +433,7 @@ class NbApi(object):
                 new_ports.append(port)
 
         lrouter['ports'] = new_ports
+        vo.increment_version(lrouter)
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.set_key('lrouter', lrouter_name, lrouter_json)
         self._send_db_change_event('lrouter', lrouter_name, 'set',
