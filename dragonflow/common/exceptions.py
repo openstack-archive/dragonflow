@@ -49,3 +49,7 @@ class DragonflowException(Exception):
 
 class DBKeyNotFound(DragonflowException):
     message = _('DB Key not found, key=%(key)s')
+
+
+class DBDeadLockException(DragonflowException):
+    message = _('DB dead lock for object id=%(id)s')
