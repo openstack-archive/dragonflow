@@ -20,6 +20,8 @@ set -ex
 
 cwd=$(/bin/pwd)
 
+echo $neutron_installed > /tmp/tox_install.txt
+
 if [ $neutron_installed -eq 0 ]; then
     echo "ALREADY INSTALLED" > /tmp/tox_install.txt
     echo "Neutron already installed; using existing package"
@@ -41,6 +43,6 @@ fi
 
 pip install -U $*
 pip install python-etcd
-pip install python-pytun
+#pip install python-pytun
 pip install scapy
 exit $?
