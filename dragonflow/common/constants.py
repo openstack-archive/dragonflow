@@ -12,3 +12,11 @@
 # limitations under the License.
 
 DRAGONFLOW_VIRTUAL_PORT = "DragonflowVirtualPort"
+
+# Versioned Object Types
+VERSIONED_NETWORK = "network"
+VERSIONED_SUBNET = "subnet"
+VERSIONED_PORT = "port"
+VERSIONED_ROUTER = "router"
+VERSIONED_SECURITY_GROUP = "security-group"
+VERSIONED_FLOATING_IP = "floating-ip"
