@@ -15,9 +15,9 @@ from oslo_config import cfg
 from dragonflow._i18n import _
 
 df_opts = [
-    cfg.StrOpt('remote_db_ip',
-               default='127.0.0.1',
-               help=_('The remote db server ip address')),
+    cfg.IPOpt('remote_db_ip',
+              default='127.0.0.1',
+              help=_('The remote db server ip address')),
     cfg.PortOpt('remote_db_port',
                 default=4001,
                 help=_('The remote db server port')),
@@ -27,9 +27,9 @@ df_opts = [
     cfg.StrOpt('nb_db_class',
                default='dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver',
                help=_('The driver class for the NB DB driver')),
-    cfg.StrOpt('local_ip',
-               default='127.0.0.1',
-               help=_('Local host IP')),
+    cfg.IPOpt('local_ip',
+              default='127.0.0.1',
+              help=_('Local host VTEP IP')),
     cfg.StrOpt('tunnel_type',
                default='geneve',
                help=_('The encapsulation type for the tunnel')),
