@@ -14,7 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 class SwitchApi(object):
 
     def sync(self):
@@ -58,3 +57,45 @@ class TunnelPort(SwitchPort):
 
     def get_chassis_id(self):
         pass
+
+class LocalInterface():
+
+    def __init__(self):
+        self.uuid=""
+        self.ofport=None
+        self.name=""
+        self.admin_state=""
+        self.type=""
+        self.iface_id=""
+        self.peer=""
+        self.attached_mac=""
+        self.remote_ip=""
+        self.tunnel_type=""
+
+    def __str__(self):
+
+        s=""
+        s+=" uuid="
+        s+=self.uuid
+        s+=" ofport="
+        s+=str(self.ofport)
+        s+=" name="
+        s+=self.name
+        s+=" admin_state="
+        s+=self.admin_state
+        s+=" type="
+        s+=self.type
+        s+=" iface_id="
+        s+=self.iface_id
+        s+=" peer="
+        s+=self.peer
+        s+=" attached_mac="
+        s+=self.attached_mac
+        s+=" remote_ip="
+        s+=self.remote_ip
+        s+=" tunnel_type="
+        s+=self.tunnel_type
+
+        return s
+
+
