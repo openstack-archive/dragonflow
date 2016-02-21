@@ -16,6 +16,7 @@ import msgpack
 import six
 
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LW
 from dragonflow.common import utils as df_utils
@@ -46,6 +47,10 @@ def unpack_message(message):
 
 @six.add_metaclass(abc.ABCMeta)
 class PubSubApi(object):
+    """
+    API class to get the publisher and subscriber in the controller and neutron
+    plugin.
+    """
 
     @abc.abstractmethod
     def get_publisher(self):
@@ -58,7 +63,8 @@ class PubSubApi(object):
     def get_subscriber(self):
         """Return a Subscriber Driver Object
 
-        :returns: an PublisherApi Object
+        :returns: an PublisherApi Object. My return None if is_local is true,
+                  and local and non-local publishers are the same.
         """
 
 
@@ -66,7 +72,7 @@ class PubSubApi(object):
 class PublisherApi(object):
 
     @abc.abstractmethod
-    def initialize(self, endpoint, trasport_proto, **args):
+    def initialize(self):
         """Initialize the DB client
 
         :param endpoint: ip:port
@@ -90,18 +96,12 @@ class PublisherApi(object):
         """
 
     @abc.abstractmethod
-    def run(self):
-        """Method that will run in the Subscriber thread
-        """
+    def send_event_raw(self, event_raw):
+        """Publish the update
 
-    @abc.abstractmethod
-    def daemonize(self):
-        """Start the Subscriber thread
-        """
-
-    @abc.abstractmethod
-    def stop(self):
-        """Stop the Publisher thread
+        :param event_raw:  The update to send
+        :type event_raw:      string
+        :returns:       None
         """
 
 
@@ -109,7 +109,7 @@ class PublisherApi(object):
 class SubscriberApi(object):
 
     @abc.abstractmethod
-    def initialize(self, callback, **args):
+    def initialize(self, callback):
         """Initialize the DB client
 
         :param callback:  callback method to call for every db change
@@ -119,6 +119,7 @@ class SubscriberApi(object):
                           key - object key
                           action = 'create' / 'set' / 'delete' / 'sync'
                           value = new object value
+                          topic - the topic with which the event was received
         :param args:       Additional args
         :type args:        dictionary of <string, object>
         :returns:          None
@@ -178,26 +179,22 @@ class PublisherAgentBase(PublisherApi):
 
     def __init__(self):
         super(PublisherAgentBase, self).__init__()
-        self.endpoint = None
-        self.trasport_proto = None
-        self.daemon = None
         self.config = None
 
-    def initialize(self, endpoint, trasport_proto, config=None, **args):
-        self.endpoint = endpoint
-        self.trasport_proto = trasport_proto
-        self.daemon = df_utils.DFDaemon()
+    def initialize(self, config=None, **args):
         self.config = config
 
-    def daemonize(self):
-        self.daemon.daemonize(self.run)
+    def send_event(self, update, topic=None):
+        #NOTE(gampel) In this reference implementation we develop a trigger
+        #based pub sub without sending the value mainly in order to avoid
+        #consistency issues in th cost of extra latency i.e get
+        update.value = None
 
-    @property
-    def is_daemonize(self):
-        return self.daemon.is_daemonize
-
-    def stop(self):
-        self.daemon.stop()
+        if topic:
+            update.topic = topic
+        event_json = jsonutils.dumps(update.to_array())
+        self.send_event_raw(event_json)
+        LOG.debug("sending %s (%s)" % (update, event_json))
 
 
 class SubscriberAgentBase(SubscriberApi):

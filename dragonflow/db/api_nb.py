@@ -47,29 +47,28 @@ class NbApi(object):
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
         if self.use_pubsub:
-            pub_sub_driver = df_utils.load_driver(
-                                    cfg.CONF.df.pub_sub_driver,
-                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
-            self.publisher = pub_sub_driver.get_publisher()
-            self.subscriber = pub_sub_driver.get_subscriber()
+            self.publisher = self._get_publisher()
+            self.subscriber = self._get_subscriber()
             if self.is_neutron_server:
                 #Publisher is part of the neutron server Plugin
-                #TODO(gampel) Move plugin publish_port and
-                #controller port to conf settings
-                self._start_publisher()
+                self.publisher.initialize()
                 self._start_db_table_monitors()
             else:
                 #NOTE(gampel) we want to start queuing event as soon
                 #as possible
                 self._start_subsciber()
 
-    def _start_publisher(self, trasport_proto='tcp'):
-        endpoint = '*:%s' % cfg.CONF.df.publisher_port
-        self.publisher.initialize(
-                        endpoint=endpoint,
-                        trasport_proto=trasport_proto,
-                        config=cfg.CONF.df)
-        self.publisher.daemonize()
+    def _get_publisher(self):
+        pub_sub_driver = df_utils.load_driver(
+                                    cfg.CONF.df.pub_sub_local_driver,
+                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+        return pub_sub_driver.get_publisher()
+
+    def _get_subscriber(self):
+        pub_sub_driver = df_utils.load_driver(
+                                    cfg.CONF.df.pub_sub_driver,
+                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+        return pub_sub_driver.get_subscriber()
 
     def _start_db_table_monitors(self):
         if not cfg.CONF.df.is_monitor_tables:
@@ -95,12 +94,15 @@ class NbApi(object):
         self.db_table_monitors = None
 
     def _start_subsciber(self):
-        self.subscriber.initialize(
-                        self.db_change_callback,
-                        config=cfg.CONF.df)
+        self.subscriber.initialize(self.db_change_callback)
+        # TODO(oanson) Move publishers_ips to DF DB.
         publishers_ips = cfg.CONF.df.publishers_ips
         for ip in publishers_ips:
-            uri = 'tcp://%s:%s' % (ip, cfg.CONF.df.publisher_port)
+            uri = '%s://%s:%s' % (
+                cfg.CONF.df.publisher_transport,
+                ip,
+                cfg.CONF.df.publisher_port
+            )
             self.subscriber.register_listen_address(uri)
         self.subscriber.daemonize()
 
