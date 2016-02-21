@@ -40,36 +40,35 @@ class NbApi(object):
         self._queue = eventlet.queue.PriorityQueue()
         self.db_apply_failed = False
         self.use_pubsub = use_pubsub
-        self.publisher = None
+        self.multiproc_publisher = None
         self.is_neutron_server = is_neutron_server
         self.db_table_monitors = None
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
         if self.use_pubsub:
-            pub_sub_driver = df_utils.load_driver(
-                                    cfg.CONF.df.pub_sub_driver,
-                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
-            self.publisher = pub_sub_driver.get_publisher()
-            self.subscriber = pub_sub_driver.get_subscriber()
+            self.multiproc_publisher = self._get_multiproc_publisher()
+            self.subscriber = self._get_subscriber()
             if self.is_neutron_server:
                 #Publisher is part of the neutron server Plugin
-                #TODO(gampel) Move plugin publish_port and
-                #controller port to conf settings
-                self._start_publisher()
+                self.multiproc_publisher.initialize()
                 self._start_db_table_monitors()
             else:
                 #NOTE(gampel) we want to start queuing event as soon
                 #as possible
                 self._start_subsciber()
 
-    def _start_publisher(self, trasport_proto='tcp'):
-        endpoint = '*:%s' % cfg.CONF.df.publisher_port
-        self.publisher.initialize(
-                        endpoint=endpoint,
-                        trasport_proto=trasport_proto,
-                        config=cfg.CONF.df)
-        self.publisher.daemonize()
+    def _get_multiproc_publisher(self):
+        pub_sub_driver = df_utils.load_driver(
+                                    cfg.CONF.df.pub_sub_multiproc_driver,
+                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+        return pub_sub_driver.get_publisher()
+
+    def _get_subscriber(self):
+        pub_sub_driver = df_utils.load_driver(
+                                    cfg.CONF.df.pub_sub_driver,
+                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+        return pub_sub_driver.get_subscriber()
 
     def _start_db_table_monitors(self):
         if not cfg.CONF.df.is_monitor_tables:
@@ -81,7 +80,7 @@ class NbApi(object):
         table_monitor = TableMonitor(
             table_name,
             self.driver,
-            self.publisher,
+            self.multiproc_publisher,
             cfg.CONF.df.monitor_table_poll_time,
         )
         table_monitor.daemonize()
@@ -95,12 +94,15 @@ class NbApi(object):
         self.db_table_monitors = None
 
     def _start_subsciber(self):
-        self.subscriber.initialize(
-                        self.db_change_callback,
-                        config=cfg.CONF.df)
+        self.subscriber.initialize(self.db_change_callback)
+        # TODO(oanson) Move publishers_ips to DF DB.
         publishers_ips = cfg.CONF.df.publishers_ips
         for ip in publishers_ips:
-            uri = 'tcp://%s:%s' % (ip, cfg.CONF.df.publisher_port)
+            uri = '%s://%s:%s' % (
+                cfg.CONF.df.publisher_transport,
+                ip,
+                cfg.CONF.df.publisher_port
+            )
             self.subscriber.register_listen_address(uri)
         self.subscriber.daemonize()
 
@@ -112,7 +114,7 @@ class NbApi(object):
     def _send_db_change_event(self, table, key, action, value):
         if self.use_pubsub:
             update = DbUpdate(table, key, action, value)
-            self.publisher.send_event(update)
+            self.multiproc_publisher.send_event(update)
             eventlet.sleep(0)
 
     def allocate_tunnel_key(self):
@@ -126,9 +128,9 @@ class NbApi(object):
                 self.db_change_callback)
         self._read_db_changes_from_queue()
 
-    def db_change_callback(self, table, key, action, value):
-        update = DbUpdate(table, key, action, value)
-        LOG.debug("Pushing Update to Queue: %s", update)
+    def db_change_callback(self, table, key, action, value, topic):
+        update = DbUpdate(table, key, action, value, topic=topic)
+        LOG.info(_LI("Pushing Update to Queue: %s"), update)
         self._queue.put(update)
         eventlet.sleep(0)
 
