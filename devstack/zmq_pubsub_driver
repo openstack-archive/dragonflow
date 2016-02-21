@@ -1,0 +1,12 @@
+#!/bin/bash
+
+ZMQ_IPC_SOCKET=${ZMQ_IPC_SOCKET:-"/var/run/zmq_pubsub/zmq-publisher-socket"}
+
+function configure_pubsub_service_plugin {
+    NEUTRON_CONF=${NEUTRON_CONF:-"/etc/neutron/neutron.conf"}
+    PUB_SUB_DRIVER=${PUB_SUB_DRIVER:-"zmq_pubsub_driver"}
+    PUB_SUB_MULTIPROC_DRIVER=${PUB_SUB_MULTIPROC_DRIVER:-"zmq_pubsub_multiproc_driver"}
+    iniset $NEUTRON_CONF zmq_publisher ipc_socket $ZMQ_IPC_SOCKET
+    iniset $NEUTRON_CONF df pub_sub_driver $PUB_SUB_DRIVER
+    iniset $NEUTRON_CONF df pub_sub_multiproc_driver $PUB_SUB_MULTIPROC_DRIVER
+}
