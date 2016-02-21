@@ -81,13 +81,19 @@ Etcd Database:
 
     enable_service df-etcd-server
 
-Ram Cloud Database
+Ram Cloud Database:
 
     enable_service df-ramcloud
 
     enable_service df-rccoordinator
 
     enable_service df-rcmaster
+
+Zookeeper Database:
+
+    enable_service df-zookeeper
+
+    enable_service df-zookeeper-server
 
 Detailed Installation
 ---------------------
