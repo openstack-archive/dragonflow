@@ -26,6 +26,19 @@ from dragonflow.tests.fullstack import test_objects as objects
 events_num = 0
 
 
+def get_subscriber(pub_sub_driver, callback):
+    subscriber = pub_sub_driver.get_subscriber()
+    subscriber.initialize(callback)
+    uri = '%s://%s:%s' % (
+        cfg.CONF.df.publisher_transport,
+        '127.0.0.1',
+        cfg.CONF.df.publisher_port
+    )
+    subscriber.register_listen_address(uri)
+    subscriber.daemonize()
+    return subscriber
+
+
 class Namespace(object):
     pass
 
@@ -36,6 +49,14 @@ class TestPubSub(test_base.DFTestBase):
         super(TestPubSub, self).setUp()
         self.events_num = 0
         self.do_test = cfg.CONF.df.enable_df_pub_sub
+        self.nb_api.driver.set_key(
+            'test',
+            'key',
+            jsonutils.dumps({'name': 'key'}))
+
+    def tearDown(self):
+        self.nb_api.driver.delete_key('test', 'key')
+        super(TestPubSub, self).tearDown()
 
     def test_pub_sub_add_port(self):
         global events_num
@@ -50,14 +71,8 @@ class TestPubSub(test_base.DFTestBase):
         pub_sub_driver = df_utils.load_driver(
                                 cfg.CONF.df.pub_sub_driver,
                                 df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
-        subscriber = pub_sub_driver.get_subscriber()
-        subscriber.initialize(_db_change_callback)
-        uri = 'tcp://%s:%s' % ('127.0.0.1',
-                cfg.CONF.df.publisher_port)
-        subscriber.register_listen_address(uri)
-
-        subscriber.daemonize()
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        subscriber = get_subscriber(pub_sub_driver, _db_change_callback)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         eventlet.sleep(1)
         self.assertNotEqual(local_event_num, events_num)
@@ -73,7 +88,7 @@ class TestPubSub(test_base.DFTestBase):
         eventlet.sleep(1)
         self.assertNotEqual(local_event_num, events_num)
         local_event_num = events_num
-        network.delete()
+        network.close()
         eventlet.sleep(1)
         self.assertNotEqual(local_event_num, events_num)
         subscriber.stop()
@@ -93,15 +108,8 @@ class TestPubSub(test_base.DFTestBase):
         pub_sub_driver = df_utils.load_driver(
                                 cfg.CONF.df.pub_sub_driver,
                                 df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
-        subscriber = pub_sub_driver.get_subscriber()
-
-        subscriber.initialize(_db_change_callback)
-        uri = 'tcp://%s:%s' % ('127.0.0.1',
-                    cfg.CONF.df.publisher_port)
-        subscriber.register_listen_address(uri)
-
-        subscriber.daemonize()
-        network = objects.NetworkTestWrapper(self.neutron, self.nb_api)
+        subscriber = get_subscriber(pub_sub_driver, _db_change_callback)
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         eventlet.sleep(1)
         self.assertNotEqual(local_event_num, ns.events_num)
@@ -125,13 +133,16 @@ class TestPubSub(test_base.DFTestBase):
         eventlet.sleep(1)
         self.assertNotEqual(local_event_num, ns.events_num)
         local_event_num = ns.events_num
-        network.delete()
+        network.close()
         eventlet.sleep(1)
         self.assertNotEqual(local_event_num, events_num)
         subscriber.stop()
         self.assertFalse(network.exists())
 
     def test_pub_sub_event_number_diffrent_port(self):
+        if not self.do_test:
+            return
+
         ns = Namespace()
         ns.events_num = 0
         ns.events_action = None
@@ -140,28 +151,13 @@ class TestPubSub(test_base.DFTestBase):
             ns.events_num += 1
             ns.events_action = action
 
-        publisher_ip = '127.0.0.1'
         pub_sub_driver = df_utils.load_driver(
                                 cfg.CONF.df.pub_sub_driver,
                                 df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         publisher = pub_sub_driver.get_publisher()
-        subscriber = pub_sub_driver.get_subscriber()
+        publisher.initialize(config=cfg.CONF.df)
+        subscriber = get_subscriber(pub_sub_driver, _db_change_callback)
 
-        subscriber.initialize(_db_change_callback)
-        uri = 'tcp://%s:%s' % (publisher_ip, 6666)
-        subscriber.register_listen_address(uri)
-
-        subscriber.daemonize()
-
-        endpoint = '*:%s' % 6666
-        cfg.CONF.df.publisher_port = 6666
-        publisher.initialize(
-                    multiprocessing_queue=False,
-                    endpoint=endpoint,
-                    trasport_proto='tcp',
-                    config=cfg.CONF.df)
-
-        publisher.daemonize()
         eventlet.sleep(2)
         local_events_num = ns.events_num
         action = "test_action"
@@ -179,9 +175,11 @@ class TestPubSub(test_base.DFTestBase):
 
         self.assertEqual(local_events_num + 100, ns.events_num)
         subscriber.stop()
-        publisher.stop()
 
     def test_pub_sub_add_topic(self):
+        if not self.do_test:
+            return
+
         self.events_num_t = 0
         self.events_action_t = None
 
@@ -193,22 +191,8 @@ class TestPubSub(test_base.DFTestBase):
                                 cfg.CONF.df.pub_sub_driver,
                                 df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         publisher = pub_sub_driver.get_publisher()
-        subscriber = pub_sub_driver.get_subscriber()
-
-        publisher_ip = '127.0.0.1'
-        endpoint = '*:%s' % 7777
-        cfg.CONF.df.publisher_port = 7777
-        publisher.initialize(
-                            multiprocessing_queue=False,
-                            endpoint=endpoint,
-                            trasport_proto='tcp',
-                            config=cfg.CONF.df)
-        subscriber.initialize(_db_change_callback_topic)
-        uri = 'tcp://%s:%s' % (publisher_ip, 7777)
-        subscriber.register_listen_address(uri)
-
-        subscriber.daemonize()
-        publisher.daemonize()
+        publisher.initialize(config=cfg.CONF.df)
+        subscriber = get_subscriber(pub_sub_driver, _db_change_callback_topic)
         eventlet.sleep(2)
         topic = "topic"
         subscriber.register_topic(topic)
@@ -233,7 +217,6 @@ class TestPubSub(test_base.DFTestBase):
         publisher.send_event(update, topic)
         self.assertEqual(self.events_action_t, None)
         subscriber.stop()
-        publisher.stop()
 
 
 class TestDbTableMonitors(test_base.DFTestBase):
@@ -243,32 +226,29 @@ class TestDbTableMonitors(test_base.DFTestBase):
         enable_df_pub_sub = cfg.CONF.df.enable_df_pub_sub
         is_monitor_tables = cfg.CONF.df.is_monitor_tables
         self.do_test = enable_df_pub_sub and is_monitor_tables
+        if not self.do_test:
+            return
         self.pub_sub_driver = df_utils.load_driver(
             cfg.CONF.df.pub_sub_driver,
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE
         )
-        cfg.CONF.df.publisher_port = 8888
         self.namespace = Namespace()
         self.namespace.events = []
         self.publisher = self._create_publisher()
-        self.subscriber = self._create_subscriber()
+        self.subscriber = get_subscriber(
+            self.pub_sub_driver,
+            self._db_change_callback)
         self.monitor = self._create_monitor('chassis')
 
     def tearDown(self):
-        self.monitor.stop()
-        self.publisher.stop()
-        self.subscriber.stop()
+        if self.do_test:
+            self.monitor.stop()
+            self.subscriber.stop()
         super(TestDbTableMonitors, self).tearDown()
 
     def _create_publisher(self):
         publisher = self.pub_sub_driver.get_publisher()
-        endpoint = '*:%s' % cfg.CONF.df.publisher_port
-        publisher.initialize(
-            multiprocessing_queue=False,
-            endpoint=endpoint,
-            trasport_proto='tcp',
-            config=cfg.CONF.df)
-        publisher.daemonize()
+        publisher.initialize(config=cfg.CONF.df)
         return publisher
 
     def _db_change_callback(self, table, key, action, value):
@@ -278,15 +258,6 @@ class TestDbTableMonitors(test_base.DFTestBase):
             'action': action,
             'value': value,
         })
-
-    def _create_subscriber(self):
-        subscriber = self.pub_sub_driver.get_subscriber()
-        subscriber.initialize(self._db_change_callback)
-        uri = 'tcp://%s:%s' % ('127.0.0.1',
-                cfg.CONF.df.publisher_port)
-        subscriber.register_listen_address(uri)
-        subscriber.daemonize()
-        return subscriber
 
     def _create_monitor(self, table_name):
         table_monitor = TableMonitor(
@@ -299,6 +270,9 @@ class TestDbTableMonitors(test_base.DFTestBase):
         return table_monitor
 
     def test_operations(self):
+        if not self.do_test:
+            return
+
         expected_event = {
             'table': unicode('chassis'),
             'key': unicode('chassis-1'),
