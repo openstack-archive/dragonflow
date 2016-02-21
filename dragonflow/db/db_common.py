@@ -36,7 +36,7 @@ class DbUpdate(object):
         self.value = value
         self.topic = topic
 
-    def to_array(self):
+    def to_dict(self):
         update = {
                 'table': self.table,
                 'key': self.key,
@@ -47,10 +47,13 @@ class DbUpdate(object):
         return update
 
     def __str__(self):
-        return"Action:%s, Table:%s, Key:%s Value:%s" % (self.action,
-                    self.table,
-                    self.key,
-                    self.value)
+        return "Action:%s, Table:%s, Key:%s Value:%s Topic:%s" % (
+            self.action,
+            self.table,
+            self.key,
+            self.value,
+            self.topic,
+        )
 
     def __lt__(self, other):
         """Implements priority among updates
