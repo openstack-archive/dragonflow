@@ -14,6 +14,7 @@ import abc
 import eventlet
 import msgpack
 import six
+import sys
 
 from oslo_log import log as logging
 
@@ -46,6 +47,10 @@ def unpack_message(message):
 
 @six.add_metaclass(abc.ABCMeta)
 class PubSubApi(object):
+    """
+    API class to get the publisher and subscriber in the controller and neutron
+    plugin.
+    """
 
     @abc.abstractmethod
     def get_publisher(self):
@@ -58,7 +63,8 @@ class PubSubApi(object):
     def get_subscriber(self):
         """Return a Subscriber Driver Object
 
-        :returns: an PublisherApi Object
+        :returns: an PublisherApi Object. My return None if is_local is true,
+                  and local and non-local publishers are the same.
         """
 
 
@@ -66,7 +72,7 @@ class PubSubApi(object):
 class PublisherApi(object):
 
     @abc.abstractmethod
-    def initialize(self, endpoint, trasport_proto, **args):
+    def initialize(self):
         """Initialize the DB client
 
         :param endpoint: ip:port
@@ -89,36 +95,22 @@ class PublisherApi(object):
         :returns:       None
         """
 
-    @abc.abstractmethod
-    def run(self):
-        """Method that will run in the Subscriber thread
-        """
-
-    @abc.abstractmethod
-    def daemonize(self):
-        """Start the Subscriber thread
-        """
-
-    @abc.abstractmethod
-    def stop(self):
-        """Stop the Publisher thread
-        """
-
 
 @six.add_metaclass(abc.ABCMeta)
 class SubscriberApi(object):
 
     @abc.abstractmethod
-    def initialize(self, callback, **args):
+    def initialize(self, callback):
         """Initialize the DB client
 
         :param callback:  callback method to call for every db change
         :type callback :  callback method of type:
-                          callback(table, key, action, value)
+                          callback(table, key, action, value, topic)
                           table - table name
                           key - object key
                           action = 'create' / 'set' / 'delete' / 'sync'
                           value = new object value
+                          topic - the topic with which the event was received
         :param args:       Additional args
         :type args:        dictionary of <string, object>
         :returns:          None
@@ -174,32 +166,6 @@ class SubscriberApi(object):
         """
 
 
-class PublisherAgentBase(PublisherApi):
-
-    def __init__(self):
-        super(PublisherAgentBase, self).__init__()
-        self.endpoint = None
-        self.trasport_proto = None
-        self.daemon = None
-        self.config = None
-
-    def initialize(self, endpoint, trasport_proto, config=None, **args):
-        self.endpoint = endpoint
-        self.trasport_proto = trasport_proto
-        self.daemon = df_utils.DFDaemon()
-        self.config = config
-
-    def daemonize(self):
-        self.daemon.daemonize(self.run)
-
-    @property
-    def is_daemonize(self):
-        return self.daemon.is_daemonize
-
-    def stop(self):
-        self.daemon.stop()
-
-
 class SubscriberAgentBase(SubscriberApi):
 
     def __init__(self):
@@ -208,13 +174,15 @@ class SubscriberAgentBase(SubscriberApi):
         self.uri_list = []
         self.topic_list.append(db_common.SEND_ALL_TOPIC)
 
-    def initialize(self, callback, config=None, **args):
+    def initialize(self, callback):
         self.db_changes_callback = callback
         self.daemon = df_utils.DFDaemon()
-        self.config = config
 
     def register_listen_address(self, uri):
         self.uri_list.append(uri)
+
+    def unregister_listen_address(self, topic):
+        self.uri_list.remove(topic)
 
     def daemonize(self):
         self.daemon.daemonize(self.run)
@@ -231,9 +199,6 @@ class SubscriberAgentBase(SubscriberApi):
 
     def unregister_topic(self, topic):
         self.topic_list.remove(topic)
-
-    def unregister_listen_address(self, topic):
-        self.uri_list.remove(topic)
 
 
 class TableMonitor(object):
@@ -258,9 +223,10 @@ class TableMonitor(object):
                 eventlet.sleep(self._polling_time)
                 cache = self._update_cache(cache)
             except Exception as e:
-                LOG.warning(_LW("Error when polling table {}: {}").format(
+                LOG.warning(_LW("Error when polling table {}: {} {}").format(
                     self._table_name,
-                    repr(e)
+                    repr(e),
+                    sys.exc_info()[2],
                 ))
 
     def _update_cache(self, old_cache):
