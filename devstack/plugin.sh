@@ -45,6 +45,18 @@ if is_service_enabled df-zookeeper ; then
     NB_DRIVER_CLASS="dragonflow.db.drivers.zookeeper_db_driver.ZookeeperDbDriver"
 fi
 
+# Pub/Sub Service
+#----------------
+if is_service_enabled df-publisher-service ; then
+    DF_PUB_SUB=${DF_PUB_SUB:-"True"}
+    DF_IS_MONITOR_TABLES=${DF_IS_MONITOR_TABLES:-"True"}
+    # Defaults, in case no Pub/Sub service was selected
+    if [ -z $PUB_SUB_DRIVER ]; then
+        die $LINENO "df-publisher-service enabled, but no pub-sub driver selected"
+    fi
+    PUB_SUB_LOCAL_DRIVER=${PUB_SUB_LOCAL_DRIVER:-$PUB_SUB_DRIVER}
+fi
+
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
 source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
@@ -354,6 +366,21 @@ function verify_ryu_version {
     fi
 }
 
+function configure_pubsub_service {
+    configure_pubsub_service_plugin
+}
+
+function start_pubsub_service {
+    PUBLISHER_SERVICE=$DRAGONFLOW_DIR/dragonflow/controller/df_publisher_service.py
+    set python $PUBLISHER_SERVICE
+    set "$@" --config-file $NEUTRON_CONF
+    run_process df-publisher-service "$*"
+}
+
+function stop_pubsub_service {
+    stop_process df-publisher-service
+}
+
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
@@ -370,11 +397,17 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         disable_libvirt_apparmor
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         configure_df_plugin
+        if [[ "$DF_PUB_SUB" == "True" ]]; then
+            configure_pubsub_service
+        fi
 
         if is_service_enabled nova; then
             create_nova_conf_neutron
         fi
 
+        if [[ "$DF_PUB_SUB" == "True" ]]; then
+            start_pubsub_service
+        fi
         start_df
     fi
 
@@ -382,5 +415,8 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         stop_df
         stop_ovs_dp
         cleanup_ovs
+        if [[ "$DF_PUB_SUB" == "True" ]]; then
+            stop_pubsub_service
+        fi
     fi
 fi
