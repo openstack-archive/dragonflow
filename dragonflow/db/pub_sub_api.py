@@ -66,7 +66,7 @@ class PubSubApi(object):
 class PublisherApi(object):
 
     @abc.abstractmethod
-    def initialize(self, endpoint, trasport_proto, **args):
+    def initialize(self, is_local, **args):
         """Initialize the DB client
 
         :param endpoint: ip:port
@@ -90,18 +90,12 @@ class PublisherApi(object):
         """
 
     @abc.abstractmethod
-    def run(self):
-        """Method that will run in the Subscriber thread
-        """
+    def send_event_raw(self, event_raw):
+        """Publish the update
 
-    @abc.abstractmethod
-    def daemonize(self):
-        """Start the Subscriber thread
-        """
-
-    @abc.abstractmethod
-    def stop(self):
-        """Stop the Publisher thread
+        :param event_raw:  The update to send
+        :type event_raw:      string
+        :returns:       None
         """
 
 
@@ -178,26 +172,10 @@ class PublisherAgentBase(PublisherApi):
 
     def __init__(self):
         super(PublisherAgentBase, self).__init__()
-        self.endpoint = None
-        self.trasport_proto = None
-        self.daemon = None
         self.config = None
 
-    def initialize(self, endpoint, trasport_proto, config=None, **args):
-        self.endpoint = endpoint
-        self.trasport_proto = trasport_proto
-        self.daemon = df_utils.DFDaemon()
+    def initialize(self, config=None, **args):
         self.config = config
-
-    def daemonize(self):
-        self.daemon.daemonize(self.run)
-
-    @property
-    def is_daemonize(self):
-        return self.daemon.is_daemonize
-
-    def stop(self):
-        self.daemon.stop()
 
 
 class SubscriberAgentBase(SubscriberApi):
@@ -288,3 +266,12 @@ class TableMonitor(object):
             entry_value,
         )
         self._publisher.send_event(db_update)
+
+
+class PublisherService(object):
+    def initialize(self, **args):
+        self.local_subscriber = None
+        self.remote_publisher = None
+
+    def send_event(self, update, topic=None):
+        pass

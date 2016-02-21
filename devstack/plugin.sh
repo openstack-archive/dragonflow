@@ -45,6 +45,13 @@ if is_service_enabled df-zookeeper ; then
     NB_DRIVER_CLASS="dragonflow.db.drivers.zookeeper_db_driver.ZookeeperDbDriver"
 fi
 
+# Pluggable Pub/Sub services
+#---------------------------
+
+# Defaults, in case no Pub/Sub service was selected
+DF_PUB_SUB=${DF_PUB_SUB:-"False"}
+DF_IS_MONITOR_TABLES=${DF_IS_MONITOR_TABLES:-"False"}
+
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
 source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
@@ -369,12 +376,18 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         start_ovs
         disable_libvirt_apparmor
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
+        if [[ "$DF_PUB_SUB" == "True" ]]; then
+            configure_pubsub_service
+        fi
         configure_df_plugin
 
         if is_service_enabled nova; then
             create_nova_conf_neutron
         fi
 
+        if [[ "$DF_PUB_SUB" == "True" ]]; then
+            start_pubsub_service
+        fi
         start_df
     fi
 
@@ -382,5 +395,8 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         stop_df
         stop_ovs_dp
         cleanup_ovs
+        if [[ "$DF_PUB_SUB" == "True" ]]; then
+            stop_pubsub_service
+        fi
     fi
 fi
