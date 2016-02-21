@@ -43,6 +43,7 @@ Spec Template
     redis_db_driver
     keep_db_consistency
     publish_subscribe_abstraction
+    control_plane_testing
 
 
 Indices and tables
