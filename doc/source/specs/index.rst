@@ -44,6 +44,7 @@ Spec Template
     keep_db_consistency
     publish_subscribe_abstraction
     local_controller_reliability
+    control_plane_testing
 
 
 Indices and tables
