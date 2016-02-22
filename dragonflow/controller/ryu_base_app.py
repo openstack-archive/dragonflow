@@ -42,11 +42,15 @@ class RyuDFAdapter(OFPHandler):
                 cfg.CONF.df.apps_list)
         self.db_store = db_store
         self._datapath = None
+        self.nb_api = None
         self.table_handlers = {}
 
     @property
     def datapath(self):
         return self._datapath
+
+    def set_nb_api(self, nb_api):
+        self.nb_api = nb_api
 
     def start(self):
         super(RyuDFAdapter, self).start()
@@ -125,6 +129,18 @@ class RyuDFAdapter(OFPHandler):
         ofp_parser = datapath.ofproto_parser
         req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
+
+    def notify_add_local_interface(self, local_interface):
+        table = "linterface"
+        key = local_interface.uuid
+        action = "create"
+        self.nb_api.db_change_callback(table, key, action, local_interface)
+
+    def notify_remove_local_interface(self, local_interface):
+        table = "linterface"
+        key = local_interface.uuid
+        action = "delete"
+        self.nb_api.db_change_callback(table, key, action, local_interface)
 
     @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
     def _port_status_handler(self, ev):
