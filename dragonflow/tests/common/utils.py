@@ -11,7 +11,28 @@
 #    under the License.
 
 from neutron.agent.common import utils
+from neutron.agent.linux.utils import wait_until_true
 import re
+
+
+def wait_until_is_and_return(predicate, timeout=5, sleep=1, exception=None):
+    container = {}
+
+    def internal_predicate():
+        container['value'] = predicate()
+        return container['value']
+
+    wait_until_true(internal_predicate, timeout, sleep, exception)
+    return container.get('value')
+
+
+def wait_until_none(predicate, timeout=5, sleep=1, exception=None):
+    def internal_predicate():
+        ret = predicate()
+        if ret:
+            return False
+        return True
+    wait_until_true(internal_predicate, timeout, sleep, exception)
 
 
 class OvsFlowsParser(object):
