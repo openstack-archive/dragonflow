@@ -201,16 +201,17 @@ class NbApi(object):
     def sync(self):
         pass
 
-    def create_security_group(self, name, **columns):
+    def create_security_group(self, name, topic, **columns):
         secgroup = {}
         secgroup['name'] = name
+        secgroup['topic'] = topic
         for col, val in columns.items():
             secgroup[col] = val
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.create_key('secgroup', name, secgroup_json)
         self._send_db_change_event('secgroup', name, 'create', secgroup_json)
 
-    def delete_security_group(self, name):
+    def delete_security_group(self, name, topic):
         self.driver.delete_key('secgroup', name)
         self._send_db_change_event('secgroup', name, 'delete', name)
 
