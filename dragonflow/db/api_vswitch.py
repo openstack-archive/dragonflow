@@ -58,3 +58,36 @@ class TunnelPort(SwitchPort):
 
     def get_chassis_id(self):
         pass
+
+
+class LocalInterface(object):
+
+    def __init__(self):
+        super(LocalInterface, self).__init__()
+        self.uuid = ""
+        self.ofport = None
+        self.name = ""
+        self.admin_state = ""
+        self.type = ""
+        self.iface_id = ""
+        self.peer = ""
+        self.attached_mac = ""
+        self.remote_ip = ""
+        self.tunnel_type = ""
+
+    def __str__(self):
+
+        return "uuid:%s, ofport:%d, name:%s, " \
+               "admin_state:%s, type:%s, " \
+               "iface_id:%s, peer:%s, " \
+               "attached_mac:%s, remote_ip:%s, " \
+               "tunnel_type:%s" % (self.uuid,
+                    self.ofport,
+                    self.name,
+                    self.admin_state,
+                    self.type,
+                    self.iface_id,
+                    self.peer,
+                    self.attached_mac,
+                    self.remote_ip,
+                    self.tunnel_type)
