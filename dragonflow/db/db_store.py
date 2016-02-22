@@ -25,6 +25,7 @@ class DbStore(object):
         self.local_ports = {}
         self.routers = {}
         self.router_interface_to_key = {}
+        self.floatingips = {}
         self.secgroups = {}
         self.lock = threading.Lock()
 
@@ -77,6 +78,10 @@ class DbStore(object):
             del self.ports[port_id]
             if is_local:
                 del self.local_ports[port_id]
+
+    def get_local_port(self, port_id):
+        with self.lock:
+            return self.local_ports.get(port_id)
 
     def get_local_port_by_name(self, port_name):
         port_id_prefix = port_name[3:]
@@ -135,3 +140,15 @@ class DbStore(object):
     def get_lswitchs(self):
         with self.lock:
             return self.lswitchs.values()
+
+    def update_floatingip(self, floatingip_id, floatingip):
+        with self.lock:
+            self.floatingips[floatingip_id] = floatingip
+
+    def get_floatingip(self, floatingip_id):
+        with self.lock:
+            return self.floatingips.get(floatingip_id)
+
+    def delete_floatingip(self, floatingip_id):
+        with self.lock:
+            del self.floatingips[floatingip_id]

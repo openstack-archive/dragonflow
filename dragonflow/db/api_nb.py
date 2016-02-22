@@ -197,6 +197,13 @@ class NbApi(object):
             else:
                 lswitch_id = key
                 self.controller.logical_switch_deleted(lswitch_id)
+        if 'floatingip' == table:
+            if action == 'set' or action == 'create':
+                floatingip = Floatingip(value)
+                self.controller.floatingip_updated(floatingip)
+            else:
+                floatingip_id = key
+                self.controller.floatingip_deleted(floatingip_id)
 
     def sync(self):
         pass
@@ -441,6 +448,44 @@ class NbApi(object):
             res.append(LogicalSwitch(lswitch_value))
         return res
 
+    def create_floatingip(self, name, **columns):
+        floatingip = {}
+        floatingip['name'] = name
+        for col, val in columns.items():
+            floatingip[col] = val
+        floatingip_json = jsonutils.dumps(floatingip)
+        self.driver.create_key('floatingip', name, floatingip_json)
+
+    def delete_floatingip(self, name):
+        self.driver.delete_key('floatingip', name)
+
+    def update_floatingip(self, name, **columns):
+        floatingip_json = self.driver.get_key('floatingip', name)
+        floatingip = jsonutils.loads(floatingip_json)
+        for col, val in columns.items():
+            floatingip[col] = val
+        floatingip_json = jsonutils.dumps(floatingip)
+        self.driver.set_key('floatingip', name, floatingip_json)
+
+    def get_floatingip(self, name):
+        try:
+            floatingip_value = self.driver.get_key('floatingip', name)
+            return Floatingip(floatingip_value)
+        except Exception:
+            return None
+
+    def get_floatingips(self):
+        res = []
+        for floatingip in self.driver.get_all_entries('floatingip'):
+            res.append(Floatingip(floatingip))
+        return res
+
+    def get_floatingip_by_logical_port(self, port_id):
+        for floatingip in self.get_floatingips():
+            if port_id == floatingip['port_id']:
+                return Floatingip(floatingip)
+        return None
+
 
 class Chassis(object):
 
@@ -559,6 +604,9 @@ class LogicalRouter(object):
             res.append(LogicalRouterPort(port))
         return res
 
+    def is_distributed(self):
+        return self.lrouter.get('distributed', False)
+
     def __str__(self):
         return self.lrouter.__str__()
 
@@ -670,3 +718,27 @@ class SecurityGroupRule(object):
 
     def __str__(self):
         return self.secrule.__str__()
+
+
+class Floatingip(object):
+
+    def __init__(self, value):
+        self.floatingip = jsonutils.loads(value)
+
+    def get_name(self):
+        return self.floatingip['name']
+
+    def get_floatingip_address(self):
+        return self.floatingip['floating_ip_address']
+
+    def get_lport_id(self):
+        return self.floatingip['port_id']
+
+    def get_fixed_ip(self):
+        return self.floatingip['fixed_ip_address']
+
+    def get_lrouter_id(self):
+        return self.floatingip['router_id']
+
+    def __str__(self):
+        return self.floatingip.__str__()
