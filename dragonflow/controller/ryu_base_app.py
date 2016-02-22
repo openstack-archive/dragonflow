@@ -126,6 +126,18 @@ class RyuDFAdapter(OFPHandler):
         req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
 
+    def add_new_interface(self):
+        # todo add a new interface
+        pass
+
+    def delete_old_interface(self):
+        # todo delete old interface
+        pass
+
+    def udpate_interface(self):
+        # todo update a exist interface
+        pass
+
     @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
     def _port_status_handler(self, ev):
         msg = ev.msg
