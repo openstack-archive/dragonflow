@@ -12,9 +12,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log
 from oslo_utils import timeutils
 
+from dragonflow._i18n import _LI
+
 SEND_ALL_TOPIC = b'D'
+
+
+LOG = log.getLogger(__name__)
 
 
 class DbUpdate(object):
@@ -25,7 +31,7 @@ class DbUpdate(object):
     Lower value is higher priority !
     """
     def __init__(self, table, key, action, value, priority=5,
-                 timestamp=None, topic=SEND_ALL_TOPIC):
+                 timestamp=None, topic=None):
         self.priority = priority
         self.timestamp = timestamp
         if not timestamp:
@@ -34,7 +40,11 @@ class DbUpdate(object):
         self.action = action
         self.table = table
         self.value = value
-        self.topic = topic
+        self.topic = SEND_ALL_TOPIC
+        if topic:
+            #TODO(gampel)remove the comment once selective proactive is merged
+            LOG.info(_LI("ignore topic until selective proactive is enabled"))
+            #self.topic = topic
 
     def to_array(self):
         update = {
