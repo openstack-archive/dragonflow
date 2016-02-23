@@ -453,16 +453,21 @@ class NbApi(object):
             res.append(LogicalSwitch(lswitch_value))
         return res
 
-    def create_floatingip(self, name, **columns):
+    def create_floatingip(self, name, topic, **columns):
         floatingip = {}
         floatingip['name'] = name
+        floatingip['topic'] = topic
         for col, val in columns.items():
             floatingip[col] = val
         floatingip_json = jsonutils.dumps(floatingip)
         self.driver.create_key('floatingip', name, floatingip_json)
+        self._send_db_change_event('floatingip', name, 'create',
+                                   floatingip_json)
 
-    def delete_floatingip(self, name):
+    def delete_floatingip(self, name, topic):
         self.driver.delete_key('floatingip', name)
+        self._send_db_change_event('floatingip', name, 'delete',
+                                   name, topic)
 
     def update_floatingip(self, name, **columns):
         floatingip_json = self.driver.get_key('floatingip', name)
@@ -471,6 +476,8 @@ class NbApi(object):
             floatingip[col] = val
         floatingip_json = jsonutils.dumps(floatingip)
         self.driver.set_key('floatingip', name, floatingip_json)
+        self._send_db_change_event('floatingip', name, 'set',
+                                   floatingip_json)
 
     def get_floatingip(self, name):
         try:

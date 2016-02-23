@@ -696,8 +696,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             floatingip_dict = super(DFPlugin, self).create_floatingip(
                 context, floatingip,
                 initial_status=const.FLOATINGIP_STATUS_DOWN)
+            tenant_id = floatingip_dict['tenant_id']
             self.nb_api.create_floatingip(
                 name=floatingip_dict['id'],
+                topic=tenant_id,
                 floating_ip_address=floatingip_dict['floating_ip_address'],
                 floating_network_id=floatingip_dict['floating_network_id'],
                 router_id=floatingip_dict['router_id'],
@@ -721,11 +723,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return floatingip_dict
 
     def delete_floatingip(self, context, id):
+        floatingip_dict = self.get_floatingip(context, id)
+        tenant_id = floatingip_dict['tenant_id']
         with context.session.begin(subtransactions=True):
             super(DFPlugin, self).delete_floatingip(context, id)
 
         try:
-            self.nb_api.delete_floatingip(name=id)
+            self.nb_api.delete_floatingip(name=id, topic=tenant_id)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("floatingip %s is not found in DF DB, might have "
                       "been deleted concurrently" % id)
