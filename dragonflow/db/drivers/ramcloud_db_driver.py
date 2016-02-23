@@ -54,7 +54,7 @@ class RamCloudDbDriver(db_api.DbApi):
         table_id = self.client.get_table_id(table)
         self.client.delete(table_id, key)
 
-    def get_all_entries(self, table):
+    def get_all_entries(self, table, topic=None):
         res = []
         table_id = self.client.get_table_id(table)
         enumeration_state = self.client.enumerate_table_prepare(table_id)
@@ -66,7 +66,7 @@ class RamCloudDbDriver(db_api.DbApi):
         self.client.enumerate_table_finalize(enumeration_state)
         return res
 
-    def get_all_keys(self, table):
+    def get_all_keys(self, table, topic=None):
         res = []
         table_id = self.client.get_table_id(table)
         enumeration_state = self.client.enumerate_table_prepare(table_id)
