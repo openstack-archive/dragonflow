@@ -464,24 +464,33 @@ class NbApi(object):
             res.append(LogicalSwitch(lswitch_value))
         return res
 
-    def create_floatingip(self, name, **columns):
+    def create_floatingip(self, name, topic, **columns):
         floatingip = {}
         floatingip['name'] = name
+        floatingip['topic'] = topic
         for col, val in columns.items():
             floatingip[col] = val
         floatingip_json = jsonutils.dumps(floatingip)
         self.driver.create_key('floatingip', name, floatingip_json)
+        self._send_db_change_event('floatingip', name, 'create',
+                                   floatingip_json, topic)
 
-    def delete_floatingip(self, name):
+    def delete_floatingip(self, name, topic):
         self.driver.delete_key('floatingip', name)
+        self._send_db_change_event('floatingip', name, 'delete',
+                                   name, topic)
 
     def update_floatingip(self, name, **columns):
         floatingip_json = self.driver.get_key('floatingip', name)
+        fip_obj = Floatingip(floatingip_json)
+        topic = fip_obj.topic
         floatingip = jsonutils.loads(floatingip_json)
         for col, val in columns.items():
             floatingip[col] = val
         floatingip_json = jsonutils.dumps(floatingip)
         self.driver.set_key('floatingip', name, floatingip_json)
+        self._send_db_change_event('floatingip', name, 'set',
+                                   floatingip_json, topic)
 
     def get_floatingip(self, name):
         try:
@@ -740,6 +749,11 @@ class Floatingip(object):
 
     def __init__(self, value):
         self.floatingip = jsonutils.loads(value)
+
+    #TODO(gampel) add a base class object with the common proprties
+    @property
+    def topic(self):
+        return self.floatingip.get('topic')
 
     def get_name(self):
         return self.floatingip['name']
