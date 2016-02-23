@@ -109,9 +109,13 @@ class NbApi(object):
             return True
         return self.driver.support_publish_subscribe()
 
-    def _send_db_change_event(self, table, key, action, value):
+    def _send_db_change_event(self, table, key, action, value, topic=None):
         if self.use_pubsub:
-            update = DbUpdate(table, key, action, value)
+            if 'topic' in value:
+                obj = jsonutils.loads(value)
+                topic = obj['topic']
+
+            update = DbUpdate(table, key, action, value, topic=topic)
             self.publisher.send_event(update)
             eventlet.sleep(0)
 
@@ -220,7 +224,7 @@ class NbApi(object):
 
     def delete_security_group(self, name, topic):
         self.driver.delete_key('secgroup', name)
-        self._send_db_change_event('secgroup', name, 'delete', name)
+        self._send_db_change_event('secgroup', name, 'delete', name, topic)
 
     def add_security_group_rules(self, sg_name, new_rules):
         secgroup_json = self.driver.get_key('secgroup', sg_name)
@@ -357,7 +361,7 @@ class NbApi(object):
 
     def delete_lswitch(self, name, topic):
         self.driver.delete_key('lswitch', name)
-        self._send_db_change_event('lswitch', name, 'delete', name)
+        self._send_db_change_event('lswitch', name, 'delete', name, topic)
 
     def create_lport(self, name, lswitch_name, topic, **columns):
         lport = {}
@@ -381,7 +385,7 @@ class NbApi(object):
 
     def delete_lport(self, name, topic):
         self.driver.delete_key('lport', name)
-        self._send_db_change_event('lport', name, 'delete', name)
+        self._send_db_change_event('lport', name, 'delete', name, topic)
 
     def create_lrouter(self, name, topic, **columns):
         lrouter = {}
@@ -395,7 +399,7 @@ class NbApi(object):
 
     def delete_lrouter(self, name, topic):
         self.driver.delete_key('lrouter', name)
-        self._send_db_change_event('lrouter', name, 'delete', name)
+        self._send_db_change_event('lrouter', name, 'delete', name, topic)
 
     def add_lrouter_port(self, name, lrouter_name, lswitch, **columns):
         lrouter_json = self.driver.get_key('lrouter', lrouter_name)
