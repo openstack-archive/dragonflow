@@ -177,8 +177,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                       self).create_security_group(context, security_group,
                                                   default_sg)
         sg_name = sg_db['id']
+        tenant_id = sg_db['tenant_id']
         rules = sg_db.get('security_group_rules')
-        self.nb_api.create_security_group(sg_name, rules=rules)
+        self.nb_api.create_security_group(name=sg_name, topic=tenant_id,
+                                          rules=rules)
 
         return sg_db
 
@@ -196,10 +198,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.nb_api.delete_security_group_rule(sg_id, id)
 
     def delete_security_group(self, context, sg_id):
-        sg_db = super(DFPlugin, self).delete_security_group(context,
-                                                            sg_id)
-        self.nb_api.delete_security_group(sg_id)
-        return sg_db
+        sg = self.get_security_group(context, sg_id)
+        tenant_id = sg['tenant_id']
+        super(DFPlugin, self).delete_security_group(context,
+                                                    sg_id)
+        self.nb_api.delete_security_group(sg_id, topic=tenant_id)
 
     def create_subnet(self, context, subnet):
         with context.session.begin(subtransactions=True):
