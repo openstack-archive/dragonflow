@@ -111,7 +111,12 @@ class NbApi(object):
 
     def _send_db_change_event(self, table, key, action, value):
         if self.use_pubsub:
-            update = DbUpdate(table, key, action, value)
+            topic = None
+            if 'topic' in value:
+                obj = jsonutils.loads(value)
+                topic = obj['topic']
+
+            update = DbUpdate(table, key, action, value, topic=topic)
             self.publisher.send_event(update)
             eventlet.sleep(0)
 
