@@ -117,7 +117,7 @@ class EtcdDbDriver(db_api.DbApi):
         except etcd.EtcdKeyNotFound:
             raise df_exceptions.DBKeyNotFound(key=key)
 
-    def get_all_entries(self, table):
+    def get_all_entries(self, table, topic=None):
         res = []
         try:
             directory = self.client.get("/" + table)
@@ -128,7 +128,7 @@ class EtcdDbDriver(db_api.DbApi):
                 res.append(entry.value)
         return res
 
-    def get_all_keys(self, table):
+    def get_all_keys(self, table, topic=None):
         res = []
         try:
             directory = self.client.get("/" + table)
