@@ -38,6 +38,7 @@ Spec Template
     mac_spoofing
     selective_topo_dist
     performance_testing
+    ovsdb_monitor
 
 
 Indices and tables
