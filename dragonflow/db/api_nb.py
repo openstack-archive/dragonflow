@@ -253,7 +253,7 @@ class NbApi(object):
 
     def get_all_chassis(self):
         res = []
-        for entry_value in self.driver.get_all_entries('chassis'):
+        for entry_value in self.driver.get_all_entries('chassis', None):
             res.append(Chassis(entry_value))
         return res
 
@@ -326,9 +326,9 @@ class NbApi(object):
         except Exception:
             return None
 
-    def get_all_logical_ports(self):
+    def get_all_logical_ports(self, topic=None):
         res = []
-        for lport_value in self.driver.get_all_entries('lport'):
+        for lport_value in self.driver.get_all_entries('lport', topic):
             lport = LogicalPort(lport_value)
             if lport.get_chassis() is None:
                 continue
@@ -430,21 +430,21 @@ class NbApi(object):
         self._send_db_change_event('lrouter', lrouter_name, 'set',
                                    lrouter_json)
 
-    def get_routers(self):
+    def get_routers(self, topic=None):
         res = []
-        for lrouter_value in self.driver.get_all_entries('lrouter'):
+        for lrouter_value in self.driver.get_all_entries('lrouter', topic):
             res.append(LogicalRouter(lrouter_value))
         return res
 
-    def get_security_groups(self):
+    def get_security_groups(self, topic=None):
         res = []
-        for secgroup_value in self.driver.get_all_entries('secgroup'):
+        for secgroup_value in self.driver.get_all_entries('secgroup', topic):
             res.append(SecurityGroup(secgroup_value))
         return res
 
-    def get_all_logical_switches(self):
+    def get_all_logical_switches(self, topic=None):
         res = []
-        for lswitch_value in self.driver.get_all_entries('lswitch'):
+        for lswitch_value in self.driver.get_all_entries('lswitch', topic):
             res.append(LogicalSwitch(lswitch_value))
         return res
 

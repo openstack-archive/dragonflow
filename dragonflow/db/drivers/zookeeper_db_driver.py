@@ -113,7 +113,7 @@ class ZookeeperDbDriver(db_api.DbApi):
         except kazoo.exceptions.NoNodeError:
             raise df_exceptions.DBKeyNotFound(key=key)
 
-    def get_all_entries(self, table):
+    def get_all_entries(self, table, topic=None):
         res = []
         path = self._generate_path(table, None)
         try:
@@ -125,7 +125,7 @@ class ZookeeperDbDriver(db_api.DbApi):
             raise df_exceptions.DBKeyNotFound(key=table)
         return res
 
-    def get_all_keys(self, table):
+    def get_all_keys(self, table, topic=None):
         path = self._generate_path(table, None)
         try:
             self._lazy_initialize()
