@@ -34,7 +34,9 @@ df_opts = [
                default='geneve',
                help=_('The encapsulation type for the tunnel')),
     cfg.StrOpt('apps_list',
-               default='l2_app.L2App,l3_app.L3App',
+               default='l2_app.L2App,'
+                       'l3_proactive_app.L3ProactiveApp,'
+                       'dhcp_app.DHCPApp',
                help=_('List of openflow applications classes to load')),
     cfg.BoolOpt('use_centralized_ipv6_DHCP',
                 default=False,
