@@ -99,19 +99,19 @@ class EtcdDbDriver(db_api.DbApi):
     def support_publish_subscribe(self):
         return True
 
-    def get_key(self, table, key):
+    def get_key(self, table, key, topic=None):
         try:
             return self.client.read('/' + table + '/' + key).value
         except etcd.EtcdKeyNotFound:
             raise df_exceptions.DBKeyNotFound(key=key)
 
-    def set_key(self, table, key, value):
+    def set_key(self, table, key, value, topic=None):
         self.client.write('/' + table + '/' + key, value)
 
-    def create_key(self, table, key, value):
+    def create_key(self, table, key, value, topic=None):
         self.client.write('/' + table + '/' + key, value)
 
-    def delete_key(self, table, key):
+    def delete_key(self, table, key, topic=None):
         try:
             self.client.delete('/' + table + '/' + key)
         except etcd.EtcdKeyNotFound:
