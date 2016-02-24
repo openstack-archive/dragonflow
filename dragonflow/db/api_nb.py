@@ -128,7 +128,7 @@ class NbApi(object):
 
     def db_change_callback(self, table, key, action, value):
         update = DbUpdate(table, key, action, value)
-        LOG.info(_LI("Pushing Update to Queue: %s"), update)
+        LOG.debug("Pushing Update to Queue: %s", update)
         self._queue.put(update)
         eventlet.sleep(0)
 
@@ -136,8 +136,7 @@ class NbApi(object):
         while True:
             if not self.db_apply_failed:
                 self.next_update = self._queue.get(block=True)
-                LOG.info(_LI("Event update: %s"),
-                        self.next_update)
+                LOG.debug("Event update: %s", self.next_update)
             try:
                 value = self.next_update.value
                 if not value and self.next_update.action != 'delete':
