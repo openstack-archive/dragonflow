@@ -87,7 +87,7 @@ class ZookeeperDbDriver(db_api.DbApi):
         except kazoo.exceptions.NoNodeError:
             raise df_exceptions.DBKeyNotFound(key=key)
 
-    def set_key(self, table, key, value):
+    def set_key(self, table, key, value, topic=None):
         path = self._generate_path(table, key)
         try:
             self._lazy_initialize()
@@ -97,7 +97,7 @@ class ZookeeperDbDriver(db_api.DbApi):
         except kazoo.exceptions.ZookeeperError as e:
             LOG.exception(e)
 
-    def create_key(self, table, key, value):
+    def create_key(self, table, key, value, topic=None):
         path = self._generate_path(table, key)
         try:
             self._lazy_initialize()
@@ -105,7 +105,7 @@ class ZookeeperDbDriver(db_api.DbApi):
         except kazoo.exceptions.ZookeeperError as e:
             LOG.exception(e)
 
-    def delete_key(self, table, key):
+    def delete_key(self, table, key, topic=None):
         path = self._generate_path(table, key)
         try:
             self._lazy_initialize()
