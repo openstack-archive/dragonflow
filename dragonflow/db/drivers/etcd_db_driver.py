@@ -105,13 +105,13 @@ class EtcdDbDriver(db_api.DbApi):
         except etcd.EtcdKeyNotFound:
             raise df_exceptions.DBKeyNotFound(key=key)
 
-    def set_key(self, table, key, value):
+    def set_key(self, table, key, value, topic):
         self.client.write('/' + table + '/' + key, value)
 
-    def create_key(self, table, key, value):
+    def create_key(self, table, key, value, topic):
         self.client.write('/' + table + '/' + key, value)
 
-    def delete_key(self, table, key):
+    def delete_key(self, table, key, topic):
         try:
             self.client.delete('/' + table + '/' + key)
         except etcd.EtcdKeyNotFound:
