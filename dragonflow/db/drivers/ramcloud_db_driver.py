@@ -43,14 +43,14 @@ class RamCloudDbDriver(db_api.DbApi):
         value, version = self.client.read(table_id, key)
         return value
 
-    def set_key(self, table, key, value):
+    def set_key(self, table, key, value, topic=None):
         table_id = self.client.get_table_id(table)
         self.client.write(table_id, key, value)
 
-    def create_key(self, table, key, value):
+    def create_key(self, table, key, value, topic=None):
         self.set_key(table, key, value)
 
-    def delete_key(self, table, key):
+    def delete_key(self, table, key, topic=None):
         table_id = self.client.get_table_id(table)
         self.client.delete(table_id, key)
 
