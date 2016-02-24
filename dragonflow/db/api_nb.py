@@ -111,9 +111,9 @@ class NbApi(object):
             return True
         return self.driver.support_publish_subscribe()
 
-    def _send_db_change_event(self, table, key, action, value):
+    def _send_db_change_event(self, table, key, action, value, topic):
         if self.use_pubsub:
-            update = DbUpdate(table, key, action, value)
+            update = DbUpdate(table, key, action, value, topic=topic)
             self.multiproc_publisher.send_event(update)
             eventlet.sleep(0)
 
@@ -128,7 +128,7 @@ class NbApi(object):
                 self.db_change_callback)
         self._read_db_changes_from_queue()
 
-    def db_change_callback(self, table, key, action, value, topic):
+    def db_change_callback(self, table, key, action, value, topic=None):
         update = DbUpdate(table, key, action, value, topic=topic)
         LOG.info(_LI("Pushing Update to Queue: %s"), update)
         self._queue.put(update)
@@ -216,25 +216,29 @@ class NbApi(object):
         for col, val in columns.items():
             secgroup[col] = val
         secgroup_json = jsonutils.dumps(secgroup)
-        self.driver.create_key('secgroup', name, secgroup_json)
-        self._send_db_change_event('secgroup', name, 'create', secgroup_json)
+        self.driver.create_key('secgroup', name, secgroup_json, topic)
+        self._send_db_change_event('secgroup', name, 'create',
+                                   secgroup_json, topic)
 
     def delete_security_group(self, name, topic):
-        self.driver.delete_key('secgroup', name)
-        self._send_db_change_event('secgroup', name, 'delete', name)
+        self.driver.delete_key('secgroup', name, topic)
+        self._send_db_change_event('secgroup', name, 'delete', name,
+                                   topic)
 
-    def add_security_group_rules(self, sg_name, new_rules):
-        secgroup_json = self.driver.get_key('secgroup', sg_name)
+    def add_security_group_rules(self, sg_name, new_rules, topic):
+        secgroup_json = self.driver.get_key('secgroup', sg_name, topic)
         secgroup = jsonutils.loads(secgroup_json)
         rules = secgroup.get('rules', [])
         rules.extend(new_rules)
         secgroup['rules'] = rules
         secgroup_json = jsonutils.dumps(secgroup)
-        self.driver.set_key('secgroup', sg_name, secgroup_json)
-        self._send_db_change_event('secgroup', sg_name, 'set', secgroup_json)
+        self.driver.set_key('secgroup', sg_name, secgroup_json,
+                            secgroup['topic'])
+        self._send_db_change_event('secgroup', sg_name, 'set', secgroup_json,
+                                   secgroup['topic'])
 
-    def delete_security_group_rule(self, sg_name, sgr_id):
-        secgroup_json = self.driver.get_key('secgroup', sg_name)
+    def delete_security_group_rule(self, sg_name, sgr_id, topic):
+        secgroup_json = self.driver.get_key('secgroup', sg_name, topic)
         secgroup = jsonutils.loads(secgroup_json)
         rules = secgroup.get('rules')
         new_rules = []
@@ -243,12 +247,14 @@ class NbApi(object):
                 new_rules.append(rule)
         secgroup['rules'] = new_rules
         secgroup_json = jsonutils.dumps(secgroup)
-        self.driver.set_key('secgroup', sg_name, secgroup_json)
-        self._send_db_change_event('secgroup', sg_name, 'set', secgroup_json)
+        self.driver.set_key('secgroup', sg_name, secgroup_json,
+                            secgroup['topic'])
+        self._send_db_change_event('secgroup', sg_name, 'set', secgroup_json,
+                                   secgroup['topic'])
 
     def get_chassis(self, name):
         try:
-            chassis_value = self.driver.get_key('chassis', name)
+            chassis_value = self.driver.get_key('chassis', name, None)
             return Chassis(chassis_value)
         except Exception:
             return None
@@ -263,17 +269,17 @@ class NbApi(object):
         chassis = {'name': name, 'ip': ip,
                    'tunnel_type': tunnel_type}
         chassis_json = jsonutils.dumps(chassis)
-        self.driver.create_key('chassis', name, chassis_json)
+        self.driver.create_key('chassis', name, chassis_json, None)
 
-    def get_lswitch(self, name):
+    def get_lswitch(self, name, topic=None):
         try:
-            lswitch_value = self.driver.get_key('lswitch', name)
+            lswitch_value = self.driver.get_key('lswitch', name, topic)
             return LogicalSwitch(lswitch_value)
         except Exception:
             return None
 
-    def add_subnet(self, id, lswitch_name, **columns):
-        lswitch_json = self.driver.get_key('lswitch', lswitch_name)
+    def add_subnet(self, id, lswitch_name, topic, **columns):
+        lswitch_json = self.driver.get_key('lswitch', lswitch_name, topic)
         lswitch = jsonutils.loads(lswitch_json)
 
         subnet = {}
@@ -286,12 +292,13 @@ class NbApi(object):
         subnets.append(subnet)
         lswitch['subnets'] = subnets
         lswitch_json = jsonutils.dumps(lswitch)
-        self.driver.set_key('lswitch', lswitch_name, lswitch_json)
+        self.driver.set_key('lswitch', lswitch_name, lswitch_json,
+                            lswitch['topic'])
         self._send_db_change_event('lswitch', lswitch_name, 'set',
-                                   lswitch_json)
+                                   lswitch_json, lswitch['topic'])
 
-    def update_subnet(self, id, lswitch_name, **columns):
-        lswitch_json = self.driver.get_key('lswitch', lswitch_name)
+    def update_subnet(self, id, lswitch_name, topic, **columns):
+        lswitch_json = self.driver.get_key('lswitch', lswitch_name, topic)
         lswitch = jsonutils.loads(lswitch_json)
         subnet = None
         for s in lswitch.get('subnets', []):
@@ -302,12 +309,13 @@ class NbApi(object):
             subnet[col] = val
 
         lswitch_json = jsonutils.dumps(lswitch)
-        self.driver.set_key('lswitch', lswitch_name, lswitch_json)
+        self.driver.set_key('lswitch', lswitch_name, lswitch_json,
+                            lswitch['topic'])
         self._send_db_change_event('lswitch', lswitch_name, 'set',
-                                   lswitch_json)
+                                   lswitch_json, lswitch['topic'])
 
-    def delete_subnet(self, id, lswitch_name):
-        lswitch_json = self.driver.get_key('lswitch', lswitch_name)
+    def delete_subnet(self, id, lswitch_name, topic):
+        lswitch_json = self.driver.get_key('lswitch', lswitch_name, topic)
         lswitch = jsonutils.loads(lswitch_json)
 
         new_ports = []
@@ -317,13 +325,14 @@ class NbApi(object):
 
         lswitch['subnets'] = new_ports
         lswitch_json = jsonutils.dumps(lswitch)
-        self.driver.set_key('lswitch', lswitch_name, lswitch_json)
+        self.driver.set_key('lswitch', lswitch_name, lswitch_json,
+                            lswitch['topic'])
         self._send_db_change_event('lswitch', lswitch_name, 'set',
-                                   lswitch_json)
+                                   lswitch_json, lswitch['topic'])
 
-    def get_logical_port(self, port_id):
+    def get_logical_port(self, port_id, topic=None):
         try:
-            port_value = self.driver.get_key('lport', port_id)
+            port_value = self.driver.get_key('lport', port_id, topic)
             return LogicalPort(port_value)
         except Exception:
             return None
@@ -344,21 +353,23 @@ class NbApi(object):
         for col, val in columns.items():
             lswitch[col] = val
         lswitch_json = jsonutils.dumps(lswitch)
-        self.driver.create_key('lswitch', name, lswitch_json)
-        self._send_db_change_event('lswitch', name, 'create', lswitch_json)
+        self.driver.create_key('lswitch', name, lswitch_json, topic)
+        self._send_db_change_event('lswitch', name, 'create', lswitch_json,
+                                   topic)
 
-    def update_lswitch(self, name, **columns):
-        lswitch_json = self.driver.get_key('lswitch', name)
+    def update_lswitch(self, name, topic, **columns):
+        lswitch_json = self.driver.get_key('lswitch', name, topic)
         lswitch = jsonutils.loads(lswitch_json)
         for col, val in columns.items():
             lswitch[col] = val
         lswitch_json = jsonutils.dumps(lswitch)
-        self.driver.set_key('lswitch', name, lswitch_json)
-        self._send_db_change_event('lswitch', name, 'set', lswitch_json)
+        self.driver.set_key('lswitch', name, lswitch_json, lswitch['topic'])
+        self._send_db_change_event('lswitch', name, 'set', lswitch_json,
+                                   lswitch['topic'])
 
     def delete_lswitch(self, name, topic):
-        self.driver.delete_key('lswitch', name)
-        self._send_db_change_event('lswitch', name, 'delete', name)
+        self.driver.delete_key('lswitch', name, topic)
+        self._send_db_change_event('lswitch', name, 'delete', name, topic)
 
     def create_lport(self, name, lswitch_name, topic, **columns):
         lport = {}
@@ -368,21 +379,22 @@ class NbApi(object):
         for col, val in columns.items():
             lport[col] = val
         lport_json = jsonutils.dumps(lport)
-        self.driver.create_key('lport', name, lport_json)
-        self._send_db_change_event('lport', name, 'create', lport_json)
+        self.driver.create_key('lport', name, lport_json, topic)
+        self._send_db_change_event('lport', name, 'create', lport_json, topic)
 
-    def update_lport(self, name, **columns):
-        lport_json = self.driver.get_key('lport', name)
+    def update_lport(self, name, topic, **columns):
+        lport_json = self.driver.get_key('lport', name, topic)
         lport = jsonutils.loads(lport_json)
         for col, val in columns.items():
             lport[col] = val
         lport_json = jsonutils.dumps(lport)
-        self.driver.set_key('lport', name, lport_json)
-        self._send_db_change_event('lport', name, 'set', lport_json)
+        self.driver.set_key('lport', name, lport_json, lport['topic'])
+        self._send_db_change_event('lport', name, 'set', lport_json,
+                                   lport['topic'])
 
     def delete_lport(self, name, topic):
-        self.driver.delete_key('lport', name)
-        self._send_db_change_event('lport', name, 'delete', name)
+        self.driver.delete_key('lport', name, topic)
+        self._send_db_change_event('lport', name, 'delete', name, topic)
 
     def create_lrouter(self, name, topic, **columns):
         lrouter = {}
@@ -391,15 +403,18 @@ class NbApi(object):
         for col, val in columns.items():
             lrouter[col] = val
         lrouter_json = jsonutils.dumps(lrouter)
-        self.driver.create_key('lrouter', name, lrouter_json)
-        self._send_db_change_event('lrouter', name, 'create', lrouter_json)
+        self.driver.create_key('lrouter', name, lrouter_json, topic)
+        self._send_db_change_event('lrouter', name, 'create', lrouter_json,
+                                   topic)
 
     def delete_lrouter(self, name, topic):
-        self.driver.delete_key('lrouter', name)
-        self._send_db_change_event('lrouter', name, 'delete', name)
+        self.driver.delete_key('lrouter', name, topic)
+        self._send_db_change_event('lrouter', name, 'delete', name,
+                                   topic)
 
-    def add_lrouter_port(self, name, lrouter_name, lswitch, **columns):
-        lrouter_json = self.driver.get_key('lrouter', lrouter_name)
+    def add_lrouter_port(self, name, lrouter_name, lswitch,
+                         topic, **columns):
+        lrouter_json = self.driver.get_key('lrouter', lrouter_name, topic)
         lrouter = jsonutils.loads(lrouter_json)
 
         lrouter_port = {}
@@ -413,12 +428,13 @@ class NbApi(object):
         router_ports.append(lrouter_port)
         lrouter['ports'] = router_ports
         lrouter_json = jsonutils.dumps(lrouter)
-        self.driver.set_key('lrouter', lrouter_name, lrouter_json)
+        self.driver.set_key('lrouter', lrouter_name, lrouter_json,
+                            lrouter['topic'])
         self._send_db_change_event('lrouter', lrouter_name, 'set',
-                                   lrouter_json)
+                                   lrouter_json, lrouter['topic'])
 
-    def delete_lrouter_port(self, lrouter_name, lswitch):
-        lrouter_json = self.driver.get_key('lrouter', lrouter_name)
+    def delete_lrouter_port(self, lrouter_name, lswitch, topic):
+        lrouter_json = self.driver.get_key('lrouter', lrouter_name, topic)
         lrouter = jsonutils.loads(lrouter_json)
 
         new_ports = []
@@ -428,9 +444,10 @@ class NbApi(object):
 
         lrouter['ports'] = new_ports
         lrouter_json = jsonutils.dumps(lrouter)
-        self.driver.set_key('lrouter', lrouter_name, lrouter_json)
+        self.driver.set_key('lrouter', lrouter_name, lrouter_json,
+                            lrouter['topic'])
         self._send_db_change_event('lrouter', lrouter_name, 'set',
-                                   lrouter_json)
+                                   lrouter_json, lrouter['topic'])
 
     def get_routers(self, topic=None):
         res = []
@@ -450,35 +467,43 @@ class NbApi(object):
             res.append(LogicalSwitch(lswitch_value))
         return res
 
-    def create_floatingip(self, name, **columns):
+    def create_floatingip(self, name, topic, **columns):
         floatingip = {}
         floatingip['name'] = name
+        floatingip['topic'] = topic
         for col, val in columns.items():
             floatingip[col] = val
         floatingip_json = jsonutils.dumps(floatingip)
-        self.driver.create_key('floatingip', name, floatingip_json)
+        self.driver.create_key('floatingip', name, floatingip_json, topic)
+        self._send_db_change_event('floatingip', name, 'create',
+                                   floatingip_json, topic)
 
-    def delete_floatingip(self, name):
-        self.driver.delete_key('floatingip', name)
+    def delete_floatingip(self, name, topic):
+        self.driver.delete_key('floatingip', name, topic)
+        self._send_db_change_event('floatingip', name, 'delete', name,
+                                   topic)
 
-    def update_floatingip(self, name, **columns):
-        floatingip_json = self.driver.get_key('floatingip', name)
+    def update_floatingip(self, name, topic, **columns):
+        floatingip_json = self.driver.get_key('floatingip', name, topic)
         floatingip = jsonutils.loads(floatingip_json)
         for col, val in columns.items():
             floatingip[col] = val
         floatingip_json = jsonutils.dumps(floatingip)
-        self.driver.set_key('floatingip', name, floatingip_json)
+        self.driver.set_key('floatingip', name, floatingip_json,
+                            floatingip['topic'])
+        self._send_db_change_event('floatingip', name, 'set',
+                                   floatingip_json, floatingip['topic'])
 
-    def get_floatingip(self, name):
+    def get_floatingip(self, name, topic=None):
         try:
-            floatingip_value = self.driver.get_key('floatingip', name)
+            floatingip_value = self.driver.get_key('floatingip', name, topic)
             return Floatingip(floatingip_value)
         except Exception:
             return None
 
-    def get_floatingips(self):
+    def get_floatingips(self, topic=None):
         res = []
-        for floatingip in self.driver.get_all_entries('floatingip'):
+        for floatingip in self.driver.get_all_entries('floatingip', topic):
             res.append(Floatingip(floatingip))
         return res
 
