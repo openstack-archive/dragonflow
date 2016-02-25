@@ -18,7 +18,6 @@ ZOOKEEPER_LOG_DIR="/var/log/zookeeper"
 ZOOKEEPER_DIR="/etc/zookeeper"
 ZOOKEEPER_CONF_DIR="${ZOOKEEPER_DIR}/conf"
 ZOOKEEPER_CONF_FILE="${ZOOKEEPER_CONF_DIR}/zoo.cfg"
-ZOOKEEPER_TABLE_NAMES=${ZOOKEEPER_TABLE_NAMES:-'secgroup','dragonflow','chassis','lswitch','lport','lrouter','tunnel_key'}
 
 function nb_db_driver_install_server {
     if is_service_enabled df-zookeeper-server ; then
@@ -41,8 +40,7 @@ function nb_db_driver_install_server {
 }
 
 function nb_db_driver_install_client {
-    echo "Installing Kazoo client"
-    sudo pip install kazoo
+    echo 'Zookeeper client sdk is in the requirements file.'
 }
 
 function nb_db_driver_status_server
