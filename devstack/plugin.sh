@@ -26,9 +26,10 @@ PUBLISHERS_HOSTS=${PUBLISHERS_HOSTS:-"$SERVICE_HOST"}
 #ovs related pid files
 OVS_DB_SERVICE="ovsdb-server"
 OVS_VSWITCHD_SERVICE="ovs-vswitchd"
-OVS_DIR="/usr/local/var/run/openvswitch"
+OVS_DIR="/var/run/openvswitch"
 OVS_DB_PID=$OVS_DIR"/"$OVS_DB_SERVICE".pid"
 OVS_VSWITCHD_PID=$OVS_DIR"/"$OVS_VSWITCHD_SERVICE".pid"
+OVS_VSWITCH_OCSSCHEMA_FILE=${OVS_VSWITCH_OCSSCHEMA_FILE:-"/usr/share/openvswitch/vswitch.ovsschema"}
 
 # Pluggable DB drivers
 #----------------------
@@ -61,6 +62,7 @@ fi
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
 source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
+source $DEST/dragonflow/devstack/ovs_manager.sh
 
 # Entry Points
 # ------------
@@ -81,10 +83,6 @@ function cleanup_ovs {
         sudo ovs-vsctl del-port ${port}
     done
 
-    local _pwd=$(pwd)
-    cd $DEST/$OVS_REPO_NAME
-    sudo make uninstall
-    cd $_pwd
 }
 
 function configure_df_plugin {
@@ -162,7 +160,7 @@ function init_ovs {
     rm -f $base_dir/.*.db.~lock~
 
     echo "Creating OVS Database"
-    ovsdb-tool create $base_dir/conf.db $DEST/$OVS_REPO_NAME/vswitchd/vswitch.ovsschema
+    ovsdb-tool create $base_dir/conf.db $OVS_VSWITCH_OCSSCHEMA_FILE
 }
 
 function install_zeromq {
@@ -194,29 +192,6 @@ function install_df {
     setup_package $DRAGONFLOW_DIR
 }
 
-# install_ovs() - Collect source and prepare
-function install_ovs {
-    echo "Installing OVS and dependent packages"
-
-    # If OVS is already installed, remove it, because we're about to re-install
-    # it from source.
-    for package in openvswitch openvswitch-switch openvswitch-common; do
-        if is_package_installed $package ; then
-            uninstall_package $package
-        fi
-    done
-
-    if ! is_neutron_enabled ; then
-        install_neutron
-    fi
-
-    install_package python-openvswitch
-    source $NEUTRON_DIR/devstack/lib/ovs
-    compile_ovs True
-    sudo chown $(whoami) /usr/local/var/run/openvswitch
-    sudo chown $(whoami) /usr/local/var/log/openvswitch
-}
-
 # stop_ovs_dp() - Stop OVS datapath
 function stop_ovs_dp {
     sudo ovs-dpctl dump-dps | sudo xargs -n1 ovs-dpctl del-dp
@@ -226,22 +201,14 @@ function stop_ovs_dp {
 
 function stop_ovs
 {
-    # Stop ovs db
-    ovs_service_stop $OVS_DB_SERVICE
-    # Stop ovs vswitch
-    ovs_service_stop $OVS_VSWITCHD_SERVICE
+    SERVICE_NAME=openvswitch  # Default value
+    if is_fedora; then
+        SERVICE_NAME=openvswitch
+    elif is_ubuntu; then
+        SERVICE_NAME=openvswitch-switch
+    fi
 
-    while ovs_service_status $OVS_DB_SERVICE; do
-        echo "Waiting for the $OVS_DB_SERVICE to be stopped..."
-        sleep 1
-        ovs_service_stop $OVS_DB_SERVICE
-    done
-
-    while ovs_service_status $OVS_VSWITCHD_SERVICE; do
-        echo "Waiting for the ovsdb-vswitchd to be stopped..."
-        sleep 1
-        ovs_service_stop $OVS_VSWITCHD_SERVICE
-    done
+    start_service $SERVICE_NAME stop
 }
 
 # The following returns "0" when service is live.
@@ -261,60 +228,46 @@ function ovs_service_status
     return 1
 }
 
-# Kills a service
-function ovs_service_stop
-{
-    TEMP_PID=$OVS_DIR"/"$1".pid"
-    if [ -e $TEMP_PID ]
-    then
-        TEMP_PID_VALUE=$(cat $TEMP_PID  2>/dev/null)
-        if [ -e /proc/$TEMP_PID_VALUE ]
-        then
-            sudo kill $TEMP_PID_VALUE
-        fi
+function load_module_if_not_loaded() {
+    MOD=$1
+    if test lsmod | grep -q $MOD; then
+        echo "Loading module: $MOD"
+        sudo modprobe $MOD || die $LINENO "Failed to load module: $MOD"
+    else
+        echo "Module already loaded: $MOD"
     fi
 }
 
 function start_ovs {
     echo "Starting OVS"
+    SERVICE_NAME=openvswitch  # Default value
+    if is_fedora; then
+        SERVICE_NAME=openvswitch
+    elif is_ubuntu; then
+        SERVICE_NAME=openvswitch-switch
+    fi
+
+    start_service $SERVICE_NAME start
 
     local _pwd=$(pwd)
     cd $DATA_DIR/ovs
 
-    EXTRA_DBS=""
-    OVSDB_REMOTE="--remote=ptcp:6640:$HOST_IP"
-
     if ! ovs_service_status $OVS_DB_SERVICE; then
-        #echo "Going to start $OVS_DB_SERVICE"
-        $OVS_DB_SERVICE --remote=punix:$OVS_DIR"/db.sock" \
-                --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
-                --pidfile=$OVS_DB_PID --detach -vconsole:off --log-file $OVSDB_REMOTE \
-                conf.db ${EXTRA_DBS}
-
-        echo -n "Waiting for $OVS_DB_SERVICE to start ... "
-        while ! test -e $OVS_DIR"/db.sock" ; do
-            sleep 1
-        done
-        echo "done."
-        ovs-vsctl --no-wait init
+       die "$OVS_DB_SERVICE is not running"
     fi
 
     if is_service_enabled df-controller ; then
         if ! ovs_service_status $OVS_VSWITCHD_SERVICE; then
-            #echo "Going to start $OVS_VSWITCHD_SERVICE"
-            sudo modprobe openvswitch || die $LINENO "Failed to load openvswitch module"
-            # TODO This needs to be a fatal error when doing multi-node testing, but
-            # breaks testing in OpenStack CI where geneve isn't available.
-            #sudo modprobe geneve || die $LINENO "Failed to load geneve module"
-            sudo modprobe geneve || true
-            #sudo modprobe vport_geneve || die $LINENO "Failed to load vport_geneve module"
-            sudo modprobe vport_geneve || true
-
-            _neutron_ovs_base_setup_bridge br-int
-            ovs-vsctl --no-wait set bridge br-int fail-mode=secure other-config:disable-in-band=true
-
-            sudo $OVS_VSWITCHD_SERVICE --pidfile=$OVS_VSWITCHD_PID --detach -vconsole:off --log-file
+            die "$OVS_VSWITCHD_SERVICE is not running"
         fi
+        load_module_if_not_loaded openvswitch
+        # TODO This needs to be a fatal error when doing multi-node testing, but
+        # breaks testing in OpenStack CI where geneve isn't available.
+        load_module_if_not_loaded geneve || true
+        load_module_if_not_loaded vport_geneve || true
+
+        _neutron_ovs_base_setup_bridge br-int
+        sudo ovs-vsctl --no-wait set bridge br-int fail-mode=secure other-config:disable-in-band=true
     fi
 
     cd $_pwd
@@ -325,7 +278,7 @@ function start_df {
     echo "Starting Dragonflow"
 
     if is_service_enabled df-controller ; then
-        ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
+        sudo ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
         run_process df-controller "python $DF_LOCAL_CONTROLLER --config-file $NEUTRON_CONF"
         run_process df-ext-services "bash $DEST/dragonflow/devstack/df-ext-services.sh"
     fi
@@ -335,12 +288,9 @@ function start_df {
 function stop_df {
     if is_service_enabled df-controller ; then
         stop_process df-controller
-        ovs_service_stop $OVS_VSWITCHD_SERVICE
     fi
 
     nb_db_driver_stop_server
-
-    ovs_service_stop $OVS_DB_SERVICE
 }
 
 function disable_libvirt_apparmor {
