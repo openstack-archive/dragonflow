@@ -41,4 +41,5 @@ fi
 
 pip install -U $*
 pip install python-etcd
+pip install 'crc16>=0.1.1'
 exit $?
