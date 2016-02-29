@@ -57,3 +57,7 @@ class UnsupportedTransportException(DragonflowException):
     not supported.
     """
     message = _("Transport protocol is not supported: %(transport)s")
+
+
+class DBClientNotFound(DragonflowException):
+    message = _('DB client not found, ip=%(key)s')
