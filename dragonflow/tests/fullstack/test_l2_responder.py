@@ -66,7 +66,7 @@ class ArpResponderTest(test_base.DFTestBase):
         """
         flows_before = self._get_arp_table_flows()
 
-        vm = self.store(objects.VMTestObj(self))
+        vm = self.store(objects.VMTestObj(self, self.neutron))
         vm.create()
         ip = self._get_first_ipv4(vm.server.networks['private'])
         self.assertIsNotNone(ip)

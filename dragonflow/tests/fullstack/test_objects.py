@@ -144,10 +144,11 @@ class NetworkTestObj(object):
 
 class VMTestObj(object):
 
-    def __init__(self, parent):
+    def __init__(self, parent, neutron):
         self.server = None
         self.closed = False
         self.parent = parent
+        self.neutron = neutron
         creds = test_base.credentials()
         auth_url = creds['auth_url'] + "/v2.0"
         self.nova = novaclient.Client('2', creds['username'],
@@ -158,9 +159,9 @@ class VMTestObj(object):
         self.parent.assertIsNotNone(image)
         flavor = self.nova.flavors.find(name="m1.tiny")
         self.parent.assertIsNotNone(flavor)
-        network = self._find_first_network(label='private')
+        network = self._find_first_network(name='private')
         self.parent.assertIsNotNone(network)
-        nics = [{'net-id': network.id}]
+        nics = [{'net-id': network['id']}]
         self.server = self.nova.servers.create(name='test', image=image.id,
                            flavor=flavor.id, nics=nics, user_data=script)
         self.parent.assertIsNotNone(self.server)
@@ -169,7 +170,7 @@ class VMTestObj(object):
         return self.server.id
 
     def _find_first_network(self, **kwargs):
-        networks = self.nova.networks.findall(**kwargs)
+        networks = self.neutron.list_networks(**kwargs)['networks']
         networks_count = len(networks)
         if networks_count == 0:
             return None
