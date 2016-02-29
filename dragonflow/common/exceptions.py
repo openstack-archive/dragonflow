@@ -76,3 +76,6 @@ class UnsupportedTransportException(DragonflowException):
 class DBLockFailed(DragonflowException):
     message = _("The DB Lock cannot be acquired for object=%(oid)s in"
                 "the session=%(sid)s.")
+
+class DBClientNotFound(DragonflowException):
+    message = _('DB client not found, ip=%(key)s')
