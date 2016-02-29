@@ -40,27 +40,31 @@ class NbApi(object):
         self._queue = eventlet.queue.PriorityQueue()
         self.db_apply_failed = False
         self.use_pubsub = use_pubsub
-        self.multiproc_publisher = None
+        self.publisher = None
         self.is_neutron_server = is_neutron_server
         self.db_table_monitors = None
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
         if self.use_pubsub:
-            self.multiproc_publisher = self._get_multiproc_publisher()
+            self.publisher = self._get_publisher()
             self.subscriber = self._get_subscriber()
             if self.is_neutron_server:
                 #Publisher is part of the neutron server Plugin
-                self.multiproc_publisher.initialize()
+                self.publisher.initialize()
                 self._start_db_table_monitors()
             else:
                 #NOTE(gampel) we want to start queuing event as soon
                 #as possible
                 self._start_subsciber()
 
-    def _get_multiproc_publisher(self):
+    def _get_publisher(self):
+        if cfg.CONF.df.pub_sub_no_multiproc:
+            pubsub_driver_name = cfg.CONF.df.pub_sub_driver
+        else:
+            pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
         pub_sub_driver = df_utils.load_driver(
-                                    cfg.CONF.df.pub_sub_multiproc_driver,
+                                    pubsub_driver_name,
                                     df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_publisher()
 
@@ -80,7 +84,7 @@ class NbApi(object):
         table_monitor = TableMonitor(
             table_name,
             self.driver,
-            self.multiproc_publisher,
+            self.publisher,
             cfg.CONF.df.monitor_table_poll_time,
         )
         table_monitor.daemonize()
@@ -114,7 +118,7 @@ class NbApi(object):
     def _send_db_change_event(self, table, key, action, value):
         if self.use_pubsub:
             update = DbUpdate(table, key, action, value)
-            self.multiproc_publisher.send_event(update)
+            self.publisher.send_event(update)
             eventlet.sleep(0)
 
     def allocate_tunnel_key(self):

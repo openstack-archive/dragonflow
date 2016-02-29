@@ -62,6 +62,14 @@ df_opts = [
     cfg.StrOpt('publisher_bind_address',
                default='*',
                help=_('Neutron Server Publishers bind address')),
+    cfg.BoolOpt(
+        'pub_sub_no_multiproc',
+        default=False,
+        help=_(
+            'Do not use inter-process publish/subscribe.'
+            'Publishers connect directly to the network.'
+        )
+    ),
     cfg.StrOpt(
         'publisher_multiproc_socket',
         default='/var/run/zmq_pubsub/zmq-publisher-socket',
