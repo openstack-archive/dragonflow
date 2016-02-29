@@ -14,7 +14,12 @@ import time
 
 from novaclient import client as novaclient
 
+from oslo_log import log
+
+from dragonflow._i18n import _LW
 from dragonflow.tests.fullstack import test_base
+
+LOG = log.getLogger(__name__)
 
 
 class RouterTestObj(object):
@@ -153,7 +158,7 @@ class VMTestObj(object):
         self.parent.assertIsNotNone(image)
         flavor = self.nova.flavors.find(name="m1.tiny")
         self.parent.assertIsNotNone(flavor)
-        network = self.nova.networks.find(label='private')
+        network = self._find_first_network(label='private')
         self.parent.assertIsNotNone(network)
         nics = [{'net-id': network.id}]
         self.server = self.nova.servers.create(name='test', image=image.id,
@@ -162,6 +167,17 @@ class VMTestObj(object):
         server_is_ready = self._wait_for_server_ready(30)
         self.parent.assertTrue(server_is_ready)
         return self.server.id
+
+    def _find_first_network(self, **kwargs):
+        networks = self.nova.networks.findall(**kwargs)
+        networks_count = len(networks)
+        if networks_count == 0:
+            return None
+        if networks_count > 1:
+            message = _LW("More than one network (%(count)d) found matching: "
+                "%(args)s")
+            LOG.warning(message % {'args': kwargs, 'count': networks_count})
+        return networks[0]
 
     def _wait_for_server_ready(self, timeout):
         if self.server is None:
