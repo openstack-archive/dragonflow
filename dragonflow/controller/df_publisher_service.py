@@ -44,6 +44,12 @@ class PublisherService(object):
         return pub_sub_driver.get_publisher()
 
     def _get_multiproc_subscriber(self):
+        """
+        Return the subscriber for inter-process communication. If multi-proc
+        communication is not use (i.e. disabled from config), return None.
+        """
+        if not cfg.CONF.df.pub_sub_use_multiproc:
+            return None
         pub_sub_driver = df_utils.load_driver(
                                     cfg.CONF.df.pub_sub_multiproc_driver,
                                     df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
