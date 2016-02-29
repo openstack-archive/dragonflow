@@ -44,6 +44,9 @@ class PublisherService(object):
         return pub_sub_driver.get_publisher()
 
     def _get_multiproc_subscriber(self):
+        if not cfg.CONF.df.pub_sub_use_multiproc:
+            # not needed
+            return None
         pub_sub_driver = df_utils.load_driver(
                                     cfg.CONF.df.pub_sub_multiproc_driver,
                                     df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
