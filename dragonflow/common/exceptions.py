@@ -49,3 +49,6 @@ class DragonflowException(Exception):
 
 class DBKeyNotFound(DragonflowException):
     message = _('DB Key not found, key=%(key)s')
+
+class DBClientNotFound(DragonflowException):
+    message = _('DB Client not found, ip=%(ip)s')
