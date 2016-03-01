@@ -77,7 +77,9 @@ class L3ProactiveApp(DFlowApp):
             if port.get_name() != router_port.get_name():
 
                 port_net_id = self.db_store.get_network_id(
-                    port.get_lswitch_id())
+                    port.get_lswitch_id(),
+                    port.get_topic(),
+                )
 
                 # From this router interface to all other interfaces
                 self._add_subnet_send_to_proactive_routing(
@@ -296,7 +298,9 @@ class L3ProactiveApp(DFlowApp):
         for lrouter in self.db_store.get_routers():
             for router_port in lrouter.get_ports():
                 local_network_id = self.db_store.get_network_id(
-                    router_port.get_lswitch_id())
+                    router_port.get_lswitch_id(),
+                    router_port.get_topic(),
+                )
                 self.add_router_port(lrouter, router_port,
                         local_network_id)
         for lport in self.db_store.get_ports():
