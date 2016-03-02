@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
+
 import time
 
 from novaclient import client as novaclient
@@ -207,6 +209,15 @@ class VMTestObj(object):
 
     def dump(self):
         return self.nova.servers.get_console_output(self.server)
+
+    def get_first_ipv4(self):
+        if self.server is None:
+            return None
+        ips = self.server.networks['private']
+        for ip in ips:
+            if netaddr.IPAddress(ip).version == 4:
+                return ip
+        return None
 
 
 class SubnetTestObj(object):

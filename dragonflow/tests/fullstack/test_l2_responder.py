@@ -10,8 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import netaddr
-
 import re
 
 import time
@@ -38,12 +36,6 @@ class ArpResponderTest(test_base.DFTestBase):
                 return flow
             return None
 
-    def _get_first_ipv4(self, ips):
-        for ip in ips:
-            if netaddr.IPAddress(ip).version == 4:
-                return ip
-        return None
-
     def _get_arp_table_flows(self):
         ovs_flows_parser = OvsFlowsParser()
         flows = ovs_flows_parser.dump()
@@ -68,7 +60,7 @@ class ArpResponderTest(test_base.DFTestBase):
 
         vm = self.store(objects.VMTestObj(self, self.neutron))
         vm.create()
-        ip = self._get_first_ipv4(vm.server.networks['private'])
+        ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
 
         flows_middle = self._get_arp_table_flows()
