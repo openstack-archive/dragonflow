@@ -50,16 +50,13 @@ fi
 # To be called to initialise params common to all pubsub drivers
 function init_pubsub {
     enable_service df-publisher-service
-    DF_PUB_SUB=${DF_PUB_SUB:-"True"}
-    DF_IS_MONITOR_TABLES=${DF_IS_MONITOR_TABLES:-"True"}
+    DF_PUB_SUB="True"
 }
 
 if is_service_enabled df-zmq-publisher-service ; then
     init_pubsub
     source $DEST/dragonflow/devstack/zmq_pubsub_driver
 fi
-DF_PUB_SUB=${DF_PUB_SUB:-"False"}
-DF_IS_MONITOR_TABLES=${DF_IS_MONITOR_TABLES:-"False"}
 
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
@@ -105,9 +102,6 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
-        iniset $NEUTRON_CONF df is_monitor_tables "$DF_IS_MONITOR_TABLES"
-        iniset $NEUTRON_CONF df monitor_tables "$DF_MONITOR_TABLES"
-        iniset $NEUTRON_CONF df monitor_table_poll_time "$DF_MONITOR_TABLE_POLL_TIME"
         iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
         iniset $NEUTRON_CONF df enable_df_pub_sub "$DF_PUB_SUB"
         iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"

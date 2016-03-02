@@ -26,6 +26,9 @@ LOG = logging.getLogger(__name__)
 
 eventlet.monkey_patch(socket=False)
 
+MONITOR_TABLES = ['chassis']
+MONITOR_TABLE_POLL_TIME = 30
+
 
 def pack_message(message):
     data = None

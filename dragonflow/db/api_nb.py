@@ -25,7 +25,8 @@ from oslo_serialization import jsonutils
 from dragonflow._i18n import _LI
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate
-from dragonflow.db.pub_sub_api import TableMonitor
+from dragonflow.db import pub_sub_api
+
 eventlet.monkey_patch()
 
 LOG = log.getLogger(__name__)
@@ -71,17 +72,15 @@ class NbApi(object):
         return pub_sub_driver.get_subscriber()
 
     def _start_db_table_monitors(self):
-        if not cfg.CONF.df.is_monitor_tables:
-            return
         self.db_table_monitors = [self._start_db_table_monitor(table_name)
-            for table_name in cfg.CONF.df.monitor_tables]
+            for table_name in pub_sub_api.MONITOR_TABLES]
 
     def _start_db_table_monitor(self, table_name):
-        table_monitor = TableMonitor(
+        table_monitor = pub_sub_api.TableMonitor(
             table_name,
             self.driver,
             self.multiproc_publisher,
-            cfg.CONF.df.monitor_table_poll_time,
+            pub_sub_api.MONITOR_TABLE_POLL_TIME,
         )
         table_monitor.daemonize()
         return table_monitor
