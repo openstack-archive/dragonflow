@@ -26,6 +26,8 @@ LOG = logging.getLogger(__name__)
 
 eventlet.monkey_patch(socket=False)
 
+MONITOR_TABLES = ['chassis']
+
 
 def pack_message(message):
     data = None
