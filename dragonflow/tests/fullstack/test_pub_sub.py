@@ -282,8 +282,7 @@ class TestDbTableMonitors(test_base.DFTestBase):
         super(TestDbTableMonitors, self).setUp()
         self.events_num = 0
         enable_df_pub_sub = cfg.CONF.df.enable_df_pub_sub
-        is_monitor_tables = cfg.CONF.df.is_monitor_tables
-        self.do_test = enable_df_pub_sub and is_monitor_tables
+        self.do_test = enable_df_pub_sub
         if not self.do_test:
             return
         self.namespace = Namespace()
