@@ -47,6 +47,7 @@ Spec Template
     control_plane_testing
     metadata_service
     redis_availability
+    vlan_networking
 
 
 Indices and tables
