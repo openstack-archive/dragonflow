@@ -46,6 +46,7 @@ Spec Template
     local_controller_reliability
     control_plane_testing
     metadata_service
+    vlan_networking
 
 
 Indices and tables
