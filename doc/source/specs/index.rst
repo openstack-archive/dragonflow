@@ -39,6 +39,7 @@ Spec Template
     selective_topo_dist
     performance_testing
     ovsdb_monitor
+    vlan_networking
 
 
 Indices and tables
