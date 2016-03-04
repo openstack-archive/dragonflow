@@ -44,6 +44,7 @@ Spec Template
     keep_db_consistency
     publish_subscribe_abstraction
     local_controller_reliability
+    vlan_networking
 
 
 Indices and tables
