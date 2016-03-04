@@ -41,6 +41,7 @@ Spec Template
     ovsdb_monitor
     igmp_application_and_multicast_support
     redis_db_driver
+    vlan_networking
 
 
 Indices and tables
