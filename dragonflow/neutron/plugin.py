@@ -437,6 +437,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     port['port'][df_const.DF_PORT_BINDING_PROFILE])
             self._process_port_create_extra_dhcp_opts(context, db_port,
                                                       dhcp_opts)
+
+        # This extra lookup is necessary to get the latest db model
+        # for the extension functions.
+        port_model = self._get_port(context, db_port['id'])
+        self._apply_dict_extend_functions('ports', db_port, port_model)
+
         return self.create_port_in_nb_api(db_port, parent_name, tag, sgids)
 
     def create_port_in_nb_api(self, port, parent_name, tag, sgids):
