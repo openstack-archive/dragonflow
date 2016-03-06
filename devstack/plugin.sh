@@ -91,7 +91,12 @@ function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
     if is_service_enabled q-svc ; then
-        export NETWORK_API_EXTENSIONS='binding,quotas,agent,dhcp_agent_scheduler,external-net,router'
+
+        # NOTE(gsagie) needed for tempest
+        export NETWORK_API_EXTENSIONS=$(python -c \
+            'from dragonflow.common import extensions ;\
+             print ",".join(extensions.SUPPORTED_API_EXTENSIONS)')
+
         Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
