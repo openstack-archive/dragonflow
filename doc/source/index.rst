@@ -20,6 +20,7 @@ Contents:
    pipeline
    containers
    usage
+   features
    contributing
    releasenotes
 
