@@ -53,6 +53,7 @@ from dragonflow._i18n import _, _LE, _LI
 from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
+from dragonflow.common import extensions
 from dragonflow.db import api_nb
 from dragonflow.neutron.common import constants as df_const
 
@@ -75,15 +76,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     __native_pagination_support = True
     __native_sorting_support = True
 
-    supported_extension_aliases = ["quotas",
-                                   "extra_dhcp_opt",
-                                   "binding",
-                                   "agent",
-                                   "dhcp_agent_scheduler",
-                                   "security-group",
-                                   "extraroute",
-                                   "external-net",
-                                   "router"]
+    supported_extension_aliases = extensions.SUPPORTED_API_EXTENSIONS
 
     def __init__(self):
         super(DFPlugin, self).__init__()
