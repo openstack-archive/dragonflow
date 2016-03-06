@@ -42,5 +42,4 @@ fi
 pip install -U $*
 pip install python-etcd
 pip install python-pytun
-pip install scapy
 exit $?
