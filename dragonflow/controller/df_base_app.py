@@ -21,9 +21,11 @@ LOG = logging.getLogger(__name__)
 
 
 class DFlowApp(DBNotifyInterface):
-    def __init__(self, api, db_store=None):
+    def __init__(self, api, db_store=None, vswitch_api=None, nb_api=None):
         self.api = api
         self.db_store = db_store
+        self.vswitch_api = vswitch_api
+        self.nb_api = nb_api
 
     def get_datapath(self):
         return self.api.datapath

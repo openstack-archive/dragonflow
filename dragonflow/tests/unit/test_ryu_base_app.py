@@ -18,6 +18,7 @@ import mock
 from dragonflow.controller.ryu_base_app import RyuDFAdapter
 
 from dragonflow.tests import base as tests_base
+from oslo_config import cfg
 
 
 class TestRyuDFAdapter(tests_base.BaseTestCase):
@@ -30,6 +31,7 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
     def setUp(self):
         super(TestRyuDFAdapter, self).setUp()
         self.db_store = mock.Mock()
+        cfg.CONF = mock.Mock()
         self.ryu_df_adapter = RyuDFAdapter(db_store=self.db_store)
         self.mock_app = mock.Mock(spec=[
                 'update_logical_switch',

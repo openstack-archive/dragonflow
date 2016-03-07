@@ -44,6 +44,7 @@ from neutron.db import external_net_db
 from neutron.db import extradhcpopt_db
 from neutron.db import extraroute_db
 from neutron.db import l3_agentschedulers_db
+from neutron.db import l3_attrs_db
 from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
 from neutron.db import models_v2
@@ -63,11 +64,20 @@ LOG = log.getLogger(__name__)
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
 
+router_distributed_opts = [
+    cfg.BoolOpt('router_distributed',
+                default=False,
+                help=_("System-wide flag to determine the type of router "
+                       "that tenants can create. Only admin can override.")),
+]
+cfg.CONF.register_opts(router_distributed_opts)
+
 
 class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                securitygroups_db.SecurityGroupDbMixin,
                l3_agentschedulers_db.L3AgentSchedulerDbMixin,
                l3_gwmode_db.L3_NAT_db_mixin,
+               l3_attrs_db.ExtraAttributesMixin,
                external_net_db.External_net_db_mixin,
                portbindings_db.PortBindingMixin,
                extradhcpopt_db.ExtraDhcpOptMixin,
@@ -87,7 +97,14 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    "extraroute",
                                    "external-net",
                                    "router",
-                                   "subnet_allocation"]
+                                   "subnet_allocation",
+                                   "dvr"]
+
+    extra_attributes = (
+        l3_attrs_db.ExtraAttributesMixin.extra_attributes + [{
+            'name': "distributed",
+            'default': cfg.CONF.router_distributed
+        }])
 
     @resource_registry.tracked_resources(
         network=models_v2.Network,
@@ -561,6 +578,16 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         super(DFPlugin, self).extend_port_dict_binding(port_res, port_db)
         port_res[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
 
+    def _create_router_db(self, context, router, tenant_id):
+        """Create a router db object with dvr additions."""
+        router['distributed'] = is_distributed_router(router)
+        with context.session.begin(subtransactions=True):
+            router_db = super(
+                DFPlugin, self)._create_router_db(
+                    context, router, tenant_id)
+            self._process_extra_attr_router_create(context, router_db, router)
+            return router_db
+
     @lock_db.wrap_db_lock()
     def create_router(self, context, router):
         with context.session.begin(subtransactions=True):
@@ -750,21 +777,52 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 return self._get_ip_from_port(dhcp_port)
         return None
 
+    def _get_floatingip_port(self, context, floatingip_id):
+        filters = {'device_id': [floatingip_id]}
+        floating_ports = self.get_ports(context, filters=filters)
+        if floating_ports:
+            return floating_ports[0]
+        return None
+
+    def _get_floatingip_subnet(self, context, subnet_id):
+        gateway_subnet = self.get_subnet(context, subnet_id)
+        if gateway_subnet['ip_version'] == 4:
+            return gateway_subnet
+        return None
+
     @lock_db.wrap_db_lock()
     def create_floatingip(self, context, floatingip):
         with context.session.begin(subtransactions=True):
             floatingip_dict = super(DFPlugin, self).create_floatingip(
                 context, floatingip,
                 initial_status=const.FLOATINGIP_STATUS_DOWN)
+
+            floatingip_port = self._get_floatingip_port(
+                context, floatingip_dict['id'])
+            if not floatingip_port:
+                raise n_exc.DeviceNotFoundError(
+                    device_name=floatingip_dict['id'])
+            subnet_id = floatingip_port['fixed_ips'][0]['subnet_id']
+            floatingip_subnet = self._get_floatingip_subnet(
+                context, subnet_id)
+            if floatingip_subnet is None:
+                raise n_exc.SubnetNotFound(
+                    subnet_id=subnet_id)
+
         self.nb_api.create_floatingip(
-            name=floatingip_dict['id'],
-            topic=floatingip_dict['tenant_id'],
-            floating_ip_address=floatingip_dict['floating_ip_address'],
-            floating_network_id=floatingip_dict['floating_network_id'],
-            router_id=floatingip_dict['router_id'],
-            port_id=floatingip_dict['port_id'],
-            fixed_ip_address=floatingip_dict['fixed_ip_address'],
-            status=floatingip_dict['status'])
+                name=floatingip_dict['id'],
+                topic=floatingip_dict['tenant_id'],
+                floating_ip_address=floatingip_dict['floating_ip_address'],
+                floating_network_id=floatingip_dict['floating_network_id'],
+                router_id=floatingip_dict['router_id'],
+                port_id=floatingip_dict['port_id'],
+                fixed_ip_address=floatingip_dict['fixed_ip_address'],
+                status=floatingip_dict['status'],
+                floating_port_id=floatingip_port['id'],
+                floating_mac_address=floatingip_port['mac_address'],
+                external_gateway_ip=floatingip_subnet['gateway_ip'],
+                external_cidr=floatingip_subnet['cidr'])
+
         return floatingip_dict
 
     @lock_db.wrap_db_lock()
@@ -793,3 +851,22 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         except df_exceptions.DBKeyNotFound:
             LOG.debug("floatingip %s is not found in DF DB, might have "
                       "been deleted concurrently" % id)
+
+    def get_floatingip(self, context, id, fields=None):
+        with context.session.begin(subtransactions=True):
+            fip = super(DFPlugin, self).get_floatingip(context, id, fields)
+            fip['status'] = self.nb_api.get_floatingip(id).status
+            return fip
+
+
+def is_distributed_router(router):
+    """Return True if router to be handled is distributed."""
+    try:
+        # See if router is a DB object first
+        requested_router_type = router.extra_attributes.distributed
+    except AttributeError:
+        # if not, try to see if it is a request body
+        requested_router_type = router.get('distributed')
+    if attr.is_attr_set(requested_router_type):
+        return requested_router_type
+    return cfg.CONF.router_distributed
