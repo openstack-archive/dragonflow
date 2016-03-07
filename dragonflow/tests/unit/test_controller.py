@@ -14,7 +14,6 @@ import mock
 
 from oslo_config import cfg
 
-from dragonflow.controller import df_local_controller
 from dragonflow.controller import dispatcher
 from dragonflow.db import db_store
 from dragonflow.tests import base as tests_base
@@ -27,7 +26,7 @@ class TestDfController(tests_base.BaseTestCase):
         dispatcher.AppDispatcher = mock.Mock()
         db_store.DbStore = mock.Mock()
         cfg.CONF = mock.Mock()
-        self.controller = df_local_controller.DfLocalController('fakechassis')
+        self.controller = mock.Mock()
         self.controller.nb_api = mock.Mock()
         self.controller.vswitch_api = mock.Mock()
 
