@@ -23,4 +23,5 @@ SUPPORTED_API_EXTENSIONS = [
     'external-net',
     'router',
     'subnet_allocation',
+    'dvr'
 ]

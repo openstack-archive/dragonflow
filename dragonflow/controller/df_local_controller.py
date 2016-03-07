@@ -76,14 +76,12 @@ class DfLocalController(object):
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api.initialize()
-
         self.topology = Topology(self, self.enable_selective_topo_dist)
 
         self.vswitch_api.sync()
         self.vswitch_api.del_controller('br-int').execute()
         self.vswitch_api.set_controllers(
             'br-int', ['tcp:' + self.ip + ':6633']).execute()
-
         self.open_flow_app.start()
         self.db_sync_loop()
 
@@ -422,22 +420,21 @@ class DfLocalController(object):
             self.floatingip_updated(floatingip)
 
     def floatingip_updated(self, floatingip):
-        lport_id = floatingip.get_lport_id()
         # check whether this floatingip is associated with a lport or not
-        if not lport_id:
-            return
-        if not self.db_store.get_local_port(lport_id):
-            return
-
-        lrouter = self.db_store.get_router(floatingip.get_lrouter_id())
-        # Currently, to implement DNAT for DVR on compute node only
-        # if distributed is False, DNAT is done on centralized vrouter
-        if not lrouter.is_distributed():
-            return
-        old_floatingip = self.db_store.get_floatingip(floatingip.get_name())
+        if floatingip.lport_id:
+            if self.db_store.get_local_port(floatingip.lport_id) is None:
+                return
+        if floatingip.lrouter_id:
+            lrouter = self.db_store.get_router(floatingip.lrouter_id)
+            # Currently, to implement DNAT for DVR on compute node only
+            # if distributed is False, DNAT is done on centralized vrouter
+            if not lrouter.is_distributed():
+                return
+        old_floatingip = self.db_store.get_floatingip(floatingip.name)
         if old_floatingip is None:
-            LOG.info(_LI("Floatingip is created = %s") %
-                     floatingip.__str__())
+            # The new floatingip should be associated with a lport
+            if not floatingip.lport_id:
+                return
             self._associate_floatingip(floatingip)
             return
         self._update_floatingip(old_floatingip, floatingip)
@@ -446,23 +443,27 @@ class DfLocalController(object):
         floatingip = self.db_store.get_floatingip(floatingip_id)
         if not floatingip:
             return
-        self._disassociate_floatingip(floatingip)
+        self.open_flow_app.notify_delete_floatingip(floatingip)
+        LOG.info(_LI("Floatingip is deleted. Floatingip = %s") %
+                 str(floatingip))
 
     def _associate_floatingip(self, floatingip):
-        self.dispatcher.dispatch('associate_floatingip',
-                                 floatingip=floatingip)
-        self.db_store.update_floatingip(floatingip.get_name(), floatingip)
+        self.db_store.update_floatingip(floatingip.name, floatingip)
+        self.open_flow_app.notify_associate_floatingip(floatingip)
+        LOG.info(_LI("Floatingip is assoicated with port. Floatingip = %s") %
+                 str(floatingip))
 
     def _disassociate_floatingip(self, floatingip):
-        self.dispatcher.dispatch('disassociate_floatingip',
-                                 floatingip=floatingip)
-        self.db_store.delete_floatingip(floatingip.get_name())
+        self.db_store.delete_floatingip(floatingip.name)
+        self.open_flow_app.notify_disassociate_floatingip(floatingip)
+        LOG.info(_LI("Floatingip is disassoicated from port."
+                 " Floatingip = %s") % str(floatingip))
 
     def _update_floatingip(self, old_floatingip, new_floatingip):
-        if new_floatingip.get_lport_id() != old_floatingip.get_lport_id()\
-            or new_floatingip.get_fixed_ip() != old_floatingip.get_fixed_ip():
+        if new_floatingip.lport_id != old_floatingip.lport_id:
             self._disassociate_floatingip(old_floatingip)
-            self._associate_floatingip(new_floatingip)
+            if new_floatingip.lport_id:
+                self._associate_floatingip(new_floatingip)
 
     def ovs_port_updated(self, ovs_port):
         self.topology.ovs_port_updated(ovs_port)

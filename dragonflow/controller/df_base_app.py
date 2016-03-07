@@ -14,8 +14,11 @@
 #    under the License.
 
 from dragonflow.controller.df_db_notifier import DBNotifyInterface
-
 from oslo_log import log as logging
+from ryu.lib.packet import arp
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import packet
+from ryu.ofproto import ether
 
 LOG = logging.getLogger(__name__)
 
@@ -94,3 +97,17 @@ class DFlowApp(DBNotifyInterface):
                                   actions=actions,
                                   data=data)
         datapath.send_msg(out)
+
+    def send_arp_request(self, src_mac, src_ip, dst_ip, port):
+        arp_request_pkt = packet.Packet()
+        arp_request_pkt.add_protocol(ethernet.ethernet(
+                                     ethertype=ether.ETH_TYPE_ARP,
+                                     src=src_mac))
+
+        arp_request_pkt.add_protocol(arp.arp(
+                                    src_mac=src_mac,
+                                    src_ip=src_ip,
+                                    dst_ip=dst_ip))
+        arp_request_pkt.serialize()
+
+        self._send_packet(self.get_datapath(), port, arp_request_pkt)

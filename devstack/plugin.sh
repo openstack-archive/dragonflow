@@ -10,7 +10,7 @@ OVS_BRANCH=${OVS_BRANCH:-origin/branch-2.5}
 
 DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
-DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,dhcp_app.DHCPApp"
+DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,dhcp_app.DHCPApp,dnat_app.DNATApp"
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
