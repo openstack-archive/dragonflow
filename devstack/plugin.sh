@@ -381,6 +381,10 @@ function stop_pubsub_service {
     stop_process df-publisher-service
 }
 
+function cleanup_database {
+    df-db clean
+}
+
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
@@ -424,5 +428,6 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         if [[ "$DF_PUB_SUB" == "True" ]]; then
             stop_pubsub_service
         fi
+        cleanup_database
     fi
 fi
