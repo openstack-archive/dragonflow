@@ -17,6 +17,7 @@ Contents:
    distributed_dragonflow
    distributed_dhcp
    pluggable_db
+   pluggable_pubsub
    pipeline
    containers
    usage
