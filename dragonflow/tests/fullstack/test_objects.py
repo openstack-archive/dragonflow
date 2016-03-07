@@ -335,3 +335,15 @@ class FloatingipTestObj(object):
         if floatingip:
             return True
         return False
+
+    def _wait_for_fip_active(self, timeout):
+        fip = self.get_floatingip()
+        if fip is None:
+            return False
+        while timeout > 0:
+            fip = self.get_floatingip()
+            if fip.status == 'ACTIVE':
+                return True
+            time.sleep(1)
+            timeout = timeout - 1
+        return False
