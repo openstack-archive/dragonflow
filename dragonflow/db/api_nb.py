@@ -473,13 +473,17 @@ class NbApi(object):
             floatingip[col] = val
         floatingip_json = jsonutils.dumps(floatingip)
         self.driver.create_key('floatingip', name, floatingip_json, topic)
-        self._send_db_change_event('floatingip', name, 'create',
-                                   floatingip_json, topic)
+        if floatingip.get('port_id', None) is not None:
+            self._send_db_change_event('floatingip', name, 'create',
+                                       floatingip_json, topic)
 
     def delete_floatingip(self, name, topic):
+        floatingip = self.driver.get_key('floatingip', name, topic)
+        fip_dict = jsonutils.loads(floatingip)
+        if fip_dict.get('port_id', None) is not None:
+            self._send_db_change_event('floatingip', name, 'delete',
+                                       name, topic)
         self.driver.delete_key('floatingip', name, topic)
-        self._send_db_change_event('floatingip', name, 'delete', name,
-                                   topic)
 
     def update_floatingip(self, name, topic, **columns):
         floatingip_json = self.driver.get_key('floatingip', name, topic)
@@ -491,6 +495,14 @@ class NbApi(object):
                             floatingip['topic'])
         self._send_db_change_event('floatingip', name, 'set',
                                    floatingip_json, floatingip['topic'])
+
+    def update_floatingip_status(self, name, status, topic=None):
+        floatingip_json = self.driver.get_key('floatingip', name, topic)
+        floatingip = jsonutils.loads(floatingip_json)
+        floatingip['status'] = status
+        floatingip_json = jsonutils.dumps(floatingip)
+        self.driver.set_key('floatingip', name, floatingip_json,
+                            floatingip['topic'])
 
     def get_floatingip(self, name, topic=None):
         try:
@@ -750,20 +762,49 @@ class Floatingip(object):
     def __init__(self, value):
         self.floatingip = jsonutils.loads(value)
 
-    def get_name(self):
+    @property
+    def name(self):
         return self.floatingip['name']
 
-    def get_floatingip_address(self):
+    @property
+    def status(self):
+        return self.floatingip['status']
+
+    @property
+    def ip_address(self):
         return self.floatingip['floating_ip_address']
 
-    def get_lport_id(self):
+    @property
+    def mac_address(self):
+        return self.floatingip['floating_mac_address']
+
+    @property
+    def lport_id(self):
         return self.floatingip['port_id']
 
-    def get_fixed_ip(self):
+    @property
+    def fixed_ip_address(self):
         return self.floatingip['fixed_ip_address']
 
-    def get_lrouter_id(self):
+    @property
+    def lrouter_id(self):
         return self.floatingip['router_id']
+
+    @property
+    def external_gateway_ip(self):
+        return self.floatingip['external_gateway_ip']
+
+    @property
+    def floating_network_id(self):
+        return self.floatingip['floating_network_id']
+
+    @property
+    def external_cidr(self):
+        return self.floatingip['external_cidr']
+
+    @property
+    def floating_port_id(self):
+        return self.floatingip['floating_port_id']
 
     def __str__(self):
         return self.floatingip.__str__()
