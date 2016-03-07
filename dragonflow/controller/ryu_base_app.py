@@ -36,12 +36,13 @@ class RyuDFAdapter(OFPHandler):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OF_AUTO_PORT_DESC_STATS_REQ_VER = 0x04
 
-    def __init__(self, db_store=None):
-        super(RyuDFAdapter, self).__init__(db_store=db_store)
+    def __init__(self, **kwargs):
+        super(RyuDFAdapter, self).__init__(**kwargs)
         self.dispatcher = AppDispatcher('dragonflow.controller',
                 cfg.CONF.df.apps_list)
-        self.db_store = db_store
+        self.db_store = kwargs['db_store']
         self._datapath = None
+        self.kwargs = kwargs
         self.table_handlers = {}
 
     @property
@@ -50,7 +51,7 @@ class RyuDFAdapter(OFPHandler):
 
     def start(self):
         super(RyuDFAdapter, self).start()
-        self.load(self, db_store=self.db_store)
+        self.load(self, **self.kwargs)
         self.wait_until_ready()
 
     def load(self, *args, **kwargs):
@@ -115,6 +116,13 @@ class RyuDFAdapter(OFPHandler):
 
     def notify_ovs_sync_started(self):
         self.dispatcher.dispatch('ovs_sync_started')
+
+    @set_ev_handler(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    def notify_associate_floatingip(self, floatingip):
+        self.dispatcher.dispatch('associate_floatingip', floatingip)
+
+    def notify_disassociate_floatingip(self, floatingip):
+        self.dispatcher.dispatch('disassociate_floatingip', floatingip)
 
     @set_ev_handler(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
