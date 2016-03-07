@@ -152,3 +152,7 @@ class DbStore(object):
     def delete_floatingip(self, floatingip_id):
         with self.lock:
             del self.floatingips[floatingip_id]
+
+    def get_floatingips(self):
+        with self.lock:
+            return self.floatingips.values()
