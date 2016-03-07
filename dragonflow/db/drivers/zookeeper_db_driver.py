@@ -19,6 +19,7 @@ from oslo_log import log
 import six
 
 from dragonflow.common import exceptions as df_exceptions
+from dragonflow.common import utils
 from dragonflow.db import db_api
 
 LOG = log.getLogger(__name__)
@@ -26,6 +27,8 @@ LOG = log.getLogger(__name__)
 ROOT_NS = '/openstack'
 
 CLIENT_CONNECTION_RETRIES = -1
+
+ZK_MAX_RETRIES = 3
 
 
 def _parse_hosts(hosts):
@@ -87,6 +90,11 @@ class ZookeeperDbDriver(db_api.DbApi):
         except kazoo.exceptions.NoNodeError:
             raise df_exceptions.DBKeyNotFound(key=key)
 
+    @utils.wrap_func_retry(max_retries=ZK_MAX_RETRIES,
+                           retry_interval=1,
+                           inc_retry_interval=True,
+                           max_retry_interval=10,
+                           _errors=[kazoo.exceptions.SessionExpiredError])
     def set_key(self, table, key, value, topic=None):
         path = self._generate_path(table, key)
         try:
@@ -94,17 +102,22 @@ class ZookeeperDbDriver(db_api.DbApi):
             self.client.set(path, value)
         except kazoo.exceptions.NoNodeError:
             raise df_exceptions.DBKeyNotFound(key=key)
-        except kazoo.exceptions.ZookeeperError as e:
-            LOG.exception(e)
 
+    @utils.wrap_func_retry(max_retries=ZK_MAX_RETRIES,
+                           retry_interval=1,
+                           inc_retry_interval=True,
+                           max_retry_interval=10,
+                           _errors=[kazoo.exceptions.SessionExpiredError])
     def create_key(self, table, key, value, topic=None):
         path = self._generate_path(table, key)
-        try:
-            self._lazy_initialize()
-            self.client.create(path, value, makepath=True)
-        except kazoo.exceptions.ZookeeperError as e:
-            LOG.exception(e)
+        self._lazy_initialize()
+        self.client.create(path, value, makepath=True)
 
+    @utils.wrap_func_retry(max_retries=ZK_MAX_RETRIES,
+                           retry_interval=1,
+                           inc_retry_interval=True,
+                           max_retry_interval=10,
+                           _errors=[kazoo.exceptions.SessionExpiredError])
     def delete_key(self, table, key, topic=None):
         path = self._generate_path(table, key)
         try:
