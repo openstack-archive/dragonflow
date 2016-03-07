@@ -122,6 +122,15 @@ class RyuDFAdapter(OFPHandler):
     def notify_ovs_sync_started(self):
         self.dispatcher.dispatch('ovs_sync_started')
 
+    def notify_associate_floatingip(self, floatingip):
+        self.dispatcher.dispatch('associate_floatingip', floatingip)
+
+    def notify_disassociate_floatingip(self, floatingip):
+        self.dispatcher.dispatch('disassociate_floatingip', floatingip)
+
+    def notify_delete_floatingip(self, floatingip):
+        self.dispatcher.dispatch('delete_floatingip', floatingip)
+
     @set_ev_handler(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         # TODO(oanson) is there a better way to get the datapath?

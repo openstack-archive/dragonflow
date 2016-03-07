@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 from collections import defaultdict
 import six
 import threading
@@ -230,3 +232,44 @@ class DbStore(object):
 
     def get_floatingips(self, topic=None):
         return self.values('floatingips', topic)
+
+    def get_floatingip_by_ip(self, ip, topic=None):
+        for fip in self.get_floatingips(topic):
+            if fip.ip_address == ip:
+                return fip
+        return None
+
+    def get_floatingip_by_gateway(self, ip, topic=None):
+        for fip in self.get_floatingips(topic):
+            if fip.external_gateway_ip == ip:
+                return fip
+        return None
+
+    def check_and_update_floatingip(self, lswitch, topic=None):
+        fip_return = []
+        if lswitch.is_external() is not True:
+            return fip_return
+        network_id = lswitch.get_id()
+        for fip in self.get_floatingips(topic):
+            if fip.floating_network_id == network_id:
+                update_fip = self.update_floatingip_gateway(
+                    fip, lswitch)
+                if update_fip:
+                    fip_return.append(update_fip)
+        return fip_return
+
+    def update_floatingip_gateway(self, fip, lswitch):
+        subnets = lswitch.get_subnets()
+        for subnet in subnets:
+            if subnet.get_cidr() == fip.external_cidr:
+                # external gateway ip changed
+                if subnet.get_gateway_ip() != fip.external_gateway_ip:
+                    old_fip = copy.deepcopy(fip)
+                    fip.set_external_gateway_ip(subnet.get_gateway_ip())
+                    return (fip, old_fip)
+        return None
+
+    def get_first_floatingip(self, network_id):
+        for fip in self.get_floatingips():
+            if fip.floating_network_id == network_id:
+                return fip
