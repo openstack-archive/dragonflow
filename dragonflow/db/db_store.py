@@ -230,3 +230,15 @@ class DbStore(object):
 
     def get_floatingips(self, topic=None):
         return self.values('floatingips', topic)
+
+    def get_floatingip_by_ip(self, ip, topic=None):
+        for fip in self.get_floatingips(topic):
+            if fip.ip_address == ip:
+                return fip
+        return None
+
+    def get_floatingip_by_gateway(self, ip, topic=None):
+        for fip in self.get_floatingips(topic):
+            if fip.external_gateway_ip == ip:
+                return fip
+        return None
