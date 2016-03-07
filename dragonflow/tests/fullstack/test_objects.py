@@ -12,14 +12,15 @@
 
 import netaddr
 
-import time
-
+from neutron.agent.linux.utils import wait_until_true
 from novaclient import client as novaclient
 
 from oslo_log import log
 
 from dragonflow._i18n import _LW
 from dragonflow.tests.fullstack import test_base
+
+import time
 
 LOG = log.getLogger(__name__)
 
@@ -335,3 +336,11 @@ class FloatingipTestObj(object):
         if floatingip:
             return True
         return False
+
+    def wait_until_fip_active(self, timeout=5, sleep=1, exception=None):
+        def internal_predicate():
+            fip = self.get_floatingip()
+            if fip and fip.status == 'ACTIVE':
+                return True
+            return False
+        wait_until_true(internal_predicate, timeout, sleep, exception)
