@@ -17,6 +17,7 @@
 from dragonflow.db import api_vswitch
 
 from neutron.agent.ovsdb import impl_idl
+from neutron.agent.ovsdb.native import commands
 from neutron.agent.ovsdb.native.commands import BaseCommand
 from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import idlutils
@@ -41,6 +42,10 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
                                            self.db_name)
         self.ovsdb.start()
         self.idl = self.ovsdb.idl
+
+    @property
+    def _tables(self):
+        return self.idl.tables
 
     def transaction(self, check_error=False, log_errors=True, **kwargs):
         return impl_idl.Transaction(self,
@@ -124,6 +129,32 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
                         lport_to_ofport[ifaceid] = ofport
 
         return chassis_to_ofport, lport_to_ofport
+
+    def create_patch_port(self, bridge, port, remote_name):
+        if not commands.BridgeExistsCommand(self, bridge).execute():
+            commands.AddBridgeCommand(self, bridge,
+                                      datapath_type='system').execute()
+            AddPatchPort(self, bridge, port, remote_name).execute()
+        else:
+            if not self.patch_port_exist(port):
+                AddPatchPort(self, bridge, port, remote_name).execute()
+        return self.get_patch_port_ofport(port)
+
+    def delete_patch_port(self, bridge, port):
+        if not commands.BridgeExistsCommand(self, bridge).execute():
+            return
+        else:
+            commands.DelPortCommand(self, port, bridge,
+                                    if_exists=True).execute()
+
+    def patch_port_exist(self, port):
+        cmd = commands.DbGetCommand(self, 'Interface', port, 'type')
+        return bool('patch' == cmd.execute(check_error=False,
+                    log_errors=False))
+
+    def get_patch_port_ofport(self, port):
+        cmd = commands.DbGetCommand(self, 'Interface', port, 'ofport')
+        return cmd.execute(check_error=False, log_errors=False)
 
 
 class OvsdbSwitchPort(api_vswitch.SwitchPort):
@@ -229,3 +260,31 @@ class AddTunnelPort(BaseCommand):
         ports = getattr(bridge, 'ports', [])
         ports.append(port)
         bridge.ports = ports
+
+
+class AddPatchPort(BaseCommand):
+    def __init__(self, api, bridge, port, remote_name):
+        super(AddPatchPort, self).__init__(api)
+        self.bridge = bridge
+        self.port = port
+        self.remote_name = remote_name
+
+    def run_idl(self, txn):
+        br = idlutils.row_by_value(self.api.idl, 'Bridge', 'name', self.bridge)
+        port = txn.insert(self.api._tables['Port'])
+        port.name = self.port
+        br.verify('ports')
+        ports = getattr(br, 'ports', [])
+        ports.append(port)
+        br.ports = ports
+
+        iface = txn.insert(self.api._tables['Interface'])
+        iface.name = self.port
+        port.verify('interfaces')
+        ifaces = getattr(port, 'interfaces', [])
+        options_dict = getattr(iface, 'options', {})
+        options_dict['peer'] = self.remote_name
+        iface.options = options_dict
+        iface.type = 'patch'
+        ifaces.append(iface)
+        port.interfaces = ifaces
