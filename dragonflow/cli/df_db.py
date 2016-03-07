@@ -25,7 +25,7 @@ from dragonflow.common import exceptions as df_exceptions
 cfg.CONF.register_opts(common_params.df_opts, 'df')
 
 db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
-             'tunnel_key']
+             'tunnel_key', 'floatingip']
 
 usage_str = "The following commands are supported:\n" \
             "1) df_db ls  - print all the db tables \n" \
