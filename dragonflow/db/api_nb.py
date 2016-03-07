@@ -490,7 +490,7 @@ class NbApi(object):
 
 
 @six.add_metaclass(abc.ABCMeta)
-class DatabaseObject(object):
+class DbStoreObject(object):
     @abc.abstractmethod
     def get_id(self):
         """Return the ID of this object."""
@@ -502,7 +502,7 @@ class DatabaseObject(object):
         """
 
 
-class Chassis(DatabaseObject):
+class Chassis(DbStoreObject):
 
     def __init__(self, value):
         self.chassis = jsonutils.loads(value)
@@ -526,7 +526,7 @@ class Chassis(DatabaseObject):
         return self.chassis.__str__()
 
 
-class LogicalSwitch(DatabaseObject):
+class LogicalSwitch(DbStoreObject):
 
     def __init__(self, value):
         self.lswitch = jsonutils.loads(value)
@@ -553,7 +553,7 @@ class LogicalSwitch(DatabaseObject):
             return False
 
 
-class Subnet(DatabaseObject):
+class Subnet(DbStoreObject):
 
     def __init__(self, value):
         self.subnet = value
@@ -580,7 +580,7 @@ class Subnet(DatabaseObject):
         return self.subnet['dns_nameservers']
 
 
-class LogicalPort(DatabaseObject):
+class LogicalPort(DbStoreObject):
 
     def __init__(self, value):
         self.external_dict = {}
@@ -620,7 +620,7 @@ class LogicalPort(DatabaseObject):
         return self.lport.__str__() + self.external_dict.__str__()
 
 
-class LogicalRouter(DatabaseObject):
+class LogicalRouter(DbStoreObject):
 
     def __init__(self, value):
         self.lrouter = jsonutils.loads(value)
@@ -647,7 +647,7 @@ class LogicalRouter(DatabaseObject):
         return self.lrouter.__str__()
 
 
-class LogicalRouterPort(DatabaseObject):
+class LogicalRouterPort(DbStoreObject):
 
     def __init__(self, value):
         self.router_port = value
@@ -690,7 +690,7 @@ class LogicalRouterPort(DatabaseObject):
         return self.router_port.__str__()
 
 
-class SecurityGroup(DatabaseObject):
+class SecurityGroup(DbStoreObject):
 
     def __init__(self, value):
         self.secgroup = jsonutils.loads(value)
@@ -720,7 +720,7 @@ class SecurityGroup(DatabaseObject):
         return self.secgroup.__str__()
 
 
-class SecurityGroupRule(DatabaseObject):
+class SecurityGroupRule(DbStoreObject):
 
     def __init__(self, value):
         self.secrule = value
@@ -774,7 +774,7 @@ class SecurityGroupRule(DatabaseObject):
         return self.secrule.__str__()
 
 
-class Floatingip(DatabaseObject):
+class Floatingip(DbStoreObject):
 
     def __init__(self, value):
         self.floatingip = jsonutils.loads(value)
