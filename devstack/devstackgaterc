@@ -12,12 +12,16 @@
 
 #
 # This script is executed in the OpenStack CI job that runs DevStack + tempest.
-# You can find the CI job configuration here:
+# It is also used by the rally job. You can find the CI job configuration here:
 #
 # http://git.openstack.org/cgit/openstack-infra/project-config/tree/jenkins/jobs/dragonflow.yaml
 #
 
-export OVERRIDE_ENABLED_SERVICES=key,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,c-sch,c-api,c-vol,horizon,rabbit,tempest,mysql,dstat,df-controller,df-etcd,df-etcd-server,q-svc,q-l3,df-zmq-publisher-service
+export OVERRIDE_ENABLED_SERVICES=key,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,c-sch,c-api,c-vol,horizon,rabbit,mysql,dstat,df-controller,df-etcd,df-etcd-server,q-svc,q-l3,df-zmq-publisher-service
+if [ -z "${RALLY_SCENARIO}" ] ; then
+    # Only include tempest if this is not a rally job.
+    export OVERRIDE_ENABLED_SERVICES=${OVERRIDE_ENABLED_SERVICES},tempest
+fi
 
 # Begin list of exclusions.
 r="^(?!.*"
