@@ -10,9 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import scapy.all as scapy
+import ryu.lib.packet
 import sys
-
 import time
 
 from dragonflow._i18n import _LI
@@ -75,11 +74,9 @@ class TestArpResponder(test_base.DFTestBase):
             port2 = subnet1.create_port()
             time.sleep(5)  # We need to wait for the tap devices to set up
             # Create policy
-            arp_packet = scapy.Ether(
-                src=port1.port.get_logical_port().get_mac(),
-                dst="ff:ff:ff:ff:ff:ff",
-            ) / scapy.ARP(
-                pdst=port2.port.get_logical_port().get_ip(),
+            arp_packet = self._create_arp_request(
+                src_port=port1.port.get_logical_port(),
+                dst_port=port2.port.get_logical_port(),
             )
             send_arp_request = app_testing_objects.SendAction(
                 subnet1.subnet_id,
@@ -94,7 +91,7 @@ class TestArpResponder(test_base.DFTestBase):
                     rules=[
                         app_testing_objects.PortPolicyRule(
                             # Detect arp replies
-                            app_testing_objects.ScapyARPReplyFilter(),
+                            app_testing_objects.RyuARPReplyFilter(),
                             actions=[
                                 log_action,
                                 app_testing_objects.StopSimulationAction()
@@ -102,7 +99,7 @@ class TestArpResponder(test_base.DFTestBase):
                         ),
                         app_testing_objects.PortPolicyRule(
                             # Ignore IPv6 packets
-                            app_testing_objects.ScapyIPv6Filter(),
+                            app_testing_objects.RyuIPv6Filter(),
                             actions=[
                                 ignore_action
                             ]
@@ -124,6 +121,23 @@ class TestArpResponder(test_base.DFTestBase):
             raise
         self.store(self.topology)
         self.store(self.policy)
+
+    def _create_arp_request(self, src_port, dst_port):
+        ethernet = ryu.lib.packet.ethernet.ethernet(
+            src=src_port.get_mac(),
+            dst="ff:ff:ff:ff:ff:ff",
+            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_ARP,
+        )
+        arp = ryu.lib.packet.arp.arp_ip(
+            opcode=1,
+            src_mac=src_port.get_mac(), src_ip=src_port.get_ip(),
+            dst_mac='00:00:00:00:00:00', dst_ip=dst_port.get_ip(),
+        )
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ethernet)
+        result.add_protocol(arp)
+        result.serialize()
+        return result.data
 
     def tearDown(self):
         super(TestArpResponder, self).tearDown()

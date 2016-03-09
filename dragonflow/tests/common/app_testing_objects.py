@@ -14,7 +14,7 @@ import collections
 import fcntl
 import os
 import pytun
-import scapy.all as scapy
+import ryu.lib.packet
 import socket
 import threading
 import time
@@ -505,24 +505,21 @@ class Filter(object):
         raise Exception('Filter not implemented')
 
 
-class ScapyIPv6Filter(object):
-    """Use scapy to parse the packet and test if it's IPv6."""
+class RyuIPv6Filter(object):
+    """Use ryu to parse the packet and test if it's IPv6."""
     def __call__(self, buf):
-        pkt = scapy.Ether(buf)
-        if pkt[0].type != 0x86dd:  # IPv6 protocol
-            return False
-        return True
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        return (pkt.get_protocol(ryu.lib.packet.ipv6.ipv6) is not None)
 
 
-class ScapyARPReplyFilter(object):
-    """Use scapy to parse the packet and test if it's an ARP reply."""
+class RyuARPReplyFilter(object):
+    """Use ryu to parse the packet and test if it's an ARP reply."""
     def __call__(self, buf):
-        pkt = scapy.Ether(buf)
-        if pkt[0].type != 0x806:  # ARP protocol
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        arp = pkt.get_protocol(ryu.lib.packet.arp.arp)
+        if not arp:
             return False
-        if pkt[1].op != 2:  # ARP reply
-            return False
-        return True
+        return arp.opcode == 2
 
 
 class Action(object):
@@ -546,8 +543,8 @@ class Action(object):
 class LogAction(Action):
     """Action to log the received packet."""
     def __call__(self, policy, rule, port_thread, buf):
-        pkt = scapy.Ether(buf)
-        LOG.info(_LI('LogAction: Got packet: {}').format(pkt.summary()))
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        LOG.info(_LI('LogAction: Got packet: {}').format(str(pkt)))
 
 
 class SendAction(Action):
@@ -587,8 +584,8 @@ class RaiseAction(Action):
         self.message = message
 
     def __call__(self, policy, rule, port_thread, buf):
-        pkt = scapy.Ether(buf)
-        raise Exception("Packet raised exception: {}".format(pkt.summary()))
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        raise Exception("Packet raised exception: {}".format(str(pkt)))
 
 
 class DisableRuleAction(Action):
