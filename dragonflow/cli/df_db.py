@@ -32,7 +32,8 @@ usage_str = "The following commands are supported:\n" \
             "2) df-db ls <table_name> - print all the keys for specific table \n" \
             "3) df-db get <table_name> <key> - print value for specific key\n" \
             "4) df-db dump - dump all tables\n" \
-            "5) df-db clean - clean up all keys\n"
+            "5) df-db clean - clean up all keys\n" \
+            "6) df_db rm <table name> <key> - remove the specified db record\n"
 
 
 def print_tables():
@@ -108,6 +109,13 @@ def clean_whole_table(db_driver, table):
     print('DF DB is cleaned up.')
 
 
+def remove_record(db_driver, table, key):
+    try:
+        db_driver.delete_key(table, key)
+    except df_exceptions.DBKeyNotFound:
+        print('Key %s is not found in table %s.' % (key, table))
+
+
 def main():
     if len(sys.argv) < 2:
         print usage_str
@@ -161,6 +169,18 @@ def main():
     if action == 'clean':
         for table in db_tables:
             clean_whole_table(db_driver, table)
+
+    if action == 'rm':
+        if len(sys.argv) < 4:
+            print "must supply a key"
+            print usage_str
+            return
+        table = sys.argv[2]
+        if table not in db_tables:
+            print "<table> must be one of the following: %s" % db_tables
+            return
+        key = sys.argv[3]
+        remove_record(db_driver, table, key)
         return
 
     print usage_str
