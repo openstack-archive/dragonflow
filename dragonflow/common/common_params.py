@@ -75,12 +75,6 @@ df_opts = [
         default='/var/run/zmq_pubsub/zmq-publisher-socket',
         help=_('Neutron Server Publisher inter-process socket address')
     ),
-    cfg.BoolOpt('is_monitor_tables',
-                default='$enable_df_pub_sub',
-                help=_('Manually monitor Dragonflow database tables')),
-    cfg.ListOpt('monitor_tables',
-                default=['chassis'],
-                help=_('Monitor these tables for chages in DF database')),
     cfg.FloatOpt('monitor_table_poll_time',
                 default=30,
                 help=_('Poll monitored tables every this number of seconds')),
