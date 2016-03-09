@@ -51,12 +51,18 @@ class DfLocalController(object):
         self.next_network_id = 0
         self.db_store = db_store.DbStore()
         self.nb_api = None
-        self.vswitch_api = None
         self.chassis_name = chassis_name
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
         self.sync_finished = False
+        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        self.nb_api = api_nb.NbApi(
+                nb_driver_class(),
+                use_pubsub=cfg.CONF.df.enable_df_pub_sub)
+        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
         kwargs = dict(
+            nb_api=self.nb_api,
+            vswitch_api=self.vswitch_api,
             db_store=self.db_store
         )
         app_mgr = AppManager.get_instance()
@@ -67,14 +73,8 @@ class DfLocalController(object):
             cfg.CONF.df.enable_selective_topology_distribution
 
     def run(self):
-        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
-        self.nb_api = api_nb.NbApi(
-                nb_driver_class(),
-                use_pubsub=cfg.CONF.df.enable_df_pub_sub)
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
-        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(
-            self.ip, self.nb_api)
         self.vswitch_api.initialize()
 
         self.topology = Topology(self, self.enable_selective_topo_dist)
