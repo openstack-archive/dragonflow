@@ -16,9 +16,9 @@
 
 import mock
 
-#from neutron.common import constants
 from neutron import context as neutron_context
-from neutron.tests import base as tests_base
+
+from dragonflow.tests import base as tests_base
 
 # TODO(gsagie) use this until Ryu is in the requierments.txt
 try:

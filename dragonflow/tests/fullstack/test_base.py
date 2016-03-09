@@ -15,11 +15,12 @@ from oslo_config import cfg
 from oslo_utils import importutils
 
 from neutron.common import config as common_config
-from neutron.tests import base
 from neutronclient.neutron import client
 
 from dragonflow.common import common_params
 from dragonflow.db import api_nb
+from dragonflow.tests import base
+
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
 
