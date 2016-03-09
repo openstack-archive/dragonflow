@@ -31,7 +31,8 @@ usage_str = "The following commands are supported:\n" \
             "1) df_db ls  - print all the db tables \n" \
             "2) df_db ls <table_name> - print all the keys for specific table \n" \
             "3) df_db get <table_name> <key> - print value for specific key\n" \
-            "4) df_db dump - dump all tables\n"
+            "4) df_db dump - dump all tables\n" \
+            "5) df_db rm <table name> <key> - remove the specific db record \n"
 
 
 def print_tables():
@@ -96,6 +97,13 @@ def bind_port_to_localhost(db_driver, port_id):
     db_driver.set_key('lport', port_id, lport_json)
 
 
+def remove_record(db_driver, table, name):
+    try:
+        db_driver.delete_key(table, name)
+    except df_exceptions.DBKeyNotFound:
+        print('Table not found: ' + table)
+
+
 def main():
     if len(sys.argv) < 2:
         print usage_str
@@ -144,6 +152,20 @@ def main():
     if action == 'bind':
         port_id = sys.argv[2]
         bind_port_to_localhost(db_driver, port_id)
+        return
+
+    if action == 'rm':
+        if len(sys.argv) < 4:
+            print "must supply a key"
+            print usage_str
+            return
+        table = sys.argv[2]
+        if table not in db_tables:
+            print "<table> must be one of the following:"
+            print db_tables
+            return
+        key = sys.argv[3]
+        remove_record(db_driver, table, key)
         return
 
     print usage_str
