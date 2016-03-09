@@ -51,6 +51,10 @@ class DBKeyNotFound(DragonflowException):
     message = _('DB Key not found, key=%(key)s')
 
 
+class SocketReadException(DragonflowException):
+    message = _('Exception happened when read data from socket!')
+	
+
 class UnsupportedTransportException(DragonflowException):
     """
     An exception for cases when the given transport protocol (e.g. UDP, TCP) is
