@@ -17,7 +17,7 @@ import mock
 
 from dragonflow.controller.ryu_base_app import RyuDFAdapter
 
-from neutron.tests import base as tests_base
+from dragonflow.tests import base as tests_base
 
 
 class TestRyuDFAdapter(tests_base.BaseTestCase):

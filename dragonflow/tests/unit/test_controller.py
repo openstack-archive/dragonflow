@@ -14,11 +14,10 @@ import mock
 
 from oslo_config import cfg
 
-from neutron.tests import base as tests_base
-
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import dispatcher
 from dragonflow.db import db_store
+from dragonflow.tests import base as tests_base
 
 
 class TestDfController(tests_base.BaseTestCase):
