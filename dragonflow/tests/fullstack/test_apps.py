@@ -36,7 +36,7 @@ class TestApps(test_base.DFTestBase):
             topology.create_router([subnet1.subnet_id, subnet2.subnet_id])
             LOG.info(_LI('Port1 name: {}').format(port1.tap.tap.name))
             LOG.info(_LI('Port2 name: {}').format(port2.tap.tap.name))
-            self._print_command(['ifconfig', '-a'], True)
+            self._print_command(['ip', 'addr'])
             self._print_command(['ovs-vsctl', 'show'], True)
             self._print_command(['ovs-ofctl', 'show', 'br-int'], True)
             self._print_command(['ovs-ofctl', 'dump-flows', 'br-int'], True)
