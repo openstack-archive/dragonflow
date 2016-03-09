@@ -50,12 +50,13 @@ class DfLocalController(object):
         self.next_network_id = 0
         self.db_store = db_store.DbStore()
         self.nb_api = None
-        self.vswitch_api = None
         self.chassis_name = chassis_name
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
         self.sync_finished = False
+        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
         kwargs = dict(
+            vswitch_api=self.vswitch_api,
             db_store=self.db_store
         )
         app_mgr = AppManager.get_instance()

@@ -36,12 +36,13 @@ class RyuDFAdapter(OFPHandler):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OF_AUTO_PORT_DESC_STATS_REQ_VER = 0x04
 
-    def __init__(self, db_store=None):
-        super(RyuDFAdapter, self).__init__(db_store=db_store)
+    def __init__(self, **kwargs):
+        super(RyuDFAdapter, self).__init__(**kwargs)
         self.dispatcher = AppDispatcher('dragonflow.controller',
                 cfg.CONF.df.apps_list)
-        self.db_store = db_store
+        self.db_store = kwargs['db_store']
         self._datapath = None
+        self.kwargs = kwargs
         self.table_handlers = {}
 
     @property
@@ -50,7 +51,7 @@ class RyuDFAdapter(OFPHandler):
 
     def start(self):
         super(RyuDFAdapter, self).start()
-        self.load(self, db_store=self.db_store)
+        self.load(self, **self.kwargs)
         self.wait_until_ready()
 
     def load(self, *args, **kwargs):
