@@ -23,7 +23,7 @@ from oslo_log import log
 
 from neutron.agent.common import utils
 
-from dragonflow._i18n import _LI
+from dragonflow._i18n import _LI, _LE
 from dragonflow.common.utils import DFDaemon
 from dragonflow.tests.fullstack import test_objects as objects
 
@@ -244,7 +244,7 @@ class LogicalPortTap(object):
         self.tap.close()
 
     def _packet_raw_data_to_hex(self, buf):
-        return buf.encode('hex')
+        return str(buf).encode('hex')
 
     def send(self, buf):
         """Send a packet out via the tap device.
@@ -420,6 +420,7 @@ class Policy(object):
         :type exception:  Exception
         """
 
+        LOG.exception(_LE('Adding exception:'))
         self.exceptions.append(exception)
         self.stop()
 
@@ -585,7 +586,11 @@ class RaiseAction(Action):
 
     def __call__(self, policy, rule, port_thread, buf):
         pkt = ryu.lib.packet.packet.Packet(buf)
-        raise Exception("Packet raised exception: {}".format(str(pkt)))
+        raise Exception("Packet {} raised exception on port: {}: {}".format(
+            str(pkt),
+            (port_thread.port.subnet.subnet_id, port_thread.port.port_id),
+            self.message,
+        ))
 
 
 class DisableRuleAction(Action):
