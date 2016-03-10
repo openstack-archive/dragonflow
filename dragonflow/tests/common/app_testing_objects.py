@@ -523,6 +523,43 @@ class RyuARPReplyFilter(object):
         return arp.opcode == 2
 
 
+# Taken from the DHCP app
+def _get_dhcp_message_type_opt(dhcp_packet):
+    for opt in dhcp_packet.options.option_list:
+        if opt.tag == ryu.lib.packet.dhcp.DHCP_MESSAGE_TYPE_OPT:
+            return ord(opt.value)
+
+
+class RyuDHCPFilter(object):
+    """Use ryu to parse the packet and test if it's a DHCP Ack"""
+    def __call__(self, buf):
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        return (pkt.get_protocol(ryu.lib.packet.dhcp.dhcp) is not None)
+
+
+class RyuDHCPPacketTypeFilter(object):
+    """Use ryu to parse the packet and test if it's a DHCP Ack"""
+    def __call__(self, buf):
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        dhcp = pkt.get_protocol(ryu.lib.packet.dhcp.dhcp)
+        if not dhcp:
+            return False
+        return _get_dhcp_message_type_opt(dhcp) == self.get_dhcp_packet_type()
+
+    def get_dhcp_packet_type(self):
+        raise Exception('DHCP packet type filter not fully implemented')
+
+
+class RyuDHCPOfferFilter(RyuDHCPPacketTypeFilter):
+    def get_dhcp_packet_type(self):
+        return ryu.lib.packet.dhcp.DHCP_OFFER
+
+
+class RyuDHCPAckFilter(RyuDHCPPacketTypeFilter):
+    def get_dhcp_packet_type(self):
+        return ryu.lib.packet.dhcp.DHCP_ACK
+
+
 class Action(object):
     """Base class of actions to execute. Actions are executed on matched
     packets in policy rules (PortPolicyRule).
