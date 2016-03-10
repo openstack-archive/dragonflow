@@ -20,7 +20,7 @@ from oslo_log import log
 
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
-from ryu.controller.handler import set_ev_cls
+from ryu.controller.handler import set_ev_handler
 from ryu.controller import ofp_event
 from ryu.controller.ofp_handler import OFPHandler
 from ryu.ofproto import ofproto_v1_3
@@ -110,7 +110,7 @@ class RyuDFAdapter(OFPHandler):
                 secgroup=secgroup,
                 secgroup_rule=secgroup_rule)
 
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    @set_ev_handler(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         # TODO(oanson) is there a better way to get the datapath?
         self._datapath = ev.msg.datapath
@@ -126,7 +126,7 @@ class RyuDFAdapter(OFPHandler):
         req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
 
-    @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
+    @set_ev_handler(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
     def _port_status_handler(self, ev):
         msg = ev.msg
         reason = msg.reason
@@ -154,11 +154,11 @@ class RyuDFAdapter(OFPHandler):
             LOG.info(_LI("Illeagal port state %(port_no)s %(reason)s")
                      % {'port_no': port_no, 'reason': reason})
 
-    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
+    @set_ev_handler(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
     def port_desc_stats_reply_handler(self, ev):
         self.dispatcher.dispatch('port_desc_stats_reply_handler', ev)
 
-    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
+    @set_ev_handler(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def OF_packet_in_handler(self, event):
         msg = event.msg
         table_id = msg.table_id
