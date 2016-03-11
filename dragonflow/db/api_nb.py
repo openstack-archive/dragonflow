@@ -16,7 +16,6 @@
 
 import eventlet
 import netaddr
-import time
 
 from oslo_config import cfg
 from oslo_log import log
@@ -39,7 +38,6 @@ class NbApi(object):
         self.driver = db_driver
         self.controller = None
         self._queue = eventlet.queue.PriorityQueue()
-        self.db_apply_failed = False
         self.use_pubsub = use_pubsub
         self.publisher = None
         self.is_neutron_server = is_neutron_server
@@ -139,9 +137,8 @@ class NbApi(object):
 
     def _read_db_changes_from_queue(self):
         while True:
-            if not self.db_apply_failed:
-                self.next_update = self._queue.get(block=True)
-                LOG.debug("Event update: %s", self.next_update)
+            self.next_update = self._queue.get(block=True)
+            LOG.debug("Event update: %s", self.next_update)
             try:
                 value = self.next_update.value
                 if not value and self.next_update.action != 'delete':
@@ -153,13 +150,11 @@ class NbApi(object):
                                      self.next_update.key,
                                      self.next_update.action,
                                      value)
-                self.db_apply_failed = False
                 self._queue.task_done()
             except Exception as e:
                 if "ofport is 0" not in e.message:
-                    LOG.warning(e)
-                self.db_apply_failed = True
-                time.sleep(1)
+                    LOG.exception(e)
+                self.apply_db_change(None, None, 'sync', None)
 
     def apply_db_change(self, table, key, action, value):
         if action == 'sync':
