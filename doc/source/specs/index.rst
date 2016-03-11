@@ -39,6 +39,7 @@ Spec Template
     selective_topo_dist
     performance_testing
     ovsdb_monitor
+    igmp_application_and_multicast_support
 
 
 Indices and tables
