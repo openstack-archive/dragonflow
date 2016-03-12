@@ -34,7 +34,10 @@ class DbUpdate(object):
         self.action = action
         self.table = table
         self.value = value
-        self.topic = topic
+        self.topic = SEND_ALL_TOPIC
+        if topic:
+            #TODO(gsagie) remove the comment once selective proactive is done
+            pass
 
     def to_dict(self):
         update = {

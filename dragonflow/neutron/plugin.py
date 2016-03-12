@@ -188,14 +188,18 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         sg_rule = super(DFPlugin, self).create_security_group_rule(
             context, security_group_rule)
         sg_id = sg_rule['security_group_id']
-        self.nb_api.add_security_group_rules(sg_id, [sg_rule])
+        sg_group = self.get_security_group(context, sg_id)
+        self.nb_api.add_security_group_rules(sg_id, [sg_rule],
+                                             sg_group['tenant_id'])
         return sg_rule
 
     def delete_security_group_rule(self, context, id):
         security_group_rule = self.get_security_group_rule(context, id)
         sg_id = security_group_rule['security_group_id']
+        sg_group = self.get_security_group(context, sg_id)
         super(DFPlugin, self).delete_security_group_rule(context, id)
-        self.nb_api.delete_security_group_rule(sg_id, id)
+        self.nb_api.delete_security_group_rule(sg_id, id,
+                                               sg_group['tenant_id'])
 
     def delete_security_group(self, context, sg_id):
         sg = self.get_security_group(context, sg_id)
@@ -217,6 +221,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self.nb_api.add_subnet(
                 new_subnet['id'],
                 net_id,
+                new_subnet['tenant_id'],
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
                 dhcp_ip=dhcp_address,
@@ -240,6 +245,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self.nb_api.update_subnet(
                 new_subnet['id'],
                 net_id,
+                new_subnet['tenant_id'],
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
                 dhcp_ip=dhcp_address,
@@ -255,7 +261,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             super(DFPlugin, self).delete_subnet(context, id)
             # update df controller with subnet delete
             try:
-                self.nb_api.delete_subnet(id, net_id)
+                self.nb_api.delete_subnet(id, net_id,
+                                          orig_subnet['tenant_id'])
             except df_exceptions.DBKeyNotFound:
                 LOG.debug("network %s is not found in DB, might have "
                           "been deleted concurrently" % net_id)
@@ -302,11 +309,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             LOG.debug("lswitch %s is not found in DF DB, might have "
                       "been deleted concurrently" % network_id)
 
-    def _set_network_name(self, network_id, name):
-        ext_id = [df_const.DF_NETWORK_NAME_EXT_ID_KEY, name]
-        self.nb_api.update_lswitch(network_id,
-                                   external_ids=ext_id)
-
     def update_network(self, context, network_id, network):
         pnet._raise_if_updates_provider_attributes(network['network'])
         # TODO(gsagie) rollback needed
@@ -314,8 +316,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             result = super(DFPlugin, self).update_network(context, network_id,
                                                           network)
             self._process_l3_update(context, result, network['network'])
-            if 'name' in network['network']:
-                self._set_network_name(network_id, network['network']['name'])
             return result
 
     def update_port(self, context, id, port):
@@ -363,6 +363,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             security_groups = updated_security_groups
 
         self.nb_api.update_lport(name=updated_port['id'],
+                                 topic=updated_port['tenant_id'],
                                  macs=[updated_port['mac_address']], ips=ips,
                                  external_ids=external_ids,
                                  parent_name=parent_name, tag=tag,
@@ -576,8 +577,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
 
-        logical_port = self.nb_api.get_logical_port(port['id'])
-        self.nb_api.add_lrouter_port(port['id'], lrouter, lswitch,
+        logical_port = self.nb_api.get_logical_port(port['id'],
+                                                    port['tenant_id'])
+        self.nb_api.add_lrouter_port(port['id'],
+                                     lrouter, lswitch,
+                                     port['tenant_id'],
                                      mac=port['mac_address'],
                                      network=network,
                                      tunnel_key=logical_port.get_tunnel_key())
@@ -596,7 +600,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         try:
             self.nb_api.delete_lrouter_port(router_id,
-                                            network_id)
+                                            network_id,
+                                            subnet['tenant_id'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("logical router %s is not found in DF DB, suppressing "
                       " delete_lrouter_port exception" % router_id)
@@ -704,6 +709,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 initial_status=const.FLOATINGIP_STATUS_DOWN)
             self.nb_api.create_floatingip(
                 name=floatingip_dict['id'],
+                topic=floatingip_dict['tenant_id'],
                 floating_ip_address=floatingip_dict['floating_ip_address'],
                 floating_network_id=floatingip_dict['floating_network_id'],
                 router_id=floatingip_dict['router_id'],
@@ -719,6 +725,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 context, id, floatingip)
             self.nb_api.update_floatingip(
                 name=floatingip_dict['id'],
+                topic=floatingip_dict['tenant_id'],
                 router_id=floatingip_dict['router_id'],
                 port_id=floatingip_dict['port_id'],
                 fixed_ip_address=floatingip_dict['fixed_ip_address'],
@@ -728,10 +735,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     def delete_floatingip(self, context, id):
         with context.session.begin(subtransactions=True):
+            floatingip = self.get_floatingip(context, id)
             super(DFPlugin, self).delete_floatingip(context, id)
 
         try:
-            self.nb_api.delete_floatingip(name=id)
+            self.nb_api.delete_floatingip(name=id,
+                                          topic=floatingip['tenant_id'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("floatingip %s is not found in DF DB, might have "
                       "been deleted concurrently" % id)
