@@ -86,6 +86,7 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
                 mock.call.remove_security_group_rule(
                         secgroup=14, secgroup_rule=15)])
 
+<<<<<<< HEAD
     def test_switch_features_handler(self):
         self.mock_app.reset_mock()
         ev = mock.Mock()
@@ -96,6 +97,8 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         self.ryu_df_adapter.switch_features_handler(ev)
         self.mock_app.assert_has_calls([mock.call.switch_features_handler(ev)])
 
+=======
+>>>>>>> c03b4ad... code for local controller reliability
     def test_port_desc_stats_reply_handler(self):
         self.mock_app.reset_mock()
         ev = mock.Mock()
