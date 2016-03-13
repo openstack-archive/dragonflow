@@ -27,6 +27,7 @@ from neutron.agent.ovsdb.native.commands import BaseCommand
 from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import idlutils
 
+import eventlet
 from oslo_log import log
 import six
 import socket
@@ -34,6 +35,14 @@ import time
 
 
 LOG = log.getLogger(__name__)
+
+
+start_ovsdb_monitor = False
+
+
+def notify_start_ovsdb_monitor():
+    global start_ovsdb_monitor
+    start_ovsdb_monitor = True
 
 
 class OvsdbSwitchApi(api_vswitch.SwitchApi):
@@ -58,8 +67,17 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.ovsdb.start()
         self.idl = self.ovsdb.idl
 
-        ovsdb_monitor = OvsdbMonitor(self.ip, self.port, self.nb_api)
-        ovsdb_monitor.daemonize()
+        self.pool = eventlet.GreenPool(size=1)
+        self.pool.spawn_n(self._wait_event_loop)
+
+    def _wait_event_loop(self):
+        global start_ovsdb_monitor
+        while True:
+            time.sleep(1)
+            if start_ovsdb_monitor is True:
+                ovsdb_monitor = OvsdbMonitor(self.ip, self.port, self.nb_api)
+                ovsdb_monitor.daemonize()
+                return
 
     def transaction(self, check_error=False, log_errors=True, **kwargs):
         return impl_idl.Transaction(self,
