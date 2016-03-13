@@ -85,16 +85,6 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
                 mock.call.remove_security_group_rule(
                         secgroup=14, secgroup_rule=15)])
 
-    def test_switch_features_handler(self):
-        self.mock_app.reset_mock()
-        ev = mock.Mock()
-        ev.msg = mock.Mock()
-        ev.msg.datapath = mock.Mock()
-        ev.msg.datapath.ofproto = mock.Mock()
-        ev.msg.datapath.ofproto.OFP_VERSION = 0x04
-        self.ryu_df_adapter.switch_features_handler(ev)
-        self.mock_app.assert_has_calls([mock.call.switch_features_handler(ev)])
-
     def test_port_desc_stats_reply_handler(self):
         self.mock_app.reset_mock()
         ev = mock.Mock()
