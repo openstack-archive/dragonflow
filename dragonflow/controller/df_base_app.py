@@ -63,6 +63,9 @@ class DFlowApp(DBNotifyInterface):
         if out_group is None:
             out_group = datapath.ofproto.OFPG_ANY
 
+        from dragonflow.controller.aging import set_aging_cookie_bits
+        cookie = set_aging_cookie_bits(cookie)
+
         message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
                                                      cookie_mask,
                                                      table_id, command,

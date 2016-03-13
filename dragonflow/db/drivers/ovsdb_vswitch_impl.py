@@ -59,6 +59,10 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.ovsdb.start()
         self.idl = self.ovsdb.idl
 
+        self.pool = eventlet.GreenPool(size=1)
+        self.pool.spawn_n(self._wait_event_loop)
+
+    def start_ovsdb_monitor(self):
         ovsdb_monitor = OvsdbMonitor(self.nb_api, self.idl)
         ovsdb_monitor.daemonize()
 
@@ -498,6 +502,11 @@ class OvsdbMonitor(object):
         action = "sync_finished"
         self.nb_api.db_change_callback(table, None, action, None, None)
 
+    def notify_monitor_start(self):
+        table = constants.OVS_INTERFACE
+        action = "sync_started"
+        self.nb_api.db_change_callback(table, None, action, None, None)
+
     def run(self):
         while True:
             self.output = ""
@@ -508,6 +517,7 @@ class OvsdbMonitor(object):
 
             self.connect_ovsdb()
             try:
+                self.notify_monitor_start()
                 self.send_monitor_request()
             except Exception as e:
                 LOG.exception(_LE("exception happened "
