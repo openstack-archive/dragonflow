@@ -42,4 +42,10 @@ fi
 pip install -U $*
 pip install python-etcd
 pip install 'crc16>=0.1.1'
+pip install 'iso8601>=0.1.9'
+pip install 'netaddr!=0.7.16,>=0.7.12'
+pip install 'pecan>=1.0.0'
+pip install 'PasteDeploy>=1.5.0'
+pip install 'Jinja2>=2.8'
+pip install 'greenlet>=0.3.2'
 exit $?
