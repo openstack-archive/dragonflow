@@ -80,10 +80,20 @@ class DfLocalController(object):
         self.topology = Topology(self, self.enable_selective_topo_dist)
 
         self.vswitch_api.sync()
+        """
+        TODO(Gal) both set_controller and del_controller will delete flows.
+        for reliability, here we should check if controller is set for OVS,
+        if yes, don't set controller and don't delete controller.
+        if no, set controller
+        get_controller api should be provided
+
         self.vswitch_api.del_controller('br-int').execute()
         self.vswitch_api.set_controllers(
             'br-int', ['tcp:' + self.ip + ':6633']).execute()
 
+        TODO(Gal) set controller's fail mode to secure
+        set controller fail mode api should be provided
+        """
         self.open_flow_app.start()
         self.db_sync_loop()
 
@@ -475,6 +485,7 @@ class DfLocalController(object):
 
     def ovs_sync_started(self):
         self.open_flow_app.notify_ovs_sync_started()
+        self.open_flow_app.notify_switch_features_handler()
 
     def get_nb_api(self):
         return self.nb_api
