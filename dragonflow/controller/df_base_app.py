@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from dragonflow.controller.common.utils import set_aging_cookie_bits
 from dragonflow.controller.df_db_notifier import DBNotifyInterface
 from oslo_log import log as logging
 from ryu.lib.packet import arp
@@ -65,6 +66,8 @@ class DFlowApp(DBNotifyInterface):
 
         if out_group is None:
             out_group = datapath.ofproto.OFPG_ANY
+
+        cookie = set_aging_cookie_bits(cookie)
 
         message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
                                                      cookie_mask,

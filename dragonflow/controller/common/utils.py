@@ -14,8 +14,10 @@
 from ryu.lib import addrconv
 import struct
 
+from dragonflow.controller.common import constants as const
 
 UINT32_MAX = 0xffffffff
+_aging_cookie = 0
 
 
 def ipv4_text_to_int(ip_text):
@@ -33,3 +35,23 @@ def mask_ntob(mask, err_msg=None):
         if err_msg is not None:
             msg = '%s %s' % (err_msg, msg)
             raise ValueError(msg)
+
+
+def set_aging_cookie(c):
+    global _aging_cookie
+
+
+def get_aging_cookie():
+    return _aging_cookie
+
+
+def set_aging_cookie_bits(cookie):
+    c = cookie
+    # clear aging bits before using
+    c &= (0 & const.GLOBAL_AGING_COOKIE_MASK)
+    c |= (_aging_cookie & const.GLOBAL_AGING_COOKIE_MASK)
+    return c
+
+
+def get_xor_cookie(cookie):
+    return cookie ^ 0x1
