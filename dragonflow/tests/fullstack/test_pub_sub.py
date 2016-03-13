@@ -22,6 +22,7 @@ from neutron.agent.linux.utils import wait_until_true
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC
 from dragonflow.db.pub_sub_api import TableMonitor
+from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
@@ -87,7 +88,7 @@ class TestPubSub(test_base.DFTestBase):
         subscriber = get_subscriber(_db_change_callback)
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
-        eventlet.sleep(1)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
         local_event_num = events_num
         port = self.store(objects.PortTestObj(
@@ -96,16 +97,16 @@ class TestPubSub(test_base.DFTestBase):
             network_id
         ))
         port.create()
-        eventlet.sleep(1)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
 
         self.assertNotEqual(local_event_num, events_num)
         local_event_num = events_num
         port.close()
-        eventlet.sleep(1)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
         local_event_num = events_num
         network.close()
-        eventlet.sleep(1)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
         subscriber.stop()
         self.assertFalse(network.exists())
@@ -124,7 +125,7 @@ class TestPubSub(test_base.DFTestBase):
         subscriber = get_subscriber(_db_change_callback)
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
-        eventlet.sleep(1)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, ns.events_num)
         port = self.store(objects.PortTestObj(
             self.neutron,
@@ -133,7 +134,7 @@ class TestPubSub(test_base.DFTestBase):
         ))
         local_event_num = ns.events_num
         port_id = port.create()
-        eventlet.sleep(1)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, ns.events_num)
         local_event_num = ns.events_num
         update = {'port': {'name': 'test'}}
@@ -146,11 +147,11 @@ class TestPubSub(test_base.DFTestBase):
         self.assertGreaterEqual(ns.events_num, local_event_num + 100)
         local_event_num = ns.events_num
         port.close()
-        eventlet.sleep(1)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, ns.events_num)
         local_event_num = ns.events_num
         network.close()
-        eventlet.sleep(1)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
         subscriber.stop()
         self.assertFalse(network.exists())
@@ -335,7 +336,7 @@ class TestDbTableMonitors(test_base.DFTestBase):
             'chassis',
             'chassis-1',
             jsonutils.dumps({'name': 'chassis-1', 'data': 'chassis-1-data-1'}))
-        eventlet.sleep(2)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertIn(expected_event, self.namespace.events)
 
         expected_event = {
@@ -350,7 +351,7 @@ class TestDbTableMonitors(test_base.DFTestBase):
             'chassis',
             'chassis-1',
             jsonutils.dumps({'name': 'chassis-1', 'data': 'chassis-1-data-2'}))
-        eventlet.sleep(2)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertIn(expected_event, self.namespace.events)
 
         expected_event = {
@@ -362,5 +363,5 @@ class TestDbTableMonitors(test_base.DFTestBase):
         }
         self.assertNotIn(expected_event, self.namespace.events)
         self.nb_api.driver.delete_key('chassis', 'chassis-1')
-        eventlet.sleep(2)
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertIn(expected_event, self.namespace.events)

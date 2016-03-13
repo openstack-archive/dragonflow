@@ -16,6 +16,7 @@ import time
 
 from dragonflow._i18n import _LI
 from dragonflow.tests.common import app_testing_objects
+from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_base
 
 from neutron.agent.common import utils
@@ -72,7 +73,7 @@ class TestArpResponder(test_base.DFTestBase):
             subnet1 = self.topology.create_subnet(cidr='192.168.10.0/24')
             port1 = subnet1.create_port()
             port2 = subnet1.create_port()
-            time.sleep(5)  # We need to wait for the tap devices to set up
+            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
             # Create policy
             arp_packet = self._create_arp_request(
                 src_port=port1.port.get_logical_port(),

@@ -15,6 +15,12 @@ from neutron.agent.linux.utils import wait_until_true
 import re
 
 
+#: It takes some time from the moment the command is sent to Neutron, until it
+#: propagates down to the DF controller and DF DB. It shouldn't be more than,
+#: say, 2 seconds.
+DEFAULT_CMD_TIMEOUT = 2
+
+
 def wait_until_is_and_return(predicate, timeout=5, sleep=1, exception=None):
     container = {}
 
