@@ -72,6 +72,12 @@ class DfLocalController(object):
         self.vswitch_api.initialize()
 
         self.vswitch_api.sync()
+        """
+        TODO(saggi) both set_controller and del_controller will delete flows.
+        for reliability, here we should check if controller is set for OVS,
+        if yes, don't set controller and don't delete controller.
+        if no, set controller
+        """
         self.vswitch_api.del_controller('br-int').execute()
         self.vswitch_api.set_controllers(
             'br-int', ['tcp:' + self.ip + ':6633']).execute()

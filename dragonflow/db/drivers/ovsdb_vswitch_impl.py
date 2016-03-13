@@ -14,12 +14,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+import eventlet
+
 from dragonflow.db import api_vswitch
 
 from neutron.agent.ovsdb import impl_idl
 from neutron.agent.ovsdb.native.commands import BaseCommand
 from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import idlutils
+
+start_ovsdb_monitor = False
+
+
+def notify_start_ovsdb_monitor():
+    global start_ovsdb_monitor
+    start_ovsdb_monitor = True
 
 
 class OvsdbSwitchApi(api_vswitch.SwitchApi):
@@ -41,6 +51,17 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
                                            self.db_name)
         self.ovsdb.start()
         self.idl = self.ovsdb.idl
+
+        self.pool = eventlet.GreenPool(size=1)
+        self.pool.spawn_n(self._wait_event_loop)
+
+    def _wait_event_loop(self):
+        global start_ovsdb_monitor
+        while True:
+            time.sleep(1)
+            if start_ovsdb_monitor is True:
+                # TODO(hujie) start monitor
+                return
 
     def transaction(self, check_error=False, log_errors=True, **kwargs):
         return impl_idl.Transaction(self,

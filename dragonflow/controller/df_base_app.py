@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import dragonflow.controller.aging as do_aging
 from dragonflow.controller.df_db_notifier import DBNotifyInterface
 
 from oslo_log import log as logging
@@ -60,6 +61,8 @@ class DFlowApp(DBNotifyInterface):
 
         if out_group is None:
             out_group = datapath.ofproto.OFPG_ANY
+
+        cookie = do_aging.flap_aging_cookie(cookie)
 
         message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
                                                      cookie_mask,

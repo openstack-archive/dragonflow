@@ -27,6 +27,7 @@ from ryu.ofproto import ofproto_v1_3
 
 from dragonflow._i18n import _LI
 from dragonflow.controller.dispatcher import AppDispatcher
+from dragonflow.db.drivers.ovsdb_vswitch_impl import notify_start_ovsdb_monitor
 
 
 LOG = log.getLogger(__name__)
@@ -119,7 +120,9 @@ class RyuDFAdapter(OFPHandler):
         if version < RyuDFAdapter.OF_AUTO_PORT_DESC_STATS_REQ_VER:
             # Otherwise, this is done automatically by OFPHandler
             self._send_port_desc_stats_request(self.datapath)
-        self.dispatcher.dispatch('switch_features_handler', ev)
+        notify_start_ovsdb_monitor()
+        # TODO(hujie) the following operation will be moved to ovsdb monitor
+        # self.dispatcher.dispatch('switch_features_handler', ev)
 
     def _send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
