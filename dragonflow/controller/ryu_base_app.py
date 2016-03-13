@@ -27,6 +27,7 @@ from ryu.ofproto import ofproto_v1_3
 
 from dragonflow._i18n import _LI
 from dragonflow.controller.dispatcher import AppDispatcher
+from dragonflow.db.drivers.ovsdb_vswitch_impl import notify_start_ovsdb_monitor
 
 
 LOG = log.getLogger(__name__)
@@ -53,10 +54,14 @@ class RyuDFAdapter(OFPHandler):
         return self._datapath
 
     def start(self):
-        super(RyuDFAdapter, self).start()
+        """
+        load() should start before start() to ensure app is ready
+        when OpenFlow is up
+        """
         self.load(self, db_store=self.db_store,
                   vswitch_api=self.vswitch_api,
                   nb_api=self.nb_api)
+        super(RyuDFAdapter, self).start()
         self.wait_until_ready()
 
     def load(self, *args, **kwargs):
@@ -122,6 +127,9 @@ class RyuDFAdapter(OFPHandler):
     def notify_ovs_sync_started(self):
         self.dispatcher.dispatch('ovs_sync_started')
 
+    def notify_switch_features_handler(self):
+        self.dispatcher.dispatch('switch_features_handler', None)
+
     @set_ev_handler(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         # TODO(oanson) is there a better way to get the datapath?
@@ -131,7 +139,7 @@ class RyuDFAdapter(OFPHandler):
         if version < RyuDFAdapter.OF_AUTO_PORT_DESC_STATS_REQ_VER:
             # Otherwise, this is done automatically by OFPHandler
             self._send_port_desc_stats_request(self.datapath)
-        self.dispatcher.dispatch('switch_features_handler', ev)
+        notify_start_ovsdb_monitor()
 
     def _send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
