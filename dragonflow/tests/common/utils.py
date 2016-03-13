@@ -15,6 +15,9 @@ from neutron.agent.linux.utils import wait_until_true
 import re
 
 
+DEFAULT_CMD_TIMEOUT = 2
+
+
 def wait_until_is_and_return(predicate, timeout=5, sleep=1, exception=None):
     container = {}
 
