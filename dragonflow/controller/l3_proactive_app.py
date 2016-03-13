@@ -11,16 +11,14 @@
 #    under the License.
 
 import netaddr
-
 from neutron.common import constants as common_const
-
+from oslo_log import log
 from ryu.ofproto import ether
 
-from dragonflow.controller.common.arp_responder import ArpResponder
+import dragonflow.controller.aging as do_aging
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.df_base_app import DFlowApp
-
-from oslo_log import log
 
 
 LOG = log.getLogger(__name__)
@@ -146,9 +144,12 @@ class L3ProactiveApp(DFlowApp):
 
         inst = [action_inst, goto_inst]
 
+        tunnel_cookie = (dst_router_tunnel_key <<
+                         const.LOCAL_TUNNEL_KEY_SHIFT_LEN)
         self.mod_flow(
             self.get_datapath(),
-            cookie=dst_router_tunnel_key,
+            cookie=do_aging.flap_aging_cookie(tunnel_cookie),
+            cookie_mask=const.LOCAL_TUNNEL_KEY_COOKIE,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,

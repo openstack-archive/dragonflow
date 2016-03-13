@@ -27,6 +27,7 @@ from ryu.ofproto import ofproto_v1_3
 
 from dragonflow._i18n import _LI
 from dragonflow.controller.dispatcher import AppDispatcher
+from dragonflow.db.drivers.ovsdb_vswitch_impl import notify_start_ovsdb_monitor
 
 
 LOG = log.getLogger(__name__)
@@ -49,8 +50,12 @@ class RyuDFAdapter(OFPHandler):
         return self._datapath
 
     def start(self):
-        super(RyuDFAdapter, self).start()
+        """
+        load() should start before start() to ensure app is ready
+        when OpenFlow is up
+        """
         self.load(self, db_store=self.db_store)
+        super(RyuDFAdapter, self).start()
         self.wait_until_ready()
 
     def load(self, *args, **kwargs):
@@ -119,6 +124,14 @@ class RyuDFAdapter(OFPHandler):
         if version < RyuDFAdapter.OF_AUTO_PORT_DESC_STATS_REQ_VER:
             # Otherwise, this is done automatically by OFPHandler
             self._send_port_desc_stats_request(self.datapath)
+        notify_start_ovsdb_monitor()
+        """
+        TODO(hujie) following operation will be triggered in ovsdb monitor:
+        1. notify aging start
+        2. notify apps switch_features_handler event
+        3. notify aging finish
+        following operations will be removed
+        """
         self.dispatcher.dispatch('switch_features_handler', ev)
 
     def _send_port_desc_stats_request(self, datapath):
