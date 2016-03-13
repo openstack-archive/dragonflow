@@ -71,6 +71,7 @@ class ArpResponder(object):
             parser = self.datapath.ofproto_parser
             msg = parser.OFPFlowMod(datapath=self.datapath,
                                     table_id=self.table_id,
+                                    cookie=utils.set_aging_cookie_bits(0),
                                     command=ofproto.OFPFC_ADD,
                                     priority=const.PRIORITY_MEDIUM,
                                     match=match, instructions=instructions,
@@ -81,8 +82,9 @@ class ArpResponder(object):
         ofproto = self.datapath.ofproto
         parser = self.datapath.ofproto_parser
         match = self._get_match()
+
         msg = parser.OFPFlowMod(datapath=self.datapath,
-                                cookie=0,
+                                cookie=utils.set_aging_cookie_bits(0),
                                 cookie_mask=0,
                                 table_id=self.table_id,
                                 command=ofproto.OFPFC_DELETE,
