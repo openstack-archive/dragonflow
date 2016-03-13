@@ -22,6 +22,7 @@ L2_LOOKUP_TABLE = 17
 L3_LOOKUP_TABLE = 20
 L3_PROACTIVE_LOOKUP_TABLE = 25
 EGRESS_TABLE = 64
+CANARY_TABLE = 200
 
 # Flow Priorities
 PRIORITY_DEFAULT = 1
@@ -29,3 +30,15 @@ PRIORITY_LOW = 50
 PRIORITY_MEDIUM = 100
 PRIORITY_HIGH = 200
 PRIORITY_VERY_HIGH = 300
+
+"""
+Cookie Mask
+there are two types of cookies: global cookie and local cookie,
+global cookies should not overlapped with local cookies, global cookies
+should not overlapped with global cookies, but local cookies could
+overlapped with local cookies
+"""
+GLOBAL_AGING_COOKIE_MASK = 0x1
+LOCAL_TUNNEL_KEY_COOKIE = 0x1fffffffe
+LOCAL_TUNNEL_KEY_SHIFT_LEN = 1
+GLOBAL_INIT_AGING_COOKIE = 0x0
