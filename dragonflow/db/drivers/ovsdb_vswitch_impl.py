@@ -30,12 +30,22 @@ from neutron.agent.ovsdb.native import idlutils
 
 from oslo_config import cfg
 from oslo_log import log
+
+import eventlet
 import six
 import socket
 import time
 
 
 LOG = log.getLogger(__name__)
+
+
+start_ovsdb_monitor = False
+
+
+def notify_start_ovsdb_monitor():
+    global start_ovsdb_monitor
+    start_ovsdb_monitor = True
 
 
 class OvsdbSwitchApi(api_vswitch.SwitchApi):
@@ -60,8 +70,17 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.ovsdb.start()
         self.idl = self.ovsdb.idl
 
-        ovsdb_monitor = OvsdbMonitor(self.nb_api, self.idl)
-        ovsdb_monitor.daemonize()
+        self.pool = eventlet.GreenPool(size=1)
+        self.pool.spawn_n(self._wait_event_loop)
+
+    def _wait_event_loop(self):
+        global start_ovsdb_monitor
+        while True:
+            time.sleep(1)
+            if start_ovsdb_monitor is True:
+                ovsdb_monitor = OvsdbMonitor(self.nb_api, self.idl)
+                ovsdb_monitor.daemonize()
+                return
 
     @property
     def _tables(self):
@@ -85,6 +104,23 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
 
     def set_controllers(self, bridge, targets):
         return SetControllerCommand(self, bridge, targets)
+
+    def set_controller_fail_mode(self, bridge, fail_mode):
+        return SetControllerFailModeCommand(self, bridge, fail_mode)
+
+    def check_controller(self, targets):
+        is_controller_set = False
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        if br_int.controller[0].target == targets:
+            is_controller_set = True
+        return is_controller_set
+
+    def check_controller_fail_mode(self, fail_mode):
+        is_fail_mode_set = False
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        if br_int.fail_mode[0] == fail_mode:
+            is_fail_mode_set = True
+        return is_fail_mode_set
 
     def get_tunnel_ports(self):
         res = []
@@ -226,6 +262,18 @@ class SetControllerCommand(BaseCommand):
             controllers.append(controller)
         br.verify('controller')
         br.controller = controllers
+
+
+class SetControllerFailModeCommand(BaseCommand):
+    def __init__(self, api, bridge, fail_mode):
+        super(SetControllerFailModeCommand, self).__init__(api)
+        self.bridge = bridge
+        self.fail_mode = fail_mode
+
+    def run_idl(self, txn):
+        br = idlutils.row_by_value(self.api.idl, 'Bridge', 'name', self.bridge)
+        br.verify('fail_mode')
+        br.fail_mode = [self.fail_mode]
 
 
 class DeleteSwitchPort(BaseCommand):
@@ -531,6 +579,11 @@ class OvsdbMonitor(object):
         action = "sync_finished"
         self.nb_api.db_change_callback(table, None, action, None, None)
 
+    def notify_monitor_start(self):
+        table = constants.OVS_INTERFACE
+        action = "sync_started"
+        self.nb_api.db_change_callback(table, None, action, None, None)
+
     def run(self):
         while True:
             self.output = ""
@@ -541,6 +594,7 @@ class OvsdbMonitor(object):
 
             self.connect_ovsdb()
             try:
+                self.notify_monitor_start()
                 self.send_monitor_request()
             except Exception as e:
                 LOG.exception(_LE("exception happened "
