@@ -156,14 +156,17 @@ class VMTestObj(object):
         self.nova = novaclient.Client('2', creds['username'],
                         creds['password'], 'demo', auth_url)
 
-    def create(self, script=None):
+    def create(self, network=None, script=None):
         image = self.nova.images.find(name="cirros-0.3.4-x86_64-uec")
         self.parent.assertIsNotNone(image)
         flavor = self.nova.flavors.find(name="m1.tiny")
         self.parent.assertIsNotNone(flavor)
-        network = self._find_first_network(name='private')
-        self.parent.assertIsNotNone(network)
-        nics = [{'net-id': network['id']}]
+        if network:
+            net = network
+        else:
+            net = self._find_first_network(name='private')
+        self.parent.assertIsNotNone(net)
+        nics = [{'net-id': net['id']}]
         self.server = self.nova.servers.create(name='test', image=image.id,
                            flavor=flavor.id, nics=nics, user_data=script)
         self.parent.assertIsNotNone(self.server)

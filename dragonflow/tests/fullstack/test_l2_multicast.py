@@ -55,9 +55,19 @@ class TestL2Multicast(test_base.DFTestBase):
         return None
 
     def test_vm_multicast(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create(network={'name': 'private'})
+        subnet = {'network_id': network_id,
+            'cidr': '10.10.0.0/24',
+            'gateway_ip': '10.10.0.1',
+            'ip_version': 4,
+            'name': 'private',
+            'enable_dhcp': True}
+        subnet = self.neutron.create_subnet({'subnet': subnet})
+
         ovs = utils.OvsFlowsParser()
         vm = self.store(objects.VMTestObj(self, self.neutron))
-        vm.create()
+        vm.create(network=network)
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
         self.assertIsNotNone(vm.server.addresses['private'])
@@ -77,3 +87,4 @@ class TestL2Multicast(test_base.DFTestBase):
         self.assertIsNotNone(r)
         vm.server.stop()
         vm.close()
+        network.close()
