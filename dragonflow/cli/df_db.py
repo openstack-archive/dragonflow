@@ -28,10 +28,11 @@ db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
              'tunnel_key', 'floatingip']
 
 usage_str = "The following commands are supported:\n" \
-            "1) df_db ls  - print all the db tables \n" \
-            "2) df_db ls <table_name> - print all the keys for specific table \n" \
-            "3) df_db get <table_name> <key> - print value for specific key\n" \
-            "4) df_db dump - dump all tables\n"
+            "1) df-db ls  - print all the db tables \n" \
+            "2) df-db ls <table_name> - print all the keys for specific table \n" \
+            "3) df-db get <table_name> <key> - print value for specific key\n" \
+            "4) df-db dump - dump all tables\n" \
+            "5) df-db clean - clean up all keys\n"
 
 
 def print_tables():
@@ -96,6 +97,17 @@ def bind_port_to_localhost(db_driver, port_id):
     db_driver.set_key('lport', port_id, lport_json)
 
 
+def clean_whole_table(db_driver, table):
+    try:
+        keys = db_driver.get_all_keys(table)
+    except df_exceptions.DBKeyNotFound:
+        print('Table not found: ' + table)
+        return
+    for key in keys:
+        db_driver.delete_key(table, key)
+    print('DF DB is cleaned up.')
+
+
 def main():
     if len(sys.argv) < 2:
         print usage_str
@@ -144,6 +156,11 @@ def main():
     if action == 'bind':
         port_id = sys.argv[2]
         bind_port_to_localhost(db_driver, port_id)
+        return
+
+    if action == 'clean':
+        for table in db_tables:
+            clean_whole_table(db_driver, table)
         return
 
     print usage_str
