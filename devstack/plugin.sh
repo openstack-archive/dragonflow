@@ -90,6 +90,13 @@ function cleanup_ovs {
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
+    if [[ "$DF_RUNNING_IN_GATE" == "True" ]]; then
+        grep -E "^\*\s+soft\s+nofile" /etc/security/limits.conf > /dev/null || \
+           sudo sh -c 'echo "* soft nofile 50000" >> /etc/security/limits.conf'
+        grep -E "^\*\s+hard\s+nofile" /etc/security/limits.conf > /dev/null || \
+           sudo sh -c 'echo "* hard nofile 50000" >> /etc/security/limits.conf'
+    fi
+
     if is_service_enabled q-svc ; then
         export NETWORK_API_EXTENSIONS='binding,quotas,agent,dhcp_agent_scheduler,external-net,router'
         Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
