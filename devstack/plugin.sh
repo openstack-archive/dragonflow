@@ -116,6 +116,14 @@ function configure_df_plugin {
         else
             iniset $NEUTRON_CONF DEFAULT dhcp_agent_notification "False"
         fi
+        # for stress test only
+        iniset $NEUTRON_CONF quotas default_quota "-1"
+        iniset $NEUTRON_CONF quotas quota_network "-1"
+        iniset $NEUTRON_CONF quotas quota_subnet "-1"
+        iniset $NEUTRON_CONF quotas quota_port "-1"
+        iniset $NEUTRON_CONF quotas quota_router "-1"
+        iniset $NEUTRON_CONF quotas quota_floatingip "-1"
+        iniset $NEUTRON_CONF quotas quota_security_group_rule "-1"
     else
         _create_neutron_conf_dir
         # NOTE: We need to manually generate the neutron.conf file here. This
