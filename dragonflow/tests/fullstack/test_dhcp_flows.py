@@ -16,9 +16,6 @@ from dragonflow.tests.fullstack import test_objects as objects
 import time
 
 
-DEFAULT_CMD_TIMEOUT = 5
-
-
 class TestOVSFlowsForDHCP(test_base.DFTestBase):
 
     def setUp(self):
@@ -78,7 +75,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         # change dhcp
         updated_subnet = {'enable_dhcp': False}
         self.neutron.update_subnet(subnet_id, {'subnet': updated_subnet})
-        time.sleep(DEFAULT_CMD_TIMEOUT)
+        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
         flows_after_update = ovs.dump()
         self.assertFalse(self.check_dhcp_rule(flows_after_update, dhcp_ip))
         network.close()
@@ -96,7 +93,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
             'enable_dhcp': False}
         subnet = self.neutron.create_subnet({'subnet': subnet})
         subnet_id = subnet['subnet']['id']
-        time.sleep(DEFAULT_CMD_TIMEOUT)
+        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
         flows_after_change = ovs.dump()
         # change dhcp
         updated_subnet = {'enable_dhcp': True}
@@ -112,7 +109,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
             exception=Exception('DHCP ip was not found in OpenFlow rules')
         )
         network.close()
-        time.sleep(DEFAULT_CMD_TIMEOUT)
+        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
         flows_after_cleanup = ovs.dump()
         self.assertFalse(self.check_dhcp_rule(flows_after_cleanup, dhcp_ip))
 
@@ -133,7 +130,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         router_id = router.create()
         self.assertTrue(router.exists())
         subnet_msg = {'subnet_id': subnet_id}
-        time.sleep(DEFAULT_CMD_TIMEOUT)
+        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
         self.neutron.add_interface_router(router_id, body=subnet_msg)
         dhcp_ip = utils.wait_until_is_and_return(
             lambda: self.get_dhcp_ip(network_id, subnet_id),
@@ -145,6 +142,6 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         self.neutron.remove_interface_router(router_id, body=subnet_msg)
         router.close()
         network.close()
-        time.sleep(DEFAULT_CMD_TIMEOUT)
+        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
         flows_after_cleanup = ovs.dump()
         self.assertFalse(self.check_dhcp_rule(flows_after_cleanup, dhcp_ip))
