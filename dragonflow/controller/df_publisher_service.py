@@ -13,10 +13,13 @@
 import eventlet
 from Queue import Queue
 import sys
+import time
 import traceback
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
+from oslo_utils import importutils
 
 from neutron.agent.common import config
 from neutron.common import config as common_config
@@ -25,6 +28,7 @@ from dragonflow._i18n import _LW
 from dragonflow.common import common_params
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
+from dragonflow.db import pub_sub_api
 
 eventlet.monkey_patch()
 
@@ -36,6 +40,9 @@ class PublisherService(object):
         self._queue = Queue()
         self.publisher = self._get_publisher()
         self.multiproc_subscriber = self._get_multiproc_subscriber()
+        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        self.db = nb_driver_class()
+        self.uuid = pub_sub_api.generate_publisher_uuid()
 
     def _get_publisher(self):
         pub_sub_driver = df_utils.load_driver(
@@ -69,17 +76,63 @@ class PublisherService(object):
     def run(self):
         if self.multiproc_subscriber:
             self.multiproc_subscriber.daemonize()
+        self.db.initialize(
+            db_ip=cfg.CONF.df.remote_db_ip,
+            db_port=cfg.CONF.df.remote_db_port,
+            config=cfg.CONF.df
+        )
+        self._register_as_publisher()
+        self._publishers_table_monitor = pub_sub_api.StalePublisherMonitor(
+            self.db,
+            self.publisher,
+            cfg.CONF.df.publisher_timeout
+        )
+        self._publishers_table_monitor.daemonize()
         # TODO(oanson) TableMonitor daemonize will go here
         while True:
             try:
                 event = self._queue.get()
                 self.publisher.send_event(event)
+                if event.table != pub_sub_api.PUBLISHER_TABLE:
+                    self._update_timestamp_in_db()
                 eventlet.sleep(0)
             except Exception as e:
                 LOG.warning(_LW("Exception in main loop: {}, {}").format(
                     e, traceback.format_exc()
                 ))
                 # Ignore
+
+    def _update_timestamp_in_db(self):
+        publisher_json = self.db.get_key(
+            pub_sub_api.PUBLISHER_TABLE,
+            self.uuid,
+        )
+        publisher = jsonutils.loads(publisher_json)
+        publisher['last_activity_timestamp'] = time.time()
+        publisher_json = jsonutils.dumps(publisher)
+        self.db.set_key(pub_sub_api.PUBLISHER_TABLE, self.uuid, publisher_json)
+
+    def _register_as_publisher(self):
+        publisher = {
+            'id': self.uuid,
+            'uri': self._get_uri(),
+            'last_activity_timestamp': time.time(),
+        }
+        publisher_json = jsonutils.dumps(publisher)
+        self.db.create_key(
+            pub_sub_api.PUBLISHER_TABLE,
+            self.uuid, publisher_json
+        )
+
+    def _get_uri(self):
+        ip = cfg.CONF.df.publisher_bind_address
+        if ip == '*' or ip == '127.0.0.1':
+            ip = cfg.CONF.df.local_ip
+        return "{}://{}:{}".format(
+            cfg.CONF.df.publisher_transport,
+            ip,
+            cfg.CONF.df.publisher_port,
+        )
 
 
 def main():
