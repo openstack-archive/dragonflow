@@ -153,9 +153,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.conn.create_consumer(topics.PLUGIN, self.endpoints, fanout=False)
         self.conn.create_consumer(topics.L3PLUGIN, self.endpoints,
                                   fanout=False)
-        self.conn.create_consumer(topics.REPORTS,
-                                  [agents_db.AgentExtRpcCallback()],
-                                  fanout=False)
+        # topics.REPORTS was added for the Mitaka release, therefore, to
+        # work with stable/liberty, check to see if topics.REPORTS exists
+        # if it does, use it.
+        if hasattr(topics, 'REPORTS'):
+            self.conn.create_consumer(
+                topics.REPORTS, [agents_db.AgentExtRpcCallback()],
+                fanout=False)
         return self.conn.consume_in_threads()
 
     def _delete_ports(self, context, ports):
