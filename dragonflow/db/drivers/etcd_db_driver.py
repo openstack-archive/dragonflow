@@ -176,7 +176,7 @@ class EtcdDbDriver(db_api.DbApi):
             try:
                 entry = self.client.read('/', wait=True, recursive=True,
                                          waitIndex=self.current_key,
-                                         timeout=5)
+                                         timeout=20)
                 keys = entry.key.split('/')
                 self.notify_callback(keys[1], keys[2], entry.action,
                                      entry.value, None)
