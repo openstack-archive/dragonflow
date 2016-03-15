@@ -441,6 +441,20 @@ class DfLocalController(object):
         LOG.info(_LI("Floatingip is deleted. Floatingip = %s") %
                  str(floatingip))
 
+    def publisher_updated(self, publisher):
+        self.db_store.update_publisher(publisher.get_id(), publisher)
+        LOG.info(_LI('Registering to new publisher: %s'), str(publisher))
+        self.nb_api.subscriber.register_listen_address(publisher.get_uri())
+
+    def publisher_deleted(self, uuid):
+        publisher = self.db_store.get_publisher(uuid)
+        if publisher:
+            LOG.info(_LI('Deleting publisher: %s'), str(publisher))
+            self.nb_api.subscriber.unregister_listen_address(
+                publisher.get_uri()
+            )
+            self.db_store.delete_publisher(uuid)
+
     def _associate_floatingip(self, floatingip):
         self.db_store.update_floatingip(floatingip.name, floatingip)
         self.open_flow_app.notify_associate_floatingip(floatingip)

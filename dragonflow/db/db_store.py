@@ -31,6 +31,7 @@ class TenantDbStore(object):
         self.router_interface_to_key = {}
         self.floatingips = {}
         self.secgroups = {}
+        self.publishers = {}
         self.lock = threading.Lock()
         self._table_name_mapping = {
             'lswitchs': self.lswitchs,
@@ -41,6 +42,7 @@ class TenantDbStore(object):
             'router_interface_to_key': self.router_interface_to_key,
             'floatingips': self.floatingips,
             'secgroups': self.secgroups,
+            'publishers': self.publishers,
         }
 
     def _get_table_by_name(self, table_name):
@@ -268,3 +270,12 @@ class DbStore(object):
         for fip in self.get_floatingips():
             if fip.floating_network_id == network_id:
                 return fip
+
+    def update_publisher(self, uuid, publisher, topic=None):
+        self.set('publishers', uuid, publisher, topic)
+
+    def get_publisher(self, uuid, topic=None):
+        return self.get('publishers', uuid, topic)
+
+    def delete_publisher(self, uuid, topic=None):
+        self.delete('publishers', uuid, topic)

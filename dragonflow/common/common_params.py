@@ -75,6 +75,11 @@ df_opts = [
         default='/var/run/zmq_pubsub/zmq-publisher-socket',
         help=_('Neutron Server Publisher inter-process socket address')
     ),
+    cfg.IntOpt(
+        'publisher_timeout',
+        default=300,
+        help=_('Publisher idle timeout before it is removed from the table')
+    ),
     cfg.FloatOpt('monitor_table_poll_time',
                 default=30,
                 help=_('Poll monitored tables every this number of seconds')),
