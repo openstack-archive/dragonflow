@@ -14,11 +14,14 @@ import abc
 import eventlet
 import msgpack
 import six
-import sys
+import socket
+import time
+import uuid
 
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 
-from dragonflow._i18n import _LW
+from dragonflow._i18n import _LE, _LI
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 
@@ -26,15 +29,17 @@ LOG = logging.getLogger(__name__)
 
 eventlet.monkey_patch(socket=False)
 
-MONITOR_TABLES = ['chassis']
+PUBLISHER_TABLE = 'publisher'
+
+MONITOR_TABLES = ['chassis', PUBLISHER_TABLE]
 
 
 def pack_message(message):
     data = None
     try:
         data = msgpack.packb(message, encoding='utf-8')
-    except Exception as e:
-        LOG.warning(e)
+    except Exception:
+        LOG.exception(_LE("Error in pack_message: "))
     return data
 
 
@@ -42,8 +47,8 @@ def unpack_message(message):
     entry = None
     try:
         entry = msgpack.unpackb(message, encoding='utf-8')
-    except Exception as e:
-        LOG.warning(e)
+    except Exception:
+        LOG.exception(_LE("Error in unpack_message: "))
     return entry
 
 
@@ -223,15 +228,12 @@ class TableMonitor(object):
         while True:
             try:
                 eventlet.sleep(self._polling_time)
-                cache = self._update_cache(cache)
-            except Exception as e:
-                LOG.warning(_LW("Error when polling table {}: {} {}").format(
-                    self._table_name,
-                    repr(e),
-                    sys.exc_info()[2],
-                ))
+                cache = self._poll_once(cache)
+            except Exception:
+                LOG.exception(_LE("Error when polling table %s"),
+                              self._table_name)
 
-    def _update_cache(self, old_cache):
+    def _poll_once(self, old_cache):
         """Create a new cache and send events for changes from the old cache"""
         new_cache = {}
         for entry_key in self._driver.get_all_keys(self._table_name):
@@ -256,3 +258,28 @@ class TableMonitor(object):
             entry_value,
         )
         self._publisher.send_event(db_update)
+
+
+class StalePublisherMonitor(TableMonitor):
+    def __init__(self, driver, publisher, timeout, polling_time=10):
+        super(StalePublisherMonitor, self).__init__(
+            PUBLISHER_TABLE,
+            driver,
+            publisher,
+            polling_time
+        )
+        self._timeout = timeout
+        self._uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, socket.getfqdn()))
+
+    def _poll_once(self, old_cache):
+        """Scan for stale entries of other publishers"""
+        for entry_key in self._driver.get_all_keys(self._table_name):
+            publisher_json = self._driver.get_key(self._table_name, entry_key)
+            publisher = jsonutils.loads(publisher_json)
+            if publisher['id'] == self._uuid:
+                continue
+            last_activity_timestamp = publisher['last_activity_timestamp']
+            if last_activity_timestamp < time.time() - self._timeout:
+                LOG.info(_LI('Removing publisher %s'), publisher_json)
+                self._driver.delete_key(self._table_name, entry_key)
+        return super(StalePublisherMonitor, self)._poll_once(old_cache)
