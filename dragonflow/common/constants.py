@@ -12,3 +12,8 @@
 # limitations under the License.
 
 DRAGONFLOW_VIRTUAL_PORT = "DragonflowVirtualPort"
+OVS_INTERFACE = "ovsinterface"
+OVS_VM_INTERFACE = "vm"
+OVS_BRIDGE_INTERFACE = "bridge"
+OVS_PATCH_INTERFACE = "patch"
+OVS_TUNNEL_INTERFACE = "tunnel"
