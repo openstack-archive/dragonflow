@@ -57,3 +57,8 @@ class UnsupportedTransportException(DragonflowException):
     not supported.
     """
     message = _("Transport protocol is not supported: %(transport)s")
+
+
+class DBLockFailed(DragonflowException):
+    message = _("The DB Lock cannot be acquired for object=%(oid)s in"
+                "the session=%(sid)s.")
