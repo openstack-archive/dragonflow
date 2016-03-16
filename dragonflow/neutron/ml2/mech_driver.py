@@ -13,42 +13,273 @@
 from neutron.common import constants as n_const
 from neutron.extensions import portbindings
 from neutron.plugins.ml2 import driver_api
+from neutron.db import db_base_plugin_v2
+from neutron.db import securitygroups_db
+from neutron.api.v2 import attributes as attr
+from neutron.common import topics
+from neutron.common import exceptions as n_exc
+from oslo_cofig import cfg
+from oslo_log import log
+from oslo_utils import importutils
+from dragonflow._i18n import _, _LE, _LI
+from dragonflow.common import exceptions as df_exceptions
+from dragonflow.db import api_nb
+from dragonflow.neutron.common import constants as df_const
+from dragonflow.neutron.common import utils
+from neutron.callbacks import events
+from neutron.callbacks import registry
+from neutron.callbacks import resources
+
+LOG = log.getLogger(__name__)
 
 
-class DFMechDriver(driver_api.MechanismDriver):
+class DFMechDriver(driver_api.MechanismDriver,
+                   db_base_plugin_v2.NeutronDbPluginV2,
+                   securitygroups_db.SecurityGroupDbMixin):
 
     """Dragonflow ML2 MechanismDriver for Neutron.
 
     """
-    def initialize(self):
+
+    def __init__(self):
+        LOG.info(_LI("Starting DFMechDriver"))
         self.vif_type = portbindings.VIF_TYPE_OVS
+        self._set_base_port_binding()
         # When set to True, Nova plugs the VIF directly into the ovs bridge
         # instead of using the hybrid mode.
         self.vif_details = {portbindings.CAP_PORT_FILTER: True}
+        registry.subscribe(self.post_fork_initialize, resources.PROCESS,
+                           events.AFTER_CREATE)
+        registry.subscribe(create_security_group,
+                           resources.SECURITY_GROUP,
+                           events.AFTER_CREATE)
+        registry.subscribe(delete_security_group,
+                           resources.SECURITY_GROUP,
+                           events.BEFORE_DELETE)
+        registry.subscribe(create_security_group_rule,
+                           resources.SECURITY_GROUP_RULE,
+                           events.AFTER_CREATE)
+        registry.subscribe(delete_security_group_rule,
+                           resources.SECURITY_GROUP_RULE,
+                           events.BEFORE_DELETE)
+
+    def post_fork_initialize(self, resource, event, trigger, **kwargs):
+        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+
+        self.nb_api = api_nb.NbApi(
+                nb_driver_class(),
+                use_pubsub=cfg.CONF.df.enable_df_pub_sub,
+                is_neutron_server=True)
+        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
+                               db_port=cfg.CONF.df.remote_db_port)
+
+        self._set_base_port_binding()
+
+    def _set_base_port_binding(self):
+        self.base_binding_dict = {
+            portbindings.VIF_TYPE: portbindings.VIF_TYPE_OVS,
+            portbindings.VIF_DETAILS: {
+                # TODO(rkukura): Replace with new VIF security details
+                portbindings.CAP_PORT_FILTER:
+                'security-group' in self.supported_extension_aliases}}
+
+    def create_security_group(self, resource, event, trigger, **kwargs):
+        sg = kwargs['security_group']
+        sg_name = sg['id']
+        tenant_id = sg['tenant_id']
+        rules = sg.get('security_group_rules')
+        self.nb_api.create_security_group(name=sg_name, topic=tenant_id,
+                                          rules=rules)
+        LOG.info(_LI("DFMechDriver: create security group %s") % sg_name)
+        return sg
+
+    def delete_security_group(self, resource, event, trigger, **kwargs):
+        sg = kwargs['security_group']
+        sg_id = kwargs['security_group_id']
+        tenant_id = sg['tenant_id']
+        self.nb_api.delete_security_group(sg_id, topic=tenant_id)
+        LOG.info(_LI("DFMechDriver: delete security group %s") % sg_id)
+
+    def create_security_group_rule(self, resource, event, trigger, **kwargs):
+        context = kwargs['context']
+        sg_rule = kwargs['security_group_rule']
+        sg_id = sg_rule['security_group_id']
+        sg_group = self.get_security_group(context, sg_id)
+        self.nb_api.add_security_group_rules(sg_id, [sg_rule], sg_group['tenant_id'])
+        LOG.info(_LI("DFMechDriver: create security group_rule %s") %
+                 sg_rule['security_group_rule_id'])
+        return sg_rule
+
+    def delete_security_group_rule(self, resource, event, trigger, **kwargs):
+        context = kwargs['context']
+        sgr_id = kwargs['security_group_rule_id']
+        sgr = self.get_security_group_rule(context, sgr_id)
+        sg_id = sgr['security_group_id']
+        sg_group = self.get_security_group(context, sg_id)
+        self.nb_api.delete_security_group_rule(sg_id, sgr_id, sg_group['tenant_id'])
+        LOG.info(_LI("DFMechDriver: delete security group rule %s") % sgr_id)
+
+    # def _set_network_name(self, network_id, name):
+    #     ext_id = [df_const.DF_NETWORK_NAME_EXT_ID_KEY, name]
+    #     self.nb_api.update_lswitch(utils.ovn_name(network_id),
+    #                                external_ids=ext_id)
 
     def create_network_postcommit(self, context):
-        pass
-        # network = context.current
-        # id = network['id']
+        network = context.current
+        external_ids = {df_const.DF_NETWORK_NAME_EXT_ID_KEY: network['name']}
+        self.nb_api.create_lswitch(name=network['id'],
+                                   topic=network['tenant_id'],
+                                   external_ids=external_ids,
+                                   subnets=[])
+        LOG.info(_LI("DFMechDriver: create network %s" % network['id']))
+        return network
 
     def update_network_postcommit(self, context):
+        # with context.session.begin(subtransactions=True):
+        #     network = context.current
+        #     if 'name' in network['network']:
+        #         self._set_network_name(network['id'], network['name'])
+        # LOG.info(_LI("DFMechDriver: update network %s" % network['id']))
         pass
-        # network = context.current
-        # name = network['name']
 
     def delete_network_postcommit(self, context):
-        pass
-        # network = context.current
-        # id = network['id']
+        network = context.current
+        network_id = network['id']
+        tenant_id = network['tenant_id']
+
+        for port in self.nb_api.get_all_logical_ports():
+            if port.get_lswitch_id() == network_id:
+                try:
+                    self.nb_api.delete_lport(name=port.get_id(),
+                                             topic=tenant_id)
+                except df_exceptions.DBKeyNotFound:
+                    LOG.debug("port %s is not found in DB, might have "
+                              "been deleted concurrently" % port.get_id())
+
+        try:
+            self.nb_api.delete_lswitch(name=network_id, topic=tenant_id)
+        except df_exceptions.DBKeyNotFound:
+            LOG.debug("lswitch %s is not found in DF DB, might have "
+                      "been deleted concurrently" % network_id)
+
+        LOG.info(_LI("DFMechDriver: delete network %s" % network_id))
+
+    def _create_dhcp_server_port(self, context, subnet):
+        """Create and return dhcp port information.
+
+        If an expected failure occurs, a None port is returned.
+
+        """
+        port = {'port': {'tenant_id': context.tenant_id,
+                         'network_id': subnet['network_id'], 'name': '',
+                         'binding:host_id': (
+                             df_common_const.DRAGONFLOW_VIRTUAL_PORT),
+                         'admin_state_up': True, 'device_id': '',
+                         'device_owner': const.DEVICE_OWNER_DHCP,
+                         'mac_address': attr.ATTR_NOT_SPECIFIED,
+                         'fixed_ips': [{'subnet_id': subnet['id']}]}}
+        port = self.create_port(context, port)
+
+        return port
+
+    def _get_ip_from_port(self, port):
+        """Get The first Ip address from the port.
+
+        Returns the first fixed_ip address for a port
+        """
+        if not port:
+            return None
+        for fixed_ip in port['fixed_ips']:
+            if "ip_address" in fixed_ip:
+                return fixed_ip['ip_address']
+
+    def _handle_create_subnet_dhcp(self, context, subnet):
+        """Create the dhcp configration for the subnet
+
+        Returns the dhcp server ip address if configured
+        """
+        if subnet['enable_dhcp']:
+            if cfg.CONF.df.use_centralized_ipv6_DHCP:
+                return subnet['allocation_pools'][0]['start']
+            else:
+                dhcp_port = self._create_dhcp_server_port(context, subnet)
+                return self._get_ip_from_port(dhcp_port)
+        return None
 
     def create_subnet_postcommit(self, context):
-        pass
+        with context.session.begin(subtransactions=True):
+            new_subnet = context.current
+            net_id = new_subnet['network_id']
+            dhcp_address = self._handle_create_subnet_dhcp(context, new_subnet)
+
+            # update df controller with subnet
+            self.nb_api.add_subnet(
+                new_subnet['id'],
+                net_id,
+                enable_dhcp=new_subnet['enable_dhcp'],
+                cidr=new_subnet['cidr'],
+                dchp_ip=dhcp_address,
+                gateway_ip=new_subnet['gateway_ip'],
+                dns_nameservers=new_subnet.get('dns_nameservers', []))
+
+        LOG.info(_LI("DFMechDriver: create subnet %s" % new_subnet['id']))
+        return new_subnet
+
+    def _update_subnet_dhcp(self, context, old_subnet, new_subnet):
+        """Update the dhcp configration for.
+
+        Returns the dhcp server ip address if configured
+        """
+        if cfg.CONF.df.use_centralized_ipv6_DHCP:
+            return self._update_subnet_dhcp_centralized(context, new_subnet)
+
+        if old_subnet['enable_dhcp']:
+            port = self._get_dhcp_port_for_subnet(
+                    context,
+                    old_subnet['id'])
+        if not new_subnet['enable_dhcp']:
+            if old_subnet['enable_dhcp']:
+                if port:
+                    self.delete_port(context, port['id'])
+            return None
+        if new_subnet['enable_dhcp'] and not old_subnet['enable_dhcp']:
+            port = self._create_dhcp_server_port(context, new_subnet)
+
+        return self._get_ip_from_port(port)
 
     def update_subnet_postcommit(self, context):
-        pass
+        with context.session.begin(subtransactions=True):
+            original_subnet = context.original()
+            new_subnet = context.current
+            dhcp_address = self.update_subnet_dchp(
+                context,
+                original_subnet,
+                new_subnet)
+            net_id = new_subnet['network_id']
+            # update df controller with subnet
+            self.nb_api.update_subnet(
+                new_subnet['id'],
+                net_id,
+                new_subnet['tenant_id'],
+                enable_dhcp=new_subnet['enable_dhcp'],
+                cidr=new_subnet['cidr'],
+                dhcp_ip=dhcp_address,
+                gateway_ip=new_subnet['gateway_ip'],
+                dns_nameservers=new_subnet.get('dns_nameservers', []))
+            LOG.info(_LI("DFMechDriver: update subnet %s" % new_subnet['id']))
+            return new_subnet
 
     def delete_subnet_postcommit(self, context):
-        pass
+        subnet = context.current
+        net_id = subnet['network_id']
+        with context.session.begin(subtransactions=True):
+            #update df controller with subnet delete
+        try:
+            self.nb_api.delete_subnet(subnet['id'], net_id, subnet['tenant_id'])
+        except df_exceptions.DBKeyNotFound:
+            LOG.debug("network %s is not found in DB, might have "
+                      "been deleted concurrently" % net_id)
+        LOG.info(_LI("DFMechDriver: delete subnet %s" % subnet['id']))
 
     def _get_allowed_mac_addresses_from_port(self, port):
         allowed_macs = set()
@@ -58,29 +289,150 @@ class DFMechDriver(driver_api.MechanismDriver):
             allowed_macs.add(allowed_address['mac_address'])
         return list(allowed_macs)
 
+    def _get_data_from_binding_profile(self, context, port):
+        if (df_const.DF_PORT_BINDING_PROFILE not in port or
+                not attr.is_attr_set(
+                    port[df_const.DF_PORT_BINDING_PROFILE])):
+            return None, None
+        parent_name = (
+            port[df_const.DF_PORT_BINDING_PROFILE].get('parent_name'))
+        tag = port[df_const.DF_PORT_BINDING_PROFILE].get('tag')
+        if not any((parent_name, tag)):
+            # An empty profile is fine.
+            return None, None
+        if not all((parent_name, tag)):
+            # If one is set, they both must be set.
+            msg = _('Invalid binding:profile. parent_name and tag are '
+                    'both required.')
+            raise n_exc.InvalidInput(error_message=msg)
+        if not isinstance(parent_name, six.string_types):
+            msg = _('Invalid binding:profile. parent_name "%s" must be '
+                    'a string.') % parent_name
+            raise n_exc.InvalidInput(error_message=msg)
+        try:
+            tag = int(tag)
+            if tag < 0 or tag > 4095:
+                raise ValueError
+        except ValueError:
+            msg = _('Invalid binding:profile. tag "%s" must be '
+                    'an int between 1 and 4096, inclusive.') % tag
+            raise n_exc.InvalidInput(error_message=msg)
+        # Make sure we can successfully look up the port indicated by
+        # parent_name.  Just let it raise the right exception if there is a
+        # problem.
+        self.get_port(context, parent_name)
+        return parent_name, tag
+
+    def create_port_in_nb_api(self, port, parent_name, tag, sgids):
+        # The port name *must* be port['id'].  It must match the iface-id set
+        # in the Interfaces table of the Open_vSwitch database, which nova sets
+        # to be the port ID.
+        external_ids = {df_const.DF_PORT_NAME_EXT_ID_KEY: port['name']}
+        allowed_macs = self._get_allowed_mac_addresses_from_port(port)
+        ips = []
+        if 'fixed_ips' in port:
+            ips = [ip['ip_address'] for ip in port['fixed_ips']]
+
+        chassis = None
+        if 'binding:host_id' in port:
+            chassis = port['binding:host_id']
+
+        tunnel_key = self.nb_api.allocate_tunnel_key()
+
+        # Router GW ports are not needed by dragonflow controller and
+        # they currently cause error as they couldnt be mapped to
+        # a valid ofport (or location)
+        if port.get('device_owner') == const.DEVICE_OWNER_ROUTER_GW:
+            chassis = None
+
+        self.nb_api.create_lport(
+            name=port['id'],
+            lswitch_name=port['network_id'],
+            topic=port['tenant_id'],
+            macs=[port['mac_address']], ips=ips,
+            external_ids=external_ids,
+            parent_name=parent_name, tag=tag,
+            enabled=port.get('admin_state_up', None),
+            chassis=chassis, tunnel_key=tunnel_key,
+            port_security=allowed_macs,
+            device_owner=port.get('device_owner', None),
+            sgids=sgids)
+
+        return port
+
     def create_port_precommit(self, context):
         pass
 
     def create_port_postcommit(self, context):
-        pass
-        # port = context.current
-        # id = port['id']
-        # network = port['network_id']
-        # mac = port['mac_address']
+        port = context.current
+        parent_name, tag = self._get_data_from_binding_profile(context, port['port'])
+        sgids = super(DFMechDriver, self)._get_security_groups_on_port(context, port)
+        self.create_port_in_nb_api(port, parent_name, tag, sgids)
+        LOG.info(_LI("DFMechDriver: create port %s" % port['id']))
+        return port
 
     def update_port_precommit(self, context):
         pass
 
     def update_port_postcommit(self, context):
-        pass
-        # port = context.current
-        # id = port['id']
-        # mac = port['mac_address']
+        with context.session.begin(subtransactions=True):
+            parent_name, tag = self._get_data_from_binding_profile(
+                context, port['port'])
+            updated_port = context.current
+
+            # self._process_portbindings_create_and_update(context,
+            #                                              port['port'],
+            #                                              updated_port)
+
+        external_ids = {
+            df_const.DF_PORT_NAME_EXT_ID_KEY: updated_port['name']}
+        allowed_macs = self._get_allowed_mac_addresses_from_port(
+            updated_port)
+
+        ips = []
+        if 'fixed_ips' in updated_port:
+            ips = [ip['ip_address'] for ip in updated_port['fixed_ips']]
+
+        chassis = None
+        if 'binding:host_id' in updated_port:
+            chassis = updated_port['binding:host_id']
+
+        # Router GW ports are not needed by dragonflow controller and
+        # they currently cause error as they couldnt be mapped to
+        # a valid ofport (or location)
+        if updated_port.get('device_owner') == const.DEVICE_OWNER_ROUTER_GW:
+            chassis = None
+
+        updated_security_groups = updated_port.get('security_groups')
+        if updated_security_groups == []:
+            security_groups = None
+        else:
+            security_groups = updated_security_groups
+
+        self.nb_api.update_lport(name=updated_port['id'],
+                                 topic=updated_port['tenant_id'],
+                                 macs=[updated_port['mac_address']], ips=ips,
+                                 external_ids=external_ids,
+                                 parent_name=parent_name, tag=tag,
+                                 enabled=updated_port['admin_state_up'],
+                                 port_security=allowed_macs,
+                                 chassis=chassis,
+                                 device_owner=updated_port.get('device_owner',
+                                                               None),
+                                 security_groups=security_groups)
+        LOG.info(_LI("DFMechDriver: update port %s" % port['id']))
+        return updated_port
 
     def delete_port_postcommit(self, context):
-        pass
-        # port = context.current
-        # id = port['id']
+        try:
+            port = context.current
+            port_id = port['id']
+            topic = port['tenant_id']
+            self.nb_api.delete_lport(name=port_id, topic=topic)
+        except df_exceptions.DBKeyNotFound:
+            LOG.debug("port %s is not found in DF DB, might have "
+                      "been deleted concurrently" % port_id)
+        LOG.info(_LI("DFMechDriver: delete port %s" % port_id))
 
     def bind_port(self, context):
         # This is just a temp solution so that Nova can boot images
