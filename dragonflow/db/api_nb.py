@@ -819,7 +819,7 @@ class OvsPort(object):
         self.ovs_port = value
 
     def get_id(self):
-        return self.ovs_port.get_uuid()
+        return self.ovs_port.get_id()
 
     def get_ofport(self):
         return self.ovs_port.get_ofport()
