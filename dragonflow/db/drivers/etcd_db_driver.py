@@ -30,6 +30,9 @@ from urllib3.connection import HTTPException, BaseSSLError
 from urllib3.exceptions import ReadTimeoutError, ProtocolError
 
 
+ETCD_READ_TIMEOUT = 20
+
+
 @contextmanager
 def _error_catcher(self):
     """
@@ -176,7 +179,7 @@ class EtcdDbDriver(db_api.DbApi):
             try:
                 entry = self.client.read('/', wait=True, recursive=True,
                                          waitIndex=self.current_key,
-                                         timeout=5)
+                                         timeout=ETCD_READ_TIMEOUT)
                 keys = entry.key.split('/')
                 self.notify_callback(keys[1], keys[2], entry.action,
                                      entry.value, None)
