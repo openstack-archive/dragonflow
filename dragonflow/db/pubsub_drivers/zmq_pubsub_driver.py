@@ -147,11 +147,13 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
 
     def register_topic(self, topic):
         super(ZMQSubscriberAgentBase, self).register_topic(topic)
+        topic = topic.encode('ascii', 'ignore')
         if self.sub_socket:
             self.sub_socket.setsockopt(zmq.SUBSCRIBE, topic)
 
     def unregister_topic(self, topic):
         super(ZMQSubscriberAgentBase, self).unregister_topic(topic)
+        topic = topic.encode('ascii', 'ignore')
         if self.sub_socket:
             self.sub_socket.setsockopt(zmq.UNSUBSCRIBE, topic)
 
