@@ -43,10 +43,11 @@ class ArpResponderTest(test_base.DFTestBase):
                 if flow['table'] == str(const.ARP_TABLE) + ',']
         return flows
 
-    def _wait_for_flow_removal(self, flows_before, timeout):
+    def _wait_for_flow_removal(self, ip, timeout):
         while timeout > 0:
-            flows_after = self._get_arp_table_flows()
-            if flows_after == flows_before:
+            arp_flows = self._get_arp_table_flows()
+            flow = self._find_arp_responder_flow_by_ip(arp_flows, ip)
+            if not flow:
                 return True
             timeout -= 1
             time.sleep(1)
@@ -72,7 +73,7 @@ class ArpResponderTest(test_base.DFTestBase):
         self.assertIsNotNone(
             self._find_arp_responder_flow_by_ip(flows_delta, ip)
         )
-        if not self._wait_for_flow_removal(flows_before, 30):
+        if not self._wait_for_flow_removal(ip, 30):
             print 'Flows before and after the test are not the same:'
             print 'Before: ', flows_before
             print 'After: ', self._get_arp_table_flows()
