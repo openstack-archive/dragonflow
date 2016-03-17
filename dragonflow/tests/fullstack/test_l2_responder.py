@@ -12,7 +12,9 @@
 
 import re
 
-import time
+import eventlet
+
+from neutron.agent.linux import utils
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common.utils import OvsFlowsParser
@@ -43,13 +45,11 @@ class ArpResponderTest(test_base.DFTestBase):
                 if flow['table'] == str(const.ARP_TABLE) + ',']
         return flows
 
-    def _wait_for_flow_removal(self, flows_before, timeout):
-        while timeout > 0:
-            flows_after = self._get_arp_table_flows()
-            if flows_after == flows_before:
-                return True
-            timeout -= 1
-            time.sleep(1)
+    def _check_arp_flow_removal(self, ip):
+        arp_flows = self._get_arp_table_flows()
+        flow = self._find_arp_responder_flow_by_ip(arp_flows, ip)
+        if not flow:
+            return True
         return False
 
     def test_arp_responder(self):
@@ -57,14 +57,20 @@ class ArpResponderTest(test_base.DFTestBase):
         Add a VM. Verify it's ARP flow is there.
         """
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'private'})
+        network_id = network.create(network={'name': 'arp_responder_test'})
+        subnet_obj = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            network_id,
+        ))
+
         subnet = {'network_id': network_id,
-            'cidr': '10.10.0.0/24',
-            'gateway_ip': '10.10.0.1',
+            'cidr': '10.10.10.0/24',
+            'gateway_ip': '10.10.10.1',
             'ip_version': 4,
-            'name': 'private',
+            'name': 'arp_responder_test',
             'enable_dhcp': True}
-        subnet = self.neutron.create_subnet({'subnet': subnet})
+        subnet = subnet_obj.create(subnet)
 
         flows_before = self._get_arp_table_flows()
         vm = self.store(objects.VMTestObj(self, self.neutron))
@@ -76,20 +82,19 @@ class ArpResponderTest(test_base.DFTestBase):
 
         vm.server.stop()
         vm.close()
+        eventlet.sleep(2)
         flows_delta = [flow for flow in flows_middle
                 if flow not in flows_before]
         self.assertIsNotNone(
             self._find_arp_responder_flow_by_ip(flows_delta, ip)
         )
-        if not self._wait_for_flow_removal(flows_before, 30):
-            print 'Flows before and after the test are not the same:'
-            print 'Before: ', flows_before
-            print 'After: ', self._get_arp_table_flows()
-            print 'Verifying we have removed the l2 responder flows.'
-            flows_after = self._get_arp_table_flows()
-            flows_delta = [flow for flow in flows_after
-                    if flow not in flows_before]
-            self.assertIsNone(
-                self._find_arp_responder_flow_by_ip(flows_delta, ip)
-            )
-        network.close()
+
+        condition = lambda: self._check_arp_flow_removal(ip)
+        try:
+            utils.wait_until_true(
+                condition, timeout=30, sleep=1,
+                exception=RuntimeError(
+                    "Timed out waiting for arp responedr flow from  %(ip)s"
+                    "removed" % {'ip': ip}))
+        except Exception as e:
+            self.assertIsNone(e)
