@@ -32,7 +32,6 @@ class Topology(object):
         self.enable_selective_topo_dist = \
             enable_selective_topology_distribution
         self.ovs_ports = {}
-        self.logical_to_ovs_port_mapping = {}
 
         self.controller = controller
         self.nb_api = controller.get_nb_api()
@@ -134,6 +133,9 @@ class Topology(object):
         return True
 
     def _vm_port_added(self, ovs_port):
+        self._vm_port_updated(ovs_port)
+
+    def _vm_port_updated(self, ovs_port):
         lport_id = ovs_port.get_iface_id()
         lport = self._get_lport(lport_id)
         if lport is None:
@@ -144,8 +146,6 @@ class Topology(object):
         self._add_to_topic_subscribed(tenant_id, lport_id)
 
         # update lport, notify apps
-        ovs_port_id = ovs_port.get_id()
-        self.logical_to_ovs_port_mapping[lport_id] = ovs_port_id
         LOG.info(_LI("Adding new local Logical Port = %s") % str(lport))
 
         try:
@@ -161,11 +161,7 @@ class Topology(object):
 
     def _vm_port_deleted(self, ovs_port):
         lport_id = ovs_port.get_iface_id()
-        lport = self.db_store.get_port(lport_id)
-        lport_id = lport.get_id()
-        tenant_id = lport.get_topic()
-
-        LOG.info(_LI("Vm port(%s) offline") % lport)
+        LOG.info(_LI("Vm port(%s) offline") % lport_id)
         try:
             self.controller.logical_port_deleted(lport_id)
         except Exception:
@@ -178,8 +174,7 @@ class Topology(object):
             # if lport.get_chassis() == self.chassis_name:
             #    self.nb_api.update_lport(lport.get_id(), chassis=None,
             #                             status='DOWN')
-            del self.logical_to_ovs_port_mapping[lport_id]
-            self._del_from_topic_subscribed(tenant_id, lport_id)
+            self._del_from_topic_subscribed(lport_id)
 
     def _add_to_topic_subscribed(self, topic, lport_id):
         if not self.enable_selective_topo_dist:
@@ -194,17 +189,20 @@ class Topology(object):
         else:
             self.topic_subscribed[topic].add(lport_id)
 
-    def _del_from_topic_subscribed(self, topic, lport_id):
+    def _del_from_topic_subscribed(self, lport_id):
         if not self.enable_selective_topo_dist:
             return
-        port_ids = self.topic_subscribed[topic]
-        port_ids.remove(lport_id)
-        if len(port_ids) == 0:
-            LOG.info(_LI("Unsubscribe topic: %(topic)s by lport: %(id)s") %
-                     {"topic": topic, "id": lport_id})
-            del self.topic_subscribed[topic]
-            self.nb_api.subscriber.unregister_topic(topic)
-            self._clear_tenant_topology(topic)
+        for topic in self.topic_subscribed:
+            if lport_id in self.topic_subscribed[topic]:
+                self.topic_subscribed[topic].remove(lport_id)
+            if len(self.topic_subscribed[topic]) == 0:
+                LOG.info(_LI("Unsubscribe topic: %(topic)s by lport: %(id)s") %
+                         {"topic": topic, "id": lport_id})
+                del self.topic_subscribed[topic]
+                self.nb_api.subscriber.unregister_topic(topic)
+                self._clear_tenant_topology(topic)
+            return
+        LOG.error(_LE("ovs_port is None"))
 
     def _pull_tenant_topology_from_db(self, tenant_id, lport_id):
         switches = self.nb_api.get_all_logical_switches(tenant_id)
