@@ -222,7 +222,16 @@ function install_ovs {
 
     install_package python-openvswitch
     source $NEUTRON_DIR/devstack/lib/ovs
-    compile_ovs True
+    local kernel_version
+    kernel_version=$(uname -r)
+    local kernel_major_minor
+    kernel_major_minor=`echo $kernel_version | cut -d. -f1-2`
+    local build_modules
+    build_modules="True"
+    if [ `vercmp_numbers "$kernel_major_minor" "4.4"` -ge "0" ]; then
+        build_modules="False"
+    fi
+    compile_ovs $build_modules
     sudo chown $(whoami) /usr/local/var/run/openvswitch
     sudo chown $(whoami) /usr/local/var/log/openvswitch
 }
