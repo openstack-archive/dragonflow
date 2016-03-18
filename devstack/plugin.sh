@@ -393,6 +393,26 @@ function stop_pubsub_service {
     stop_process df-publisher-service
 }
 
+function cleanup_database {
+    df-db clean
+}
+
+# start_df_l3_agent() - Start running processes, including screen
+function start_df_l3_agent {
+    echo "Starting Dragonflow l3 agent"
+
+    if is_service_enabled df-l3-agent ; then
+        run_process df-l3-agent "python $DF_L3_BINARY --config-file $NEUTRON_CONF --config-file=$Q_L3_CONF_FILE"
+    fi
+}
+
+# stop_df_l3_agent() - Stop running processes (non-screen)
+function stop_df_l3_agent {
+    if is_service_enabled df-l3-agent ; then
+        stop_process df-l3-agent
+    fi
+}
+
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
@@ -426,6 +446,8 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         if is_service_enabled df-publisher-service; then
             start_pubsub_service
         fi
+
+        start_df_l3_agent
         start_df
     fi
 
@@ -436,5 +458,8 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         if [[ "$DF_PUB_SUB" == "True" ]]; then
             stop_pubsub_service
         fi
+
+        stop_df_l3_agent
+        cleanup_database
     fi
 fi
