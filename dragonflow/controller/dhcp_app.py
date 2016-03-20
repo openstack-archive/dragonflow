@@ -20,6 +20,8 @@ from oslo_config import cfg
 from oslo_log import log
 
 from neutron.common import config as common_config
+from neutron.common import constants
+from neutron.plugins.common import constants as n_p_const
 
 from ryu.lib import addrconv
 from ryu.lib.packet import dhcp
@@ -292,6 +294,15 @@ class DHCPApp(DFlowApp):
 
     def _get_port_mtu(self, lport):
         #TODO(gampel) Get mtu from network object once we add support
+        mtu = constants.DEFAULT_NETWORK_MTU
+        tunnel_type = cfg.CONF.df.tunnel_type
+        if tunnel_type == n_p_const.TYPE_VXLAN:
+            return mtu - n_p_const.VXLAN_ENCAP_OVERHEAD if mtu else 0
+        elif tunnel_type == n_p_const.TYPE_GENEVE:
+            #TODO(gampel) use max_header_size param when we move to ML2
+            return mtu - n_p_const.GENEVE_ENCAP_MIN_OVERHEAD if mtu else 0
+        elif tunnel_type == n_p_const.TYPE_GRE:
+            return mtu - n_p_const.GRE_ENCAP_OVERHEAD if mtu else 0
         return self.default_interface_mtu
 
     def remove_local_port(self, lport):
