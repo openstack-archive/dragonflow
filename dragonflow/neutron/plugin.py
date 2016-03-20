@@ -46,8 +46,10 @@ from neutron.db import extraroute_db
 from neutron.db import l3_agentschedulers_db
 from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
+from neutron.db import models_v2
 from neutron.db import portbindings_db
 from neutron.db import securitygroups_db
+from neutron.quota import resource_registry
 
 from dragonflow._i18n import _, _LE, _LI
 from dragonflow.common import common_params
@@ -86,6 +88,15 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    "external-net",
                                    "router"]
 
+    @resource_registry.tracked_resources(
+        network=models_v2.Network,
+        port=models_v2.Port,
+        subnet=models_v2.Subnet,
+        subnetpool=models_v2.SubnetPool,
+        security_group=securitygroups_db.SecurityGroup,
+        security_group_rule=securitygroups_db.SecurityGroupRule,
+        router=l3_db.Router,
+        floatingip=l3_db.FloatingIP)
     def __init__(self):
         super(DFPlugin, self).__init__()
         LOG.info(_LI("Starting DFPlugin"))
