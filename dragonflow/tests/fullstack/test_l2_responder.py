@@ -56,10 +56,19 @@ class ArpResponderTest(test_base.DFTestBase):
         """
         Add a VM. Verify it's ARP flow is there.
         """
-        flows_before = self._get_arp_table_flows()
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create(network={'name': 'private'})
+        subnet = {'network_id': network_id,
+            'cidr': '10.10.0.0/24',
+            'gateway_ip': '10.10.0.1',
+            'ip_version': 4,
+            'name': 'private',
+            'enable_dhcp': True}
+        subnet = self.neutron.create_subnet({'subnet': subnet})
 
+        flows_before = self._get_arp_table_flows()
         vm = self.store(objects.VMTestObj(self, self.neutron))
-        vm.create()
+        vm.create(network=network)
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
 
@@ -83,3 +92,4 @@ class ArpResponderTest(test_base.DFTestBase):
             self.assertIsNone(
                 self._find_arp_responder_flow_by_ip(flows_delta, ip)
             )
+        network.close()
