@@ -1,5 +1,5 @@
-DRAGONFLOW_REPO=${DRAGONFLOW_REPO:-git://github.com/openstack/dragonflow.git}
-NETWORKING_OVN_REPO=${NETWORKING_OVN_REPO:-git://github.com/openstack/networking-ovn.git}
+DRAGONFLOW_REPO=${DRAGONFLOW_REPO:-${GIT_BASE}/openstack/dragonflow.git}
+NETWORKING_OVN_REPO=${NETWORKING_OVN_REPO:-${GIT_BASE}/openstack/networking-ovn.git}
 DRAGONFLOW_DIR=$DEST/dragonflow
 DRAGONFLOW_BRANCH=${DRAGONFLOW_BRANCH:-master}
 
