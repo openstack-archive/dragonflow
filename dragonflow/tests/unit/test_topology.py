@@ -15,11 +15,10 @@
 
 from mock import Mock
 
-from neutron.tests import base as tests_base
-
 from dragonflow.controller.topology import Topology
 from dragonflow.db.api_nb import OvsPort, LogicalPort, LogicalSwitch
 from dragonflow.db.db_store import DbStore
+from dragonflow.tests import base as tests_base
 
 
 class TestTopology(tests_base.BaseTestCase):
