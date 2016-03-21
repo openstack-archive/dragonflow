@@ -373,8 +373,10 @@ class DHCPApp(DFlowApp):
 
     def update_logical_switch(self, lswitch):
         subnets = lswitch.get_subnets()
-        lswitch_id = lswitch.get_id()
-        network_id = self.db_store.get_network_id(lswitch_id)
+        network_id = self.db_store.get_network_id(
+            lswitch.get_id(),
+            lswitch.get_topic(),
+        )
         self._remove_dhcp_unicast_match_flow(network_id)
         for subnet in subnets:
             if self._is_ipv4(subnet) and subnet.enable_dhcp():
@@ -382,7 +384,10 @@ class DHCPApp(DFlowApp):
                 self._install_dhcp_unicast_match_flow(dhcp_addr, network_id)
 
     def remove_logical_switch(self, lswitch):
-        network_id = self.db_store.get_network_id(lswitch.get_id())
+        network_id = self.db_store.get_network_id(
+            lswitch.get_id(),
+            lswitch.get_topic(),
+        )
         self._remove_dhcp_unicast_match_flow(network_id)
 
     def _remove_dhcp_unicast_match_flow(self, network_id):

@@ -31,77 +31,77 @@ class DbStore(object):
 
     # This is a mapping between global logical data path id (network/lswitch)
     # And a local assigned if for this controller
-    def get_network_id(self, ldp):
+    def get_network_id(self, ldp, topic):
         with self.lock:
             return self.networks.get(ldp)
 
-    def set_network_id(self, ldp, net_id):
+    def set_network_id(self, ldp, net_id, topic):
         with self.lock:
             self.networks[ldp] = net_id
 
-    def del_network_id(self, ldp):
+    def del_network_id(self, ldp, topic):
         with self.lock:
             del self.networks[ldp]
 
-    def set_lswitch(self, id, lswitch):
+    def set_lswitch(self, id, lswitch, topic=None):
         with self.lock:
             self.lswitchs[id] = lswitch
 
-    def get_lswitch(self, id):
+    def get_lswitch(self, id, topic=None):
         with self.lock:
             return self.lswitchs.get(id)
 
-    def del_lswitch(self, id):
+    def del_lswitch(self, id, topic=None):
         with self.lock:
             del self.lswitchs[id]
 
-    def get_port_keys(self):
+    def get_port_keys(self, topic=None):
         with self.lock:
             return set(self.ports.keys())
 
-    def set_port(self, port_id, port, is_local):
+    def set_port(self, port_id, port, is_local, topic=None):
         with self.lock:
             self.ports[port_id] = port
             if is_local:
                 self.local_ports[port_id] = port
 
-    def get_port(self, port_id):
+    def get_port(self, port_id, topic=None):
         with self.lock:
             return self.ports.get(port_id)
 
-    def get_ports(self):
+    def get_ports(self, topic=None):
         with self.lock:
             return self.ports.values()
 
-    def delete_port(self, port_id, is_local):
+    def delete_port(self, port_id, is_local, topic=None):
         with self.lock:
             del self.ports[port_id]
             if is_local:
                 del self.local_ports[port_id]
 
-    def get_local_port(self, port_id):
+    def get_local_port(self, port_id, topic=None):
         with self.lock:
             return self.local_ports.get(port_id)
 
-    def get_local_port_by_name(self, port_name):
+    def get_local_port_by_name(self, port_name, topic=None):
         port_id_prefix = port_name[3:]
         for lport in self.local_ports.values():
             if lport.get_id().startswith(port_id_prefix):
                 return lport
 
-    def update_router(self, router_id, router):
+    def update_router(self, router_id, router, topic=None):
         with self.lock:
             self.routers[router_id] = router
 
-    def delete_router(self, id):
+    def delete_router(self, id, topic=None):
         with self.lock:
             del self.routers[id]
 
-    def get_router(self, router_id):
+    def get_router(self, router_id, topic=None):
         with self.lock:
             return self.routers.get(router_id)
 
-    def get_ports_by_network_id(self, local_network_id):
+    def get_ports_by_network_id(self, local_network_id, topic=None):
         res = []
         with self.lock:
             for port in self.ports.values():
@@ -110,53 +110,53 @@ class DbStore(object):
                     res.append(port)
         return res
 
-    def get_router_by_router_interface_mac(self, interface_mac):
+    def get_router_by_router_interface_mac(self, interface_mac, topic=None):
         with self.lock:
             for router in self.routers.values():
                 for port in router.get_ports():
                     if port.get_mac() == interface_mac:
                         return router
 
-    def get_routers(self):
+    def get_routers(self, topic=None):
         with self.lock:
             return self.routers.values()
 
-    def update_security_group(self, secgroup_id, secgroup):
+    def update_security_group(self, secgroup_id, secgroup, topic=None):
         with self.lock:
             self.secgroups[secgroup_id] = secgroup
 
-    def delete_security_group(self, id):
+    def delete_security_group(self, id, topic=None):
         with self.lock:
             del self.secgroups[id]
 
-    def get_security_group(self, secgroup_id):
+    def get_security_group(self, secgroup_id, topic=None):
         with self.lock:
             return self.secgroups.get(secgroup_id)
 
-    def get_security_groups(self):
+    def get_security_groups(self, topic=None):
         with self.lock:
             return self.secgroups.values()
 
-    def get_security_group_keys(self):
+    def get_security_group_keys(self, topic=None):
         with self.lock:
             return set(self.secgroups.keys())
 
-    def get_lswitchs(self):
+    def get_lswitchs(self, topic=None):
         with self.lock:
             return self.lswitchs.values()
 
-    def update_floatingip(self, floatingip_id, floatingip):
+    def update_floatingip(self, floatingip_id, floatingip, topic=None):
         with self.lock:
             self.floatingips[floatingip_id] = floatingip
 
-    def get_floatingip(self, floatingip_id):
+    def get_floatingip(self, floatingip_id, topic=None):
         with self.lock:
             return self.floatingips.get(floatingip_id)
 
-    def delete_floatingip(self, floatingip_id):
+    def delete_floatingip(self, floatingip_id, topic=None):
         with self.lock:
             del self.floatingips[floatingip_id]
 
-    def get_floatingips(self):
+    def get_floatingips(self, topic=None):
         with self.lock:
             return self.floatingips.values()

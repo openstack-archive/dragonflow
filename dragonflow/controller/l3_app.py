@@ -186,7 +186,9 @@ class L3App(DFlowApp):
 
                 # From all the other interfaces to this new interface
                 router_port_net_id = self.db_store.get_network_id(
-                    port.get_lswitch_id())
+                    port.get_lswitch_id(),
+                    port.get_topic(),
+                )
                 self._add_subnet_send_to_controller(
                     router_port_net_id,
                     router_port.get_cidr_network(),
@@ -287,6 +289,8 @@ class L3App(DFlowApp):
         for lrouter in self.db_store.get_routers():
             for router_port in lrouter.get_ports():
                 local_network_id = self.db_store.get_network_id(
-                    router_port.get_lswitch_id())
+                    router_port.get_lswitch_id(),
+                    router_port.get_topic(),
+                )
                 self.add_router_port(lrouter, router_port,
                         local_network_id)

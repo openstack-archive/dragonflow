@@ -14,8 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import abc
 import eventlet
 import netaddr
+import six
 
 from oslo_config import cfg
 from oslo_log import log
@@ -526,7 +528,20 @@ class NbApi(object):
         return None
 
 
-class Chassis(object):
+@six.add_metaclass(abc.ABCMeta)
+class DbStoreObject(object):
+    @abc.abstractmethod
+    def get_id(self):
+        """Return the ID of this object."""
+
+    @abc.abstractmethod
+    def get_topic(self):
+        """
+        Return the topic, i.e. ID of the tenant to which this object belongs.
+        """
+
+
+class Chassis(DbStoreObject):
 
     def __init__(self, value):
         self.chassis = jsonutils.loads(value)
@@ -540,11 +555,17 @@ class Chassis(object):
     def get_encap_type(self):
         return self.chassis['tunnel_type']
 
+    def get_id(self):
+        return self.chassis['id']
+
+    def get_topic(self):
+        return None
+
     def __str__(self):
         return self.chassis.__str__()
 
 
-class LogicalSwitch(object):
+class LogicalSwitch(DbStoreObject):
 
     def __init__(self, value):
         self.lswitch = jsonutils.loads(value)
@@ -571,7 +592,7 @@ class LogicalSwitch(object):
             return False
 
 
-class Subnet(object):
+class Subnet(DbStoreObject):
 
     def __init__(self, value):
         self.subnet = value
@@ -598,7 +619,7 @@ class Subnet(object):
         return self.subnet['topic']
 
 
-class LogicalPort(object):
+class LogicalPort(DbStoreObject):
 
     def __init__(self, value):
         self.external_dict = {}
@@ -641,10 +662,13 @@ class LogicalPort(object):
         return self.lport.__str__() + self.external_dict.__str__()
 
 
-class LogicalRouter(object):
+class LogicalRouter(DbStoreObject):
 
     def __init__(self, value):
         self.lrouter = jsonutils.loads(value)
+
+    def get_id(self):
+        return self.lrouter.get('id')
 
     def get_name(self):
         return self.lrouter.get('name')
@@ -665,11 +689,14 @@ class LogicalRouter(object):
         return self.lrouter.__str__()
 
 
-class LogicalRouterPort(object):
+class LogicalRouterPort(DbStoreObject):
 
     def __init__(self, value):
         self.router_port = value
         self.cidr = netaddr.IPNetwork(self.router_port['network'])
+
+    def get_id(self):
+        return self.router_port.get('id')
 
     def get_name(self):
         return self.router_port.get('name')
@@ -705,7 +732,7 @@ class LogicalRouterPort(object):
         return self.router_port.__str__()
 
 
-class SecurityGroup(object):
+class SecurityGroup(DbStoreObject):
 
     def __init__(self, value):
         self.secgroup = jsonutils.loads(value)
@@ -714,9 +741,15 @@ class SecurityGroup(object):
     def name(self):
         return self.secgroup.get('name')
 
+    def get_id(self):
+        return self.secgroup.get('id')
+
+    def get_topic(self):
+        return self.secgroup.get('topic')
+
     @property
     def id(self):
-        return self.secgroup.get('id')
+        return self.get_id()
 
     @property
     def rules(self):
@@ -733,10 +766,16 @@ class SecurityGroup(object):
         return self.secgroup.__str__()
 
 
-class SecurityGroupRule(object):
+class SecurityGroupRule(DbStoreObject):
 
     def __init__(self, value):
         self.secrule = value
+
+    def get_id(self):
+        return self.secrule.get('id')
+
+    def get_topic(self):
+        return self.secrule.get('topic')
 
     @property
     def direction(self):
@@ -781,10 +820,13 @@ class SecurityGroupRule(object):
         return self.secrule.__str__()
 
 
-class Floatingip(object):
+class Floatingip(DbStoreObject):
 
     def __init__(self, value):
         self.floatingip = jsonutils.loads(value)
+
+    def get_id(self):
+        return self.floatingip.get('id')
 
     def get_name(self):
         return self.floatingip['name']
@@ -808,7 +850,7 @@ class Floatingip(object):
         return self.floatingip.__str__()
 
 
-class OvsPort(object):
+class OvsPort(DbStoreObject):
 
     TYPE_VM = 'vm'
     TYPE_TUNNEL = 'tunnel'
@@ -820,6 +862,9 @@ class OvsPort(object):
 
     def get_id(self):
         return self.ovs_port.get_id()
+
+    def get_topic(self):
+        return None
 
     def get_ofport(self):
         return self.ovs_port.get_ofport()
