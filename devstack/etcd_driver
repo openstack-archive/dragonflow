@@ -97,10 +97,12 @@ function nb_db_driver_status_server
 
 function nb_db_driver_start_server {
     if is_service_enabled df-etcd-server ; then
-        if is_ubuntu; then
-            sudo initctl start etcd
-        elif is_fedora; then
-            sudo systemctl start etcd
+        if [! nb_db_driver_status_server]; then
+            if is_ubuntu; then
+                sudo initctl start etcd
+            elif is_fedora; then
+                sudo systemctl start etcd
+            fi
         fi
     fi
 }
@@ -108,9 +110,9 @@ function nb_db_driver_start_server {
 function nb_db_driver_stop_server {
     if is_service_enabled df-etcd-server ; then
         if is_ubuntu; then
-            sudo initctl stop etcd
+            sudo initctl stop etcd || True
         elif is_fedora; then
-            sudo systemctl stop etcd
+            sudo systemctl stop etcd || True
         fi
     fi
 }
