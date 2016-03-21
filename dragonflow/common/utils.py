@@ -125,7 +125,7 @@ class wrap_func_retry(object):
                  exception_checker=lambda exc: False):
         super(wrap_func_retry, self).__init__()
 
-        self._errors = _errors if not _errors else []
+        self._errors = _errors if _errors else []
         # default is that we re-raise anything unexpected
         self.exception_checker = exception_checker
         self.retry_interval = retry_interval
