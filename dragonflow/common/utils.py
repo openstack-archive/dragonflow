@@ -125,7 +125,7 @@ class wrap_func_retry(object):
                  exception_checker=lambda exc: False):
         super(wrap_func_retry, self).__init__()
 
-        self._errors = _errors if not _errors else []
+        self._errors = _errors if _errors else []
         # default is that we re-raise anything unexpected
         self.exception_checker = exception_checker
         self.retry_interval = retry_interval
@@ -144,7 +144,9 @@ class wrap_func_retry(object):
                     return f(*args, **kwargs)
                 except Exception as e:
                     with excutils.save_and_reraise_exception() as ectxt:
-                        if remaining > 0:
+                        if not self._errors or len(self._errors) == 0:
+                            ectxt.reraise = True
+                        elif remaining > 0:
                             ectxt.reraise = not self._is_exception_expected(e)
                         else:
                             LOG.exception(_LE('Function exceeded '
