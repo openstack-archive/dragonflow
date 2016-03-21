@@ -330,6 +330,10 @@ function start_ovs {
     cd $_pwd
 }
 
+function cleanup_nb_db {
+    df-db clean
+}
+
 # start_df() - Start running processes, including screen
 function start_df {
     echo "Starting Dragonflow"
@@ -347,6 +351,8 @@ function stop_df {
         stop_process df-controller
         ovs_service_stop $OVS_VSWITCHD_SERVICE
     fi
+
+    cleanup_nb_db
 
     nb_db_driver_stop_server
 
@@ -385,10 +391,6 @@ function start_pubsub_service {
 
 function stop_pubsub_service {
     stop_process df-publisher-service
-}
-
-function cleanup_database {
-    df-db clean
 }
 
 # main loop
@@ -434,6 +436,5 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         if [[ "$DF_PUB_SUB" == "True" ]]; then
             stop_pubsub_service
         fi
-        cleanup_database
     fi
 fi
