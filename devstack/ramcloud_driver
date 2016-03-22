@@ -10,8 +10,6 @@
 # - nb_db_driver_clean
 
 RAMCLOUD=$DEST/ramcloud
-RAMCLOUD_REPO=${RAMCLOUD_REPO:-${GIT_BASE}/dsivov/RamCloudBin.git}
-RAMCLOUD_BRANCH=${RAMCLOUD_BRANCH:-master}
 RAMCLOUD_LIB=$RAMCLOUD/lib
 RAMCLOUD_BIN=$RAMCLOUD/bin
 RAMCLOUD_MASTER_IP=${RAMCLOUD_MASTER_IP:-"$HOST_IP"}
@@ -47,14 +45,14 @@ function nb_db_driver_install_server {
         fi
         install_package "$boost_program" "$boost_filesystem" "$protobuf_lib"
         echo "Installing RAMCloud server"
-        git_clone $RAMCLOUD_REPO $RAMCLOUD $RAMCLOUD_BRANCH
+        git_clone https://github.com/dsivov/RamCloudBin.git $RAMCLOUD
         echo export LD_LIBRARY_PATH="$RAMCLOUD_LIB":"$LD_LIBRARY_PATH" | tee -a $HOME/.bashrc
     fi
 }
 
 function nb_db_driver_install_client {
     echo "Installing RAMCloud client"
-    git_clone $RAMCLOUD_REPO $RAMCLOUD $RAMCLOUD_BRANCH
+     git_clone https://github.com/dsivov/RamCloudBin.git $RAMCLOUD
 }
 
 function nb_db_driver_status_server
