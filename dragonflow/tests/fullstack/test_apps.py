@@ -373,3 +373,28 @@ class TestDHCPApp(test_base.DFTestBase):
         self.policy.wait(30)
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
+
+    def test_dhcp_app_dos_block(self):
+        dhcp_packet = self._create_dhcp_discover()
+        send_dhcp_offer = app_testing_objects.SendAction(
+            self.subnet1.subnet_id,
+            self.port1.port_id,
+            str(dhcp_packet)
+        )
+
+        port_policies = self._create_port_policies()
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[send_dhcp_offer,
+                                send_dhcp_offer,
+                                send_dhcp_offer],
+                port_policies=port_policies,
+                unknown_port_action=app_testing_objects.IgnoreAction()
+            )
+        )
+
+        policy.start(self.topology)
+        policy.wait(30)
+
+        if len(self.policy.exceptions) > 0:
+            raise self.policy.exceptions[0]
