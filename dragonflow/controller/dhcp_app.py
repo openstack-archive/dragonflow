@@ -12,7 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 import netaddr
 import struct
 
@@ -31,6 +30,7 @@ from ryu.lib.packet import packet as ryu_packet
 from ryu.lib.packet import udp
 from ryu.ofproto import ether
 
+from dragonflow.common import utils as df_utils
 from dragonflow._i18n import _, _LI, _LE, _LW
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
@@ -41,6 +41,10 @@ DF_DHCP_OPTS = [
         help=_('Comma-separated list of the DNS servers which will be used.')),
     cfg.IntOpt('df_default_network_device_mtu', default=1460,
         help=_('default MTU setting for interface.')),
+    cfg.IntOpt('df_dhcp_max_rate_per_sec', default=3,
+        help=_('Max rate per secound for DHCP per port messages')),
+    cfg.IntOpt('df_dhcp_block_time_in_sec', default=100,
+        help=_('Time to block port that passe dthe max rate')),
 ]
 
 LOG = log.getLogger(__name__)
@@ -51,6 +55,13 @@ DHCP_DISCOVER = 1
 DHCP_OFFER = 2
 DHCP_REQUEST = 3
 DHCP_ACK = 5
+
+
+class PortRateLimiter(df_utils.RateLimiter):
+    def __init__(self, max_rate, time_unit=1, lport_id=None, ofport_num=None):
+        super(PortRateLimiter, self).__init__(max_rate, time_unit)
+        self.lport_id = lport_id
+        self.ofport_num = ofport_num
 
 
 class DHCPApp(DFlowApp):
@@ -65,6 +76,7 @@ class DHCPApp(DFlowApp):
         self.lease_time = cfg.CONF.dhcp_lease_duration
         self.domain_name = cfg.CONF.dns_domain
         self.advertise_mtu = cfg.CONF.advertise_mtu
+        self.block_hard_timeout = cfg.CONF.df_dhcp_block_time_in_sec
         self.default_interface_mtu = cfg.CONF.df_default_network_device_mtu
 
         self.local_tunnel_to_pid_map = {}
@@ -98,7 +110,18 @@ class DHCPApp(DFlowApp):
                 port_tunnel_key)
             return
 
-        lport_id = self.local_tunnel_to_pid_map[port_tunnel_key]
+        port_rate_limiter = self.local_tunnel_to_pid_map[port_tunnel_key]
+        if port_rate_limiter():
+            self._block_port_dhcp_traffic(
+                    port_rate_limiter.ofport_num,
+                    self.block_hard_timeout)
+            LOG.warning(_LW("pass rate limit for %(port_id)s blocking DHCP"
+                " traffic for %(time)s sec") %
+                    {'port_id': port_rate_limiter.lport_id,
+                    'time': self.block_hard_timeout})
+            return
+
+        lport_id = port_rate_limiter.lport_id
         lport = self.db_store.get_port(lport_id)
         if lport is None:
             LOG.error(
@@ -342,7 +365,12 @@ class DHCPApp(DFlowApp):
 
         lport_id = lport.get_id()
         tunnel_key = lport.get_tunnel_key()
-        self.local_tunnel_to_pid_map[tunnel_key] = lport_id
+        ofport = lport.get_external_value('ofport')
+        port_data = PortRateLimiter(
+                        lport_id=lport_id,
+                        ofport_num=ofport,
+                        max_rate=cfg.CONF.df_dhcp_max_rate_per_sec)
+        self.local_tunnel_to_pid_map[tunnel_key] = port_data
 
         if not self._is_dhcp_enabled_on_network(lport, network_id):
             return
@@ -455,3 +483,15 @@ class DHCPApp(DFlowApp):
             return (netaddr.IPNetwork(subnet.get_cidr()).version == 4)
         except TypeError:
             return False
+
+    def _block_port_dhcp_traffic(self, ofport_num, hard_timeout):
+        parser = self.get_datapath().ofproto_parser
+        match = parser.OFPMatch()
+        match.set_in_port(ofport_num)
+        drop_inst = None
+        self.mod_flow(
+             self.get_datapath(),
+             inst=drop_inst,
+             hard_timeout=hard_timeout,
+             table_id=const.DHCP_TABLE,
+             match=match)
