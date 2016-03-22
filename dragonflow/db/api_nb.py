@@ -435,6 +435,7 @@ class NbApi(object):
         lrouter_port['name'] = name
         lrouter_port['lrouter'] = lrouter_name
         lrouter_port['lswitch'] = lswitch
+        lrouter_port['topic'] = topic
         for col, val in columns.items():
             lrouter_port[col] = val
 
