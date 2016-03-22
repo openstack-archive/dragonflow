@@ -162,11 +162,11 @@ class VMTestObj(object):
         flavor = self.nova.flavors.find(name="m1.tiny")
         self.parent.assertIsNotNone(flavor)
         if network:
-            net = network
+            net_id = network.network_id
         else:
-            net = self._find_first_network(name='private')
-        self.parent.assertIsNotNone(net)
-        nics = [{'net-id': net['id']}]
+            net_id = self._find_first_network(name='private')['id']
+        self.parent.assertIsNotNone(net_id)
+        nics = [{'net-id': net_id}]
         self.server = self.nova.servers.create(name='test', image=image.id,
                            flavor=flavor.id, nics=nics, user_data=script)
         self.parent.assertIsNotNone(self.server)
