@@ -10,7 +10,7 @@
 # - nb_db_driver_clean
 
 RAMCLOUD=$DEST/ramcloud
-RAMCLOUD_REPO=${RAMCLOUD_REPO:-${GIT_BASE}/dsivov/RamCloudBin.git}
+RAMCLOUD_REPO=${RAMCLOUD_REPO:-${GITHUB}/dsivov/RamCloudBin.git}
 RAMCLOUD_BRANCH=${RAMCLOUD_BRANCH:-master}
 RAMCLOUD_LIB=$RAMCLOUD/lib
 RAMCLOUD_BIN=$RAMCLOUD/bin

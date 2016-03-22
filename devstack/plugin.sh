@@ -1,7 +1,7 @@
 # dragonflow.sh - Devstack extras script to install Dragonflow
 
 # The git repo to use
-OVS_REPO=${OVS_REPO:-${GIT_BASE}/openvswitch/ovs.git}
+OVS_REPO=${OVS_REPO:-${GITHUB}/openvswitch/ovs.git}
 OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
 
 # The branch to use from $OVS_REPO
