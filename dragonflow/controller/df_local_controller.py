@@ -130,7 +130,7 @@ class DfLocalController(object):
         except Exception as e:
             self.sync_finished = False
             LOG.warning(_LW("run_db_poll - suppressing exception"))
-            LOG.warning(e)
+            LOG.exception(e)
 
     def chassis_created(self, chassis):
         # Check if tunnel already exists to this chassis
