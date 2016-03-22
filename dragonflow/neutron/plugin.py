@@ -86,7 +86,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    "security-group",
                                    "extraroute",
                                    "external-net",
-                                   "router"]
+                                   "router",
+                                   "subnet_allocation"]
 
     @resource_registry.tracked_resources(
         network=models_v2.Network,
