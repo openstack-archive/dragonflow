@@ -293,21 +293,23 @@ class TestDHCPApp(test_base.DFTestBase):
     def _create_dhcp_renewal_request(self, offer_buf):
         return self._create_dhcp_request(offer_buf, is_renewal=True)
 
-    def _create_port_policies(self):
+    def _create_port_policies(self, disable_rule=True):
         ignore_action = app_testing_objects.IgnoreAction()
         key1 = (self.subnet1.subnet_id, self.port1.port_id)
+        actions = [
+                app_testing_objects.SendAction(
+                    self.subnet1.subnet_id,
+                    self.port1.port_id,
+                    self._create_dhcp_request
+                )]
+        if disable_rule:
+            actions.append(app_testing_objects.DisableRuleAction())
+
         rules1 = [
             app_testing_objects.PortPolicyRule(
                 # Detect dhcp offer
                 app_testing_objects.RyuDHCPOfferFilter(),
-                actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet1.subnet_id,
-                        self.port1.port_id,
-                        self._create_dhcp_request
-                    ),
-                    app_testing_objects.DisableRuleAction(),
-                ]
+                actions
             ),
             app_testing_objects.PortPolicyRule(
                 # Detect dhcp acknowledge
@@ -376,6 +378,39 @@ class TestDHCPApp(test_base.DFTestBase):
         self.policy.wait(30)
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
+
+    def _check_dhcp_block_rule(self, flows, ofport=None):
+        for flow in flows:
+            if flow['table'] == '11,' and 'drop' in flow['actions']:
+                if ofport is None or 'inport=' + ofport in flow['match']:
+                    return True
+        return False
+
+    def test_dhcp_app_dos_block(self):
+        dhcp_packet = self._create_dhcp_discover()
+        send_dhcp_offer = app_testing_objects.SendAction(
+            self.subnet1.subnet_id,
+            self.port1.port_id,
+            str(dhcp_packet)
+        )
+
+        port_policies = self._create_port_policies(disable_rule=False)
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[send_dhcp_offer,
+                                send_dhcp_offer,
+                                send_dhcp_offer,
+                                send_dhcp_offer],
+                port_policies=port_policies,
+                unknown_port_action=app_testing_objects.IgnoreAction()
+            )
+        )
+
+        policy.start(self.topology)
+        policy.wait(30)
+
+        ovs = test_utils.OvsFlowsParser()
+        self.assertTrue(self._check_dhcp_block_rule(ovs.dump()))
 
 
 class TestL3App(test_base.DFTestBase):
