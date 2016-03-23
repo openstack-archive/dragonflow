@@ -134,6 +134,18 @@ class NetworkTestObj(object):
     def close(self):
         if self.closed or self.network_id is None:
             return
+        ports = self.neutron.list_ports(network_id=self.network_id)
+        ports = ports['ports']
+        for port in ports:
+            if port['device_owner'] == 'network:router_interface':
+                for fip in port['fixed_ips']:
+                    subnet_msg = {'subnet_id': fip['subnet_id']}
+                    self.neutron.remove_interface_router(
+                         port['device_id'], body=subnet_msg)
+            elif port['device_owner'] == 'network:router_gateway':
+                pass
+            else:
+                self.neutron.delete_port(port['id'])
         self.neutron.delete_network(self.network_id)
         self.closed = True
 
