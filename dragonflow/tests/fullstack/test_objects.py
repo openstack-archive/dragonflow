@@ -24,6 +24,18 @@ from dragonflow.tests.fullstack import test_base
 LOG = log.getLogger(__name__)
 
 
+def find_first_network(nclient, params):
+    networks = nclient.list_networks(**params)['networks']
+    networks_count = len(networks)
+    if networks_count == 0:
+        return None
+    if networks_count > 1:
+        message = _LW("More than one network (%(count)d) found matching: "
+            "%(args)s")
+        LOG.warning(message % {'args': params, 'count': networks_count})
+    return networks[0]
+
+
 class RouterTestObj(object):
 
     def __init__(self, neutron, nb_api):
@@ -176,7 +188,7 @@ class VMTestObj(object):
         if network:
             net_id = network.network_id
         else:
-            net_id = self._find_first_network(name='private')['id']
+            net_id = find_first_network(self.neutron, name='private')['id']
         self.parent.assertIsNotNone(net_id)
         nics = [{'net-id': net_id}]
         self.server = self.nova.servers.create(name='test', image=image.id,
@@ -185,17 +197,6 @@ class VMTestObj(object):
         server_is_ready = self._wait_for_server_ready(30)
         self.parent.assertTrue(server_is_ready)
         return self.server.id
-
-    def _find_first_network(self, **kwargs):
-        networks = self.neutron.list_networks(**kwargs)['networks']
-        networks_count = len(networks)
-        if networks_count == 0:
-            return None
-        if networks_count > 1:
-            message = _LW("More than one network (%(count)d) found matching: "
-                "%(args)s")
-            LOG.warning(message % {'args': kwargs, 'count': networks_count})
-        return networks[0]
 
     def _wait_for_server_ready(self, timeout):
         if self.server is None:
