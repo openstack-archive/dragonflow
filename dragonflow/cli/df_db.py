@@ -49,8 +49,7 @@ def print_table(db_driver, table):
     try:
         keys = db_driver.get_all_keys(table)
     except df_exceptions.DBKeyNotFound:
-        print('Table not found: ' + table)
-        return
+        keys = []
     print (' ')
     print ('Keys for table ' + table)
     print ('------------------------------------------------------------')
