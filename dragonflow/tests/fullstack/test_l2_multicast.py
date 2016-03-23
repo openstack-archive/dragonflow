@@ -23,7 +23,7 @@ class TestL2Multicast(test_base.DFTestBase):
         for flow in flows:
             if flow['table'] == str(const.L3_PROACTIVE_LOOKUP_TABLE) + ',':
                 if 'nw_dst=' + ip in flow['match'] and mac in flow['actions']:
-                    m = re.search('metadata=0x(\d+)', flow['match'])
+                    m = re.search('metadata=0x([0-9a-f]+)', flow['match'])
                     if m:
                         return m.group(1)
         return None
@@ -58,8 +58,8 @@ class TestL2Multicast(test_base.DFTestBase):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create(network={'name': 'private'})
         subnet = {'network_id': network_id,
-            'cidr': '10.10.0.0/24',
-            'gateway_ip': '10.10.0.1',
+            'cidr': '10.200.0.0/24',
+            'gateway_ip': '10.200.0.1',
             'ip_version': 4,
             'name': 'private',
             'enable_dhcp': True}
