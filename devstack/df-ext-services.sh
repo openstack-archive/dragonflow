@@ -19,6 +19,3 @@ if ! nb_db_driver_status_server; then
     echo "Going to start db"
     nb_db_driver_start_server
 fi
-
-# Start ovs db and etcd/ramcloud
-start_ovs
