@@ -23,7 +23,7 @@ class TestL2Multicast(test_base.DFTestBase):
         for flow in flows:
             if flow['table'] == str(const.L3_PROACTIVE_LOOKUP_TABLE) + ',':
                 if 'nw_dst=' + ip in flow['match'] and mac in flow['actions']:
-                    m = re.search('metadata=0x(\d+)', flow['match'])
+                    m = re.search('metadata=0x([0-9a-f]+)', flow['match'])
                     if m:
                         return m.group(1)
         return None
