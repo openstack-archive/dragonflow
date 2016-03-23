@@ -15,6 +15,7 @@ import netaddr
 import time
 
 from novaclient import client as novaclient
+from neutronclient import common as neutron_common
 
 from oslo_log import log
 
@@ -145,7 +146,10 @@ class NetworkTestObj(object):
             elif port['device_owner'] == 'network:router_gateway':
                 pass
             else:
-                self.neutron.delete_port(port['id'])
+                try:
+                    self.neutron.delete_port(port['id'])
+                except neutron_common.exceptions.PortNotFoundClient:
+                    pass
         self.neutron.delete_network(self.network_id)
         self.closed = True
 
