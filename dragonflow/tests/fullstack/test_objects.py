@@ -10,8 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import netaddr
 
+import six
 import time
 
 from novaclient import client as novaclient
@@ -229,10 +229,11 @@ class VMTestObj(object):
     def get_first_ipv4(self):
         if self.server is None:
             return None
-        ips = self.server.networks['private']
-        for ip in ips:
-            if netaddr.IPAddress(ip).version == 4:
-                return ip
+        ips = self.nova.servers.ips(self.server)
+        for id, network in six.iteritems(ips):
+            for ip in network:
+                if int(ip['version']) == 4:
+                    return ip['addr']
         return None
 
 
