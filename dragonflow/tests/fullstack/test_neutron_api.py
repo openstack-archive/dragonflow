@@ -10,16 +10,33 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log
+
+from dragonflow._i18n import _LW
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 from neutronclient.common import exceptions as n_exc
 
 
+LOG = log.getLogger(__name__)
+
+
 class TestNeutronAPIandDB(test_base.DFTestBase):
 
     def setUp(self):
         super(TestNeutronAPIandDB, self).setUp()
+
+    def _find_external_network(self):
+        external_net_para = {'router:external': True}
+        networks = self.neutron.list_networks(**external_net_para)['networks']
+        networks_count = len(networks)
+        if networks_count == 0:
+            return None
+        if networks_count > 1:
+            message = _LW("More than one network (%(count)d) found.")
+            LOG.warning(message % {'count': networks_count})
+        return networks[0]
 
     def test_create_network(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
@@ -185,27 +202,30 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(secgroup.exists())
 
     def test_associate_floatingip(self):
-        network = self.store(
-            objects.NetworkTestObj(self.neutron, self.nb_api))
+        external_net = self._find_external_network()
+        if not external_net:
+            network = self.store(
+                objects.NetworkTestObj(self.neutron, self.nb_api))
+            external_net_para = {'name': 'public', 'router:external': True}
+            external_network_id = network.create(network=external_net_para)
+            self.assertTrue(network.exists())
+            ext_subnet = self.store(objects.SubnetTestObj(
+                self.neutron,
+                self.nb_api,
+                external_network_id,
+            ))
+            external_subnet_para = {'cidr': '192.168.199.0/24',
+                      'ip_version': 4, 'network_id': external_network_id}
+            ext_subnet.create(external_subnet_para)
+            self.assertTrue(ext_subnet.exists())
+        else:
+            external_network_id = external_net['id']
+        self.assertIsNotNone(external_network_id)
+
         router = self.store(
             objects.RouterTestObj(self.neutron, self.nb_api))
         fip = self.store(
             objects.FloatingipTestObj(self.neutron, self.nb_api))
-
-        # external network
-        external_net_para = {'name': 'public', 'router:external': True}
-        external_network_id = network.create(network=external_net_para)
-        self.assertTrue(network.exists())
-        # external subnet
-        ext_subnet = self.store(objects.SubnetTestObj(
-            self.neutron,
-            self.nb_api,
-            external_network_id,
-        ))
-        external_subnet_para = {'cidr': '192.168.199.0/24',
-                  'ip_version': 4, 'network_id': external_network_id}
-        ext_subnet.create(external_subnet_para)
-        self.assertTrue(ext_subnet.exists())
 
         router_para = {'name': 'myrouter1', 'admin_state_up': True,
                  'external_gateway_info': {"network_id": external_network_id}}
@@ -218,6 +238,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         private_network_id = private_network.create(
             network={'name': 'private'})
         self.assertTrue(private_network.exists())
+
         # private subnet
         priv_subnet = self.store(objects.SubnetTestObj(
             self.neutron,
@@ -255,35 +276,40 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(port.exists())
         router.close()
         self.assertFalse(router.exists())
-        ext_subnet.close()
-        self.assertFalse(ext_subnet.exists())
         priv_subnet.close()
         self.assertFalse(priv_subnet.exists())
-        network.close()
-        self.assertFalse(network.exists())
+
+        if not external_net:
+            ext_subnet.close()
+            self.assertFalse(ext_subnet.exists())
+            network.close()
+            self.assertFalse(network.exists())
 
     def test_disassociate_floatingip(self):
-        network = self.store(
-            objects.NetworkTestObj(self.neutron, self.nb_api))
+        external_net = self._find_external_network()
+        if not external_net:
+            network = self.store(
+                objects.NetworkTestObj(self.neutron, self.nb_api))
+            external_net_para = {'name': 'public', 'router:external': True}
+            external_network_id = network.create(network=external_net_para)
+            self.assertTrue(network.exists())
+            ext_subnet = self.store(objects.SubnetTestObj(
+                self.neutron,
+                self.nb_api,
+                external_network_id,
+            ))
+            external_subnet_para = {'cidr': '192.168.199.0/24',
+                      'ip_version': 4, 'network_id': external_network_id}
+            ext_subnet.create(external_subnet_para)
+            self.assertTrue(ext_subnet.exists())
+        else:
+            external_network_id = external_net['id']
+        self.assertIsNotNone(external_network_id)
+
         router = self.store(
             objects.RouterTestObj(self.neutron, self.nb_api))
         fip = self.store(
             objects.FloatingipTestObj(self.neutron, self.nb_api))
-
-        # external network
-        external_net_para = {'name': 'public', 'router:external': True}
-        external_network_id = network.create(network=external_net_para)
-        self.assertTrue(network.exists())
-        # external subnet
-        ext_subnet = self.store(objects.SubnetTestObj(
-            self.neutron,
-            self.nb_api,
-            external_network_id,
-        ))
-        external_subnet_para = {'cidr': '192.168.199.0/24',
-                  'ip_version': 4, 'network_id': external_network_id}
-        ext_subnet.create(external_subnet_para)
-        self.assertTrue(ext_subnet.exists())
 
         router_para = {'name': 'myrouter1', 'admin_state_up': True,
                  'external_gateway_info': {"network_id": external_network_id}}
@@ -334,12 +360,13 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(port.exists())
         router.close()
         self.assertFalse(router.exists())
-        ext_subnet.close()
-        self.assertFalse(ext_subnet.exists())
         priv_subnet.close()
         self.assertFalse(priv_subnet.exists())
-        network.close()
-        self.assertFalse(network.exists())
+        if not external_net:
+            ext_subnet.close()
+            self.assertFalse(ext_subnet.exists())
+            network.close()
+            self.assertFalse(network.exists())
 
 
 '''
