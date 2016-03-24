@@ -58,8 +58,8 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         subnet = {'network_id': network_id,
-            'cidr': '10.10.0.0/24',
-            'gateway_ip': '10.10.0.1',
+            'cidr': '10.10.254.0/24',
+            'gateway_ip': '10.10.254.1',
             'ip_version': 4,
             'name': 'subnet-test',
             'enable_dhcp': True}
