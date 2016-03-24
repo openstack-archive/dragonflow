@@ -103,10 +103,7 @@ function _neutron_ovs_install_ovs {
             fi
         done
 
-        # try to unload openvswitch module from kernel
-        if test -n "`lsmod | grep openvswitch`"; then
-            sudo modprobe -r openvswitch
-        fi
+        unload_module_if_loaded openvswitch
 
         if is_ubuntu; then
             _neutron_ovs_install_ovs_ubuntu
@@ -124,6 +121,15 @@ function _neutron_ovs_install_ovs {
 
 function install_ovs {
     _neutron_ovs_install_ovs
+}
+
+function unload_tunnel_modules {
+    unload_module_if_loaded vport_geneve
+    unload_module_if_loaded geneve
+    unload_module_if_loaded vport_gre
+    unload_module_if_loaded vport_vxlan
+    unload_module_if_loaded vport_lisp
+    unload_module_if_loaded vport_stt
 }
 
 function start_ovs {
@@ -149,10 +155,6 @@ function start_ovs {
             die "$OVS_VSWITCHD_SERVICE is not running"
         fi
         load_module_if_not_loaded openvswitch
-        # TODO This needs to be a fatal error when doing multi-node testing, but
-        # breaks testing in OpenStack CI where geneve isn't available.
-        load_module_if_not_loaded geneve || true
-        load_module_if_not_loaded vport_geneve || true
 
         _neutron_ovs_base_setup_bridge br-int
         sudo ovs-vsctl --no-wait set bridge br-int fail-mode=secure other-config:disable-in-band=true
@@ -192,8 +194,8 @@ function uninstall_ovs {
 # stop_ovs_dp() - Stop OVS datapath
 function stop_ovs_dp {
     sudo ovs-dpctl dump-dps | sudo xargs -n1 ovs-dpctl del-dp
-    sudo rmmod vport_geneve
-    sudo rmmod openvswitch
+    unload_tunnel_modules
+    unload_module_if_loaded openvswitch
 }
 
 function stop_ovs

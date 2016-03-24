@@ -240,6 +240,16 @@ function load_module_if_not_loaded() {
     fi
 }
 
+function unload_module_if_loaded() {
+    MOD=$1
+    if test lsmod | grep -q $MOD; then
+        echo "Module not loaded: $MOD"
+    else
+        echo "Unloading module: $MOD"
+        sudo modprobe -r $MOD || die $LINENO "Failed to unload module: $MOD"
+    fi
+}
+
 function cleanup_nb_db {
     df-db clean
 }
