@@ -23,7 +23,7 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
 
-from dragonflow._i18n import _LI, _LE
+from dragonflow._i18n import _LI, _LW
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate
 from dragonflow.db import pub_sub_api
@@ -143,7 +143,8 @@ class NbApi(object):
             LOG.debug("Event update: %s", self.next_update)
             try:
                 value = self.next_update.value
-                if not value and self.next_update.action != 'delete':
+                if (not value and
+                        self.next_update.action not in {'delete', 'log'}):
                     if self.next_update.table and self.next_update.key:
                         value = self.driver.get_key(self.next_update.table,
                                                 self.next_update.key)
@@ -217,8 +218,22 @@ class NbApi(object):
             else:
                 ovs_port_id = key
                 self.controller.ovs_port_deleted(ovs_port_id)
+        elif 'log' == action:
+            message = _LI(
+                'Log event (Info): '
+                'table: %(table)s '
+                'key: %(key)s '
+                'action: %(action)s '
+                'value: %(value)s'
+            )
+            LOG.info(message, {
+                'table': str(table),
+                'key': str(key),
+                'action': str(action),
+                'value': str(value),
+            })
         else:
-            LOG.error(_LE('Unknown table %s'), table)
+            LOG.warning(_LW('Unknown table %s'), table)
 
     def sync(self):
         pass
