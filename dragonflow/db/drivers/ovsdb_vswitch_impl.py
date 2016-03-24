@@ -16,7 +16,7 @@
 import ryu.contrib.ovs.json
 from ryu.contrib.ovs.jsonrpc import Message
 
-from dragonflow._i18n import _LE
+from dragonflow._i18n import _LE, _LI
 from dragonflow.common import constants
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
@@ -58,7 +58,7 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.ovsdb.start()
         self.idl = self.ovsdb.idl
 
-        ovsdb_monitor = OvsdbMonitor(self.ip, self.port, self.nb_api)
+        ovsdb_monitor = OvsdbMonitor(self.ip, self.port, self.nb_api, self.idl)
         ovsdb_monitor.daemonize()
 
     def transaction(self, check_error=False, log_errors=True, **kwargs):
@@ -268,7 +268,7 @@ class OvsdbMonitor(object):
     TYPE_BRIDGE_PORT = 3
     TYPE_PATCH_PORT = 4
 
-    def __init__(self, ip, port, nb_api):
+    def __init__(self, ip, port, nb_api, idl):
         super(OvsdbMonitor, self).__init__()
         self.ip = ip
         self.port = port
@@ -278,6 +278,7 @@ class OvsdbMonitor(object):
         self.sock = None
         self.monitor_request_id = None
         self.nb_api = nb_api
+        self.idl = idl
         self._daemon = df_utils.DFDaemon()
 
     def daemonize(self):
@@ -334,6 +335,10 @@ class OvsdbMonitor(object):
             return
 
         for row_uuid, table_row in six.iteritems(table_rows):
+            if not self._is_handle_interface_update(row_uuid):
+                LOG.info(_LI("Skipping port id %s"), row_uuid)
+                continue
+
             new = table_row.get(OvsdbMonitor.MSG_STATUS_NEW)
             old = table_row.get(OvsdbMonitor.MSG_STATUS_OLD)
 
@@ -351,6 +356,10 @@ class OvsdbMonitor(object):
                 _interface.uuid = row_uuid
                 self.parse_interface(_interface, new)
                 self.notify_update_local_interface(_interface, "create")
+
+    def _is_handle_interface_update(self, interface_uuid):
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        return interface_uuid in br_int.ports
 
     def get_interface_type(self, input_dict):
         interface_type = input_dict.get(OvsdbMonitor.INTERFACE_FIELD_TYPE)
