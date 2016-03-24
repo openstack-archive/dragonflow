@@ -28,6 +28,7 @@ from dragonflow.tests.fullstack import test_objects as objects
 
 
 events_num = 0
+TEST_TABLE_NAME = '_test'
 
 
 def get_publisher():
@@ -67,12 +68,12 @@ class TestPubSub(test_base.DFTestBase):
         self.do_test = cfg.CONF.df.enable_df_pub_sub
         self.key = 'key-{}'.format(random.random())
         self.nb_api.driver.set_key(
-            'test',
+            TEST_TABLE_NAME,
             self.key,
             jsonutils.dumps({'name': self.key}))
 
     def tearDown(self):
-        self.nb_api.driver.delete_key('test', self.key)
+        self.nb_api.driver.delete_key(TEST_TABLE_NAME, self.key)
         super(TestPubSub, self).tearDown()
 
     def test_pub_sub_add_port(self):
@@ -175,7 +176,7 @@ class TestPubSub(test_base.DFTestBase):
         eventlet.sleep(2)
         local_events_num = ns.events_num
         action = "test_action"
-        update = DbUpdate("test", self.key, action, "value")
+        update = DbUpdate(TEST_TABLE_NAME, self.key, action, "value")
         publisher.send_event(update)
         eventlet.sleep(1)
 
@@ -210,7 +211,7 @@ class TestPubSub(test_base.DFTestBase):
         eventlet.sleep(0.5)
         local_events_num = self.events_num_t
         action = "test_action"
-        update = DbUpdate("test", self.key, action, "value")
+        update = DbUpdate(TEST_TABLE_NAME, self.key, action, "value")
         publisher.send_event(update, topic)
         eventlet.sleep(1)
         self.assertEqual(self.events_action_t, action)
@@ -218,7 +219,7 @@ class TestPubSub(test_base.DFTestBase):
         no_topic_action = "no topic"
         other_topic = "Other-topic"
         self.events_action_t = None
-        update = DbUpdate("test", self.key, no_topic_action, "value")
+        update = DbUpdate(TEST_TABLE_NAME, self.key, no_topic_action, "value")
         publisher.send_event(update, other_topic)
         eventlet.sleep(1)
 
@@ -241,7 +242,7 @@ class TestMultiprocPubSub(test_base.DFTestBase):
         self.do_test = cfg.CONF.df.enable_df_pub_sub
         self.key = 'key-{}'.format(random.random())
         self.event = DbUpdate(
-            "test",
+            TEST_TABLE_NAME,
             self.key,
             "create",
             "value",

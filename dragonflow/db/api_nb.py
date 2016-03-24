@@ -217,6 +217,9 @@ class NbApi(object):
             else:
                 ovs_port_id = key
                 self.controller.ovs_port_deleted(ovs_port_id)
+        elif '_test' == table:
+            # Do nothing. This table is for testing only.
+            pass
         else:
             LOG.error(_LE('Unknown table %s'), table)
 
