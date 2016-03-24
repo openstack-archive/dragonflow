@@ -121,6 +121,56 @@ function install_ovs {
     _neutron_ovs_install_ovs
 }
 
+function load_tunnel_modules {
+    case $TUNNEL_TYPE in
+    "geneve")
+        # TODO This needs to be a fatal error when doing multi-node testing, but
+        # breaks testing in OpenStack CI where geneve isn't available.
+        load_module_if_not_loaded geneve
+        load_module_if_not_loaded vport_geneve
+        ;;
+    "gre" | "ipsec_gre" )
+        load_module_if_not_loaded vport_gre
+        ;;
+    "vxlan")
+        load_module_if_not_loaded vport_vxlan
+        ;;
+    "lisp")
+        load_module_if_not_loaded vport_lisp
+        ;;
+    "stt")
+        load_module_if_not_loaded vport_stt
+        ;;
+    *)
+        die "Unsupported tunnel type $TUNNEL_TYPE"
+        ;;
+     esac
+}
+
+function unload_tunnel_modules {
+    case $TUNNEL_TYPE in
+    "geneve")
+        unload_module_if_loaded vport_geneve
+        unload_module_if_loaded geneve
+        ;;
+    "gre" | "ipsec_gre" )
+        unload_module_if_loaded vport_gre
+        ;;
+    "vxlan")
+        unload_module_if_loaded vport_vxlan
+        ;;
+    "lisp")
+        unload_module_if_loaded vport_lisp
+        ;;
+    "stt")
+        unload_module_if_loaded vport_stt
+        ;;
+    *)
+        die "Unsupported tunnel type $TUNNEL_TYPE"
+        ;;
+     esac
+}
+
 function start_ovs {
     echo "Starting OVS"
     SERVICE_NAME=openvswitch  # Default value
@@ -144,10 +194,7 @@ function start_ovs {
             die "$OVS_VSWITCHD_SERVICE is not running"
         fi
         load_module_if_not_loaded openvswitch
-        # TODO This needs to be a fatal error when doing multi-node testing, but
-        # breaks testing in OpenStack CI where geneve isn't available.
-        load_module_if_not_loaded geneve || true
-        load_module_if_not_loaded vport_geneve || true
+        load_tunnel_modules
 
         _neutron_ovs_base_setup_bridge br-int
         sudo ovs-vsctl --no-wait set bridge br-int fail-mode=secure other-config:disable-in-band=true
@@ -187,8 +234,8 @@ function uninstall_ovs {
 # stop_ovs_dp() - Stop OVS datapath
 function stop_ovs_dp {
     sudo ovs-dpctl dump-dps | sudo xargs -n1 ovs-dpctl del-dp
-    sudo rmmod vport_geneve
-    sudo rmmod openvswitch
+    unload_tunnel_modules
+    unload_module_if_loaded openvswitch
 }
 
 function stop_ovs
