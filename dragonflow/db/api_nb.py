@@ -24,6 +24,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LI, _LE
+from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate
 from dragonflow.db import pub_sub_api
@@ -206,7 +207,7 @@ class NbApi(object):
                 floatingip_id = key
                 self.controller.floatingip_deleted(floatingip_id)
 
-        elif 'ovsinterface' == table:
+        elif constants.OVS_INTERFACE == table:
             if action == 'set' or action == 'create':
                 ovs_port = OvsPort(value)
                 self.controller.ovs_port_updated(ovs_port)
