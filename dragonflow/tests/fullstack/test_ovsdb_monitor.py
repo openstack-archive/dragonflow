@@ -1,0 +1,151 @@
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+from dragonflow.db.drivers.ovsdb_vswitch_impl import OvsdbMonitor
+from dragonflow.tests.fullstack import test_base
+from dragonflow.tests.fullstack import test_objects as objects
+import time
+
+
+class TestOvsdbMonitor(test_base.DFTestBase):
+    def setUp(self):
+        super(TestOvsdbMonitor, self).setUp()
+        ovsdb_monitor = OvsdbMonitor("127.0.0.1", "6640", self.nb_api)
+        ovsdb_monitor.daemonize()
+
+    def queue_has_data(self, queue):
+        if queue.qsize() > 0:
+            return True
+        else:
+            return False
+
+    def check_wanted_vm_online(self, update, mac):
+        if update.table != "ovsinterface":
+            return False
+        if update.action != "create":
+            return False
+        _interface = update.value
+        if _interface is None:
+            return False
+        elif _interface.get_attached_mac() != mac:
+            return False
+        elif _interface.get_type() != "vm":
+            return False
+        elif _interface.get_iface_id() is None:
+            return False
+        elif _interface.get_ofport() <= 0:
+            return False
+        elif _interface.get_admin_state() != "up":
+            return False
+        else:
+            return True
+
+    def check_wanted_vm_offline(self, update, mac):
+        if update.table != "ovsinterface":
+            return False
+        if update.action != "delete":
+            return False
+        _interface = update.value
+        if _interface is None:
+            return False
+        elif _interface.get_attached_mac() != mac:
+            return False
+        elif _interface.get_type() != "vm":
+            return False
+        elif _interface.get_iface_id() is None:
+            return False
+        else:
+            return True
+
+    def test_notify_message(self):
+        self.nb_api._queue.clear()
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create(network={'name': 'private'})
+        subnet = {'network_id': network_id,
+            'cidr': '10.10.0.0/24',
+            'gateway_ip': '10.10.0.1',
+            'ip_version': 4,
+            'name': 'private',
+            'enable_dhcp': True}
+        self.neutron.create_subnet({'subnet': subnet})
+
+        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm.create(network=network)
+        self.assertIsNotNone(vm.server.addresses['private'])
+        mac = vm.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(mac)
+        #wait for ovsdb monitor messages put into queue
+        time.sleep(3)
+        self.assertTrue(self.queue_has_data(self.nb_api._queue))
+        find_wanted_online_vm = False
+        while self.nb_api._queue.qsize() > 0:
+            self.next_update = self.nb_api._queue.get()
+            if self.check_wanted_vm_online(self.next_update, mac):
+                find_wanted_online_vm = True
+                break
+        self.assertTrue(find_wanted_online_vm)
+
+        self.nb_api._queue.clear()
+        vm.close()
+        time.sleep(3)
+        self.assertTrue(self.queue_has_data(self.nb_api._queue))
+        find_wanted_offline_vm = False
+        while self.nb_api._queue.qsize() > 0:
+            self.next_update = self.nb_api._queue.get()
+            if self.check_wanted_vm_offline(self.next_update, mac):
+                find_wanted_offline_vm = True
+                break
+        self.assertTrue(find_wanted_offline_vm)
+
+    def test_reply_message(self):
+        self.nb_api._queue.clear()
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create(network={'name': 'private'})
+        subnet = {'network_id': network_id,
+            'cidr': '10.10.0.0/24',
+            'gateway_ip': '10.10.0.1',
+            'ip_version': 4,
+            'name': 'private',
+            'enable_dhcp': True}
+        self.neutron.create_subnet({'subnet': subnet})
+
+        vm1 = self.store(objects.VMTestObj(self, self.neutron))
+        vm1.create(network=network)
+        self.assertIsNotNone(vm1.server.addresses['private'])
+        mac1 = vm1.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(mac1)
+
+        vm2 = self.store(objects.VMTestObj(self, self.neutron))
+        vm2.create(network=network)
+        self.assertIsNotNone(vm2.server.addresses['private'])
+        mac2 = vm2.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(mac2)
+
+        #wait for ovsdb monitor messages put into queue
+        time.sleep(3)
+        self.assertTrue(self.queue_has_data(self.nb_api._queue))
+        find_wanted_vm1 = False
+        find_wanted_vm2 = False
+        while self.nb_api._queue.qsize() > 0:
+            self.next_update = self.nb_api._queue.get()
+            if self.check_wanted_vm_online(self.next_update, mac1):
+                find_wanted_vm1 = True
+                if find_wanted_vm1 and find_wanted_vm2:
+                    break
+            elif self.check_wanted_vm_online(self.next_update, mac2):
+                find_wanted_vm2 = True
+                if find_wanted_vm1 and find_wanted_vm2:
+                    break
+            else:
+                continue
+        self.assertTrue(find_wanted_vm1)
+        self.assertTrue(find_wanted_vm2)
