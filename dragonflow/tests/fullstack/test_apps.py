@@ -10,7 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import random
 import ryu.lib.packet
+import string
 import sys
 import time
 
@@ -18,8 +20,6 @@ from dragonflow._i18n import _LI
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_base
-
-from neutron.agent.common import utils
 
 from oslo_log import log
 
@@ -37,11 +37,20 @@ class TestApps(test_base.DFTestBase):
             topology.create_router([subnet1.subnet_id, subnet2.subnet_id])
             LOG.info(_LI('Port1 name: {}').format(port1.tap.tap.name))
             LOG.info(_LI('Port2 name: {}').format(port2.tap.tap.name))
-            self._print_command(['ip', 'addr'])
-            self._print_command(['ovs-vsctl', 'show'], True)
-            self._print_command(['ovs-ofctl', 'show', 'br-int'], True)
-            self._print_command(['ovs-ofctl', 'dump-flows', 'br-int'], True)
-            self._print_command(['ovsdb-client', 'dump', 'Open_vSwitch'], True)
+            test_utils.print_command(['ip', 'addr'])
+            test_utils.print_command(['ovs-vsctl', 'show'], True)
+            test_utils.print_command(
+                ['ovs-ofctl', 'show', 'br-int'],
+                True
+            )
+            test_utils.print_command(
+                ['ovs-ofctl', 'dump-flows', 'br-int'],
+                True
+            )
+            test_utils.print_command(
+                ['ovsdb-client', 'dump', 'Open_vSwitch'],
+                True
+            )
         except Exception as e:
             traceback = sys.exc_info()[2]
             try:
@@ -51,13 +60,6 @@ class TestApps(test_base.DFTestBase):
             # Just calling raise may raise an exception from topology.close()
             raise e, None, traceback
         topology.close()
-
-    def _print_command(self, full_args, run_as_root=False):
-            LOG.info(_LI('{}').format(utils.execute(
-                full_args,
-                run_as_root=run_as_root,
-                process_input=None,
-            )))
 
 
 class TestArpResponder(test_base.DFTestBase):
@@ -369,6 +371,208 @@ class TestDHCPApp(test_base.DFTestBase):
         }
 
     def test_dhcp_app(self):
+        self.policy.start(self.topology)
+        self.policy.wait(30)
+        if len(self.policy.exceptions) > 0:
+            raise self.policy.exceptions[0]
+
+
+class TestL3App(test_base.DFTestBase):
+    def setUp(self):
+        super(TestL3App, self).setUp()
+        self.topology = None
+        self.policy = None
+        self._ping = None
+        try:
+            self.topology = self.store(
+                app_testing_objects.Topology(
+                    self.neutron,
+                    self.nb_api
+                )
+            )
+            self.subnet1 = self.topology.create_subnet(cidr='192.168.12.0/24')
+            self.subnet2 = self.topology.create_subnet(cidr='192.168.13.0/24')
+            self.port1 = self.subnet1.create_port()
+            self.port2 = self.subnet2.create_port()
+            self.router = self.topology.create_router([
+                self.subnet1.subnet_id,
+                self.subnet2.subnet_id,
+            ])
+            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+
+            port_policies = self._create_port_policies()
+            self.policy = self.store(
+                app_testing_objects.Policy(
+                    initial_actions=[
+                        app_testing_objects.SendAction(
+                            self.subnet1.subnet_id,
+                            self.port1.port_id,
+                            self._create_ping_packet
+                        ),
+                    ],
+                    port_policies=port_policies,
+                    unknown_port_action=app_testing_objects.IgnoreAction()
+                )
+            )
+        except Exception:
+            if self.topology:
+                self.topology.close()
+            raise
+
+    def _create_port_policies(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        key1 = (self.subnet1.subnet_id, self.port1.port_id)
+        rules1 = [
+            app_testing_objects.PortPolicyRule(
+                # Detect pong, end simulation
+                app_testing_objects.RyuICMPPongFilter(self._get_ping),
+                actions=[
+                    app_testing_objects.DisableRuleAction(),
+                    app_testing_objects.StopSimulationAction(),
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore gratuitous ARP packets
+                app_testing_objects.RyuARPGratuitousFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 packets
+                app_testing_objects.RyuIPv6Filter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+        ]
+        key2 = (self.subnet2.subnet_id, self.port2.port_id)
+        rules2 = [
+            app_testing_objects.PortPolicyRule(
+                # Detect ping, reply with pong
+                app_testing_objects.RyuICMPPingFilter(),
+                actions=[
+                    app_testing_objects.SendAction(
+                        self.subnet2.subnet_id,
+                        self.port2.port_id,
+                        self._create_pong_packet
+                    ),
+                    app_testing_objects.DisableRuleAction(),
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore gratuitous ARP packets
+                app_testing_objects.RyuARPGratuitousFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 packets
+                app_testing_objects.RyuIPv6Filter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+        ]
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
+        policy1 = app_testing_objects.PortPolicy(
+            rules=rules1,
+            default_action=raise_action
+        )
+        policy2 = app_testing_objects.PortPolicy(
+            rules=rules2,
+            default_action=raise_action
+        )
+        return {
+            key1: policy1,
+            key2: policy2,
+        }
+
+    def _create_ping_packet(self, buf):
+        router_interface = self.router.router_interfaces[
+            self.subnet1.subnet_id
+        ]
+        router_interface_port = self.neutron.show_port(
+            router_interface['port_id']
+        )
+        ethernet = ryu.lib.packet.ethernet.ethernet(
+            src=self.port1.port.get_logical_port().get_mac(),
+            dst=router_interface_port['port']['mac_address'],
+            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+        )
+        ip = ryu.lib.packet.ipv4.ipv4(
+            src=self.port1.port.get_logical_port().get_ip(),
+            dst=self.port2.port.get_logical_port().get_ip(),
+            proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+        )
+        icmp = ryu.lib.packet.icmp.icmp(
+            type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
+            data=ryu.lib.packet.icmp.echo(data=self._create_random_string())
+        )
+        self._ping = icmp
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ethernet)
+        result.add_protocol(ip)
+        result.add_protocol(icmp)
+        result.serialize()
+        return result.data
+
+    def _get_ping(self):
+        return self._ping
+
+    def _create_random_string(self, length=16):
+        alphabet = string.printable
+        return ''.join([random.choice(alphabet) for _ in range(length)])
+
+    def _create_pong_packet(self, buf):
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        ether = pkt.get_protocol(ryu.lib.packet.ethernet.ethernet)
+        ip = pkt.get_protocol(ryu.lib.packet.ipv4.ipv4)
+        icmp = pkt.get_protocol(ryu.lib.packet.icmp.icmp)
+
+        src_mac = ether.dst
+        dst_mac = ether.src
+        ether.src = src_mac
+        ether.dst = dst_mac
+        self.assertEqual(
+            src_mac,
+            self.port2.port.get_logical_port().get_mac()
+        )
+        router_interface = self.router.router_interfaces[
+            self.subnet2.subnet_id
+        ]
+        router_interface_port = self.neutron.show_port(
+            router_interface['port_id']
+        )
+        router_mac = router_interface_port['port']['mac_address']
+        self.assertEqual(
+            dst_mac,
+            router_mac,
+        )
+
+        src_ip = ip.dst
+        dst_ip = ip.src
+        ip.src = src_ip
+        ip.dst = dst_ip
+        self.assertEqual(
+            src_ip,
+            self.port2.port.get_logical_port().get_ip()
+        )
+        self.assertEqual(
+            dst_ip,
+            self.port1.port.get_logical_port().get_ip()
+        )
+
+        icmp.type = ryu.lib.packet.icmp.ICMP_ECHO_REPLY
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ether)
+        result.add_protocol(ip)
+        result.add_protocol(icmp)
+        result.serialize()
+        return result.data
+
+    def test_icmp_ping_pong(self):
         self.policy.start(self.topology)
         self.policy.wait(30)
         if len(self.policy.exceptions) > 0:
