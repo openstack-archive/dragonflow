@@ -314,10 +314,12 @@ class Router(object):
         self.router.create(router={
             'admin_state_up': True
         })
+        self.router_interfaces = {}
         for subnet_id in self.subnet_ids:
             subnet = self.topology.subnets[subnet_id]
             subnet_uuid = subnet.subnet.subnet_id
-            self.router.add_interface(subnet_id=subnet_uuid)
+            router_interface = self.router.add_interface(subnet_id=subnet_uuid)
+            self.router_interfaces[subnet_id] = router_interface
 
     def delete(self):
         """Delete this router."""
@@ -559,6 +561,46 @@ class RyuDHCPOfferFilter(RyuDHCPPacketTypeFilter):
 class RyuDHCPAckFilter(RyuDHCPPacketTypeFilter):
     def get_dhcp_packet_type(self):
         return ryu.lib.packet.dhcp.DHCP_ACK
+
+
+class RyuICMPFilter(object):
+    def __call__(self, buf):
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        icmp = pkt.get_protocol(ryu.lib.packet.icmp.icmp)
+        if not icmp:
+            return False
+        return self.filter_icmp(pkt, icmp)
+
+    def filter_icmp(self, pkt, icmp):
+        return True
+
+
+class RyuICMPPingFilter(RyuICMPFilter):
+    def filter_icmp(self, pkt, icmp):
+        return (icmp.type == ryu.lib.packet.icmp.ICMP_ECHO_REQUEST)
+
+
+class RyuICMPPongFilter(RyuICMPFilter):
+    """
+    A filter to detect ICMP echo reply messages.
+    :param get_ping:    Return an object contained the original echo request
+    :type get_ping:     Callable with no arguments.
+    """
+    def __init__(self, get_ping):
+        super(RyuICMPPongFilter, self).__init__()
+        self.get_ping = get_ping
+
+    def filter_icmp(self, pkt, icmp):
+        if icmp.type != ryu.lib.packet.icmp.ICMP_ECHO_REPLY:
+            return False
+        ping = self.get_ping()
+        if icmp.id != ping.id:
+            return False
+        if icmp.seq != ping.seq:
+            return False
+        if icmp.data != ping.data:
+            return False
+        return True
 
 
 class Action(object):
