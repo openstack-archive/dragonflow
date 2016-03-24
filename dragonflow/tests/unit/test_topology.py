@@ -88,14 +88,18 @@ class TestTopology(tests_base.BaseTestCase):
 
         self.topology.ovs_port_updated(self.ovs_port1)
 
-        lport1_saved = self.db_store.get_local_port(self.lport1.get_id())
         self.mock_controller.logical_port_updated.assert_called_with(
-            lport1_saved)
+            self.lport1)
         self.mock_nb_api.subscriber.register_topic.assert_called_with(
             self.lport1.get_topic())
 
     def test_vm_port_offline(self):
         self.mock_controller.reset_mock()
+        self.db_store.set_port(
+            self.lport1.get_id(),
+            self.lport1,
+            self.lport1.get_topic()
+        )
         self.mock_nb_api.get_logical_port.return_value = self.lport1
         self.mock_nb_api.get_all_logical_switches.return_value = \
             [self.lswitch1]
