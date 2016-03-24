@@ -162,6 +162,10 @@ class NetworkTestObj(object):
                     self.neutron.delete_port(port['id'])
                 except neutron_common.exceptions.PortNotFoundClient:
                     pass
+        subnets = self.neutron.list_subnets(network_id=self.network_id)
+        subnets = subnets['subnets']
+        for subnet in subnets:
+            self.neutron.delete_subnet(subnet['id'])
         self.neutron.delete_network(self.network_id)
         self.closed = True
 
