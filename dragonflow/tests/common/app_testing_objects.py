@@ -15,6 +15,7 @@ import eventlet
 import fcntl
 import os
 import pytun
+import re
 import ryu.lib.packet
 import socket
 import threading
@@ -26,6 +27,7 @@ from neutron.agent.common import utils
 
 from dragonflow._i18n import _LI, _LE
 from dragonflow.common.utils import DFDaemon
+from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_objects as objects
 
 LOG = log.getLogger(__name__)
@@ -54,6 +56,10 @@ def create_tap_dev(dev, mac_address=None):
                       run_as_root=True, check_exit_code=[0, 2, 254])
     utils.execute(['ip', 'link', 'set', dev, 'up'], run_as_root=True,
                   check_exit_code=[0, 2, 254])
+
+
+def packet_raw_data_to_hex(buf):
+    return str(buf).encode('hex')
 
 
 class Topology(object):
@@ -244,9 +250,6 @@ class LogicalPortTap(object):
         ))
         self.tap.close()
 
-    def _packet_raw_data_to_hex(self, buf):
-        return str(buf).encode('hex')
-
     def send(self, buf):
         """Send a packet out via the tap device.
         :param buf: Raw packet data to send
@@ -254,7 +257,7 @@ class LogicalPortTap(object):
         """
         LOG.info(_LI('send: via {}: {}').format(
             self.tap.name,
-            self._packet_raw_data_to_hex(buf)))
+            packet_raw_data_to_hex(buf)))
         if self.is_blocking:
             return self.tap.write(buf)
         else:
@@ -273,7 +276,7 @@ class LogicalPortTap(object):
             buf = os.read(fd, self.tap.mtu)
         LOG.info(_LI('receive: via {}: {}').format(
             self.tap.name,
-            self._packet_raw_data_to_hex(buf)))
+            packet_raw_data_to_hex(buf)))
         return buf
 
     def set_blocking(self, is_blocking):
@@ -314,10 +317,12 @@ class Router(object):
         self.router.create(router={
             'admin_state_up': True
         })
+        self.router_interfaces = {}
         for subnet_id in self.subnet_ids:
             subnet = self.topology.subnets[subnet_id]
             subnet_uuid = subnet.subnet.subnet_id
-            self.router.add_interface(subnet_id=subnet_uuid)
+            router_interface = self.router.add_interface(subnet_id=subnet_uuid)
+            self.router_interfaces[subnet_id] = router_interface
 
     def delete(self):
         """Delete this router."""
@@ -524,6 +529,16 @@ class RyuARPReplyFilter(object):
         return arp.opcode == 2
 
 
+class RyuARPGratuitousFilter(object):
+    """Use ryu to parse the packet and test if it's a gratuitous ARP."""
+    def __call__(self, buf):
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        arp = pkt.get_protocol(ryu.lib.packet.arp.arp)
+        if not arp:
+            return False
+        return arp.src_ip == arp.dst_ip
+
+
 # Taken from the DHCP app
 def _get_dhcp_message_type_opt(dhcp_packet):
     for opt in dhcp_packet.options.option_list:
@@ -559,6 +574,46 @@ class RyuDHCPOfferFilter(RyuDHCPPacketTypeFilter):
 class RyuDHCPAckFilter(RyuDHCPPacketTypeFilter):
     def get_dhcp_packet_type(self):
         return ryu.lib.packet.dhcp.DHCP_ACK
+
+
+class RyuICMPFilter(object):
+    def __call__(self, buf):
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        icmp = pkt.get_protocol(ryu.lib.packet.icmp.icmp)
+        if not icmp:
+            return False
+        return self.filter_icmp(pkt, icmp)
+
+    def filter_icmp(self, pkt, icmp):
+        return True
+
+
+class RyuICMPPingFilter(RyuICMPFilter):
+    def filter_icmp(self, pkt, icmp):
+        return (icmp.type == ryu.lib.packet.icmp.ICMP_ECHO_REQUEST)
+
+
+class RyuICMPPongFilter(RyuICMPFilter):
+    """
+    A filter to detect ICMP echo reply messages.
+    :param get_ping:    Return an object contained the original echo request
+    :type get_ping:     Callable with no arguments.
+    """
+    def __init__(self, get_ping):
+        super(RyuICMPPongFilter, self).__init__()
+        self.get_ping = get_ping
+
+    def filter_icmp(self, pkt, icmp):
+        if icmp.type != ryu.lib.packet.icmp.ICMP_ECHO_REPLY:
+            return False
+        ping = self.get_ping()
+        if icmp.data.id != ping.data.id:
+            return False
+        if icmp.data.seq != ping.data.seq:
+            return False
+        if icmp.data.data != ping.data.data:
+            return False
+        return True
 
 
 class Action(object):
@@ -604,17 +659,57 @@ class SendAction(Action):
         self.packet = packet
 
     def __call__(self, policy, rule, port_thread, buf):
-        interface_object = self._get_interface_object(policy.topology)
         packet = self.packet
         if not isinstance(packet, str):
             # TODO(oanson) pass more info to the packet generator
             packet = packet(buf)
+        self._send(policy, packet)
+
+    def _send(self, policy, packet):
+        interface_object = self._get_interface_object(policy.topology)
         interface_object.send(packet)
 
     def _get_interface_object(self, topology):
         subnet = topology.subnets[self.subnet_id]
         port = subnet.ports[self.port_id]
         return port.tap
+
+
+class SimulateAndSendAction(SendAction):
+    def _send(self, policy, packet):
+        interface_object = self._get_interface_object(policy.topology)
+        interface_name = interface_object.tap.name
+        port_number = self._get_port_number(interface_name)
+        self._simulate(port_number, packet)
+        return super(SimulateAndSendAction, self)._send(policy, packet)
+
+    def _get_port_number(self, interface_name):
+        ovs_ofctl_args = ['ovs-ofctl', 'dump-ports', 'br-int', interface_name]
+        awk_args = ['awk', '/^\\s*port\\s+[0-9]+:/ { print $2 }']
+        ofctl_output = utils.execute(
+            ovs_ofctl_args,
+            run_as_root=True,
+            process_input=None,
+        )
+        awk_output = utils.execute(
+            awk_args,
+            run_as_root=False,
+            process_input=ofctl_output,
+        )
+        match = re.search('^(\d+):', awk_output)
+        port_num_str = match.group(1)
+        return int(port_num_str)
+
+    def _simulate(self, port_number, packet):
+        packet_str = packet_raw_data_to_hex(packet)
+        args = [
+            'ovs-appctl',
+            'ofproto/trace',
+            'br-int',
+            'in_port:{}'.format(port_number),
+            packet_str,
+        ]
+        test_utils.print_command(args, True)
 
 
 class RaiseAction(Action):

@@ -41,6 +41,14 @@ def wait_until_none(predicate, timeout=5, sleep=1, exception=None):
     wait_until_true(internal_predicate, timeout, sleep, exception)
 
 
+def print_command(full_args, run_as_root=False):
+    print '{}'.format(utils.execute(
+        full_args,
+        run_as_root=run_as_root,
+        process_input=None,
+    ))
+
+
 class OvsFlowsParser(object):
 
     def _get_ovs_flows(self):
