@@ -15,6 +15,7 @@ import six
 import time
 
 from neutronclient import common as neutron_common
+from neutronclient.common import exceptions
 from novaclient import client as novaclient
 
 from oslo_log import log
@@ -279,7 +280,10 @@ class SubnetTestObj(object):
     def close(self):
         if self.closed or self.subnet_id is None:
             return
-        self.neutron.delete_subnet(self.subnet_id)
+        try:
+            self.neutron.delete_subnet(self.subnet_id)
+        except exceptions.NotFound:
+            pass
         self.closed = True
 
 
