@@ -235,6 +235,9 @@ function install_ovs {
 # stop_ovs_dp() - Stop OVS datapath
 function stop_ovs_dp {
     sudo ovs-dpctl dump-dps | sudo xargs -n1 ovs-dpctl del-dp
+    if sudo lsmod | grep '\<vport_vxlan\>' > /dev/null ; then
+        sudo rmmod vport_vxlan
+    fi
     sudo rmmod vport_geneve
     sudo rmmod openvswitch
 }
