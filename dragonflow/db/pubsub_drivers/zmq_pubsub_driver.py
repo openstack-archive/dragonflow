@@ -76,7 +76,8 @@ class ZMQPublisherAgentBase(pub_sub_api.PublisherApi):
         #NOTE(gampel) In this reference implementation we develop a trigger
         #based pub sub without sending the value mainly in order to avoid
         #consistency issues in th cost of extra latency i.e get
-        update.value = None
+        if update.action != 'log':
+            update.value = None
 
         if topic:
             update.topic = topic
