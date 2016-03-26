@@ -44,6 +44,10 @@ if is_service_enabled df-zookeeper ; then
     source $DEST/dragonflow/devstack/zookeeper_driver
     NB_DRIVER_CLASS="dragonflow.db.drivers.zookeeper_db_driver.ZookeeperDbDriver"
 fi
+if is_service_enabled df-redis ; then
+    source $DEST/dragonflow/devstack/redis_driver
+    NB_DRIVER_CLASS="dragonflow.db.drivers.redis_db_driver.RedisDbDriver"
+fi
 
 # Pub/Sub Service
 #----------------
@@ -57,7 +61,10 @@ if is_service_enabled df-zmq-publisher-service ; then
     init_pubsub
     source $DEST/dragonflow/devstack/zmq_pubsub_driver
 fi
-
+if is_service_enabled df-redis-publisher-service ; then
+    init_pubsub
+    source $DEST/dragonflow/devstack/redis_pubsub_driver
+fi
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
 source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
