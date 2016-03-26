@@ -11,6 +11,7 @@ OVS_BRANCH=${OVS_BRANCH:-origin/branch-2.5}
 DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,dhcp_app.DHCPApp"
+DEFAULT_DF_REDIS_PUBSUB="False"
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
@@ -19,6 +20,7 @@ REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
 NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
+DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:-$DEFAULT_DF_REDIS_PUBSUB}
 
 #pubsub
 PUBLISHERS_HOSTS=${PUBLISHERS_HOSTS:-"$SERVICE_HOST"}
@@ -44,6 +46,10 @@ if is_service_enabled df-zookeeper ; then
     source $DEST/dragonflow/devstack/zookeeper_driver
     NB_DRIVER_CLASS="dragonflow.db.drivers.zookeeper_db_driver.ZookeeperDbDriver"
 fi
+if is_service_enabled df-redis ; then
+    source $DEST/dragonflow/devstack/redis_driver
+    NB_DRIVER_CLASS="dragonflow.db.drivers.redis_db_driver.RedisDbDriver"
+fi
 
 # Pub/Sub Service
 #----------------
@@ -57,7 +63,10 @@ if is_service_enabled df-zmq-publisher-service ; then
     init_pubsub
     source $DEST/dragonflow/devstack/zmq_pubsub_driver
 fi
-
+if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
+    init_pubsub
+    source $DEST/dragonflow/devstack/redis_pubsub_driver
+fi
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
 source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
