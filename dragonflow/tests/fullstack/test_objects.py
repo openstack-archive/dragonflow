@@ -20,6 +20,7 @@ from novaclient import client as novaclient
 from oslo_log import log
 
 from dragonflow._i18n import _LW
+from dragonflow.tests.common.utils import wait_until_none
 from dragonflow.tests.fullstack import test_base
 
 LOG = log.getLogger(__name__)
@@ -213,10 +214,20 @@ class VMTestObj(object):
             timeout = timeout - 1
         return False
 
+    def _wait_for_server_delete(self, timeout=60):
+        if self.server is None:
+            return
+        vm_ip = self.get_first_ipv4()
+        wait_until_none(
+            lambda: self._get_port_by_ip(vm_ip), timeout, sleep=6,
+            exception=Exception('VM is not deleted')
+        )
+
     def close(self):
         if self.closed or self.server is None:
             return
         self.nova.servers.delete(self.server)
+        self._wait_for_server_delete()
         self.closed = True
 
     def exists(self):
@@ -240,6 +251,14 @@ class VMTestObj(object):
                     return ip['addr']
         return None
 
+    def _get_port_by_ip(self, vm_ip):
+        ports = self.neutron.list_ports()
+        if ports is None:
+            return None
+        for port in ports['ports']:
+            for fixed_ip in port['fixed_ips']:
+                if vm_ip == fixed_ip['ip_address']:
+                    return port
 
 class SubnetTestObj(object):
     def __init__(self, neutron, nb_api, network_id=None):
