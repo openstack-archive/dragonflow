@@ -20,6 +20,7 @@ from novaclient import client as novaclient
 from oslo_log import log
 
 from dragonflow._i18n import _LW
+from dragonflow.tests.common.utils import wait_until_none
 from dragonflow.tests.fullstack import test_base
 
 LOG = log.getLogger(__name__)
@@ -35,6 +36,15 @@ def find_first_network(nclient, params):
             "%(args)s")
         LOG.warning(message % {'args': params, 'count': networks_count})
     return networks[0]
+
+
+def get_port_by_mac(neutron, vm_mac):
+    ports = neutron.list_ports()
+    if ports is None:
+        return None
+    for port in ports['ports']:
+        if vm_mac == port['mac_address']:
+            return port
 
 
 class RouterTestObj(object):
@@ -213,10 +223,21 @@ class VMTestObj(object):
             timeout = timeout - 1
         return False
 
+    def _wait_for_server_delete(self, vm_mac, timeout=60):
+        if self.server is None:
+            return
+        wait_until_none(
+            lambda: get_port_by_mac(self.neutron, vm_mac),
+            timeout,
+            exception=Exception('VM is not deleted')
+        )
+
     def close(self):
         if self.closed or self.server is None:
             return
+        vm_first_mac = self.get_first_mac()
         self.nova.servers.delete(self.server)
+        self._wait_for_server_delete(vm_first_mac)
         self.closed = True
 
     def exists(self):
@@ -239,6 +260,11 @@ class VMTestObj(object):
                 if int(ip['version']) == 4:
                     return ip['addr']
         return None
+
+    def get_first_mac(self):
+        if self.server is None:
+            return None
+        return self.server.addresses.values()[0][0]['OS-EXT-IPS-MAC:mac_addr']
 
 
 class SubnetTestObj(object):

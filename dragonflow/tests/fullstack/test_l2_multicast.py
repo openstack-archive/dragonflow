@@ -87,9 +87,4 @@ class TestL2Multicast(test_base.DFTestBase):
         self.assertIsNotNone(r)
         vm.server.stop()
         vm.close()
-        utils.wait_until_none(
-            lambda: self.nb_api.get_logical_port(port.get_id()),
-            exception=Exception('VM port was not deleted'),
-            timeout=30
-        )
         network.close()
