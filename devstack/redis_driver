@@ -1,0 +1,132 @@
+#!/bin/bash
+#
+#
+# ``plugin.sh`` calls the following methods in the sourced driver:
+#
+# - nb_db_driver_install_server
+# - nb_db_driver_install_client
+# - nb_db_driver_start_server
+# - nb_db_driver_stop_server
+# - nb_db_driver_clean
+
+REDIS_VERSION=3.0.6
+RUBY_VERSION=2.3
+REDIS_SERVER_LIST=$REMOTE_DB_IP
+REMOTE_PORT_START=$REMOTE_DB_PORT
+NODE_COUNT_END=5
+REMOTE_PORT_END='expr $REMOTE_PORT_START + $NODE_COUNT_END'
+REDIS_PORT='seq $REMOTE_PORT_START $REMOTE_PORT_END'
+
+function configure_redis {
+
+    sudo cp $DEST/dragonflow/devstack/etcd.conf /etc/init/etcd.conf
+    cd /opt/redis3/conf
+    for redisserver in $REDIS_SERVER_LIST; do
+        for port in $REDIS_PORT; do
+            echo "shutdown redis: "$redisserver:$port
+            sudo cp redis.conf /opt/redis3/conf/redis-$port.conf
+            sudo sed -i "s/6379/$port/g" redis-$port.conf
+            sudo sed -i "s/dump.rdb/dump-$port.rdb/g" redis-$port.conf
+            sudo sed -i "s/# cluster-enable yes/cluster-enable yes/g" redis-$port.conf
+            sudo sed -i "s/# cluster-config-file/cluster-config-file/g" redis-$port.conf
+            sudo sed -i "s/pubsub 32mb 8mb 60/pubsub 0 0 0/g" redis-$port.conf
+        done
+    done
+}
+
+function nb_db_driver_install_server {
+    if is_service_enabled df-etcd-server ; then
+        echo "Installing rediscluster"
+        if [ ! -f "$DEST/redis/redis-$REDIS_VERSION/redis" ]; then
+            mkdir -p $DEST/redis
+            wget https://download.redis.io/release/releases/redis-$REDIS_VERSION.tar.gz -O $DEST/redis/redis-$REDIS_VERSION.tar.gz
+            tar xzvf $DEST/redis/redis-$REDIS_VERSION.tar.gz -C $DEST/redis
+            cd $DEST/redis/redis-$REDIS_VERSION
+            make
+            sudo apt-get install tcl
+            make test
+            cd src
+            sudo make PREFIX=/opt/redis3 install
+            sudo mkdir -p /opt/redis3/conf
+            sudo cp $DEST/redis/redis-$REDIS_VERSION/redis.conf /opt/redis3/conf
+            sudo ln -sf /opt/redis3/conf /etc/redis3
+            sudo cp $DEST/redis/redis-$REDIS_VERSION/src/redis-trib.rb /opt/redis3/bin/
+            if is_ubuntu; then
+                configure_redis
+            fi
+            mkdir -p $DEST/ruby
+            wget https://cache.ruby-lang.org/pub/rub/$RUBY_VERSION/ruby-$RUBY_VERSION.0.tar.gz -O $DEST/ruby/ruby-$RUBY_VERSION.0.tar.gz
+            tar xzvf $DEST/ruby/ruby-$RUBY_VERSION.0.tar.gz -C $DEST/ruby
+            cd $DEST/ruby/ruby-$RUBY_VERSION.0
+            sudo ./configure
+            sudo make
+            sudo make install
+            sudo make source -r https://rubygems.org
+            sudo gem install redis
+        fi
+    fi
+}
+
+function nb_db_driver_install_client {
+    sudo pip install redis
+}
+
+function nb_db_driver_status_server
+{
+    TEMP_PIDS=`ps cax | grep redis`
+    if [ -z "$TEMP_PIDS" ]; then
+        return 1
+    fi
+    return 0
+}
+
+function nb_db_driver_start_server {
+    create=
+    if is_service_enabled df-redis-server ; then
+        if is_ubuntu; then
+            #to acquire if should recreate cluster
+            for redisserver in $REDIS_SERVER_LIST; do
+                for port in $REDIS_PORT; do
+                    test -f /opt/redis3/conf/nodes-$port.conf || { create=true; break 2 ; }
+                done
+            done
+         #start redis
+         for redisserver in $REDIS_SERVER_LIST; do
+             for port in $REDIS_PORT; do
+                 echo $redisserver:$port
+                 [ "$create" ] && {
+                     cd /opt/redis3/
+                     sudo rm nodes* -rf
+                 }
+                 cd /opt/redis3/
+                 sudo ./bin/redis-server ./conf/redis-$port.conf &
+                 redis_cluster="$redis_cluster"" ""$redisserver:$port"
+             done
+         done
+         #create cluster
+         [ "$create" ] && {
+             echo "create the cluster: "$redis_cluster
+             cd /opt/redis3/bin/
+             echo "yes" |./redis-trib.rb create --replicas 1 $redis_cluster
+         }
+
+        fi
+    fi
+}
+
+function nb_db_driver_stop_server {
+    if is_service_enabled df-redis-server ; then
+        if is_ubuntu; then
+            for redisserver in $REDIS_SERVER_LIST; do
+                for port in $REDIS_PORT; do
+                    echo ""shutshow redis: "$redisserver:$port
+                    sudo opt/redis3/bin/redis-cli -p $port shutdown
+                    cd /opt/redis3/
+                    sudo rm -rf nodes*.conf
+                    sudo rm -rf dump*.rdb
+                    sudo netstat -apn | grep $port | awk '{print $7}' | cut -d '/' -f1 | xargs sudo kill -9
+                done
+            done
+        fi
+    fi
+}

@@ -44,6 +44,10 @@ if is_service_enabled df-zookeeper ; then
     source $DEST/dragonflow/devstack/zookeeper_driver
     NB_DRIVER_CLASS="dragonflow.db.drivers.zookeeper_db_driver.ZookeeperDbDriver"
 fi
+if is_service_enabled df-redis ; then
+    source $DEST/dragonflow/devstack/redis_driver
+    NB_DRIVER_CLASS="dragonflow.db.drivers.redis_db_driver.RedisDbDriver"
+fi
 
 # Pub/Sub Service
 #----------------
