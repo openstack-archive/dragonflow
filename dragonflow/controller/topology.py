@@ -157,11 +157,6 @@ class Topology(object):
         except Exception:
             LOG.exception(_LE('App failed to process vm port online event %s')
                           % str(lport))
-        finally:
-            self.db_store.set_port(lport.get_id(), lport, True)
-            # currently we will not publish vm port offline event.
-            # self.nb_api.update_lport(lport_id, chassis=self.chassis_name,
-            #                         status='ACTIVE')
 
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.get_id()
