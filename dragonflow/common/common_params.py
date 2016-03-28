@@ -82,4 +82,9 @@ df_opts = [
                 default=False,
                 help=_('When enabled, each controller will get only the part '
                        'of the topology relevant to it.')),
+    cfg.StrOpt(
+        'ovsdb_remote_address',
+        default='/usr/local/var/run/openvswitch/db.sock',
+        help=_('local controller connect to the ovsdb server socket address')
+    ),
 ]
