@@ -27,6 +27,7 @@ from neutron.agent.ovsdb.native.commands import BaseCommand
 from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import idlutils
 
+from oslo_config import cfg
 from oslo_log import log
 import six
 import socket
@@ -287,18 +288,16 @@ class OvsdbMonitor(object):
         return self._daemon.stop()
 
     def connect_ovsdb(self):
-        address = (self.ip, int(self.port))
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
 
         unconnected = True
         while unconnected:
             try:
-                self.sock.connect(address)
+                self.sock.connect(cfg.CONF.df.ovsdb_remote_address)
                 unconnected = False
             except socket.error as e:
                 LOG.exception(_LE("could not connect to local ovsdb, %s"), e)
                 time.sleep(5)
-        self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
     def send_msg(self, msg):
         self.output += ryu.contrib.ovs.json.to_string(msg.to_json())
