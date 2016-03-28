@@ -284,7 +284,7 @@ class DNATApp(DFlowApp):
         net_id = lport.get_lswitch_id()
         segmentation_id = self.db_store.get_network_id(
             net_id,
-            floatingip.get_topic())
+        )
 
         return (mac, ip, ofport, segmentation_id)
 
