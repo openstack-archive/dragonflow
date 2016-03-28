@@ -11,7 +11,7 @@
 #    under the License.
 
 from neutron.agent.common import utils
-from neutron.agent.linux.utils import wait_until_true
+import neutron.agent.linux.utils as linuxutils
 import re
 
 
@@ -21,6 +21,10 @@ import re
 DEFAULT_CMD_TIMEOUT = 2
 
 
+def wait_until_true(predicate, timeout=5, sleep=1, exception=None):
+    return linuxutils.wait_until_true(predicate, timeout, sleep, exception)
+
+
 def wait_until_is_and_return(predicate, timeout=5, sleep=1, exception=None):
     container = {}
 
@@ -28,7 +32,7 @@ def wait_until_is_and_return(predicate, timeout=5, sleep=1, exception=None):
         container['value'] = predicate()
         return container['value']
 
-    wait_until_true(internal_predicate, timeout, sleep, exception)
+    linuxutils.wait_until_true(internal_predicate, timeout, sleep, exception)
     return container.get('value')
 
 
@@ -38,7 +42,7 @@ def wait_until_none(predicate, timeout=5, sleep=1, exception=None):
         if ret:
             return False
         return True
-    wait_until_true(internal_predicate, timeout, sleep, exception)
+    linuxutils.wait_until_true(internal_predicate, timeout, sleep, exception)
 
 
 def print_command(full_args, run_as_root=False):
