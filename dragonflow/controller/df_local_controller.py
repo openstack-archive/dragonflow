@@ -86,6 +86,8 @@ class DfLocalController(object):
 
         self.open_flow_app.start()
         self.db_sync_loop()
+        LOG.info("test")
+        LOG.info("test111")
 
     def db_sync_loop(self):
         while True:
