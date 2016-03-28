@@ -297,7 +297,6 @@ class L2App(DFlowApp):
 
         network_id = self.db_store.get_network_id(
             lswitch.get_id(),
-            lswitch.get_topic(),
         )
         match = parser.OFPMatch(eth_dst='01:00:00:00:00:00')
         addint = haddr_to_bin('01:00:00:00:00:00')

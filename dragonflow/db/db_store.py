@@ -22,7 +22,6 @@ class TenantDbStore(object):
 
     def __init__(self):
         self.lswitchs = {}
-        self.network_ids = {}
         self.ports = {}
         self.local_ports = {}
         self.routers = {}
@@ -32,7 +31,6 @@ class TenantDbStore(object):
         self.lock = threading.Lock()
         self._table_name_mapping = {
             'lswitchs': self.lswitchs,
-            'network_ids': self.network_ids,
             'ports': self.ports,
             'local_ports': self.local_ports,
             'routers': self.routers,
@@ -115,14 +113,14 @@ class DbStore(object):
 
     # This is a mapping between global logical data path id (network/lswitch)
     # And a local assigned if for this controller
-    def get_network_id(self, ldp, topic):
-        return self.get('network_ids', ldp, topic)
+    def get_network_id(self, ldp):
+        return self.networks.get(ldp, None)
 
-    def set_network_id(self, ldp, net_id, topic):
-        self.set('network_ids', ldp, net_id, topic)
+    def set_network_id(self, ldp, net_id):
+        self.networks[ldp] = net_id
 
-    def del_network_id(self, ldp, topic):
-        self.delete('network_ids', ldp, topic)
+    def del_network_id(self, ldp):
+        self.networks.pop(ldp, None)
 
     def set_lswitch(self, id, lswitch, topic=None):
         self.set('lswitchs', id, lswitch, topic)
