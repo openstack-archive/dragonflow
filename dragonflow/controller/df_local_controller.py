@@ -330,6 +330,18 @@ class DfLocalController(object):
             )
             return self.next_network_id
 
+    def _get_router_port_network_id(self, router_port):
+        lswitch_id = router_port.get_lswitch_id()
+        router_port_topic = router_port.get_topic()
+        lswitch = self.db_store.get_lswitch(lswitch_id, router_port_topic)
+        if not lswitch:
+            # Maybe it's under a different topic?
+            lswitch = self.db_store.get_lswitch(lswitch_id)
+        return self.db_store.get_network_id(
+            lswitch_id,
+            lswitch.get_topic(),
+        )
+
     def read_routers(self):
         for lrouter in self.nb_api.get_routers():
             self.router_updated(lrouter)
@@ -349,20 +361,14 @@ class DfLocalController(object):
     def _add_new_router_port(self, router, router_port):
         LOG.info(_LI("Adding new logical router interface = %s") %
                  router_port.__str__())
-        local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id(),
-            router_port.get_topic(),
-        )
+        local_network_id = self._get_router_port_network_id(router_port)
         self.open_flow_app.notify_add_router_port(
                 router, router_port, local_network_id)
 
     def _delete_router_port(self, router_port):
         LOG.info(_LI("Removing logical router interface = %s") %
                  router_port.__str__())
-        local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id(),
-            router_port.get_topic(),
-        )
+        local_network_id = self._get_router_port_network_id(router_port)
         self.open_flow_app.notify_remove_router_port(
                 router_port, local_network_id)
 
