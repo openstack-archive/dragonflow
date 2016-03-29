@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import threading
-
 from collections import defaultdict
+import six
+import threading
 
 
 class TenantDbStore(object):
@@ -79,7 +79,7 @@ class DbStore(object):
     def get(self, table_name, key, topic):
         if topic:
             return self.tenant_dbs[topic].get(table_name, key)
-        for tenant_db in self.tenant_dbs.itervalues():
+        for tenant_db in six.itervalues(self.tenant_dbs):
             value = tenant_db.get(table_name, key)
             if value:
                 return value
@@ -88,7 +88,7 @@ class DbStore(object):
         if topic:
             return self.tenant_dbs[topic].keys(table_name)
         result = []
-        for tenant_db in self.tenant_dbs.itervalues():
+        for tenant_db in six.itervalues(self.tenant_dbs):
             result.extend(tenant_db.keys(table_name))
         return result
 
@@ -96,7 +96,7 @@ class DbStore(object):
         if topic:
             return self.tenant_dbs[topic].values(table_name)
         result = []
-        for tenant_db in self.tenant_dbs.itervalues():
+        for tenant_db in six.itervalues(self.tenant_dbs):
             result.extend(tenant_db.values(table_name))
         return result
 
@@ -109,7 +109,7 @@ class DbStore(object):
         if topic:
             self.tenant_dbs[topic].pop(table_name, key)
         else:
-            for tenant_db in self.tenant_dbs.itervalues():
+            for tenant_db in six.itervalues(self.tenant_dbs):
                 if tenant_db.pop(table_name, key):
                     break
 
