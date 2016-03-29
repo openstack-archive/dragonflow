@@ -45,6 +45,7 @@ Spec Template
     publish_subscribe_abstraction
     local_controller_reliability
     control_plane_testing
+    redis_availability
 
 
 Indices and tables
