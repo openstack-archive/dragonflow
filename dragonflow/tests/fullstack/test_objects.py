@@ -194,9 +194,9 @@ class VMTestObj(object):
         creds = test_base.credentials()
         auth_url = creds['auth_url'] + "/v2.0"
         self.nova = novaclient.Client('2', creds['username'],
-                        creds['password'], 'demo', auth_url)
+                        creds['password'], creds['project_name'], auth_url)
 
-    def create(self, network=None, script=None):
+    def create(self, network=None, script=None, security_groups=None):
         image = self.nova.images.find(name="cirros-0.3.4-x86_64-uec")
         self.parent.assertIsNotNone(image)
         flavor = self.nova.flavors.find(name="m1.tiny")
@@ -207,8 +207,9 @@ class VMTestObj(object):
             net_id = find_first_network(self.neutron, name='private')['id']
         self.parent.assertIsNotNone(net_id)
         nics = [{'net-id': net_id}]
-        self.server = self.nova.servers.create(name='test', image=image.id,
-                           flavor=flavor.id, nics=nics, user_data=script)
+        self.server = self.nova.servers.create(
+            name='test', image=image.id, flavor=flavor.id, nics=nics,
+            user_data=script, security_groups=security_groups)
         self.parent.assertIsNotNone(self.server)
         server_is_ready = self._wait_for_server_ready(30)
         self.parent.assertTrue(server_is_ready)
