@@ -148,10 +148,13 @@ class Subnet(object):
         self.ports = []
         self.subnet.close()
 
-    def create_port(self):
-        """Create a port attached to this subnet."""
+    def create_port(self, security_groups=None):
+        """Create a port attached to this subnet.
+        :param security_groups:  The security groups that this port is
+        associating with
+        """
         port_id = len(self.ports)
-        port = Port(self, port_id)
+        port = Port(self, port_id=port_id, security_groups=security_groups)
         self.ports.append(port)
         return port
 
@@ -160,7 +163,7 @@ class Port(object):
     """Represent a single port. Also contains access to the underlying tap
     device
     """
-    def __init__(self, subnet, port_id):
+    def __init__(self, subnet, port_id, security_groups=None):
         """Create a single port in the given subnet, with the given port_id
         :param subnet:  The subnet on which this port is created
         :type subnet:   Subnet
@@ -175,14 +178,17 @@ class Port(object):
             self.subnet.topology.nb_api,
             network_id,
         )
-        self.port.create({
+        parameters = {
             'admin_state_up': True,
             'fixed_ips': [{
                 'subnet_id': self.subnet.subnet.subnet_id,
             }],
             'network_id': network_id,
             'binding:host_id': socket.gethostname(),
-        })
+        }
+        if security_groups is not None:
+            parameters["security_groups"] = security_groups
+        self.port.create(parameters)
         self.tap = LogicalPortTap(self.port)
 
     def delete(self):
@@ -589,8 +595,26 @@ class RyuICMPFilter(object):
 
 
 class RyuICMPPingFilter(RyuICMPFilter):
+    """
+    A filter to detect ICMP echo request messages.
+    :param get_ping:    Return an object contained the original echo request
+    :type get_ping:     Callable with no arguments.
+    """
+    def __init__(self, get_ping=None):
+        super(RyuICMPPongFilter, self).__init__()
+        self.get_ping = get_ping
+
     def filter_icmp(self, pkt, icmp):
-        return (icmp.type == ryu.lib.packet.icmp.ICMP_ECHO_REQUEST)
+        result = icmp.type == ryu.lib.packet.icmp.ICMP_ECHO_REQUEST
+        if result and (self.get_ping is not None):
+            ping = self.get_ping()
+            if icmp.data.id != ping.data.id:
+                return False
+            if icmp.data.seq != ping.data.seq:
+                return False
+            if icmp.data.data != ping.data.data:
+                return False
+        return result
 
 
 class RyuICMPPongFilter(RyuICMPFilter):
