@@ -76,7 +76,14 @@ function _neutron_ovs_install_ovs_fedora {
 }
 
 function _neutron_ovs_install_ovs_deps_ubuntu {
+    sudo lsmod | grep openvswitch
+    sudo modprobe -r openvswitch
     sudo apt-get install -y build-essential fakeroot devscripts equivs dkms
+    sudo lsmod | grep nf
+    sudo modprobe nf_conntrack
+    sudo modprobe nf_conntrack_ipv4
+    sudo modprobe nf_conntrack_ipv6
+
     sudo mk-build-deps -i -t "/usr/bin/apt-get --no-install-recommends -y"
 }
 
