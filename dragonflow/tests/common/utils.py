@@ -51,7 +51,7 @@ def print_command(full_args, run_as_root=False):
 
 class OvsFlowsParser(object):
 
-    def _get_ovs_flows(self):
+    def get_ovs_flows(self):
         full_args = ["ovs-ofctl", "dump-flows", 'br-int', '-O Openflow13']
         flows = utils.execute(full_args, run_as_root=True,
                               process_input=None)
@@ -83,5 +83,68 @@ class OvsFlowsParser(object):
         return result
 
     def dump(self):
-        flows = self._get_ovs_flows()
+        flows = self.get_ovs_flows()
         return self._parse_ovs_flows(flows)
+
+
+class OvsDBParser(object):
+
+    def _ovsdb_list_intefaces(self, specify_interface=None):
+        full_args = ["ovs-vsctl", "list", 'interface']
+        if specify_interface:
+            full_args.append(specify_interface)
+        interfaces_info = utils.execute(full_args, run_as_root=True,
+                                        process_input=None)
+        return interfaces_info
+
+    def _trim_double_quotation(self, value):
+        if len(value) != 0 and value[0] == '\"':
+            return value[1:-1]
+        return value
+
+    def _parse_one_item(self, str_item):
+        value = None
+        start_index = str_item.find(': ')
+        if start_index != -1:
+            value = str_item[start_index + 2:]
+            if value[0] == '[':
+                items_str = value[1:-1]
+                value = []
+                if len(items_str) != 0:
+                    items = items_str.split(', ')
+                    for loop in items:
+                        value.append(self._trim_double_quotation(loop))
+            elif value[0] == '{':
+                items_str = value[1:-1]
+                value = {}
+                if len(items_str) != 0:
+                    items = items_str.split(', ')
+                    for loop in items:
+                        key_value = loop.split('=')
+                        value[key_value[0]] = \
+                            self._trim_double_quotation(key_value[1])
+            else:
+                value = self._trim_double_quotation(value)
+        return value
+
+    def _parse_ovsdb_interfaces(self, interfaces):
+        interfaces_list = interfaces.split("\n\n")
+        interfaces_as_dicts = []
+        for inteface in interfaces_list:
+            if len(inteface) == 0:
+                continue
+            fs = inteface.split("\n")
+            res = {}
+            for item in fs:
+                if item.startswith('external_ids'):
+                    res['external_ids'] = self._parse_one_item(item)
+                elif item.startswith('ofport '):
+                    res['ofport'] = self._parse_one_item(item)
+                elif item.startswith('name'):
+                    res['name'] = self._parse_one_item(item)
+            interfaces_as_dicts.append(res)
+        return interfaces_as_dicts
+
+    def list_interfaces(self, specify_interface=None):
+        interfaces = self._ovsdb_list_intefaces(specify_interface)
+        return self._parse_ovsdb_interfaces(interfaces)

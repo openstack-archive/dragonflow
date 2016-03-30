@@ -75,6 +75,23 @@ class Topology(object):
         self.subnets = []
         self.routers = []
         self.network.create()
+        # Because that it's hard to get the default security group in this
+        # context, we create a fake one here to act like the default security
+        # group when creating a port with no security group specified.
+        self.fake_default_security_group = \
+            self._create_fake_default_security_group()
+
+    def _create_fake_default_security_group(self):
+        security_group = objects.SecGroupTestObj(self.neutron, self.nb_api)
+        security_group_id = security_group.create(
+            secgroup={'name': 'fakedefault'})
+
+        ingress_rule_info = {'ethertype': 'IPv4',
+                             'direction': 'ingress',
+                             'remote_group_id': security_group_id}
+        security_group.rule_create(secrule=ingress_rule_info)
+
+        return security_group
 
     def delete(self):
         """Delete this topology. Also deletes all contained routers, subnets
@@ -87,6 +104,7 @@ class Topology(object):
             subnet.delete()
         self.subnets = []
         self.network.close()
+        self.fake_default_security_group.close()
 
     def close(self):
         if not self._is_closed:
@@ -148,10 +166,19 @@ class Subnet(object):
         self.ports = []
         self.subnet.close()
 
-    def create_port(self):
-        """Create a port attached to this subnet."""
+    def create_port(self, security_groups=None):
+        """Create a port attached to this subnet.
+        :param security_groups:  The security groups that this port is
+        associating with
+        """
         port_id = len(self.ports)
-        port = Port(self, port_id)
+        security_groups_used = security_groups
+        if security_groups_used is None:
+            security_groups_used = \
+                [self.topology.fake_default_security_group.secgroup_id]
+        port = Port(self,
+                    port_id=port_id,
+                    security_groups=security_groups_used)
         self.ports.append(port)
         return port
 
@@ -160,7 +187,7 @@ class Port(object):
     """Represent a single port. Also contains access to the underlying tap
     device
     """
-    def __init__(self, subnet, port_id):
+    def __init__(self, subnet, port_id, security_groups=None):
         """Create a single port in the given subnet, with the given port_id
         :param subnet:  The subnet on which this port is created
         :type subnet:   Subnet
@@ -175,14 +202,17 @@ class Port(object):
             self.subnet.topology.nb_api,
             network_id,
         )
-        self.port.create({
+        parameters = {
             'admin_state_up': True,
             'fixed_ips': [{
                 'subnet_id': self.subnet.subnet.subnet_id,
             }],
             'network_id': network_id,
             'binding:host_id': socket.gethostname(),
-        })
+        }
+        if security_groups is not None:
+            parameters["security_groups"] = security_groups
+        self.port.create(parameters)
         self.tap = LogicalPortTap(self.port)
 
     def delete(self):
@@ -235,7 +265,7 @@ class LogicalPortTap(object):
         full_args = ['ovs-vsctl', 'add-port', vswitch_name, tap_name]
         utils.execute(full_args, run_as_root=True, process_input=None)
         full_args = ['ovs-vsctl', 'set', 'interface', tap_name,
-                'external_ids:iface-id={}'.format(self.lport.get_id())]
+                     'external_ids:iface-id={}'.format(self.lport.get_id())]
         utils.execute(full_args, run_as_root=True, process_input=None)
 
     def _disconnect_tap_device_to_vswitch(self, vswitch_name, tap_name):
@@ -587,10 +617,32 @@ class RyuICMPFilter(object):
     def filter_icmp(self, pkt, icmp):
         return True
 
+    def is_same_icmp(self, icmp1, icmp2):
+        if icmp1.data.id != icmp2.data.id:
+            return False
+        if icmp1.data.seq != icmp2.data.seq:
+            return False
+        if icmp1.data.data != icmp2.data.data:
+            return False
+        return True
+
 
 class RyuICMPPingFilter(RyuICMPFilter):
+    """
+    A filter to detect ICMP echo request messages.
+    :param get_ping:    Return an object contained the original echo request
+    :type get_ping:     Callable with no arguments.
+    """
+    def __init__(self, get_ping=None):
+        super(RyuICMPPingFilter, self).__init__()
+        self.get_ping = get_ping
+
     def filter_icmp(self, pkt, icmp):
-        return (icmp.type == ryu.lib.packet.icmp.ICMP_ECHO_REQUEST)
+        result = icmp.type == ryu.lib.packet.icmp.ICMP_ECHO_REQUEST
+        if result and (self.get_ping is not None):
+            ping = self.get_ping()
+            result = super(RyuICMPPingFilter, self).is_same_icmp(icmp, ping)
+        return result
 
 
 class RyuICMPPongFilter(RyuICMPFilter):
@@ -607,13 +659,7 @@ class RyuICMPPongFilter(RyuICMPFilter):
         if icmp.type != ryu.lib.packet.icmp.ICMP_ECHO_REPLY:
             return False
         ping = self.get_ping()
-        if icmp.data.id != ping.data.id:
-            return False
-        if icmp.data.seq != ping.data.seq:
-            return False
-        if icmp.data.data != ping.data.data:
-            return False
-        return True
+        return super(RyuICMPPongFilter, self).is_same_icmp(icmp, ping)
 
 
 class Action(object):
