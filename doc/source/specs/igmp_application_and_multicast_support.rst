@@ -64,7 +64,7 @@ Use cases
  * Media Streaming
 
  * Targeted broadcast - Broadcast packets only to a subset of networks. e.g.
-   send broadcast traffic for a cetrain virtual network.
+   send broadcast traffic for a certain virtual network.
 
 Proposed Change
 ===============
@@ -90,7 +90,7 @@ Extend the Dragonflow pipeline with flows that implement the following:
  * MCP is only forwarded to compute nodes that have valid ports, in order to
    reduce unnecessary copies.
 
- * Only 1 MCP is forwared to a compute node that hosts one or more relevant
+ * Only 1 MCP is forwarded to a compute node that hosts one or more relevant
    registered ports.  The IGMP Agent application on the compute node will
    forward the MCP locally to all the relevant ports.
 
@@ -123,7 +123,7 @@ flows as well.
 As a simpler alternative, blocking MCPs from reaching specific ports can be
 done using security groups. e.g. adding a security group rule where a packet
 cannot be routed back to its source. Note that the original implementation is
-preferrable, since it allows the multicast application to be standalone, and
+preferable, since it allows the multicast application to be standalone, and
 not depend directly on additional applications. This alternative should only be
 used if the original implementation fails, and it put here for completeness
 only.
@@ -216,7 +216,7 @@ response queries to IGMP packets it receives.
 The IGMP-A installs specific flows in the Dragonflow pipeline in
 order to have all IGMP packets forwarded to it.
 
-The IGMP-A preiodically (configurable) sends a *IGMP General Query* MCP to all
+The IGMP-A periodically (configurable) sends a *IGMP General Query* MCP to all
 ports.
 
 The IGMP-A updates flows according to *Membership Report* messages.

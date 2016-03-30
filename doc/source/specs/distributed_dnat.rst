@@ -154,7 +154,7 @@ external network.
 4) At the egress table (after egress security rules) add flow to send the
    packet to br-ex using the correct patch port.
    (** We can avoid the extra steps and send the packet to the patch
-    port in step 3, however doint it this way also includes egress security
+    port in step 3, however doing it this way also includes egress security
     and introduce better modeling)
 
 5) At br-ex match flow according to patch-port in_port and apply the NAT
