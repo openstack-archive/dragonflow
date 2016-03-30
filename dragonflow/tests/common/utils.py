@@ -63,6 +63,8 @@ class OvsFlowsParser(object):
         for flow in flow_list:
             if len(flow) == 0:
                 continue
+            if 'OFPST_FLOW' in flow:
+                continue
             fs = flow.split(' ')
             res = {}
             res['table'] = fs[3].split('=')[1]
