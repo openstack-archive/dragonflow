@@ -183,10 +183,6 @@ class DfLocalController(object):
         self.db_store.del_network_id(lswitch_id, lswitch.get_topic())
 
     def logical_port_updated(self, lport):
-        if self.db_store.get_port(lport.get_id()) is not None:
-            # TODO(gsagie) support updating port
-            return
-
         if lport.get_chassis() is None or (
                     lport.get_chassis() == constants.DRAGONFLOW_VIRTUAL_PORT):
             return
@@ -201,7 +197,6 @@ class DfLocalController(object):
 
         if lport.get_chassis() == self.chassis_name:
             ofport = lport_to_ofport.get(lport.get_id(), 0)
-            self.db_store.set_port(lport.get_id(), lport, True)
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
                 lport.set_external_value('is_local', True)
@@ -210,11 +205,11 @@ class DfLocalController(object):
                 self.open_flow_app.notify_add_local_port(lport)
                 self.db_store.set_port(lport.get_id(), lport, True)
             else:
+                self.db_store.set_port(lport.get_id(), lport, True)
                 LOG.info(_LI("Logical Local Port %s was not created yet ") %
                          lport.__str__())
         else:
             ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
-            self.db_store.set_port(lport.get_id(), lport, False)
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
                 lport.set_external_value('is_local', False)
@@ -226,6 +221,7 @@ class DfLocalController(object):
                 #TODO(gampel) add handling for this use case
                 #remote port but no tunnel to remote Host
                 #if this should never happen raise an exception
+                self.db_store.set_port(lport.get_id(), lport, False)
                 LOG.warning(_LW("No tunnel for Logical Remote Port %s  ") %
                          lport.__str__())
 
