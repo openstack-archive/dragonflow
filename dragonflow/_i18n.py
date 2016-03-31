@@ -37,6 +37,6 @@ _LW = _translators.log_warning
 _LE = _translators.log_error
 _LC = _translators.log_critical
 
-
+#test:bug1564282
 def get_available_languages():
     return oslo_i18n.get_available_languages(DOMAIN)
