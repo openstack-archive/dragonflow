@@ -45,7 +45,7 @@ class BloomFilter(object):
     def _get_probes(self, key):
         random = Random(key).random
         return (int(random() * self._num_bits)
-                for _ in range(self._num_probes))
+                for _probe in range(self._num_probes))
 
     def update(self, keys):
         """Add keys to the current filter
