@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from dragonflow.common import constants
+
 
 class SwitchApi(object):
 
@@ -74,6 +76,46 @@ class LocalInterface(object):
         self.attached_mac = ""
         self.remote_ip = ""
         self.tunnel_type = ""
+
+    @classmethod
+    def _get_interface_type(cls, row):
+        interface_type = row.type
+        interface_name = row.name
+
+        if interface_type == "internal" and "br" in interface_name:
+            return constants.OVS_BRIDGE_INTERFACE
+
+        if interface_type == "patch":
+            return constants.OVS_PATCH_INTERFACE
+
+        if 'iface-id' in row.external_ids:
+            return constants.OVS_VM_INTERFACE
+
+        options = row.options
+        if 'remote_ip' in options:
+            return constants.OVS_TUNNEL_INTERFACE
+
+        return constants.OVS_UNKNOWN_INTERFACE
+
+    @classmethod
+    def from_idl_row(cls, row):
+        result = cls()
+        result.uuid = row.uuid
+        if row.ofport:
+            result.ofport = int(row.ofport[0])
+        result.name = row.name
+        if row.admin_state:
+            result.admin_state = row.admin_state[0]
+        result.type = cls._get_interface_type(row)
+        external_ids = row.external_ids
+        result.iface_id = external_ids.get('iface-id', "")
+        result.attached_mac = external_ids.get('attached-mac', "")
+        if result.type == "patch":
+            result.peer = row.options['peer']
+        if result.type == "tunnel":
+            result.remote_ip = row.options['remote_ip']
+            result.tunnel_type = row.type
+        return result
 
     def get_id(self):
         return self.uuid
