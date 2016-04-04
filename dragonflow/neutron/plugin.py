@@ -230,13 +230,26 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         net_id = subnet['subnet']['network_id']
         new_subnet = None
 
-        with context.session.begin(subtransactions=True):
-            # create subnet in DB
-            new_subnet = super(DFPlugin,
-                               self).create_subnet(context, subnet)
-            dhcp_address = self._handle_create_subnet_dhcp(
+        try:
+            with context.session.begin(subtransactions=True):
+                # create subnet in DB
+                new_subnet = super(DFPlugin,
+                                   self).create_subnet(context, subnet)
+                dhcp_port = self._handle_create_subnet_dhcp(
                                 context, new_subnet)
+        except Exception:
+            with excutils.save_and_reraise_exception() as ctxt:
+                ctxt.reraise = True
+                # delete the stale dhcp port
+                try:
+                    if dhcp_port:
+                        self.nb_api.delete_lport(dhcp_port['id'],
+                                                 dhcp_port['tenant_id'])
+                except df_exceptions.DBKeyNotFound:
+                    pass
+
         if new_subnet:
+            dhcp_address = self._get_ip_from_port(dhcp_port)
             self.nb_api.add_subnet(
                 new_subnet['id'],
                 net_id,
@@ -250,19 +263,29 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @lock_db.wrap_db_lock()
     def update_subnet(self, context, id, subnet):
-        with context.session.begin(subtransactions=True):
-            # update subnet in DB
-            original_subnet = super(DFPlugin, self).get_subnet(context, id)
-            new_subnet = super(DFPlugin,
-                               self).update_subnet(context, id, subnet)
-            net_id = new_subnet['network_id']
-            dhcp_address = self._update_subnet_dhcp(
-                    context,
-                    original_subnet,
-                    new_subnet)
+        try:
+            with context.session.begin(subtransactions=True):
+                # update subnet in DB
+                original_subnet = super(DFPlugin, self).get_subnet(context, id)
+                new_subnet = super(DFPlugin,
+                                   self).update_subnet(context, id, subnet)
+                net_id = new_subnet['network_id']
+                dhcp_port = self._update_subnet_dhcp(
+                        context, original_subnet, new_subnet)
+        except Exception:
+            with excutils.save_and_reraise_exception() as ctxt:
+                ctxt.reraise = True
+                # delete the stale dhcp port
+                try:
+                    if dhcp_port:
+                        self.nb_api.delete_lport(dhcp_port['id'],
+                                                 dhcp_port['tenant_id'])
+                except df_exceptions.DBKeyNotFound:
+                    pass
 
         if new_subnet and net_id:
             # update df controller with subnet
+            dhcp_address = self._get_ip_from_port(dhcp_port)
             self.nb_api.update_subnet(
                 new_subnet['id'],
                 net_id,
@@ -574,16 +597,15 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def delete_router(self, context, router_id):
         router_name = router_id
         router = self.get_router(context, router_id)
+        with context.session.begin(subtransactions=True):
+            ret_val = super(DFPlugin, self).delete_router(context,
+                                                          router_id)
         try:
             self.nb_api.delete_lrouter(name=router_name,
                                        topic=router['tenant_id'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("router %s is not found in DF DB, might have "
                       "been deleted concurrently" % router_name)
-
-        with context.session.begin(subtransactions=True):
-            ret_val = super(DFPlugin, self).delete_router(context,
-                                                          router_id)
         return ret_val
 
     @lock_db.wrap_db_lock()
@@ -614,12 +636,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         logical_port = self.nb_api.get_logical_port(port['id'],
                                                     port['tenant_id'])
-        self.nb_api.add_lrouter_port(port['id'],
-                                     lrouter, lswitch,
-                                     port['tenant_id'],
-                                     mac=port['mac_address'],
-                                     network=network,
-                                     tunnel_key=logical_port.get_tunnel_key())
+
         interface_info['port_id'] = port['id']
         if 'subnet_id' in interface_info:
             del interface_info['subnet_id']
@@ -627,6 +644,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         with context.session.begin(subtransactions=True):
             result = super(DFPlugin, self).add_router_interface(
                 context, router_id, interface_info)
+
+        self.nb_api.add_lrouter_port(port['id'],
+                                     lrouter, lswitch,
+                                     port['tenant_id'],
+                                     mac=port['mac_address'],
+                                     network=network,
+                                     tunnel_key=logical_port.get_tunnel_key())
         return result
 
     @lock_db.wrap_db_lock()
@@ -710,7 +734,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def _update_subnet_dhcp(self, context, old_subnet, new_subnet):
         """Update the dhcp configration for.
 
-        Returns the dhcp server ip address if configured
+        Returns the dhcp server port if configured
         """
         if cfg.CONF.df.use_centralized_ipv6_DHCP:
             return self._update_subnet_dhcp_centralized(context, new_subnet)
@@ -727,19 +751,19 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if new_subnet['enable_dhcp'] and not old_subnet['enable_dhcp']:
             port = self._create_dhcp_server_port(context, new_subnet)
 
-        return self._get_ip_from_port(port)
+        return port
 
     def _handle_create_subnet_dhcp(self, context, subnet):
         """Create the dhcp configration for the subnet
 
-        Returns the dhcp server ip address if configured
+        Returns the dhcp server port if configured
         """
         if subnet['enable_dhcp']:
             if cfg.CONF.df.use_centralized_ipv6_DHCP:
                 return subnet['allocation_pools'][0]['start']
             else:
                 dhcp_port = self._create_dhcp_server_port(context, subnet)
-                return self._get_ip_from_port(dhcp_port)
+                return dhcp_port
         return None
 
     @lock_db.wrap_db_lock()
@@ -748,6 +772,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             floatingip_dict = super(DFPlugin, self).create_floatingip(
                 context, floatingip,
                 initial_status=const.FLOATINGIP_STATUS_DOWN)
+
         self.nb_api.create_floatingip(
             name=floatingip_dict['id'],
             topic=floatingip_dict['tenant_id'],
@@ -764,6 +789,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         with context.session.begin(subtransactions=True):
             floatingip_dict = super(DFPlugin, self).update_floatingip(
                 context, id, floatingip)
+
         self.nb_api.update_floatingip(
             name=floatingip_dict['id'],
             topic=floatingip_dict['tenant_id'],
