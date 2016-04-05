@@ -16,6 +16,7 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import reflection
 
+from collections import deque
 import eventlet
 from stevedore import driver
 import sys
@@ -168,3 +169,20 @@ class wrap_func_retry(object):
             if isinstance(exc, error):
                 return True
         return self.exception_checker(exc)
+
+
+class RateLimiter(object):
+    def __init__(self, max_rate=3, time_unit=1, **kwargs):
+        self.time_unit = time_unit
+        self.deque = deque(maxlen=max_rate)
+
+    def __call__(self):
+        if self.deque.maxlen == len(self.deque):
+            cTime = time.time()
+            if cTime - self.deque[0] > self.time_unit:
+                self.deque.append(cTime)
+                return False
+            else:
+                return True
+        self.deque.append(time.time())
+        return False
