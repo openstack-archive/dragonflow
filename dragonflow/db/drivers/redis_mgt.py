@@ -10,11 +10,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from dragonflow._i18n import _LE
 from oslo_log import log
+
+from dragonflow._i18n import _LE
+from dragonflow.db.drivers import redis_calckey
+
 import random
 import redis
-import redis_calckey
 import string
 
 LOG = log.getLogger(__name__)
