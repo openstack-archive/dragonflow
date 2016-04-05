@@ -11,6 +11,7 @@ OVS_BRANCH=${OVS_BRANCH:-origin/branch-2.5}
 DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,dhcp_app.DHCPApp"
+DEFAULT_SELECTIVE_TOPO_DIST="False"
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
@@ -19,6 +20,7 @@ REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
 NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
+DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-$DEFAULT_SELECTIVE_TOPO_DIST}
 
 #pubsub
 PUBLISHERS_HOSTS=${PUBLISHERS_HOSTS:-"$SERVICE_HOST"}
@@ -112,6 +114,8 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df enable_df_pub_sub "$DF_PUB_SUB"
         iniset $NEUTRON_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
         iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"
+        iniset $NEUTRON_CONF df enable_selective_topology_distribution \
+                                $DF_SELECTIVE_TOPO_DIST"
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins ""
@@ -154,6 +158,8 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
         iniset $NEUTRON_CONF df enable_df_pub_sub "$DF_PUB_SUB"
         iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"
+        iniset $NEUTRON_CONF df enable_selective_topology_distribution \
+                                "$DF_SELECTIVE_TOPO_DIST"
     fi
 }
 
