@@ -614,7 +614,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             interface_info)
         if add_by_sub:
             subnet = self.get_subnet(context, interface_info['subnet_id'])
-            port = {'port': {'tenant_id': context.tenant_id,
+            port = {'port': {'tenant_id': subnet['tenant_id'],
                              'network_id': subnet['network_id'], 'name': '',
                              'admin_state_up': True, 'device_id': '',
                              'device_owner': l3_db.DEVICE_OWNER_ROUTER_INTF,
