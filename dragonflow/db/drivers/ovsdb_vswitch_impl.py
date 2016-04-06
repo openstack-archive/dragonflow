@@ -14,18 +14,86 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import retrying
+import six
+import threading
+
 from dragonflow.common import constants
 from dragonflow.db import api_vswitch
 
 from neutron.agent.ovsdb import impl_idl
 from neutron.agent.ovsdb.native.commands import BaseCommand
 from neutron.agent.ovsdb.native import connection
+from neutron.agent.ovsdb.native import helpers
 from neutron.agent.ovsdb.native import idlutils
 
 from oslo_log import log
 
+from ovs.db import idl
+from ovs import poller
+
 
 LOG = log.getLogger(__name__)
+
+
+ovsdb_monitor_table_filter_default = {
+    'Interface': [
+        'uuid',
+        'ofport',
+        'name',
+        'admin_state',
+        'type',
+        'external_ids',
+        'options',
+    ]
+
+}
+
+
+class Connection(connection.Connection):
+    """
+    Extend the Neutron OVS Connection class to support being given the IDL
+    schema externally or manually.
+    Much of this code was taken directly from connection.Connection class.
+    """
+    def __init__(
+            self, connection, timeout, schema_name=None, schema_helper=None):
+        super(Connection, self).__init__(connection, timeout, schema_name)
+        self._schema_helper = schema_helper
+
+    def _get_schema_helper(self):
+        if self._schema_helper:
+            return self._schema_helper
+        try:
+            helper = idlutils.get_schema_helper(self.connection,
+                                                self.schema_name)
+        except Exception:
+            # We may have failed do to set-manager not being called
+            helpers.enable_connection_uri(self.connection)
+
+            # There is a small window for a race, so retry up to a second
+            @retrying.retry(wait_exponential_multiplier=10,
+                            stop_max_delay=1000)
+            def do_get_schema_helper():
+                return idlutils.get_schema_helper(self.connection,
+                                                  self.schema_name)
+            helper = do_get_schema_helper()
+
+        helper.register_all()
+        return helper
+
+    def start(self):
+        with self.lock:
+            if self.idl is not None:
+                return
+
+            helper = self._get_schema_helper()
+            self.idl = idl.Idl(self.connection, helper)
+            idlutils.wait_for_change(self.idl, self.timeout)
+            self.poller = poller.Poller()
+            self.thread = threading.Thread(target=self.run)
+            self.thread.setDaemon(True)
+            self.thread.start()
 
 
 class OvsdbSwitchApi(api_vswitch.SwitchApi):
@@ -42,12 +110,41 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.idl = None
         self.nb_api = nb_api
         self.ovsdb_monitor = None
+        self.ovsdb_monitor_table_filter = ovsdb_monitor_table_filter_default
+
+    def _get_schema_helper(self, tables='all'):
+        db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
+        try:
+            helper = idlutils.get_schema_helper(db_connection,
+                                                self.db_name)
+        except Exception:
+            # We may have failed do to set-manager not being called
+            helpers.enable_connection_uri(db_connection)
+
+            # There is a small window for a race, so retry up to a second
+            @retrying.retry(wait_exponential_multiplier=10,
+                            stop_max_delay=1000)
+            def do_get_schema_helper():
+                return idlutils.get_schema_helper(db_connection,
+                                                  self.db_name)
+            helper = do_get_schema_helper()
+        if tables == 'all':
+            helper.register_all()
+        elif isinstance(tables, dict):
+            for table_name, columns in six.iteritems(tables):
+                if columns == 'all':
+                    helper.register_table(table_name)
+                else:
+                    helper.register_columns(table_name, columns)
+        return helper
 
     def initialize(self):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
-        self.ovsdb = connection.Connection(db_connection,
-                                           self.timeout,
-                                           self.db_name)
+        self.ovsdb = Connection(
+            db_connection,
+            self.timeout,
+            schema_helper=self._get_schema_helper()
+        )
         self.ovsdb.start()
         self.idl = self.ovsdb.idl
 
