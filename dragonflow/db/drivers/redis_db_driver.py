@@ -15,7 +15,9 @@ from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
 from dragonflow.db.drivers.redis_mgt import RedisMgt
 from oslo_log import log
+
 import redis
+import six
 
 LOG = log.getLogger(__name__)
 
@@ -45,7 +47,7 @@ class RedisDbDriver(db_api.DbApi):
         if topic is None:
             local_key = self.uuid_to_key(table, key, '*')
             try:
-                for client in self.clients.itervalues():
+                for client in six.itervalues(self.clients):
                     local_keys = client.keys(local_key)
                     if len(local_keys) == 1:
                         return client.get(local_keys[0])
@@ -96,7 +98,7 @@ class RedisDbDriver(db_api.DbApi):
         if topic is None:
             local_key = self.uuid_to_key(table, '*', '*')
             try:
-                for client in self.clients.itervalues():
+                for client in six.itervalues(self.clients):
                     local_keys = client.keys(local_key)
                     if len(local_keys) > 0:
                         for tmp_key in local_keys:
@@ -124,7 +126,7 @@ class RedisDbDriver(db_api.DbApi):
             res = []
             local_key = self.uuid_to_key(table, '*', '*')
             try:
-                for client in self.clients.itervalues():
+                for client in six.itervalues(self.clients):
                     res.extend(client.keys(local_key))
                 return res
             except Exception as e:
