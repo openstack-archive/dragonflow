@@ -40,6 +40,11 @@ function generate_testr_results {
 owner=stack
 sudo_env=
 
+# virtuelenv 14.0.6 gives a strange error which appears solved in version 15.
+# Therefore, we force the newer version.
+sudo pip uninstall -y virtualenv
+sudo pip install "virtualenv>=15.0.1"
+
 # Set owner permissions according to job's requirements.
 cd "$DRAGONFLOW_DIR"
 sudo chown -R $owner:stack "$DRAGONFLOW_DIR"
