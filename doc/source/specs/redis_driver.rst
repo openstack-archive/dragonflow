@@ -83,14 +83,14 @@ r.publish('my-first-channel', 'some data')/* my-first-channel is channel name,
 
 Special Notice:
 'Some data' will be coded into json pattern.
-Above example ,subscirber which subscribes the channel'my-first-channel'will receive what
+Above example ,subscriber which subscribes the channel'my-first-channel'will receive what
 is published.
 More details please refer Publish / Subscribe section of [1]
 
 Subscribe API
 -------------
 If you want to receive message that you publish,you first should do a subscription,if you
-do not want to to receive message,you should withdraw subscription.
+do not want to receive message,you should withdraw subscription.
 Realization is based on andymccurdy lib.
 
 Here is a example of subscription process:

@@ -46,9 +46,9 @@ with the DB (write/read).
 For example: Dragonflow Neutron plugin, the Dragonflow local controller, external applications.
 
 This component was added for one main reason:
-We didnt want to expose the DB driver to the internal data schema/model of
+We didn't want to expose the DB driver to the internal data schema/model of
 Dragonflow.
-We didnt want that every new feature in Dragonflow will trigger changes in the various
+We didn't want that every new feature in Dragonflow will trigger changes in the various
 different DB drivers.
 
 This component has an interface to add/set/delete elements in our model (like logical
