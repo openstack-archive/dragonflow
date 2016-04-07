@@ -131,11 +131,15 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
             self.timeout,
             self._get_schema_helper(ovsdb_monitor_table_filter_default),
         )
+        table = constants.OVS_INTERFACE
+        self.nb_api.db_change_callback(table, None, 'sync_started', None)
+
         self.ovsdb.start()
         self.idl = self.ovsdb.idl
 
         self.ovsdb_monitor = OvsdbMonitor(self.nb_api, self.idl)
-        self.idl.notify = self.ovsdb_monitor.notify
+        self.ovsdb_monitor.initialize()
+        self.nb_api.db_change_callback(table, None, 'sync_finished', None)
 
     @property
     def _tables(self):
@@ -376,6 +380,15 @@ class OvsdbMonitor(object):
             table = constants.OVS_INTERFACE
             key = local_interface.uuid
             self.nb_api.db_change_callback(table, key, action, local_interface)
+
+    def _notify_existing_interfaces(self):
+        interfaces = self.idl.tables['Interface']
+        for row in six.itervalues(interfaces.rows):
+            self.notify('create', row)
+
+    def initialize(self):
+        self.idl.notify = self.notify
+        self._notify_existing_interfaces()
 
     def notify(self, event, row, updates=None):
         if not row or not hasattr(row, '_table'):
