@@ -39,8 +39,6 @@ class Topology(object):
         self.db_store = controller.get_db_store()
         self.openflow_app = controller.get_openflow_app()
         self.chassis_name = controller.get_chassis_name()
-        if self.enable_selective_topo_dist:
-            self.nb_api.subscriber.register_topic('chassis')
 
     def ovs_port_updated(self, ovs_port):
         """
