@@ -25,7 +25,7 @@ from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LI, _LW
 from dragonflow.common import utils as df_utils
-from dragonflow.db.db_common import DbUpdate
+from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC
 from dragonflow.db import pub_sub_api
 
 eventlet.monkey_patch()
@@ -44,6 +44,8 @@ class NbApi(object):
         self.publisher = None
         self.is_neutron_server = is_neutron_server
         self.db_table_monitors = None
+        self.enable_selective_topo_dist = \
+            cfg.CONF.df.enable_selective_topology_distribution
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
@@ -116,6 +118,8 @@ class NbApi(object):
 
     def _send_db_change_event(self, table, key, action, value, topic):
         if self.use_pubsub:
+            if not self.enable_selective_topo_dist:
+                topic = SEND_ALL_TOPIC
             update = DbUpdate(table, key, action, value, topic=topic)
             self.publisher.send_event(update)
             eventlet.sleep(0)
