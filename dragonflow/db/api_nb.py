@@ -226,7 +226,7 @@ class NbApi(object):
             else:
                 self.controller.publisher_deleted(key)
         elif 'ovsinterface' == table:
-            if action == 'set' or action == 'create':
+            if action == 'update' or action == 'create':
                 ovs_port = OvsPort(value)
                 self.controller.ovs_port_updated(ovs_port)
             elif action == 'sync_finished':
