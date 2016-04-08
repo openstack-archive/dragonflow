@@ -140,7 +140,7 @@ class Topology(object):
         lport_id = ovs_port.get_iface_id()
         lport = self._get_lport(lport_id)
         if lport is None:
-            LOG.warning(_LW("No lport found for ovs port %s  ")
+            LOG.warning(_LW("No logical port found for ovs port: %s")
                         % str(ovs_port))
             return
         topic = lport.get_topic()
@@ -150,13 +150,13 @@ class Topology(object):
         ovs_port_id = ovs_port.get_id()
         self.ovs_to_lport_mapping[ovs_port_id] = {'lport_id': lport_id,
                                                   'topic': topic}
-        LOG.info(_LI("Adding new local Logical Port = %s") % str(lport))
+        LOG.info(_LI("A local logical port(%s) is online") % str(lport))
 
         try:
             self.controller.logical_port_updated(lport)
         except Exception:
-            LOG.exception(_LE('App failed to process vm port online event %s')
-                          % str(lport))
+            LOG.exception(_LE('Failed to process logical port online '
+                              'event: %s') % str(lport))
 
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.get_id()
@@ -173,12 +173,12 @@ class Topology(object):
 
         topic = lport.get_topic()
 
-        LOG.info(_LI("Vm port(%s) offline") % lport)
+        LOG.info(_LI("The logical port(%s) is offline") % str(lport))
         try:
             self.controller.logical_port_deleted(lport_id)
         except Exception:
             LOG.exception(_LE(
-                'app failed to process vm port offline event %s') % lport_id)
+                'Failed to process logical port offline event %s') % lport_id)
         finally:
             # TODO(duankebo) publish vm port offline later
             # currently we will not publish vm port offline event.

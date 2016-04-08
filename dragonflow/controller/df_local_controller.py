@@ -198,27 +198,27 @@ class DfLocalController(object):
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
                 lport.set_external_value('is_local', True)
-                LOG.info(_LI("Adding new local Logical Port = %s") %
-                         lport.__str__())
+                LOG.info(_LI("Adding/Updating new local logical port = %s") %
+                         str(lport))
                 self.open_flow_app.notify_add_local_port(lport)
             else:
-                LOG.info(_LI("Logical Local Port %s was not created yet ") %
-                         lport.__str__())
+                LOG.info(_LI("Local logical port %s was not created yet") %
+                         str(lport))
             self.db_store.set_port(lport.get_id(), lport, True)
         else:
             ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
                 lport.set_external_value('is_local', False)
-                LOG.info(_LI("Adding new remote Logical Port = %s") %
-                         lport.__str__())
+                LOG.info(_LI("Adding/Updating new remote logical port = %s") %
+                         str(lport))
                 self.open_flow_app.notify_add_remote_port(lport)
             else:
                 #TODO(gampel) add handling for this use case
                 #remote port but no tunnel to remote Host
                 #if this should never happen raise an exception
-                LOG.warning(_LW("No tunnel for Logical Remote Port %s  ") %
-                         lport.__str__())
+                LOG.warning(_LW("No tunnel for remote logical port %s") %
+                            str(lport))
             self.db_store.set_port(lport.get_id(), lport, False)
 
     def logical_port_deleted(self, lport_id):
@@ -226,13 +226,13 @@ class DfLocalController(object):
         if lport is None:
             return
         if lport.get_external_value('is_local'):
-            LOG.info(_LI("Removing local Logical Port = %s") %
-                     lport.__str__())
+            LOG.info(_LI("Removing local logical port = %s") %
+                     str(lport))
             self.open_flow_app.notify_remove_local_port(lport)
             self.db_store.delete_port(lport.get_id(), True)
         else:
-            LOG.info(_LI("Removing remote Logical Port = %s") %
-                     lport.__str__())
+            LOG.info(_LI("Removing remote logical port = %s") %
+                     str(lport))
             self.open_flow_app.notify_remove_remote_port(lport)
             self.db_store.delete_port(lport.get_id(), False)
 

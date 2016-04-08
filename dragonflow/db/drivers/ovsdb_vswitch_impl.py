@@ -395,7 +395,8 @@ class OvsdbMonitor(object):
             return
         if row._table.name == 'Interface':
             _interface = api_vswitch.LocalInterface.from_idl_row(row)
-            self._notify_update_local_interface(_interface, event)
+            action = event if event != 'update' else 'set'
+            self._notify_update_local_interface(_interface, action)
 
 
 class AddPatchPort(BaseCommand):
