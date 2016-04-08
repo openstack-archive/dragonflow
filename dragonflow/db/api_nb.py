@@ -23,7 +23,7 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
 
-from dragonflow._i18n import _LI, _LW
+from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC
 from dragonflow.db import pub_sub_api
@@ -42,6 +42,7 @@ class NbApi(object):
         self._queue = eventlet.queue.PriorityQueue()
         self.use_pubsub = use_pubsub
         self.publisher = None
+        self.subscriber = None
         self.is_neutron_server = is_neutron_server
         self.db_table_monitors = None
         self.enable_selective_topo_dist = \
@@ -56,6 +57,7 @@ class NbApi(object):
                 #Publisher is part of the neutron server Plugin
                 self.publisher.initialize()
                 self._start_db_table_monitors()
+                self._register_as_publisher()
             else:
                 #NOTE(gampel) we want to start queuing event as soon
                 #as possible
@@ -82,12 +84,20 @@ class NbApi(object):
             for table_name in pub_sub_api.MONITOR_TABLES]
 
     def _start_db_table_monitor(self, table_name):
-        table_monitor = pub_sub_api.TableMonitor(
-            table_name,
-            self.driver,
-            self.publisher,
-            cfg.CONF.df.monitor_table_poll_time,
-        )
+        if table_name == 'publisher':
+            table_monitor = pub_sub_api.StalePublisherMonitor(
+                self.driver,
+                self.publisher,
+                cfg.CONF.df.publisher_timeout,
+                cfg.CONF.df.monitor_table_poll_time,
+            )
+        else:
+            table_monitor = pub_sub_api.TableMonitor(
+                table_name,
+                self.driver,
+                self.publisher,
+                cfg.CONF.df.monitor_table_poll_time,
+            )
         table_monitor.daemonize()
         return table_monitor
 
@@ -210,7 +220,12 @@ class NbApi(object):
             else:
                 floatingip_id = key
                 self.controller.floatingip_deleted(floatingip_id)
-
+        elif pub_sub_api.PUBLISHER_TABLE == table:
+            if action == 'set' or action == 'create':
+                publisher = Publisher(value)
+                self.controller.publisher_updated(publisher)
+            else:
+                self.controller.publisher_deleted(key)
         elif 'ovsinterface' == table:
             if action == 'set' or action == 'create':
                 ovs_port = OvsPort(value)
@@ -551,6 +566,71 @@ class NbApi(object):
             if port_id == floatingip['port_id']:
                 return Floatingip(floatingip)
         return None
+
+    def create_publisher(self, uuid, topic, **columns):
+        publisher = {
+            'uuid': uuid,
+            'topic': topic
+        }
+        publisher.update(columns)
+        publisher_json = jsonutils.dumps(publisher)
+        self.driver.create_key(
+            pub_sub_api.PUBLISHER_TABLE,
+            uuid,
+            publisher_json, topic
+        )
+        self._send_db_change_event(
+            pub_sub_api.PUBLISHER_TABLE,
+            uuid,
+            'create',
+            publisher_json,
+            topic,
+        )
+
+    def delete_publisher(self, uuid, topic):
+        self.driver.delete_key(pub_sub_api.PUBLISHER_TABLE, uuid, topic)
+        self._send_db_change_event(
+            pub_sub_api.PUBLISHER_TABLE,
+            uuid,
+            'delete',
+            uuid,
+            topic,
+        )
+
+    def get_publisher(self, uuid, topic=None):
+        try:
+            publisher_value = self.driver.get_key(
+                pub_sub_api.PUBLISHER_TABLE,
+                uuid,
+                topic,
+            )
+            return Publisher(publisher_value)
+        except Exception:
+            LOG.exception(_LE('Could not get publisher %s'), uuid)
+            return None
+
+    def update_publisher(self, uuid, topic, **columns):
+        publisher_value = self.driver.get_key(
+            pub_sub_api.PUBLISHER_TABLE,
+            uuid,
+            topic,
+        )
+        publisher = jsonutils.loads(publisher_value)
+        publisher.update(columns)
+        publisher_value = jsonutils.dumps(publisher)
+        self.driver.set_key(
+            pub_sub_api.PUBLISHER_TABLE,
+            uuid,
+            publisher_value,
+            topic,
+        )
+        self._send_db_change_event(
+            pub_sub_api.PUBLISHER_TABLE,
+            uuid,
+            'update',
+            publisher_value,
+            topic,
+        )
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -958,3 +1038,23 @@ class OvsPort(DbStoreObject):
 
     def __str__(self):
         return str(self.ovs_port)
+
+
+class Publisher(DbStoreObject):
+    def __init__(self, value):
+        self.publisher = jsonutils.loads(value)
+
+    def get_id(self):
+        return self.publisher['id']
+
+    def get_topic(self):
+        return None
+
+    def get_uri(self):
+        return self.publisher['uri']
+
+    def get_last_activity_timestamp(self):
+        return self.publisher['last_activity_timestamp']
+
+    def __str__(self):
+        return str(self.publisher)
