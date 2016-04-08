@@ -57,7 +57,6 @@ class NbApi(object):
                 #Publisher is part of the neutron server Plugin
                 self.publisher.initialize()
                 self._start_db_table_monitors()
-                self._register_as_publisher()
             else:
                 #NOTE(gampel) we want to start queuing event as soon
                 #as possible
