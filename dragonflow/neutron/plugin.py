@@ -245,6 +245,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def create_subnet(self, context, subnet):
         net_id = subnet['subnet']['network_id']
         new_subnet = None
+        dhcp_port = None
 
         try:
             with context.session.begin(subtransactions=True):
@@ -279,6 +280,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @lock_db.wrap_db_lock()
     def update_subnet(self, context, id, subnet):
+        dhcp_port = None
         try:
             with context.session.begin(subtransactions=True):
                 # update subnet in DB
