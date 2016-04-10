@@ -17,8 +17,6 @@ Overview
 
 Dragonflow implements Neutron using a lightweight embedded SDN Controller.
 
-Dragonflow is available in two configurations: Distributed and Centralized.
-
 Our project mission is *to Implement advanced networking services in a manner
 that is efficient, elegant and resource-nimble*
 
@@ -39,3 +37,66 @@ Overview and details are available in the `Distributed Dragonflow Section`_
     :width: 600
     :height: 525
     :align: center
+
+Mitaka Version Features
+========================
+
+* L2 core API
+
+      IPv4, IPv6
+      GRE/VxLAN/STT/Geneve tunneling protocols
+      L2 Population
+
+* Distributed L3 Virtual Router
+
+* Distributed DHCP
+
+* Distributed DNAT
+
+* Security Groups Using OVS and Connection tracking
+
+* Pluggable Distributed Database
+
+      Supported databases:
+
+      Stable:
+
+          ETCD, RAMCloud, Redis, Zookeeper
+
+      In progress:
+
+            RethinkDB
+
+* Pluggable Publish-Subscribe
+
+         ZeroMQ, Redis
+
+* Selective DB Distribution
+
+    Tenant Based Selective data distribution to the compute nodes
+
+In progress
+============
+
+  * IGMP Distributed application
+  * Allowed Address Pairs
+  * Port Security
+  * DHCP DOS protection
+  * Distributed Meta Data Service
+  * Kuryr integration
+  * Local Controller HA
+  * Local Controller Reliability
+  * ML2 Driver, hierarchical Port Binding
+  * VLAN L2 Networking support
+  * Smart broadcast/multicast
+
+In planning
+=============
+
+  * Distributed Load Balancing (East/West)
+  * DNS service
+  * Port Fault detection
+  * Dynamic service  chaining (service Injection)
+  * SFC support
+  * Distributed FWaaS
+  * VPNaaS
