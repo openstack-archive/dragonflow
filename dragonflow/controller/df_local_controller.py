@@ -78,7 +78,6 @@ class DfLocalController(object):
         self.vswitch_api.initialize()
         self.topology = Topology(self, self.enable_selective_topo_dist)
 
-        self.vswitch_api.sync()
         self.vswitch_api.del_controller('br-int').execute()
         self.vswitch_api.set_controllers(
             'br-int', ['tcp:' + self.ip + ':6633']).execute()
