@@ -155,9 +155,6 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
                                     self.timeout,
                                     check_error, log_errors)
 
-    def sync(self):
-        self.idl.run()
-
     def del_controller(self, bridge):
         return DelControllerCommand(self, bridge)
 
