@@ -257,10 +257,8 @@ class L3App(DFlowApp):
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
-        message = parser.OFPFlowMod(
+        self.mod_flow(
             datapath=self.get_datapath(),
-            cookie=0,
-            cookie_mask=0,
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -268,11 +266,9 @@ class L3App(DFlowApp):
             out_group=ofproto.OFPG_ANY,
             match=match)
 
-        self.get_datapath().send_msg(message)
-
         match = parser.OFPMatch()
         cookie = tunnel_key
-        message = parser.OFPFlowMod(
+        self.mod_flow(
             datapath=self.get_datapath(),
             cookie=cookie,
             cookie_mask=cookie,

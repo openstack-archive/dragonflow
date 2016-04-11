@@ -168,10 +168,8 @@ class L3ProactiveApp(DFlowApp):
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
-        message = parser.OFPFlowMod(
+        self.mod_flow(
             datapath=self.get_datapath(),
-            cookie=0,
-            cookie_mask=0,
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -179,11 +177,9 @@ class L3ProactiveApp(DFlowApp):
             out_group=ofproto.OFPG_ANY,
             match=match)
 
-        self.get_datapath().send_msg(message)
-
         match = parser.OFPMatch()
         cookie = tunnel_key
-        message = parser.OFPFlowMod(
+        self.mod_flow(
             datapath=self.get_datapath(),
             cookie=cookie,
             cookie_mask=cookie,
@@ -205,18 +201,14 @@ class L3ProactiveApp(DFlowApp):
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
                                     metadata=local_network_id,
                                     ipv6_dst=router_port.get_ip())
-        message = parser.OFPFlowMod(
+        self.mod_flow(
             datapath=self.get_datapath(),
-            cookie=0,
-            cookie_mask=0,
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
-
-        self.get_datapath().send_msg(message)
 
     def add_local_port(self, lport):
         self._add_port(lport)
@@ -281,18 +273,14 @@ class L3ProactiveApp(DFlowApp):
                                     metadata=network_id,
                                     ipv6_dst=dst_ip)
 
-        message = parser.OFPFlowMod(
+        self.mod_flow(
             datapath=self.get_datapath(),
-            cookie=0,
-            cookie_mask=0,
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
-
-        self.get_datapath().send_msg(message)
 
     def _install_flows_on_switch_up(self):
         for lrouter in self.db_store.get_routers():
