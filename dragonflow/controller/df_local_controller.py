@@ -78,9 +78,21 @@ class DfLocalController(object):
         self.vswitch_api.initialize()
         self.topology = Topology(self, self.enable_selective_topo_dist)
 
-        self.vswitch_api.del_controller('br-int').execute()
-        self.vswitch_api.set_controllers(
-            'br-int', ['tcp:' + self.ip + ':6633']).execute()
+        self.vswitch_api.sync()
+        # both set_controller and del_controller will delete flows.
+        # for reliability, here we should check if controller is set for OVS,
+        # if yes, don't set controller and don't delete controller.
+        # if no, set controller
+        # TODO(heshan) port should be configured in cfg file
+        targets = 'tcp:' + self.ip + ':6633'
+        is_controller_set = self.vswitch_api.check_controller(targets)
+        if not is_controller_set:
+            self.vswitch_api.set_controllers('br-int', [targets]).execute()
+        is_fail_mode_set = self.vswitch_api.check_controller_fail_mode(
+            'secure')
+        if not is_fail_mode_set:
+            self.vswitch_api.set_controller_fail_mode(
+                'br-int', 'secure').execute()
         self.open_flow_app.start()
         self.db_sync_loop()
 
