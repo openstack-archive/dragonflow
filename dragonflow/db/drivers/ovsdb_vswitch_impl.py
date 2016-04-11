@@ -49,12 +49,17 @@ ovsdb_monitor_table_filter_default = {
     'Bridge': [
         'ports',
         'name',
+        'controller',
+        'fail_mode',
     ],
     'Port': [
         'name',
         'external_ids',
         'interfaces',
     ],
+    'Controller': [
+        'target',
+    ]
 }
 
 
@@ -163,6 +168,26 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
 
     def set_controllers(self, bridge, targets):
         return SetControllerCommand(self, bridge, targets)
+
+
+    def set_controller_fail_mode(self, bridge, fail_mode):
+        return SetControllerFailModeCommand(self, bridge, fail_mode)
+
+    def check_controller(self, target):
+        is_controller_set = False
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        if br_int.controller[0].target == target:
+            is_controller_set = True
+        return is_controller_set
+
+    def check_controller_fail_mode(self, fail_mode):
+        is_fail_mode_set = False
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        if br_int is not None and\
+           br_int.fail_mode is not [] and\
+           br_int.fail_mode[0] == fail_mode:
+            is_fail_mode_set = True
+        return is_fail_mode_set
 
     def get_tunnel_ports(self):
         res = []
@@ -304,6 +329,18 @@ class SetControllerCommand(BaseCommand):
             controllers.append(controller)
         br.verify('controller')
         br.controller = controllers
+
+
+class SetControllerFailModeCommand(BaseCommand):
+    def __init__(self, api, bridge, fail_mode):
+        super(SetControllerFailModeCommand, self).__init__(api)
+        self.bridge = bridge
+        self.fail_mode = fail_mode
+
+    def run_idl(self, txn):
+        br = idlutils.row_by_value(self.api.idl, 'Bridge', 'name', self.bridge)
+        br.verify('fail_mode')
+        br.fail_mode = [self.fail_mode]
 
 
 class DeleteSwitchPort(BaseCommand):
