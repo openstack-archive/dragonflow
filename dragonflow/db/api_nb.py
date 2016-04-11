@@ -176,6 +176,8 @@ class NbApi(object):
         if action == 'sync':
             self.controller.run_sync()
             return
+        if action == 'update':
+            action = 'set'
         if 'secgroup' == table:
             if action == 'set' or action == 'create':
                 secgroup = SecurityGroup(value)

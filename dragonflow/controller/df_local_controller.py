@@ -189,10 +189,10 @@ class DfLocalController(object):
         lport.set_external_value('local_network_id', network)
 
         if lport.get_chassis() == self.chassis_name:
+            lport.set_external_value('is_local', True)
             ofport = lport_to_ofport.get(lport.get_id(), 0)
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
-                lport.set_external_value('is_local', True)
                 LOG.info(_LI("Adding/Updating new local logical port = %s") %
                          str(lport))
                 self.open_flow_app.notify_add_local_port(lport)

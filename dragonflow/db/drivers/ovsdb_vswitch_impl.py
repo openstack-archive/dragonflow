@@ -387,12 +387,11 @@ class OvsdbMonitor(object):
         self.idl.notify = self.notify
         self._notify_existing_interfaces()
 
-    def notify(self, event, row, updates=None):
+    def notify(self, action, row, updates=None):
         if not row or not hasattr(row, '_table'):
             return
         if row._table.name == 'Interface':
             _interface = api_vswitch.LocalInterface.from_idl_row(row)
-            action = event if event != 'update' else 'set'
             self._notify_update_local_interface(_interface, action)
 
 
