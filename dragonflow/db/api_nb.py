@@ -176,7 +176,6 @@ class NbApi(object):
         if action == 'sync':
             self.controller.run_sync()
             return
-        self.controller.vswitch_api.sync()
         if 'secgroup' == table:
             if action == 'set' or action == 'create':
                 secgroup = SecurityGroup(value)
