@@ -162,7 +162,6 @@ class DfLocalController(object):
         #Make sure we have a local network_id mapped before we dispatch
         network_id = self.get_network_id(
             lswitch.get_id(),
-            lswitch.get_topic(),
         )
         lswitch_conf = {'network_id': network_id, 'lswitch':
             lswitch.__str__()}
@@ -175,7 +174,7 @@ class DfLocalController(object):
         LOG.info(_LI("Removing Logical Switch = %s") % lswitch.__str__())
         self.open_flow_app.notify_remove_logical_switch(lswitch)
         self.db_store.del_lswitch(lswitch_id)
-        self.db_store.del_network_id(lswitch_id, lswitch.get_topic())
+        self.db_store.del_network_id(lswitch_id)
 
     def logical_port_updated(self, lport):
         if lport.get_chassis() is None or (
@@ -186,7 +185,6 @@ class DfLocalController(object):
             self.vswitch_api.get_local_ports_to_ofport_mapping())
         network = self.get_network_id(
             lport.get_lswitch_id(),
-            lport.get_topic(),
         )
         lport.set_external_value('local_network_id', network)
 
@@ -305,8 +303,8 @@ class DfLocalController(object):
         for port_to_remove in ports_to_remove:
             self.logical_port_deleted(port_to_remove)
 
-    def get_network_id(self, logical_dp_id, topic):
-        network_id = self.db_store.get_network_id(logical_dp_id, topic)
+    def get_network_id(self, logical_dp_id):
+        network_id = self.db_store.get_network_id(logical_dp_id)
         if network_id is not None:
             return network_id
         else:
@@ -315,7 +313,6 @@ class DfLocalController(object):
             self.db_store.set_network_id(
                 logical_dp_id,
                 self.next_network_id,
-                topic,
             )
             return self.next_network_id
 
@@ -339,8 +336,7 @@ class DfLocalController(object):
         LOG.info(_LI("Adding new logical router interface = %s") %
                  router_port.__str__())
         local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id(),
-            router_port.get_topic(),
+            router_port.get_lswitch_id()
         )
         self.open_flow_app.notify_add_router_port(
                 router, router_port, local_network_id)
@@ -349,8 +345,7 @@ class DfLocalController(object):
         LOG.info(_LI("Removing logical router interface = %s") %
                  router_port.__str__())
         local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id(),
-            router_port.get_topic(),
+            router_port.get_lswitch_id()
         )
         self.open_flow_app.notify_remove_router_port(
                 router_port, local_network_id)

@@ -78,7 +78,6 @@ class L3ProactiveApp(DFlowApp):
 
                 port_net_id = self.db_store.get_network_id(
                     port.get_lswitch_id(),
-                    port.get_topic(),
                 )
 
                 # From this router interface to all other interfaces
@@ -299,7 +298,6 @@ class L3ProactiveApp(DFlowApp):
             for router_port in lrouter.get_ports():
                 local_network_id = self.db_store.get_network_id(
                     router_port.get_lswitch_id(),
-                    router_port.get_topic(),
                 )
                 self.add_router_port(lrouter, router_port,
                         local_network_id)

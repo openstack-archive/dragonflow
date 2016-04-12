@@ -375,7 +375,6 @@ class DHCPApp(DFlowApp):
         subnets = lswitch.get_subnets()
         network_id = self.db_store.get_network_id(
             lswitch.get_id(),
-            lswitch.get_topic(),
         )
         self._remove_dhcp_unicast_match_flow(network_id)
         for subnet in subnets:
@@ -386,7 +385,6 @@ class DHCPApp(DFlowApp):
     def remove_logical_switch(self, lswitch):
         network_id = self.db_store.get_network_id(
             lswitch.get_id(),
-            lswitch.get_topic(),
         )
         self._remove_dhcp_unicast_match_flow(network_id)
 
