@@ -67,9 +67,9 @@ class OvsFlowsParser(object):
                 continue
             fs = flow.split(' ')
             res = {}
-            res['table'] = fs[3].split('=')[1]
+            res['table'] = fs[3].split('=')[1].replace(',', '')
             res['match'] = fs[-2]
-            res['actions'] = fs[-1].split('=')[1]
+            res['actions'] = fs[-1].split('=')[1].replace(',', '')
             res['cookie'] = fs[1].split('=')[1]
             m = re.search('priority=(\d+)', res['match'])
             if m:
