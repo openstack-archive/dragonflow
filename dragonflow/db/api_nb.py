@@ -232,9 +232,11 @@ class NbApi(object):
                 self.controller.ovs_sync_finished()
             elif action == 'sync_started':
                 self.controller.ovs_sync_started()
-            else:
+            elif action == 'delete':
                 ovs_port_id = key
                 self.controller.ovs_port_deleted(ovs_port_id)
+            else:
+                LOG.warning(_LW('Unknown action %s for ovsinterface'), action)
         elif 'log' == action:
             message = _LI(
                 'Log event (Info): '
