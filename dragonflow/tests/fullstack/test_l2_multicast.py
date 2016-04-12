@@ -21,7 +21,7 @@ class TestL2Multicast(test_base.DFTestBase):
 
     def _get_metadata_id(self, flows, ip, mac):
         for flow in flows:
-            if flow['table'] == str(const.L3_PROACTIVE_LOOKUP_TABLE) + ',':
+            if flow['table'] == str(const.L3_PROACTIVE_LOOKUP_TABLE):
                 if 'nw_dst=' + ip in flow['match'] and mac in flow['actions']:
                     m = re.search('metadata=0x([0-9a-f]+)', flow['match'])
                     if m:
@@ -46,7 +46,7 @@ class TestL2Multicast(test_base.DFTestBase):
         check = 'set_field:' + tunnel_key_hex + '->reg7,resubmit(,' + \
             str(const.EGRESS_TABLE) + ')'
         for flow in flows:
-            if flow['table'] == str(const.L2_LOOKUP_TABLE) + ',':
+            if flow['table'] == str(const.L2_LOOKUP_TABLE):
                 if ('dl_dst=01:00:00:00:00:00/01:00:00:00:00:00' in
                     flow['match']):
                     if 'metadata=0x' + metadataid in flow['match']:
