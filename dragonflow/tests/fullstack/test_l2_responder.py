@@ -42,7 +42,7 @@ class ArpResponderTest(test_base.DFTestBase):
         ovs_flows_parser = test_utils.OvsFlowsParser()
         flows = ovs_flows_parser.dump()
         flows = [flow for flow in flows
-                if flow['table'] == str(const.ARP_TABLE) + ',']
+                if flow['table'] == str(const.ARP_TABLE)]
         return flows
 
     def _check_arp_flow_removal(self, ip):

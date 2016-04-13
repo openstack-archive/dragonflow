@@ -73,6 +73,6 @@ class TestTopology(test_base.DFTestBase):
         ovs_flows_parser = OvsFlowsParser()
         flows = ovs_flows_parser.dump()
         flows = [flow for flow in flows if
-                 flow['table'] == str(const.ARP_TABLE) + ',' and
+                 flow['table'] == str(const.ARP_TABLE) and
                  vm_mac in flow['actions']]
         return flows
