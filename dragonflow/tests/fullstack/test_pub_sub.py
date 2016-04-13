@@ -39,6 +39,17 @@ def get_publisher():
     return publisher
 
 
+def get_server_publisher():
+    cfg.CONF.df.publisher_port = "12345"
+    cfg.CONF.df.publisher_bind_address = "127.0.0.1"
+    pub_sub_driver = df_utils.load_driver(
+        cfg.CONF.df.pub_sub_driver,
+        df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+    publisher = pub_sub_driver.get_publisher()
+    publisher.initialize()
+    return publisher
+
+
 def get_subscriber(callback):
     pub_sub_driver = df_utils.load_driver(
         cfg.CONF.df.pub_sub_driver,
@@ -229,6 +240,49 @@ class TestPubSub(test_base.DFTestBase):
         # publisher.send_event(update, topic)
         # self.assertEqual(self.events_action_t, None)
         subscriber.stop()
+
+    def test_pub_sub_register_addr(self):
+        if not self.do_test:
+            return
+        ns = Namespace()
+        ns.events_num = 0
+        ns.events_action = None
+
+        def _db_change_callback(table, key, action, value, topic):
+            if 'log' == key:
+                ns.events_num += 1
+                ns.events_action = action
+
+        publisher = get_publisher()
+        subscriber = get_subscriber(_db_change_callback)
+        eventlet.sleep(2)
+        action = "log"
+        update = DbUpdate(
+            'info',
+            'log',
+            action,
+            "value"
+        )
+        update.action = action
+        update.topic = SEND_ALL_TOPIC
+        self.events_action_t = None
+        publisher.send_event(update)
+        eventlet.sleep(1)
+        self.assertEqual(ns.events_action, action)
+
+        publisher2 = get_server_publisher()
+        uri = '%s://%s:%s' % (
+                cfg.CONF.df.publisher_transport,
+                '127.0.0.1',
+                cfg.CONF.df.publisher_port)
+        subscriber.register_listen_address(uri)
+        eventlet.sleep(2)
+        update.action = action
+        update.topic = SEND_ALL_TOPIC
+        ns.events_action = None
+        publisher2.send_event(update)
+        eventlet.sleep(1)
+        self.assertEqual(ns.events_action, action)
 
 
 class TestMultiprocPubSub(test_base.DFTestBase):

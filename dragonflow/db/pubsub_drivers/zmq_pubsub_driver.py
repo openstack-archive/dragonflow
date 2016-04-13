@@ -136,25 +136,29 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
         self.sub_socket = None
 
     def register_listen_address(self, uri):
-        super(ZMQSubscriberAgentBase, self).register_listen_address(uri)
-        #TODO(gampel)interrupt the sub socket recv and reconnect
+        is_new = super(ZMQSubscriberAgentBase, self).register_listen_address(
+                    uri)
+        if is_new and self.sub_socket:
+            self.sub_socket.connect(uri)
 
     def connect(self):
         """Connect to the publisher"""
 
     def unregister_listen_address(self, uri):
-        super(ZMQSubscriberAgentBase, self).unregister_listen_address(uri)
-        #TODO(gampel)interrupt the sub socket recv and reconnect
+        super(ZMQSubscriberAgentBase, self).unregister_listen_address(
+            uri)
+        if self.sub_socket:
+            self.sub_socket.disconnect(uri)
 
     def register_topic(self, topic):
-        super(ZMQSubscriberAgentBase, self).register_topic(topic)
         topic = topic.encode('ascii', 'ignore')
-        if self.sub_socket:
+        is_new = super(ZMQSubscriberAgentBase, self).register_topic(topic)
+        if is_new and self.sub_socket:
             self.sub_socket.setsockopt(zmq.SUBSCRIBE, topic)
 
     def unregister_topic(self, topic):
-        super(ZMQSubscriberAgentBase, self).unregister_topic(topic)
         topic = topic.encode('ascii', 'ignore')
+        super(ZMQSubscriberAgentBase, self).unregister_topic(topic)
         if self.sub_socket:
             self.sub_socket.setsockopt(zmq.UNSUBSCRIBE, topic)
 
