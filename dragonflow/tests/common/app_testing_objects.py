@@ -660,7 +660,7 @@ class SendAction(Action):
 
     def __call__(self, policy, rule, port_thread, buf):
         packet = self.packet
-        if not isinstance(packet, str):
+        if not isinstance(packet, str) and not isinstance(packet, bytearray):
             # TODO(oanson) pass more info to the packet generator
             packet = packet(buf)
         self._send(policy, packet)
