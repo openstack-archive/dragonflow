@@ -316,18 +316,14 @@ class DHCPApp(DFlowApp):
         ofproto = self.get_datapath().ofproto
         match = parser.OFPMatch()
         match.set_in_port(ofport)
-
-        msg = parser.OFPFlowMod(
+        self.mod_flow(
             datapath=self.get_datapath(),
-            cookie=0,
-            cookie_mask=0,
             table_id=const.DHCP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
-        self.get_datapath().send_msg(msg)
 
     def _is_port_a_vm(self, lport):
         owner = lport.get_device_owner()
@@ -393,18 +389,14 @@ class DHCPApp(DFlowApp):
         ofproto = self.get_datapath().ofproto
 
         match = parser.OFPMatch(metadata=network_id)
-
-        msg = parser.OFPFlowMod(
+        self.mod_flow(
             datapath=self.get_datapath(),
-            cookie=0,
-            cookie_mask=0,
             table_id=const.SERVICES_CLASSIFICATION_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
-        self.get_datapath().send_msg(msg)
 
     def _install_dhcp_broadcast_match_flow(self):
         parser = self.get_datapath().ofproto_parser

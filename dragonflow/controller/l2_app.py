@@ -100,59 +100,49 @@ class L2App(DFlowApp):
         # Remove ingress classifier for port
         match = parser.OFPMatch()
         match.set_in_port(ofport)
-        msg = parser.OFPFlowMod(
+        self.mod_flow(
             datapath=self.get_datapath(),
-            cookie=0,
-            cookie_mask=0,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
-        self.get_datapath().send_msg(msg)
 
         # Remove dispatch to local port according to unique tunnel_id
         match = parser.OFPMatch(tunnel_id_nxm=tunnel_key)
-        msg = parser.OFPFlowMod(
+        self.mod_flow(
             datapath=self.get_datapath(),
-            cookie=0,
-            cookie_mask=0,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
-        self.get_datapath().send_msg(msg)
 
         # Remove destination classifier for port
         match = parser.OFPMatch()
         match.set_metadata(network_id)
         match.set_dl_dst(haddr_to_bin(mac))
-        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
-                                cookie=0,
-                                cookie_mask=0,
-                                table_id=const.L2_LOOKUP_TABLE,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_MEDIUM,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
-        self.get_datapath().send_msg(msg)
+        self.mod_flow(
+            datapath=self.get_datapath(),
+            table_id=const.L2_LOOKUP_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
 
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
-        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
-                                cookie=0,
-                                cookie_mask=0,
-                                table_id=const.EGRESS_TABLE,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_MEDIUM,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
-        self.get_datapath().send_msg(msg)
+        self.mod_flow(
+            datapath=self.get_datapath(),
+            table_id=const.EGRESS_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
 
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
 
@@ -172,29 +162,25 @@ class L2App(DFlowApp):
         match = parser.OFPMatch()
         match.set_metadata(network_id)
         match.set_dl_dst(haddr_to_bin(mac))
-        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
-                                cookie=0,
-                                cookie_mask=0,
-                                table_id=const.L2_LOOKUP_TABLE,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_MEDIUM,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
-        self.get_datapath().send_msg(msg)
+        self.mod_flow(
+            datapath=self.get_datapath(),
+            table_id=const.L2_LOOKUP_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
 
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
-        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
-                                cookie=0,
-                                cookie_mask=0,
-                                table_id=const.EGRESS_TABLE,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_MEDIUM,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
-        self.get_datapath().send_msg(msg)
+        self.mod_flow(
+            datapath=self.get_datapath(),
+            table_id=const.EGRESS_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
 
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
 
@@ -303,17 +289,14 @@ class L2App(DFlowApp):
         match.set_dl_dst_masked(addint, addint)
         match.set_metadata(network_id)
 
-        msg = parser.OFPFlowMod(datapath=self.get_datapath(),
-                                cookie=0,
-                                cookie_mask=0,
-                                table_id=const.L2_LOOKUP_TABLE,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_HIGH,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
-
-        self.get_datapath().send_msg(msg)
+        self.mod_flow(
+            datapath=self.get_datapath(),
+            table_id=const.L2_LOOKUP_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_HIGH,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
 
     def _del_multicast_broadcast_handling_for_port(self, network_id,
                                                    lport_id):
