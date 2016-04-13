@@ -211,9 +211,14 @@ class SubscriberAgentBase(SubscriberApi):
         self.daemon.stop()
 
     def register_topic(self, topic):
-        self.topic_list.append(topic)
+        LOG.info(_LI('Register topic %s'), topic)
+        topic = topic.encode('ascii', 'ignore')
+        if topic not in self.topic_list:
+            self.topic_list.append(topic)
 
     def unregister_topic(self, topic):
+        LOG.info(_LI('Unregister topic %s'), topic)
+        topic = topic.encode('ascii', 'ignore')
         self.topic_list.remove(topic)
 
 
