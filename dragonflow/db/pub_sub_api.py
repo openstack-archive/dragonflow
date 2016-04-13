@@ -258,7 +258,7 @@ class TableMonitor(object):
             if old_value is None:
                 self._send_event('create', entry_key, entry_value)
             elif old_value != entry_value:
-                    self._send_event('update', entry_key, entry_value)
+                self._send_event('set', entry_key, entry_value)
             new_cache[entry_key] = entry_value
         for entry_key in old_cache:
             self._send_event('delete', entry_key, None)

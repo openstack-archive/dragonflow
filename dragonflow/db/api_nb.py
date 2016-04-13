@@ -33,6 +33,10 @@ eventlet.monkey_patch()
 LOG = log.getLogger(__name__)
 
 
+DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
+                  'sync', 'sync_started', 'sync_finished']
+
+
 class NbApi(object):
 
     def __init__(self, db_driver, use_pubsub=False, is_neutron_server=False):
@@ -173,56 +177,63 @@ class NbApi(object):
                 self.apply_db_change(None, None, 'sync', None)
 
     def apply_db_change(self, table, key, action, value):
+        # determine if the action is allowed or not
+        if action not in DB_ACTION_LIST:
+            LOG.warning(_LW('Unknown action %(action)s for table '
+                            '%(table)s'), {'action': action, 'table': table})
+            return
+
         if action == 'sync':
             self.controller.run_sync()
             return
+
         if 'secgroup' == table:
             if action == 'set' or action == 'create':
                 secgroup = SecurityGroup(value)
                 self.controller.security_group_updated(secgroup)
-            else:
+            elif action == 'delete':
                 secgroup_id = key
                 self.controller.security_group_deleted(secgroup_id)
         elif 'lport' == table:
             if action == 'set' or action == 'create':
                 lport = LogicalPort(value)
                 self.controller.logical_port_updated(lport)
-            else:
+            elif action == 'delete':
                 lport_id = key
                 self.controller.logical_port_deleted(lport_id)
         elif 'lrouter' == table:
             if action == 'set' or action == 'create':
                 lrouter = LogicalRouter(value)
                 self.controller.router_updated(lrouter)
-            else:
+            elif action == 'delete':
                 lrouter_id = key
                 self.controller.router_deleted(lrouter_id)
         elif 'chassis' == table:
             if action == 'set' or action == 'create':
                 chassis = Chassis(value)
                 self.controller.chassis_created(chassis)
-            else:
+            elif action == 'delete':
                 chassis_id = key
                 self.controller.chassis_deleted(chassis_id)
         elif 'lswitch' == table:
             if action == 'set' or action == 'create':
                 lswitch = LogicalSwitch(value)
                 self.controller.logical_switch_updated(lswitch)
-            else:
+            elif action == 'delete':
                 lswitch_id = key
                 self.controller.logical_switch_deleted(lswitch_id)
         elif 'floatingip' == table:
             if action == 'set' or action == 'create':
                 floatingip = Floatingip(value)
                 self.controller.floatingip_updated(floatingip)
-            else:
+            elif action == 'delete':
                 floatingip_id = key
                 self.controller.floatingip_deleted(floatingip_id)
         elif pub_sub_api.PUBLISHER_TABLE == table:
             if action == 'set' or action == 'create':
                 publisher = Publisher(value)
                 self.controller.publisher_updated(publisher)
-            else:
+            elif action == 'delete':
                 self.controller.publisher_deleted(key)
         elif 'ovsinterface' == table:
             if action == 'set' or action == 'create':
@@ -235,8 +246,6 @@ class NbApi(object):
             elif action == 'delete':
                 ovs_port_id = key
                 self.controller.ovs_port_deleted(ovs_port_id)
-            else:
-                LOG.warning(_LW('Unknown action %s for ovsinterface'), action)
         elif 'log' == action:
             message = _LI(
                 'Log event (Info): '

@@ -339,7 +339,7 @@ class TestDbTableMonitors(test_base.DFTestBase):
         expected_event = {
             'table': unicode('chassis'),
             'key': unicode('chassis-1'),
-            'action': unicode('update'),
+            'action': unicode('set'),
             # Due to the current implementation, value is not sent in event
             'value': None,
         }
