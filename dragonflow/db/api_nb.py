@@ -636,7 +636,7 @@ class NbApi(object):
         self._send_db_change_event(
             pub_sub_api.PUBLISHER_TABLE,
             uuid,
-            'update',
+            'set',
             publisher_value,
             topic,
         )
