@@ -75,6 +75,11 @@ Mitaka Version Features
 
     Tenant Based Selective data distribution to the compute nodes
 
+Experimental Mitaka Features
+=============================
+
+    * Local Controller Reliability
+
 In progress
 ============
 
@@ -85,7 +90,6 @@ In progress
   * Distributed Meta Data Service
   * Kuryr integration
   * Local Controller HA
-  * Local Controller Reliability
   * ML2 Driver, hierarchical Port Binding
   * VLAN L2 Networking support
   * Smart broadcast/multicast
