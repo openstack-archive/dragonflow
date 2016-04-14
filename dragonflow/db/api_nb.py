@@ -122,6 +122,10 @@ class NbApi(object):
                 cfg.CONF.df.publisher_port
             )
             self.subscriber.register_listen_address(uri)
+        publishers = self.get_publishers()
+        for publisher in publishers:
+            uri = publisher.get_uri()
+            self.subscriber.register_listen_address(uri)
         self.subscriber.daemonize()
 
     def support_publish_subscribe(self):
@@ -617,6 +621,14 @@ class NbApi(object):
         except Exception:
             LOG.exception(_LE('Could not get publisher %s'), uuid)
             return None
+
+    def get_publishers(self, topic=None):
+        publishers_values = self.driver.get_all_entries(
+            pub_sub_api.PUBLISHER_TABLE,
+            topic,
+        )
+        publishers = [Publisher(value) for value in publishers_values]
+        return publishers
 
     def update_publisher(self, uuid, topic, **columns):
         publisher_value = self.driver.get_key(
