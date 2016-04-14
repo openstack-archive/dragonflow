@@ -44,7 +44,10 @@ class PublisherService(object):
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
         self.db = nb_driver_class()
         self.uuid = pub_sub_api.generate_publisher_uuid()
-        self._rate_limit = df_utils.RateLimiter(2, 30)
+        self._rate_limit = df_utils.RateLimiter(
+            cfg.CONF.df.publisher_rate_limit_count,
+            cfg.CONF.df.publisher_rate_limit_timeout,
+        )
 
     def _get_publisher(self):
         pub_sub_driver = df_utils.load_driver(
