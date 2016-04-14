@@ -24,6 +24,7 @@ L3_LOOKUP_TABLE = 20
 L3_PROACTIVE_LOOKUP_TABLE = 25
 EGRESS_NAT_TABLE = 30
 EGRESS_TABLE = 64
+CANARY_TABLE = 200
 
 # Flow Priorities
 PRIORITY_DEFAULT = 1
@@ -32,4 +33,18 @@ PRIORITY_MEDIUM = 100
 PRIORITY_HIGH = 200
 PRIORITY_VERY_HIGH = 300
 
+
 DRAGONFLOW_DEFAULT_BRIDGE = 'br-int'
+
+"""
+Cookie Mask
+global cookie is used by flows of all table, but local cookie is used
+by flows of a small part of table. In order to avoid conflict,
+global cookies should not overlapped with each other, but local cookies
+could be overlapped for saving space of cookie.
+all cookie's mask should be kept here to avoid conflict.
+"""
+GLOBAL_AGING_COOKIE_MASK = 0x1
+LOCAL_TUNNEL_KEY_COOKIE = 0x1fffffffe
+LOCAL_TUNNEL_KEY_SHIFT_LEN = 1
+GLOBAL_INIT_AGING_COOKIE = 0x1
