@@ -144,6 +144,7 @@ class NetworkTestObj(object):
 
     def __init__(self, neutron, nb_api):
         self.network_id = None
+        self.topic = None
         self.neutron = neutron
         self.nb_api = nb_api
         self.closed = False
@@ -151,6 +152,7 @@ class NetworkTestObj(object):
     def create(self, network={'name': 'mynetwork1', 'admin_state_up': True}):
         network = self.neutron.create_network({'network': network})
         self.network_id = network['network']['id']
+        self.topic = network['network']['tenant_id']
         return self.network_id
 
     def close(self):
@@ -174,6 +176,9 @@ class NetworkTestObj(object):
         self.neutron.delete_network(self.network_id)
         self.closed = True
 
+    def get_topic(self):
+        return self.topic
+
     def exists(self):
         network = self.nb_api.get_lswitch(self.network_id)
         if network:
@@ -189,9 +194,10 @@ class VMTestObj(object):
         self.parent = parent
         self.neutron = neutron
         creds = test_base.credentials()
+        tenant_name = creds['project_name']
         auth_url = creds['auth_url'] + "/v2.0"
         self.nova = novaclient.Client('2', creds['username'],
-                        creds['password'], creds['project_name'], auth_url)
+                        creds['password'], tenant_name, auth_url)
 
     def create(self, network=None, script=None, security_groups=None):
         image = self.nova.images.find(name="cirros-0.3.4-x86_64-uec")
