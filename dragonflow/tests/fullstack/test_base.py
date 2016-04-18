@@ -20,6 +20,7 @@ from neutronclient.neutron import client
 from dragonflow.common import common_params
 from dragonflow.db import api_nb
 from dragonflow.tests import base
+from dragonflow.tests.common import app_testing_objects as test_objects
 
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
@@ -53,11 +54,23 @@ class DFTestBase(base.BaseTestCase):
             db_port=cfg.CONF.df.remote_db_port)
         self.local_ip = cfg.CONF.df.local_ip
         self.__objects_to_close = []
+        if cfg.CONF.df.enable_selective_topology_distribution:
+            self.start_subscribing()
 
     def store(self, obj, close_func=None):
         close_func = close_func if close_func else obj.close
         self.__objects_to_close.append(close_func)
         return obj
+
+    def start_subscribing(self):
+        self._topology = self.store(
+            test_objects.Topology(self.neutron, self.nb_api))
+        subnet = self._topology.create_subnet(cidr="192.168.200.0/24")
+        subnet.create_port()
+
+    def stop_subscribing(self):
+        if hasattr(self, '_topology'):
+            self._topology.close()
 
     def tearDown(self):
         for close_func in reversed(self.__objects_to_close):
