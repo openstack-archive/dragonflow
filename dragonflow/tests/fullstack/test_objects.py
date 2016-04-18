@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
+import os_client_config
 import six
 import time
 
@@ -22,7 +22,6 @@ from oslo_log import log
 
 from dragonflow._i18n import _LW
 from dragonflow.tests.common.utils import wait_until_none
-from dragonflow.tests.fullstack import test_base
 
 
 LOG = log.getLogger(__name__)
@@ -144,6 +143,7 @@ class NetworkTestObj(object):
 
     def __init__(self, neutron, nb_api):
         self.network_id = None
+        self.topic = None
         self.neutron = neutron
         self.nb_api = nb_api
         self.closed = False
@@ -151,6 +151,7 @@ class NetworkTestObj(object):
     def create(self, network={'name': 'mynetwork1', 'admin_state_up': True}):
         network = self.neutron.create_network({'network': network})
         self.network_id = network['network']['id']
+        self.topic = network['network']['tenant_id']
         return self.network_id
 
     def close(self):
@@ -174,6 +175,9 @@ class NetworkTestObj(object):
         self.neutron.delete_network(self.network_id)
         self.closed = True
 
+    def get_topic(self):
+        return self.topic
+
     def exists(self):
         network = self.nb_api.get_lswitch(self.network_id)
         if network:
@@ -188,10 +192,13 @@ class VMTestObj(object):
         self.closed = False
         self.parent = parent
         self.neutron = neutron
-        creds = test_base.credentials()
+        cloud = os_client_config.OpenStackConfig().get_one_cloud(
+                                                        cloud='devstack-admin')
+        creds = cloud.get_auth_args()
+        tenant_name = creds['project_name']
         auth_url = creds['auth_url'] + "/v2.0"
         self.nova = novaclient.Client('2', creds['username'],
-                        creds['password'], creds['project_name'], auth_url)
+                        creds['password'], tenant_name, auth_url)
 
     def create(self, network=None, script=None, security_groups=None):
         image = self.nova.images.find(name="cirros-0.3.4-x86_64-uec")
