@@ -51,6 +51,7 @@ class DFTestBase(base.BaseTestCase):
         self.nb_api = api_nb.NbApi(db_driver_class())
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
             db_port=cfg.CONF.df.remote_db_port)
+        self.local_ip = cfg.CONF.df.local_ip
         self.__objects_to_close = []
 
     def store(self, obj, close_func=None):
