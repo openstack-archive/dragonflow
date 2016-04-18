@@ -235,12 +235,14 @@ class DfLocalController(object):
         if lport.get_external_value('is_local'):
             LOG.info(_LI("Removing local logical port = %s") %
                      str(lport))
-            self.open_flow_app.notify_remove_local_port(lport)
+            if lport.get_external_value('ofport') is not None:
+                self.open_flow_app.notify_remove_local_port(lport)
             self.db_store.delete_port(lport.get_id(), True)
         else:
             LOG.info(_LI("Removing remote logical port = %s") %
                      str(lport))
-            self.open_flow_app.notify_remove_remote_port(lport)
+            if lport.get_external_value('ofport') is not None:
+                self.open_flow_app.notify_remove_remote_port(lport)
             self.db_store.delete_port(lport.get_id(), False)
 
     def router_updated(self, lrouter):
