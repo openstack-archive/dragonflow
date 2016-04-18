@@ -92,4 +92,8 @@ df_opts = [
         default='/usr/local/var/run/openvswitch/db.sock',
         help=_('local controller connect to the ovsdb server socket address')
     ),
+    cfg.IntOpt('distributed_lock_ttl',
+               default=120,
+               help=_('The TTL of the distributed lock. The lock will be '
+                      'reset if it is timeout.')),
 ]

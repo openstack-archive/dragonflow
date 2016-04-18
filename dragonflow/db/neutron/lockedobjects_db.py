@@ -23,16 +23,18 @@ import time
 from sqlalchemy import func
 from sqlalchemy.orm import exc as orm_exc
 
-from dragonflow._i18n import _LI, _LE
+from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db.neutron import models
 
 from neutron.db import api as db_api
 
+from oslo_config import cfg
 from oslo_db import api as oslo_db_api
 from oslo_db import exception as db_exc
 from oslo_log import log
 from oslo_utils import excutils
+from oslo_utils import timeutils
 import six
 
 
@@ -178,8 +180,15 @@ def _test_and_create_object(id):
     try:
         session = db_api.get_session()
         with session.begin():
-            session.query(models.DFLockedObjects).filter_by(
+            lock = session.query(models.DFLockedObjects).filter_by(
                 object_uuid=id).one()
+            # test ttl
+            if timeutils.is_older_than(lock.created_at,
+                                       cfg.CONF.df.distributed_lock_ttl):
+                # reset the lock if it is timeout
+                LOG.warning(_LW('The lock for object %(id)s is reset '
+                                'due to timeout.'), {'id': id})
+                _update_lock(session, lock, False, 0)
     except orm_exc.NoResultFound:
         try:
             session = db_api.get_session()
