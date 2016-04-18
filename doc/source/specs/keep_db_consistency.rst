@@ -4,37 +4,45 @@
 
  http://creativecommons.org/licenses/by/3.0/legalcode
 
-============================================================
-Keep DB Consistency between Neutron and Dragonflow - Phase 1
-============================================================
+==================================================
+Keep DB Consistency between Neutron and Dragonflow
+==================================================
 
 The URL of your launchpad Blueprint:
 
 https://blueprints.launchpad.net/dragonflow/+spec/keep-db-consistency
 
 This blueprint proposes the solutions for how to keep data consistency between
-Neutron DB and Dragonflow DB. As we know, Neutron DB stores the virtualized
+Neutron DB and Dragonflow DB, also between Dragonflow DB and Dragonflow local
+controller cache. As we know, Neutron DB stores the virtualized
 network topology of OpenStack clouds. It is a reliable relational data store
 and can be considered as the master DB in Dragonflow distributed architecture.
 As a result, the question becomes how to guarantee the atomicity of DB
 operations across two distinct kinds of database in the one API session.
 Here we will propose a simple and feasible distributed lock solution and
-improve it later according to evaluation in production.
+improve it later according to evaluation in production. We also provide an
+effective data synchronization mechanism to resolve the data inconsistency
+problem which may happen in the communication among above three type of
+data stores.
 
 
 Problem Description
 ===================
 
-Currently, Dragonflow architecture has two type of data stores. One is Neutron
-DB responsible for storing virtualized network topology. This database is
-relational and all the operations on it are based upon atomic transactions.
+Currently, Dragonflow architecture has three type of data stores. One is
+Neutron DB responsible for storing virtualized network topology. This database
+is relational and all the operations on it are based upon atomic transactions.
 It is considered as the master DB of Dragonflow. The other is distributed NoSQL
 DB responsible for storing Dragonflow-related topology, the subset of Neutron
 DB. It is considered as the slave DB of Dragonflow. Its API, encapsulated by
 Dragonflow, lacks of atomic transaction in general which causes inconsistency.
+The third is Dragonflow local controller cache which is the subset of
+Dragonflow NoSQL DB based on selective topology storage mechanism, it makes
+Dragonflow local controller visit its concerned data much faster.
 
 There are several problems related with DB inconsistency in the current
-codebase. The pseudo-code to demonstrate the inconsistency is as follows:
+codebase. The pseudo-code or description to demonstrate the inconsistency
+is as follows:
 
 * Scenario 1, in Bug [1]:
 
@@ -62,13 +70,40 @@ After Neutron DB is committed, concurrent calling of _some_operation function
 will still cause inconsistency, because all the operations in that function are
 not atomic. This phenomenon is discovered in multi-node deployments.
 
+* Scenario 3:
+
+    1. Dragonflow local controller subscribe its concerned data;
+    2. Neutron plugin publish a new created data;
+    3. Dragonflow local controller receive data and store in the cache.
+
+After Dragonflow local controller subscribe its concerned data, the sub/pub
+connection between local controller and sub/pub system is down because of the
+breakdown of network or sub/pub system, so local controller will lose the new
+data. Another case is after local controller receives the pub message, it
+happens internal exception in the data process, then the new data will be
+dropped.
+
+* Scenario 4:
+
+    1. A VM online on a Dragonflow local controller host while it is the first
+    VM of one tenant on the host;
+    2. The local controller will fetch all the data belong to the tenant from
+    Dragonflow NoSQL DB.
+
+After the VM online, the data read/write connection between local controller
+and Dragonflow NoSQL DB is down because of the breakdown of network or the
+problem of DB itself(restart or node crash), then the local controller will
+lose the tenant data it concerned.
+
+
 Proposed Change
 ===============
 
-To solve the problems discussed above, the general idea is to introduce a
-distributed lock mechanism for core plugin layer. The distributed lock is to
-protect the API context and prevent from concurrent write operations on the
-same records in the database.
+To solve the problems discussed in Scenario 2, the general idea is to
+introduce a distributed lock mechanism for core plugin layer. The distributed
+lock is to protect the API context and prevent from concurrent write
+operations on the same records in the database. As to the problems discussed
+in Scenario 1, 3 and 4, we need a effective data synchronization mechanism.
 
 Distributed Lock
 ----------------
@@ -77,7 +112,7 @@ To solve these problems, a SQL-based distributed lock mechanism is introduced.
 A carefully-designed SQL transaction is capable of being an external atomic
 lock to protect all the dependent database operations both for Neutron DB and
 DF distributed NoSQL server in a given API context. This can greatly reduces
-the complexity of introducing other sophisticated sychoronization mechanism
+the complexity of introducing other sophisticated synchronization mechanism
 from scratch.
 
 The distributed lock is tenant-based and each tenant has its own lock in the
@@ -112,7 +147,7 @@ The root cause is that Neutron DB is strongly consistent but DF DB is
 eventually consistent. We cannot guarantee the updates on DF DB is committed.
 
 Pseudo Code in Core Plugin
----------------------------
+--------------------------
 
     def CUD_object(context, obj):
         nb_lock = lock_db.DBLock(context.tenant_id)
@@ -146,6 +181,212 @@ DB. The table is designed as follows:
     session_id, String, generated for a given API session
     created_at, DateTime
 
+Data Synchronization
+--------------------
+
+We discussed the Data Synchronization Mechanism from two aspects:
+
+    1. Neutron plugin;
+    2. Dragonflow local controller.
+
+Neutron Plugin Data Sync
+------------------------
+
+When Neutron plugin receives a creation object(router\network\subnet\port, etc)
+invoke:
+
+    Start Neutron DB transaction for creation operations.
+        Do Neutron DB operations.
+        try:
+            Do DF DB operations.
+            Emit messages via PUB/SUB.
+        except:
+            retry to do DF DB operations and PUB/SUB.
+            if beyond max retry times:
+                rollback Neutron DB operations.
+                raise creation exception.
+
+* After Neutron plugin commit the creation operation to Neutron DB
+successfully, if there happened some exceptions in DF DB operations or PUB/SUB
+process, Neutron plugin should retry several times to finish commits and
+PUB/SUB, if it failed after all the attempts, Neutron plugin should rollback
+the previous commit, and raise a creation exception.
+
+When Neutron plugin receives a update\delete object(router\network\subnet\port,
+etc) invoke:
+
+    Start Neutron DB transaction for DB operations.
+        Do Neutron DB operations.
+        try:
+            Do DF DB operations.
+            Emit messages via PUB/SUB.
+        except:
+            retry to do DF DB operations and PUB/SUB.
+            if beyond max retry times:
+                raise update\delete exception.
+
+* The difference between update\delete invoke and creation invoke is there is
+no need to rollback when beyond max retry times, for instance, it is impossible
+and unnecessary to rollback all the Neutron DB data for a deleted VM, and we
+can deal with the dirty data in DF DB by other methods.
+
+When DB driver and pub\sub driver find the read\write connection between
+Neutron plugin and DF DB, and also the pub\sub connection between Neutron
+plugin and pub\sub system are recovered, the driver should notify Neutron
+plugin a recover message, Neutron plugin should process the message:
+
+    Start handle the recover message:
+        pull data from DF DB.
+        pull data from Neutron DB.
+        do compare with two data set.
+        if found object create\update\delete :
+            do DF DB operations.
+            Emit messages via PUB/SUB.
+
+* As we know, during the data pulling and comparison period, both of the two
+DB data is changing dynamically, for example, if we find an additional port
+in Neutron DB than DF DB during data comparison, then the port may be deleted,
+if the delete operation is happened earlier than the create operation, the
+dirty data of this port will be stored in DF DB, so we start a green thread
+to do the data comparison between Neutron DB and DF DB periodically in Neutron
+plugin, if we found the performance bottleneck for Neutron plugin, we could
+consider the 3rd-party software (such as an additional process or system OM
+tools) to do this.
+
+We also introduce a verification mechanism for the db comparison, We can mark
+and cache the create\update\delete status for each object at the first time
+db comparison, and after the second time db comparison, if the status of one
+object is still unchanged, so we can confirm the create\update\delete operation
+and do the corresponding operations, but if the status is changed, we should
+flush the status for the object by the latest status and then wait for next db
+comparison. So we need two times of db comparison to confirm the status
+of object.
+
+    Start db comparison periodically:
+        pull data from DF DB.
+        pull data from Neutron DB.
+        do compare with two data set.
+        if found object create\update\delete :
+            verification the object.
+            if confirmed object status:
+                try:
+                    do DF DB operations.
+                    Emit messages via PUB/SUB.
+                    delete object from cache.
+                except:
+                    retry to do DF DB operations and PUB/SUB.
+                    if beyond max retry times:
+                        raise exception.
+            else:
+                refresh object status in cache.
+
+Neutron Plugin election
+-----------------------
+
+We could use the distribute lock mechanism discussed above for the election.
+We should define a primary key for the Neutron plugin election in the
+distribute lock table, and we should store one data record for each Neutron
+plugin in DF DB, the record should be like this:
+
+    plugin_name, String, primary key
+    role, String, master or normal
+    status, String, active or down
+    plugin_time, the latest update DateTime
+
+The election process should be like this:
+
+    def get_master_neutron_plugin(context):
+        nb_lock = lock_db.DBLock(context.election_key)
+        with nb_lock:
+            if db_api.get_master_plugin_name() == self.plugin_name:
+                db_api.set_master_plugin_time(self.current_time)
+                return True
+            elif self.current_time > master_old_time + timeout:
+                db_api.set_master_plugin_time(self.current_time)
+                db_api.set_master_plugin_name(self.plugin_name)
+                return True
+            else:
+                return False
+
+* Each Neutron plugin will update its own data record in DF DB and detect
+the current master data record which describe the info of master plugin
+periodically. If normal plugin found master plugin break down, it will update
+its own data record to become new master plugin and change the old master to
+normal and set status to down. Also master Neutron plugin should detect
+other plugins to confirm they are alive periodically.
+
+* If a Neutron plugin has got the db-lock, but it is crashed, the db-lock may
+not be released, so each Neutron plugin should check the created-time in the
+db-lock and if it found the db-lock is timeout, it could own the db-lock
+instead of the crashed Neutron plugin.
+
+Neutron Plugin load balance
+---------------------------
+
+In multi nodes environment, we should consider Neutron plugin load balance to
+do the db comparison work, it can make the work more effective and avoid single
+node bottleneck.
+
+Master Neutron plugin will get tenant list from Neutron DB and DF DB
+periodically, however, the tenant list from Neutron DB may not be the same as
+the tenant list from DF DB, so master Neutron plugin will combine the two
+tenant list into one set. For instance, if tenant list from Neutron DB is
+(A, B), tenant list from DF DB is (B, C), after combination the tenant list is
+(A, B, C). Master Neutron plugin will assign the tenants to be well-distributed
+in all the existing active plugins and update the assign result into DF DB.
+
+When active Neutron plugin receive recover message or do db comparison
+periodically, it will get its corresponding tenant list info from DF DB,
+and do the db comparison job just for these tenants.
+
+Local Controller Data Sync
+--------------------------
+
+* When initialize or restart the local controller, ovsdb monitor module will
+notify all the existing local VM ports, and local controller will fetch the
+corresponding data according to the tenants that these VMs belong to from
+DF DB.
+
+* When DB driver and pub\sub driver find the read\write connection between
+local controller and DF DB, and also the pub\sub connection between local
+controller and pub\sub system are recovered, the driver should notify local
+controller a recover message, local controller process the recover message:
+
+    Start handle the recover message:
+        get tenant list according to local VM ports.
+        pull data from DF DB according to tenant list.
+        compare data between local cache and the got data.
+        if found object create\update\delete :
+            notify to local apps.
+
+We should start a green thread to do the data comparison between
+local controller cache and DF DB periodically by using the similar
+verification mechanism as Neutron plugin.
+
+Data sync for ML2 compatibility
+-------------------------------
+
+If we want to reuse ML2 core plugin, we should develop Dragonflow mechanism
+driver for it, the driver should implement db operations for DF DB and pub\sub
+operations, we should also put the db consistency logic into the driver.
+
+For db operations, our Dragonflow mechanism driver should implement
+object_precommit and object_postcommit method, the object_precommit method
+should not block the main process and could make the Neutron DB transaction
+to rollback when it happens exception in the transaction. For object creation,
+object_postcommit method should raise a MechanismDriverError if it happens
+exception to make Ml2 plugin to delete the resource. For object update\delete,
+object_postcommit method could ignore its internal exception becaue ML2 do
+not concern about it in current implementation.
+
+We should add these db consistency functions into our Dragonflow
+mechanism driver:
+
+    1. handle discover message.
+    2. DB comparison periodically.
+    3. Master Neutron plugin election.
+    4. multi Neutron plugins load balance.
+
 Work Items
 ==========
 
@@ -153,6 +394,7 @@ Work Items
 2. Create DB schema for distributed lock. (DONE)
 3. Implement distributed lock. (DONE)
 4. Protect all the API operations by distributed lock. (DONE)
+5. Data sync for ML2 compatibility (DONE)
 
 Potential Improvements
 ======================
