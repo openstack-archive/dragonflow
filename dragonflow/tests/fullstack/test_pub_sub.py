@@ -31,8 +31,12 @@ events_num = 0
 
 
 def get_publisher():
+    if cfg.CONF.df.pub_sub_use_multiproc:
+        pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
+    else:
+        pubsub_driver_name = cfg.CONF.df.pub_sub_driver
     pub_sub_driver = df_utils.load_driver(
-        cfg.CONF.df.pub_sub_multiproc_driver,
+        pubsub_driver_name,
         df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
     publisher = pub_sub_driver.get_publisher()
     publisher.initialize()
@@ -81,9 +85,13 @@ class TestPubSub(test_base.DFTestBase):
         subscriber = get_subscriber(_db_change_callback)
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
-        self.assertNotEqual(local_event_num, events_num)
-        local_event_num = events_num
+        if cfg.CONF.df.enable_selective_topology_distribution:
+            topic = network.get_topic()
+            subscriber.register_topic(topic)
+        else:
+            eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            self.assertNotEqual(local_event_num, events_num)
+            local_event_num = events_num
         port = self.store(objects.PortTestObj(
             self.neutron,
             self.nb_api,
@@ -101,6 +109,8 @@ class TestPubSub(test_base.DFTestBase):
         network.close()
         eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
+        if cfg.CONF.df.enable_selective_topology_distribution:
+            subscriber.unregister_topic(topic)
         subscriber.stop()
         self.assertFalse(network.exists())
 
@@ -118,8 +128,12 @@ class TestPubSub(test_base.DFTestBase):
         subscriber = get_subscriber(_db_change_callback)
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
-        self.assertNotEqual(local_event_num, ns.events_num)
+        if cfg.CONF.df.enable_selective_topology_distribution:
+            topic = network.get_topic()
+            subscriber.register_topic(topic)
+        else:
+            eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            self.assertNotEqual(local_event_num, ns.events_num)
         port = self.store(objects.PortTestObj(
             self.neutron,
             self.nb_api,
@@ -146,10 +160,12 @@ class TestPubSub(test_base.DFTestBase):
         network.close()
         eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
+        if cfg.CONF.df.enable_selective_topology_distribution:
+            subscriber.unregister_topic(topic)
         subscriber.stop()
         self.assertFalse(network.exists())
 
-    def test_pub_sub_event_number_diffrent_port(self):
+    def test_pub_sub_event_number_different_port(self):
         if not self.do_test:
             return
 
@@ -164,6 +180,7 @@ class TestPubSub(test_base.DFTestBase):
 
         publisher = get_publisher()
         subscriber = get_subscriber(_db_change_callback)
+        subscriber.register_topic(SEND_ALL_TOPIC)
 
         eventlet.sleep(2)
         local_events_num = ns.events_num
@@ -288,11 +305,13 @@ class TestDbTableMonitors(test_base.DFTestBase):
         self.namespace.events = []
         self.publisher = get_publisher()
         self.subscriber = get_subscriber(self._db_change_callback)
+        self.subscriber.register_topic(SEND_ALL_TOPIC)
         self.monitor = self._create_monitor('chassis')
 
     def tearDown(self):
         if self.do_test:
             self.monitor.stop()
+            self.subscriber.unregister_topic(SEND_ALL_TOPIC)
             self.subscriber.stop()
         super(TestDbTableMonitors, self).tearDown()
 

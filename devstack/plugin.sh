@@ -11,8 +11,6 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.5}
 DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp"
-DEFAULT_SELECTIVE_TOPO_DIST="False"
-DEFAULT_DF_REDIS_PUBSUB="False"
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
@@ -21,8 +19,6 @@ REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
 NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
-DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-$DEFAULT_SELECTIVE_TOPO_DIST}
-DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:-$DEFAULT_DF_REDIS_PUBSUB}
 
 #pubsub
 PUBLISHERS_HOSTS=${PUBLISHERS_HOSTS:-"$SERVICE_HOST"}
@@ -52,6 +48,9 @@ fi
 if is_service_enabled df-redis ; then
     source $DEST/dragonflow/devstack/redis_driver
     NB_DRIVER_CLASS="dragonflow.db.drivers.redis_db_driver.RedisDbDriver"
+    DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:"True"}
+else
+    DF_REDIS_PUBSUB="False"
 fi
 
 # Pub/Sub Service
@@ -68,7 +67,8 @@ if is_service_enabled df-zmq-publisher-service ; then
 fi
 
 if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
-    init_pubsub
+    DF_PUB_SUB="True"
+    DF_PUB_SUB_USE_MULTIPROC="False"
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
 # Dragonflow installation uses functions from these files
@@ -109,8 +109,6 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df_dnat_app external_network_bridge "br-ex"
         iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "patch-ex"
         iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "patch-int"
-        iniset $NEUTRON_CONF df enable_selective_topology_distribution \
-                                "$DF_SELECTIVE_TOPO_DIST"
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins ""
@@ -120,6 +118,14 @@ function configure_df_plugin {
         else
             iniset $NEUTRON_CONF DEFAULT dhcp_agent_notification "False"
         fi
+
+        if [[ "$DF_PUB_SUB" == "True" ]]; then
+            DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
+        else
+            DF_SELECTIVE_TOPO_DIST="False"
+        fi
+        iniset $NEUTRON_CONF df enable_selective_topology_distribution \
+                                "$DF_SELECTIVE_TOPO_DIST"
 
         if [[ "$DF_RUNNING_IN_GATE" == "True" ]]; then
             iniset $NEUTRON_CONF quotas default_quota "-1"
@@ -156,6 +162,12 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df_dnat_app external_network_bridge "br-ex"
         iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "patch-ex"
         iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "patch-int"
+
+        if [[ "$DF_PUB_SUB" == "True" ]]; then
+            DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
+        else
+            DF_SELECTIVE_TOPO_DIST="False"
+        fi
         iniset $NEUTRON_CONF df enable_selective_topology_distribution \
                                 "$DF_SELECTIVE_TOPO_DIST"
     fi
@@ -363,7 +375,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         cleanup_ovs
         stop_ovs
         uninstall_ovs
-        if [[ "$DF_PUB_SUB" == "True" ]]; then
+        if is_service_enabled df-publisher-service; then
             stop_pubsub_service
         fi
 
