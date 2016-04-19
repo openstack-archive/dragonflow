@@ -188,7 +188,7 @@ class DfLocalController(object):
         self.db_store.del_lswitch(lswitch_id)
         self.db_store.del_network_id(lswitch_id)
 
-    def logical_port_updated(self, lport):
+    def _logical_port_process(self, lport, original_lport=None):
         if lport.get_chassis() is None or (
                     lport.get_chassis() == constants.DRAGONFLOW_VIRTUAL_PORT):
             return
@@ -205,9 +205,17 @@ class DfLocalController(object):
             ofport = lport_to_ofport.get(lport.get_id(), 0)
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
-                LOG.info(_LI("Adding/Updating new local logical port = %s") %
-                         str(lport))
-                self.open_flow_app.notify_add_local_port(lport)
+                if original_lport is None:
+                    LOG.info(_LI("Adding new local logical port = %s") %
+                             str(lport))
+                    self.open_flow_app.notify_add_local_port(lport)
+                else:
+                    LOG.info(_LI("Updating local logical port = %(port)s, "
+                                 "original port = %(original_port)s") %
+                             {'port': str(lport),
+                              'original_port': str(original_lport)})
+                    self.open_flow_app.notify_update_local_port(lport,
+                                                                original_lport)
             else:
                 LOG.info(_LI("Local logical port %s was not created yet") %
                          str(lport))
@@ -217,16 +225,31 @@ class DfLocalController(object):
             ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
-                LOG.info(_LI("Adding/Updating new remote logical port = %s") %
-                         str(lport))
-                self.open_flow_app.notify_add_remote_port(lport)
+                if original_lport is None:
+                    LOG.info(_LI("Adding new remote logical port = %s") %
+                             str(lport))
+                    self.open_flow_app.notify_add_remote_port(lport)
+                else:
+                    LOG.info(_LI("Updating remote logical port = %(port)s, "
+                                 "original port = %(original_port)s") %
+                             {'port': str(lport),
+                              'original_port': str(original_lport)})
+                    self.open_flow_app.notify_update_remote_port(
+                        lport, original_lport)
             else:
-                #TODO(gampel) add handling for this use case
-                #remote port but no tunnel to remote Host
-                #if this should never happen raise an exception
+                # TODO(gampel) add handling for this use case
+                # remote port but no tunnel to remote Host
+                # if this should never happen raise an exception
                 LOG.warning(_LW("No tunnel for remote logical port %s") %
                             str(lport))
             self.db_store.set_port(lport.get_id(), lport, False)
+
+    def logical_port_created(self, lport):
+        self._logical_port_process(lport)
+
+    def logical_port_updated(self, lport):
+        original_lport = self.db_store.get_port(lport.get_id())
+        self._logical_port_process(lport, original_lport)
 
     def logical_port_deleted(self, lport_id):
         lport = self.db_store.get_port(lport_id)
