@@ -196,7 +196,10 @@ class NbApi(object):
                 secgroup_id = key
                 self.controller.security_group_deleted(secgroup_id)
         elif 'lport' == table:
-            if action == 'set' or action == 'create':
+            if action == 'create':
+                lport = LogicalPort(value)
+                self.controller.logical_port_created(lport)
+            elif action == 'set':
                 lport = LogicalPort(value)
                 self.controller.logical_port_updated(lport)
             elif action == 'delete':
