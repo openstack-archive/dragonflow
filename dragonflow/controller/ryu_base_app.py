@@ -41,7 +41,7 @@ class RyuDFAdapter(OFPHandler):
                                            vswitch_api=vswitch_api,
                                            nb_api=nb_api)
         self.dispatcher = AppDispatcher('dragonflow.controller',
-                cfg.CONF.df.apps_list)
+                                        cfg.CONF.df.apps_list)
         self.db_store = db_store
         self.vswitch_api = vswitch_api
         self.nb_api = nb_api
@@ -85,36 +85,44 @@ class RyuDFAdapter(OFPHandler):
     def notify_add_local_port(self, lport=None):
         self.dispatcher.dispatch('add_local_port', lport=lport)
 
+    def notify_update_local_port(self, lport=None, original_lport=None):
+        self.dispatcher.dispatch('update_local_port', lport=lport,
+                                 original_lport=original_lport)
+
     def notify_remove_local_port(self, lport=None):
         self.dispatcher.dispatch('remove_local_port', lport=lport)
 
     def notify_add_remote_port(self, lport=None):
         self.dispatcher.dispatch('add_remote_port', lport=lport)
 
+    def notify_update_remote_port(self, lport=None, original_lport=None):
+        self.dispatcher.dispatch('update_remote_port', lport=lport,
+                                 original_lport=original_lport)
+
     def notify_remove_remote_port(self, lport=None):
         self.dispatcher.dispatch('remove_remote_port', lport=lport)
 
-    def notify_add_router_port(self,
-            router=None, router_port=None, local_network_id=None):
+    def notify_add_router_port(self, router=None, router_port=None,
+                               local_network_id=None):
         self.dispatcher.dispatch('add_router_port', router=router,
-                router_port=router_port,
-                local_network_id=local_network_id)
+                                 router_port=router_port,
+                                 local_network_id=local_network_id)
 
     def notify_remove_router_port(self,
-            router_port=None, local_network_id=None):
+                                  router_port=None, local_network_id=None):
         self.dispatcher.dispatch('remove_router_port',
-                router_port=router_port,
-                local_network_id=local_network_id)
+                                 router_port=router_port,
+                                 local_network_id=local_network_id)
 
     def notify_add_security_group_rule(self, secgroup, secgroup_rule):
         self.dispatcher.dispatch('add_security_group_rule',
-                secgroup=secgroup,
-                secgroup_rule=secgroup_rule)
+                                 secgroup=secgroup,
+                                 secgroup_rule=secgroup_rule)
 
     def notify_remove_security_group_rule(self, secgroup, secgroup_rule):
         self.dispatcher.dispatch('remove_security_group_rule',
-                secgroup=secgroup,
-                secgroup_rule=secgroup_rule)
+                                 secgroup=secgroup,
+                                 secgroup_rule=secgroup_rule)
 
     def notify_ovs_sync_finished(self):
         self.dispatcher.dispatch('ovs_sync_finished')
