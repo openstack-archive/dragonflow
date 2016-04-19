@@ -811,6 +811,161 @@ class SGApp(DFlowApp):
             return security_id, (SG_PRIORITY_OFFSET + security_id)
         return None, None
 
+    def _add_local_port_associating(self, lport, secgroup_id):
+        # update the record of aggregate addresses of ports associated
+        # with this security group.
+        aggregate_addresses_range = \
+            self.secgroup_aggregate_addresses.get(secgroup_id)
+        if aggregate_addresses_range is None:
+            aggregate_addresses_range = []
+        new_cidr_array, added_cidr, removed_cidr = SGApp._add_one_address(
+            aggregate_addresses_range,
+            SGApp._get_integer_value_from_address(lport.get_ip())
+        )
+        self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_array
+
+        # update the flows representing those rules each of which specifies
+        #  this security group as its parameter
+        # of remote group.
+        secrules = self.remote_secgroup_ref.get(secgroup_id)
+        if secrules is not None:
+            for rule_info in secrules.values():
+                self._update_security_group_rule_flows_by_addresses(
+                    rule_info.security_group_id,
+                    rule_info,
+                    added_cidr,
+                    removed_cidr)
+
+        # update the record of ports associated with this security group.
+        associate_ports = \
+            self.secgroup_associate_local_ports.get(secgroup_id)
+        if associate_ports is None:
+            self.secgroup_associate_local_ports[secgroup_id] = \
+                [lport.get_id()]
+            self._allocate_security_group_id(secgroup_id)
+            self._install_security_group_flows(secgroup_id)
+        elif lport.get_id() not in associate_ports:
+            associate_ports.append(lport.get_id())
+
+        # install associating flow
+        self._install_associating_flows(secgroup_id, lport)
+
+    def _remove_local_port_associating(self, lport, secgroup_id):
+        # uninstall associating flow
+        self._uninstall_associating_flows(secgroup_id, lport)
+
+        # update the record of aggregate addresses of ports associated
+        # with this security group.
+        aggregate_addresses_range = \
+            self.secgroup_aggregate_addresses.get(secgroup_id)
+        if aggregate_addresses_range is not None:
+            new_cidr_array, added_cidr, removed_cidr = \
+                SGApp._remove_one_address(
+                    aggregate_addresses_range,
+                    SGApp._get_integer_value_from_address(lport.get_ip())
+                )
+            if len(new_cidr_array) == 0:
+                del self.secgroup_aggregate_addresses[secgroup_id]
+            else:
+                self.secgroup_aggregate_addresses[secgroup_id] = \
+                    new_cidr_array
+
+            # update the flows representing those rules each of which
+            # specifies this security group as its
+            # parameter of remote group.
+            secrules = self.remote_secgroup_ref.get(secgroup_id)
+            if secrules is not None:
+                for rule_info in secrules.values():
+                    self._update_security_group_rule_flows_by_addresses(
+                        rule_info.security_group_id,
+                        rule_info,
+                        added_cidr,
+                        removed_cidr
+                    )
+
+        # update the record of ports associated with this security group.
+        associate_ports = \
+            self.secgroup_associate_local_ports.get(secgroup_id)
+        if associate_ports is not None:
+            if lport.get_id() in associate_ports:
+                associate_ports.remove(lport.get_id())
+                if len(associate_ports) == 0:
+                    self._uninstall_security_group_flow(secgroup_id)
+                    self._release_security_group_id(secgroup_id)
+                    del self.secgroup_associate_local_ports[secgroup_id]
+
+    def _add_remote_port_associating(self, lport, secgroup_id):
+        # update the record of aggregate addresses of ports associated
+        # with this security group.
+        aggregate_addresses_range = \
+            self.secgroup_aggregate_addresses.get(secgroup_id)
+        if aggregate_addresses_range is None:
+            aggregate_addresses_range = []
+        new_cidr_array, added_cidr, removed_cidr =\
+            SGApp._add_one_address(
+                aggregate_addresses_range,
+                SGApp._get_integer_value_from_address(lport.get_ip())
+            )
+        self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_array
+
+        # update the flows representing those rules each of which specifies
+        #  this security group as its parameter of remote group.
+        secrules = self.remote_secgroup_ref.get(secgroup_id)
+        if secrules is not None:
+            for rule_info in secrules.values():
+                self._update_security_group_rule_flows_by_addresses(
+                    rule_info.security_group_id,
+                    rule_info,
+                    added_cidr,
+                    removed_cidr
+                )
+
+    def _remove_remote_port_associating(self, lport, secgroup_id):
+        # update the record of aggregate addresses of ports associated
+        # with this security group.
+        aggregate_addresses_range = \
+            self.secgroup_aggregate_addresses.get(secgroup_id)
+        if aggregate_addresses_range is not None:
+            new_cidr_array, added_cidr, removed_cidr = \
+                SGApp._remove_one_address(
+                    aggregate_addresses_range,
+                    SGApp._get_integer_value_from_address(lport.get_ip())
+                )
+            if len(new_cidr_array) == 0:
+                del self.secgroup_aggregate_addresses[secgroup_id]
+            else:
+                self.secgroup_aggregate_addresses[secgroup_id] =\
+                    new_cidr_array
+
+            # update the flows representing those rules each of which
+            # specifies this security group as its
+            # parameter of remote group.
+            secrules = self.remote_secgroup_ref.get(secgroup_id)
+            if secrules is not None:
+                for rule_info in secrules.values():
+                    self._update_security_group_rule_flows_by_addresses(
+                        rule_info.security_group_id,
+                        rule_info,
+                        added_cidr,
+                        removed_cidr
+                    )
+
+    def _get_added_and_removed_secgroups(self, secgroups, original_secgroups):
+        added_secgroups = []
+        if original_secgroups is not None:
+            removed_secgroups = list(original_secgroups)
+        else:
+            removed_secgroups = []
+
+        if secgroups is not None:
+            for item in secgroups:
+                if item in removed_secgroups:
+                    removed_secgroups.remove(item)
+                else:
+                    added_secgroups.append(item)
+
+        return added_secgroups, removed_secgroups
+
     def remove_local_port(self, lport):
         if self.get_datapath() is None:
             LOG.error(_LE("datapath is none"))
@@ -823,50 +978,8 @@ class SGApp(DFlowApp):
         # uninstall ct table
         self._uninstall_connection_track_flows(lport)
 
-        ip = lport.get_ip()
         for secgroup_id in secgroups:
-            # uninstall associating flow
-            self._uninstall_associating_flows(secgroup_id, lport)
-
-            # update the record of aggregate addresses of ports associated
-            # with this security group.
-            aggregate_addresses_range = \
-                self.secgroup_aggregate_addresses.get(secgroup_id)
-            if aggregate_addresses_range is not None:
-                new_cidr_array, added_cidr, removed_cidr = \
-                    SGApp._remove_one_address(
-                        aggregate_addresses_range,
-                        SGApp._get_integer_value_from_address(ip)
-                    )
-                if len(new_cidr_array) == 0:
-                    del self.secgroup_aggregate_addresses[secgroup_id]
-                else:
-                    self.secgroup_aggregate_addresses[secgroup_id] = \
-                        new_cidr_array
-
-                # update the flows representing those rules each of which
-                # specifies this security group as its
-                # parameter of remote group.
-                secrules = self.remote_secgroup_ref.get(secgroup_id)
-                if secrules is not None:
-                    for rule_info in secrules.values():
-                        self._update_security_group_rule_flows_by_addresses(
-                            rule_info.security_group_id,
-                            rule_info,
-                            added_cidr,
-                            removed_cidr
-                        )
-
-            # update the record of ports associated with this security group.
-            associate_ports = \
-                self.secgroup_associate_local_ports.get(secgroup_id)
-            if associate_ports is not None:
-                if lport.get_id() in associate_ports:
-                    associate_ports.remove(lport.get_id())
-                    if len(associate_ports) == 0:
-                        self._uninstall_security_group_flow(secgroup_id)
-                        self._release_security_group_id(secgroup_id)
-                        del self.secgroup_associate_local_ports[secgroup_id]
+            self._remove_local_port_associating(lport, secgroup_id)
 
     def remove_remote_port(self, lport):
         if self.get_datapath() is None:
@@ -877,36 +990,52 @@ class SGApp(DFlowApp):
         if secgroups is None:
             return
 
-        ip = lport.get_ip()
         for secgroup_id in secgroups:
-            # update the record of aggregate addresses of ports associated
-            # with this security group.
-            aggregate_addresses_range = \
-                self.secgroup_aggregate_addresses.get(secgroup_id)
-            if aggregate_addresses_range is not None:
-                new_cidr_array, added_cidr, removed_cidr = \
-                    SGApp._remove_one_address(
-                        aggregate_addresses_range,
-                        SGApp._get_integer_value_from_address(ip)
-                    )
-                if len(new_cidr_array) == 0:
-                    del self.secgroup_aggregate_addresses[secgroup_id]
-                else:
-                    self.secgroup_aggregate_addresses[secgroup_id] =\
-                        new_cidr_array
+            self._remove_remote_port_associating(lport, secgroup_id)
 
-                # update the flows representing those rules each of which
-                # specifies this security group as its
-                # parameter of remote group.
-                secrules = self.remote_secgroup_ref.get(secgroup_id)
-                if secrules is not None:
-                    for rule_info in secrules.values():
-                        self._update_security_group_rule_flows_by_addresses(
-                            rule_info.security_group_id,
-                            rule_info,
-                            added_cidr,
-                            removed_cidr
-                        )
+    def update_local_port(self, lport, original_lport):
+        if self.get_datapath() is None:
+            LOG.error(_LE("datapath is none"))
+            return
+
+        secgroups = lport.get_security_groups()
+        original_secgroups = original_lport.get_security_groups()
+
+        added_secgroups, removed_secgroups = \
+            self._get_added_and_removed_secgroups(secgroups,
+                                                  original_secgroups)
+
+        if (secgroups is None) and (original_secgroups is not None):
+            # uninstall ct table
+            self._uninstall_connection_track_flows(lport)
+
+        for secgroup_id in added_secgroups:
+            self._add_local_port_associating(lport, secgroup_id)
+
+        for secgroup_id in removed_secgroups:
+            self._remove_local_port_associating(lport, secgroup_id)
+
+        if (secgroups is not None) and (original_secgroups is None):
+            # install ct table
+            self._install_connection_track_flows(lport)
+
+    def update_remote_port(self, lport, original_lport):
+        if self.get_datapath() is None:
+            LOG.error(_LE("datapath is none"))
+            return
+
+        secgroups = lport.get_security_groups()
+        original_secgroups = original_lport.get_security_groups()
+
+        added_secgroups, removed_secgroups = \
+            self._get_added_and_removed_secgroups(secgroups,
+                                                  original_secgroups)
+
+        for secgroup_id in added_secgroups:
+            self._add_remote_port_associating(lport, secgroup_id)
+
+        for secgroup_id in removed_secgroups:
+            self._remove_remote_port_associating(lport, secgroup_id)
 
     def add_local_port(self, lport):
         if self.get_datapath() is None:
@@ -917,45 +1046,8 @@ class SGApp(DFlowApp):
         if secgroups is None:
             return
 
-        ip = lport.get_ip()
         for secgroup_id in secgroups:
-            # update the record of aggregate addresses of ports associated
-            # with this security group.
-            aggregate_addresses_range = \
-                self.secgroup_aggregate_addresses.get(secgroup_id)
-            if aggregate_addresses_range is None:
-                aggregate_addresses_range = []
-            new_cidr_array, added_cidr, removed_cidr = SGApp._add_one_address(
-                aggregate_addresses_range,
-                SGApp._get_integer_value_from_address(ip)
-            )
-            self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_array
-
-            # update the flows representing those rules each of which specifies
-            #  this security group as its parameter
-            # of remote group.
-            secrules = self.remote_secgroup_ref.get(secgroup_id)
-            if secrules is not None:
-                for rule_info in secrules.values():
-                    self._update_security_group_rule_flows_by_addresses(
-                        rule_info.security_group_id,
-                        rule_info,
-                        added_cidr,
-                        removed_cidr)
-
-            # update the record of ports associated with this security group.
-            associate_ports = \
-                self.secgroup_associate_local_ports.get(secgroup_id)
-            if associate_ports is None:
-                self.secgroup_associate_local_ports[secgroup_id] = \
-                    [lport.get_id()]
-                self._allocate_security_group_id(secgroup_id)
-                self._install_security_group_flows(secgroup_id)
-            elif lport.get_id() not in associate_ports:
-                associate_ports.append(lport.get_id())
-
-            # install associating flow
-            self._install_associating_flows(secgroup_id, lport)
+            self._add_local_port_associating(lport, secgroup_id)
 
         # install ct table
         self._install_connection_track_flows(lport)
@@ -969,32 +1061,8 @@ class SGApp(DFlowApp):
         if secgroups is None:
             return
 
-        ip = lport.get_ip()
         for secgroup_id in secgroups:
-            # update the record of aggregate addresses of ports associated
-            # with this security group.
-            aggregate_addresses_range = \
-                self.secgroup_aggregate_addresses.get(secgroup_id)
-            if aggregate_addresses_range is None:
-                aggregate_addresses_range = []
-            new_cidr_array, added_cidr, removed_cidr =\
-                SGApp._add_one_address(
-                    aggregate_addresses_range,
-                    SGApp._get_integer_value_from_address(ip)
-                )
-            self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_array
-
-            # update the flows representing those rules each of which specifies
-            #  this security group as its parameter of remote group.
-            secrules = self.remote_secgroup_ref.get(secgroup_id)
-            if secrules is not None:
-                for rule_info in secrules.values():
-                    self._update_security_group_rule_flows_by_addresses(
-                        rule_info.security_group_id,
-                        rule_info,
-                        added_cidr,
-                        removed_cidr
-                    )
+            self._add_remote_port_associating(lport, secgroup_id)
 
     def add_security_group_rule(self, secgroup, secgroup_rule):
         LOG.info(_LI("add a rule %(rule)s to security group %(secgroup)s")

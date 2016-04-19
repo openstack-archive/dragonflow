@@ -26,12 +26,28 @@ class DBNotifyInterface(object):
         :param lport:    local logical port which is added to db
         """
 
+    def update_local_port(self, lport, original_lport):
+        """update local logical port hook callback
+
+        :param lport:           local logical port which is updated to db
+        :param original_lport:  local logical port in db before the update
+        """
+
     def add_remote_port(self, lport):
         """add remote logical port hook callback
 
 
         :param lport:   logical port which resides on other compute node, and
         is added to db
+        """
+
+    def update_remote_port(self, lport, original_lport):
+        """update remote logical port hook callback
+
+        :param lport:           logical port which resides on other compute
+        node, and is updated in db
+        :param original_lport:  logical port in db which resides on other
+        compute node before the update
         """
 
     def remove_local_port(self, lport):
