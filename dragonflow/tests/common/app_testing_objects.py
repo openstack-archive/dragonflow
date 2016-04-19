@@ -75,7 +75,7 @@ class Topology(object):
         self.subnets = []
         self.routers = []
         self.network.create()
-        # Because that it's hard to get the default security group in this
+        # Because it's hard to get the default security group in this
         # context, we create a fake one here to act like the default security
         # group when creating a port with no security group specified.
         self.fake_default_security_group = \
@@ -214,6 +214,9 @@ class Port(object):
             parameters["security_groups"] = security_groups
         self.port.create(parameters)
         self.tap = LogicalPortTap(self.port)
+
+    def update(self, updated_parameters):
+        self.port.update(updated_parameters)
 
     def delete(self):
         """Delete this port. Delete the underlying tap device."""
