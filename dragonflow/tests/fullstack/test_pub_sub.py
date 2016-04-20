@@ -31,8 +31,12 @@ events_num = 0
 
 
 def get_publisher():
+    if cfg.CONF.df.pub_sub_use_multiproc:
+        pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
+    else:
+        pubsub_driver_name = cfg.CONF.df.pub_sub_driver
     pub_sub_driver = df_utils.load_driver(
-        cfg.CONF.df.pub_sub_multiproc_driver,
+        pubsub_driver_name,
         df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
     publisher = pub_sub_driver.get_publisher()
     publisher.initialize()
@@ -80,9 +84,13 @@ class TestPubSub(test_base.DFTestBase):
         subscriber = get_subscriber(_db_change_callback)
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
-        self.assertNotEqual(local_event_num, events_num)
-        local_event_num = events_num
+        if cfg.CONF.df.enable_selective_topology_distribution:
+            topic = network.get_topic()
+            subscriber.register_topic(topic)
+        else:
+            eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            self.assertNotEqual(local_event_num, events_num)
+            local_event_num = events_num
         port = self.store(objects.PortTestObj(
             self.neutron,
             self.nb_api,
@@ -100,6 +108,8 @@ class TestPubSub(test_base.DFTestBase):
         network.close()
         eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
+        if cfg.CONF.df.enable_selective_topology_distribution:
+            subscriber.unregister_topic(topic)
         subscriber.stop()
         self.assertFalse(network.exists())
 
@@ -117,8 +127,12 @@ class TestPubSub(test_base.DFTestBase):
         subscriber = get_subscriber(_db_change_callback)
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
-        self.assertNotEqual(local_event_num, ns.events_num)
+        if cfg.CONF.df.enable_selective_topology_distribution:
+            topic = network.get_topic()
+            subscriber.register_topic(topic)
+        else:
+            eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            self.assertNotEqual(local_event_num, ns.events_num)
         port = self.store(objects.PortTestObj(
             self.neutron,
             self.nb_api,
@@ -145,11 +159,14 @@ class TestPubSub(test_base.DFTestBase):
         network.close()
         eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
+        if cfg.CONF.df.enable_selective_topology_distribution:
+            subscriber.unregister_topic(topic)
         subscriber.stop()
         self.assertFalse(network.exists())
 
     def test_pub_sub_event_number_diffrent_port(self):
-        if not self.do_test:
+        if not self.do_test \
+                or cfg.CONF.df.enable_selective_topology_distribution:
             return
 
         ns = Namespace()
@@ -281,7 +298,8 @@ class TestDbTableMonitors(test_base.DFTestBase):
         self.events_num = 0
         enable_df_pub_sub = cfg.CONF.df.enable_df_pub_sub
         self.do_test = enable_df_pub_sub
-        if not self.do_test:
+        if not self.do_test \
+                or cfg.CONF.df.enable_selective_topology_distribution:
             return
         self.namespace = Namespace()
         self.namespace.events = []
@@ -290,7 +308,8 @@ class TestDbTableMonitors(test_base.DFTestBase):
         self.monitor = self._create_monitor('chassis')
 
     def tearDown(self):
-        if self.do_test:
+        if self.do_test \
+                and not cfg.CONF.df.enable_selective_topology_distribution:
             self.monitor.stop()
             self.subscriber.stop()
         super(TestDbTableMonitors, self).tearDown()
@@ -314,7 +333,8 @@ class TestDbTableMonitors(test_base.DFTestBase):
         return table_monitor
 
     def test_operations(self):
-        if not self.do_test:
+        if not self.do_test \
+                or cfg.CONF.df.enable_selective_topology_distribution:
             return
 
         expected_event = {
