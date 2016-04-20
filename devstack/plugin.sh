@@ -69,6 +69,7 @@ fi
 
 if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
     init_pubsub
+    DF_PUB_SUB_USE_MULTIPROC="False"
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
 # Dragonflow installation uses functions from these files
