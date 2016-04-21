@@ -52,28 +52,32 @@ LOCK_INC_RETRY_INTERVAL = 1
 # global lock id
 GLOBAL_LOCK_ID = "ffffffffffffffffffffffffffffffff"
 
+# The resource need to be protected by lock
+RESOURCE_DF_PLUGIN = 1
+RESOURCE_ML2_CORE = 2  # network, subnet, port
+RESOURCE_ML2_SECURITY_GROUP = 3
+RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE = 4
+RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE = 5
 
 LOG = log.getLogger(__name__)
 
 
 class wrap_db_lock(object):
 
-    def __init__(self):
+    def __init__(self, type):
         super(wrap_db_lock, self).__init__()
+        self.type = type
 
     def __call__(self, f):
         @six.wraps(f)
         def wrap_db_lock(*args, **kwargs):
-            context = args[1]  # the neutron context object
             session_id = 0
             result = None
 
             # NOTE(nick-ma-z): In some admin operations in Neutron,
             # the project_id is set to None, so we set it to a global
             # lock id.
-            lock_id = context.project_id
-            if not lock_id:
-                lock_id = GLOBAL_LOCK_ID
+            lock_id = _get_lock_id_by_resource_type(self.type, args, kwargs)
 
             # magic to prevent from nested lock
             within_wrapper = False
@@ -101,6 +105,24 @@ class wrap_db_lock(object):
 
             return result
         return wrap_db_lock
+
+
+def _get_lock_id_by_resource_type(type, *args, **kwargs):
+    if RESOURCE_DF_PLUGIN == type:
+        lock_id = args[0][1].project_id
+    elif RESOURCE_ML2_CORE == type:
+        lock_id = args[0][1].current['tenant_id']
+    elif RESOURCE_ML2_SECURITY_GROUP == type:
+        lock_id = args[1]['security_group']['tenant_id']
+    elif RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE == type:
+        lock_id = args[1]['security_group_rule']['tenant_id']
+    elif RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE == type:
+        lock_id = args[1]['context'].tenant_id
+
+    if not lock_id:
+        lock_id = GLOBAL_LOCK_ID
+
+    return lock_id
 
 
 @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
