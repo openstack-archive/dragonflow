@@ -111,6 +111,26 @@ class PublisherApi(object):
         :returns:       None
         """
 
+    def set_publisher_for_failover(self, pub, callback):
+        handler_name = '_set_publisher_to_mgt'
+
+        try:
+            handler = getattr(self, handler_name, None)
+            if handler is not None:
+                handler(pub, callback)
+        except Exception as e:
+            LOG.exception(e)
+
+    def start_detect_for_failover(self):
+        handler_name = '_start_detect_task'
+
+        try:
+            handler = getattr(self, handler_name, None)
+            if handler is not None:
+                handler()
+        except Exception as e:
+            LOG.exception(e)
+
 
 @six.add_metaclass(abc.ABCMeta)
 class SubscriberApi(object):
@@ -220,6 +240,26 @@ class SubscriberAgentBase(SubscriberApi):
         LOG.info(_LI('Unregister topic %s'), topic)
         topic = topic.encode('ascii', 'ignore')
         self.topic_list.remove(topic)
+
+    def set_subscriber_for_failover(self, sub, callback):
+        handler_name = '_set_subscriber_to_mgt'
+
+        try:
+            handler = getattr(self, handler_name, None)
+            if handler is not None:
+                handler(sub, callback)
+        except Exception as e:
+            LOG.exception(e)
+
+    def register_hamsg_for_db(self):
+        handler_name = '_register_ha'
+
+        try:
+            handler = getattr(self, handler_name, None)
+            if handler is not None:
+                handler()
+        except Exception as e:
+            LOG.exception(e)
 
 
 class TableMonitor(object):
