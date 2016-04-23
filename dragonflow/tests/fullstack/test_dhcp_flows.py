@@ -26,7 +26,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         for flow in flows:
             if flow['table'] == '9' and flow['actions'] == 'goto_table:11':
                 if ('nw_dst=' + dhcp_srv + ',tp_src=68,tp_dst=67'
-                    in flow['match']):
+                        in flow['match']):
                     return True
         return False
 
@@ -48,7 +48,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         for flow in flows:
             if flow['table'] == '9' and flow['actions'] == 'goto_table:11':
                 if ('udp,dl_dst=ff:ff:ff:ff:ff:ff,tp_src=68,tp_dst=67'
-                    in flow['match']):
+                        in flow['match']):
                     found_dhcp_cast_flow = True
                     break
         self.assertTrue(found_dhcp_cast_flow)
@@ -59,11 +59,11 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         subnet = {'network_id': network_id,
-            'cidr': '10.10.254.0/24',
-            'gateway_ip': '10.10.254.1',
-            'ip_version': 4,
-            'name': 'subnet-test',
-            'enable_dhcp': True}
+                  'cidr': '10.10.254.0/24',
+                  'gateway_ip': '10.10.254.1',
+                  'ip_version': 4,
+                  'name': 'subnet-test',
+                  'enable_dhcp': True}
         subnet = self.neutron.create_subnet({'subnet': subnet})
         subnet_id = subnet['subnet']['id']
         dhcp_ip = utils.wait_until_is_and_return(
@@ -90,11 +90,11 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         subnet = {'network_id': network_id,
-            'cidr': '10.20.0.0/24',
-            'gateway_ip': '10.20.0.1',
-            'ip_version': 4,
-            'name': 'subnet-test',
-            'enable_dhcp': False}
+                  'cidr': '10.20.0.0/24',
+                  'gateway_ip': '10.20.0.1',
+                  'ip_version': 4,
+                  'name': 'subnet-test',
+                  'enable_dhcp': False}
         subnet = self.neutron.create_subnet({'subnet': subnet})
         subnet_id = subnet['subnet']['id']
         time.sleep(utils.DEFAULT_CMD_TIMEOUT)
@@ -127,11 +127,11 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         subnet = {'network_id': network_id,
-            'cidr': '10.30.0.0/24',
-            'gateway_ip': '10.30.0.1',
-            'ip_version': 4,
-            'name': 'subnet-test',
-            'enable_dhcp': True}
+                  'cidr': '10.30.0.0/24',
+                  'gateway_ip': '10.30.0.1',
+                  'ip_version': 4,
+                  'name': 'subnet-test',
+                  'enable_dhcp': True}
         subnet = self.neutron.create_subnet({'subnet': subnet})
         subnet_id = subnet['subnet']['id']
         router_id = router.create()
