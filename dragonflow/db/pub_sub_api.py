@@ -111,6 +111,15 @@ class PublisherApi(object):
         :returns:       None
         """
 
+    def set_publisher_for_failover(self, pub, callback):
+        pass
+
+    def start_detect_for_failover(self):
+        pass
+
+    def process_ha(self):
+        pass
+
 
 @six.add_metaclass(abc.ABCMeta)
 class SubscriberApi(object):
@@ -221,8 +230,18 @@ class SubscriberAgentBase(SubscriberApi):
         topic = topic.encode('ascii', 'ignore')
         self.topic_list.remove(topic)
 
+    def set_subscriber_for_failover(self, sub, callback):
+        pass
+
+    def register_hamsg_for_db(self):
+        pass
+
+    def process_ha(self):
+        pass
+
 
 class TableMonitor(object):
+
     def __init__(self, table_name, driver, publisher, polling_time=10):
         self._driver = driver
         self._publisher = publisher
@@ -275,6 +294,7 @@ class TableMonitor(object):
 
 
 class StalePublisherMonitor(TableMonitor):
+
     def __init__(self, driver, publisher, timeout, polling_time=10):
         super(StalePublisherMonitor, self).__init__(
             PUBLISHER_TABLE,
