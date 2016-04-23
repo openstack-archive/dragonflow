@@ -61,10 +61,20 @@ class NbApi(object):
                 #Publisher is part of the neutron server Plugin
                 self.publisher.initialize()
                 self._start_db_table_monitors()
+                # Start a thread to detect DB failover in Plugin
+                self.publisher.set_publisher_for_failover(self.publisher,
+                                                          self.
+                                                          db_change_callback)
+                self.publisher.start_detect_for_failover()
             else:
                 #NOTE(gampel) we want to start queuing event as soon
                 #as possible
                 self._start_subsciber()
+                # Register for DB Failover detection in NB Plugin
+                self.subscriber.set_subscriber_for_failover(self.subscriber,
+                                                            self.
+                                                            db_change_callback)
+                self.subscriber.register_hamsg_for_db()
 
     def _get_publisher(self):
         if cfg.CONF.df.pub_sub_use_multiproc:
@@ -186,6 +196,15 @@ class NbApi(object):
         if action == 'sync':
             self.controller.run_sync()
             return
+        elif action == 'dbrestart':
+            # only db with HA func can go in here
+            self.driver.process_ha()
+            self.publisher.process_ha()
+            self.subscriber.process_ha()
+
+            return
+
+        self.controller.vswitch_api.sync()
 
         if 'secgroup' == table:
             if action == 'set' or action == 'create':
