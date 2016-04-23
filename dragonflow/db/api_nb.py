@@ -35,7 +35,7 @@ LOG = log.getLogger(__name__)
 
 
 DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
-                  'sync', 'sync_started', 'sync_finished']
+                  'sync', 'sync_started', 'sync_finished', 'dbrestart']
 
 
 class NbApi(object):
@@ -59,13 +59,29 @@ class NbApi(object):
             self.publisher = self._get_publisher()
             self.subscriber = self._get_subscriber()
             if self.is_neutron_server:
-                #Publisher is part of the neutron server Plugin
+                # Publisher is part of the neutron server Plugin
                 self.publisher.initialize()
                 self._start_db_table_monitors()
+                # Start a thread to detect DB failover in Plugin
+                self.publisher.set_publisher_for_failover(self.publisher,
+                                                          self.
+                                                          db_recover_callback)
+                self.publisher.start_detect_for_failover()
             else:
-                #NOTE(gampel) we want to start queuing event as soon
-                #as possible
+                # NOTE(gampel) we want to start queuing event as soon
+                # as possible
                 self._start_subsciber()
+                # Register for DB Failover detection in NB Plugin
+                self.subscriber.set_subscriber_for_failover(self.subscriber,
+                                                            self.
+                                                            db_change_callback)
+                self.subscriber.register_hamsg_for_db()
+
+    def db_recover_callback(self):
+        # only db with HA func can go in here
+        self.driver.process_ha()
+        self.publisher.process_ha()
+        self.subscriber.process_ha()
 
     def _get_publisher(self):
         if cfg.CONF.df.pub_sub_use_multiproc:
@@ -73,19 +89,19 @@ class NbApi(object):
         else:
             pubsub_driver_name = cfg.CONF.df.pub_sub_driver
         pub_sub_driver = df_utils.load_driver(
-                                    pubsub_driver_name,
-                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+            pubsub_driver_name,
+            df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_publisher()
 
     def _get_subscriber(self):
         pub_sub_driver = df_utils.load_driver(
-                                    cfg.CONF.df.pub_sub_driver,
-                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+            cfg.CONF.df.pub_sub_driver,
+            df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_subscriber()
 
     def _start_db_table_monitors(self):
         self.db_table_monitors = [self._start_db_table_monitor(table_name)
-            for table_name in pub_sub_api.MONITOR_TABLES]
+                                  for table_name in pub_sub_api.MONITOR_TABLES]
 
     def _start_db_table_monitor(self, table_name):
         if table_name == 'publisher':
@@ -165,7 +181,7 @@ class NbApi(object):
                         self.next_update.action not in {'delete', 'log'}):
                     if self.next_update.table and self.next_update.key:
                         value = self.driver.get_key(self.next_update.table,
-                                                self.next_update.key)
+                                                    self.next_update.key)
 
                 self.apply_db_change(self.next_update.table,
                                      self.next_update.key,
@@ -186,6 +202,9 @@ class NbApi(object):
 
         if action == 'sync':
             self.controller.run_sync()
+            return
+        elif action == 'dbrestart':
+            self.db_recover_callback()
             return
 
         if 'secgroup' == table:
@@ -556,7 +575,7 @@ class NbApi(object):
                             floatingip['topic'])
         if notify:
             self._send_db_change_event('floatingip', name, 'set',
-                floatingip_json, floatingip['topic'])
+                                       floatingip_json, floatingip['topic'])
 
     def get_floatingip(self, name, topic=None):
         try:
@@ -645,6 +664,7 @@ class NbApi(object):
 
 @six.add_metaclass(abc.ABCMeta)
 class DbStoreObject(object):
+
     @abc.abstractmethod
     def get_id(self):
         """Return the ID of this object."""
@@ -1054,6 +1074,7 @@ class OvsPort(DbStoreObject):
 
 
 class Publisher(DbStoreObject):
+
     def __init__(self, value):
         self.publisher = jsonutils.loads(value)
 
