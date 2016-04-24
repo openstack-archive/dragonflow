@@ -128,6 +128,15 @@ function configure_df_plugin {
             iniset $NEUTRON_CONF quotas quota_floatingip "-1"
             iniset $NEUTRON_CONF quotas quota_security_group_rule "-1"
         fi
+
+        if is_service_enabled df-meta ; then
+            NOVA_CONF=${NOVA_CONF:-"/etc/nova/nova.conf"}
+            iniset $NOVA_CONF neutron service_metadata_proxy True
+            iniset $NOVA_CONF neutron metadata_proxy_shared_secret $METADATA_PROXY_SHARED_SECRET
+            iniset $NEUTRON_CONF DEFAULT nova_metadata_ip "169.254.1.1"
+            iniset $NEUTRON_CONF DEFAULT metadata_proxy_shared_secret $METADATA_PROXY_SHARED_SECRET
+            iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST,metadata_service_app.MetadataServiceApp"
+        fi
     else
         _create_neutron_conf_dir
         # NOTE: We need to manually generate the neutron.conf file here. This
@@ -315,6 +324,39 @@ function stop_df_l3_agent {
     fi
 }
 
+function start_df_metadata_agent {
+    if is_service_enabled df-meta ; then
+        echo "Starting Dragonflow metadata service"
+        sudo ovs-vsctl add-port br-int tap-metadata -- set Interface tap-metadata type=internal
+        sudo ip netns add ns-metadata
+        sudo ip link set dev tap-metadata netns ns-metadata
+        sudo ip netns exec ns-metadata ip addr add dev tap-metadata 169.254.169.254/0
+        sudo ip netns exec ns-metadata ip link set dev tap-metadata up
+        sudo ip netns exec ns-metadata ip route add 0.0.0.0/0 dev tap-metadata table 2
+        sudo ip netns exec ns-metadata ip rule add from 169.254.169.254 table 2
+        sudo ip link add veth-metadata type veth peer name veth-metadata2
+        sudo ip link set veth-metadata2 netns ns-metadata
+        sudo ip netns exec ns-metadata ip link set dev veth-metadata2 name veth-metadata
+        sudo ip netns exec ns-metadata ip link set dev veth-metadata up
+        sudo ip netns exec ns-metadata ip addr add dev veth-metadata 169.254.1.2/30
+        sudo ip netns exec ns-metadata ip route add default via 169.254.1.1 dev veth-metadata
+        sudo ip link set dev veth-metadata up
+        sudo ip addr add dev veth-metadata 169.254.1.1/30
+        sudo iptables -t nat -A POSTROUTING -s 169.254.1.0/30 -d 0.0.0.0/0 -j MASQUERADE
+        run_process df-meta "sudo ip netns exec ns-metadata python $DF_METADATA_SERVICE --config-file $NEUTRON_CONF"
+    fi
+}
+
+function stop_df_metadata_agent {
+    if is_service_enabled df-meta ; then
+        echo "Stopping Dragonflow metadata service"
+        stop_process df-meta
+        sudo ovs-vsctl del-port br-int tap-metadata
+        sudo ip netns delete ns-metadata
+        sudo ip link delete veth-metadata
+    fi
+}
+
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
@@ -354,9 +396,11 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
 
         start_df_l3_agent
         start_df
+        start_df_metadata_agent
     fi
 
     if [[ "$1" == "unstack" ]]; then
+        stop_df_metadata_agent
         stop_df
         cleanup_ovs
         stop_ovs

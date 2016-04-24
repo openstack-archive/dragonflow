@@ -80,3 +80,7 @@ class DBLockFailed(DragonflowException):
 
 class DBClientNotFound(DragonflowException):
     message = _('DB client not found, ip=%(key)s')
+
+
+class NoRemoteIPProxyException(DragonflowException):
+    message = _('The request has not remote IP')
