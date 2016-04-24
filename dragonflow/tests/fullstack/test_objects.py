@@ -41,12 +41,10 @@ def find_first_network(nclient, params):
 
 
 def get_port_by_mac(neutron, vm_mac):
-    ports = neutron.list_ports()
-    if ports is None:
-        return None
-    for port in ports['ports']:
-        if vm_mac == port['mac_address']:
-            return port
+    ports = neutron.list_ports(mac_address=vm_mac)
+    if ports:
+        return ports[0]
+    return None
 
 
 class RouterTestObj(object):
@@ -229,10 +227,17 @@ class VMTestObj(object):
         if self.server is None:
             return
         wait_until_none(
-            lambda: get_port_by_mac(self.neutron, vm_mac),
+            self._get_VM_port,
             timeout,
             exception=Exception('VM is not deleted')
         )
+
+    def _get_VM_port(self):
+        server_id = self.server.id
+        ports = self.neutron.list_ports(device_id=server_id)
+        if ports:
+            return ports[0]
+        return None
 
     def close(self):
         if self.closed or self.server is None:
