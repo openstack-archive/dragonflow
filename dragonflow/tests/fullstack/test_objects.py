@@ -41,12 +41,13 @@ def find_first_network(nclient, params):
 
 
 def get_port_by_mac(neutron, vm_mac):
-    ports = neutron.list_ports()
-    if ports is None:
+    ports = neutron.list_ports(mac_address=vm_mac)
+    if not ports:
         return None
-    for port in ports['ports']:
-        if vm_mac == port['mac_address']:
-            return port
+    ports = ports.get('ports', None)
+    if not ports:
+        return None
+    return ports[0]
 
 
 class RouterTestObj(object):
@@ -225,21 +226,29 @@ class VMTestObj(object):
             timeout = timeout - 1
         return False
 
-    def _wait_for_server_delete(self, vm_mac, timeout=60):
+    def _wait_for_server_delete(self, timeout=60):
         if self.server is None:
             return
         wait_until_none(
-            lambda: get_port_by_mac(self.neutron, vm_mac),
+            self._get_VM_port,
             timeout,
             exception=Exception('VM is not deleted')
         )
 
+    def _get_VM_port(self):
+        ports = self.neutron.list_ports(device_id=self.server.id)
+        if not ports:
+            return None
+        ports = ports.get('ports', None)
+        if not ports:
+            return None
+        return ports[0]
+
     def close(self):
         if self.closed or self.server is None:
             return
-        vm_first_mac = self.get_first_mac()
         self.nova.servers.delete(self.server)
-        self._wait_for_server_delete(vm_first_mac)
+        self._wait_for_server_delete()
         self.closed = True
 
     def exists(self):
@@ -266,7 +275,12 @@ class VMTestObj(object):
     def get_first_mac(self):
         if self.server is None:
             return None
-        return self.server.addresses.values()[0][0]['OS-EXT-IPS-MAC:mac_addr']
+        try:
+            return self.server.addresses.values()[0][0][
+                'OS-EXT-IPS-MAC:mac_addr'
+            ]
+        except (KeyError, IndexError):
+            return None
 
 
 class SubnetTestObj(object):
