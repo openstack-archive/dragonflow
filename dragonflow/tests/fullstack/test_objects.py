@@ -229,10 +229,18 @@ class VMTestObj(object):
         if self.server is None:
             return
         wait_until_none(
-            lambda: get_port_by_mac(self.neutron, vm_mac),
+            self._get_VM_port,
             timeout,
             exception=Exception('VM is not deleted')
         )
+
+    def _get_VM_port(self):
+        ports = self.neutron.list_ports()
+        if not ports:
+            return None
+        for port in ports['ports']:
+            if self.server.id == port['device_id']:
+                return port
 
     def close(self):
         if self.closed or self.server is None:
