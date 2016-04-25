@@ -582,14 +582,18 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         try:
             port = self.get_port(context, port_id)
             topic = port['tenant_id']
-            self.nb_api.delete_lport(name=port_id, topic=topic)
-        except df_exceptions.DBKeyNotFound:
-            LOG.debug("port %s is not found in DF DB, might have "
-                      "been deleted concurrently" % port_id)
+        except n_exc.PortNotFound:
+            return
 
         with context.session.begin(subtransactions=True):
             self.disassociate_floatingips(context, port_id)
             super(DFPlugin, self).delete_port(context, port_id)
+
+        try:
+            self.nb_api.delete_lport(name=port_id, topic=topic)
+        except df_exceptions.DBKeyNotFound:
+            LOG.debug("port %s is not found in DF DB, might have "
+                      "been deleted concurrently" % port_id)
 
     def extend_port_dict_binding(self, port_res, port_db):
         super(DFPlugin, self).extend_port_dict_binding(port_res, port_db)
