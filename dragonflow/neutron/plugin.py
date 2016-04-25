@@ -553,15 +553,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         return port
 
-    def _pre_delete_port(self, context, port_id, port_check):
+    def _pre_delete_port(self, port, port_check):
         """Do some preliminary operations before deleting the port."""
-        LOG.debug("Deleting port %s", port_id)
+        LOG.debug("Deleting port %s", port['id'])
         if not port_check:
             return
-        try:
-            port = self.get_port(context, port_id)
-        except n_exc.PortNotFound:
-            return
+
         if port['device_owner'] in ['network:router_interface',
                                     'network:router_gateway',
                                     'network:floatingip']:
@@ -578,18 +575,19 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @lock_db.wrap_db_lock()
     def delete_port(self, context, port_id, l3_port_check=True):
-        self._pre_delete_port(context, port_id, l3_port_check)
-        try:
-            port = self.get_port(context, port_id)
-            topic = port['tenant_id']
-            self.nb_api.delete_lport(name=port_id, topic=topic)
-        except df_exceptions.DBKeyNotFound:
-            LOG.debug("port %s is not found in DF DB, might have "
-                      "been deleted concurrently" % port_id)
+        port = self.get_port(context, port_id)
+        self._pre_delete_port(port, l3_port_check)
+        topic = port['tenant_id']
 
         with context.session.begin(subtransactions=True):
             self.disassociate_floatingips(context, port_id)
             super(DFPlugin, self).delete_port(context, port_id)
+
+        try:
+            self.nb_api.delete_lport(name=port_id, topic=topic)
+        except df_exceptions.DBKeyNotFound:
+            LOG.debug("port %s is not found in DF DB, might have "
+                      "been deleted concurrently" % port_id)
 
     def extend_port_dict_binding(self, port_res, port_db):
         super(DFPlugin, self).extend_port_dict_binding(port_res, port_db)
