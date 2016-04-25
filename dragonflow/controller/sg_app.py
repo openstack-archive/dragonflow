@@ -263,6 +263,9 @@ class SGApp(DFlowApp):
                         if port_range_max is not None:
                             icmpv4_match["icmpv4_code"] = int(port_range_max)
                         port_match_list.append(icmpv4_match)
+                    elif (int(port_range_min) == 1 and
+                            int(port_range_max) == 65535):
+                        port_match_list.append(protocol_match)
                     else:
                         split_port_range = SGApp._split_range(
                             int(port_range_min),
