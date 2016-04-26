@@ -578,7 +578,7 @@ class NbApi(object):
 
     def create_publisher(self, uuid, topic, **columns):
         publisher = {
-            'uuid': uuid,
+            'id': uuid,
             'topic': topic
         }
         publisher.update(columns)
