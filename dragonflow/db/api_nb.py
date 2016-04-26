@@ -578,7 +578,7 @@ class NbApi(object):
 
     def create_publisher(self, uuid, topic, **columns):
         publisher = {
-            'uuid': uuid,
+            'id': uuid,
             'topic': topic
         }
         publisher.update(columns)
@@ -1057,13 +1057,13 @@ class Publisher(DbStoreObject):
         return self.publisher['id']
 
     def get_topic(self):
-        return None
+        return self.publisher.get('topic', None)
 
     def get_uri(self):
-        return self.publisher['uri']
+        return self.publisher.get('uri', None)
 
     def get_last_activity_timestamp(self):
-        return self.publisher['last_activity_timestamp']
+        return self.publisher.get('last_activity_timestamp', None)
 
     def __str__(self):
         return str(self.publisher)
