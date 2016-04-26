@@ -280,13 +280,14 @@ class DNATApp(DFlowApp):
             floatingip.lport_id)
         mac = lport.get_mac()
         ip = lport.get_ip()
-        ofport = lport.get_external_value('ofport')
+        tunnel_key = lport.get_tunnel_key()
+        network_id = lport.get_external_value('local_network_id')
         net_id = lport.get_lswitch_id()
         segmentation_id = self.db_store.get_network_id(
             net_id,
         )
 
-        return (mac, ip, ofport, segmentation_id)
+        return (mac, ip, tunnel_key, network_id, segmentation_id)
 
     def _install_dnat_ingress_rules(self, floatingip):
         parser = self.get_datapath().ofproto_parser
@@ -294,16 +295,22 @@ class DNATApp(DFlowApp):
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                 ipv4_dst=floatingip.ip_address)
 
-        vm_mac, vm_ip, vm_ofport, _ = self._get_vm_port_info(floatingip)
+        vm_mac, vm_ip, vm_tunnel_key, network_id, _ = \
+            self._get_vm_port_info(floatingip)
         fip_mac = floatingip.mac_address
         actions = [
             parser.OFPActionSetField(eth_src=fip_mac),
             parser.OFPActionSetField(eth_dst=vm_mac),
             parser.OFPActionDecNwTtl(),
             parser.OFPActionSetField(ipv4_dst=vm_ip),
-            parser.OFPActionOutput(vm_ofport, 0)]
-        inst = [self.get_datapath().ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+            parser.OFPActionSetField(reg7=vm_tunnel_key),
+            parser.OFPActionSetField(metadata=network_id)
+        ]
+        action_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        goto_inst = parser.OFPInstructionGotoTable(
+            const.INGRESS_CONNTRACK_TABLE)
+        inst = [action_inst, goto_inst]
 
         self.mod_flow(
             self.get_datapath(),
@@ -325,7 +332,7 @@ class DNATApp(DFlowApp):
             match=match)
 
     def _get_dnat_egress_match(self, floatingip):
-        _, vm_ip, _, segmentation_id = self._get_vm_port_info(floatingip)
+        _, vm_ip, _, _, segmentation_id = self._get_vm_port_info(floatingip)
         parser = self.get_datapath().ofproto_parser
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                 metadata=segmentation_id,
