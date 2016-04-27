@@ -14,6 +14,7 @@
 
 from dragonflow._i18n import _LE
 from dragonflow.common import common_params
+from dragonflow.db import db_common
 from dragonflow.db.drivers.redis_mgt import RedisMgt
 from dragonflow.db import pub_sub_api
 import eventlet
@@ -94,6 +95,7 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
         self.ip = ip_port[0]
         self.plugin_updates_port = ip_port[1]
         self.pub_sub = self.client.pubsub()
+        self.register_topic(db_common.SEND_ALL_TOPIC)
 
     def register_listen_address(self, uri):
         super(RedisSubscriberAgent, self).register_listen_address(uri)
