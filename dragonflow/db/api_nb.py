@@ -114,6 +114,7 @@ class NbApi(object):
 
     def _start_subsciber(self):
         self.subscriber.initialize(self.db_change_callback)
+        self.subscriber.register_topic(SEND_ALL_TOPIC)
         # TODO(oanson) Move publishers_ips to DF DB.
         publishers_ips = cfg.CONF.df.publishers_ips
         for ip in publishers_ips:

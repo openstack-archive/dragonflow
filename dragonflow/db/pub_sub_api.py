@@ -188,7 +188,6 @@ class SubscriberAgentBase(SubscriberApi):
         super(SubscriberAgentBase, self).__init__()
         self.topic_list = []
         self.uri_list = []
-        self.topic_list.append(db_common.SEND_ALL_TOPIC)
 
     def initialize(self, callback):
         self.db_changes_callback = callback
