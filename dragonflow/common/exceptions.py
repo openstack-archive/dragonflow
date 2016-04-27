@@ -79,4 +79,4 @@ class DBLockFailed(DragonflowException):
 
 
 class DBClientNotFound(DragonflowException):
-    message = _('DB client not found, ip=%(key)s')
+    message = _('DB client not found, ip=%(ip)s')
