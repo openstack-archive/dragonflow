@@ -16,6 +16,7 @@ from dragonflow.db import db_api
 from dragonflow.db.drivers.redis_mgt import RedisMgt
 from oslo_log import log
 
+import re
 import redis
 import six
 
@@ -128,7 +129,7 @@ class RedisDbDriver(db_api.DbApi):
             try:
                 for client in six.itervalues(self.clients):
                     res.extend(client.keys(local_key))
-                return res
+                return [self._strip_table_name_from_key(key) for key in res]
             except Exception as e:
                 LOG.exception(_LE("exception %(key)s: %(e)s")
                               % {'key': local_key, 'e': e})
@@ -137,11 +138,17 @@ class RedisDbDriver(db_api.DbApi):
             local_key = self.uuid_to_key(table, '*', topic)
             try:
                 client = self._get_client(local_key)
-                return client.keys(local_key)
+                res = client.keys(local_key)
+                return [self._strip_table_name_from_key(key) for key in res]
             except Exception as e:
                 LOG.exception(_LE("exception %(key)s: %(e)s")
                               % {'key': local_key, 'e': e})
             raise df_exceptions.DBKeyNotFound(key=local_key)
+
+    def _strip_table_name_from_key(self, key):
+        regex = '^{.*}\\.(.*)$'
+        m = re.match(regex, key)
+        return m.group(1)
 
     def _allocate_unique_key(self):
         local_key = self.uuid_to_key('tunnel_key', 'key', None)
