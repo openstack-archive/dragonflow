@@ -172,7 +172,9 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
     def check_controller(self, target):
         is_controller_set = False
         br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
-        if br_int.controller[0].target == target:
+        if br_int is not None and\
+           len(br_int.controller) is not 0 and\
+           br_int.controller[0].target == target:
             is_controller_set = True
         return is_controller_set
 
@@ -180,7 +182,7 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         is_fail_mode_set = False
         br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
         if br_int is not None and\
-           br_int.fail_mode is not [] and\
+           len(br_int.fail_mode) is not 0 and\
            br_int.fail_mode[0] == fail_mode:
             is_fail_mode_set = True
         return is_fail_mode_set
