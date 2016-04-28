@@ -27,6 +27,7 @@ from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC
 from dragonflow.db import pub_sub_api
+from dragonflow.neutron.common import constants as const
 
 eventlet.monkey_patch()
 
@@ -686,6 +687,9 @@ class LogicalSwitch(DbStoreObject):
 
     def get_id(self):
         return self.lswitch['name']
+
+    def get_name(self):
+        return self.lswitch['external_ids'][const.DF_NETWORK_NAME_EXT_ID_KEY]
 
     def is_external(self):
         return self.lswitch['router_external']
