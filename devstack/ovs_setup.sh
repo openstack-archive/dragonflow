@@ -40,12 +40,12 @@ function _neutron_ovs_get_rpm_file {
 function _neutron_ovs_clone_ovs {
     if [ -d $DEST/ovs ]; then
         pushd $DEST/ovs
-        git checkout master
+        git checkout $OVS_BRANCH
         git pull
         popd
     else
         pushd $DEST
-        git clone $OVS_REPO
+        git clone $OVS_REPO -b $OVS_BRANCH
         popd
     fi
 }
