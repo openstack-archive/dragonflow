@@ -63,6 +63,32 @@ ovsdb_monitor_table_filter_default = {
 }
 
 
+def get_schema_helper(connection_string, db_name='Open_vSwitch', tables='all'):
+    try:
+        helper = idlutils.get_schema_helper(connection_string,
+                                            db_name)
+    except Exception:
+        # We may have failed do to set-manager not being called
+        helpers.enable_connection_uri(connection_string)
+
+        # There is a small window for a race, so retry up to a second
+        @retrying.retry(wait_exponential_multiplier=10,
+                        stop_max_delay=1000)
+        def do_get_schema_helper():
+            return idlutils.get_schema_helper(connection_string,
+                                              db_name)
+        helper = do_get_schema_helper()
+    if tables == 'all':
+        helper.register_all()
+    elif isinstance(tables, dict):
+        for table_name, columns in six.iteritems(tables):
+            if columns == 'all':
+                helper.register_table(table_name)
+            else:
+                helper.register_columns(table_name, columns)
+    return helper
+
+
 class DFConnection(connection.Connection):
     """
     Extend the Neutron OVS Connection class to support being given the IDL
@@ -94,7 +120,6 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
                  protocol='tcp', port='6640', timeout=10):
         super(OvsdbSwitchApi, self).__init__()
         self.ip = ip
-        self.db_name = 'Open_vSwitch'
         self.protocol = protocol
         self.port = port
         self.timeout = timeout
@@ -103,38 +128,15 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.nb_api = nb_api
         self.ovsdb_monitor = None
 
-    def _get_schema_helper(self, tables='all'):
-        db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
-        try:
-            helper = idlutils.get_schema_helper(db_connection,
-                                                self.db_name)
-        except Exception:
-            # We may have failed do to set-manager not being called
-            helpers.enable_connection_uri(db_connection)
-
-            # There is a small window for a race, so retry up to a second
-            @retrying.retry(wait_exponential_multiplier=10,
-                            stop_max_delay=1000)
-            def do_get_schema_helper():
-                return idlutils.get_schema_helper(db_connection,
-                                                  self.db_name)
-            helper = do_get_schema_helper()
-        if tables == 'all':
-            helper.register_all()
-        elif isinstance(tables, dict):
-            for table_name, columns in six.iteritems(tables):
-                if columns == 'all':
-                    helper.register_table(table_name)
-                else:
-                    helper.register_columns(table_name, columns)
-        return helper
-
     def initialize(self):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
         self.ovsdb = DFConnection(
             db_connection,
             self.timeout,
-            self._get_schema_helper(ovsdb_monitor_table_filter_default),
+            get_schema_helper(
+                db_connection,
+                tables=ovsdb_monitor_table_filter_default
+            ),
         )
         table = constants.OVS_INTERFACE
         self.nb_api.db_change_callback(table, None, 'sync_started', None)
