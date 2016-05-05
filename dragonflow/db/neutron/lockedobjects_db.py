@@ -214,6 +214,11 @@ def _get_object_with_lock(session, id, state, session_id=None):
 def _update_lock(session, row, lock, session_id):
     row.lock = lock
     row.session_id = session_id
+
+    # NOTE(nick-ma-z): created_at means the time when the lock is acquired.
+    if session_id:
+        row.created_at = func.now()
+
     session.merge(row)
     session.flush()
 
