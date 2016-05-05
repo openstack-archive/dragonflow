@@ -806,50 +806,53 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             return gateway_subnet
         return None
 
+    def _check_ipv6_in_floatingip(self, floatingip):
+        ip = floatingip['floating_ip_address']
+        msg = _('IPv6 floating IP is not supported.')
+        if netaddr.IPNetwork(ip).version == 6:
+            raise n_exc.InvalidInput(error_message=msg)
+
     @lock_db.wrap_db_lock()
     def create_floatingip(self, context, floatingip):
+        floatingip_port = None
+        floatingip_dict = None
         try:
-            floatingip_port = None
             with context.session.begin(subtransactions=True):
                 floatingip_dict = super(DFPlugin, self).create_floatingip(
                     context, floatingip,
                     initial_status=const.FLOATINGIP_STATUS_DOWN)
-
-                floatingip_port = self._get_floatingip_port(
-                    context, floatingip_dict['id'])
-                if not floatingip_port:
-                    raise n_exc.DeviceNotFoundError(
-                        device_name=floatingip_dict['id'])
-                subnet_id = floatingip_port['fixed_ips'][0]['subnet_id']
-                floatingip_subnet = self._get_floatingip_subnet(
-                    context, subnet_id)
-                if floatingip_subnet is None:
-                    raise n_exc.SubnetNotFound(subnet_id=subnet_id)
+                self._check_ipv6_in_floatingip(floatingip_dict)
         except Exception:
             with excutils.save_and_reraise_exception() as ctxt:
                 ctxt.reraise = True
                 # delete the stale floatingip port
                 try:
+                    floatingip_port = self._get_floatingip_port(
+                        context, floatingip_dict['id'])
                     if floatingip_port:
                         self.nb_api.delete_lport(floatingip_port['id'],
                                                  floatingip_port['tenant_id'])
                 except df_exceptions.DBKeyNotFound:
                     pass
 
+        floatingip_port = self._get_floatingip_port(
+            context, floatingip_dict['id'])
+        subnet_id = floatingip_port['fixed_ips'][0]['subnet_id']
+        floatingip_subnet = self._get_floatingip_subnet(
+            context, subnet_id)
         self.nb_api.create_floatingip(
-                name=floatingip_dict['id'],
-                topic=floatingip_dict['tenant_id'],
-                floating_ip_address=floatingip_dict['floating_ip_address'],
-                floating_network_id=floatingip_dict['floating_network_id'],
-                router_id=floatingip_dict['router_id'],
-                port_id=floatingip_dict['port_id'],
-                fixed_ip_address=floatingip_dict['fixed_ip_address'],
-                status=floatingip_dict['status'],
-                floating_port_id=floatingip_port['id'],
-                floating_mac_address=floatingip_port['mac_address'],
-                external_gateway_ip=floatingip_subnet['gateway_ip'],
-                external_cidr=floatingip_subnet['cidr'])
-
+            name=floatingip_dict['id'],
+            topic=floatingip_dict['tenant_id'],
+            floating_ip_address=floatingip_dict['floating_ip_address'],
+            floating_network_id=floatingip_dict['floating_network_id'],
+            router_id=floatingip_dict['router_id'],
+            port_id=floatingip_dict['port_id'],
+            fixed_ip_address=floatingip_dict['fixed_ip_address'],
+            status=floatingip_dict['status'],
+            floating_port_id=floatingip_port['id'],
+            floating_mac_address=floatingip_port['mac_address'],
+            external_gateway_ip=floatingip_subnet['gateway_ip'],
+            external_cidr=floatingip_subnet['cidr'])
         return floatingip_dict
 
     @lock_db.wrap_db_lock()
@@ -870,8 +873,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @lock_db.wrap_db_lock()
     def delete_floatingip(self, context, id):
+        floatingip = self.get_floatingip(context, id)
         with context.session.begin(subtransactions=True):
-            floatingip = self.get_floatingip(context, id)
             super(DFPlugin, self).delete_floatingip(context, id)
 
         try:
@@ -882,10 +885,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                       "been deleted concurrently" % id)
 
     def get_floatingip(self, context, id, fields=None):
-        with context.session.begin(subtransactions=True):
-            fip = super(DFPlugin, self).get_floatingip(context, id, fields)
-            fip['status'] = self.nb_api.get_floatingip(id).status
-            return fip
+        fip = super(DFPlugin, self).get_floatingip(context, id, fields)
+        fip['status'] = self.nb_api.get_floatingip(id).status
+        return fip
 
 
 def is_distributed_router(router):
