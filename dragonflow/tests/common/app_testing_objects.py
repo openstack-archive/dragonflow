@@ -641,8 +641,10 @@ class RyuICMPPingFilter(RyuICMPFilter):
         self.get_ping = get_ping
 
     def filter_icmp(self, pkt, icmp):
-        result = icmp.type == ryu.lib.packet.icmp.ICMP_ECHO_REQUEST
-        if result and (self.get_ping is not None):
+        if icmp.type != ryu.lib.packet.icmp.ICMP_ECHO_REQUEST:
+            return False
+        result = True
+        if self.get_ping is not None:
             ping = self.get_ping()
             result = super(RyuICMPPingFilter, self).is_same_icmp(icmp, ping)
         return result
@@ -859,3 +861,23 @@ class PortThread(object):
         except Exception as e:
             pass  # ignore - reset blocking as best effort only
         self.stop()
+
+
+class CountAction(Action):
+    """Counting times of call, and process an action when reaching threshold"""
+    def __init__(self, threshold, action):
+        """
+        :param threshold:   Value of the threshold.
+        :type threshold:    Number (opaque)
+        :param action: The action proceeded when times of call reaching
+        the threshold.
+        :type action:  Action (opaque)
+        """
+        self.threshold = threshold
+        self.cursor = 0
+        self.action = action
+
+    def __call__(self, policy, rule, port_thread, buf):
+        self.cursor += 1
+        if self.cursor == self.threshold:
+            self.action.__call__(policy, rule, port_thread, buf)
