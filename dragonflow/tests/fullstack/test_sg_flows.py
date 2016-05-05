@@ -178,14 +178,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
     def _get_of_port(self, port_id):
         ovsdb = utils.OvsDBParser()
-        interfaces = ovsdb.list_interfaces()
-        for item in interfaces:
-            external_ids = item.get('external_ids')
-            if external_ids is not None:
-                iface_id = external_ids.get('iface-id')
-                if iface_id == port_id:
-                    return item.get('ofport')
-        return None
+        return ovsdb.get_ofport(port_id)
 
     def test_default_flows(self):
         found_ingress_skip_flow = False

@@ -66,6 +66,12 @@ class L2App(DFlowApp):
                 const.PRIORITY_MEDIUM,
                 const.ARP_TABLE, match=match)
 
+        # Default: traffic => send to connection track table
+        self.add_flow_go_to_table(self.get_datapath(),
+                                  const.EGRESS_PORT_SECURITY_TABLE,
+                                  const.PRIORITY_DEFAULT,
+                                  const.EGRESS_CONNTRACK_TABLE)
+
         # Default: traffic => send to service classification table
         self.add_flow_go_to_table(self.get_datapath(),
                                   const.EGRESS_CONNTRACK_TABLE,
@@ -235,7 +241,7 @@ class L2App(DFlowApp):
             ofproto.OFPIT_APPLY_ACTIONS, actions)
 
         goto_inst = parser.OFPInstructionGotoTable(
-            const.EGRESS_CONNTRACK_TABLE)
+            const.EGRESS_PORT_SECURITY_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
             self.get_datapath(),
