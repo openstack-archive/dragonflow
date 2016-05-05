@@ -103,6 +103,11 @@ function _neutron_ovs_install_ovs {
             fi
         done
 
+        # try to unload openvswitch module from kernel
+        if test -n "`lsmod | grep openvswitch`"; then
+            sudo modprobe -r openvswitch
+        fi
+
         if is_ubuntu; then
             _neutron_ovs_install_ovs_ubuntu
         elif is_fedora; then
