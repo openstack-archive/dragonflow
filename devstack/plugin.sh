@@ -10,7 +10,8 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.5}
 
 DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
-DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp"
+DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
+"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
 DEFAULT_SELECTIVE_TOPO_DIST="False"
 DEFAULT_DF_REDIS_PUBSUB="False"
 

@@ -914,3 +914,236 @@ class TestSGApp(test_base.DFTestBase):
 
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
+
+
+class TestPortSecApp(test_base.DFTestBase):
+    def setUp(self):
+        super(TestPortSecApp, self).setUp()
+        self.topology = None
+        self.policy = None
+        self._ping = None
+        self.icmp_id_cursor = int(time.mktime(time.gmtime())) & 0xffff
+        try:
+            security_group = self.store(objects.SecGroupTestObj(
+                self.neutron,
+                self.nb_api))
+            security_group_id = security_group.create()
+            self.assertTrue(security_group.exists())
+
+            egress_rule_info = {'ethertype': 'IPv4',
+                                'direction': 'egress',
+                                'protocol': 'icmp'}
+            egress_rule_id = security_group.rule_create(
+                secrule=egress_rule_info)
+            self.assertTrue(security_group.rule_exists(egress_rule_id))
+
+            ingress_rule_info = {'ethertype': 'IPv4',
+                                 'direction': 'ingress',
+                                 'protocol': 'icmp',
+                                 'remote_ip_prefix': "192.168.196.0/24"}
+            ingress_rule_id = security_group.rule_create(
+                secrule=ingress_rule_info)
+            self.assertTrue(security_group.rule_exists(ingress_rule_id))
+
+            self.topology = self.store(
+                app_testing_objects.Topology(
+                    self.neutron,
+                    self.nb_api
+                )
+            )
+            self.subnet = self.topology.create_subnet(
+                cidr='192.168.196.0/24'
+            )
+            self.port1 = self.subnet.create_port()
+            self.port1.update({
+                "allowed_address_pairs": [
+                    {"ip_address": "192.168.196.100",
+                     "mac_address": "10:20:99:99:99:99"}
+                ]
+            })
+            self.port2 = self.subnet.create_port([security_group_id])
+
+            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+
+            port_policies = self._create_port_policies()
+            self.policy = self.store(
+                app_testing_objects.Policy(
+                    initial_actions=[
+                        app_testing_objects.SendAction(
+                            self.subnet.subnet_id,
+                            self.port1.port_id,
+                            self._create_ping_using_fake_ip
+                        ),
+                        app_testing_objects.SendAction(
+                            self.subnet.subnet_id,
+                            self.port1.port_id,
+                            self._create_ping_using_fake_mac
+                        ),
+                        app_testing_objects.SendAction(
+                            self.subnet.subnet_id,
+                            self.port1.port_id,
+                            self._create_ping_using_vm_ip_mac
+                        ),
+                        app_testing_objects.SendAction(
+                            self.subnet.subnet_id,
+                            self.port1.port_id,
+                            self._create_ping_using_allowed_address_pair
+                        ),
+                    ],
+                    port_policies=port_policies,
+                    unknown_port_action=app_testing_objects.IgnoreAction()
+                )
+            )
+        except Exception:
+            if self.topology:
+                self.topology.close()
+            raise
+
+    def _create_ping_request(self, src_ip, src_mac, dst_port):
+        ethernet = ryu.lib.packet.ethernet.ethernet(
+            src=src_mac,
+            dst=dst_port.port.get_logical_port().get_mac(),
+            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+        )
+        ip = ryu.lib.packet.ipv4.ipv4(
+            src=src_ip,
+            dst=dst_port.port.get_logical_port().get_ip(),
+            proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+        )
+        icmp_id = self.icmp_id_cursor & 0xffff
+        self.icmp_id_cursor += 1
+        icmp_seq = 0
+        icmp = ryu.lib.packet.icmp.icmp(
+            type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
+            data=ryu.lib.packet.icmp.echo(id_=icmp_id,
+                                          seq=icmp_seq,
+                                          data=self._create_random_string())
+        )
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ethernet)
+        result.add_protocol(ip)
+        result.add_protocol(icmp)
+        result.serialize()
+        return result, icmp
+
+    def _create_port_policies(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        key = (self.subnet.subnet_id, self.port2.port_id)
+        # when port2 receive both two packets (one using vm fixed ip and mac,
+        # another using one of the allowed address pairs),
+        # stop this simulation.
+        count_action = app_testing_objects.CountAction(
+            2, app_testing_objects.StopSimulationAction()
+        )
+        rules = [
+            app_testing_objects.PortPolicyRule(
+                app_testing_objects.RyuICMPPingFilter(
+                    self._get_ping_using_vm_ip_mac),
+                actions=[
+                    count_action,
+                    app_testing_objects.DisableRuleAction(),
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                app_testing_objects.RyuICMPPingFilter(
+                    self._get_ping_using_allowed_address_pair_ip_mac),
+                actions=[
+                    count_action,
+                    app_testing_objects.DisableRuleAction(),
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                app_testing_objects.RyuICMPPingFilter(
+                    self._get_ping_using_fake_ip),
+                actions=[
+                    app_testing_objects.RaiseAction("a packet with a fake "
+                                                    "ip passed")
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                app_testing_objects.RyuICMPPingFilter(
+                    self._get_ping_using_fake_mac),
+                actions=[
+                    app_testing_objects.RaiseAction("a packet with a fake "
+                                                    "mac passed")
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore gratuitous ARP packets
+                app_testing_objects.RyuARPGratuitousFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 packets
+                app_testing_objects.RyuIPv6Filter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+        ]
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
+        policy = app_testing_objects.PortPolicy(
+            rules=rules,
+            default_action=raise_action
+        )
+
+        return {
+            key: policy
+        }
+
+    def _create_ping_using_vm_ip_mac(self, buf):
+        ip = self.port1.port.get_logical_port().get_ip()
+        mac = self.port1.port.get_logical_port().get_mac()
+
+        result, icmp = self._create_ping_request(ip, mac, self.port2)
+        self._ping_using_vm_ip_mac = icmp
+        return result.data
+
+    def _create_ping_using_allowed_address_pair(self, buf):
+        pairs = self.port1.port.get_logical_port().get_allow_address_pairs()
+        ip = pairs[0]["ip_address"]
+        mac = pairs[0]["mac_address"]
+
+        result, icmp = self._create_ping_request(ip, mac, self.port2)
+        self._ping_using_allowed_address_pair = icmp
+        return result.data
+
+    def _create_ping_using_fake_ip(self, buf):
+        fake_ip = "1.2.3.4"
+        mac = self.port1.port.get_logical_port().get_mac()
+
+        result, icmp = self._create_ping_request(fake_ip, mac, self.port2)
+        self._ping_using_fake_ip = icmp
+        return result.data
+
+    def _create_ping_using_fake_mac(self, buf):
+        ip = self.port1.port.get_logical_port().get_ip()
+        fake_mac = "11:22:33:44:55:66"
+
+        result, icmp = self._create_ping_request(ip, fake_mac, self.port2)
+        self._ping_using_fake_mac = icmp
+        return result.data
+
+    def _get_ping_using_vm_ip_mac(self):
+        return self._ping_using_vm_ip_mac
+
+    def _get_ping_using_allowed_address_pair_ip_mac(self):
+        return self._ping_using_allowed_address_pair
+
+    def _get_ping_using_fake_ip(self):
+        return self._ping_using_fake_ip
+
+    def _get_ping_using_fake_mac(self):
+        return self._ping_using_fake_mac
+
+    def _create_random_string(self, length=16):
+        alphabet = string.printable
+        return ''.join([random.choice(alphabet) for _ in range(length)])
+
+    def test_icmp_ping_using_different_ip_mac(self):
+        self.policy.start(self.topology)
+        self.policy.wait(30)
+        if len(self.policy.exceptions) > 0:
+            raise self.policy.exceptions[0]
