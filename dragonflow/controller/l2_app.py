@@ -235,7 +235,7 @@ class L2App(DFlowApp):
             ofproto.OFPIT_APPLY_ACTIONS, actions)
 
         goto_inst = parser.OFPInstructionGotoTable(
-            const.EGRESS_CONNTRACK_TABLE)
+            const.EGRESS_PORT_SECURITY_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
             self.get_datapath(),
