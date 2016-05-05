@@ -815,16 +815,16 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     context, floatingip,
                     initial_status=const.FLOATINGIP_STATUS_DOWN)
 
-                floatingip_port = self._get_floatingip_port(
-                    context, floatingip_dict['id'])
-                if not floatingip_port:
-                    raise n_exc.DeviceNotFoundError(
-                        device_name=floatingip_dict['id'])
-                subnet_id = floatingip_port['fixed_ips'][0]['subnet_id']
-                floatingip_subnet = self._get_floatingip_subnet(
-                    context, subnet_id)
-                if floatingip_subnet is None:
-                    raise n_exc.SubnetNotFound(subnet_id=subnet_id)
+            floatingip_port = self._get_floatingip_port(
+                context, floatingip_dict['id'])
+            if not floatingip_port:
+                raise n_exc.DeviceNotFoundError(
+                    device_name=floatingip_dict['id'])
+            subnet_id = floatingip_port['fixed_ips'][0]['subnet_id']
+            floatingip_subnet = self._get_floatingip_subnet(
+                context, subnet_id)
+            if floatingip_subnet is None:
+                raise n_exc.SubnetNotFound(subnet_id=subnet_id)
         except Exception:
             with excutils.save_and_reraise_exception() as ctxt:
                 ctxt.reraise = True
