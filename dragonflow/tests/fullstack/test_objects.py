@@ -81,10 +81,9 @@ class RouterTestObj(object):
         self.closed = True
 
     def exists(self):
-        routers = self.nb_api.get_routers()
-        for router in routers:
-            if router.get_name() == self.router_id:
-                return True
+        router = self.nb_api.get_router(self.router_id)
+        if router:
+            return True
         return False
 
     def add_interface(self, port_id=None, subnet_id=None):
@@ -117,10 +116,9 @@ class SecGroupTestObj(object):
         self.closed = True
 
     def exists(self):
-        secgroups = self.nb_api.get_security_groups()
-        for secgroup in secgroups:
-            if secgroup.name == self.secgroup_id:
-                return True
+        secgroup = self.nb_api.get_security_group(self.secgroup_id)
+        if secgroup:
+            return True
         return False
 
     def rule_create(self, secrule={'ethertype': 'IPv4',
@@ -134,12 +132,11 @@ class SecGroupTestObj(object):
         self.neutron.delete_security_group_rule(secrule_id)
 
     def rule_exists(self, secrule_id):
-        secgroups = self.nb_api.get_security_groups()
-        for secgroup in secgroups:
-            if secgroup.name == self.secgroup_id:
-                for rule in secgroup.rules:
-                    if rule.id == secrule_id:
-                        return True
+        secgroup = self.nb_api.get_security_group(self.secgroup_id)
+        if secgroup:
+            for rule in secgroup.rules:
+                if rule.id == secrule_id:
+                    return True
         return False
 
 

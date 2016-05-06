@@ -508,11 +508,25 @@ class NbApi(object):
         self._send_db_change_event('lrouter', lrouter_name, 'set',
                                    lrouter_json, lrouter['topic'])
 
+    def get_router(self, router_id, topic=None):
+        try:
+            lrouter_value = self.driver.get_key('lrouter', router_id, topic)
+            return LogicalRouter(lrouter_value)
+        except Exception:
+            return None
+
     def get_routers(self, topic=None):
         res = []
         for lrouter_value in self.driver.get_all_entries('lrouter', topic):
             res.append(LogicalRouter(lrouter_value))
         return res
+
+    def get_security_group(self, sg_id, topic=None):
+        try:
+            secgroup_value = self.driver.get_key('secgroup', sg_id, topic)
+            return SecurityGroup(secgroup_value)
+        except Exception:
+            return None
 
     def get_security_groups(self, topic=None):
         res = []
