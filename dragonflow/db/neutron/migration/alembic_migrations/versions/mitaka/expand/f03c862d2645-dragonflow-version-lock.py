@@ -35,3 +35,9 @@ def upgrade():
         sa.Column('session_id', sa.BigInteger, default=0),
         sa.Column('created_at', sa.DateTime)
     )
+
+    op.create_table(
+        'dfversionobjects',
+        sa.Column('object_uuid', sa.String(36), primary_key=True),
+        sa.Column('version', sa.BigInteger, default=0)
+    )
