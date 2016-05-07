@@ -334,6 +334,15 @@ class PortTestObj(object):
         self.port_id = port['port']['id']
         return self.port_id
 
+    def update(self, port=None):
+        if not port:
+            port = {
+                'admin_state_up': True,
+                'name': 'port2',
+            }
+        port = self.neutron.update_port(self.port_id, body={'port': port})
+        return port['port']
+
     def get_logical_port(self):
         return self.nb_api.get_logical_port(self.port_id)
 
