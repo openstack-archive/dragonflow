@@ -45,6 +45,7 @@ def get_subscriber(callback):
         df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
     subscriber = pub_sub_driver.get_subscriber()
     subscriber.initialize(callback)
+    subscriber.register_topic(SEND_ALL_TOPIC)
     uri = '%s://%s:%s' % (
         cfg.CONF.df.publisher_transport,
         '127.0.0.1',
