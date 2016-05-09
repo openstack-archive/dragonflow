@@ -104,6 +104,8 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df enable_df_pub_sub "$DF_PUB_SUB"
         iniset $NEUTRON_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
         iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"
+        iniset $NEUTRON_CONF df publisher_rate_limit_timeout "$PUBLISHER_RATE_LIMIT_TIMEOUT"
+        iniset $NEUTRON_CONF df publisher_rate_limit_count "$PUBLISHER_RATE_LIMIT_COUNT"
         iniset $NEUTRON_CONF df_dnat_app external_network_bridge "br-ex"
         iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "patch-ex"
         iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "patch-int"

@@ -80,6 +80,22 @@ df_opts = [
         default=300,
         help=_('Publisher idle timeout before it is removed from the table')
     ),
+    cfg.IntOpt(
+        'publisher_rate_limit_timeout',
+        default=180,
+        help=_(
+            'Limit update of publishers\' table timestamp to '
+            '$publisher_rate_limit_count per this many seconds.'
+        )
+    ),
+    cfg.IntOpt(
+        'publisher_rate_limit_count',
+        default=1,
+        help=_(
+            'Limit update of publishers\' table timestamp to '
+            'this many times per $publisher_rate_limit_timeout seconds.'
+        )
+    ),
     cfg.FloatOpt('monitor_table_poll_time',
                 default=30,
                 help=_('Poll monitored tables every this number of seconds')),
