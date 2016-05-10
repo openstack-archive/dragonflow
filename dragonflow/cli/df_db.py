@@ -33,7 +33,8 @@ usage_str = "The following commands are supported:\n" \
             "3) df-db get <table_name> <key> - print value for specific key\n" \
             "4) df-db dump - dump all tables\n" \
             "5) df-db clean - clean up all keys\n" \
-            "6) df_db rm <table name> <key> - remove the specified db record\n"
+            "6) df-db rm <table name> <key> - remove the specified db record\n" \
+            "7) df-db init - initialize all tables\n"
 
 
 def print_tables():
@@ -105,7 +106,12 @@ def clean_whole_table(db_driver, table):
         return
     for key in keys:
         db_driver.delete_key(table, key)
-    print('DF DB is cleaned up.')
+    db_driver.delete_table(table)
+
+
+def create_table(db_driver, table):
+    db_driver.create_table(table)
+    print('Table %s is created.' % table)
 
 
 def remove_record(db_driver, table, key):
@@ -168,6 +174,10 @@ def main():
     if action == 'clean':
         for table in db_tables:
             clean_whole_table(db_driver, table)
+
+    if action == 'init':
+        for table in db_tables:
+            create_table(db_driver, table)
 
     if action == 'rm':
         if len(sys.argv) < 4:

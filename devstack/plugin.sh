@@ -208,8 +208,6 @@ function install_df {
 
     nb_db_driver_install_client
 
-    #echo_summary "Installing DragonFlow"
-    #git clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
     setup_package $DRAGONFLOW_DIR
 }
 
@@ -240,8 +238,14 @@ function load_module_if_not_loaded() {
     fi
 }
 
+# cleanup_nb_db() - Clean the northbound database
 function cleanup_nb_db {
     df-db clean
+}
+
+# init_nb_db() - Create all the tables in northbound database
+function init_nb_db {
+    df-db init
 }
 
 # start_df() - Start running processes, including screen
@@ -332,6 +336,8 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         # We have to start at install time, because Neutron's post-config
         # phase runs ovs-vsctl.
         nb_db_driver_start_server
+        # initialize the nb db
+        init_nb_db
         start_ovs
         disable_libvirt_apparmor
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
