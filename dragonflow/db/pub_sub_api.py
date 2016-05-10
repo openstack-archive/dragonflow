@@ -139,6 +139,7 @@ class SubscriberApi(object):
         NOTE Must be called prior to calling daemonize
         :parm uri:  uri to connect to
         :type string:   '<protocol>:address:port;....'
+        :returns:   Boolean True if new
         """
 
     @abc.abstractmethod
@@ -171,6 +172,7 @@ class SubscriberApi(object):
 
         :param topic:  topic to listen to
         :type topic:   string
+        :returns:   Boolean True if new
         """
 
     @abc.abstractmethod
@@ -194,7 +196,10 @@ class SubscriberAgentBase(SubscriberApi):
         self.daemon = df_utils.DFDaemon()
 
     def register_listen_address(self, uri):
-        self.uri_list.append(uri)
+        if uri not in self.uri_list:
+            self.uri_list.append(uri)
+            return True
+        return False
 
     def unregister_listen_address(self, topic):
         self.uri_list.remove(topic)
@@ -211,13 +216,13 @@ class SubscriberAgentBase(SubscriberApi):
 
     def register_topic(self, topic):
         LOG.info(_LI('Register topic %s'), topic)
-        topic = topic.encode('ascii', 'ignore')
         if topic not in self.topic_list:
             self.topic_list.append(topic)
+            return True
+        return False
 
     def unregister_topic(self, topic):
         LOG.info(_LI('Unregister topic %s'), topic)
-        topic = topic.encode('ascii', 'ignore')
         self.topic_list.remove(topic)
 
 
