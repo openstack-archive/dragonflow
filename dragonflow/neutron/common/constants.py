@@ -15,4 +15,5 @@ from neutron.extensions import portbindings
 DF_NETWORK_NAME_EXT_ID_KEY = 'neutron:network_name'
 DF_PORT_NAME_EXT_ID_KEY = 'neutron:port_name'
 DF_ROUTER_NAME_EXT_ID_KEY = 'neutron:router_name'
+DF_SG_NAME_EXT_ID_KEY = 'neutron:security_group_name'
 DF_PORT_BINDING_PROFILE = portbindings.PROFILE
