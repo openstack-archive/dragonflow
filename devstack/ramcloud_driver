@@ -83,7 +83,6 @@ function nb_db_driver_start_server {
         sleep 20
         echo "CREATING RAMCLOUD TABLES..."
         export PYTHONPATH=$PYTHONPATH:$DEST/dragonflow/
-        python $DEST/dragonflow/dragonflow/db/drivers/table_setup_ramcloud.py -d ramcloud -t ${RAMCLOUD_TABLE_NAMES} -i ${RAMCLOUD_COORDINATOR_IP} -p ${RAMCLOUD_COORDINATOR_PORT} > /dev/null || true
     fi
 }
 
