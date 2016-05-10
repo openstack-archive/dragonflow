@@ -208,8 +208,6 @@ function install_df {
 
     nb_db_driver_install_client
 
-    #echo_summary "Installing DragonFlow"
-    #git clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
     setup_package $DRAGONFLOW_DIR
 }
 
@@ -240,13 +238,21 @@ function load_module_if_not_loaded() {
     fi
 }
 
+# cleanup_nb_db() - Clean the northbound database
 function cleanup_nb_db {
     df-db clean
+}
+
+# init_nb_db() - Create all the tables in northbound database
+function init_nb_db {
+    df-db init
 }
 
 # start_df() - Start running processes, including screen
 function start_df {
     echo "Starting Dragonflow"
+
+    init_nb_db
 
     if is_service_enabled df-controller ; then
         sudo ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
