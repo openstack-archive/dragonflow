@@ -213,6 +213,20 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return sg_db
 
     @lock_db.wrap_db_lock()
+    def update_security_group(self, context, sg_id,
+                              security_group):
+        with context.session.begin(subtransactions=True):
+            sg_db = super(DFPlugin,
+                          self).update_security_group(context, sg_id,
+                                                      security_group)
+        tenant_id = sg_db['tenant_id']
+        rules = sg_db.get('security_group_rules')
+
+        self.nb_api.update_security_group(name=sg_id, topic=tenant_id,
+                                          rules=rules)
+        return sg_db
+
+    @lock_db.wrap_db_lock()
     def create_security_group_rule(self, context, security_group_rule):
         with context.session.begin(subtransactions=True):
             sg_rule = super(DFPlugin, self).create_security_group_rule(
@@ -618,6 +632,21 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    external_ids=external_ids,
                                    distributed=is_distributed,
                                    ports=[])
+        return router
+
+    @lock_db.wrap_db_lock()
+    def update_router(self, context, id, router):
+        with context.session.begin(subtransactions=True):
+            router = super(DFPlugin, self).update_router(
+                context, id, router)
+
+        tenant_id = router['tenant_id']
+        is_distributed = router.get('distributed', False)
+        external_ids = {df_const.DF_ROUTER_NAME_EXT_ID_KEY:
+                        router.get('name', 'no_router_name')}
+        self.nb_api.update_lrouter(id, topic=tenant_id,
+                                   external_ids=external_ids,
+                                   distributed=is_distributed)
         return router
 
     @lock_db.wrap_db_lock()
