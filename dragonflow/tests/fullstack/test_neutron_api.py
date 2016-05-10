@@ -84,8 +84,13 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
 
     def test_create_delete_router(self):
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
-        router.create()
+        router_id = router.create()
         self.assertTrue(router.exists())
+        router_name1 = self.nb_api.get_router(router_id).get_external_ids()
+        router.update()
+        self.assertTrue(router.exists())
+        router_name2 = self.nb_api.get_router(router_id).get_external_ids()
+        self.assertTrue(router_name1 != router_name2)
         router.close()
         self.assertFalse(router.exists())
 
@@ -175,8 +180,13 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
     def test_create_delete_security_group(self):
         secgroup = self.store(
                         objects.SecGroupTestObj(self.neutron, self.nb_api))
-        secgroup.create()
+        sg_id = secgroup.create()
         self.assertTrue(secgroup.exists())
+        sg_name1 = self.nb_api.get_security_group(sg_id).get_external_ids()
+        secgroup.update()
+        self.assertTrue(secgroup.exists())
+        sg_name2 = self.nb_api.get_security_group(sg_id).get_external_ids()
+        self.assertTrue(sg_name1 != sg_name2)
         secgroup.close()
         self.assertFalse(secgroup.exists())
 
