@@ -803,9 +803,6 @@ class LogicalRouter(DbStoreObject):
     def __init__(self, value):
         self.lrouter = jsonutils.loads(value)
 
-    def get_id(self):
-        return self.lrouter.get('id')
-
     def get_name(self):
         return self.lrouter.get('name')
 
@@ -830,9 +827,6 @@ class LogicalRouterPort(DbStoreObject):
     def __init__(self, value):
         self.router_port = value
         self.cidr = netaddr.IPNetwork(self.router_port['network'])
-
-    def get_id(self):
-        return self.router_port.get('id')
 
     def get_name(self):
         return self.router_port.get('name')
@@ -877,15 +871,8 @@ class SecurityGroup(DbStoreObject):
     def name(self):
         return self.secgroup.get('name')
 
-    def get_id(self):
-        return self.secgroup.get('id')
-
     def get_topic(self):
         return self.secgroup.get('topic')
-
-    @property
-    def id(self):
-        return self.get_id()
 
     @property
     def rules(self):
