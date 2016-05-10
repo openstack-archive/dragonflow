@@ -44,6 +44,14 @@ class RedisDbDriver(db_api.DbApi):
     def support_publish_subscribe(self):
         return True
 
+    def create_table(self, table):
+        # Not needed in redis
+        pass
+
+    def delete_table(self, table):
+        # Not needed in redis
+        pass
+
     def get_key(self, table, key, topic=None):
         if topic is None:
             local_key = self.uuid_to_key(table, key, '*')

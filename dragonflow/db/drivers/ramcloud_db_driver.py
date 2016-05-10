@@ -24,11 +24,6 @@ class RamCloudDbDriver(db_api.DbApi):
         self.service_locator = None
         self.db_name = 'dragonflow'
 
-    def create_tables(self, tables):
-        for t in tables:
-            self.client.drop_table(t)
-            self.client.create_table(t)
-
     def initialize(self, db_ip, db_port, **args):
         self.client = ramcloud.RAMCloud()
         self.service_locator = 'fast+udp:host=' + db_ip \
@@ -37,6 +32,12 @@ class RamCloudDbDriver(db_api.DbApi):
 
     def support_publish_subscribe(self):
         return False
+
+    def create_table(self, table):
+        self.client.create_table(table)
+
+    def delete_table(self, table):
+        self.client.drop_table(table)
 
     def get_key(self, table, key, topic=None):
         table_id = self.client.get_table_id(table)

@@ -42,6 +42,24 @@ class DbApi(object):
         """
 
     @abc.abstractmethod
+    def create_table(self, table):
+        """Create a table
+
+        :param table:      table name
+        :type table:       string
+        :returns:          None
+        """
+
+    @abc.abstractmethod
+    def delete_table(self, table):
+        """Delete a table
+
+        :param table:      table name
+        :type table:       string
+        :returns:          None
+        """
+
+    @abc.abstractmethod
     def get_key(self, table, key, topic=None):
         """Get the value of a specific key in a table
 
