@@ -36,6 +36,9 @@ function nb_db_driver_install_server {
         else
             die $LINENO "Other distributions are not supported"
         fi
+
+        # Initialize the tables
+        df-db init
     fi
 }
 

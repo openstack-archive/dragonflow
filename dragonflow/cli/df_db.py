@@ -33,7 +33,8 @@ usage_str = "The following commands are supported:\n" \
             "3) df-db get <table_name> <key> - print value for specific key\n" \
             "4) df-db dump - dump all tables\n" \
             "5) df-db clean - clean up all keys\n" \
-            "6) df_db rm <table name> <key> - remove the specified db record\n"
+            "6) df_db rm <table name> <key> - remove the specified db record\n" \
+            "7) df_db init - initialize all tables\n"
 
 
 def print_tables():
@@ -108,6 +109,19 @@ def clean_whole_table(db_driver, table):
     print('DF DB is cleaned up.')
 
 
+def create_table(db_driver, table):
+    try:
+        # The db api doesn't provide table creation api,
+        # So we first create a dummy key and then delete it,
+        # in order to simulate a table creation action.
+        db_driver.create_key(table, 'dummy', '0')
+        db_driver.delete_key(table, 'dummy')
+    except df_exceptions.DBKeyNotFound:
+        print('Table not found: ' + table)
+        return
+    print('Table %s is created.' % table)
+
+
 def remove_record(db_driver, table, key):
     try:
         db_driver.delete_key(table, key)
@@ -168,6 +182,10 @@ def main():
     if action == 'clean':
         for table in db_tables:
             clean_whole_table(db_driver, table)
+
+    if action == 'init':
+        for table in db_tables:
+            create_table(db_driver, table)
 
     if action == 'rm':
         if len(sys.argv) < 4:
