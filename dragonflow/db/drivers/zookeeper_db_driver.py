@@ -95,6 +95,16 @@ class ZookeeperDbDriver(db_api.DbApi):
                            inc_retry_interval=True,
                            max_retry_interval=10,
                            _errors=[kazoo.exceptions.SessionExpiredError])
+    def create_table(self, table, topic=None):
+        path = self._generate_path(table, None)
+        self._lazy_initialize()
+        self.client.ensure_path(path)
+
+    @utils.wrap_func_retry(max_retries=ZK_MAX_RETRIES,
+                           retry_interval=1,
+                           inc_retry_interval=True,
+                           max_retry_interval=10,
+                           _errors=[kazoo.exceptions.SessionExpiredError])
     def set_key(self, table, key, value, topic=None):
         path = self._generate_path(table, key)
         try:

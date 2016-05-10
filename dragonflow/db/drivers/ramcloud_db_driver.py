@@ -38,6 +38,9 @@ class RamCloudDbDriver(db_api.DbApi):
     def support_publish_subscribe(self):
         return False
 
+    def create_table(self, table, topic=None):
+        self.client.create_table(table)
+
     def get_key(self, table, key, topic=None):
         table_id = self.client.get_table_id(table)
         value, version = self.client.read(table_id, key)

@@ -102,6 +102,10 @@ class EtcdDbDriver(db_api.DbApi):
     def support_publish_subscribe(self):
         return True
 
+    def create_table(self, table, topic=None):
+        # Need not to implement in etcd
+        pass
+
     def get_key(self, table, key, topic=None):
         try:
             return self.client.read('/' + table + '/' + key).value
