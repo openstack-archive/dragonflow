@@ -18,6 +18,7 @@ import abc
 import eventlet
 import netaddr
 import six
+import time
 
 from oslo_config import cfg
 from oslo_log import log
@@ -115,14 +116,14 @@ class NbApi(object):
     def _start_subsciber(self):
         self.subscriber.initialize(self.db_change_callback)
         self.subscriber.register_topic(SEND_ALL_TOPIC)
-        # TODO(oanson) Move publishers_ips to DF DB.
         publishers_ips = cfg.CONF.df.publishers_ips
-        for ip in publishers_ips:
-            uri = '%s://%s:%s' % (
+        uris = {'%s://%s:%s' % (
                 cfg.CONF.df.publisher_transport,
                 ip,
-                cfg.CONF.df.publisher_port
-            )
+                cfg.CONF.df.publisher_port) for ip in publishers_ips}
+        publishers = self.get_publishers()
+        uris |= {publisher.get_uri() for publisher in publishers}
+        for uri in uris:
             self.subscriber.register_listen_address(uri)
         self.subscriber.daemonize()
 
@@ -633,6 +634,20 @@ class NbApi(object):
         except Exception:
             LOG.exception(_LE('Could not get publisher %s'), uuid)
             return None
+
+    def get_publishers(self, topic=None):
+        publishers_values = self.driver.get_all_entries(
+            pub_sub_api.PUBLISHER_TABLE,
+            topic,
+        )
+        publishers = [Publisher(value) for value in publishers_values]
+        timeout = cfg.CONF.df.publisher_timeout
+
+        def _publisher_not_too_old(publisher):
+            last_activity_timestamp = publisher.get_last_activity_timestamp()
+            return (last_activity_timestamp >= time.time() - timeout)
+        filter(_publisher_not_too_old, publishers)
+        return publishers
 
     def update_publisher(self, uuid, topic, **columns):
         publisher_value = self.driver.get_key(
