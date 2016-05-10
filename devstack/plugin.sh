@@ -208,8 +208,6 @@ function install_df {
 
     nb_db_driver_install_client
 
-    #echo_summary "Installing DragonFlow"
-    #git clone $DRAGONFLOW_REPO $DRAGONFLOW_DIR $DRAGONFLOW_BRANCH
     setup_package $DRAGONFLOW_DIR
 }
 
@@ -240,8 +238,14 @@ function load_module_if_not_loaded() {
     fi
 }
 
+# cleanup_nb_db() - Clean the northbound database
 function cleanup_nb_db {
     df-db clean
+}
+
+# init_nb_db() - Create all the tables in northbound database
+function init_nb_db {
+    df-db init
 }
 
 # start_df() - Start running processes, including screen
@@ -336,6 +340,9 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         disable_libvirt_apparmor
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         configure_df_plugin
+        # initialize the nb db
+        init_nb_db
+
         if [[ "$DF_PUB_SUB" == "True" ]]; then
             # Implemented by the pub/sub plugin
             configure_pubsub_service_plugin
