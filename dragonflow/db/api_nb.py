@@ -785,6 +785,9 @@ class LogicalPort(DbStoreObject):
     def get_ip(self):
         return self.lport['ips'][0]
 
+    def get_ip_list(self):
+        return self.lport['ips']
+
     def get_mac(self):
         return self.lport['macs'][0]
 
@@ -799,6 +802,12 @@ class LogicalPort(DbStoreObject):
 
     def get_security_groups(self):
         return self.lport.get('security_groups')
+
+    def get_allow_address_pairs(self):
+        return self.lport.get('allowed_address_pairs')
+
+    def get_port_security_enable(self):
+        return self.lport.get('port_security_enabled', True)
 
     def set_external_value(self, key, value):
         self.external_dict[key] = value
