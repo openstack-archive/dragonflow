@@ -343,3 +343,126 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             self.assertFalse(router.exists())
             priv_subnet.close()
             self.assertFalse(priv_subnet.exists())
+
+    def test_enable_disable_portsec(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create()
+        self.assertTrue(network.exists())
+
+        network2 = self.store(objects.NetworkTestObj(self.neutron,
+                                                     self.nb_api))
+        network_id2 = network2.create({'name': 'mynetwork1',
+                                       'admin_state_up': True,
+                                       'port_security_enabled': False})
+        self.assertTrue(network2.exists())
+
+        subnet = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            network_id,
+        ))
+        subnet.create({
+            'cidr': '192.168.125.0/24',
+            'ip_version': 4,
+            'network_id': network_id
+        })
+        self.assertTrue(subnet.exists())
+
+        subnet2 = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            network_id2,
+        ))
+        subnet2.create({
+            'cidr': '192.168.126.0/24',
+            'ip_version': 4,
+            'network_id': network_id2
+        })
+        self.assertTrue(subnet2.exists())
+
+        network_portsec_switch = True
+        port = self.store(
+            objects.PortTestObj(self.neutron, self.nb_api, network_id))
+        port.create()
+        lport = port.get_logical_port()
+        self.assertIsNotNone(lport)
+        real_switch = lport.get_port_security_enable()
+        self.assertEquals(network_portsec_switch, real_switch)
+
+        network_portsec_switch = False
+        port = self.store(
+            objects.PortTestObj(self.neutron, self.nb_api, network_id2))
+        port.create()
+        lport = port.get_logical_port()
+        self.assertIsNotNone(lport)
+        real_switch = lport.get_port_security_enable()
+        self.assertEquals(network_portsec_switch, real_switch)
+
+        port = self.store(
+            objects.PortTestObj(self.neutron, self.nb_api, network_id))
+        expected_switch = False
+        port.create({
+            'admin_state_up': True,
+            'name': 'port1',
+            'network_id': network_id,
+            'port_security_enabled': expected_switch
+        })
+        lport = port.get_logical_port()
+        self.assertIsNotNone(lport)
+        real_switch = lport.get_port_security_enable()
+        self.assertEquals(expected_switch, real_switch)
+
+        expected_switch = True
+        port.update({'port_security_enabled': expected_switch})
+        lport = port.get_logical_port()
+        self.assertIsNotNone(lport)
+        real_switch = lport.get_port_security_enable()
+        self.assertEquals(expected_switch, real_switch)
+
+    def test_add_remove_allowed_address_pairs(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create()
+        self.assertTrue(network.exists())
+
+        subnet = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            network_id,
+        ))
+        subnet.create({
+            'cidr': '192.168.127.0/24',
+            'ip_version': 4,
+            'network_id': network_id
+        })
+        self.assertTrue(subnet.exists())
+
+        port = self.store(
+            objects.PortTestObj(self.neutron, self.nb_api, network_id))
+        expected_pairs = [
+                {"ip_address": "192.168.127.201",
+                 "mac_address": "11:22:33:44:55:66"},
+                {"ip_address": "192.168.127.202",
+                 "mac_address": "22:22:33:44:55:66"}
+        ]
+        port.create({
+            'admin_state_up': True,
+            'name': 'port1',
+            'network_id': network_id,
+            'allowed_address_pairs': expected_pairs
+        })
+        lport = port.get_logical_port()
+        self.assertIsNotNone(lport)
+        real_pairs = lport.get_allow_address_pairs()
+        self.assertEquals(expected_pairs, real_pairs)
+
+        expected_pairs = [
+                {"ip_address": "192.168.127.211",
+                 "mac_address": "33:22:33:44:55:66"},
+                {"ip_address": "192.168.127.212",
+                 "mac_address": "44:22:33:44:55:66"}
+        ]
+        port.update({'allowed_address_pairs': expected_pairs})
+        lport = port.get_logical_port()
+        self.assertIsNotNone(lport)
+        real_pairs = lport.get_allow_address_pairs()
+        self.assertEquals(expected_pairs, real_pairs)
