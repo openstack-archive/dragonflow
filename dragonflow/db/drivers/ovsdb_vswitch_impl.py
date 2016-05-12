@@ -375,7 +375,7 @@ class AddTunnelPort(BaseCommand):
     def run_idl(self, txn):
         bridge = idlutils.row_by_value(self.api.idl, 'Bridge',
                                        'name', 'br-int')
-        port_name = "df-" + self.chassis.get_name()
+        port_name = "df-" + self.chassis.get_id()
 
         interface = txn.insert(self.api.idl.tables['Interface'])
         interface.name = port_name
@@ -392,7 +392,7 @@ class AddTunnelPort(BaseCommand):
         ifaces.append(interface)
         port.interfaces = ifaces
         external_ids_dict = getattr(interface, 'external_ids', {})
-        external_ids_dict['df-chassis-id'] = self.chassis.get_name()
+        external_ids_dict['df-chassis-id'] = self.chassis.get_id()
         port.external_ids = external_ids_dict
 
         bridge.verify('ports')
