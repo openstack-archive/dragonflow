@@ -11,6 +11,10 @@
 
 HOSTNAME=`hostname -f`
 
+if is_ubuntu ; then
+    UBUNTU_RELEASE_BASE_NUM=`lsb_release -r | awk '{print $2}' | cut -d '.' -f 1`
+fi
+
 ZOOKEEPER_IP=${REMOTE_DB_IP:-${HOST_IP}}
 ZOOKEEPER_PORT=${REMOTE_DB_PORT:-2181}
 ZOOKEEPER_DATA_DIR="/var/lib/zookeeper"
@@ -18,6 +22,7 @@ ZOOKEEPER_LOG_DIR="/var/log/zookeeper"
 ZOOKEEPER_DIR="/etc/zookeeper"
 ZOOKEEPER_CONF_DIR="${ZOOKEEPER_DIR}/conf"
 ZOOKEEPER_CONF_FILE="${ZOOKEEPER_CONF_DIR}/zoo.cfg"
+ZOOKEEPER_CONF_SAMPLE_DIR="/etc/zookeeper/conf_example"
 
 function nb_db_driver_install_server {
     if is_service_enabled df-zookeeper-server ; then
@@ -27,11 +32,23 @@ function nb_db_driver_install_server {
             sudo mkdir -p $ZOOKEEPER_LOG_DIR
             sudo mkdir -p $ZOOKEEPER_CONF_DIR
             install_package "zookeeperd"
-            sudo service zookeeper stop || true
+
+            if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
+                sudo systemctl stop zookeeper.service || true
+                sudo cp $DEST/dragonflow/devstack/zookeeper.service /etc/systemd/system/
+                sudo systemctl daemon-reload
+            else 
+                sudo service zookeeper stop || true
+            fi
+
             echo "Configuring Zookeeper"
+            if [ -d $ZOOKEEPER_CONF_SAMPLE_DIR ] ; then
+                sudo cp $ZOOKEEPER_CONF_SAMPLE_DIR/* $ZOOKEEPER_CONF_DIR/ -rf
+            fi
             sudo sed -i "/^dataDir=/c dataDir=${ZOOKEEPER_DATA_DIR}" $ZOOKEEPER_CONF_FILE
             sudo sed -i "/^dataLogDir=/c dataLogDir=${ZOOKEEPER_LOG_DIR}" $ZOOKEEPER_CONF_FILE
-            sudo sed -i "/^server.1=/c server.1=${HOSTNAME}:2888:3888" $ZOOKEEPER_CONF_FILE
+            sudo sed -i "/^[#server.1=|server.1=]/c server.1=${HOSTNAME}:2888:3888" $ZOOKEEPER_CONF_FILE
+
             echo "1" | sudo tee $ZOOKEEPER_CONF_DIR/myid
         else
             die $LINENO "Other distributions are not supported"
@@ -57,7 +74,11 @@ function nb_db_driver_status_server
 function nb_db_driver_start_server {
     if is_service_enabled df-zookeeper-server ; then
         if is_ubuntu; then
-            sudo service zookeeper restart
+            if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
+                sudo systemctl restart zookeeper.service
+            else
+                sudo service zookeeper restart
+            fi
         fi
     fi
 }
@@ -65,7 +86,11 @@ function nb_db_driver_start_server {
 function nb_db_driver_stop_server {
     if is_service_enabled df-zookeeper-server ; then
         if is_ubuntu; then
-            sudo service zookeeper stop || true
+            if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
+                sudo systemctl stop zookeeper.service || true
+            else
+                sudo service zookeeper stop || true
+            fi
         fi
     fi
 }
