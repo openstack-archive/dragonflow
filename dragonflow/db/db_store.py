@@ -236,7 +236,7 @@ class DbStore(object):
     def get_floatingips_by_gateway(self, ip, topic=None):
         fip_return = []
         for fip in self.get_floatingips(topic):
-            if fip.external_gateway_ip == ip:
+            if fip.get_external_gateway_ip() == ip:
                 fip_return.append(fip)
         return fip_return
 
@@ -246,7 +246,7 @@ class DbStore(object):
             return fip_return
         network_id = lswitch.get_id()
         for fip in self.get_floatingips(topic):
-            if fip.floating_network_id == network_id:
+            if fip.get_floating_network_id() == network_id:
                 update_fip = self.update_floatingip_gateway(
                     fip, lswitch)
                 if update_fip:
@@ -256,9 +256,9 @@ class DbStore(object):
     def update_floatingip_gateway(self, fip, lswitch):
         subnets = lswitch.get_subnets()
         for subnet in subnets:
-            if subnet.get_cidr() == fip.external_cidr:
+            if subnet.get_cidr() == fip.get_external_cidr():
                 # external gateway ip changed
-                if subnet.get_gateway_ip() != fip.external_gateway_ip:
+                if subnet.get_gateway_ip() != fip.get_external_gateway_ip():
                     old_fip = copy.deepcopy(fip)
                     fip.set_external_gateway_ip(subnet.get_gateway_ip())
                     return (fip, old_fip)
@@ -266,7 +266,7 @@ class DbStore(object):
 
     def get_first_floatingip(self, network_id):
         for fip in self.get_floatingips():
-            if fip.floating_network_id == network_id:
+            if fip.get_floating_network_id() == network_id:
                 return fip
 
     def update_publisher(self, uuid, publisher, topic=None):
