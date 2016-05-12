@@ -5,7 +5,7 @@
 pbr>=1.6 # Apache-2.0
 Babel>=2.3.4 # BSD
 kazoo>=2.2 # Apache-2.0
-ovs>=2.4.0;python_version=='2.7' # Apache-2.0
+ovs>=2.5.0;python_version=='2.7' # Apache-2.0
 pyzmq>=14.3.1 # LGPL+BSD
 ryu>=3.30 # Apache-2.0
 SQLAlchemy<1.1.0,>=1.0.10 # MIT
