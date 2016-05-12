@@ -74,7 +74,7 @@ class L3ProactiveApp(DFlowApp):
 
         # Match all possible routeable traffic and send to proactive routing
         for port in router.get_ports():
-            if port.get_name() != router_port.get_name():
+            if port.get_id() != router_port.get_id():
 
                 port_net_id = self.db_store.get_network_id(
                     port.get_lswitch_id(),

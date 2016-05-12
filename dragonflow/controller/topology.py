@@ -244,7 +244,7 @@ class Topology(object):
         floating_ips = self.db_store.get_floatingips()
         for floating_ip in floating_ips:
             if tenant_id == floating_ip.get_topic():
-                self.controller.floatingip_deleted(floating_ip.get_name())
+                self.controller.floatingip_deleted(floating_ip.get_id())
 
         switches = self.db_store.get_lswitchs()
         for switch in switches:
@@ -254,12 +254,12 @@ class Topology(object):
         routers = self.db_store.get_routers()
         for router in routers:
             if tenant_id == router.get_topic():
-                self.controller.router_deleted(router.get_name())
+                self.controller.router_deleted(router.get_id())
 
         sg_groups = self.db_store.get_security_groups()
         for sg_group in sg_groups:
-            if tenant_id == sg_group.topic:
-                self.controller.security_group_deleted(sg_group.name)
+            if tenant_id == sg_group.get_topic():
+                self.controller.security_group_deleted(sg_group.get_id())
 
     def _get_lport(self, port_id, topic=None):
         lport = self.db_store.get_port(port_id)
