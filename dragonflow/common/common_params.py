@@ -64,7 +64,7 @@ df_opts = [
                help=_('Neutron Server Publishers bind address')),
     cfg.BoolOpt(
         'pub_sub_use_multiproc',
-        default=True,
+        default=False,
         help=_(
             'Use inter-process publish/subscribe. '
             'Publishers send events via the publisher service.'

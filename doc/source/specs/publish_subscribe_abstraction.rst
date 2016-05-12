@@ -350,7 +350,7 @@ Configuration Options
 
 'publisher_port', default=8866, help=_('Neutron Server Publishers Port'))
 
-'pub_sub_use_multiproc', default=True, help=_('Use inter-process publish/subscribe. '
+'pub_sub_use_multiproc', default=False, help=_('Use inter-process publish/subscribe. '
 'Publishers send events via the publisher service.')
 
 'publisher_transport', default='tcp', help=_('Neutron Server Publishers transport protocol')),
