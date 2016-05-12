@@ -232,10 +232,10 @@ class SGApp(DFlowApp):
     @staticmethod
     def _get_rule_flows_match_except_net_addresses(secgroup_rule):
 
-        protocol = secgroup_rule.protocol
-        port_range_max = secgroup_rule.port_range_max
-        port_range_min = secgroup_rule.port_range_min
-        ethertype = secgroup_rule.ethertype
+        protocol = secgroup_rule.get_protocol()
+        port_range_max = secgroup_rule.get_port_range_max()
+        port_range_min = secgroup_rule.get_port_range_min()
+        ethertype = secgroup_rule.get_ethertype()
 
         match_list = []
         dl_type_match = {}
@@ -341,7 +341,7 @@ class SGApp(DFlowApp):
 
         secgroup = self.db_store.get_security_group(security_group_id)
         if secgroup is not None:
-            for rule in secgroup.rules:
+            for rule in secgroup.get_rules():
                 self.add_security_group_rule(secgroup, rule)
 
     def _uninstall_security_group_permit_flow_by_direction(self,
@@ -379,7 +379,7 @@ class SGApp(DFlowApp):
 
         secgroup = self.db_store.get_security_group(security_group_id)
         if secgroup is not None:
-            for rule in secgroup.rules:
+            for rule in secgroup.get_rules():
                 self.remove_security_group_rule(secgroup, rule)
 
     def _install_associating_flow_by_direction(self, security_group_id,
@@ -551,19 +551,19 @@ class SGApp(DFlowApp):
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
-        rule_id = self._get_security_rule_mapping(secgroup_rule.id)
+        rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
 
         match_list = \
             SGApp._get_rule_flows_match_except_net_addresses(secgroup_rule)
 
-        if secgroup_rule.ethertype == 'IPv4':
-            if secgroup_rule.direction == 'ingress':
+        if secgroup_rule.get_ethertype() == 'IPv4':
+            if secgroup_rule.get_direction() == 'ingress':
                 table_id = const.INGRESS_SECURITY_GROUP_TABLE
                 ipv4_match_item = "ipv4_src"
             else:
                 table_id = const.EGRESS_SECURITY_GROUP_TABLE
                 ipv4_match_item = "ipv4_dst"
-        elif secgroup_rule.ethertype == 'IPv6':
+        elif secgroup_rule.get_ethertype() == 'IPv6':
             # not support yet
             LOG.info(_LI("IPv6 rules are not supported yet"))
             return
@@ -620,12 +620,12 @@ class SGApp(DFlowApp):
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
-        rule_id = self._get_security_rule_mapping(secgroup_rule.id)
-        remote_group_id = secgroup_rule.remote_group_id
-        remote_ip_prefix = secgroup_rule.remote_ip_prefix
-        ethertype = secgroup_rule.ethertype
+        rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
+        remote_group_id = secgroup_rule.get_remote_group_id()
+        remote_ip_prefix = secgroup_rule.get_remote_ip_prefix()
+        ethertype = secgroup_rule.get_ethertype()
 
-        if secgroup_rule.direction == 'ingress':
+        if secgroup_rule.get_direction() == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
             ipv4_match_item = "ipv4_src"
         else:
@@ -686,13 +686,13 @@ class SGApp(DFlowApp):
         # uninstall rule flows by its cookie
         ofproto = self.get_datapath().ofproto
 
-        direction = secgroup_rule.direction
+        direction = secgroup_rule.get_direction()
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
 
-        rule_id = self._get_security_rule_mapping(secgroup_rule.id)
+        rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
         if rule_id is None:
             LOG.error(_LE("the rule_id of the security group rule %s is none"),
                       rule_id)
@@ -854,7 +854,7 @@ class SGApp(DFlowApp):
                 if secrules is not None:
                     for rule_info in secrules.values():
                         self._update_security_group_rule_flows_by_addresses(
-                            rule_info.security_group_id,
+                            rule_info.get_security_group_id(),
                             rule_info,
                             added_cidr,
                             removed_cidr
@@ -905,7 +905,7 @@ class SGApp(DFlowApp):
                 if secrules is not None:
                     for rule_info in secrules.values():
                         self._update_security_group_rule_flows_by_addresses(
-                            rule_info.security_group_id,
+                            rule_info.get_security_group_id(),
                             rule_info,
                             added_cidr,
                             removed_cidr
@@ -941,7 +941,7 @@ class SGApp(DFlowApp):
             if secrules is not None:
                 for rule_info in secrules.values():
                     self._update_security_group_rule_flows_by_addresses(
-                        rule_info.security_group_id,
+                        rule_info.get_security_group_id(),
                         rule_info,
                         added_cidr,
                         removed_cidr)
@@ -993,7 +993,7 @@ class SGApp(DFlowApp):
             if secrules is not None:
                 for rule_info in secrules.values():
                     self._update_security_group_rule_flows_by_addresses(
-                        rule_info.security_group_id,
+                        rule_info.get_security_group_id(),
                         rule_info,
                         added_cidr,
                         removed_cidr
@@ -1001,54 +1001,54 @@ class SGApp(DFlowApp):
 
     def add_security_group_rule(self, secgroup, secgroup_rule):
         LOG.info(_LI("add a rule %(rule)s to security group %(secgroup)s")
-                 % {'rule': secgroup_rule, 'secgroup': secgroup.name})
+                 % {'rule': secgroup_rule, 'secgroup': secgroup.get_id()})
         if self.get_datapath() is None:
             LOG.error(_LE("datapath is none"))
             return
 
         conj_id, priority = \
-            self._get_secgroup_conj_id_and_priority(secgroup.name)
+            self._get_secgroup_conj_id_and_priority(secgroup.get_id())
         if conj_id is None:
             # this security group wasn't associated with a local port
             LOG.info(_LI("this security group %s wasn't associated with"
-                         " a local port"), secgroup.name)
+                         " a local port"), secgroup.get_id())
             return
 
         # update the record of rules each of which specifies a same security
         #  group as its parameter of remote group.
-        remote_group_id = secgroup_rule.remote_group_id
+        remote_group_id = secgroup_rule.get_remote_group_id()
         if remote_group_id is not None:
             associate_rules = self.remote_secgroup_ref.get(remote_group_id)
             if associate_rules is None:
                 self.remote_secgroup_ref[remote_group_id] = \
-                    {secgroup_rule.id: secgroup_rule}
+                    {secgroup_rule.get_id(): secgroup_rule}
             else:
-                associate_rules[secgroup_rule.id] = secgroup_rule
+                associate_rules[secgroup_rule.get_id()] = secgroup_rule
 
-        self._install_security_group_rule_flows(secgroup.name, secgroup_rule)
+        self._install_security_group_rule_flows(secgroup.get_id(), secgroup_rule)
 
     def remove_security_group_rule(self, secgroup, secgroup_rule):
         LOG.info(_LI("remove a rule %(rule)s to security group %(secgroup)s")
-                 % {'rule': secgroup_rule, 'secgroup': secgroup.name})
+                 % {'rule': secgroup_rule, 'secgroup': secgroup.get_id()})
         if self.get_datapath() is None:
             LOG.error(_LE("datapath is none"))
             return
 
         conj_id, priority = \
-            self._get_secgroup_conj_id_and_priority(secgroup.name)
+            self._get_secgroup_conj_id_and_priority(secgroup.get_id())
         if conj_id is None:
             # this security group wasn't associated with a local port
             LOG.info(_LI("this security group %s wasn't associated with"
-                         " a local port"), secgroup.name)
+                         " a local port"), secgroup.get_id())
             return
 
         # update the record of rules each of which specifies a same security
         # group as its parameter of remote group.
-        remote_group_id = secgroup_rule.remote_group_id
+        remote_group_id = secgroup_rule.get_remote_group_id()
         if remote_group_id is not None:
             associate_rules = self.remote_secgroup_ref.get(remote_group_id)
             if associate_rules is not None:
-                del associate_rules[secgroup_rule.id]
+                del associate_rules[secgroup_rule.get_id()]
                 if len(associate_rules) == 0:
                     del self.remote_secgroup_ref[remote_group_id]
 
