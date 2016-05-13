@@ -48,6 +48,8 @@ class DfL3NATAgentWithStateReport(agent.L3NATAgentWithStateReport):
         }
 
         if is_distributed_router(router):
+            kwargs['agent'] = self
+            kwargs['host'] = self.host
             return DfDvrRouter(*args, **kwargs)
 
         return super(DfL3NATAgentWithStateReport, self)._create_router(
