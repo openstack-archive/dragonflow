@@ -1,0 +1,6 @@
+
+if is_service_enabled df-l3-agent ; then
+    Q_L3_ENABLED=${Q_L3_ENABLED:-True}
+    AGENT_L3_BINARY=${AGENT_L3_BINARY:-"df-l3-agent"}
+    enable_service q-l3
+fi
