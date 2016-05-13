@@ -15,9 +15,10 @@
 
 from neutron.agent.l3 import agent
 from neutron.agent.l3 import legacy_router
+from neutron.agent.l3 import dvr_router_base
 
 
-class DfDvrRouter(legacy_router.LegacyRouter):
+class DfDvrRouter(dvr_router_base.DvrRouterBase):
     def add_floating_ip(self, fip, interface_name, device):
         if is_distributed_router(self.router):
             return
@@ -48,6 +49,8 @@ class DfL3NATAgentWithStateReport(agent.L3NATAgentWithStateReport):
         }
 
         if is_distributed_router(router):
+            kwargs['agent'] = self
+            kwargs['host'] = self.host
             return DfDvrRouter(*args, **kwargs)
 
         return super(DfL3NATAgentWithStateReport, self)._create_router(
