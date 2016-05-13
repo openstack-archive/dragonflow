@@ -115,6 +115,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         router=l3_db.Router,
         floatingip=l3_db.FloatingIP)
     def __init__(self):
+        self.router_scheduler = importutils.import_object(
+            cfg.CONF.router_scheduler_driver)
         super(DFPlugin, self).__init__()
         LOG.info(_LI("Starting DFPlugin"))
         self.vif_type = portbindings.VIF_TYPE_OVS

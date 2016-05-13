@@ -22,6 +22,7 @@ SUPPORTED_API_EXTENSIONS = [
     'security-group',
     'external-net',
     'router',
+    'l3_agent_scheduler',
     'subnet_allocation',
     'dvr',
     'port-security',
