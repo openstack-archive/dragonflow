@@ -1,0 +1,8 @@
+
+if is_service_enabled df-l3-agent ; then
+    # DVR
+    Q_DVR_MODE=${Q_DVR_MODE:-dvr_snat}
+    Q_L3_ENABLED=${Q_L3_ENABLED:-True}
+    AGENT_L3_BINARY=${AGENT_L3_BINARY:-"/usr/bin/df-l3-agent"}
+    enable_service q-l3
+fi
