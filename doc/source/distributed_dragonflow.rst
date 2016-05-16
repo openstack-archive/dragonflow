@@ -118,11 +118,15 @@ How to Install
 - `DevStack Multi Node Configuration
   <https://github.com/openstack/dragonflow/tree/master/doc/source/multi-node-conf>`_
 
-More Useful Reading
--------------------
-
+Dragonflow Talks
+-----------------
+- `Dragonflow - Neutron done the SDN Way - OpenStack Austin Summit
+   <https://www.openstack.org/videos/video/dragonflow-neutron-done-the-sdn-way>`_
 - `Dragonflow Introduction Video - OpenStack Tokyo Summit
   <https://www.youtube.com/watch?v=wo1Q-BL3nII>`_
+
+More Useful Reading
+-------------------
 - `Distributed DHCP Service in Dragonflow
   <http://blog.gampel.net/2015/09/dragonflow-distributed-dhcp-for.html>`_
 - `Centralized vs. Distributed SDN Controller in Dragonflow
