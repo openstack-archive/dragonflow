@@ -216,13 +216,13 @@ class TestObjectVersion(test_base.DFTestBase):
             # associate with port
             fip.update({'port_id': port_id})
             fip_obj = fip.get_floatingip()
-            self.assertEqual(fip_obj.lport_id, port_id)
+            self.assertEqual(fip_obj.get_lport_id(), port_id)
             version = self.nb_api.get_floatingip(fip_id).get_version()
             self.assertEqual(version, 1)
 
             fip.update({})
             fip_obj = fip.get_floatingip()
-            self.assertIsNone(fip_obj.lport_id)
+            self.assertIsNone(fip_obj.get_lport_id())
             version = self.nb_api.get_floatingip(fip_id).get_version()
             self.assertEqual(version, 2)
 
