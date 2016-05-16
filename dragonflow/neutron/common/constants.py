@@ -12,7 +12,10 @@
 
 from neutron.extensions import portbindings
 
-DF_NETWORK_NAME_EXT_ID_KEY = 'neutron:network_name'
-DF_PORT_NAME_EXT_ID_KEY = 'neutron:port_name'
-DF_ROUTER_NAME_EXT_ID_KEY = 'neutron:router_name'
+DF_SG_DEFAULT_NAME = 'no_sg_name'
+DF_SUBNET_DEFAULT_NAME = 'no_subnet_name'
+DF_NETWORK_DEFAULT_NAME = 'no_network_name'
+DF_PORT_DEFAULT_NAME = 'no_port_name'
+DF_ROUTER_DEFAULT_NAME = 'no_router_name'
+DF_FIP_DEFAULT_NAME = 'no_fip_name'
 DF_PORT_BINDING_PROFILE = portbindings.PROFILE

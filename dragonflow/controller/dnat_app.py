@@ -107,12 +107,12 @@ class DNATApp(DFlowApp):
             self.ex_peer_patch_port)
 
     def _update_external_gateway_mac(self, fips, learning_mac):
-        net_id = fips[0].floating_network_id
+        net_id = fips[0].get_floating_network_id()
         gw_mac = self._get_external_gateway_mac(net_id)
         if not gw_mac or gw_mac != learning_mac:
             self._set_external_gateway_mac(net_id, learning_mac)
             for fip in fips:
-                if fip.status == FIP_GW_RESOLVING_STATUS:
+                if fip.get_status() == FIP_GW_RESOLVING_STATUS:
                     self._install_dnat_egress_rules(fip)
 
     def packet_in_handler(self, event):
@@ -136,9 +136,9 @@ class DNATApp(DFlowApp):
     def _send_gw_arp_request(self, fip):
         # TODO(Fei Rao)check the network type, snd the packet to external
         # gateway port
-        self.send_arp_request(fip.mac_address,
-                              fip.ip_address,
-                              fip.external_gateway_ip,
+        self.send_arp_request(fip.get_mac_address(),
+                              fip.get_ip_address(),
+                              fip.get_external_gateway_ip(),
                               self.external_ofport)
 
     def _increase_external_network_count(self, network_id):
@@ -204,8 +204,8 @@ class DNATApp(DFlowApp):
     def _install_mac_learning_rules(self, floatingip, ignore=False):
         # process arp reply
         match = self._get_match_arp_reply(
-            floatingip.ip_address,
-            floatingip.external_gateway_ip)
+            floatingip.get_ip_address(),
+            floatingip.get_external_gateway_ip())
         instructions = self._get_instructions_packet_in()
         self.mod_flow(
             self.get_datapath(),
@@ -214,13 +214,13 @@ class DNATApp(DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-        network_id = floatingip.floating_network_id
+        network_id = floatingip.get_floating_network_id()
         if ignore or self._get_external_network_count(network_id) <= 0:
             # if it is the first floatingip for this external gateway,
             # install a gateway mac learning rules
             # process gratuitous arp
             match = self._get_match_gratuitous_arp(
-                floatingip.external_gateway_ip)
+                floatingip.get_external_gateway_ip())
             self.mod_flow(
                 self.get_datapath(),
                 inst=instructions,
@@ -232,8 +232,8 @@ class DNATApp(DFlowApp):
         ofproto = self.get_datapath().ofproto
         # remove arp reply rules
         match = self._get_match_arp_reply(
-            floatingip.ip_address,
-            floatingip.external_gateway_ip)
+            floatingip.get_ip_address(),
+            floatingip.get_external_gateway_ip())
         self.mod_flow(
             self.get_datapath(),
             command=ofproto.OFPFC_DELETE,
@@ -241,13 +241,13 @@ class DNATApp(DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-        network_id = floatingip.floating_network_id
+        network_id = floatingip.get_floating_network_id()
         if ignore or self._get_external_network_count(network_id) <= 1:
             # if it is the last flaotingip for this external gateway,
             # remove a gateway mac learning rules.
             # remove gratuitous arp rules
             match = self._get_match_gratuitous_arp(
-                floatingip.external_gateway_ip)
+                floatingip.get_external_gateway_ip())
             self.mod_flow(
                 self.get_datapath(),
                 command=ofproto.OFPFC_DELETE,
@@ -257,27 +257,27 @@ class DNATApp(DFlowApp):
 
     def _install_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
-        if netaddr.IPAddress(floatingip.ip_address).version != 4:
+        if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
         ArpResponder(self.get_datapath(),
              None,
-             floatingip.ip_address,
-             floatingip.mac_address,
+             floatingip.get_ip_address(),
+             floatingip.get_mac_address(),
              const.INGRESS_NAT_TABLE).add()
 
     def _remove_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
-        if netaddr.IPAddress(floatingip.ip_address).version != 4:
+        if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
         ArpResponder(self.get_datapath(),
              None,
-             floatingip.ip_address,
-             floatingip.mac_address,
+             floatingip.get_ip_address(),
+             floatingip.get_mac_address(),
              const.INGRESS_NAT_TABLE).remove()
 
     def _get_vm_port_info(self, floatingip):
         lport = self.db_store.get_local_port(
-            floatingip.lport_id)
+            floatingip.get_lport_id())
         mac = lport.get_mac()
         ip = lport.get_ip()
         tunnel_key = lport.get_tunnel_key()
@@ -293,11 +293,11 @@ class DNATApp(DFlowApp):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=floatingip.ip_address)
+                                ipv4_dst=floatingip.get_ip_address())
 
         vm_mac, vm_ip, vm_tunnel_key, network_id, _ = \
             self._get_vm_port_info(floatingip)
-        fip_mac = floatingip.mac_address
+        fip_mac = floatingip.get_mac_address()
         actions = [
             parser.OFPActionSetField(eth_src=fip_mac),
             parser.OFPActionSetField(eth_dst=vm_mac),
@@ -323,7 +323,7 @@ class DNATApp(DFlowApp):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=floatingip.ip_address)
+                                ipv4_dst=floatingip.get_ip_address())
         self.mod_flow(
             self.get_datapath(),
             command=ofproto.OFPFC_DELETE,
@@ -340,9 +340,9 @@ class DNATApp(DFlowApp):
         return match
 
     def _install_dnat_egress_rules(self, floatingip):
-        fip_mac = floatingip.mac_address
-        fip_ip = floatingip.ip_address
-        net_id = floatingip.floating_network_id
+        fip_mac = floatingip.get_mac_address()
+        fip_ip = floatingip.get_ip_address()
+        net_id = floatingip.get_floating_network_id()
         gw_mac = self._get_external_gateway_mac(net_id)
         if not gw_mac:
             # Record the resolving gw arp
@@ -383,7 +383,7 @@ class DNATApp(DFlowApp):
             match=match)
 
     def _install_egress_nat_rules(self, floatingip):
-        net = netaddr.IPNetwork(floatingip.external_cidr)
+        net = netaddr.IPNetwork(floatingip.get_external_cidr())
         if net.version != 4:
             return
 
@@ -396,7 +396,7 @@ class DNATApp(DFlowApp):
         self._install_dnat_egress_rules(floatingip)
 
     def _remove_egress_nat_rules(self, floatingip):
-        net = netaddr.IPNetwork(floatingip.external_cidr)
+        net = netaddr.IPNetwork(floatingip.get_external_cidr())
         if net.version != 4:
             return
 
@@ -412,7 +412,7 @@ class DNATApp(DFlowApp):
         self._remove_dnat_egress_rules(floatingip)
 
     def _install_ingress_nat_rules(self, floatingip):
-        network_id = floatingip.floating_network_id
+        network_id = floatingip.get_floating_network_id()
         # TODO(Fei Rao) check the network type
         if self._is_first_external_network(network_id):
             # if it is the first floating ip on this node, then
@@ -431,7 +431,7 @@ class DNATApp(DFlowApp):
         self._increase_external_network_count(network_id)
 
     def _remove_ingress_nat_rules(self, floatingip):
-        network_id = floatingip.floating_network_id
+        network_id = floatingip.get_floating_network_id()
         if self._is_last_external_network(network_id):
             # if it is the last floating ip on this node, then
             # remove the common goto flow rule.
@@ -452,7 +452,7 @@ class DNATApp(DFlowApp):
 
     def update_floatingip_status(self, floatingip, status):
         floatingip.update_fip_status(status)
-        self.nb_api.update_floatingip(name=floatingip.name,
+        self.nb_api.update_floatingip(id=floatingip.get_id(),
                                       topic=floatingip.get_topic(),
                                       notify=False,
                                       status=status)
@@ -479,16 +479,16 @@ class DNATApp(DFlowApp):
             fip, old_fip = fip_group
             # save to df db
             self.nb_api.update_floatingip(
-                name=fip.name,
+                id=fip.get_id(),
                 topic=fip.get_topic(),
                 notify=False,
-                external_gateway_ip=fip.external_gateway_ip)
+                external_gateway_ip=fip.get_external_gateway_ip())
             # gw ip changed, so need to resolve the gw arp again
             fip.update_fip_status(FIP_GW_RESOLVING_STATUS)
             self.update_floatingip_gateway(fip, old_fip)
 
         fip, old_fip = fip_groups[0]
-        self._set_external_gateway_mac(fip.floating_network_id, None)
+        self._set_external_gateway_mac(fip.get_floating_network_id(), None)
         self._send_gw_arp_request(fip)
 
     def update_floatingip_gateway(self, fip, old_fip):
