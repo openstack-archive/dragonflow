@@ -90,6 +90,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     __native_sorting_support = True
 
     supported_extension_aliases = extensions.SUPPORTED_API_EXTENSIONS
+    supported_extension_aliases.append('l3_agent_scheduler')
 
     extra_attributes = (
         l3_attrs_db.ExtraAttributesMixin.extra_attributes + [{
@@ -107,6 +108,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         router=l3_db.Router,
         floatingip=l3_db.FloatingIP)
     def __init__(self):
+        self.router_scheduler = importutils.import_object(
+                                            cfg.CONF.router_scheduler_driver)
         super(DFPlugin, self).__init__()
         LOG.info(_LI("Starting DFPlugin"))
         self.vif_type = portbindings.VIF_TYPE_OVS
