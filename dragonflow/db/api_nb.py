@@ -754,7 +754,11 @@ class LogicalSwitch(DbStoreObject):
         return self.lswitch['external_ids'][const.DF_NETWORK_NAME_EXT_ID_KEY]
 
     def is_external(self):
-        return self.lswitch['router_external']
+        try:
+            return self.lswitch['router_external']
+        except Exception as e:
+            return  None
+
 
     def get_subnets(self):
         res = []
@@ -767,6 +771,18 @@ class LogicalSwitch(DbStoreObject):
 
     def get_version(self):
         return self.lswitch['version']
+
+    def get_type(self):
+        try:
+            return self.lswitch['network_type']
+        except Exception as e:
+            return  None
+
+    def get_segmentation(self):
+        try:
+            return self.lswitch['segmentation_id']
+        except Exception as e:
+            return  None
 
     def __str__(self):
         return self.lswitch.__str__()
