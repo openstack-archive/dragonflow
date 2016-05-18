@@ -241,7 +241,10 @@ function load_module_if_not_loaded() {
 }
 
 function cleanup_nb_db {
-    df-db clean
+    # clean db only on the master node
+    if is_service_enabled q-svc ; then
+        df-db clean
+    fi
 }
 
 # start_df() - Start running processes, including screen
