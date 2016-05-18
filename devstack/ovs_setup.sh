@@ -123,6 +123,10 @@ function _neutron_ovs_install_ovs {
 }
 
 function install_ovs {
+    if [ is_fedora -a $os_RELEASE -ge 23 ] ; then
+    #ovs >= 2.5
+        OVS_INSTALL_FROM_GIT="False"
+    fi
     _neutron_ovs_install_ovs
 }
 
