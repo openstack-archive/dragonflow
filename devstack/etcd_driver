@@ -11,6 +11,10 @@
 
 ETCD_VERSION=v2.2.2
 
+if is_ubuntu ; then
+    UBUNTU_RELEASE_BASE_NUM=`lsb_release -r | awk '{print $2}' | cut -d '.' -f 1`
+fi
+
 function configure_etcd_systemd_service {
     ETCD_CONF_DIR=/etc/etcd
     ETCD_CONF=$ETCD_CONF_DIR/etcd.conf
@@ -75,7 +79,11 @@ function nb_db_driver_install_server {
             sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
         fi
 	if is_ubuntu; then
-            configure_etcd
+            if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
+                configure_etcd_systemd_service
+            else
+                configure_etcd
+            fi
         elif is_fedora; then
             configure_etcd_systemd_service
         fi
@@ -98,7 +106,7 @@ function nb_db_driver_status_server
 function nb_db_driver_start_server {
     if is_service_enabled df-etcd-server ; then
         if is_ubuntu; then
-            sudo initctl start etcd || true
+            sudo service etcd start || true
         elif is_fedora; then
             sudo systemctl start etcd || true
         fi
@@ -108,7 +116,7 @@ function nb_db_driver_start_server {
 function nb_db_driver_stop_server {
     if is_service_enabled df-etcd-server ; then
         if is_ubuntu; then
-            sudo initctl stop etcd || true
+            sudo service etcd stop || true
         elif is_fedora; then
             sudo systemctl stop etcd || true
         fi
