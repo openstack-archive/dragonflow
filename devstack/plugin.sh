@@ -13,6 +13,7 @@ DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp"
 DEFAULT_SELECTIVE_TOPO_DIST="False"
 DEFAULT_DF_REDIS_PUBSUB="False"
+DEFAULT_DF_Q_SVC_MASTER="True"
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
@@ -23,6 +24,7 @@ TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
 DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-$DEFAULT_SELECTIVE_TOPO_DIST}
 DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:-$DEFAULT_DF_REDIS_PUBSUB}
+DF_Q_SVC_MASTER=${DF_Q_SVC_MASTER:-$DEFAULT_DF_Q_SVC_MASTER}
 
 #pubsub
 PUBLISHERS_HOSTS=${PUBLISHERS_HOSTS:-"$SERVICE_HOST"}
@@ -241,7 +243,12 @@ function load_module_if_not_loaded() {
 }
 
 function cleanup_nb_db {
-    df-db clean
+    # clean db only on the master node
+    if is_service_enabled q-svc ; then
+        if [[ "$DF_Q_SVC_MASTER" == "True" ]]; then
+            df-db clean
+        fi
+    fi
 }
 
 # start_df() - Start running processes, including screen
