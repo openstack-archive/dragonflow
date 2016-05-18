@@ -1,6 +1,5 @@
 #!/bin/bash
 
-OVS_INSTALL_FROM_GIT=${OVS_INSTALL_FROM_GIT:-"True"}
 
 function _neutron_ovs_get_dnf {
     if is_fedora; then
