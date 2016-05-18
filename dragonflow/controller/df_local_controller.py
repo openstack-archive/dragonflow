@@ -195,10 +195,16 @@ class DfLocalController(object):
 
         chassis_to_ofport, lport_to_ofport = (
             self.vswitch_api.get_local_ports_to_ofport_mapping())
-        network = self.get_network_id(
+        local_network_id = self.get_network_id(
             lport.get_lswitch_id(),
         )
-        lport.set_external_value('local_network_id', network)
+        lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
+        if lswitch is not None:
+            lport.set_external_value('network_type', lswitch.get_type())
+            lport.set_external_value('segmentation_id',
+                                     lswitch.get_segmentation())
+
+        lport.set_external_value('local_network_id', local_network_id)
 
         if lport.get_chassis() == self.chassis_name:
             lport.set_external_value('is_local', True)
