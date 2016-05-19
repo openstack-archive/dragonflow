@@ -56,11 +56,11 @@ The following Neutron API extensions will be supported:
 +----------------------------------+---------------------------+-------------+
 | Neutron Extra DHCP opts          | extra_dhcp_opt            | Done        |
 +----------------------------------+---------------------------+-------------+
-| Neutron Extra Route              | extraroute                | in Process  |
+| Neutron Extra Route              | extraroute                | In Process  |
 +----------------------------------+---------------------------+-------------+
 | Neutron L3 Router                | router                    | Done        |
 +----------------------------------+---------------------------+-------------+
-| Network MTU                      | net-mtu                   | In Process  |
+| Network MTU                      | net-mtu                   | Done        |
 +----------------------------------+---------------------------+-------------+
 | Port Binding                     | binding                   | Done        |
 +----------------------------------+---------------------------+-------------+
@@ -72,7 +72,7 @@ The following Neutron API extensions will be supported:
 +----------------------------------+---------------------------+-------------+
 | RBAC Policies                    | rbac-policies             | Done        |
 +----------------------------------+---------------------------+-------------+
-| security-group                   | security-group            | In Process  |
+| Security Group                   | security-group            | Done        |
 +----------------------------------+---------------------------+-------------+
 | Subnet Allocation                | subnet_allocation         | Done        |
 +----------------------------------+---------------------------+-------------+

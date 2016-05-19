@@ -63,13 +63,15 @@ class TestTopology(tests_base.BaseTestCase):
                 "ips": ["192.168.10.1"],
                 "macs": ["112233445566"],
                 "lswitch": "lswitch1",
-                "topic": "tenant1"
+                "topic": "tenant1",
+                "mtu": "1500"
             }
             '''
         self.lswitch1_value = '''
             {
                 "name": "lswitch1",
-                "subnets": ["subnet1"]
+                "subnets": ["subnet1"],
+                "mtu": "1500"
             }
         '''
 

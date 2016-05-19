@@ -36,6 +36,17 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network.close()
         self.assertFalse(network.exists())
 
+    def test_create_network_with_mtu(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network.create()
+        self.assertTrue(network.exists())
+        lswitch = self.nb_api.get_lswitch(network['network']['id'],
+                                          network['network']['tenant_id'])
+        net_mtu = lswitch.get_mtu()
+        self.assertEqual(network['network']['mtu'], net_mtu)
+        network.close()
+        self.assertFalse(network.exists())
+
     def test_dhcp_port_created(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
