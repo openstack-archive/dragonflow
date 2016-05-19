@@ -20,7 +20,6 @@ from oslo_config import cfg
 from oslo_log import log
 
 from neutron.common import config as common_config
-from neutron.common import constants
 from neutron.plugins.common import constants as n_p_const
 
 from ryu.lib import addrconv
@@ -293,8 +292,9 @@ class DHCPApp(DFlowApp):
         return True
 
     def _get_port_mtu(self, lport):
-        #TODO(gampel) Get mtu from network object once we add support
-        mtu = constants.DEFAULT_NETWORK_MTU
+        # get network mtu from lport
+        mtu = lport.get_mtu()
+
         tunnel_type = cfg.CONF.df.tunnel_type
         if tunnel_type == n_p_const.TYPE_VXLAN:
             return mtu - n_p_const.VXLAN_ENCAP_OVERHEAD if mtu else 0
