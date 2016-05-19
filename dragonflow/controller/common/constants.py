@@ -54,8 +54,6 @@ METADATA_REG = 0x80000408
 CT_ZONE_REG = 0x1d402
 
 
-DRAGONFLOW_DEFAULT_BRIDGE = 'br-int'
-
 """
 Cookie Mask
 global cookie is used by flows of all table, but local cookie is used
