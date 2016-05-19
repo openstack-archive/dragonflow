@@ -293,8 +293,9 @@ class DHCPApp(DFlowApp):
         return True
 
     def _get_port_mtu(self, lport):
-        #TODO(gampel) Get mtu from network object once we add support
-        mtu = constants.DEFAULT_NETWORK_MTU
+        # get network mtu from lport
+        mtu = lport.get_mtu()
+
         tunnel_type = cfg.CONF.df.tunnel_type
         if tunnel_type == n_p_const.TYPE_VXLAN:
             return mtu - n_p_const.VXLAN_ENCAP_OVERHEAD if mtu else 0

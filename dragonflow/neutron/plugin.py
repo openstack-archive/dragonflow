@@ -52,6 +52,7 @@ from neutron.db import l3_attrs_db
 from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
 from neutron.db import models_v2
+from neutron.db import netmtu_db
 from neutron.db import portbindings_db
 from neutron.db import portsecurity_db_common
 from neutron.db import securitygroups_db
@@ -91,7 +92,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                addr_pair_db.AllowedAddressPairsMixin,
                extradhcpopt_db.ExtraDhcpOptMixin,
                extraroute_db.ExtraRoute_db_mixin,
-               agentschedulers_db.DhcpAgentSchedulerDbMixin):
+               agentschedulers_db.DhcpAgentSchedulerDbMixin,
+               netmtu_db.Netmtu_db_mixin):
 
     __native_bulk_support = True
     __native_pagination_support = True
@@ -386,6 +388,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    topic=network['tenant_id'],
                                    external_ids=external_ids,
                                    router_external=network['router:external'],
+                                   mtu=network['mtu'],
                                    version=nw_version,
                                    subnets=[])
         return network
@@ -642,6 +645,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         tunnel_key = self.nb_api.allocate_tunnel_key()
 
+        # pass network mtu to its port
+        lswitch = self.nb_api.get_lswitch(port['network_id'],
+                                          port['tenant_id'])
+        port_mtu = lswitch.get_mtu()
+
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldnt be mapped to
         # a valid ofport (or location)
@@ -661,7 +669,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             device_owner=port.get('device_owner', None),
             security_groups=port.get('security_groups', None),
             port_security_enabled=port[psec.PORTSECURITY],
-            allowed_address_pairs=port[addr_pair.ADDRESS_PAIRS])
+            allowed_address_pairs=port[addr_pair.ADDRESS_PAIRS],
+            mtu=port_mtu)
 
         return port
 
