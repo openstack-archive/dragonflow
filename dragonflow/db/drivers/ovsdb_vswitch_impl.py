@@ -28,6 +28,7 @@ from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import helpers
 from neutron.agent.ovsdb.native import idlutils
 
+from oslo_config import cfg
 from oslo_log import log
 
 from ovs.db import idl
@@ -127,6 +128,7 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.idl = None
         self.nb_api = nb_api
         self.ovsdb_monitor = None
+        self.integration_bridge = cfg.CONF.df.integration_bridge
 
     def initialize(self):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
@@ -173,7 +175,8 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
 
     def check_controller(self, target):
         is_controller_set = False
-        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name',
+                                       self.integration_bridge)
         # if controller is not set, len(controller) is 0
         if br_int is not None and (
            len(br_int.controller) > 0 and
@@ -183,7 +186,8 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
 
     def check_controller_fail_mode(self, fail_mode):
         is_fail_mode_set = False
-        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name',
+                                       self.integration_bridge)
         # if fail_mode is not set, len(fail_mode) is 0
         if br_int is not None and (
            len(br_int.fail_mode) > 0 and
@@ -193,7 +197,8 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
 
     def get_tunnel_ports(self):
         res = []
-        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name',
+                                       self.integration_bridge)
 
         for port in br_int.ports:
             if 'df-chassis-id' in port.external_ids:
@@ -208,10 +213,11 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         return DeleteSwitchPort(self, switch_port)
 
     def get_local_port_ids(self):
-        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name',
+                                       self.integration_bridge)
         port_ids = set()
         for port in br_int.ports:
-            if port.name == 'br-int':
+            if port.name == self.integration_bridge:
                 continue
             if 'df-chassis-id' in port.external_ids:
                 continue
@@ -223,7 +229,8 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         return port_ids
 
     def get_local_port_id_from_name(self, name):
-        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name',
+                                       self.integration_bridge)
         for port in br_int.ports:
             if port.name != name:
                 continue
@@ -236,10 +243,11 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
     def get_local_ports_to_ofport_mapping(self):
         lport_to_ofport = {}
         chassis_to_ofport = {}
-        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name', 'br-int')
+        br_int = idlutils.row_by_value(self.idl, 'Bridge', 'name',
+                                       self.integration_bridge)
 
         for port in br_int.ports:
-            if port.name == 'br-int':
+            if port.name == self.integration_bridge:
                 continue
             chassis_id = port.external_ids.get('df-chassis-id')
             for interface in port.interfaces:
@@ -349,11 +357,12 @@ class DeleteSwitchPort(BaseCommand):
     def __init__(self, api, switch_port):
         super(DeleteSwitchPort, self).__init__(api)
         self.switch_port = switch_port
+        self.integration_bridge = cfg.CONF.df.integration_bridge
 
     def run_idl(self, txn):
         port = self.switch_port.port_row
         bridge = idlutils.row_by_value(self.api.idl, 'Bridge',
-                                       'name', 'br-int')
+                                       'name', self.integration_bridge)
         bridge.verify('ports')
         ports = bridge.ports
         ports.remove(port)
@@ -371,10 +380,11 @@ class AddTunnelPort(BaseCommand):
     def __init__(self, api, chassis):
         super(AddTunnelPort, self).__init__(api)
         self.chassis = chassis
+        self.integration_bridge = cfg.CONF.df.integration_bridge
 
     def run_idl(self, txn):
         bridge = idlutils.row_by_value(self.api.idl, 'Bridge',
-                                       'name', 'br-int')
+                                       'name', self.integration_bridge)
         port_name = "df-" + self.chassis.get_name()
 
         interface = txn.insert(self.api.idl.tables['Interface'])
