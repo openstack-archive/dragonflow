@@ -166,7 +166,7 @@ class Subnet(object):
         self.ports = []
         self.subnet.close()
 
-    def create_port(self, security_groups=None):
+    def create_port(self, integration_bridge, security_groups=None):
         """Create a port attached to this subnet.
         :param security_groups:  The security groups that this port is
         associating with
@@ -178,6 +178,7 @@ class Subnet(object):
                 [self.topology.fake_default_security_group.secgroup_id]
         port = Port(self,
                     port_id=port_id,
+                    integration_bridge=integration_bridge,
                     security_groups=security_groups_used)
         self.ports.append(port)
         return port
@@ -187,12 +188,15 @@ class Port(object):
     """Represent a single port. Also contains access to the underlying tap
     device
     """
-    def __init__(self, subnet, port_id, security_groups=None):
+    def __init__(self, subnet, port_id, integration_bridge,
+                 security_groups=None):
         """Create a single port in the given subnet, with the given port_id
         :param subnet:  The subnet on which this port is created
         :type subnet:   Subnet
         :param port_id: The ID of this port. Created internally by subnet
         :type port_id:  Number (Opaque)
+        :param integration_bridge: The bridge that the port is attached
+        :type integration_bridge: String - bridge name
         """
         self.subnet = subnet
         self.port_id = port_id
@@ -213,7 +217,7 @@ class Port(object):
         if security_groups is not None:
             parameters["security_groups"] = security_groups
         self.port.create(parameters)
-        self.tap = LogicalPortTap(self.port)
+        self.tap = LogicalPortTap(self.port, integration_bridge)
 
     def update(self, updated_parameters):
         self.port.update(updated_parameters)
@@ -233,22 +237,25 @@ class Port(object):
 
 class LogicalPortTap(object):
     """Represent a tap device on the operating system."""
-    def __init__(self, port):
+    def __init__(self, port, integration_bridge):
         """Create a tap device represented by the given port.
         :param port: The configuration info of this tap device
         :type port:  Port
+        :param integration_bridge: The port where it is attached
+        :type integration_bridge:  String
         """
         self.port = port
         self.lport = self.port.get_logical_port()
         self.tap = self._create_tap_device()
         self.is_blocking = True
+        self.integration_bridge
 
     def _create_tap_device(self):
         flags = pytun.IFF_TAP | pytun.IFF_NO_PI
         name = self._get_tap_interface_name()
         create_tap_dev(name, self.lport.get_mac())
         tap = pytun.TunTapDevice(flags=flags, name=name)
-        self._connect_tap_device_to_vswitch('br-int', tap.name)
+        self._connect_tap_device_to_vswitch(self.integration_bridge, tap.name)
         tap.up()
         return tap
 
@@ -276,7 +283,8 @@ class LogicalPortTap(object):
         utils.execute(full_args, run_as_root=True, process_input=None)
 
     def delete(self):
-        self._disconnect_tap_device_to_vswitch('br-int', self.tap.name)
+        self._disconnect_tap_device_to_vswitch(self.integration_bridge,
+                                               self.tap.name)
         LOG.info(_LI('Closing tap interface {} ({})').format(
             self.tap.name,
             self.tap.fileno(),
@@ -692,7 +700,7 @@ class LogAction(Action):
 
 class SendAction(Action):
     """Action to send a packet, possibly as a response."""
-    def __init__(self, subnet_id, port_id, packet):
+    def __init__(self, subnet_id, port_id, packet, bridge):
         """Create an action to send a packet.
         :param subnet_id: The subnet ID
         :type subnet_id:  Number (opaque)
@@ -702,10 +710,13 @@ class SendAction(Action):
         :param packet:    A method that constructs the response from the
                 packet's raw data, or a string of a predefined packet.
         :type packet:     (Lambda String -> String), or String (encoded).
+        :param bridge:    The bridge that the port is attached
+        :type bridge:     String - bridge name
         """
         self.subnet_id = subnet_id
         self.port_id = port_id
         self.packet = packet
+        self.bridge = bridge
 
     def __call__(self, policy, rule, port_thread, buf):
         packet = self.packet
@@ -733,7 +744,8 @@ class SimulateAndSendAction(SendAction):
         return super(SimulateAndSendAction, self)._send(policy, packet)
 
     def _get_port_number(self, interface_name):
-        ovs_ofctl_args = ['ovs-ofctl', 'dump-ports', 'br-int', interface_name]
+        ovs_ofctl_args = ['ovs-ofctl', 'dump-ports', self.bridge,
+                          interface_name]
         awk_args = ['awk', '/^\\s*port\\s+[0-9]+:/ { print $2 }']
         ofctl_output = utils.execute(
             ovs_ofctl_args,
@@ -754,7 +766,7 @@ class SimulateAndSendAction(SendAction):
         args = [
             'ovs-appctl',
             'ofproto/trace',
-            'br-int',
+            self.bridge,
             'in_port:{}'.format(port_number),
             packet_str,
         ]
