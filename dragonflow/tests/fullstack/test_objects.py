@@ -135,8 +135,8 @@ class SecGroupTestObj(object):
     def rule_exists(self, secrule_id):
         secgroup = self.nb_api.get_security_group(self.secgroup_id)
         if secgroup:
-            for rule in secgroup.rules:
-                if rule.id == secrule_id:
+            for rule in secgroup.get_rules():
+                if rule.get_id() == secrule_id:
                     return True
         return False
 
@@ -409,7 +409,7 @@ class FloatingipTestObj(object):
     def wait_until_fip_active(self, timeout=5, sleep=1, exception=None):
         def internal_predicate():
             fip = self.get_floatingip()
-            if fip and fip.status == 'ACTIVE':
+            if fip and fip.get_status() == 'ACTIVE':
                 return True
             return False
         wait_until_true(internal_predicate, timeout, sleep, exception)

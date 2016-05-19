@@ -177,7 +177,7 @@ class L3App(DFlowApp):
 
         # Match all possible routeable traffic and send to controller
         for port in router.get_ports():
-            if port.get_name() != router_port.get_name():
+            if port.get_id() != router_port.get_id():
                 # From this router interface to all other interfaces
                 self._add_subnet_send_to_controller(local_network_id,
                                                     port.get_cidr_network(),
