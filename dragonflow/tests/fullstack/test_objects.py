@@ -148,11 +148,15 @@ class NetworkTestObj(object):
         self.neutron = neutron
         self.nb_api = nb_api
         self.closed = False
+        self.network = None
+
+    def get_network(self):
+        return self.network
 
     def create(self, network={'name': 'mynetwork1', 'admin_state_up': True}):
-        network = self.neutron.create_network({'network': network})
-        self.network_id = network['network']['id']
-        self.topic = network['network']['tenant_id']
+        self.network = self.neutron.create_network({'network': network})
+        self.network_id = self.network['network']['id']
+        self.topic = self.network['network']['tenant_id']
         return self.network_id
 
     def close(self):
@@ -180,8 +184,8 @@ class NetworkTestObj(object):
         return self.topic
 
     def exists(self):
-        network = self.nb_api.get_lswitch(self.network_id)
-        if network:
+        netobj = self.nb_api.get_lswitch(self.network_id)
+        if netobj:
             return True
         return False
 
