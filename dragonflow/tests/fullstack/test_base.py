@@ -46,12 +46,13 @@ class DFTestBase(base.BaseTestCase):
              tenant_name=tenant_name)
         self.neutron.format = 'json'
         common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
+        self.conf = cfg.CONF.df
 
-        db_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        db_driver_class = importutils.import_class(self.conf.nb_db_class)
         self.nb_api = api_nb.NbApi(db_driver_class())
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-            db_port=cfg.CONF.df.remote_db_port)
-        self.local_ip = cfg.CONF.df.local_ip
+        self.nb_api.initialize(db_ip=self.conf.remote_db_ip,
+            db_port=self.conf.remote_db_port)
+        self.local_ip = self.conf.local_ip
         self.__objects_to_close = []
 
     def store(self, obj, close_func=None):

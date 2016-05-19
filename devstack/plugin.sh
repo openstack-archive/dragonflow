@@ -10,7 +10,7 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.5}
 
 DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
-DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp"
+DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,dhcp_app.DHCPApp,sg_app.SGApp,dnat_app.DNATApp"
 DEFAULT_SELECTIVE_TOPO_DIST="False"
 DEFAULT_DF_REDIS_PUBSUB="False"
 
@@ -24,10 +24,16 @@ DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
 DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-$DEFAULT_SELECTIVE_TOPO_DIST}
 DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:-$DEFAULT_DF_REDIS_PUBSUB}
 
-#pubsub
+# OVS bridge definition
+INTEGRATION_BRIDGE=${INTEGRATION_BRIDGE:-br-int}
+PUBLIC_BRIDGE=${PUBLIC_BRIDGE:-br-ex}
+INTEGRATION_PEER_PORT=${INTEGRATION_PEER_PORT:-patch-ex}
+PUBLIC_PEER_PORT=${PUBLIC_PEER_PORT:-patch-int}
+
+# pub/sub
 PUBLISHERS_HOSTS=${PUBLISHERS_HOSTS:-"$SERVICE_HOST"}
 
-#ovs related pid files
+# OVS related pid files
 OVS_DB_SERVICE="ovsdb-server"
 OVS_VSWITCHD_SERVICE="ovs-vswitchd"
 OVS_DIR="/var/run/openvswitch"
@@ -71,6 +77,7 @@ if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
     init_pubsub
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
+
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
 source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
@@ -98,6 +105,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
+        iniset $NEUTRON_CONF df integration_bridge "$INTEGRATION_BRIDGE"
         iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
         iniset $NEUTRON_CONF df monitor_table_poll_time "$DF_MONITOR_TABLE_POLL_TIME"
         iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
@@ -106,9 +114,9 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"
         iniset $NEUTRON_CONF df publisher_rate_limit_timeout "$PUBLISHER_RATE_LIMIT_TIMEOUT"
         iniset $NEUTRON_CONF df publisher_rate_limit_count "$PUBLISHER_RATE_LIMIT_COUNT"
-        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "br-ex"
-        iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "patch-ex"
-        iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "patch-int"
+        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
+        iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
+        iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
         iniset $NEUTRON_CONF df enable_selective_topology_distribution \
                                 "$DF_SELECTIVE_TOPO_DIST"
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
@@ -149,13 +157,14 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
+        iniset $NEUTRON_CONF df integration_bridge "$INTEGRATION_BRIDGE"
         iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
         iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
         iniset $NEUTRON_CONF df enable_df_pub_sub "$DF_PUB_SUB"
         iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"
-        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "br-ex"
-        iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "patch-ex"
-        iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "patch-int"
+        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
+        iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
+        iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
         iniset $NEUTRON_CONF df enable_selective_topology_distribution \
                                 "$DF_SELECTIVE_TOPO_DIST"
     fi
@@ -254,7 +263,7 @@ function start_df {
     echo "Starting Dragonflow"
 
     if is_service_enabled df-controller ; then
-        sudo ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
+        sudo ovs-vsctl --no-wait set-controller $INTEGRATION_BRIDGE tcp:$HOST_IP:6633
         run_process df-controller "python $DF_LOCAL_CONTROLLER --config-file $NEUTRON_CONF"
         run_process df-ext-services "bash $DEST/dragonflow/devstack/df-ext-services.sh"
     fi

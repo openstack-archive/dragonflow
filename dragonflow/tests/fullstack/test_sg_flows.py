@@ -200,7 +200,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         found_egress_conntrack_invalied_drop_flow = False
 
         ovs = utils.OvsFlowsParser()
-        flows = ovs.dump()
+        flows = ovs.dump(self.integration_bridge)
         for flow in flows:
             if self._is_skip_flow(flow=flow, direction='ingress'):
                 found_ingress_skip_flow = True
@@ -229,7 +229,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
                                                       direction='egress'):
                 found_egress_conntrack_invalied_drop_flow = True
 
-        LOG.info(_LI("default flows are: %s"), ovs.get_ovs_flows())
+        LOG.info(_LI("default flows are: %s"), ovs.get_ovs_flows(self.integration_bridge))
 
         self.assertTrue(found_ingress_skip_flow)
         self.assertTrue(found_egress_skip_flow)
@@ -286,7 +286,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         self.assertIsNotNone(of_port)
 
         ovs = utils.OvsFlowsParser()
-        flows_after_change = ovs.dump()
+        flows_after_change = ovs.dump(self.integration_bridge)
 
         # Check if the associating flows were installed.
         ingress_associating_flow, egress_associating_flow = \
@@ -295,7 +295,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
         LOG.info(_LI("flows after associating a port and a security group"
                      " are: %s"),
-                 ovs.get_ovs_flows())
+                 ovs.get_ovs_flows(self.integration_bridge))
 
         self.assertIsNotNone(ingress_associating_flow)
         self.assertIsNotNone(egress_associating_flow)
@@ -304,7 +304,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         vm.close()
 
         time.sleep(utils.DEFAULT_CMD_TIMEOUT)
-        flows_after_update = ovs.dump()
+        flows_after_update = ovs.dump(self.integration_bridge)
 
         # Check if the associating flows were removed.
         ingress_associating_flow, egress_associating_flow = \
@@ -361,10 +361,10 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         time.sleep(utils.DEFAULT_CMD_TIMEOUT)
 
         ovs = utils.OvsFlowsParser()
-        flows_after_change = ovs.dump()
+        flows_after_change = ovs.dump(self.integration_bridge)
 
         LOG.info(_LI("flows after adding rules are: %s"),
-                 ovs.get_ovs_flows())
+                 ovs.get_ovs_flows(self.integration_bridge))
 
         # Check if the rule flows were installed.
         self._check_rule_flows(flows_after_change, True)
@@ -377,5 +377,5 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         # test cases are running synchronously.
 
         # time.sleep(utils.DEFAULT_CMD_TIMEOUT)
-        # flows_after_update = ovs.dump()
+        # flows_after_update = ovs.dump(self.integration_bridge)
         # self._check_rule_flows(flows_after_update, False)
