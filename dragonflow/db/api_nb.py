@@ -157,6 +157,7 @@ class NbApi(object):
         eventlet.sleep(0)
 
     def _read_db_changes_from_queue(self):
+        sync_rate_limiter = df_utils.RateLimiter(max_rate=1, time_unit=180)
         while True:
             self.next_update = self._queue.get(block=True)
             LOG.debug("Event update: %s", self.next_update)
@@ -176,7 +177,8 @@ class NbApi(object):
             except Exception as e:
                 if "ofport is 0" not in e.message:
                     LOG.exception(e)
-                self.apply_db_change(None, None, 'sync', None)
+                if not sync_rate_limiter():
+                    self.apply_db_change(None, None, 'sync', None)
 
     def apply_db_change(self, table, key, action, value):
         # determine if the action is allowed or not
