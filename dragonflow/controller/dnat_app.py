@@ -24,10 +24,10 @@ from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller.df_base_app import DFlowApp
 from neutron.agent.ovsdb.native import idlutils
-from neutron.common import constants as n_const
 from ryu.lib.packet import arp
 from ryu.ofproto import ether
 
+from neutron_lib import constants as n_const
 from oslo_config import cfg
 from oslo_log import log
 from oslo_service import loopingcall

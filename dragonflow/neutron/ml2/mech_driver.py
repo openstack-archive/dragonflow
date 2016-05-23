@@ -10,9 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.common import constants as n_const
 from neutron.extensions import portbindings
 from neutron.plugins.ml2 import driver_api
+
+from neutron_lib import constants as n_const
 
 
 class DFMechDriver(driver_api.MechanismDriver):
