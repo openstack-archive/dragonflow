@@ -14,6 +14,7 @@
 import netaddr
 import six
 
+from neutron_lib import constants as const
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
@@ -36,7 +37,6 @@ from neutron.extensions import portbindings
 from neutron.extensions import portsecurity as psec
 from neutron.extensions import providernet as pnet
 
-from neutron.common import constants as const
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.common import utils
