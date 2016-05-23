@@ -805,6 +805,9 @@ class Subnet(DbStoreObject):
     def get_topic(self):
         return self.subnet['topic']
 
+    def get_host_routes(self):
+        return self.subnet['host_routes']
+
 
 class LogicalPort(DbStoreObject):
 
