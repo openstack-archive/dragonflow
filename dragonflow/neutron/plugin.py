@@ -14,6 +14,8 @@
 import netaddr
 import six
 
+from neutron_lib import constants as const
+from neutron_lib import exceptions as n_exc
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
@@ -29,14 +31,12 @@ from neutron.api.v2 import attributes as attr
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
-from neutron.common import exceptions as n_exc
 from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import extra_dhcp_opt as edo_ext
 from neutron.extensions import portbindings
 from neutron.extensions import portsecurity as psec
 from neutron.extensions import providernet as pnet
 
-from neutron.common import constants as const
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.common import utils
