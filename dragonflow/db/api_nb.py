@@ -158,6 +158,7 @@ class NbApi(object):
         eventlet.sleep(0)
 
     def _read_db_changes_from_queue(self):
+        last_exception_time = time.time()
         while True:
             self.next_update = self._queue.get(block=True)
             LOG.debug("Event update: %s", self.next_update)
@@ -175,9 +176,12 @@ class NbApi(object):
                                      value)
                 self._queue.task_done()
             except Exception as e:
+                current_time = time.time()
                 if "ofport is 0" not in e.message:
                     LOG.exception(e)
-                self.apply_db_change(None, None, 'sync', None)
+                if current_time - last_exception_time > 180:
+                    self.apply_db_change(None, None, 'sync', None)
+                last_exception_time = current_time
 
     def apply_db_change(self, table, key, action, value):
         # determine if the action is allowed or not
