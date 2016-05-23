@@ -11,6 +11,7 @@ pyzmq>=14.3.1 # LGPL+BSD
 ryu!=4.1,!=4.2,>=3.30 # Apache-2.0
 SQLAlchemy<1.1.0,>=1.0.10 # MIT
 alembic>=0.8.4 # MIT
+neutron-lib>=0.0.1  # Apache-2.0
 oslo.config>=3.9.0 # Apache-2.0
 oslo.db>=4.1.0 # Apache-2.0
 redis>=2.10.0 # MIT
