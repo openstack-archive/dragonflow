@@ -12,14 +12,13 @@
 
 import netaddr
 
-from neutron.common import constants as common_const
-
 from ryu.ofproto import ether
 
 from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
+from neutron_lib import constants as common_const
 from oslo_log import log
 
 
