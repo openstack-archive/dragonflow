@@ -80,3 +80,11 @@ class DBLockFailed(DragonflowException):
 
 class DBClientNotFound(DragonflowException):
     message = _('DB client not found, ip=%(ip)s')
+
+
+class NoRemoteIPProxyException(DragonflowException):
+    message = _('The metadata request has no remote IP')
+
+
+class LogicalPortNotFoundByTunnelKey(DragonflowException):
+    message = _('Could not find logical port with tunnel key %(key)')
