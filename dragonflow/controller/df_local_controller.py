@@ -142,7 +142,7 @@ class DfLocalController(object):
     def chassis_created(self, chassis):
         # Check if tunnel already exists to this chassis
         t_ports = self.vswitch_api.get_tunnel_ports()
-        remote_chassis_name = chassis.get_name()
+        remote_chassis_name = chassis.get_id()
         if self.chassis_name == remote_chassis_name:
             return
         for t_port in t_ports:
@@ -269,14 +269,14 @@ class DfLocalController(object):
             self.db_store.delete_port(lport.get_id(), False)
 
     def router_updated(self, lrouter):
-        old_lrouter = self.db_store.get_router(lrouter.get_name())
+        old_lrouter = self.db_store.get_router(lrouter.get_id())
         if old_lrouter is None:
             LOG.info(_LI("Logical Router created = %s") %
                      lrouter.__str__())
             self._add_new_lrouter(lrouter)
             return
         self._update_router_interfaces(old_lrouter, lrouter)
-        self.db_store.update_router(lrouter.get_name(), lrouter)
+        self.db_store.update_router(lrouter.get_id(), lrouter)
 
     def router_deleted(self, lrouter_id):
         old_lrouter = self.db_store.get_router(lrouter_id)
@@ -288,14 +288,14 @@ class DfLocalController(object):
         self.db_store.delete_router(lrouter_id)
 
     def security_group_updated(self, secgroup):
-        old_secgroup = self.db_store.get_security_group(secgroup.name)
+        old_secgroup = self.db_store.get_security_group(secgroup.get_id())
         if old_secgroup is None:
             LOG.info(_LI("Security Group created = %s") %
                      secgroup)
             self._add_new_security_group(secgroup)
             return
         self._update_security_group_rules(old_secgroup, secgroup)
-        self.db_store.update_security_group(secgroup.name, secgroup)
+        self.db_store.update_security_group(secgroup.get_id(), secgroup)
 
     def security_group_deleted(self, secgroup_id):
         old_secgroup = self.db_store.get_security_group(secgroup_id)
@@ -319,9 +319,9 @@ class DfLocalController(object):
             tunnel_ports[t_port.get_chassis_id()] = t_port
 
         for chassis in self.nb_api.get_all_chassis():
-            if chassis.get_name() in tunnel_ports:
-                del tunnel_ports[chassis.get_name()]
-            elif chassis.get_name() == self.chassis_name:
+            if chassis.get_id() in tunnel_ports:
+                del tunnel_ports[chassis.get_id()]
+            elif chassis.get_id() == self.chassis_name:
                 pass
             else:
                 self.chassis_created(chassis)
@@ -390,22 +390,22 @@ class DfLocalController(object):
     def _add_new_lrouter(self, lrouter):
         for new_port in lrouter.get_ports():
             self._add_new_router_port(lrouter, new_port)
-        self.db_store.update_router(lrouter.get_name(), lrouter)
+        self.db_store.update_router(lrouter.get_id(), lrouter)
 
     def read_security_groups(self):
         secgroups_to_remove = self.db_store.get_security_group_keys()
 
         for secgroup in self.nb_api.get_security_groups():
             self.security_group_updated(secgroup)
-            if secgroup.name in secgroups_to_remove:
-                secgroups_to_remove.remove(secgroup.name)
+            if secgroup.get_id() in secgroups_to_remove:
+                secgroups_to_remove.remove(secgroup.get_id())
 
         for secgroup_to_remove in secgroups_to_remove:
             self.security_group_deleted(secgroup_to_remove)
 
     def _update_security_group_rules(self, old_secgroup, new_secgroup):
-        new_secgroup_rules = new_secgroup.rules
-        old_secgroup_rules = old_secgroup.rules
+        new_secgroup_rules = new_secgroup.get_rules()
+        old_secgroup_rules = old_secgroup.get_rules()
         for new_rule in new_secgroup_rules:
             if new_rule not in old_secgroup_rules:
                 self._add_new_security_group_rule(new_secgroup, new_rule)
@@ -416,14 +416,14 @@ class DfLocalController(object):
             self._delete_security_group_rule(old_secgroup, old_rule)
 
     def _add_new_security_group(self, secgroup):
-        for new_rule in secgroup.rules:
+        for new_rule in secgroup.get_rules():
             self._add_new_security_group_rule(secgroup, new_rule)
-        self.db_store.update_security_group(secgroup.name, secgroup)
+        self.db_store.update_security_group(secgroup.get_id(), secgroup)
 
     def _delete_old_security_group(self, secgroup):
-        for rule in secgroup.rules:
+        for rule in secgroup.get_rules():
             self._delete_security_group_rule(secgroup, rule)
-        self.db_store.delete_security_group(secgroup.name)
+        self.db_store.delete_security_group(secgroup.get_id())
 
     def _add_new_security_group_rule(self, secgroup, secgroup_rule):
         LOG.info(_LI("Adding new secgroup rule = %s") %
@@ -443,19 +443,19 @@ class DfLocalController(object):
 
     def floatingip_updated(self, floatingip):
         # check whether this floatingip is associated with a lport or not
-        if floatingip.lport_id:
-            if self.db_store.get_local_port(floatingip.lport_id) is None:
+        if floatingip.get_lport_id():
+            if self.db_store.get_local_port(floatingip.get_lport_id()) is None:
                 return
-        if floatingip.lrouter_id:
-            lrouter = self.db_store.get_router(floatingip.lrouter_id)
+        if floatingip.get_lrouter_id():
+            lrouter = self.db_store.get_router(floatingip.get_lrouter_id())
             # Currently, to implement DNAT for DVR on compute node only
             # if distributed is False, DNAT is done on centralized vrouter
             if not lrouter.is_distributed():
                 return
-        old_floatingip = self.db_store.get_floatingip(floatingip.name)
+        old_floatingip = self.db_store.get_floatingip(floatingip.get_id())
         if old_floatingip is None:
             # The new floatingip should be associated with a lport
-            if not floatingip.lport_id:
+            if not floatingip.get_lport_id():
                 return
             self._associate_floatingip(floatingip)
             return
@@ -484,21 +484,21 @@ class DfLocalController(object):
             self.db_store.delete_publisher(uuid)
 
     def _associate_floatingip(self, floatingip):
-        self.db_store.update_floatingip(floatingip.name, floatingip)
+        self.db_store.update_floatingip(floatingip.get_id(), floatingip)
         self.open_flow_app.notify_associate_floatingip(floatingip)
         LOG.info(_LI("Floatingip is assoicated with port. Floatingip = %s") %
                  str(floatingip))
 
     def _disassociate_floatingip(self, floatingip):
-        self.db_store.delete_floatingip(floatingip.name)
+        self.db_store.delete_floatingip(floatingip.get_id())
         self.open_flow_app.notify_disassociate_floatingip(floatingip)
         LOG.info(_LI("Floatingip is disassoicated from port."
                  " Floatingip = %s") % str(floatingip))
 
     def _update_floatingip(self, old_floatingip, new_floatingip):
-        if new_floatingip.lport_id != old_floatingip.lport_id:
+        if new_floatingip.get_lport_id() != old_floatingip.get_lport_id():
             self._disassociate_floatingip(old_floatingip)
-            if new_floatingip.lport_id:
+            if new_floatingip.get_lport_id():
                 self._associate_floatingip(new_floatingip)
 
     def ovs_port_updated(self, ovs_port):

@@ -214,12 +214,14 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                                       default_sg)
             sg_version = version_db._create_db_version_row(
                     context.session, sg_db['id'])
-        sg_name = sg_db['id']
+        sg_id = sg_db['id']
+        sg_name = sg_db.get('name', df_const.DF_SG_DEFAULT_NAME)
         tenant_id = sg_db['tenant_id']
         rules = sg_db.get('security_group_rules')
 
-        self.nb_api.create_security_group(name=sg_name, topic=tenant_id,
-                                          rules=rules, version=sg_version)
+        self.nb_api.create_security_group(id=sg_id, topic=tenant_id,
+                                          name=sg_name, rules=rules,
+                                          version=sg_version)
         return sg_db
 
     @lock_db.wrap_db_lock()
@@ -292,6 +294,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 new_subnet['id'],
                 net_id,
                 new_subnet['tenant_id'],
+                name=new_subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
                 nw_version=network_version,
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
@@ -335,6 +338,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 new_subnet['id'],
                 net_id,
                 new_subnet['tenant_id'],
+                name=new_subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
                 nw_version=network_version,
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
@@ -381,10 +385,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return result
 
     def create_network_nb_api(self, context, network, nw_version):
-        external_ids = {df_const.DF_NETWORK_NAME_EXT_ID_KEY: network['name']}
-        self.nb_api.create_lswitch(name=network['id'],
+        nw_name = network.get('name', df_const.DF_NETWORK_DEFAULT_NAME)
+        self.nb_api.create_lswitch(id=network['id'],
                                    topic=network['tenant_id'],
-                                   external_ids=external_ids,
+                                   name=nw_name,
                                    router_external=network['router:external'],
                                    version=nw_version,
                                    subnets=[])
@@ -405,13 +409,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         for port in self.nb_api.get_all_logical_ports():
             if port.get_lswitch_id() == network_id:
                 try:
-                    self.nb_api.delete_lport(name=port.get_id(),
+                    self.nb_api.delete_lport(id=port.get_id(),
                                              topic=tenant_id)
                 except df_exceptions.DBKeyNotFound:
                     LOG.debug("port %s is not found in DB, might have"
                               "been deleted concurrently" % port.get_id())
         try:
-            self.nb_api.delete_lswitch(name=network_id,
+            self.nb_api.delete_lswitch(id=network_id,
                                        topic=tenant_id)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
@@ -431,10 +435,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             network_version = version_db._update_db_version_row(
                     context.session, network_id)
 
-        external_ids = {df_const.DF_NETWORK_NAME_EXT_ID_KEY: result['name']}
-        self.nb_api.update_lswitch(name=network_id,
+        self.nb_api.update_lswitch(id=network_id,
                                    topic=result['tenant_id'],
-                                   external_ids=external_ids,
+                                   name=result.get(
+                                           'name',
+                                           df_const.DF_NETWORK_DEFAULT_NAME),
                                    router_external=result['router:external'],
                                    version=network_version)
         return result
@@ -489,8 +494,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
             port_version = version_db._update_db_version_row(
                     context.session, id)
-        external_ids = {
-            df_const.DF_PORT_NAME_EXT_ID_KEY: updated_port['name']}
 
         ips = []
         if 'fixed_ips' in updated_port:
@@ -512,10 +515,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         else:
             security_groups = updated_security_groups
 
-        self.nb_api.update_lport(name=updated_port['id'],
+        port_name = updated_port.get('name', df_const.DF_PORT_DEFAULT_NAME)
+        self.nb_api.update_lport(id=updated_port['id'],
                                  topic=updated_port['tenant_id'],
                                  macs=[updated_port['mac_address']], ips=ips,
-                                 external_ids=external_ids,
+                                 name=port_name,
                                  parent_name=parent_name, tag=tag,
                                  enabled=updated_port['admin_'
                                                       'state_up'],
@@ -631,7 +635,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # The port name *must* be port['id'].  It must match the iface-id set
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
-        external_ids = {df_const.DF_PORT_NAME_EXT_ID_KEY: port['name']}
         ips = []
         if 'fixed_ips' in port:
             ips = [ip['ip_address'] for ip in port['fixed_ips']]
@@ -649,11 +652,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             chassis = None
 
         self.nb_api.create_lport(
-            name=port['id'],
-            lswitch_name=port['network_id'],
+            id=port['id'],
+            lswitch_id=port['network_id'],
             topic=port['tenant_id'],
             macs=[port['mac_address']], ips=ips,
-            external_ids=external_ids,
+            name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
             parent_name=parent_name, tag=tag,
             enabled=port.get('admin_state_up', None),
             chassis=chassis, tunnel_key=tunnel_key,
@@ -697,7 +700,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             version_db._delete_db_version_row(context.session, port_id)
 
         try:
-            self.nb_api.delete_lport(name=port_id, topic=topic)
+            self.nb_api.delete_lport(id=port_id, topic=topic)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("port %s is not found in DF DB, might have "
                       "been deleted concurrently" % port_id)
@@ -724,13 +727,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             router_version = version_db._create_db_version_row(
                     context.session, router['id'])
 
-        router_name = router['id']
+        router_id = router['id']
         tenant_id = router['tenant_id']
         is_distributed = router.get('distributed', False)
-        external_ids = {df_const.DF_ROUTER_NAME_EXT_ID_KEY:
-                        router.get('name', 'no_router_name')}
-        self.nb_api.create_lrouter(router_name, topic=tenant_id,
-                                   external_ids=external_ids,
+        router_name = router.get('name', df_const.DF_ROUTER_DEFAULT_NAME)
+        self.nb_api.create_lrouter(router_id, topic=tenant_id,
+                                   name=router_name,
                                    distributed=is_distributed,
                                    version=router_version,
                                    ports=[])
@@ -738,18 +740,17 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @lock_db.wrap_db_lock()
     def delete_router(self, context, router_id):
-        router_name = router_id
         router = self.get_router(context, router_id)
         with context.session.begin(subtransactions=True):
             ret_val = super(DFPlugin, self).delete_router(context,
                                                           router_id)
             version_db._delete_db_version_row(context.session, router_id)
         try:
-            self.nb_api.delete_lrouter(name=router_name,
+            self.nb_api.delete_lrouter(id=router_id,
                                        topic=router['tenant_id'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("router %s is not found in DF DB, might have "
-                      "been deleted concurrently" % router_name)
+                      "been deleted concurrently" % router_id)
         return ret_val
 
     @lock_db.wrap_db_lock()
@@ -772,8 +773,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             subnet_id = port['fixed_ips'][0]['subnet_id']
             subnet = self.get_subnet(context, subnet_id)
 
-        lrouter = router_id
-        lswitch = subnet['network_id']
+        lswitch_id = subnet['network_id']
         cidr = netaddr.IPNetwork(subnet['cidr'])
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
@@ -792,7 +792,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     context.session, router_id)
 
         self.nb_api.add_lrouter_port(port['id'],
-                                     lrouter, lswitch,
+                                     router_id, lswitch_id,
                                      port['tenant_id'],
                                      router_version=router_version,
                                      mac=port['mac_address'],
@@ -962,8 +962,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     pass
 
         self.nb_api.create_floatingip(
-                name=floatingip_dict['id'],
+                id=floatingip_dict['id'],
                 topic=floatingip_dict['tenant_id'],
+                name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
                 floating_ip_address=floatingip_dict['floating_ip_address'],
                 floating_network_id=floatingip_dict['floating_network_id'],
                 router_id=floatingip_dict['router_id'],
@@ -987,9 +988,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     context.session, id)
 
         self.nb_api.update_floatingip(
-            name=floatingip_dict['id'],
+            id=floatingip_dict['id'],
             topic=floatingip_dict['tenant_id'],
             notify=True,
+            name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
             router_id=floatingip_dict['router_id'],
             port_id=floatingip_dict['port_id'],
             version=fip_version,
@@ -1005,7 +1007,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             version_db._delete_db_version_row(context.session, id)
 
         try:
-            self.nb_api.delete_floatingip(name=id,
+            self.nb_api.delete_floatingip(id=id,
                                           topic=floatingip['tenant_id'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("floatingip %s is not found in DF DB, might have "
@@ -1014,7 +1016,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def get_floatingip(self, context, id, fields=None):
         with context.session.begin(subtransactions=True):
             fip = super(DFPlugin, self).get_floatingip(context, id, fields)
-            fip['status'] = self.nb_api.get_floatingip(id).status
+            fip['status'] = self.nb_api.get_floatingip(id).get_status()
             return fip
 
 

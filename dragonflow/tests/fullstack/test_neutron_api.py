@@ -153,7 +153,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         routers = self.nb_api.get_routers()
         router2 = None
         for r in routers:
-            if r.get_name() == router_l['id']:
+            if r.get_id() == router_l['id']:
                 router2 = r
                 break
         self.assertIsNotNone(router2)
@@ -273,7 +273,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             # associate with port
             fip.update({'port_id': port_id})
             fip_obj = fip.get_floatingip()
-            self.assertEqual(fip_obj.lport_id, port_id)
+            self.assertEqual(fip_obj.get_lport_id(), port_id)
 
             fip.close()
             self.assertFalse(fip.exists())
@@ -333,7 +333,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             # disassociate with port
             fip.update({})
             fip_obj = fip.get_floatingip()
-            self.assertIsNone(fip_obj.lport_id)
+            self.assertIsNone(fip_obj.get_lport_id())
 
             fip.close()
             self.assertFalse(fip.exists())
