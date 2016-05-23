@@ -130,6 +130,16 @@ function configure_df_plugin {
             iniset $NEUTRON_CONF quotas quota_floatingip "-1"
             iniset $NEUTRON_CONF quotas quota_security_group_rule "-1"
         fi
+
+        if is_service_enabled df-meta ; then
+            NOVA_CONF=${NOVA_CONF:-"/etc/nova/nova.conf"}
+            iniset $NOVA_CONF neutron service_metadata_proxy True
+            iniset $NOVA_CONF neutron metadata_proxy_shared_secret $METADATA_PROXY_SHARED_SECRET
+            iniset $NEUTRON_CONF DEFAULT metadata_proxy_shared_secret $METADATA_PROXY_SHARED_SECRET
+            iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST,metadata_service_app.MetadataServiceApp"
+            iniset $NEUTRON_CONF df_meta ip "$DF_METADATA_SERVICE_IP"
+            iniset $NEUTRON_CONF df_meta port "$DF_METADATA_SERVICE_PORT"
+        fi
     else
         _create_neutron_conf_dir
         # NOTE: We need to manually generate the neutron.conf file here. This
@@ -322,6 +332,26 @@ function stop_df_l3_agent {
     fi
 }
 
+function start_df_metadata_agent {
+    if is_service_enabled df-meta ; then
+        echo "Starting Dragonflow metadata service"
+        sudo ovs-vsctl add-port br-int tap-metadata -- set Interface tap-metadata type=internal
+        sudo ip addr add dev tap-metadata $DF_METADATA_SERVICE_IP/0
+        sudo ip link set dev tap-metadata up
+        sudo ip route add 0.0.0.0/0 dev tap-metadata table 2
+        sudo ip rule add from $DF_METADATA_SERVICE_IP table 2
+        run_process df-meta "python $DF_METADATA_SERVICE --config-file $NEUTRON_CONF"
+    fi
+}
+
+function stop_df_metadata_agent {
+    if is_service_enabled df-meta ; then
+        echo "Stopping Dragonflow metadata service"
+        stop_process df-meta
+        sudo ovs-vsctl del-port br-int tap-metadata
+    fi
+}
+
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
@@ -361,9 +391,11 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
 
         start_df_l3_agent
         start_df
+        start_df_metadata_agent
     fi
 
     if [[ "$1" == "unstack" ]]; then
+        stop_df_metadata_agent
         stop_df
         cleanup_ovs
         stop_ovs
