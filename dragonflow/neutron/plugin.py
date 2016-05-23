@@ -648,6 +648,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if port.get('device_owner') == const.DEVICE_OWNER_ROUTER_GW:
             chassis = None
 
+        security_groups = port.get('security_groups')
+        if security_groups == []:
+            sgs = None
+        else:
+            sgs = security_groups
+
         self.nb_api.create_lport(
             name=port['id'],
             lswitch_name=port['network_id'],
@@ -659,7 +665,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             chassis=chassis, tunnel_key=tunnel_key,
             version=port_version,
             device_owner=port.get('device_owner', None),
-            security_groups=port.get('security_groups', None),
+            security_groups=sgs,
             port_security_enabled=port[psec.PORTSECURITY],
             allowed_address_pairs=port[addr_pair.ADDRESS_PAIRS])
 
