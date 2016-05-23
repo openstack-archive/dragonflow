@@ -15,11 +15,11 @@
 import netaddr
 import struct
 
+from neutron_lib import constants
 from oslo_config import cfg
 from oslo_log import log
 
 from neutron.common import config as common_config
-from neutron.common import constants
 from neutron.plugins.common import constants as n_p_const
 
 from ryu.lib import addrconv
