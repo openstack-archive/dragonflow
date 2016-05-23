@@ -15,6 +15,7 @@
 from oslo_utils import timeutils
 
 SEND_ALL_TOPIC = b'D'
+DB_SYNC_MINIMUM_INTERVAL = 180
 
 
 class DbUpdate(object):
