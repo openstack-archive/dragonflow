@@ -45,6 +45,7 @@ ovsdb_monitor_table_filter_default = {
         'type',
         'external_ids',
         'options',
+        'mac_in_use',
     ],
     'Bridge': [
         'ports',
