@@ -23,6 +23,7 @@ from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller.df_base_app import DFlowApp
+from neutron.agent.ovsdb.native import idlutils
 from neutron.common import constants as n_const
 from ryu.lib.packet import arp
 from ryu.lib.packet import packet
@@ -61,85 +62,60 @@ class DNATApp(DFlowApp):
         cfg.CONF.register_opts(DF_DNAT_APP_OPTS, group='df_dnat_app')
         self.external_network_bridge = \
             cfg.CONF.df_dnat_app.external_network_bridge
+        self.integration_bridge = cfg.CONF.df.integration_bridge
         self.int_peer_patch_port = cfg.CONF.df_dnat_app.int_peer_patch_port
         self.ex_peer_patch_port = cfg.CONF.df_dnat_app.ex_peer_patch_port
         self.send_arp_interval = cfg.CONF.df_dnat_app.send_arp_interval
         self.external_networks = collections.defaultdict(int)
-        self.external_gateway_mac = collections.defaultdict(str)
-        self.api.register_table_handler(const.INGRESS_NAT_TABLE,
-                self.packet_in_handler)
+        self.local_floatingips = collections.defaultdict(str)
 
     def switch_features_handler(self, ev):
         self._init_external_bridge()
-        self._periodic_send_arp_request()
+        self._init_external_network_bridge_check()
 
-    def _get_external_gateway_mac(self, net_id):
-        return self.external_gateway_mac[net_id]
-
-    def _set_external_gateway_mac(self, net_id, gw_mac):
-        self.external_gateway_mac[net_id] = gw_mac
-
-    def _send_arp_request_entry(self):
+    def _check_for_external_network_bridge_mac(self):
         """Sending the arp request at the configured interval."""
-        for net_id, gw_mac in six.iteritems(self.external_gateway_mac):
-            fip = None
-            # if gw mac is none, then need to get it
-            if gw_mac is None:
-                fip = self.db_store.get_first_floatingip(net_id)
-            if fip:
-                # request gw arp
-                self._send_gw_arp_request(fip)
+        idl = self.vswitch_api.idl
+        if not idl:
+            return
+        interface = idlutils.row_by_value(
+            idl,
+            'Interface',
+            'name',
+            self.external_network_bridge,
+            None,
+        )
+        if not interface:
+            return
+        if not interface.mac_in_use[0]:
+            return
+        if interface.mac_in_use[0] == '00:00:00:00:00:00':
+            return
+        return interface.mac_in_use[0]
 
-    def _periodic_send_arp_request(self):
-        """Spawn a thread to periodically check the external gateway."""
+    def _wait_for_external_network_bridge_mac(self):
+        mac = self._check_for_external_network_bridge_mac()
+        if not mac:
+            return
+        for key, floatingip in six.iteritems(self.local_floatingips):
+            self._install_dnat_egress_rules(floatingip, mac)
+        raise loopingcall.LoopingCallDone()
+
+    def _init_external_network_bridge_check(self):
+        """Spawn a thread to check that br-ex is ready."""
         periodic = loopingcall.FixedIntervalLoopingCall(
-            self._send_arp_request_entry)
+            self._wait_for_external_network_bridge_mac)
         periodic.start(interval=self.send_arp_interval)
 
     def _init_external_bridge(self):
         self.external_ofport = self.vswitch_api.create_patch_port(
-            const.DRAGONFLOW_DEFAULT_BRIDGE,
+            self.integration_bridge,
             self.ex_peer_patch_port,
             self.int_peer_patch_port)
         self.vswitch_api.create_patch_port(
             self.external_network_bridge,
             self.int_peer_patch_port,
             self.ex_peer_patch_port)
-
-    def _update_external_gateway_mac(self, fips, learning_mac):
-        net_id = fips[0].get_floating_network_id()
-        gw_mac = self._get_external_gateway_mac(net_id)
-        if not gw_mac or gw_mac != learning_mac:
-            self._set_external_gateway_mac(net_id, learning_mac)
-            for fip in fips:
-                if fip.get_status() == FIP_GW_RESOLVING_STATUS:
-                    self._install_dnat_egress_rules(fip)
-
-    def packet_in_handler(self, event):
-        msg = event.msg
-        pkt = packet.Packet(msg.data)
-        arp_pkt = pkt.get_protocol(arp.arp)
-        if arp_pkt is None:
-            LOG.error(_LE("No support for non ARP protocol"))
-            return
-
-        if (arp_pkt.opcode == arp.ARP_REQUEST and
-            arp_pkt.src_ip == arp_pkt.dst_ip or
-            arp_pkt.opcode == arp.ARP_REPLY):
-            # learn gw mac from fip arp reply packet
-            # or update gw mac from fip gateway gratuitous arp
-            gw_fips = self.db_store.get_floatingips_by_gateway(arp_pkt.src_ip)
-            if not gw_fips:
-                return
-            self._update_external_gateway_mac(gw_fips, arp_pkt.src_mac)
-
-    def _send_gw_arp_request(self, fip):
-        # TODO(Fei Rao)check the network type, snd the packet to external
-        # gateway port
-        self.send_arp_request(fip.get_mac_address(),
-                              fip.get_ip_address(),
-                              fip.get_external_gateway_ip(),
-                              self.external_ofport)
 
     def _increase_external_network_count(self, network_id):
         self.external_networks[network_id] += 1
@@ -178,82 +154,6 @@ class DNATApp(DFlowApp):
         if network_id is not None:
             match.set_metadata(network_id)
         return match
-
-    def _get_match_gratuitous_arp(self, destination_ip, network_id=None):
-        request_ip = utils.ipv4_text_to_int(str(destination_ip))
-        parser = self.get_datapath().ofproto_parser
-        match = parser.OFPMatch()
-        match.set_dl_type(ether.ETH_TYPE_ARP)
-        match.set_arp_spa(request_ip)
-        match.set_arp_tpa(request_ip)
-        match.set_arp_opcode(arp.ARP_REQUEST)
-        if network_id is not None:
-            match.set_metadata(network_id)
-        return match
-
-    def _get_instructions_packet_in(self):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
-
-        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER)]
-        inst = [self.get_datapath().ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        return inst
-
-    def _install_mac_learning_rules(self, floatingip, ignore=False):
-        # process arp reply
-        match = self._get_match_arp_reply(
-            floatingip.get_ip_address(),
-            floatingip.get_external_gateway_ip())
-        instructions = self._get_instructions_packet_in()
-        self.mod_flow(
-            self.get_datapath(),
-            inst=instructions,
-            table_id=const.INGRESS_NAT_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-        network_id = floatingip.get_floating_network_id()
-        if ignore or self._get_external_network_count(network_id) <= 0:
-            # if it is the first floatingip for this external gateway,
-            # install a gateway mac learning rules
-            # process gratuitous arp
-            match = self._get_match_gratuitous_arp(
-                floatingip.get_external_gateway_ip())
-            self.mod_flow(
-                self.get_datapath(),
-                inst=instructions,
-                table_id=const.INGRESS_NAT_TABLE,
-                priority=const.PRIORITY_MEDIUM,
-                match=match)
-
-    def _remove_mac_learning_rules(self, floatingip, ignore=False):
-        ofproto = self.get_datapath().ofproto
-        # remove arp reply rules
-        match = self._get_match_arp_reply(
-            floatingip.get_ip_address(),
-            floatingip.get_external_gateway_ip())
-        self.mod_flow(
-            self.get_datapath(),
-            command=ofproto.OFPFC_DELETE,
-            table_id=const.INGRESS_NAT_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-        network_id = floatingip.get_floating_network_id()
-        if ignore or self._get_external_network_count(network_id) <= 1:
-            # if it is the last flaotingip for this external gateway,
-            # remove a gateway mac learning rules.
-            # remove gratuitous arp rules
-            match = self._get_match_gratuitous_arp(
-                floatingip.get_external_gateway_ip())
-            self.mod_flow(
-                self.get_datapath(),
-                command=ofproto.OFPFC_DELETE,
-                table_id=const.INGRESS_NAT_TABLE,
-                priority=const.PRIORITY_MEDIUM,
-                match=match)
 
     def _install_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
@@ -339,27 +239,17 @@ class DNATApp(DFlowApp):
                                 ipv4_src=vm_ip)
         return match
 
-    def _install_dnat_egress_rules(self, floatingip):
+    def _install_dnat_egress_rules(self, floatingip, network_bridge_mac):
         fip_mac = floatingip.get_mac_address()
         fip_ip = floatingip.get_ip_address()
-        net_id = floatingip.get_floating_network_id()
-        gw_mac = self._get_external_gateway_mac(net_id)
-        if not gw_mac:
-            # Record the resolving gw arp
-            self._set_external_gateway_mac(net_id, None)
-            self._send_gw_arp_request(floatingip)
-            floatingip.update_fip_status(FIP_GW_RESOLVING_STATUS)
-            return
-
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
         match = self._get_dnat_egress_match(floatingip)
         actions = [
             parser.OFPActionSetField(eth_src=fip_mac),
-            parser.OFPActionSetField(eth_dst=gw_mac),
-            parser.OFPActionDecNwTtl(),
+            parser.OFPActionSetField(eth_dst=network_bridge_mac),
             parser.OFPActionSetField(ipv4_src=fip_ip),
-            parser.OFPActionOutput(self.external_ofport, 0)]
+            parser.OFPActionOutput(ofproto.OFPP_NORMAL, 0)]
         inst = [self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
@@ -393,7 +283,9 @@ class DNATApp(DFlowApp):
             const.PRIORITY_MEDIUM,
             const.EGRESS_NAT_TABLE,
             match=match)
-        self._install_dnat_egress_rules(floatingip)
+        mac = self._check_for_external_network_bridge_mac()
+        if mac:
+            self._install_dnat_egress_rules(floatingip, mac)
 
     def _remove_egress_nat_rules(self, floatingip):
         net = netaddr.IPNetwork(floatingip.get_external_cidr())
@@ -426,7 +318,6 @@ class DNATApp(DFlowApp):
                 const.INGRESS_NAT_TABLE,
                 match=match)
         self._install_floatingip_arp_responder(floatingip)
-        self._install_mac_learning_rules(floatingip)
         self._install_dnat_ingress_rules(floatingip)
         self._increase_external_network_count(network_id)
 
@@ -458,10 +349,12 @@ class DNATApp(DFlowApp):
                                       status=status)
 
     def associate_floatingip(self, floatingip):
+        self.local_floatingips[floatingip.get_id()] = floatingip
         self._install_ingress_nat_rules(floatingip)
         self._install_egress_nat_rules(floatingip)
 
     def disassociate_floatingip(self, floatingip):
+        self.local_floatingips.pop(floatingip.get_id(), 0)
         self.delete_floatingip(floatingip)
         self.update_floatingip_status(
             floatingip, n_const.FLOATINGIP_STATUS_DOWN)
@@ -483,16 +376,3 @@ class DNATApp(DFlowApp):
                 topic=fip.get_topic(),
                 notify=False,
                 external_gateway_ip=fip.get_external_gateway_ip())
-            # gw ip changed, so need to resolve the gw arp again
-            fip.update_fip_status(FIP_GW_RESOLVING_STATUS)
-            self.update_floatingip_gateway(fip, old_fip)
-
-        fip, old_fip = fip_groups[0]
-        self._set_external_gateway_mac(fip.get_floating_network_id(), None)
-        self._send_gw_arp_request(fip)
-
-    def update_floatingip_gateway(self, fip, old_fip):
-        self._install_mac_learning_rules(fip, True)
-        self._remove_mac_learning_rules(old_fip, True)
-        # gw mac maybe change
-        self._remove_dnat_egress_rules(fip)
