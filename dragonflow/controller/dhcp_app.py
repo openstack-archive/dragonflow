@@ -35,6 +35,8 @@ from dragonflow._i18n import _, _LI, _LE, _LW
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
+S = """      """
+
 DF_DHCP_OPTS = [
     cfg.ListOpt('df_dns_servers',
         default=['8.8.8.8', '8.8.4.4'],
@@ -55,6 +57,7 @@ DHCP_DISCOVER = 1
 DHCP_OFFER = 2
 DHCP_REQUEST = 3
 DHCP_ACK = 5
+DHCP_CLASSLESS_ROUTE = 121
 
 
 class DHCPApp(DFlowApp):
@@ -176,6 +179,7 @@ class DHCPApp(DFlowApp):
             return
 
         dns = self._get_dns_address_list_bin(subnet)
+        host_routes = self._get_host_routes_list_bin(subnet)
         dhcp_server_address = str(self._get_dhcp_server_address(subnet))
         gateway_address = self._get_port_gateway_address(subnet)
         netmask_bin = self._get_port_netmask(subnet).packed
@@ -190,7 +194,8 @@ class DHCPApp(DFlowApp):
             dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns, len(dns)),
             dhcp.option(DHCP_DOMAIN_NAME_OPT,
                     domain_name_bin,
-                    len(self.domain_name))]
+                    len(self.domain_name)),
+            dhcp.option(DHCP_CLASSLESS_ROUTE, host_routes, len(host_routes))]
 
         if self.advertise_mtu:
             intreface_mtu = self._get_port_mtu(lport)
@@ -228,6 +233,7 @@ class DHCPApp(DFlowApp):
             return
 
         dns = self._get_dns_address_list_bin(subnet)
+        host_routes = self._get_host_routes_list_bin(subnet)
         dhcp_server_address = self._get_dhcp_server_address(subnet)
         netmask_bin = self._get_port_netmask(subnet).packed
         lease_time_bin = struct.pack('!I', self.lease_time)
@@ -242,7 +248,8 @@ class DHCPApp(DFlowApp):
                         lease_time_bin, 4),
             dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT,
                         dhcp_server_address.packed, 4),
-            dhcp.option(15, domain_name_bin, len(self.domain_name))]
+            dhcp.option(15, domain_name_bin, len(self.domain_name)),
+            dhcp.option(DHCP_CLASSLESS_ROUTE, host_routes, len(host_routes))]
         if gateway_address:
             option_list.append(dhcp.option(
                                     dhcp.DHCP_GATEWAY_ADDR_OPT,
@@ -275,6 +282,41 @@ class DHCPApp(DFlowApp):
         for address in dns_servers:
             dns_bin += addrconv.ipv4.text_to_bin(address)
         return dns_bin
+
+    def _get_host_routes_list_bin(self, subnet):
+        host_routes = []
+        if len(subnet.get_host_routes()) > 0:
+            host_routes = subnet.get_host_routes()
+        routes_bin = ''
+
+        for route in host_routes:
+            dest, slash, mask = route.get('destination').partition('/')
+            mask = int(mask)
+            routes_bin += struct.pack('B', mask)
+            """
+            for compact encoding
+            Width of subnet mask      Number of significant octets
+                            0               0
+                         1- 8               1
+                         9-16               2
+                        17-24               3
+                        25-32               4
+            """
+            addr_bin = addrconv.ipv4.text_to_bin(dest)
+            if mask is 0:
+                dest_len = 0
+            elif mask in range(1, 9):
+                dest_len = 1
+            elif mask in range(9, 17):
+                dest_len = 2
+            elif mask in range(17, 25):
+                dest_len = 3
+            elif mask in range(25, 33):
+                dest_len = 4
+            routes_bin += addr_bin[:dest_len]
+            routes_bin += addrconv.ipv4.text_to_bin(route.get('nexthop'))
+
+        return routes_bin
 
     def _get_dhcp_message_type_opt(self, dhcp_packet):
         for opt in dhcp_packet.options.option_list:
