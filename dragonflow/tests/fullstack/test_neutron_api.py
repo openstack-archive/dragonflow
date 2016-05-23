@@ -82,6 +82,37 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(subnet.exists())
         network.close()
 
+    def test_create_subnet_with_host_routes(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create()
+        self.assertTrue(network.exists())
+        subnet = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            network_id,
+        ))
+        subnet_data = {
+            'cidr': '192.168.199.0/24',
+            'ip_version': 4,
+            'network_id': network_id,
+            'host_routes': [
+                {
+                    'destination': '1.1.1.0/24',
+                    'nexthop': '2.2.2.2'
+                },
+                {
+                    'destination': '1.1.2.0/24',
+                    'nexthop': '3.3.3.3'
+                },
+            ]
+        }
+        subnet.create(subnet_data)
+        lswitch = self.nb_api.get_lswitch(network_id)
+        subnet = lswitch.get_subnets()
+        self.assertEqual(
+            0, cmp(subnet_data['host_routes'], subnet[0].get_host_routes())
+        )
+
     def test_create_delete_router(self):
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         router.create()
