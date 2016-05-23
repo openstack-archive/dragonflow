@@ -856,6 +856,9 @@ class LogicalPort(DbStoreObject):
     def get_version(self):
         return self.lport['version']
 
+    def get_host_routes(self):
+        return self.subnet['host_routes']
+
     def __str__(self):
         return self.lport.__str__() + self.external_dict.__str__()
 
