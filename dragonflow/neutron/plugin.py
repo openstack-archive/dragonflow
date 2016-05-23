@@ -300,7 +300,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 cidr=new_subnet['cidr'],
                 dhcp_ip=dhcp_address,
                 gateway_ip=new_subnet['gateway_ip'],
-                dns_nameservers=new_subnet.get('dns_nameservers', []))
+                dns_nameservers=new_subnet.get('dns_nameservers', []),
+                host_routes=new_subnet.get('host_routes', []))
         return new_subnet
 
     @lock_db.wrap_db_lock()
