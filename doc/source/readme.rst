@@ -95,6 +95,20 @@ Zookeeper Database:
 
     enable_service df-zookeeper-server
 
+Redis Database:
+
+    enable_service df-redis
+
+    enable_service df-redis-server
+
+RethinkDB Database(IN-PROGRESS):
+
+    enable_service df-rethinkdb
+
+    enable_service df-rethinkdb-server
+
+    REMOTE_DB_PORT=28015
+
 Detailed Installation
 ---------------------
 
