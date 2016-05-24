@@ -130,6 +130,35 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network.close()
         self.assertFalse(network.exists())
 
+    def test_create_port_with_extra_dhcp_opts(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create()
+        self.assertTrue(network.exists())
+        port = self.store(objects.PortTestObj(self.neutron,
+                          self.nb_api, network_id))
+        port_data = {
+            'admin_state_up': True,
+            'name': 'port1',
+            'network_id': network_id,
+            'extra_dhcp_opts': [
+                {
+                    'opt_value': u'193.168.1.100',
+                    'ip_version': 4,
+                    'opt_name': u'server-name'
+                },
+                {
+                    'opt_value': u'pxelinux.0',
+                    'ip_version': 4,
+                    'opt_name': u'bootfile-name'
+                }
+            ]
+        }
+        port_id = port.create(port_data)
+        lport = self.nb_api.get_logical_port(port_id)
+        self.assertEqual(
+            0, cmp(port_data['extra_dhcp_opts'], lport.get_extra_dhcp_opts())
+        )
+
     def test_delete_router_interface_port(self):
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
