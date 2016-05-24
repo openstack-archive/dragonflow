@@ -247,6 +247,61 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         qospolicy.close()
         self.assertFalse(qospolicy.exists())
 
+    def test_create_port_with_extra_dhcp_opts(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create()
+        self.assertTrue(network.exists())
+        port = self.store(objects.PortTestObj(self.neutron,
+                          self.nb_api, network_id))
+        subnet = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            network_id,
+        ))
+        subnet_data = {
+            'cidr': '192.168.199.0/24',
+            'ip_version': 4,
+            'network_id': network_id,
+            'host_routes': [
+                {
+                    'destination': '1.1.1.0/24',
+                    'nexthop': '2.2.2.2'
+                },
+                {
+                    'destination': '1.1.2.0/24',
+                    'nexthop': '3.3.3.3'
+                },
+            ]
+        }
+        port_data = {
+            'admin_state_up': True,
+            'name': 'port1',
+            'network_id': network_id,
+            'extra_dhcp_opts': [
+                {
+                    'opt_value': u'193.168.199.100',
+                    'ip_version': 4,
+                    'opt_name': u'server-name'
+                },
+                {
+                    'opt_value': u'pxelinux.0',
+                    'ip_version': 4,
+                    'opt_name': u'bootfile-name'
+                }
+            ]
+        }
+        subnet.create(subnet_data)
+        lswitch = self.nb_api.get_lswitch(network_id)
+        subnet = lswitch.get_subnets()
+        port_id = port.create(port_data)
+        lport = self.nb_api.get_logical_port(port_id)
+        self.assertEqual(
+            0, cmp(port_data['extra_dhcp_opts'], lport.get_extra_dhcp_opts())
+        )
+        self.assertEqual(
+            0, cmp(subnet_data['host_routes'], subnet[0].get_host_routes())
+        )
+
     def test_delete_router_interface_port(self):
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
