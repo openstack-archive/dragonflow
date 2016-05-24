@@ -860,6 +860,9 @@ class LogicalPort(DbStoreObject):
     def get_version(self):
         return self.lport['version']
 
+    def get_extra_dhcp_opts(self):
+        return self.lport['extra_dhcp_opts']
+
     def __str__(self):
         return self.lport.__str__() + self.external_dict.__str__()
 

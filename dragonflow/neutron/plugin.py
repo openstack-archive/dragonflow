@@ -664,7 +664,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             device_owner=port.get('device_owner', None),
             security_groups=port.get('security_groups', None),
             port_security_enabled=port[psec.PORTSECURITY],
-            allowed_address_pairs=port[addr_pair.ADDRESS_PAIRS])
+            allowed_address_pairs=port[addr_pair.ADDRESS_PAIRS],
+            extra_dhcp_opts=port.get('extra_dhcp_opts', []))
 
         return port
 
