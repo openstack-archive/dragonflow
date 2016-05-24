@@ -282,6 +282,17 @@ class NbApi(object):
         self._send_db_change_event('secgroup', id, 'create',
                                    secgroup_json, topic)
 
+    def update_security_group(self, id, topic, **columns):
+        secgroup = {}
+        secgroup['id'] = id
+        secgroup['topic'] = topic
+        for col, val in columns.items():
+            secgroup[col] = val
+        secgroup_json = jsonutils.dumps(secgroup)
+        self.driver.set_key('secgroup', id, secgroup_json, topic)
+        self._send_db_change_event('secgroup', id, 'set',
+                                   secgroup_json, topic)
+
     def delete_security_group(self, id, topic):
         self.driver.delete_key('secgroup', id, topic)
         self._send_db_change_event('secgroup', id, 'delete', id,
@@ -487,6 +498,17 @@ class NbApi(object):
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.create_key('lrouter', id, lrouter_json, topic)
         self._send_db_change_event('lrouter', id, 'create', lrouter_json,
+                                   topic)
+
+    def update_lrouter(self, id, topic, **columns):
+        lrouter = {}
+        lrouter['id'] = id
+        lrouter['topic'] = topic
+        for col, val in columns.items():
+            lrouter[col] = val
+        lrouter_json = jsonutils.dumps(lrouter)
+        self.driver.set_key('lrouter', id, lrouter_json, topic)
+        self._send_db_change_event('lrouter', id, 'set', lrouter_json,
                                    topic)
 
     def delete_lrouter(self, id, topic):
