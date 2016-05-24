@@ -24,7 +24,6 @@ SUPPORTED_API_EXTENSIONS = [
     'router',
     'l3_agent_scheduler',
     'subnet_allocation',
-    'dvr',
     'port-security',
     'allowed-address-pairs'
 ]
