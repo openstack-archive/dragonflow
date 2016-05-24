@@ -970,6 +970,9 @@ class LogicalPort(DbStoreObject):
     def get_remote_vtep(self):
         return self.lport.get('remote_vtep', False)
 
+    def get_extra_dhcp_opts(self):
+        return self.lport['extra_dhcp_opts']
+
     def __str__(self):
         lport_with_exteral_dict = dict(self.lport)
         lport_with_exteral_dict['external_dict'] = self.external_dict
