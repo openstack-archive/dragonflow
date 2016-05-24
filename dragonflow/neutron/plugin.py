@@ -742,7 +742,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             port_security_enabled=port[psec.PORTSECURITY],
             binding_profile=port.get('binding:profile', None),
             binding_vnic_type=port.get('binding:vnic_type', None),
-            allowed_address_pairs=port[addr_pair.ADDRESS_PAIRS])
+            allowed_address_pairs=port[addr_pair.ADDRESS_PAIRS],
+            extra_dhcp_opts=port.get('extra_dhcp_opts', []))
 
         return port
 

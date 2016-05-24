@@ -193,6 +193,10 @@ class DHCPApp(df_base_app.DFlowApp):
         netmask_bin = self._get_port_netmask(subnet).packed
         domain_name_bin = struct.pack('!256s', self.domain_name)
         lease_time_bin = struct.pack('!I', self.lease_time)
+        bootfile_name = self._get_bootfile_name(lport)
+        if not bootfile_name:
+            bootfile_name = dhcp_packet.boot_file
+        server_name = self._get_server_name(lport)
         option_list = [
             dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, b'\x05', 1),
             dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask_bin, 4),
@@ -224,10 +228,11 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_ack_pkt.add_protocol(udp.udp(src_port=67, dst_port=68))
         dhcp_ack_pkt.add_protocol(dhcp.dhcp(op=2, chaddr=pkt_ethernet.src,
                                          siaddr=dhcp_server_address,
-                                         boot_file=dhcp_packet.boot_file,
+                                         boot_file=bootfile_name,
                                          yiaddr=lport.get_ip(),
                                          xid=dhcp_packet.xid,
-                                         options=options))
+                                         options=options,
+                                         sname=server_name))
         return dhcp_ack_pkt
 
     def _create_dhcp_offer(self, pkt, dhcp_packet, lport):
@@ -247,7 +252,10 @@ class DHCPApp(df_base_app.DFlowApp):
         lease_time_bin = struct.pack('!I', self.lease_time)
         gateway_address = self._get_port_gateway_address(subnet)
         domain_name_bin = struct.pack('!256s', self.domain_name)
-
+        bootfile_name = self._get_bootfile_name(lport)
+        if not bootfile_name:
+            bootfile_name = dhcp_packet.boot_file
+        server_name = self._get_server_name(lport)
         option_list = [
             dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, b'\x02', 1),
             dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask_bin, 4),
@@ -276,10 +284,11 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_offer_pkt.add_protocol(udp.udp(src_port=67, dst_port=68))
         dhcp_offer_pkt.add_protocol(dhcp.dhcp(op=2, chaddr=pkt_ethernet.src,
                                          siaddr=str(dhcp_server_address),
-                                         boot_file=dhcp_packet.boot_file,
+                                         boot_file=bootfile_name,
                                          yiaddr=lport.get_ip(),
                                          xid=dhcp_packet.xid,
-                                         options=options))
+                                         options=options,
+                                         sname=server_name))
         return dhcp_offer_pkt
 
     def _get_dns_address_list_bin(self, subnet):
@@ -346,6 +355,23 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def _get_port_gateway_address(self, subnet):
         return netaddr.IPAddress(subnet.get_gateway_ip())
+
+    def _get_extra_dhcp_opts_value(self, lport, expected_name):
+        extra_opts = lport.get_extra_dhcp_opts()
+        value = ''
+        for opt in extra_opts:
+            if expected_name == opt['opt_name']:
+                value = opt['opt_value']
+                break
+
+        return value
+
+    def _get_bootfile_name(self, lport):
+        return self._get_extra_dhcp_opts_value(lport, 'bootfile-name')
+
+    def _get_server_name(self, lport):
+        server = self._get_extra_dhcp_opts_value(lport, 'server-name')
+        return struct.pack('!64s', server)
 
     def _get_port_netmask(self, subnet):
         return netaddr.IPNetwork(subnet.get_cidr()).netmask
