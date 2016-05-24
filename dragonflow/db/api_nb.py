@@ -970,7 +970,7 @@ class SecurityGroupRule(DbStoreObject):
         return self.secrule.get('id')
 
     def get_topic(self):
-        return self.secrule.get('topic')
+        return self.secrule.get('tenant_id')
 
     def get_direction(self):
         return self.secrule['direction']
