@@ -227,6 +227,24 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return sg_db
 
     @lock_db.wrap_db_lock()
+    def update_security_group(self, context, sg_id, security_group):
+        with context.session.begin(subtransactions=True):
+            sg_db = super(DFPlugin,
+                          self).update_security_group(context, sg_id,
+                                                      security_group)
+            sg_version = version_db._update_db_version_row(
+                    context.session, sg_id)
+
+        sg_name = sg_db.get('name', df_const.DF_SG_DEFAULT_NAME)
+        tenant_id = sg_db['tenant_id']
+        rules = sg_db.get('security_group_rules')
+
+        self.nb_api.update_security_group(id=sg_id, topic=tenant_id,
+                                          name=sg_name, rules=rules,
+                                          version=sg_version)
+        return sg_db
+
+    @lock_db.wrap_db_lock()
     def create_security_group_rule(self, context, security_group_rule):
         with context.session.begin(subtransactions=True):
             sg_rule = super(DFPlugin, self).create_security_group_rule(
@@ -744,6 +762,23 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    distributed=is_distributed,
                                    version=router_version,
                                    ports=[])
+        return router
+
+    @lock_db.wrap_db_lock()
+    def update_router(self, context, id, router):
+        with context.session.begin(subtransactions=True):
+            router = super(DFPlugin, self).update_router(
+                context, id, router)
+            router_version = version_db._update_db_version_row(
+                    context.session, id)
+
+        tenant_id = router['tenant_id']
+        is_distributed = router.get('distributed', False)
+        router_name = router.get('name', df_const.DF_ROUTER_DEFAULT_NAME)
+        self.nb_api.update_lrouter(id, topic=tenant_id,
+                                   name=router_name,
+                                   distributed=is_distributed,
+                                   version=router_version)
         return router
 
     @lock_db.wrap_db_lock()
