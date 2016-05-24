@@ -102,28 +102,6 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         self.mock_app.assert_has_calls([
                 mock.call.port_desc_stats_reply_handler(ev)])
 
-    def test_port_status_handler(self):
-        self.mock_app.reset_mock()
-        ev = mock.Mock()
-        ev.msg.reason = ev.msg.datapath.ofproto.OFPPR_ADD
-        self.ryu_df_adapter._port_status_handler(ev)
-        port_name = ev.msg.desc.name
-        lport = self.db_store.get_local_port_by_name(port_name)
-        self.mock_app.assert_has_calls([mock.call.add_local_port(lport=lport)])
-        lport.assert_has_calls([
-                mock.call.set_external_value('ofport', ev.msg.desc.port_no),
-                mock.call.set_external_value('is_local', True)])
-
-        self.mock_app.reset_mock()
-        ev = mock.Mock()
-        ev.msg.reason = ev.msg.datapath.ofproto.OFPPR_DELETE
-        self.ryu_df_adapter._port_status_handler(ev)
-        port_name = ev.msg.desc.name
-        lport = self.db_store.get_local_port_by_name(port_name)
-        self.mock_app.assert_has_calls([
-                mock.call.remove_local_port(lport=lport)])
-        #TODO(oanson) Once notification is added, add update_local_port test
-
     def test_packet_in_handler(self):
         self.mock_app.reset_mock()
         ev = mock.Mock()
