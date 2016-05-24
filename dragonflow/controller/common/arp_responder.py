@@ -65,18 +65,18 @@ class ArpResponder(object):
         return instructions
 
     def add(self):
-            match = self._get_match()
-            instructions = self._get_instructions()
-            ofproto = self.datapath.ofproto
-            parser = self.datapath.ofproto_parser
-            msg = parser.OFPFlowMod(datapath=self.datapath,
-                                    table_id=self.table_id,
-                                    cookie=utils.set_aging_cookie_bits(0),
-                                    command=ofproto.OFPFC_ADD,
-                                    priority=const.PRIORITY_MEDIUM,
-                                    match=match, instructions=instructions,
-                                    flags=ofproto.OFPFF_SEND_FLOW_REM)
-            self.datapath.send_msg(msg)
+        match = self._get_match()
+        instructions = self._get_instructions()
+        ofproto = self.datapath.ofproto
+        parser = self.datapath.ofproto_parser
+        msg = parser.OFPFlowMod(datapath=self.datapath,
+                                table_id=self.table_id,
+                                cookie=utils.set_aging_cookie_bits(0),
+                                command=ofproto.OFPFC_ADD,
+                                priority=const.PRIORITY_MEDIUM,
+                                match=match, instructions=instructions,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
+        self.datapath.send_msg(msg)
 
     def remove(self):
         ofproto = self.datapath.ofproto
