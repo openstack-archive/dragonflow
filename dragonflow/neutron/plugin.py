@@ -205,7 +205,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     LOG.exception(_LE("Exception auto-deleting port %s"),
                                   port.id)
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_security_group(self, context, security_group,
                               default_sg=False):
         with context.session.begin(subtransactions=True):
@@ -224,7 +224,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                           version=sg_version)
         return sg_db
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_security_group_rule(self, context, security_group_rule):
         with context.session.begin(subtransactions=True):
             sg_rule = super(DFPlugin, self).create_security_group_rule(
@@ -238,7 +238,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                              sg_version=sg_version_id)
         return sg_rule
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def delete_security_group_rule(self, context, id):
         with context.session.begin(subtransactions=True):
             security_group_rule = self.get_security_group_rule(context, id)
@@ -251,7 +251,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                                sg_group['tenant_id'],
                                                sg_version=sg_version_id)
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def delete_security_group(self, context, sg_id):
         sg = self.get_security_group(context, sg_id)
         tenant_id = sg['tenant_id']
@@ -261,7 +261,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     context.session, sg_id)
         self.nb_api.delete_security_group(sg_id, topic=tenant_id)
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_subnet(self, context, subnet):
         net_id = subnet['subnet']['network_id']
         new_subnet = None
@@ -303,7 +303,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 dns_nameservers=new_subnet.get('dns_nameservers', []))
         return new_subnet
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_subnet(self, context, id, subnet):
         dhcp_port = None
         new_subnet = None
@@ -347,7 +347,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 dns_nameservers=new_subnet.get('dns_nameservers', []))
         return new_subnet
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def delete_subnet(self, context, id):
         orig_subnet = super(DFPlugin, self).get_subnet(context, id)
         net_id = orig_subnet['network_id']
@@ -367,7 +367,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 LOG.debug("network %s is not found in DB, might have "
                           "been deleted concurrently" % net_id)
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_network(self, context, network):
         with context.session.begin(subtransactions=True):
             result = super(DFPlugin, self).create_network(context,
@@ -394,7 +394,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    subnets=[])
         return network
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def delete_network(self, context, network_id):
         with context.session.begin(subtransactions=True):
             network = self.get_network(context, network_id)
@@ -421,7 +421,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             LOG.debug("lswitch %s is not found in DF DB, might have "
                       "been deleted concurrently" % network_id)
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_network(self, context, network_id, network):
         pnet._raise_if_updates_provider_attributes(network['network'])
         with context.session.begin(subtransactions=True):
@@ -444,7 +444,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    version=network_version)
         return result
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_port(self, context, id, port):
         with context.session.begin(subtransactions=True):
             parent_name, tag = self._get_data_from_binding_profile(
@@ -585,7 +585,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         return port_security_enabled
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_port(self, context, port):
         with context.session.begin(subtransactions=True):
             parent_name, tag = self._get_data_from_binding_profile(
@@ -688,7 +688,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                           {'port_id': port['id'],
                            'port_owner': port['device_owner']})
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def delete_port(self, context, port_id, l3_port_check=True):
         port = self.get_port(context, port_id)
         self._pre_delete_port(port, l3_port_check)
@@ -719,7 +719,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self._process_extra_attr_router_create(context, router_db, router)
             return router_db
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_router(self, context, router):
         with context.session.begin(subtransactions=True):
             router = super(DFPlugin, self).create_router(
@@ -738,7 +738,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    ports=[])
         return router
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def delete_router(self, context, router_id):
         router = self.get_router(context, router_id)
         with context.session.begin(subtransactions=True):
@@ -753,7 +753,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                       "been deleted concurrently" % router_id)
         return ret_val
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def add_router_interface(self, context, router_id, interface_info):
         add_by_port, add_by_sub = self._validate_interface_info(
             interface_info)
@@ -800,7 +800,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                      tunnel_key=logical_port.get_tunnel_key())
         return result
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def remove_router_interface(self, context, router_id, interface_info):
         with context.session.begin(subtransactions=True):
             new_router = super(DFPlugin, self).remove_router_interface(
@@ -929,7 +929,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             return gateway_subnet
         return None
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_floatingip(self, context, floatingip):
         try:
             floatingip_port = None
@@ -979,7 +979,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         return floatingip_dict
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_floatingip(self, context, id, floatingip):
         with context.session.begin(subtransactions=True):
             floatingip_dict = super(DFPlugin, self).update_floatingip(
@@ -999,7 +999,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             status=floatingip_dict['status'])
         return floatingip_dict
 
-    @lock_db.wrap_db_lock()
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def delete_floatingip(self, context, id):
         with context.session.begin(subtransactions=True):
             floatingip = self.get_floatingip(context, id)
