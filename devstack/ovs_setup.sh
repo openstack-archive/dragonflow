@@ -3,7 +3,7 @@
 
 function _neutron_ovs_get_dnf {
     if is_fedora; then
-        if [ $OS_RELEASE -ge 22 ]; then
+        if [ $os_RELEASE -ge 22 ]; then
             echo "dnf"
         else
             echo "yum"
@@ -14,11 +14,11 @@ function _neutron_ovs_get_dnf {
 }
 
 function _neutron_ovs_install_ovs_deps_fedora {
-    DNF=`_neutron_ovs_get_dnf`
-    sudo $DNF install -y rpm-build
+    DNF=${1:-`_neutron_ovs_get_dnf`}
+    sudo $DNF install -y rpm-build rpmrebuild
     # So apparently we need to compile to learn the requirements...
-    set `cat ../rhel/openvswitch-fedora.spec.in | sed 's/@VERSION@/0/' | rpmspec -q --buildrequires /dev/stdin`
-    set "$@" `cat ../rhel/openvswitch-kmod-fedora.spec.in | sed 's/@VERSION@/0/' | rpmspec -q --buildrequires /dev/stdin`
+    set `rpmspec -q --buildrequires rhel/openvswitch-fedora.spec`
+    set "$@" `rpmspec -q --buildrequires rhel/openvswitch-kmod-fedora.spec`
     if [ $# > 0 ]; then
         sudo $DNF install -y $@
     fi
@@ -26,14 +26,14 @@ function _neutron_ovs_install_ovs_deps_fedora {
 
 function _neutron_ovs_get_rpm_basename {
     PACKAGE=$1
-    SPEC=${2:-../rhel/openvswitch-fedora.spec}
+    SPEC=${2:-rhel/openvswitch-fedora.spec}
     BASENAME=`rpmspec -q $SPEC --provides | awk "/^$PACKAGE\s*=/ {print \\\$1\"-\"\\\$3}" |  head -1`
     echo `rpmspec -q $SPEC | grep "^$BASENAME"`
 }
 
 function _neutron_ovs_get_rpm_file {
     BASENAME=`_neutron_ovs_get_rpm_basename "$@"`
-    find -name "$BASENAME.rpm" | head -1
+    find $HOME/rpmbuild/RPMS/ -name "$BASENAME.rpm" | head -1
 }
 
 function _neutron_ovs_clone_ovs {
@@ -60,17 +60,28 @@ function _neutron_ovs_install_ovs_fedora {
     popd
 
     ../configure
-    make
-    _neutron_ovs_install_ovs_deps_fedora
-    make rpm-fedora RPMBUILD_OPT="--without check"
-    make rpm-fedora-kmod
-    OVS_RPM_BASENAME=`_neutron_ovs_get_rpm_file openvswitch`
-    OVS_PY_RPM_BASENAME=""
-    OVS_KMOD_RPM_BASENAME=`_neutron_ovs_get_rpm_file openvswitch-kmod ../rhel/openvswitch-kmod-fedora.spec`
+    make dist
+    VERSION=`awk '/^Version:/ { print $2 }' ../rhel/openvswitch-fedora.spec | head -1`
     DNF=`_neutron_ovs_get_dnf`
-    sudo $DNF install -y $OVS_RPM_BASENAME $OVS_PY_RPM_BASENAME $OVS_KMOD_RPM_BASENAME
-    sudo pip install ../python
+    sudo bash << EOF
+source $DEST/dragonflow/devstack/ovs_setup.sh
+cd $PWD
 
+mkdir -p \$HOME/rpmbuild/SOURCES
+cp openvswitch-${VERSION}.tar.gz \$HOME/rpmbuild/SOURCES/
+tar -xzf openvswitch-${VERSION}.tar.gz -C \$HOME/rpmbuild/SOURCES
+pushd \$HOME/rpmbuild/SOURCES/openvswitch-${VERSION}
+_neutron_ovs_install_ovs_deps_fedora $DNF
+rpmbuild -bb --without check rhel/openvswitch-fedora.spec
+rpmbuild -bb -D "kversion `uname -r`"  rhel/openvswitch-kmod-fedora.spec
+OVS_RPM_BASENAME=\$(_neutron_ovs_get_rpm_file openvswitch)
+rpmrebuild --change-spec-requires="awk '\\\$1 == \\\"Requires:\\\" && \\\$2 == \\\"/bin/python\\\" {\\\$2 = \\\"/usr/bin/python\\\"}  {print \\\$0}'" -p \$OVS_RPM_BASENAME
+OVS_PY_RPM_BASENAME=""
+OVS_KMOD_RPM_BASENAME=\$(_neutron_ovs_get_rpm_file openvswitch-kmod rhel/openvswitch-kmod-fedora.spec)
+$DNF install -y \$OVS_RPM_BASENAME \$OVS_PY_RPM_BASENAME \$OVS_KMOD_RPM_BASENAME
+pip install ./python
+popd
+EOF
     popd
 }
 
