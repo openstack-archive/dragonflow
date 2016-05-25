@@ -183,7 +183,11 @@ class DfLocalController(object):
 
     def logical_switch_deleted(self, lswitch_id):
         lswitch = self.db_store.get_lswitch(lswitch_id)
-        LOG.info(_LI("Removing Logical Switch = %s") % lswitch.__str__())
+        LOG.info(_LI("Removing Logical Switch = %s") % lswitch_id)
+        if lswitch is None:
+            LOG.warning(_LW("Try to delete a nonexistent lswitch(%s)") %
+                        lswitch_id)
+            return
         self.open_flow_app.notify_remove_logical_switch(lswitch)
         self.db_store.del_lswitch(lswitch_id)
         self.db_store.del_network_id(lswitch_id)
