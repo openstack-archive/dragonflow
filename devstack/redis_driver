@@ -9,7 +9,7 @@
 # - nb_db_driver_stop_server
 # - nb_db_driver_clean
 
-REDIS_VERSION=3.0.6
+REDIS_VERSION=3.2.0
 RUBY_VERSION=2.3
 REDIS_SERVER_LIST=$REMOTE_DB_IP
 REMOTE_PORT_START=$REMOTE_DB_PORT
@@ -76,10 +76,10 @@ function nb_db_driver_install_server {
             sudo ./configure
             sudo make
             sudo make install
-            gem list redis | grep redis
+            ! gem list redis | grep -q redis
             if [ $? -eq 0 ];then
-                sudo gem source -a https://rubygems.org/
-                sudo gem install redis
+                gem source -a https://rubygems.org/
+                gem install redis
             fi
 
             popd
