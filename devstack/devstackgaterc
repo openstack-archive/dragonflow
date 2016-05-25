@@ -17,7 +17,8 @@
 # http://git.openstack.org/cgit/openstack-infra/project-config/tree/jenkins/jobs/dragonflow.yaml
 #
 
-export OVERRIDE_ENABLED_SERVICES=key,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,c-sch,c-api,c-vol,horizon,rabbit,mysql,dstat,df-controller,df-etcd,df-etcd-server,q-svc,df-l3-agent,df-zmq-publisher-service
+export OVERRIDE_ENABLED_SERVICES=key,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,c-sch,c-api,c-vol,horizon,rabbit,mysql,dstat,df-controller,df-redis,df-redis-server,q-svc,q-l3
+export DF_REDIS_PUBSUB=True
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_RUNNING_IN_GATE=True"
 
 if [ -z "${RALLY_SCENARIO}" ] ; then
