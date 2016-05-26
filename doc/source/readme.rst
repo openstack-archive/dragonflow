@@ -95,6 +95,12 @@ Zookeeper Database:
 
     enable_service df-zookeeper-server
 
+Redis Database:
+
+    enable_service df-redis
+
+    enable_service df-redis-server
+
 Detailed Installation
 ---------------------
 
