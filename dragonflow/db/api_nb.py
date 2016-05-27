@@ -280,6 +280,10 @@ class NbApi(object):
         secgroup['id'] = id
         secgroup['topic'] = topic
         for col, val in columns.items():
+            if col == 'rules':
+                for rule in val:
+                    rule['topic'] = rule.get('tenant_id')
+                    del rule['tenant_id']
             secgroup[col] = val
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.create_key('secgroup', id, secgroup_json, topic)
@@ -295,6 +299,9 @@ class NbApi(object):
             self, sg_id, topic, **columns):
         secgroup_json = self.driver.get_key('secgroup', sg_id, topic)
         new_rules = columns.get('sg_rules')
+        for rule in new_rules:
+            rule['topic'] = rule.get('tenant_id')
+            del rule['tenant_id']
         sg_version_id = columns.get('sg_version')
         secgroup = jsonutils.loads(secgroup_json)
         rules = secgroup.get('rules', [])
