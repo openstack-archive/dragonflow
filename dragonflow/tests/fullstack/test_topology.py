@@ -71,7 +71,7 @@ class TestTopology(test_base.DFTestBase):
 
     def _get_vm_flows(self, vm_mac):
         ovs_flows_parser = OvsFlowsParser()
-        flows = ovs_flows_parser.dump()
+        flows = ovs_flows_parser.dump(self.integration_bridge)
         flows = [flow for flow in flows if
                  flow['table'] == str(const.ARP_TABLE) and
                  vm_mac in flow['actions']]

@@ -26,8 +26,12 @@ PUBLISHERS_HOSTS=${PUBLISHERS_HOSTS:-"$SERVICE_HOST"}
 
 # OVS bridge definition
 PUBLIC_BRIDGE=${PUBLIC_BRIDGE:-br-ex}
+INTEGRATION_BRIDGE=${INTEGRATION_BRIDGE:-br-int}
+INTEGRATION_PEER_PORT=${INTEGRATION_PEER_PORT:-patch-ex}
+PUBLIC_PEER_PORT=${PUBLIC_PEER_PORT:-patch-int}
 
 # OVS related pid files
+#----------------------
 OVS_DB_SERVICE="ovsdb-server"
 OVS_VSWITCHD_SERVICE="ovs-vswitchd"
 OVS_DIR="/var/run/openvswitch"
@@ -102,6 +106,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
+        iniset $NEUTRON_CONF df integration_bridge "$INTEGRATION_BRIDGE"
         iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
         iniset $NEUTRON_CONF df monitor_table_poll_time "$DF_MONITOR_TABLE_POLL_TIME"
         iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
@@ -110,9 +115,15 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"
         iniset $NEUTRON_CONF df publisher_rate_limit_timeout "$PUBLISHER_RATE_LIMIT_TIMEOUT"
         iniset $NEUTRON_CONF df publisher_rate_limit_count "$PUBLISHER_RATE_LIMIT_COUNT"
+<<<<<<< be3f6a0359b6d05248424d55263c8b8d1856c08c
         iniset $NEUTRON_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
         iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "patch-ex"
         iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "patch-int"
+=======
+        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "br-ex"
+        iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
+        iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
+>>>>>>> Re-implement the usage of br-int
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins ""
@@ -159,13 +170,20 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
+        iniset $NEUTRON_CONF df integration_bridge "$INTEGRATION_BRIDGE"
         iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
         iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
         iniset $NEUTRON_CONF df enable_df_pub_sub "$DF_PUB_SUB"
         iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"
+<<<<<<< be3f6a0359b6d05248424d55263c8b8d1856c08c
         iniset $NEUTRON_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
         iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "patch-ex"
         iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "patch-int"
+=======
+        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "br-ex"
+        iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
+        iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
+>>>>>>> Re-implement the usage of br-int
 
         if [[ "$DF_PUB_SUB" == "True" ]]; then
             DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
@@ -289,7 +307,7 @@ function start_df {
     echo "Starting Dragonflow"
 
     if is_service_enabled df-controller ; then
-        sudo ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
+        sudo ovs-vsctl --no-wait set-controller $INTEGRATION_BRIDGE tcp:$HOST_IP:6633
         run_process df-controller "python $DF_LOCAL_CONTROLLER --config-file $NEUTRON_CONF"
         run_process df-ext-services "bash $DEST/dragonflow/devstack/df-ext-services.sh"
     fi

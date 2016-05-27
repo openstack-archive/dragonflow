@@ -40,7 +40,7 @@ class ArpResponderTest(test_base.DFTestBase):
 
     def _get_arp_table_flows(self):
         ovs_flows_parser = test_utils.OvsFlowsParser()
-        flows = ovs_flows_parser.dump()
+        flows = ovs_flows_parser.dump(self.integration_bridge)
         flows = [flow for flow in flows
                 if flow['table'] == str(const.ARP_TABLE)]
         return flows
