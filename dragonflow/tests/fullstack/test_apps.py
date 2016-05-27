@@ -43,11 +43,11 @@ class TestApps(test_base.DFTestBase):
             test_utils.print_command(['ip', 'addr'])
             test_utils.print_command(['ovs-vsctl', 'show'], True)
             test_utils.print_command(
-                ['ovs-ofctl', 'show', 'br-int'],
+                ['ovs-ofctl', 'show', self.integration_bridge],
                 True
             )
             test_utils.print_command(
-                ['ovs-ofctl', 'dump-flows', 'br-int'],
+                ['ovs-ofctl', 'dump-flows', self.integration_bridge],
                 True
             )
             test_utils.print_command(
@@ -87,7 +87,7 @@ class TestArpResponder(test_base.DFTestBase):
             send_arp_request = app_testing_objects.SendAction(
                 subnet1.subnet_id,
                 port1.port_id,
-                str(arp_packet),
+                str(arp_packet)
             )
             ignore_action = app_testing_objects.IgnoreAction()
             log_action = app_testing_objects.LogAction()
@@ -391,7 +391,8 @@ class TestDHCPApp(test_base.DFTestBase):
     def test_dhcp_app_dos_block(self):
         def internal_predicate():
             ovs = test_utils.OvsFlowsParser()
-            return (self._check_dhcp_block_rule(ovs.dump()))
+            return (self._check_dhcp_block_rule(
+                ovs.dump(self.integration_bridge)))
 
         dhcp_packet = self._create_dhcp_discover()
         send_dhcp_offer = app_testing_objects.SendAction(
@@ -948,7 +949,8 @@ class TestSGApp(test_base.DFTestBase):
         self.policy.wait(30)
 
         ovs = test_utils.OvsFlowsParser()
-        LOG.info(_LI("flows are: %s"), ovs.get_ovs_flows())
+        LOG.info(_LI("flows are: %s"),
+                 ovs.get_ovs_flows(self.integration_bridge))
 
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
