@@ -48,12 +48,14 @@ class DFTestBase(base.BaseTestCase):
              tenant_name=tenant_name)
         self.neutron.format = 'json'
         common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
+        self.conf = cfg.CONF.df
+        self.integration_bridge = self.conf.integration_bridge
 
-        db_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        db_driver_class = importutils.import_class(self.conf.nb_db_class)
         self.nb_api = api_nb.NbApi(db_driver_class())
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-            db_port=cfg.CONF.df.remote_db_port)
-        self.local_ip = cfg.CONF.df.local_ip
+        self.nb_api.initialize(db_ip=self.conf.remote_db_ip,
+            db_port=self.conf.remote_db_port)
+        self.local_ip = self.conf.local_ip
         self.__objects_to_close = []
         if cfg.CONF.df.enable_selective_topology_distribution:
             self.start_subscribing()
@@ -67,7 +69,7 @@ class DFTestBase(base.BaseTestCase):
         self._topology = self.store(
             test_objects.Topology(self.neutron, self.nb_api))
         subnet = self._topology.create_subnet(cidr="192.168.200.0/24")
-        port = subnet.create_port()
+        port = subnet.create_port(self.integration_bridge)
         wait_until_true(
             lambda: port.name is not None, timeout=30,
             exception=Exception('Port was not created')

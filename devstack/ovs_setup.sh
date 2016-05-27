@@ -153,8 +153,8 @@ function start_ovs {
         load_module_if_not_loaded geneve || true
         load_module_if_not_loaded vport_geneve || true
 
-        _neutron_ovs_base_setup_bridge br-int
-        sudo ovs-vsctl --no-wait set bridge br-int fail-mode=secure other-config:disable-in-band=true
+        _neutron_ovs_base_setup_bridge $INTEGRATION_BRIDGE
+        sudo ovs-vsctl --no-wait set bridge $INTEGRATION_BRIDGE fail-mode=secure other-config:disable-in-band=true
     fi
 
     cd $_pwd

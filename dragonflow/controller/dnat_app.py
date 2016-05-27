@@ -61,6 +61,7 @@ class DNATApp(DFlowApp):
         cfg.CONF.register_opts(DF_DNAT_APP_OPTS, group='df_dnat_app')
         self.external_network_bridge = \
             cfg.CONF.df_dnat_app.external_network_bridge
+        self.integration_bridge = cfg.CONF.df.integration_bridge
         self.int_peer_patch_port = cfg.CONF.df_dnat_app.int_peer_patch_port
         self.ex_peer_patch_port = cfg.CONF.df_dnat_app.ex_peer_patch_port
         self.send_arp_interval = cfg.CONF.df_dnat_app.send_arp_interval
@@ -98,7 +99,7 @@ class DNATApp(DFlowApp):
 
     def _init_external_bridge(self):
         self.external_ofport = self.vswitch_api.create_patch_port(
-            const.DRAGONFLOW_DEFAULT_BRIDGE,
+            self.integration_bridge,
             self.ex_peer_patch_port,
             self.int_peer_patch_port)
         self.vswitch_api.create_patch_port(
