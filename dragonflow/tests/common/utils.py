@@ -51,8 +51,9 @@ def print_command(full_args, run_as_root=False):
 
 class OvsFlowsParser(object):
 
-    def get_ovs_flows(self):
-        full_args = ["ovs-ofctl", "dump-flows", 'br-int', '-O Openflow13']
+    def get_ovs_flows(self, integration_bridge):
+        full_args = ["ovs-ofctl", "dump-flows", integration_bridge,
+                     "-O Openflow13"]
         flows = utils.execute(full_args, run_as_root=True,
                               process_input=None)
         return flows
@@ -82,8 +83,8 @@ class OvsFlowsParser(object):
         result = [v for v in list2 if v not in list1]
         return result
 
-    def dump(self):
-        flows = self.get_ovs_flows()
+    def dump(self, integration_bridge):
+        flows = self.get_ovs_flows(integration_bridge)
         return self._parse_ovs_flows(flows)
 
 

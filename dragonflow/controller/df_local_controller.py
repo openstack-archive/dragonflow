@@ -67,6 +67,7 @@ class DfLocalController(object):
         self.topology = None
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
+        self.integration_bridge = cfg.CONF.df.integration_bridge
 
     def run(self):
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
@@ -83,12 +84,13 @@ class DfLocalController(object):
         targets = 'tcp:' + self.ip + ':6633'
         is_controller_set = self.vswitch_api.check_controller(targets)
         if not is_controller_set:
-            self.vswitch_api.set_controllers('br-int', [targets]).execute()
+            self.vswitch_api.set_controllers(self.integration_bridge,
+                                             [targets]).execute()
         is_fail_mode_set = self.vswitch_api.check_controller_fail_mode(
             'secure')
         if not is_fail_mode_set:
             self.vswitch_api.set_controller_fail_mode(
-                'br-int', 'secure').execute()
+                self.integration_bridge, 'secure').execute()
         self.open_flow_app.start()
         self.db_sync_loop()
 
