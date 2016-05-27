@@ -74,7 +74,8 @@ class TestL2Multicast(test_base.DFTestBase):
         mac = vm.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
         metadataid = utils.wait_until_is_and_return(
-            lambda: self._get_metadata_id(ovs.dump(), ip, mac),
+            lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
+                                          ip, mac),
             exception=Exception('Metadata id was not found in OpenFlow rules')
         )
         port = utils.wait_until_is_and_return(
@@ -83,7 +84,8 @@ class TestL2Multicast(test_base.DFTestBase):
         )
         tunnel_key = port.get_tunnel_key()
         tunnel_key_hex = hex(tunnel_key)
-        r = self._check_multicast_rule(ovs.dump(), metadataid, tunnel_key_hex)
+        r = self._check_multicast_rule(ovs.dump(self.integration_bridge),
+                                       metadataid, tunnel_key_hex)
         self.assertIsNotNone(r)
         vm.server.stop()
         vm.close()
