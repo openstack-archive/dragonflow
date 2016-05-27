@@ -35,19 +35,19 @@ class TestApps(test_base.DFTestBase):
             topology = app_testing_objects.Topology(self.neutron, self.nb_api)
             subnet1 = topology.create_subnet(cidr='192.168.10.0/24')
             subnet2 = topology.create_subnet(cidr='192.168.11.0/24')
-            port1 = subnet1.create_port()
-            port2 = subnet2.create_port()
+            port1 = subnet1.create_port(self.integration_bridge)
+            port2 = subnet2.create_port(self.integration_bridge)
             topology.create_router([subnet1.subnet_id, subnet2.subnet_id])
             LOG.info(_LI('Port1 name: {}').format(port1.tap.tap.name))
             LOG.info(_LI('Port2 name: {}').format(port2.tap.tap.name))
             test_utils.print_command(['ip', 'addr'])
             test_utils.print_command(['ovs-vsctl', 'show'], True)
             test_utils.print_command(
-                ['ovs-ofctl', 'show', 'br-int'],
+                ['ovs-ofctl', 'show', self.integration_bridge],
                 True
             )
             test_utils.print_command(
-                ['ovs-ofctl', 'dump-flows', 'br-int'],
+                ['ovs-ofctl', 'dump-flows', self.integration_bridge],
                 True
             )
             test_utils.print_command(
@@ -76,8 +76,8 @@ class TestArpResponder(test_base.DFTestBase):
                 self.neutron,
                 self.nb_api)
             subnet1 = self.topology.create_subnet(cidr='192.168.10.0/24')
-            port1 = subnet1.create_port()
-            port2 = subnet1.create_port()
+            port1 = subnet1.create_port(self.integration_bridge)
+            port2 = subnet1.create_port(self.integration_bridge)
             time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
             # Create policy
             arp_packet = self._create_arp_request(
@@ -88,6 +88,7 @@ class TestArpResponder(test_base.DFTestBase):
                 subnet1.subnet_id,
                 port1.port_id,
                 str(arp_packet),
+                self.integration_bridge
             )
             ignore_action = app_testing_objects.IgnoreAction()
             log_action = app_testing_objects.LogAction()
@@ -180,15 +181,16 @@ class TestDHCPApp(test_base.DFTestBase):
                 )
             )
             self.subnet1 = self.topology.create_subnet(cidr='192.168.11.0/24')
-            self.port1 = self.subnet1.create_port()
-            self.port2 = self.subnet1.create_port()
+            self.port1 = self.subnet1.create_port(self.integration_bridge)
+            self.port2 = self.subnet1.create_port(self.integration_bridge)
             time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
             # Create policy
             dhcp_packet = self._create_dhcp_discover()
             send_dhcp_offer = app_testing_objects.SendAction(
                 self.subnet1.subnet_id,
                 self.port1.port_id,
-                str(dhcp_packet)
+                str(dhcp_packet),
+                self.integration_bridge
             )
             port_policies = self._create_port_policies()
             self.policy = self.store(
@@ -302,7 +304,8 @@ class TestDHCPApp(test_base.DFTestBase):
                 app_testing_objects.SendAction(
                     self.subnet1.subnet_id,
                     self.port1.port_id,
-                    self._create_dhcp_request
+                    self._create_dhcp_request,
+                    self.integration_bridge
                 )]
         if disable_rule:
             actions.append(app_testing_objects.DisableRuleAction())
@@ -322,7 +325,8 @@ class TestDHCPApp(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet1.subnet_id,
                         self.port1.port_id,
-                        self._create_dhcp_renewal_request
+                        self._create_dhcp_renewal_request,
+                        self.integration_bridge
                     ),
                 ]
             ),
@@ -391,13 +395,15 @@ class TestDHCPApp(test_base.DFTestBase):
     def test_dhcp_app_dos_block(self):
         def internal_predicate():
             ovs = test_utils.OvsFlowsParser()
-            return (self._check_dhcp_block_rule(ovs.dump()))
+            return (self._check_dhcp_block_rule(
+                ovs.dump(self.integration_bridge)))
 
         dhcp_packet = self._create_dhcp_discover()
         send_dhcp_offer = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
             self.port1.port_id,
-            str(dhcp_packet)
+            str(dhcp_packet),
+            self.integration_bridge
         )
 
         port_policies = self._create_port_policies(disable_rule=False)
@@ -431,8 +437,8 @@ class TestL3App(test_base.DFTestBase):
             )
             self.subnet1 = self.topology.create_subnet(cidr='192.168.12.0/24')
             self.subnet2 = self.topology.create_subnet(cidr='192.168.13.0/24')
-            self.port1 = self.subnet1.create_port()
-            self.port2 = self.subnet2.create_port()
+            self.port1 = self.subnet1.create_port(self.integration_bridge)
+            self.port2 = self.subnet2.create_port(self.integration_bridge)
             self.router = self.topology.create_router([
                 self.subnet1.subnet_id,
                 self.subnet2.subnet_id,
@@ -446,7 +452,8 @@ class TestL3App(test_base.DFTestBase):
                         app_testing_objects.SendAction(
                             self.subnet1.subnet_id,
                             self.port1.port_id,
-                            self._create_ping_packet
+                            self._create_ping_packet,
+                            self.integration_bridge
                         ),
                     ],
                     port_policies=port_policies,
@@ -494,7 +501,8 @@ class TestL3App(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet2.subnet_id,
                         self.port2.port_id,
-                        self._create_pong_packet
+                        self._create_pong_packet,
+                        self.integration_bridge
                     ),
                     app_testing_objects.DisableRuleAction(),
                 ]
@@ -670,9 +678,10 @@ class TestSGApp(test_base.DFTestBase):
             self.assertTrue(security_group2.rule_exists(ingress_rule_id2))
 
             self.subnet = self.topology.create_subnet(cidr='192.168.14.0/24')
-            self.port1 = self.subnet.create_port()
-            self.port2 = self.subnet.create_port()
-            self.port3 = self.subnet.create_port([security_group_id])
+            self.port1 = self.subnet.create_port(self.integration_bridge)
+            self.port2 = self.subnet.create_port(self.integration_bridge)
+            self.port3 = self.subnet.create_port(self.integration_bridge,
+                                                 [security_group_id])
 
             self.active_security_group_id = security_group_id
             self.inactive_security_group_id = security_group_id2
@@ -703,12 +712,14 @@ class TestSGApp(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet.subnet_id,
                         self.port1.port_id,
-                        str(packet1.data)
+                        str(packet1.data),
+                        self.integration_bridge
                     ),
                     app_testing_objects.SendAction(
                         self.subnet.subnet_id,
                         self.port2.port_id,
-                        str(packet2.data)
+                        str(packet2.data),
+                        self.integration_bridge
                     )
                 ],
                 port_policies=port_policies,
@@ -787,7 +798,8 @@ class TestSGApp(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet.subnet_id,
                         self.port3.port_id,
-                        self._create_pong_packet
+                        self._create_pong_packet,
+                        self.integration_bridge
                     ),
                     app_testing_objects.DisableRuleAction(),
                 ]
@@ -948,7 +960,8 @@ class TestSGApp(test_base.DFTestBase):
         self.policy.wait(30)
 
         ovs = test_utils.OvsFlowsParser()
-        LOG.info(_LI("flows are: %s"), ovs.get_ovs_flows())
+        LOG.info(_LI("flows are: %s"),
+                 ovs.get_ovs_flows(self.integration_bridge))
 
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
@@ -992,14 +1005,15 @@ class TestPortSecApp(test_base.DFTestBase):
             self.subnet = self.topology.create_subnet(
                 cidr='192.168.196.0/24'
             )
-            self.port1 = self.subnet.create_port()
+            self.port1 = self.subnet.create_port(self.integration_bridge)
             self.port1.update({
                 "allowed_address_pairs": [
                     {"ip_address": "192.168.196.100",
                      "mac_address": "10:20:99:99:99:99"}
                 ]
             })
-            self.port2 = self.subnet.create_port([security_group_id])
+            self.port2 = self.subnet.create_port(self.integration_bridge,
+                                                 [security_group_id])
 
             time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
 
