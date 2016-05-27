@@ -38,6 +38,14 @@ df_opts = [
                        'l3_proactive_app.L3ProactiveApp,'
                        'dhcp_app.DHCPApp',
                help=_('List of openflow applications classes to load')),
+    cfg.StrOpt('integration_bridge', default='br-int',
+               help=_("Integration bridge to use. "
+                      "Do not change this parameter unless you have a good "
+                      "reason to. This is the name of the OVS integration "
+                      "bridge. There is one per hypervisor. The integration "
+                      "bridge acts as a virtual 'patch bay'. All VM VIFs are "
+                      "attached to this bridge and then 'patched' according "
+                      "to their network connectivity.")),
     cfg.BoolOpt('use_centralized_ipv6_DHCP',
                 default=False,
                 help=_("Enable IPv6 DHCP by using DHCP agent")),

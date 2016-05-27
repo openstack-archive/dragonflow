@@ -21,14 +21,19 @@ import socket
 import threading
 import time
 
+from oslo_cfg import cfg
 from oslo_log import log
 
 from neutron.agent.common import utils
 
 from dragonflow._i18n import _LI, _LE
+from dragonflow.common import common_params
 from dragonflow.common.utils import DFDaemon
 from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_objects as objects
+
+
+cfg.CONF.register_opts(common_params.df_opts, 'df')
 
 LOG = log.getLogger(__name__)
 
@@ -239,6 +244,7 @@ class LogicalPortTap(object):
         :type port:  Port
         """
         self.port = port
+        self.integration_bridge = cfg.CONF.df.integration_bridge
         self.lport = self.port.get_logical_port()
         self.tap = self._create_tap_device()
         self.is_blocking = True
@@ -248,7 +254,7 @@ class LogicalPortTap(object):
         name = self._get_tap_interface_name()
         create_tap_dev(name, self.lport.get_mac())
         tap = pytun.TunTapDevice(flags=flags, name=name)
-        self._connect_tap_device_to_vswitch('br-int', tap.name)
+        self._connect_tap_device_to_vswitch(self.integration_bridge, tap.name)
         tap.up()
         return tap
 
@@ -276,7 +282,8 @@ class LogicalPortTap(object):
         utils.execute(full_args, run_as_root=True, process_input=None)
 
     def delete(self):
-        self._disconnect_tap_device_to_vswitch('br-int', self.tap.name)
+        self._disconnect_tap_device_to_vswitch(self.integration_bridge,
+                                               self.tap.name)
         LOG.info(_LI('Closing tap interface {} ({})').format(
             self.tap.name,
             self.tap.fileno(),
@@ -727,6 +734,11 @@ class SendAction(Action):
 
 
 class SimulateAndSendAction(SendAction):
+    def __init__(self, subnet_id, port_id, packet):
+        super(SimulateAndSendAction, self).__init__(subnet_id, port_id,
+                                                    packet)
+        self.integration_bridge = cfg.CONF.df.integration_bridge
+
     def _send(self, policy, packet):
         interface_object = self._get_interface_object(policy.topology)
         interface_name = interface_object.tap.name
@@ -735,7 +747,8 @@ class SimulateAndSendAction(SendAction):
         return super(SimulateAndSendAction, self)._send(policy, packet)
 
     def _get_port_number(self, interface_name):
-        ovs_ofctl_args = ['ovs-ofctl', 'dump-ports', 'br-int', interface_name]
+        ovs_ofctl_args = ['ovs-ofctl', 'dump-ports', self.integration_bridge,
+                          interface_name]
         awk_args = ['awk', '/^\\s*port\\s+[0-9]+:/ { print $2 }']
         ofctl_output = utils.execute(
             ovs_ofctl_args,
@@ -756,7 +769,7 @@ class SimulateAndSendAction(SendAction):
         args = [
             'ovs-appctl',
             'ofproto/trace',
-            'br-int',
+            self.integration_bridge,
             'in_port:{}'.format(port_number),
             packet_str,
         ]
