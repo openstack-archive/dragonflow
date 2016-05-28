@@ -27,7 +27,7 @@ from oslo_serialization import jsonutils
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC, \
-                                     DB_SYNC_MINIMUM_INTERVAL
+    DB_SYNC_MINIMUM_INTERVAL
 from dragonflow.db import pub_sub_api
 
 eventlet.monkey_patch()
@@ -60,12 +60,12 @@ class NbApi(object):
             self.publisher = self._get_publisher()
             self.subscriber = self._get_subscriber()
             if self.is_neutron_server:
-                #Publisher is part of the neutron server Plugin
+                # Publisher is part of the neutron server Plugin
                 self.publisher.initialize()
                 self._start_db_table_monitors()
             else:
-                #NOTE(gampel) we want to start queuing event as soon
-                #as possible
+                # NOTE(gampel) we want to start queuing event as soon
+                # as possible
                 self._start_subsciber()
 
     def _get_publisher(self):
@@ -74,19 +74,19 @@ class NbApi(object):
         else:
             pubsub_driver_name = cfg.CONF.df.pub_sub_driver
         pub_sub_driver = df_utils.load_driver(
-                                    pubsub_driver_name,
-                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+            pubsub_driver_name,
+            df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_publisher()
 
     def _get_subscriber(self):
         pub_sub_driver = df_utils.load_driver(
-                                    cfg.CONF.df.pub_sub_driver,
-                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+            cfg.CONF.df.pub_sub_driver,
+            df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_subscriber()
 
     def _start_db_table_monitors(self):
         self.db_table_monitors = [self._start_db_table_monitor(table_name)
-            for table_name in pub_sub_api.MONITOR_TABLES]
+                                  for table_name in pub_sub_api.MONITOR_TABLES]
 
     def _start_db_table_monitor(self, table_name):
         if table_name == 'publisher':
@@ -169,7 +169,7 @@ class NbApi(object):
                         self.next_update.action not in {'delete', 'log'}):
                     if self.next_update.table and self.next_update.key:
                         value = self.driver.get_key(self.next_update.table,
-                                                self.next_update.key)
+                                                    self.next_update.key)
 
                 self.apply_db_change(self.next_update.table,
                                      self.next_update.key,
@@ -505,7 +505,7 @@ class NbApi(object):
                                    topic)
 
     def update_lrouter(self, id, topic, **columns):
-        #TODO(gampel) move the router ports to a separate table
+        # TODO(gampel) move the router ports to a separate table
         lrouter_json = self.driver.get_key('lrouter', id, topic)
         lrouter = jsonutils.loads(lrouter_json)
         for col, val in columns.items():
@@ -629,7 +629,7 @@ class NbApi(object):
                             floatingip['topic'])
         if notify:
             self._send_db_change_event('floatingip', id, 'set',
-                floatingip_json, floatingip['topic'])
+                                       floatingip_json, floatingip['topic'])
 
     def get_floatingip(self, id, topic=None):
         try:
@@ -729,9 +729,24 @@ class NbApi(object):
             topic,
         )
 
+    def get_network_properties(self, networkid, topic=None):
+        res = {}
+        try:
+            for lswitch_value in self.driver.get_all_entries('lswitch', topic):
+                lswitch = LogicalSwitch(lswitch_value)
+                if networkid == lswitch.get_id():
+                    res['networkid'] = networkid
+                    res['network_type'] = lswitch.get_type()
+                    res['segmentation_id'] = lswitch.get_segmentation()
+                    return res
+        except Exception:
+            LOG.exception(_LE('Could not get network property %s'), networkid)
+            return None
+
 
 @six.add_metaclass(abc.ABCMeta)
 class DbStoreObject(object):
+
     @abc.abstractmethod
     def get_id(self):
         """Return the ID of this object."""
@@ -795,6 +810,12 @@ class LogicalSwitch(DbStoreObject):
 
     def get_version(self):
         return self.lswitch['version']
+
+    def get_type(self):
+        return self.lswitch['network_type']
+
+    def get_segmentation(self):
+        return self.lswitch['segmentation_id']
 
     def __str__(self):
         return self.lswitch.__str__()
@@ -1086,6 +1107,12 @@ class Floatingip(DbStoreObject):
     def get_floating_port_id(self):
         return self.floatingip['floating_port_id']
 
+    def get_network_type(self):
+        return self.floatingip['network_type']
+
+    def get_segmentation_id(self):
+        return self.floatingip['segmentation_id']
+
     def __str__(self):
         return self.floatingip.__str__()
 
@@ -1138,6 +1165,7 @@ class OvsPort(DbStoreObject):
 
 
 class Publisher(DbStoreObject):
+
     def __init__(self, value):
         self.publisher = jsonutils.loads(value)
 
