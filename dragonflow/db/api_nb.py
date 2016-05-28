@@ -730,6 +730,19 @@ class NbApi(object):
         )
 
 
+def get_network_property(self, networkid, topic=None):
+    res = {}
+    try:
+        for lswitch_value in self.driver.get_all_entries('lswitch', topic):
+            lswitch = LogicalSwitch(lswitch_value)
+            if networkid == lswitch.get_id():
+                res['networkid'] = networkid
+                res['network_type'] = lswitch.get_type()
+                res['segmentation_id'] = lswitch.get_segmentation()
+                return res
+    except Exception:
+        LOG.exception(_LE('Could not get network property %s'), networkid)
+        return None
 @six.add_metaclass(abc.ABCMeta)
 class DbStoreObject(object):
     @abc.abstractmethod
@@ -795,6 +808,11 @@ class LogicalSwitch(DbStoreObject):
 
     def get_version(self):
         return self.lswitch['version']
+    def get_type(self):
+        return self.lswitch['network_type']
+
+    def get_segmentation(self):
+        return self.lswitch['segmentation_id']
 
     def __str__(self):
         return self.lswitch.__str__()
@@ -1085,6 +1103,12 @@ class Floatingip(DbStoreObject):
 
     def get_floating_port_id(self):
         return self.floatingip['floating_port_id']
+
+    def get_network_type(self):
+        return self.floatingip['network_type']
+
+    def get_segmentation_id(self):
+        return self.floatingip['segmentation_id']
 
     def __str__(self):
         return self.floatingip.__str__()
