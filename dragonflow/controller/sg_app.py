@@ -716,6 +716,7 @@ class SGApp(DFlowApp):
             goto_table_id = const.SERVICES_CLASSIFICATION_TABLE
 
         parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
 
         # defaults of sg-table to drop packet
         drop_inst = None
@@ -739,12 +740,36 @@ class SGApp(DFlowApp):
              match=match)
 
         # rel state, pass
-        match = parser.OFPMatch(ct_state=(const.CT_STATE_TRK |
-                                          const.CT_STATE_REL,
-                                          SG_CT_STATE_MASK))
+        ct_related_not_new_flag = const.CT_STATE_TRK | const.CT_STATE_REL
+        ct_related_mask = const.CT_STATE_TRK | const.CT_STATE_REL | \
+            const.CT_STATE_NEW | const.CT_STATE_INV
+        match = parser.OFPMatch(ct_state=(ct_related_not_new_flag,
+                                          ct_related_mask))
         self.mod_flow(
              self.get_datapath(),
              inst=goto_inst,
+             table_id=table_id,
+             priority=const.PRIORITY_CT_STATE,
+             match=match)
+
+        ct_related_new_flag = const.CT_STATE_TRK | const.CT_STATE_REL | \
+            const.CT_STATE_NEW
+        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                ct_state=(ct_related_new_flag,
+                                          ct_related_mask))
+        actions = [parser.NXActionCT(actions=[],
+                                     alg=0,
+                                     flags=const.CT_FLAG_COMMIT,
+                                     recirc_table=goto_table_id,
+                                     zone_ofs_nbits=15,
+                                     zone_src=const.CT_ZONE_REG)]
+        action_inst = self.get_datapath(). \
+            ofproto_parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        inst = [action_inst]
+        self.mod_flow(
+             self.get_datapath(),
+             inst=inst,
              table_id=table_id,
              priority=const.PRIORITY_CT_STATE,
              match=match)
