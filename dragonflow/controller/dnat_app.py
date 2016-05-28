@@ -37,8 +37,8 @@ LOG = log.getLogger(__name__)
 
 DF_DNAT_APP_OPTS = [
     cfg.StrOpt('external_network_bridge',
-              default='br-ex',
-              help=_("Name of bridge used for external network traffic")),
+               default='br-ex',
+               help=_("Name of bridge used for external network traffic")),
     cfg.StrOpt('int_peer_patch_port', default='patch-ex',
                help=_("Peer patch port in integration bridge for external "
                       "bridge.")),
@@ -67,7 +67,7 @@ class DNATApp(DFlowApp):
         self.external_networks = collections.defaultdict(int)
         self.external_gateway_mac = collections.defaultdict(str)
         self.api.register_table_handler(const.INGRESS_NAT_TABLE,
-                self.packet_in_handler)
+                                        self.packet_in_handler)
 
     def switch_features_handler(self, ev):
         self._init_external_bridge()
@@ -124,8 +124,8 @@ class DNATApp(DFlowApp):
             return
 
         if (arp_pkt.opcode == arp.ARP_REQUEST and
-            arp_pkt.src_ip == arp_pkt.dst_ip or
-            arp_pkt.opcode == arp.ARP_REPLY):
+                arp_pkt.src_ip == arp_pkt.dst_ip or
+                arp_pkt.opcode == arp.ARP_REPLY):
             # learn gw mac from fip arp reply packet
             # or update gw mac from fip gateway gratuitous arp
             gw_fips = self.db_store.get_floatingips_by_gateway(arp_pkt.src_ip)
@@ -260,20 +260,20 @@ class DNATApp(DFlowApp):
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
         ArpResponder(self.get_datapath(),
-             None,
-             floatingip.get_ip_address(),
-             floatingip.get_mac_address(),
-             const.INGRESS_NAT_TABLE).add()
+                     None,
+                     floatingip.get_ip_address(),
+                     floatingip.get_mac_address(),
+                     const.INGRESS_NAT_TABLE).add()
 
     def _remove_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
         ArpResponder(self.get_datapath(),
-             None,
-             floatingip.get_ip_address(),
-             floatingip.get_mac_address(),
-             const.INGRESS_NAT_TABLE).remove()
+                     None,
+                     floatingip.get_ip_address(),
+                     floatingip.get_mac_address(),
+                     const.INGRESS_NAT_TABLE).remove()
 
     def _get_vm_port_info(self, floatingip):
         lport = self.db_store.get_local_port(
@@ -282,10 +282,7 @@ class DNATApp(DFlowApp):
         ip = lport.get_ip()
         tunnel_key = lport.get_tunnel_key()
         network_id = lport.get_external_value('local_network_id')
-        net_id = lport.get_lswitch_id()
-        segmentation_id = self.db_store.get_network_id(
-            net_id,
-        )
+        segmentation_id = floatingip.get_segmentation_id()
 
         return (mac, ip, tunnel_key, network_id, segmentation_id)
 
@@ -306,6 +303,8 @@ class DNATApp(DFlowApp):
             parser.OFPActionSetField(reg7=vm_tunnel_key),
             parser.OFPActionSetField(metadata=network_id)
         ]
+        if floatingip.get_network_type() == 'vlan':
+            actions.append(parser.OFPActionPopVlan())
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(
@@ -360,6 +359,11 @@ class DNATApp(DFlowApp):
             parser.OFPActionDecNwTtl(),
             parser.OFPActionSetField(ipv4_src=fip_ip),
             parser.OFPActionOutput(self.external_ofport, 0)]
+        if floatingip.get_network_type() == 'vlan':
+            actions.append(parser.OFPActionPushVlan(ether.ETH_TYPE_8021Q))
+            actions.append(parser.OFPActionSetField(
+                vlan_vid=(floatingip.get_segmentation_id() & 0x1fff) | 0x1000
+            ))
         inst = [self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
@@ -389,10 +393,10 @@ class DNATApp(DFlowApp):
 
         match = self._get_dnat_egress_match(floatingip)
         self.add_flow_go_to_table(self.get_datapath(),
-            const.L3_LOOKUP_TABLE,
-            const.PRIORITY_MEDIUM,
-            const.EGRESS_NAT_TABLE,
-            match=match)
+                                  const.L3_LOOKUP_TABLE,
+                                  const.PRIORITY_MEDIUM,
+                                  const.EGRESS_NAT_TABLE,
+                                  match=match)
         self._install_dnat_egress_rules(floatingip)
 
     def _remove_egress_nat_rules(self, floatingip):
@@ -413,18 +417,37 @@ class DNATApp(DFlowApp):
 
     def _install_ingress_nat_rules(self, floatingip):
         network_id = floatingip.get_floating_network_id()
-        # TODO(Fei Rao) check the network type
         if self._is_first_external_network(network_id):
             # if it is the first floating ip on this node, then
             # install the common goto flow rule.
             parser = self.get_datapath().ofproto_parser
             match = parser.OFPMatch()
             match.set_in_port(self.external_ofport)
-            self.add_flow_go_to_table(self.get_datapath(),
+            self.add_flow_go_to_table(
+                self.get_datapath(),
                 const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
                 const.PRIORITY_DEFAULT,
                 const.INGRESS_NAT_TABLE,
                 match=match)
+            local_network_id = self.db_store.get_network_id(
+                floatingip.get_floating_network_id())
+            match = parser.OFPMatch()
+            match.set_metadata(local_network_id)
+            self.add_flow_go_to_table(
+                self.get_datapath(),
+                const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
+                const.PRIORITY_DEFAULT,
+                const.INGRESS_NAT_TABLE,
+                match=match)
+            if floatingip.get_network_type() == 'vlan':
+                self._install_network_flows_for_ingress_vlan(
+                    floatingip.get_segmentation_id(), local_network_id)
+            if floatingip.get_network_type() == 'vxlan':
+                self._install_network_flows_for_ingress_tunnel(
+                    floatingip.get_segmentation_id(), local_network_id)
+            if floatingip.get_network_type() == 'flat':
+                self._install_network_flows_for_ingress_flat(local_network_id)
+
         self._install_floatingip_arp_responder(floatingip)
         self._install_mac_learning_rules(floatingip)
         self._install_dnat_ingress_rules(floatingip)
@@ -445,6 +468,25 @@ class DNATApp(DFlowApp):
                 table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
                 priority=const.PRIORITY_DEFAULT,
                 match=match)
+            local_network_id = self.db_store.get_network_id(
+                floatingip.get_floating_network_id())
+            match = parser.OFPMatch()
+            match.set_metadata(local_network_id)
+            self.mod_flow(
+                self.get_datapath(),
+                command=ofproto.OFPFC_DELETE,
+                table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
+                priority=const.PRIORITY_DEFAULT,
+                match=match)
+            if floatingip.get_network_type() == 'vlan':
+                self._del_network_flows_for_ingress_vlan(
+                    floatingip.get_segmentation_id())
+            if floatingip.get_network_type() == 'vxlan':
+                self._del_network_flows_for_ingress_tunnel(
+                    floatingip.get_segmentation_id())
+            if floatingip.get_network_type() == 'flat':
+                self._del_network_flows_for_ingress_flat()
+
         self._remove_floatingip_arp_responder(floatingip)
         self._remove_mac_learning_rules(floatingip)
         self._remove_dnat_ingress_rules(floatingip)
@@ -496,3 +538,139 @@ class DNATApp(DFlowApp):
         self._remove_mac_learning_rules(old_fip, True)
         # gw mac maybe change
         self._remove_dnat_egress_rules(fip)
+
+    def _install_network_flows_for_ingress_vlan(self, segmentation_id,
+                                                local_network_id):
+        actions = []
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+        # Ingress
+        # Match: dl_vlan=vlan_id
+        # Actions: metdata=netword_id, goto 'Destination Port Classification'
+        match = parser.OFPMatch()
+        match.set_vlan_vid(segmentation_id)
+
+        actions.append(parser.OFPActionSetField(metadata=local_network_id))
+        actions.append(parser.OFPActionPopVlan())
+
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions
+        )
+
+        goto_inst = parser.OFPInstructionGotoTable(
+            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE
+        )
+
+        inst = [action_inst, goto_inst]
+
+        self.mod_flow(
+            self.get_datapath(),
+            inst=inst,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match
+        )
+
+    def _del_network_flows_for_ingress_vlan(self, segmentation_id):
+
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+        match = parser.OFPMatch()
+        match.set_vlan_vid(segmentation_id)
+
+        self.mod_flow(
+            self.get_datapath(),
+            command=ofproto.OFPFC_DELETE,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match
+        )
+
+    def _install_network_flows_for_ingress_flat(self, local_network_id):
+        actions = []
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+        # Ingress
+        # Match: vlan_tci=0,
+        # Actions: metdata=netword_id, goto 'Destination Port Classification'
+        match = parser.OFPMatch().set_dl_tci(0)
+
+        actions.append(parser.OFPActionSetField(metadata=local_network_id))
+
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions
+        )
+
+        goto_inst = parser.OFPInstructionGotoTable(
+            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE
+        )
+
+        inst = [action_inst, goto_inst]
+
+        self.mod_flow(
+            self.get_datapath(),
+            inst=inst,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match
+        )
+
+    def _del_network_flows_for_ingress_flat(self):
+
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+        match = parser.OFPMatch().set_dl_tci(0)
+
+        self.mod_flow(
+            self.get_datapath(),
+            command=ofproto.OFPFC_DELETE,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match
+        )
+
+    def _install_network_flows_for_ingress_tunnel(self, segmentation_id,
+                                                  local_network_id):
+        if segmentation_id is None:
+            return
+        actions = []
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+
+        match = parser.OFPMatch(tunnel_id_nuxm=segmentation_id)
+
+        actions.append(parser.OFPActionSetField(metadata=local_network_id))
+
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions
+        )
+
+        goto_inst = parser.OFPInstructionGotoTable(
+            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE
+        )
+
+        inst = [action_inst, goto_inst]
+
+        self.mod_flow(
+            self.get_datapath(),
+            inst=inst,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match
+        )
+
+    def _del_network_flows_for_ingress_tunnel(self, segmentation_id):
+
+        if segmentation_id is None:
+            return
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+        match = parser.OFPMatch(tunnel_id_nuxm=segmentation_id)
+
+        self.mod_flow(
+            self.get_datapath(),
+            command=ofproto.OFPFC_DELETE,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match
+        )
