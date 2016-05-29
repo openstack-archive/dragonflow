@@ -155,6 +155,13 @@ function start_ovs {
 
         _neutron_ovs_base_setup_bridge br-int
         sudo ovs-vsctl --no-wait set bridge br-int fail-mode=secure other-config:disable-in-band=true
+
+        # setup external bridge if necessary
+        check_dnat=$(echo $DF_APPS_LIST | grep "DNATApp")
+        if [[ "$check_dnat" != "" ]]; then
+            echo "Setup external bridge for DNAT"
+            sudo ovs-vsctl add-br $PUBLIC_BRIDGE || true
+        fi
     fi
 
     cd $_pwd
