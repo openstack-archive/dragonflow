@@ -21,10 +21,13 @@ NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
 
-#pubsub
+# pub/sub
 PUBLISHERS_HOSTS=${PUBLISHERS_HOSTS:-"$SERVICE_HOST"}
 
-#ovs related pid files
+# OVS bridge definition
+PUBLIC_BRIDGE=${PUBLIC_BRIDGE:-br-ex}
+
+# OVS related pid files
 OVS_DB_SERVICE="ovsdb-server"
 OVS_VSWITCHD_SERVICE="ovs-vswitchd"
 OVS_DIR="/var/run/openvswitch"
@@ -107,7 +110,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"
         iniset $NEUTRON_CONF df publisher_rate_limit_timeout "$PUBLISHER_RATE_LIMIT_TIMEOUT"
         iniset $NEUTRON_CONF df publisher_rate_limit_count "$PUBLISHER_RATE_LIMIT_COUNT"
-        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "br-ex"
+        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
         iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "patch-ex"
         iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "patch-int"
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
@@ -160,7 +163,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
         iniset $NEUTRON_CONF df enable_df_pub_sub "$DF_PUB_SUB"
         iniset $NEUTRON_CONF df publishers_ips "$PUBLISHERS_HOSTS"
-        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "br-ex"
+        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
         iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "patch-ex"
         iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "patch-int"
 
