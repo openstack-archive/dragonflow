@@ -450,12 +450,7 @@ class DfLocalController(object):
         if floatingip.get_lport_id():
             if self.db_store.get_local_port(floatingip.get_lport_id()) is None:
                 return
-        if floatingip.get_lrouter_id():
-            lrouter = self.db_store.get_router(floatingip.get_lrouter_id())
-            # Currently, to implement DNAT for DVR on compute node only
-            # if distributed is False, DNAT is done on centralized vrouter
-            if not lrouter.is_distributed():
-                return
+
         old_floatingip = self.db_store.get_floatingip(floatingip.get_id())
         if old_floatingip is None:
             # The new floatingip should be associated with a lport
