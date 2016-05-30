@@ -984,7 +984,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             with context.session.begin(subtransactions=True):
                 floatingip_dict = super(DFPlugin, self).create_floatingip(
                     context, floatingip,
-                    initial_status=const.FLOATINGIP_STATUS_DOWN)
+                    initial_status=const.FLOATINGIP_STATUS_ACTIVE)
 
                 floatingip_port = self._get_floatingip_port(
                     context, floatingip_dict['id'])
