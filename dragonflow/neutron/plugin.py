@@ -220,6 +220,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         sg_name = sg_db.get('name', df_const.DF_SG_DEFAULT_NAME)
         tenant_id = sg_db['tenant_id']
         rules = sg_db.get('security_group_rules')
+        for rule in rules:
+            rule['topic'] = rule.get('tenant_id')
+            del rule['tenant_id']
 
         self.nb_api.create_security_group(id=sg_id, topic=tenant_id,
                                           name=sg_name, rules=rules,
@@ -235,6 +238,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             sg_version_id = version_db._update_db_version_row(
                     context.session, sg_id)
             sg_group = self.get_security_group(context, sg_id)
+        sg_rule['topic'] = sg_rule.get('tenant_id')
+        del sg_rule['tenant_id']
         self.nb_api.add_security_group_rules(sg_id, sg_group['tenant_id'],
                                              sg_rules=[sg_rule],
                                              sg_version=sg_version_id)
