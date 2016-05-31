@@ -27,5 +27,6 @@ SUPPORTED_API_EXTENSIONS = [
     'dvr',
     'port-security',
     'allowed-address-pairs',
-    'net-mtu'
+    'net-mtu',
+    'extraroutes'
 ]
