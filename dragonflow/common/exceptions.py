@@ -82,6 +82,10 @@ class DBClientNotFound(DragonflowException):
     message = _('DB client not found, ip=%(ip)s')
 
 
+class DBStoreRecordNotFound(DragonflowException):
+    message = _('%(record)s not found in db_store!')
+
+
 class NoRemoteIPProxyException(DragonflowException):
     message = _('The metadata request has no remote IP')
 

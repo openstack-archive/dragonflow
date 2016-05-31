@@ -40,4 +40,7 @@ class AppDispatcher(object):
         for app in self.apps:
             handler = getattr(app, method, None)
             if handler is not None:
-                handler(*args, **kwargs)
+                try:
+                    handler(*args, **kwargs)
+                except Exception as e:
+                    LOG.exception(e)
