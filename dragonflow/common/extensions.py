@@ -26,5 +26,6 @@ SUPPORTED_API_EXTENSIONS = [
     'subnet_allocation',
     'dvr',
     'port-security',
-    'allowed-address-pairs'
+    'allowed-address-pairs',
+    'net-mtu'
 ]

@@ -52,6 +52,7 @@ from neutron.db import l3_attrs_db
 from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
 from neutron.db import models_v2
+from neutron.db import netmtu_db
 from neutron.db import portbindings_db
 from neutron.db import portsecurity_db_common
 from neutron.db import securitygroups_db
@@ -91,7 +92,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                addr_pair_db.AllowedAddressPairsMixin,
                extradhcpopt_db.ExtraDhcpOptMixin,
                extraroute_db.ExtraRoute_db_mixin,
-               agentschedulers_db.DhcpAgentSchedulerDbMixin):
+               agentschedulers_db.DhcpAgentSchedulerDbMixin,
+               netmtu_db.Netmtu_db_mixin):
 
     __native_bulk_support = True
     __native_pagination_support = True
@@ -415,6 +417,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    topic=network['tenant_id'],
                                    name=nw_name,
                                    router_external=network['router:external'],
+                                   mtu=network['mtu'],
                                    version=nw_version,
                                    subnets=[])
         return network

@@ -19,7 +19,6 @@ from oslo_config import cfg
 from oslo_log import log
 
 from neutron.common import config as common_config
-from neutron.common import constants
 from neutron.plugins.common import constants as n_p_const
 
 from ryu.lib import addrconv
@@ -291,6 +290,11 @@ class DHCPApp(DFlowApp):
                 return subnet
         return None
 
+    def _get_lswitch_by_port(self, lport):
+        l_switch_id = lport.get_lswitch_id()
+        l_switch = self.db_store.get_lswitch(l_switch_id)
+        return l_switch
+
     def _get_dhcp_server_address(self, subnet):
         return netaddr.IPAddress(subnet.get_dhcp_server_address())
 
@@ -309,8 +313,9 @@ class DHCPApp(DFlowApp):
         return True
 
     def _get_port_mtu(self, lport):
-        #TODO(gampel) Get mtu from network object once we add support
-        mtu = constants.DEFAULT_NETWORK_MTU
+        # get network mtu from lswitch
+        mtu = self._get_lswitch_by_port(lport).get_mtu()
+
         tunnel_type = cfg.CONF.df.tunnel_type
         if tunnel_type == n_p_const.TYPE_VXLAN:
             return mtu - n_p_const.VXLAN_ENCAP_OVERHEAD if mtu else 0
@@ -368,7 +373,7 @@ class DHCPApp(DFlowApp):
         if not self._is_port_a_vm(lport):
             return
 
-        LOG.info(_LI("Regiter VM as DHCP client::port <%s>") % lport.get_id())
+        LOG.info(_LI("Register VM as DHCP client::port <%s>") % lport.get_id())
 
         ofport = lport.get_external_value('ofport')
         parser = self.get_datapath().ofproto_parser
