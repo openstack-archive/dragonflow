@@ -795,9 +795,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         tenant_id = router['tenant_id']
         router_name = router.get('name', df_const.DF_ROUTER_DEFAULT_NAME)
+        routes = router.get('routes', [])
         self.nb_api.update_lrouter(id, topic=tenant_id,
                                    name=router_name,
-                                   version=router_version)
+                                   version=router_version,
+                                   routes=routes)
         return router
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
