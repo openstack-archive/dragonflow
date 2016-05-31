@@ -356,6 +356,12 @@ class DNATApp(DFlowApp):
         self.update_floatingip_status(
             floatingip, n_const.FLOATINGIP_STATUS_DOWN)
 
+    def remove_local_port(self, lport):
+        port_id = lport.get_id()
+        for key, floatingip in six.iteritems(self.local_floatingips):
+            if floatingip.get_lport_id() == port_id:
+                self.disassociate_floatingip(floatingip)
+
     def delete_floatingip(self, floatingip):
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)
