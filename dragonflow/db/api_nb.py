@@ -504,11 +504,12 @@ class NbApi(object):
                                    topic)
 
     def update_lrouter(self, id, topic, **columns):
-        lrouter = {}
-        lrouter['id'] = id
-        lrouter['topic'] = topic
+        #TODO(gampel) move the router ports to a separate table
+        lrouter_json = self.driver.get_key('lrouter', id, topic)
+        lrouter = jsonutils.loads(lrouter_json)
         for col, val in columns.items():
             lrouter[col] = val
+
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.set_key('lrouter', id, lrouter_json, topic)
         self._send_db_change_event('lrouter', id, 'set', lrouter_json,
