@@ -84,6 +84,18 @@ class DBNotifyInterface(object):
         port belongs to
         """
 
+    def add_router_route(self, router, route):
+        """add  new route to router callback
+        param router: the router that the route to be added to
+        param route:  the new route to be added
+        """
+
+    def remove_router_route(self, router, route):
+        """delete route from a router callback
+        param router: the router that the route to be deleted from
+        param route:  the route to be deleted
+        """
+
     def logical_switch_deleted(self, lswitch):
         """logical switch deleted hook callback
 
