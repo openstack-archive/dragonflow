@@ -51,6 +51,7 @@ ovsdb_monitor_table_filter_default = {
         'name',
         'controller',
         'fail_mode',
+        'datapath_type',
     ],
     'Port': [
         'name',
@@ -60,6 +61,9 @@ ovsdb_monitor_table_filter_default = {
     'Controller': [
         'target',
     ],
+    'Open_vSwitch': [
+        'bridges',
+    ]
 }
 
 
