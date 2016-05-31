@@ -287,9 +287,8 @@ class NbApi(object):
                                    secgroup_json, topic)
 
     def update_security_group(self, id, topic, **columns):
-        secgroup = {}
-        secgroup['id'] = id
-        secgroup['topic'] = topic
+        secgroup_json = self.driver.get_key('secgroup', id, topic)
+        secgroup = jsonutils.loads(secgroup_json)
         for col, val in columns.items():
             secgroup[col] = val
         secgroup_json = jsonutils.dumps(secgroup)
