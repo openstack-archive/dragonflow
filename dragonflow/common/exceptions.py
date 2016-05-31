@@ -80,3 +80,7 @@ class DBLockFailed(DragonflowException):
 
 class DBClientNotFound(DragonflowException):
     message = _('DB client not found, ip=%(ip)s')
+
+
+class DBStoreRecordNotFound(DragonflowException):
+    message = _('%(record)s not found in db_store!')
