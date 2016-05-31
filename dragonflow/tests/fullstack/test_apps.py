@@ -249,12 +249,19 @@ class TestDHCPApp(test_base.DFTestBase):
         return result.data
 
     def _create_dhcp_request(self, offer_buf, is_renewal=False):
+        def is_121_exist(offer):
+            for option in offer.options.option_list:
+                if option.tag is 121:
+                    return True
+            return False
+
         pkt = ryu.lib.packet.packet.Packet(offer_buf)
         offer = pkt.get_protocol(ryu.lib.packet.dhcp.dhcp)
         self.assertEqual(
             self.port1.port.get_logical_port().get_ip(),
             offer.yiaddr
         )
+        self.assertTrue(is_121_exist(offer))
         if is_renewal:
             ether = pkt.get_protocol(ryu.lib.packet.ethernet.ethernet)
             ip = pkt.get_protocol(ryu.lib.packet.ipv4.ipv4)
