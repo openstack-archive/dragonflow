@@ -14,13 +14,13 @@ import netaddr
 
 from ryu.ofproto import ether
 
+from dragonflow._i18n import _LI
 from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
 from neutron_lib import constants as common_const
 from oslo_log import log
-
 
 LOG = log.getLogger(__name__)
 
@@ -96,6 +96,14 @@ class L3ProactiveApp(DFlowApp):
                     tunnel_key,
                     local_network_id,
                     router_port.get_mac())
+
+    def add_router_route(self, router, route):
+        LOG.info(_LI('Add extra route %(route)s for router %(router)s') %
+                 {'route': route, 'router': router.get_id()})
+
+    def delete_router_route(self, router, route):
+        LOG.info(_LI('Delete extra route %(route)s from router %(router)s') %
+                 {'route': route, 'router': router.get_id()})
 
     def _install_flow_send_to_output_table(self, network_id, dst_ip):
 
