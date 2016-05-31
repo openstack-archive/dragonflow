@@ -118,6 +118,16 @@ class RyuDFAdapter(OFPHandler):
                                  router_port=router_port,
                                  local_network_id=local_network_id)
 
+    def notify_add_router_route(self, router=None, route=None):
+        self.dispatcher.dispatch('add_router_route',
+                                 router=router,
+                                 route=route)
+
+    def notify_remove_router_route(self, router=None, route=None):
+        self.dispatcher.dispatch('remove_router_route',
+                                 router=router,
+                                 route=route)
+
     def notify_add_security_group_rule(self, secgroup, secgroup_rule):
         self.dispatcher.dispatch('add_security_group_rule',
                                  secgroup=secgroup,
