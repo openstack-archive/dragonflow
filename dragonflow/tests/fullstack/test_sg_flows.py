@@ -74,10 +74,24 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
             flow=flow, direction=direction,
             ct_state_match='-new+est-rel-inv+trk')
 
-    def _is_conntrack_relative_pass_flow(self, flow, direction):
+    def _is_conntrack_relative_not_new_pass_flow(self, flow, direction):
         return self._is_conntrack_pass_flow(
             flow=flow, direction=direction,
-            ct_state_match='-new-est+rel-inv+trk')
+            ct_state_match='-new+rel-inv+trk')
+
+    def _is_conntrack_relative_new_pass_flow(self, flow, direction):
+        if direction == 'ingress':
+            table = const.INGRESS_SECURITY_GROUP_TABLE
+        else:
+            table = const.EGRESS_SECURITY_GROUP_TABLE
+
+        if (flow['table'] == str(table)) and \
+                (flow['priority'] == str(const.PRIORITY_CT_STATE)) and \
+                ('+new+rel-inv+trk' in flow['match']) and \
+                ('ct(commit,table' in flow['actions']):
+            return True
+
+        return False
 
     def _is_conntrack_invalid_drop_flow(self, flow, direction):
         if direction == 'ingress':
@@ -187,8 +201,10 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         found_egress_default_drop_flow = False
         found_ingress_conntrack_established_pass_flow = False
         found_egress_conntrack_established_pass_flow = False
-        found_ingress_conntrack_relative_pass_flow = False
-        found_egress_conntrack_relative_pass_flow = False
+        found_ingress_conntrack_relative_not_new_pass_flow = False
+        found_egress_conntrack_relative_not_new_pass_flow = False
+        found_ingress_conntrack_relative_new_pass_flow = False
+        found_egress_conntrack_relative_new_pass_flow = False
         found_ingress_conntrack_invalied_drop_flow = False
         found_egress_conntrack_invalied_drop_flow = False
 
@@ -209,12 +225,18 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
             elif self._is_conntrack_established_pass_flow(flow=flow,
                                                           direction='egress'):
                 found_egress_conntrack_established_pass_flow = True
-            elif self._is_conntrack_relative_pass_flow(flow=flow,
-                                                       direction='ingress'):
-                found_ingress_conntrack_relative_pass_flow = True
-            elif self._is_conntrack_relative_pass_flow(flow=flow,
-                                                       direction='egress'):
-                found_egress_conntrack_relative_pass_flow = True
+            elif self._is_conntrack_relative_not_new_pass_flow(
+                    flow=flow, direction='ingress'):
+                found_ingress_conntrack_relative_not_new_pass_flow = True
+            elif self._is_conntrack_relative_not_new_pass_flow(
+                    flow=flow, direction='egress'):
+                found_egress_conntrack_relative_not_new_pass_flow = True
+            elif self._is_conntrack_relative_new_pass_flow(
+                    flow=flow, direction='ingress'):
+                found_ingress_conntrack_relative_new_pass_flow = True
+            elif self._is_conntrack_relative_new_pass_flow(
+                    flow=flow, direction='egress'):
+                found_egress_conntrack_relative_new_pass_flow = True
             elif self._is_conntrack_invalid_drop_flow(flow=flow,
                                                       direction='ingress'):
                 found_ingress_conntrack_invalied_drop_flow = True
@@ -230,8 +252,10 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         self.assertTrue(found_egress_default_drop_flow)
         self.assertTrue(found_ingress_conntrack_established_pass_flow)
         self.assertTrue(found_egress_conntrack_established_pass_flow)
-        self.assertTrue(found_ingress_conntrack_relative_pass_flow)
-        self.assertTrue(found_egress_conntrack_relative_pass_flow)
+        self.assertTrue(found_ingress_conntrack_relative_not_new_pass_flow)
+        self.assertTrue(found_egress_conntrack_relative_not_new_pass_flow)
+        self.assertTrue(found_ingress_conntrack_relative_new_pass_flow)
+        self.assertTrue(found_egress_conntrack_relative_new_pass_flow)
         self.assertTrue(found_ingress_conntrack_invalied_drop_flow)
         self.assertTrue(found_egress_conntrack_invalied_drop_flow)
 
