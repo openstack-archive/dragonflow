@@ -184,3 +184,12 @@ class RateLimiter(object):
                 return True
         self.deque.append(time.time())
         return False
+
+
+def ExceptionCapturer(func):
+    def wrapper(*args):
+        try:
+            func(*args)
+        except Exception as e:
+            LOG.exception(e)
+    return wrapper
