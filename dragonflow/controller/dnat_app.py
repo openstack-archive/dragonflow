@@ -334,7 +334,6 @@ class DNATApp(DFlowApp):
                 priority=const.PRIORITY_DEFAULT,
                 match=match)
         self._remove_floatingip_arp_responder(floatingip)
-        self._remove_mac_learning_rules(floatingip)
         self._remove_dnat_ingress_rules(floatingip)
         self._decrease_external_network_count(network_id)
 
