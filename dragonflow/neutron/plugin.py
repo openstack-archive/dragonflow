@@ -765,11 +765,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         router_id = router['id']
         tenant_id = router['tenant_id']
-        is_distributed = router.get('distributed', False)
         router_name = router.get('name', df_const.DF_ROUTER_DEFAULT_NAME)
         self.nb_api.create_lrouter(router_id, topic=tenant_id,
                                    name=router_name,
-                                   distributed=is_distributed,
                                    version=router_version,
                                    ports=[])
         return router
@@ -783,11 +781,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     context.session, id)
 
         tenant_id = router['tenant_id']
-        is_distributed = router.get('distributed', False)
         router_name = router.get('name', df_const.DF_ROUTER_DEFAULT_NAME)
         self.nb_api.update_lrouter(id, topic=tenant_id,
                                    name=router_name,
-                                   distributed=is_distributed,
                                    version=router_version)
         return router
 

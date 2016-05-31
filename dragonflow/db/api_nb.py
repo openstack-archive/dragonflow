@@ -914,9 +914,6 @@ class LogicalRouter(DbStoreObject):
             res.append(LogicalRouterPort(port))
         return res
 
-    def is_distributed(self):
-        return self.lrouter.get('distributed', False)
-
     def get_topic(self):
         return self.lrouter.get('topic')
 
