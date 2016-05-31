@@ -12,14 +12,14 @@
 
 import netaddr
 
+from neutron_lib import constants as common_const
+from oslo_log import log
 from ryu.ofproto import ether
 
+from dragonflow._i18n import _LI
 from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
-
-from neutron_lib import constants as common_const
-from oslo_log import log
 
 
 LOG = log.getLogger(__name__)
@@ -96,6 +96,128 @@ class L3ProactiveApp(DFlowApp):
                     tunnel_key,
                     local_network_id,
                     router_port.get_mac())
+
+    def _get_port(self, ip, lswitch_id, topic):
+        ports = self.db_store.get_ports(topic)
+        for port in ports:
+            if port.get_ip() == ip and port.get_lswitch_id() == lswitch_id:
+                return port
+
+        raise Exception('Port not found')
+
+    def _get_gateway_port_by_ip(self, router, ip):
+        for port in router.get_ports():
+            netmask = port.get_cidr_netmask()
+            network = port.get_cidr_network()
+            cidr = netaddr.IPNetwork(ip + '/' + netmask).cidr
+            if network == str(cidr.network):
+                return port
+
+        raise Exception('Port not found')
+
+    def add_router_route(self, router, route):
+        LOG.info(_LI('Add extra route %(route)s for router %(router)s') %
+                 {'route': route, 'router': router.__str__()})
+
+        datapath = self.get_datapath()
+        ofproto = self.get_datapath().ofproto
+        parser = datapath.ofproto_parser
+
+        destination = route.get('destination')
+        destination = netaddr.IPNetwork(destination)
+        nexthop = route.get('nexthop')
+        router_if_port = self._get_gateway_port_by_ip(router, nexthop)
+        nexthop_port = self._get_port(
+            nexthop, router_if_port.get_lswitch_id(), router.get_topic())
+
+        # Install openflow entry for the route
+        # Match: ip, metadata=network_id, nw_src=src_network/mask,
+        #        nw_dst=dst_network/mask,
+        #  Actions:ttl-1, mod_dl_dst=next_hop_mac, load_reg7=next_hop_port_key,
+        #  goto: egress_table
+        dst_mac = nexthop_port.get_mac()
+        tunnel_key = nexthop_port.get_tunnel_key()
+        network_id = nexthop_port.get_external_value('local_network_id')
+        src_network = router_if_port.get_cidr_network()
+        src_netmask = router_if_port.get_cidr_netmask()
+        dst_network = destination.network
+        dst_netmask = destination.netmask
+
+        if destination.version == 4:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                    metadata=network_id,
+                                    ipv4_src=(src_network, src_netmask),
+                                    ipv4_dst=(dst_network, dst_netmask))
+
+        else:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                    ipv4_src=(src_network, src_netmask),
+                                    ipv6_dst=(dst_network, dst_netmask))
+
+        actions = [
+            parser.OFPActionDecNwTtl(),
+            parser.OFPActionSetField(eth_dst=dst_mac),
+            parser.OFPActionSetField(reg7=tunnel_key),
+        ]
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
+
+        inst = [action_inst, goto_inst]
+
+        self.mod_flow(
+            self.get_datapath(),
+            cookie=tunnel_key,
+            inst=inst,
+            table_id=const.L3_LOOKUP_TABLE,
+            priority=const.PRIORITY_VERY_HIGH,
+            match=match)
+
+    def remove_router_route(self, router, route):
+        LOG.info(_LI('Delete extra route %(route)s from router %(router)s') %
+                 {'route': route, 'router': router.__str__()})
+
+        datapath = self.get_datapath()
+        ofproto = self.get_datapath().ofproto
+        parser = datapath.ofproto_parser
+
+        destination = route.get('destination')
+        destination = netaddr.IPNetwork(destination)
+        nexthop = route.get('nexthop')
+        router_if_port = self._get_gateway_port_by_ip(router, nexthop)
+        nexthop_port = self._get_port(
+            nexthop, router_if_port.get_lswitch_id(), router.get_topic())
+
+        # Install openflow entry for the route
+        # Match: ip, metadata=network_id, nw_src=src_network/mask,
+        #        nw_dst=dst_network/mask,
+        # Actions:ttl-1, mod_dl_dst=next_hop_mac, load_reg7=next_hop_port_key,
+        # goto: egress_table
+        network_id = nexthop_port.get_external_value('local_network_id')
+        src_network = router_if_port.get_cidr_network()
+        src_netmask = router_if_port.get_cidr_netmask()
+        dst_network = destination.network
+        dst_netmask = destination.netmask
+
+        if destination.version == 4:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                    metadata=network_id,
+                                    ipv4_src=(src_network, src_netmask),
+                                    ipv4_dst=(dst_network, dst_netmask))
+
+        else:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                    ipv6_src=(src_network, src_netmask),
+                                    ipv6_dst=(dst_network, dst_netmask))
+
+        self.mod_flow(
+            self.get_datapath(),
+            command=ofproto.OFPFC_DELETE_STRICT,
+            table_id=const.L3_LOOKUP_TABLE,
+            priority=const.PRIORITY_VERY_HIGH,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
 
     def _install_flow_send_to_output_table(self, network_id, dst_ip):
 
