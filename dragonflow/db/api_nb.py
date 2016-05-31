@@ -937,17 +937,19 @@ class LogicalRouter(DbStoreObject):
         return self.lrouter.get('name')
 
     def get_ports(self):
-        ports = self.lrouter.get('ports')
-        if ports:
-            return [LogicalRouterPort(port) for port in ports]
-        else:
-            return []
+        res = []
+        for port in self.lrouter.get('ports', []):
+            res.append(LogicalRouterPort(port))
+        return res
 
     def get_topic(self):
         return self.lrouter.get('topic')
 
     def get_version(self):
         return self.lrouter['version']
+
+    def get_routes(self):
+        return self.lrouter.get('routes', [])
 
     def __str__(self):
         return self.lrouter.__str__()

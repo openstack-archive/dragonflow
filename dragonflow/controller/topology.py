@@ -245,6 +245,11 @@ class Topology(object):
             self.controller.floatingip_updated(floating_ip)
 
     def _clear_tenant_topology(self, tenant_id):
+        switches = self.db_store.get_lswitchs()
+        for switch in switches:
+            if tenant_id == switch.get_topic():
+                self.controller.logical_switch_deleted(switch.get_id())
+
         ports = self.db_store.get_ports()
         for port in ports:
             if tenant_id == port.get_topic():
