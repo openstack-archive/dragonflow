@@ -88,3 +88,7 @@ class NoRemoteIPProxyException(DragonflowException):
 
 class LogicalPortNotFoundByTunnelKey(DragonflowException):
     message = _('Could not find logical port with tunnel key %(key)')
+
+
+class DBStoreRecordNotFound(DragonflowException):
+    message = _('%(record)s not found in db_store!')
