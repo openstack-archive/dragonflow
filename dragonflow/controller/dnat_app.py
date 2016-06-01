@@ -361,6 +361,17 @@ class DNATApp(DFlowApp):
             if floatingip.get_lport_id() == port_id:
                 self.disassociate_floatingip(floatingip)
 
+    def update_bridge_port(self, lport):
+        port_name = lport.get_name()
+        if port_name != self.external_network_bridge:
+            return
+        port_id = lport.get_id()
+        mac = self._check_for_external_network_bridge_mac()
+        if not mac:
+            return
+        for key, floatingip in six.iteritems(self.local_floatingips):
+            self._install_dnat_egress_rules(floatingip, mac)
+
     def delete_floatingip(self, floatingip):
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)

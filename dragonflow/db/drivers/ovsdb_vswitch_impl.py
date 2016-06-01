@@ -407,9 +407,11 @@ class OvsdbMonitor(object):
         super(OvsdbMonitor, self).__init__()
         self.nb_api = nb_api
         self.idl = idl
+        self.interface_type = (constants.OVS_VM_INTERFACE,
+                              constants.OVS_BRIDGE_INTERFACE)
 
     def _is_handle_interface_update(self, interface):
-        if interface.type != constants.OVS_VM_INTERFACE:
+        if interface.type not in self.interface_type:
             return False
         if interface.name.startswith('qg'):
             return False

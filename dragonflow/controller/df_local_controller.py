@@ -272,6 +272,9 @@ class DfLocalController(object):
                 self.open_flow_app.notify_remove_remote_port(lport)
             self.db_store.delete_port(lport.get_id(), False)
 
+    def bridge_port_updated(self, lport):
+        self.open_flow_app.notify_update_bridge_port(lport)
+
     def router_updated(self, lrouter):
         old_lrouter = self.db_store.get_router(lrouter.get_id())
         if old_lrouter is None:
