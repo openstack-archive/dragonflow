@@ -93,7 +93,13 @@ function configure_df_plugin {
             'from dragonflow.common import extensions ;\
              print ",".join(extensions.SUPPORTED_API_EXTENSIONS)')
 
-        Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
+        # By default, neutron uses "dragonflow.neutron.plugin.DFPlugin" as core
+        # plugin and don't need L3 service plugin. However, you can optionally
+        # edit local.conf file to configure alternative core plugin and service
+        # plugin such as CORE_PLUGIN="ml2" and SERVICE_PLUGIN="router".
+        if [[ "$CORE_PLUGIN" == "" ]]; then
+            CORE_PLUGIN="dragonflow.neutron.plugin.DFPlugin"
+        fi
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
         iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
@@ -114,8 +120,8 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "patch-ex"
         iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "patch-int"
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
-        iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
-        iniset $NEUTRON_CONF DEFAULT service_plugins ""
+        iniset $NEUTRON_CONF DEFAULT core_plugin "$CORE_PLUGIN"
+        iniset $NEUTRON_CONF DEFAULT service_plugins "$SERVICE_PLUGIN"
 
         if is_service_enabled q-dhcp ; then
             iniset $NEUTRON_CONF df use_centralized_ipv6_DHCP "True"
@@ -139,6 +145,20 @@ function configure_df_plugin {
             iniset $NEUTRON_CONF quotas quota_router "-1"
             iniset $NEUTRON_CONF quotas quota_floatingip "-1"
             iniset $NEUTRON_CONF quotas quota_security_group_rule "-1"
+        fi
+
+        # If use ml2 as core plugin, we should edit the /etc/neutron/plugins/ml2/ml2_conf.ini file
+        # to configure mechanism driver, and edit the /opt/stack/neutron/neutron.egg-info/entry_points.txt
+        # file to configure entry point of the mechanism driver.
+        if [[ "$CORE_PLUGIN" == "ml2" ]]; then
+            DF_MECH_DRIVER="dragonflow"
+            DF_MECH_DRIVER_ENTRY_POINT="dragonflow.neutron.ml2.mech_driver:DFMechDriver"
+
+            ML2_CONF=/etc/neutron/plugins/ml2/ml2_conf.ini
+            iniset $ML2_CONF ml2 mechanism_drivers "$DF_MECH_DRIVER"
+
+            ENTRY_POINTS=/opt/stack/neutron/neutron.egg-info/entry_points.txt
+            iniset $ENTRY_POINTS neutron.ml2.mechanism_drivers "$DF_MECH_DRIVER" "$DF_MECH_DRIVER_ENTRY_POINT"
         fi
     else
         _create_neutron_conf_dir
