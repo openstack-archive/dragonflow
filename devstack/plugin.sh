@@ -5,8 +5,11 @@ OVS_REPO=${OVS_REPO:-http://github.com/openvswitch/ovs.git}
 OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
 
 # The branch to use from $OVS_REPO
-# TODO(gsagie) Currently take branch-2.5 branch as master is not stable
-OVS_BRANCH=${OVS_BRANCH:-branch-2.5}
+# We use 'make rpm-fedora' to build ovs on Fedora, this is supported
+# on master branch. So to make devstack work on both Fedora and Ubuntu
+# by default, we set master branch as default, though it can be unstable.
+# People can choose a stable as they want.
+OVS_BRANCH=${OVS_BRANCH:-master}
 
 DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
