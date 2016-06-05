@@ -39,6 +39,7 @@ Spec Template
     selective_topo_dist
     performance_testing
     ovsdb_monitor
+    across_multiple_openstack
     igmp_application_and_multicast_support
     redis_db_driver
     keep_db_consistency
