@@ -17,8 +17,6 @@ import socket
 import sys
 import time
 
-import eventlet
-
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
@@ -39,8 +37,6 @@ from ryu.base.app_manager import AppManager
 
 config.setup_logging()
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
-
-eventlet.monkey_patch()
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
 
@@ -533,6 +529,3 @@ def main():
     common_config.init(sys.argv[1:])
     controller = DfLocalController(chassis_name)
     controller.run()
-
-if __name__ == "__main__":
-    main()

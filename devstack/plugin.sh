@@ -290,7 +290,7 @@ function start_df {
 
     if is_service_enabled df-controller ; then
         sudo ovs-vsctl --no-wait set-controller br-int tcp:$HOST_IP:6633
-        run_process df-controller "python $DF_LOCAL_CONTROLLER --config-file $NEUTRON_CONF"
+        run_process df-controller "$DF_LOCAL_CONTROLLER_BINARY --config-file $NEUTRON_CONF"
         run_process df-ext-services "bash $DEST/dragonflow/devstack/df-ext-services.sh"
     fi
 }
@@ -331,14 +331,16 @@ function verify_ryu_version {
 }
 
 function start_pubsub_service {
-    PUBLISHER_SERVICE=$DRAGONFLOW_DIR/dragonflow/controller/df_publisher_service.py
-    set python $PUBLISHER_SERVICE
-    set "$@" --config-file $NEUTRON_CONF
-    run_process df-publisher-service "$*"
+    echo "Starting Dragonflow publisher service"
+    if is_service_enabled df-publisher-service ; then
+        run_process df-publisher-service "$DF_PUBLISHER_SERVICE_BINARY --config-file $NEUTRON_CONF"
+    fi
 }
 
 function stop_pubsub_service {
-    stop_process df-publisher-service
+    if is_service_enabled df-publisher-service ; then
+        stop_process df-publisher-service
+    fi
 }
 
 # main loop
