@@ -779,7 +779,7 @@ class LogicalSwitch(DbStoreObject):
         return self.lswitch['router_external']
 
     def get_mtu(self):
-        return self.lswitch['mtu']
+        return self.lswitch.get('mtu', None)
 
     def get_subnets(self):
         res = []
@@ -833,7 +833,7 @@ class Subnet(DbStoreObject):
         return self.subnet['topic']
 
     def get_host_routes(self):
-        return self.subnet['host_routes']
+        return self.subnet.get('host_routes', [])
 
 
 class LogicalPort(DbStoreObject):
