@@ -113,7 +113,7 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
 
     def _check_all_flows_existed(self, expected_flow_list):
         ovs = utils.OvsFlowsParser()
-        flows = ovs.dump()
+        flows = ovs.dump(self.integration_bridge)
 
         for flow in flows:
             for expected_flow in expected_flow_list:
@@ -131,7 +131,7 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
 
     def _check_not_flow_existed(self, flow_list):
         ovs = utils.OvsFlowsParser()
-        flows = ovs.dump()
+        flows = ovs.dump(self.integration_bridge)
 
         for flow in flows:
             for expected_flow in flow_list:
