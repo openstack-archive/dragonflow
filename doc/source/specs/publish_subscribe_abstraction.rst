@@ -4,9 +4,9 @@
 
  http://creativecommons.org/licenses/by/3.0/legalcode
 
-==============================
+=============================
 Publish Subscribe Abstraction
-==============================
+=============================
 
 https://blueprints.launchpad.net/dragonflow/+spec/pubsub-module
 
@@ -109,11 +109,11 @@ interoperability with the proposed built-in publish-subscribe capability:
 When the controller is brought up it first tries to sync all the relevant policy
 from the DB using the NB API which calls the specific loaded DB driver.
 
-When this process ends, up until now the controller had two options, it would
-ask the DB driver if it supported publish subscribe, if not the controller
-continues with the sync loop and look for changes.
+When this process ends up, until now the controller had two options, it would
+ask the DB driver if it supports publish subscribe, if not the controller
+continues with the sync loop and keeps polling for changes.
 
-If the DB driver support publish-subscribe the controller calls a specific
+If the DB driver supports publish-subscribe the controller calls a specific
 API to the driver to register a callback.
 The DB driver is responsible to update any DB change to the callback,
 The callback gets table name, action ('create', 'set', 'delete'), the key and value
@@ -122,8 +122,8 @@ as parameters.
 If the user configured pub-sub, the controller instead of calling the DB driver
 API calls Dragonflow pub-sub module with the callback prior to starting the full sync process.
 
-The pub-sub module is in charge of dispatching configuration changes (DB changes)
-to all the local controllers, it expose a simple API of "subscriber" or "publisher".
+The pub-sub module is in-charge of dispatching configuration changes (DB changes)
+to all the local controllers, it exposes a simple API of "subscriber" or "publisher".
 
 The pub-sub module will be pluggable and allow different drivers to be developed as
 the pubsub module driver that will implement the interface of the pubsub api
@@ -161,9 +161,9 @@ module and published to all local controllers.
 Neutron Server q-svc process is forked on a multi-core host, in order to work
 around Python cooperative threading.
 
-For PubSub solutions that are "bind based" e.g "tcp" (meaning on publisher per host)
+For PubSub solutions that are "bind based" e.g "tcp" (meaning one publisher per host)
 we will use an IPC mechanism provided by the Publisher driver, in order
-to push its events through a shared
+to push its events through a shared socket.
 
 *Publisher Service* diagram below, which binds to a one-per-host publisher socket.
 
@@ -203,7 +203,7 @@ to push its events through a shared
 
 
 **df-db** CLI tool also needs to be enhanced to support publish-subscribe
-notifications as it can be used to bind ports to specific compute nodes
+notifications as it can be used to bind ports to specific compute nodes.
 
 
 Subscriber
@@ -211,7 +211,7 @@ Subscriber
 The subscriber API is being called by the local controllers, they call
 the daemonize() API of the subscriber and send the callback method.
 
-The subscriber is in charge of receiving the notifications from   publishers
+The subscriber is in charge of receiving the notifications from publishers
 and sending them for processing.
 
 
@@ -234,7 +234,7 @@ The subscriber thread loop is depicted in the following diagram:
  |               |
  +---------------+
 
-The mechanism in which to implement the publisher and subscriber is
+Implementation approach of the publisher and subscriber is
 totally abstracted from Dragonflow and can later be changed and
 optimized.
 
@@ -264,7 +264,7 @@ Delivery
 Each publisher on startup selects a GUID and publish it to all the subscribers via the
 hello message descend below.
 
-Subscribers will store in memory the publisher UUID on reciving the hello message and its cuurent message ID.
+Subscribers will store in memory the publisher UUID on receiving the hello message and its cuurent message ID.
 
 In order to detect message delay/loss, we introduce a *per-pub-per-message* sequence ID.
 The client verifies the sequence order of messages by tracking *current per-pub-message-id*.
@@ -311,7 +311,7 @@ We introduce *versioning* on the object level in the database, in order to track
 We compare this versioning to the local cache, before we update it.
 
 We only update when local cache version is older, and drop updates that have older version than the local cache.
-Local cache will be updated with any newer version head even if it is few version head older
+Local cache will be updated with any newer version head even if it is few versions ahead, older
 version will be dropped.
 
 Neutron Server Publisher discovery
