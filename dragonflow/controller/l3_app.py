@@ -149,12 +149,13 @@ class L3App(DFlowApp):
         tunnel_key = router_port.get_tunnel_key()
         dst_ip = router_port.get_ip()
 
+        is_ipv4 = netaddr.IPAddress(router_port.get_ip()).version == 4
         # Add router ARP responder for IPv4 Addresses
-        if netaddr.IPAddress(router_port.get_ip()).version == 4:
+        if is_ipv4:
             ArpResponder(datapath, local_network_id, dst_ip, mac).add()
 
         # If router interface IP, send to output table
-        if netaddr.IPAddress(dst_ip).version == 4:
+        if is_ipv4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     metadata=local_network_id,
                                     ipv4_dst=dst_ip)
