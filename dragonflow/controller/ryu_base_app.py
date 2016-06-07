@@ -156,34 +156,6 @@ class RyuDFAdapter(OFPHandler):
         req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
 
-    @set_ev_handler(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
-    def _port_status_handler(self, ev):
-        msg = ev.msg
-        reason = msg.reason
-        port_no = msg.desc.port_no
-        port_name = msg.desc.name
-
-        ofproto = msg.datapath.ofproto
-        if reason == ofproto.OFPPR_ADD:
-            LOG.info(_LI("port added %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
-            if lport:
-                lport.set_external_value('ofport', port_no)
-                lport.set_external_value('is_local', True)
-                self.notify_add_local_port(lport)
-        elif reason == ofproto.OFPPR_DELETE:
-            LOG.info(_LI("port deleted %s"), port_no)
-            lport = self.db_store.get_local_port_by_name(port_name)
-            if lport:
-                self.notify_remove_local_port(lport)
-                # Leave the last correct OF port number of this port
-        elif reason == ofproto.OFPPR_MODIFY:
-            LOG.info(_LI("port modified %s"), port_no)
-            # TODO(oanson) Add notification
-        else:
-            LOG.info(_LI("Illeagal port state %(port_no)s %(reason)s")
-                     % {'port_no': port_no, 'reason': reason})
-
     @set_ev_handler(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
     def port_desc_stats_reply_handler(self, ev):
         self.dispatcher.dispatch('port_desc_stats_reply_handler', ev)
