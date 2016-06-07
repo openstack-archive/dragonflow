@@ -56,7 +56,7 @@ class L3App(DFlowApp):
             pkt_ip = pkt.get_protocol(ipv6.ipv6)
 
         if pkt_ip is None:
-            LOG.error(_LE("Received None IP Packet"))
+            LOG.error(_LE("Received Non IP Packet"))
             return
 
         network_id = msg.match.get('metadata')
