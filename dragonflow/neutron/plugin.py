@@ -426,30 +426,39 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @lock_db.wrap_db_lock()
     def delete_network(self, context, network_id):
+        dhcp_ports = []
         with context.session.begin(subtransactions=True):
             network = self.get_network(context, network_id)
             tenant_id = network['tenant_id']
-            super(DFPlugin, self).delete_network(context,
-                                                 network_id)
+            try:
+                lswitch = self.nb_api.get_lswitch(id=network_id,
+                                                  topic=tenant_id)
+            except df_exceptions.DBKeyNotFound:
+                LOG.debug("lswitch %s is not found in DF DB, might have "
+                          "been deleted concurrently" % network_id)
+            if lswitch is not None:
+                for subnet in lswitch.get_subnets():
+                    port = None
+                    if subnet.enable_dhcp():
+                        port = self._get_dhcp_port_for_subnet(context,
+                                                              subnet.get_id())
+                        if port is not None:
+                            dhcp_ports.append(port)
+            super(DFPlugin, self).delete_network(context, network_id)
             version_db._delete_db_version_row(context.session, network_id)
-        # TODO(gsagie) this fix is used to remove DHCP port
-        # both in the case of q-dhcp and in the case of
-        # distributed virtual DHCP port created by DF
-        # Need to revisit
-        for port in self.nb_api.get_all_logical_ports():
-            if port.get_lswitch_id() == network_id:
-                try:
-                    self.nb_api.delete_lport(id=port.get_id(),
-                                             topic=tenant_id)
-                except df_exceptions.DBKeyNotFound:
-                    LOG.debug("port %s is not found in DB, might have"
-                              "been deleted concurrently" % port.get_id())
+
         try:
-            self.nb_api.delete_lswitch(id=network_id,
-                                       topic=tenant_id)
+            self.nb_api.delete_lswitch(id=network_id, topic=tenant_id)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
                       "been deleted concurrently" % network_id)
+        for port in dhcp_ports:
+            try:
+                self.nb_api.delete_lport(id=port['id'],
+                                         topic=port['tenant_id'])
+            except df_exceptions.DBKeyNotFound:
+                LOG.debug("port %s is not found in DB, might have"
+                          "been deleted concurrently" % port.get_id())
 
     @lock_db.wrap_db_lock()
     def update_network(self, context, network_id, network):
