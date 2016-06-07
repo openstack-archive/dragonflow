@@ -51,11 +51,8 @@ class L3App(DFlowApp):
         msg = event.msg
 
         pkt = packet.Packet(msg.data)
-        is_pkt_ipv4 = pkt.get_protocol(ipv4.ipv4) is not None
-
-        if is_pkt_ipv4:
-            pkt_ip = pkt.get_protocol(ipv4.ipv4)
-        else:
+        pkt_ip = pkt.get_protocol(ipv4.ipv4)
+        if pkt_ip is None:
             pkt_ip = pkt.get_protocol(ipv6.ipv6)
 
         if pkt_ip is None:
