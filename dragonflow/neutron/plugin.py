@@ -889,18 +889,19 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         return port
 
-    def _get_ports_by_subnet_and_owner(self, context, subnet_id, device_owner):
+    def _get_ports_by_subnets_and_owners(self, context,
+                                         subnet_ids, device_owners):
         """Used to get all port in a subnet by the device owner"""
-        LOG.debug("Dragonflow : subnet_id: %s", subnet_id)
-        filters = {'fixed_ips': {'subnet_id': [subnet_id]},
-                   'device_owner': [const.DEVICE_OWNER_DHCP]}
+        LOG.debug("Dragonflow : subnet_ids: %s", subnet_ids)
+        filters = {'fixed_ips': {'subnet_id': subnet_ids},
+                   'device_owner': device_owners}
         return self.get_ports(context, filters=filters)
 
     def _get_dhcp_port_for_subnet(self, context, subnet_id):
-        ports = self._get_ports_by_subnet_and_owner(
+        ports = self._get_ports_by_subnets_and_owners(
                 context,
-                subnet_id,
-                const.DEVICE_OWNER_DHCP)
+                [subnet_id],
+                [const.DEVICE_OWNER_DHCP])
         try:
             return ports[0]
         except IndexError:
