@@ -56,7 +56,7 @@ fi
 if is_service_enabled df-redis ; then
     source $DEST/dragonflow/devstack/redis_driver
     NB_DRIVER_CLASS="dragonflow.db.drivers.redis_db_driver.RedisDbDriver"
-    DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:"True"}
+    DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:-"True"}
 else
     DF_REDIS_PUBSUB="False"
 fi
