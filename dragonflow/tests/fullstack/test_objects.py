@@ -62,6 +62,11 @@ class RouterTestObj(object):
         self.router_id = new_router['router']['id']
         return self.router_id
 
+    def update(self, router={'name': 'myrouter2'}):
+        router = self.neutron.update_router(
+                self.router_id, {'router': router})
+        return router['router']
+
     def close(self):
         if self.closed or self.router_id is None:
             return
@@ -108,6 +113,11 @@ class SecGroupTestObj(object):
                                                            secgroup})
         self.secgroup_id = new_secgroup['security_group']['id']
         return self.secgroup_id
+
+    def update(self, secgroup={'name': 'mysecgroup2'}):
+        update_secgroup = self.neutron.update_security_group(
+                self.secgroup_id, {'security_group': secgroup})
+        return update_secgroup['security_group']
 
     def close(self):
         if self.closed or self.secgroup_id is None:
