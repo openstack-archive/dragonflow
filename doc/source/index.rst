@@ -20,6 +20,7 @@ Contents:
    pluggable_pubsub
    pipeline
    containers
+   gmr
    usage
    features
    contributing
