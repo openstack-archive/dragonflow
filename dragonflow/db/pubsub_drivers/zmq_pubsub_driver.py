@@ -164,7 +164,7 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
 
     def run(self):
         self.sub_socket = self.connect()
-        LOG.info(_LI("Starting  Subscriber on ports %(endpoints)s ")
+        LOG.info(_LI("Starting Subscriber on ports %(endpoints)s ")
                 % {'endpoints': str(self.uri_list)})
         while True:
             try:

@@ -195,7 +195,7 @@ function init_ovs {
     base_dir=$DATA_DIR/ovs
     mkdir -p $base_dir
 
-    for db in conf.db  ; do
+    for db in conf.db ; do
         if [ -f $base_dir/$db ] ; then
             rm -f $base_dir/$db
         fi
@@ -240,7 +240,7 @@ function ovs_service_status
     TEMP_PID=$OVS_DIR"/"$1".pid"
     if [ -e $TEMP_PID ]
     then
-        TEMP_PID_VALUE=$(cat $TEMP_PID  2>/dev/null)
+        TEMP_PID_VALUE=$(cat $TEMP_PID 2>/dev/null)
         if [ -e /proc/$TEMP_PID_VALUE ]
         then
             return 0

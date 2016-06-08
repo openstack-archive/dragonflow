@@ -27,7 +27,7 @@ function _neutron_ovs_install_ovs_deps_fedora {
 function _neutron_ovs_get_rpm_basename {
     PACKAGE=$1
     SPEC=${2:-rhel/openvswitch-fedora.spec}
-    BASENAME=`rpmspec -q $SPEC --provides | awk "/^$PACKAGE\s*=/ {print \\\$1\"-\"\\\$3}" |  head -1`
+    BASENAME=`rpmspec -q $SPEC --provides | awk "/^$PACKAGE\s*=/ {print \\\$1\"-\"\\\$3}" | head -1`
     echo `rpmspec -q $SPEC | grep "^$BASENAME"`
 }
 
@@ -73,9 +73,9 @@ tar -xzf openvswitch-${VERSION}.tar.gz -C \$HOME/rpmbuild/SOURCES
 pushd \$HOME/rpmbuild/SOURCES/openvswitch-${VERSION}
 _neutron_ovs_install_ovs_deps_fedora $DNF
 rpmbuild -bb --without check rhel/openvswitch-fedora.spec
-rpmbuild -bb -D "kversion `uname -r`"  rhel/openvswitch-kmod-fedora.spec
+rpmbuild -bb -D "kversion `uname -r`" rhel/openvswitch-kmod-fedora.spec
 OVS_RPM_BASENAME=\$(_neutron_ovs_get_rpm_file openvswitch)
-rpmrebuild --change-spec-requires="awk '\\\$1 == \\\"Requires:\\\" && \\\$2 == \\\"/bin/python\\\" {\\\$2 = \\\"/usr/bin/python\\\"}  {print \\\$0}'" -p \$OVS_RPM_BASENAME
+rpmrebuild --change-spec-requires="awk '\\\$1 == \\\"Requires:\\\" && \\\$2 == \\\"/bin/python\\\" {\\\$2 = \\\"/usr/bin/python\\\"} {print \\\$0}'" -p \$OVS_RPM_BASENAME
 OVS_PY_RPM_BASENAME=""
 OVS_KMOD_RPM_BASENAME=\$(_neutron_ovs_get_rpm_file openvswitch-kmod rhel/openvswitch-kmod-fedora.spec)
 $DNF install -y \$OVS_RPM_BASENAME \$OVS_PY_RPM_BASENAME \$OVS_KMOD_RPM_BASENAME
@@ -180,7 +180,7 @@ function start_ovs {
 
 function cleanup_ovs {
     # Remove the patch ports
-    for port in $(sudo ovs-vsctl show | grep Port | awk '{print $2}'  | cut -d '"' -f 2 | grep patch); do
+    for port in $(sudo ovs-vsctl show | grep Port | awk '{print $2}' | cut -d '"' -f 2 | grep patch); do
         sudo ovs-vsctl del-port ${port}
     done
 
@@ -190,7 +190,7 @@ function cleanup_ovs {
     done
 
     # Remove all the vxlan ports
-    for port in $(sudo ovs-vsctl list port | grep name | grep vxlan | awk '{print $3}'  | cut -d '"' -f 2); do
+    for port in $(sudo ovs-vsctl list port | grep name | grep vxlan | awk '{print $3}' | cut -d '"' -f 2); do
         sudo ovs-vsctl del-port ${port}
     done
 

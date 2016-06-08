@@ -12,5 +12,5 @@ function configure_pubsub_service_plugin {
 
     ZMQ_IPC_SOCKET_DIR=`dirname $ZMQ_IPC_SOCKET`
     sudo mkdir -p $ZMQ_IPC_SOCKET_DIR
-    sudo chown $STACK_USER  $ZMQ_IPC_SOCKET_DIR
+    sudo chown $STACK_USER $ZMQ_IPC_SOCKET_DIR
 }

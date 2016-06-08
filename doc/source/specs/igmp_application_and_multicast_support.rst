@@ -41,7 +41,7 @@ particular multicast group.
 
 Forwarding of the multicast packets will be done in the overlay network. By
 recording in the distributed database to what multicast group a VM is
-registered,  we know which Compute Nodes need to receive a copy of each packet.
+registered, we know which Compute Nodes need to receive a copy of each packet.
 
 Routing multicast packets to the physical network will be handled in another
 blueprint.
@@ -91,7 +91,7 @@ Extend the Dragonflow pipeline with flows that implement the following:
    reduce unnecessary copies.
 
  * Only 1 MCP is forwarded to a compute node that hosts one or more relevant
-   registered ports.  The IGMP Agent application on the compute node will
+   registered ports. The IGMP Agent application on the compute node will
    forward the MCP locally to all the relevant ports.
 
  * If the TTL on the MCP is greater than 1, and there are relevant registered
@@ -301,7 +301,7 @@ We propose the following new configuration:
 
 
  *Subnet*
-    *enable-igmp* : Boolean - Will IGMP, and by extension, multicast,  be
+    *enable-igmp* : Boolean - Will IGMP, and by extension, multicast, be
       supported on this subnet. If true, this spec is applied. If false, all
       router ports connected to this subnet are not multicast routers. IGMP
       packets are treated as regular routed IP packets. MCPs are not routed to

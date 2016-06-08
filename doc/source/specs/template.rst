@@ -44,7 +44,7 @@ Proposed Change
 How do you propose to solve this problem?
 
 This section is optional, and provides an area to discuss your high-level
-design at the same time as use cases, if desired.  Note that by high-level,
+design at the same time as use cases, if desired. Note that by high-level,
 we mean the "view from orbit" rough cut at how things will happen.
 
 This section should 'scope' the effort from a feature standpoint: how is the

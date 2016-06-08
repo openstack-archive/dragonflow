@@ -37,7 +37,7 @@ function configure_etcd_systemd_service {
     iniset $ETCD_CONF DEFAULT ETCD_ADVERTISE_CLIENT_URLS "http://$REMOTE_DB_IP:4001"
     iniset $ETCD_CONF DEFAULT ETCD_NAME "$HOSTNAME"
 
-    sudo cp $DEST/dragonflow/devstack/etcd.service  /lib/systemd/system/
+    sudo cp $DEST/dragonflow/devstack/etcd.service /lib/systemd/system/
     sudo systemctl enable etcd
 }
 
