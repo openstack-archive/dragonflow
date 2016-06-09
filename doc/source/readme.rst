@@ -4,7 +4,7 @@ Keep in mind that Dragonflow is still in beta.
 Prerequisites
 ------------
 
-1) OVS 2.4.0
+1) Open vSwitch 2.5.0
 
 Quick Installation
 -------------------
@@ -29,9 +29,9 @@ Quick Installation
 
    enable_service df-ext-services
 
-   enable_service q-svc
+   enable_service df-l3-agent
 
-   enable_service q-l3
+   enable_service q-svc
 
    disable_service q-agt
 
