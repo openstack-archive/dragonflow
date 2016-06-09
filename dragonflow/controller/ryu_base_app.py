@@ -103,6 +103,9 @@ class RyuDFAdapter(OFPHandler):
     def notify_remove_remote_port(self, lport=None):
         self.dispatcher.dispatch('remove_remote_port', lport=lport)
 
+    def notify_update_bridge_port(self, lport=None):
+        self.dispatcher.dispatch('update_bridge_port', lport=lport)
+
     def notify_add_router_port(self, router=None, router_port=None,
                                local_network_id=None):
         self.dispatcher.dispatch('add_router_port', router=router,
