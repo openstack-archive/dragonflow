@@ -47,6 +47,7 @@ Spec Template
     control_plane_testing
     metadata_service
     redis_availability
+    remote_device_communication
     allowed_address_pairs
 
 
