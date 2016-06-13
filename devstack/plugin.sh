@@ -8,7 +8,6 @@ OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
 # TODO(gsagie) Currently take branch-2.5 branch as master is not stable
 OVS_BRANCH=${OVS_BRANCH:-branch-2.5}
 
-DEFAULT_NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
@@ -17,7 +16,6 @@ DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
 REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
 REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
-NB_DRIVER_CLASS=${NB_DRIVER_CLASS:-$DEFAULT_NB_DRIVER_CLASS}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
 
@@ -39,26 +37,48 @@ OVS_DB_PID=$OVS_DIR"/"$OVS_DB_SERVICE".pid"
 OVS_VSWITCHD_PID=$OVS_DIR"/"$OVS_VSWITCHD_SERVICE".pid"
 OVS_VSWITCH_OCSSCHEMA_FILE=${OVS_VSWITCH_OCSSCHEMA_FILE:-"/usr/share/openvswitch/vswitch.ovsschema"}
 
+ACTION=$1
+STAGE=$2
+
 # Pluggable DB drivers
 #----------------------
+function is_df_db_driver_selected {
+    if [[ "$ACTION" == "stack" && "$STAGE" == "pre-install" ]]; then
+        test -n "$NB_DRIVER_CLASS"
+        return $?
+    fi
+    return 1
+}
+
+# Make sure this argument is not manually set by the user in local.conf
+is_df_db_driver_selected && die $LINENO "Database service is already set for Dragonflow."
+
 if is_service_enabled df-etcd ; then
     source $DEST/dragonflow/devstack/etcd_driver
     NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
 fi
 if is_service_enabled df-ramcloud ; then
+    is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/ramcloud_driver
     NB_DRIVER_CLASS="dragonflow.db.drivers.ramcloud_db_driver.RamCloudDbDriver"
 fi
 if is_service_enabled df-zookeeper ; then
+    is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/zookeeper_driver
     NB_DRIVER_CLASS="dragonflow.db.drivers.zookeeper_db_driver.ZookeeperDbDriver"
 fi
 if is_service_enabled df-redis ; then
+    is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/redis_driver
     NB_DRIVER_CLASS="dragonflow.db.drivers.redis_db_driver.RedisDbDriver"
     DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:-"True"}
 else
     DF_REDIS_PUBSUB="False"
+fi
+
+# As the function returns actual value only on pre-install, ignore it on later stages
+if [[ "$ACTION" == "stack" && "$STAGE" == "pre-install" ]]; then
+    is_df_db_driver_selected || die $LINENO "No database service is set for Dragonflow."
 fi
 
 # Pub/Sub Service
