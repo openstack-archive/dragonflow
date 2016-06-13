@@ -94,7 +94,7 @@ class ArpResponderTest(test_base.DFTestBase):
             utils.wait_until_true(
                 condition, timeout=40, sleep=1,
                 exception=RuntimeError(
-                    "Timed out waiting for arp responedr flow from  %(ip)s"
+                    "Timed out waiting for arp responedr flow from %(ip)s"
                     " to be removed" % {'ip': ip}))
         except Exception as e:
             self.assertIsNone(e)

@@ -28,7 +28,7 @@ db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
              'tunnel_key', 'floatingip', 'publisher']
 
 usage_str = "The following commands are supported:\n" \
-            "1) df-db ls  - print all the db tables \n" \
+            "1) df-db ls - print all the db tables \n" \
             "2) df-db ls <table_name> - print all the keys for specific table \n" \
             "3) df-db get <table_name> <key> - print value for specific key\n" \
             "4) df-db dump - dump all tables\n" \
