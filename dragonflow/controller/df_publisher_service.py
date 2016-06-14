@@ -70,7 +70,6 @@ class PublisherService(object):
         if self.multiproc_subscriber:
             self.multiproc_subscriber.initialize(self._append_event_to_queue)
         self.publisher.initialize()
-        # TODO(oanson) TableMonitor initialisation goes here
 
     def _append_event_to_queue(self, table, key, action, value, topic):
         event = db_common.DbUpdate(table, key, action, value, topic=topic)
@@ -86,13 +85,7 @@ class PublisherService(object):
             config=cfg.CONF.df
         )
         self._register_as_publisher()
-        self._publishers_table_monitor = pub_sub_api.StalePublisherMonitor(
-            self.db,
-            self.publisher,
-            cfg.CONF.df.publisher_timeout
-        )
-        self._publishers_table_monitor.daemonize()
-        # TODO(oanson) TableMonitor daemonize will go here
+        self._start_db_table_monitors()
         while True:
             try:
                 event = self._queue.get()
@@ -146,6 +139,36 @@ class PublisherService(object):
             ip,
             cfg.CONF.df.publisher_port,
         )
+
+    def _start_db_table_monitor(self, table_name):
+        if table_name == 'publisher':
+            table_monitor = pub_sub_api.StalePublisherMonitor(
+                self.db,
+                self.publisher,
+                cfg.CONF.df.publisher_timeout,
+                cfg.CONF.df.monitor_table_poll_time,
+            )
+        else:
+            table_monitor = pub_sub_api.TableMonitor(
+                table_name,
+                self.db,
+                self.publisher,
+                cfg.CONF.df.monitor_table_poll_time,
+            )
+        table_monitor.daemonize()
+        return table_monitor
+
+    def _start_db_table_monitors(self):
+        self.db_table_monitors = [self._start_db_table_monitor(table_name)
+                                  for table_name in pub_sub_api.MONITOR_TABLES]
+
+    def _stop_db_table_monitors(self):
+        if not self.db_table_monitors:
+            return
+        for monitor in self.db_table_monitors:
+            monitor.stop()
+        self.db_table_monitors = None
+
 
 
 def main():
