@@ -1,5 +1,10 @@
 # dragonflow.sh - Devstack extras script to install Dragonflow
 
+# By default, dragonflow uses DFPlugin as core plugin. If you want to use
+# ML2 as core plugin, you can edit local.conf file to configure
+# "USE_ML2_PLUGIN=True" and "Q_ML2_PLUGIN_MECHANISM_DRIVERS=df"
+USE_ML2_PLUGIN=${USE_ML2_PLUGIN:-"False"}
+
 # The git repo to use
 OVS_REPO=${OVS_REPO:-http://github.com/openvswitch/ovs.git}
 OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
@@ -117,7 +122,10 @@ function configure_df_plugin {
             'from dragonflow.common import extensions ;\
              print ",".join(extensions.SUPPORTED_API_EXTENSIONS)')
 
-        Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
+        if [[ "$USE_ML2_PLUGIN" == "False" ]]; then
+            Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
+            Q_SERVICE_PLUGIN_CLASSES=""
+        fi
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
         iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
@@ -140,7 +148,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
-        iniset $NEUTRON_CONF DEFAULT service_plugins ""
+        iniset $NEUTRON_CONF DEFAULT service_plugins "$Q_SERVICE_PLUGIN_CLASSES"
 
         if is_service_enabled q-dhcp ; then
             iniset $NEUTRON_CONF df use_centralized_ipv6_DHCP "True"
