@@ -60,7 +60,6 @@ class NbApi(object):
             if self.is_neutron_server:
                 # Publisher is part of the neutron server Plugin
                 self.publisher.initialize()
-                self._start_db_table_monitors()
                 # Start a thread to detect DB failover in Plugin
                 self.publisher.set_publisher_for_failover(
                     self.publisher,
@@ -97,35 +96,6 @@ class NbApi(object):
             cfg.CONF.df.pub_sub_driver,
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_subscriber()
-
-    def _start_db_table_monitors(self):
-        self.db_table_monitors = [self._start_db_table_monitor(table_name)
-                                  for table_name in pub_sub_api.MONITOR_TABLES]
-
-    def _start_db_table_monitor(self, table_name):
-        if table_name == 'publisher':
-            table_monitor = pub_sub_api.StalePublisherMonitor(
-                self.driver,
-                self.publisher,
-                cfg.CONF.df.publisher_timeout,
-                cfg.CONF.df.monitor_table_poll_time,
-            )
-        else:
-            table_monitor = pub_sub_api.TableMonitor(
-                table_name,
-                self.driver,
-                self.publisher,
-                cfg.CONF.df.monitor_table_poll_time,
-            )
-        table_monitor.daemonize()
-        return table_monitor
-
-    def _stop_db_table_monitors(self):
-        if not self.db_table_monitors:
-            return
-        for monitor in self.db_table_monitors:
-            monitor.stop()
-        self.db_table_monitors = None
 
     def _start_subsciber(self):
         self.subscriber.initialize(self.db_change_callback)
