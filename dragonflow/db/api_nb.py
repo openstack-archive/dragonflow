@@ -38,6 +38,7 @@ DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
 
 
 class NbApi(object):
+    _db_table_monitor_ready = False
 
     def __init__(self, db_driver, use_pubsub=False, is_neutron_server=False):
         super(NbApi, self).__init__()
@@ -60,7 +61,9 @@ class NbApi(object):
             if self.is_neutron_server:
                 # Publisher is part of the neutron server Plugin
                 self.publisher.initialize()
-                self._start_db_table_monitors()
+                if not self._db_table_monitor_ready:
+                    self._db_table_monitor_ready = True
+                    self._start_db_table_monitors()
                 # Start a thread to detect DB failover in Plugin
                 self.publisher.set_publisher_for_failover(
                     self.publisher,
