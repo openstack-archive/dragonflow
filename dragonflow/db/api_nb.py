@@ -905,6 +905,9 @@ class LogicalPort(DbStoreObject):
     def get_device_owner(self):
         return self.lport.get('device_owner')
 
+    def get_device_id(self):
+        return self.lport.get('device_id')
+
     def get_topic(self):
         return self.lport.get('topic')
 

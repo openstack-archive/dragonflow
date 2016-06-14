@@ -561,6 +561,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  chassis=chassis,
                                  device_owner=updated_port.get(
                                      'device_owner', None),
+                                 device_id=updated_port.get(
+                                     'device_id', None),
                                  security_groups=security_groups,
                                  port_security_enabled=updated_port[
                                      psec.PORTSECURITY],
@@ -702,6 +704,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             enabled=port.get('admin_state_up', None),
             chassis=chassis, tunnel_key=tunnel_key,
             version=port_version,
+            device_id=port.get('device_id', None),
             device_owner=port.get('device_owner', None),
             security_groups=sgs,
             port_security_enabled=port[psec.PORTSECURITY],
