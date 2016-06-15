@@ -61,7 +61,7 @@ function nb_db_driver_install_server {
             sudo ln -sf /opt/redis3/conf /etc/redis3
             sudo cp $DEST/redis/redis-$REDIS_VERSION/src/redis-trib.rb /opt/redis3/bin/
 
-            sudo chown -hR stack:stack /opt/redis3/
+            sudo chown -hR $STACK_USER /opt/redis3/
             if is_ubuntu || is_fedora; then
                 configure_redis
             fi
