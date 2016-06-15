@@ -77,7 +77,7 @@ function nb_db_driver_install_server {
             sudo make
             sudo make install
             gem list redis | grep redis
-            if [ $? -eq 0 ];then
+            if [ $? -eq 1 ];then
                 sudo gem source -a https://rubygems.org/
                 sudo gem install redis
             fi
