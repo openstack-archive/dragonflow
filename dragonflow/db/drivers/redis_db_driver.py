@@ -60,7 +60,6 @@ class RedisDbDriver(db_api.DbApi):
         pass
 
     def delete_table(self, table):
-        # Not needed in redis
         pass
 
     def _handle_db_conn_error(self, ip_port, local_key=None):
@@ -148,7 +147,7 @@ class RedisDbDriver(db_api.DbApi):
                 for host, client in six.iteritems(self.clients):
                     local_keys = client.keys(local_key)
                     if len(local_keys) == 1:
-                        return self._execute_cmd("GET", local_key[0])
+                        return self._execute_cmd("GET", local_keys[0])
             except Exception:
                 LOG.exception(_LE("exception when get_key: %(key)s ")
                               % {'key': local_key})

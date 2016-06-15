@@ -76,7 +76,7 @@ function nb_db_driver_install_server {
             sudo ./configure
             sudo make
             sudo make install
-            gem list redis | grep redis
+            ! gem list redis | grep -q redis
             if [ $? -eq 0 ];then
                 sudo gem source -a https://rubygems.org/
                 sudo gem install redis
@@ -129,7 +129,8 @@ function nb_db_driver_start_server {
              [ "$create" ] && {
                  echo "create the cluster: "$redis_cluster
                  pushd /opt/redis3/bin/
-                 echo "yes" |./redis-trib.rb create --replicas 1 $redis_cluster
+                 gem list
+                 echo "yes" |sudo ./redis-trib.rb create --replicas 1 $redis_cluster
                  popd
              }
 
