@@ -15,6 +15,7 @@
 
 import netaddr
 
+from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
@@ -76,7 +77,7 @@ class L3App(DFlowApp):
                 if str(ip_addr) == router_port.get_ip():
                     self._install_flow_send_to_output_table(
                         network_id,
-                        router_port.get_ip())
+                        router_port)
                     return
                 dst_ports = self.db_store.get_ports_by_network_id(
                     router_port.get_lswitch_id())
@@ -144,6 +145,7 @@ class L3App(DFlowApp):
             return
 
         parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
 
         mac = router_port.get_mac()
         tunnel_key = router_port.get_tunnel_key()
@@ -163,12 +165,29 @@ class L3App(DFlowApp):
                                     metadata=local_network_id,
                                     ipv6_dst=dst_ip)
 
+        actions = []
+        actions.append(parser.OFPActionSetField(reg7=tunnel_key))
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
-        inst = [goto_inst]
+        inst = [action_inst, goto_inst]
         self.mod_flow(
             datapath,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=match)
+
+        #add dst_mac=gw_mac l2 goto l3 flow
+        match = parser.OFPMatch()
+        match.set_metadata(local_network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        goto_inst = parser.OFPInstructionGotoTable(const.L3_LOOKUP_TABLE)
+        inst = [goto_inst]
+        self.mod_flow(
+            self.get_datapath(),
+            inst=inst,
+            table_id=const.L2_LOOKUP_TABLE,
             priority=const.PRIORITY_HIGH,
             match=match)
 
@@ -191,9 +210,12 @@ class L3App(DFlowApp):
                     router_port.get_cidr_netmask(),
                     tunnel_key)
 
-    def _install_flow_send_to_output_table(self, network_id, dst_ip):
+    def _install_flow_send_to_output_table(self, network_id, router_port):
+        dst_ip = router_port.get_ip()
+        tunnel_key = router_port.get_tunnel_key()
 
         parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
         if netaddr.IPAddress(dst_ip).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     metadata=network_id,
@@ -203,8 +225,12 @@ class L3App(DFlowApp):
                                     metadata=network_id,
                                     ipv6_dst=dst_ip)
 
+        actions = []
+        actions.append(parser.OFPActionSetField(reg7=tunnel_key))
+        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
-        inst = [goto_inst]
+        inst = [action_inst, goto_inst]
         self.mod_flow(
             self.get_datapath(),
             inst=inst,
@@ -246,6 +272,7 @@ class L3App(DFlowApp):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
         tunnel_key = router_port.get_tunnel_key()
+        mac = router_port.get_mac()
 
         if netaddr.IPAddress(router_port.get_ip()).version == 4:
             ip = router_port.get_ip()
@@ -258,6 +285,18 @@ class L3App(DFlowApp):
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
+
+        match = parser.OFPMatch()
+        match.set_metadata(local_network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        self.mod_flow(
+            datapath=self.get_datapath(),
+            table_id=const.L2_LOOKUP_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_HIGH,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
