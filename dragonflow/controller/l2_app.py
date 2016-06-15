@@ -104,6 +104,40 @@ class L2App(DFlowApp):
         network_id = lport.get_external_value('local_network_id')
         ArpResponder(self.get_datapath(), network_id, ip).remove()
 
+    def _add_dst_classifier_flow_for_port(self, network_id, mac, tunnel_key):
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+        match = parser.OFPMatch()
+        match.set_metadata(network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        actions = []
+        actions.append(parser.OFPActionSetField(reg7=tunnel_key))
+        action_inst = self.get_datapath().ofproto_parser\
+            .OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
+        inst = [action_inst, goto_inst]
+        self.mod_flow(
+            self.get_datapath(),
+            inst=inst,
+            table_id=const.L2_LOOKUP_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match)
+
+    def _delete_dst_classifier_flow_for_port(self, network_id, mac):
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+        match = parser.OFPMatch()
+        match.set_metadata(network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        self.mod_flow(
+            datapath=self.get_datapath(),
+            table_id=const.L2_LOOKUP_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
+
     def remove_local_port(self, lport):
 
         lport_id = lport.get_id()
@@ -111,6 +145,7 @@ class L2App(DFlowApp):
         network_id = lport.get_external_value('local_network_id')
         ofport = lport.get_external_value('ofport')
         tunnel_key = lport.get_tunnel_key()
+        device_owner = lport.get_device_owner()
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
@@ -151,17 +186,8 @@ class L2App(DFlowApp):
         self.get_datapath().send_msg(msg)
 
         # Remove destination classifier for port
-        match = parser.OFPMatch()
-        match.set_metadata(network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        self.mod_flow(
-            datapath=self.get_datapath(),
-            table_id=const.L2_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
-            match=match)
+        if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
+            self._delete_dst_classifier_flow_for_port(network_id, mac)
 
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
@@ -184,22 +210,14 @@ class L2App(DFlowApp):
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
         tunnel_key = lport.get_tunnel_key()
+        device_owner = lport.get_device_owner()
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
 
         # Remove destination classifier for port
-        match = parser.OFPMatch()
-        match.set_metadata(network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        self.mod_flow(
-            datapath=self.get_datapath(),
-            table_id=const.L2_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
-            match=match)
+        if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
+            self._delete_dst_classifier_flow_for_port(network_id, mac)
 
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
@@ -226,6 +244,7 @@ class L2App(DFlowApp):
         network_id = lport.get_external_value('local_network_id')
         ofport = lport.get_external_value('ofport')
         tunnel_key = lport.get_tunnel_key()
+        device_owner = lport.get_device_owner()
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
@@ -279,30 +298,10 @@ class L2App(DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-        # Destination classifier for port
-        priority = const.PRIORITY_MEDIUM
-        goto_table = const.EGRESS_TABLE
-
-        # Router MAC's go to L3 table and have higher priority
-        if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
-            priority = const.PRIORITY_HIGH
-            goto_table = const.L3_LOOKUP_TABLE
-
-        match = parser.OFPMatch()
-        match.set_metadata(network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        actions = []
-        actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(goto_table)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            self.get_datapath(),
-            inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
-            priority=priority,
-            match=match)
+        # Router MAC's go to L3 table will be handled by l3_app
+        if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
+            self._add_dst_classifier_flow_for_port(
+                    network_id, mac, tunnel_key)
 
         # Egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
@@ -428,34 +427,15 @@ class L2App(DFlowApp):
         network_id = lport.get_external_value('local_network_id')
         ofport = lport.get_external_value('ofport')
         tunnel_key = lport.get_tunnel_key()
+        device_owner = lport.get_device_owner()
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
 
-        # Destination classifier for port
-        priority = const.PRIORITY_MEDIUM
-        goto_table = const.EGRESS_TABLE
-
-        # Router MAC's go to L3 table and have higher priority
-        if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
-            priority = const.PRIORITY_HIGH
-            goto_table = const.L3_LOOKUP_TABLE
-
-        match = parser.OFPMatch()
-        match.set_metadata(network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        actions = []
-        actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(goto_table)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            self.get_datapath(),
-            inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
-            priority=priority,
-            match=match)
+        # Router MAC's go to L3 table will be handled by l3_app
+        if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
+            self._add_dst_classifier_flow_for_port(
+                    network_id, mac, tunnel_key)
 
         # Egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
