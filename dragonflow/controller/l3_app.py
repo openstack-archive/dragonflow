@@ -24,6 +24,7 @@ from ryu.ofproto import ether
 from dragonflow._i18n import _LE
 from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common.icmp_responder import ICMPResponder
 from dragonflow.controller.df_base_app import DFlowApp
 
 from oslo_log import log
@@ -149,9 +150,10 @@ class L3App(DFlowApp):
         tunnel_key = router_port.get_tunnel_key()
         dst_ip = router_port.get_ip()
 
-        # Add router ARP responder for IPv4 Addresses
+        # Add router ARP & ICMP responder for IPv4 Addresses
         if netaddr.IPAddress(router_port.get_ip()).version == 4:
             ArpResponder(datapath, local_network_id, dst_ip, mac).add()
+            ICMPResponder(datapath, local_network_id, dst_ip, mac).add()
 
         # If router interface IP, send to output table
         if netaddr.IPAddress(dst_ip).version == 4:
@@ -246,10 +248,13 @@ class L3App(DFlowApp):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
         tunnel_key = router_port.get_tunnel_key()
+        ip = router_port.get_ip()
+        mac = router_port.get_mac()
 
-        if netaddr.IPAddress(router_port.get_ip()).version == 4:
-            ip = router_port.get_ip()
+        if netaddr.IPAddress(ip).version == 4:
             ArpResponder(self.get_datapath(), local_network_id, ip).remove()
+            ICMPResponder(self.get_datapath(), local_network_id,
+                          ip, mac).remove()
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
