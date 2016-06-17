@@ -443,6 +443,13 @@ class DFMechDriver(driver_api.MechanismDriver):
         else:
             chassis = port.get('binding:host_id', None)
 
+        binding_profile = port.get('binding:profile')
+        if binding_profile and binding_profile.get(
+                df_const.DF_BINDING_PROFILE_PORT_KEY) ==\
+                df_const.DF_REMOTE_PORT_TYPE:
+            chassis = df_const.DF_REMOTE_CHASSIS_PREFIX + ':' +\
+                      binding_profile.get(df_const.DF_BINDING_PROFILE_HOST_IP)
+
         self.nb_api.create_lport(
             id=port['id'],
             lswitch_id=port['network_id'],
@@ -506,6 +513,13 @@ class DFMechDriver(driver_api.MechanismDriver):
             chassis = None
         else:
             chassis = updated_port.get('binding:host_id', None)
+
+        binding_profile = updated_port.get('binding:profile')
+        if binding_profile and binding_profile.get(
+                df_const.DF_BINDING_PROFILE_PORT_KEY) ==\
+                df_const.DF_REMOTE_PORT_TYPE:
+            chassis = df_const.DF_REMOTE_CHASSIS_PREFIX + ':' +\
+                      binding_profile.get(df_const.DF_BINDING_PROFILE_HOST_IP)
 
         updated_security_groups = updated_port.get('security_groups')
         if updated_security_groups:
