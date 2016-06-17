@@ -183,7 +183,7 @@ class TestDFMechDriver(base.BaseTestCase):
             id=port_id, lswitch_id=network_id, topic=tenant_id,
             macs=['aabb'], ips=['10.0.0.1'], name='FakePort',
             enabled=True, chassis=None, tunnel_key=tunnel_key,
-            device_owner='compute',
+            device_owner='compute', remote_vtep=None,
             port_security_enabled=False, security_groups=None,
             allowed_address_pairs=None, version=self.dbversion)
 
@@ -208,7 +208,8 @@ class TestDFMechDriver(base.BaseTestCase):
             macs=['aabb'], ips=['10.0.0.1'],
             enabled=True, chassis=None, port_security_enabled=False,
             allowed_address_pairs=None, security_groups=None,
-            device_owner='compute', version=self.dbversion)
+            device_owner='compute', version=self.dbversion,
+            remote_vtep=None)
 
     def test_delete_port_postcommit(self):
         tenant_id = 'test'
