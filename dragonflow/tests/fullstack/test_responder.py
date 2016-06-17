@@ -94,8 +94,97 @@ class ArpResponderTest(test_base.DFTestBase):
             utils.wait_until_true(
                 condition, timeout=40, sleep=1,
                 exception=RuntimeError(
-                    "Timed out waiting for arp responedr flow from %(ip)s"
+                    "Timed out waiting for arp responder flow from %(ip)s"
                     " to be removed" % {'ip': ip}))
+        except Exception as e:
+            self.assertIsNone(e)
+        finally:
+            network.close()
+
+
+class ICMPResponderTest(test_base.DFTestBase):
+
+    def _find_icmp_responder_flow_by_ip(self, flows, ip_str):
+        for flow in flows:
+            match = flow['match']
+            if not re.search('\\bicmp\\b', match):
+                continue
+            if not re.search(
+                    '\\bnw_dst=%s\\b' % ip_str.replace('.', '\\.'),
+                    match):
+                continue
+            if not re.search('\\bicmp_type=8\\b', match):
+                continue
+            return flow
+        return None
+
+    def _get_l2_lookup_table_flows(self):
+        ovs_flows_parser = test_utils.OvsFlowsParser()
+        flows = ovs_flows_parser.dump(self.integration_bridge)
+        flows = [flow for flow in flows
+                if flow['table'] == str(const.L2_LOOKUP_TABLE)]
+        return flows
+
+    def _check_icmp_flow_removal(self, ip):
+        l2_flows = self._get_l2_lookup_table_flows()
+        flow = self._find_icmp_responder_flow_by_ip(l2_flows, ip)
+        if not flow:
+            return True
+        return False
+
+    def test_icmp_responder(self):
+        """
+        Add a VM. Verify the icmp flow is there.
+        """
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create(network={'name': 'icmp_responder_test'})
+        subnet_obj = self.store(objects.SubnetTestObj(
+            self.neutron,
+            self.nb_api,
+            network_id,
+        ))
+
+        subnet = {'network_id': network_id,
+            'cidr': '10.10.10.0/24',
+            'gateway_ip': '10.10.10.1',
+            'ip_version': 4,
+            'name': 'arp_responder_test',
+            'enable_dhcp': True}
+        subnet_id = subnet_obj.create(subnet)
+
+        flows_before = self._get_l2_lookup_table_flows()
+
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        router_id = router.create()
+        subnet_msg = {'subnet_id': subnet_id}
+        interface = self.neutron.add_interface_router(router_id,
+                                                      body=subnet_msg)
+        port_id = interface['port_id']
+        router_port = self.neutron.list_ports(id=port_id)['ports'][0]
+        router_ip = None
+        for ip in router_port['fixed_ips']:
+            if ip['subnet_id'] == subnet_id:
+                router_ip = ip['ip_address']
+                break
+
+        flows_middle = self._get_l2_lookup_table_flows()
+
+        router.close()
+        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+
+        flows_delta = [flow for flow in flows_middle
+                if flow not in flows_before]
+
+        self.assertIsNotNone(
+            self._find_icmp_responder_flow_by_ip(flows_delta, router_ip)
+        )
+        condition = lambda: self._check_icmp_flow_removal(router_ip)
+        try:
+            utils.wait_until_true(
+                condition, timeout=40, sleep=1,
+                exception=RuntimeError(
+                    "Timed out waiting for icmp responder flow from %(ip)s"
+                    " to be removed" % {'ip': router_ip}))
         except Exception as e:
             self.assertIsNone(e)
         finally:
