@@ -19,6 +19,7 @@ import time
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_serialization import jsonutils
 from oslo_utils import importutils
 
 from neutron.agent.common import config
@@ -67,6 +68,7 @@ class DfLocalController(object):
         self.topology = None
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
+        self.remote_chassis_lport_map = {}
         self.integration_bridge = cfg.CONF.df.integration_bridge
 
     def run(self):
@@ -191,8 +193,8 @@ class DfLocalController(object):
         self.db_store.del_network_id(lswitch_id)
 
     def _logical_port_process(self, lport, original_lport=None):
-        if lport.get_chassis() is None or (
-                    lport.get_chassis() == constants.DRAGONFLOW_VIRTUAL_PORT):
+        chassis = lport.get_chassis()
+        if chassis == constants.DRAGONFLOW_VIRTUAL_PORT:
             return
 
         chassis_to_ofport, lport_to_ofport = (
@@ -202,7 +204,7 @@ class DfLocalController(object):
         )
         lport.set_external_value('local_network_id', network)
 
-        if lport.get_chassis() == self.chassis_name:
+        if chassis == self.chassis_name:
             lport.set_external_value('is_local', True)
             ofport = lport_to_ofport.get(lport.get_id(), 0)
             if ofport != 0:
@@ -224,7 +226,7 @@ class DfLocalController(object):
                          str(lport))
         else:
             lport.set_external_value('is_local', False)
-            ofport = chassis_to_ofport.get(lport.get_chassis(), 0)
+            ofport = chassis_to_ofport.get(chassis, 0)
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
                 if original_lport is None:
@@ -246,11 +248,48 @@ class DfLocalController(object):
                 LOG.warning(_LW("No tunnel for remote logical port %s") %
                             str(lport))
 
+    def _handle_remote_port_create(self, lport):
+        chassis = lport.get_chassis()
+        chassis_lports = self.remote_chassis_lport_map.get(chassis)
+        if not chassis_lports:
+            chassis_value = {'id': chassis, 'ip': chassis,
+                             'tunnel_type': self.tunnel_type}
+            self.vswitch_api.add_tunnel_port(api_nb.Chassis(
+                    jsonutils.dumps(chassis_value))).execute()
+            self.remote_chassis_lport_map[chassis] = set([lport.get_id()])
+        else:
+            chassis_lports.add(lport.get_id())
+
+    def _handle_remote_port_delete(self, lport):
+        chassis = lport.get_chassis()
+        chassis_lports = self.remote_chassis_lport_map.get(chassis)
+        if chassis_lports is None:
+            return
+        chassis_lports.remove(lport.get_id())
+        if len(chassis_lports) == 0:
+            self.chassis_deleted(chassis)
+            del self.remote_chassis_lport_map[chassis]
+
     def logical_port_created(self, lport):
+        chassis = lport.get_chassis()
+        if chassis is None or len(chassis) == 0:
+            return
+        if lport.get_remote_vtep():
+            self._handle_remote_port_create(lport)
         self._logical_port_process(lport)
 
     def logical_port_updated(self, lport):
+        chassis = lport.get_chassis()
+        if chassis is None or len(chassis) == 0:
+            return
         original_lport = self.db_store.get_port(lport.get_id())
+        original_chassis = original_lport.get_chassis()
+        if original_chassis != chassis:
+            if original_lport.get_remote_vtep():
+                self._handle_remote_port_delete(original_lport)
+
+            if lport.get_remote_vtep():
+                self._handle_remote_port_create(lport)
         self._logical_port_process(lport, original_lport)
 
     def logical_port_deleted(self, lport_id):
@@ -269,6 +308,12 @@ class DfLocalController(object):
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_remote_port(lport)
             self.db_store.delete_port(lport.get_id(), False)
+
+        chassis = lport.get_chassis()
+        if chassis is None:
+            return
+        if lport.get_remote_vtep():
+            self._handle_remote_port_delete(lport)
 
     def bridge_port_updated(self, lport):
         self.open_flow_app.notify_update_bridge_port(lport)
