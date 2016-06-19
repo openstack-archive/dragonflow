@@ -191,8 +191,11 @@ class DfLocalController(object):
         self.db_store.del_network_id(lswitch_id)
 
     def _logical_port_process(self, lport, original_lport=None):
-        if lport.get_chassis() is None or (
-                    lport.get_chassis() == constants.DRAGONFLOW_VIRTUAL_PORT):
+        if chassis in (None,
+                       '',
+                       constants.DRAGONFLOW_VIRTUAL_PORT):
+            LOG.debug(("Port %s has not been bound or it is a vPort ") %
+                      lport.get_id())
             return
 
         chassis_to_ofport, lport_to_ofport = (
