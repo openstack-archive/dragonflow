@@ -672,21 +672,28 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # The port name *must* be port['id'].  It must match the iface-id set
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
-        ips = []
-        if 'fixed_ips' in port:
-            ips = [ip['ip_address'] for ip in port['fixed_ips']]
-
         chassis = None
         if 'binding:host_id' in port:
             chassis = port['binding:host_id']
-
-        tunnel_key = self.nb_api.allocate_tunnel_key()
 
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldnt be mapped to
         # a valid ofport (or location)
         if port.get('device_owner') == const.DEVICE_OWNER_ROUTER_GW:
             chassis = None
+
+        if chassis in (None,
+                       '',
+                       constants.DRAGONFLOW_VIRTUAL_PORT):
+            LOG.debug(_LI("Port %s has not been bound or it is a vPort ") %
+                      lport.get_id())
+            return port
+
+        ips = []
+        if 'fixed_ips' in port:
+            ips = [ip['ip_address'] for ip in port['fixed_ips']]
+
+        tunnel_key = self.nb_api.allocate_tunnel_key()
 
         security_groups = port.get('security_groups')
         if security_groups == []:
