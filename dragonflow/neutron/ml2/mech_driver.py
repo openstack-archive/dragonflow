@@ -432,9 +432,6 @@ class DFMechDriver(driver_api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def create_port_postcommit(self, context):
         port = context.current
-        ips = [ip['ip_address'] for ip in port.get('fixed_ips', [])]
-        tunnel_key = self.nb_api.allocate_tunnel_key()
-
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldnt be mapped to
         # a valid ofport (or location)
@@ -442,6 +439,16 @@ class DFMechDriver(driver_api.MechanismDriver):
             chassis = None
         else:
             chassis = port.get('binding:host_id', None)
+
+        if chassis in (None,
+                       '',
+                       constants.DRAGONFLOW_VIRTUAL_PORT):
+            LOG.debug(("Port %s has not been bound or it is a vPort ") %
+                      port['id'])
+            return port
+
+        ips = [ip['ip_address'] for ip in port.get('fixed_ips', [])]
+        tunnel_key = self.nb_api.allocate_tunnel_key()
 
         self.nb_api.create_lport(
             id=port['id'],
