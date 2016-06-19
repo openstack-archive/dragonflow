@@ -191,8 +191,15 @@ class DfLocalController(object):
         self.db_store.del_network_id(lswitch_id)
 
     def _logical_port_process(self, lport, original_lport=None):
-        if lport.get_chassis() is None or (
-                    lport.get_chassis() == constants.DRAGONFLOW_VIRTUAL_PORT):
+
+        # create an unbounding port, chassis will be space string
+        # Though neutron plugin don't publish unbounding port, we
+        # keep the validatation to make it more robust
+        if chassis in (None,
+                       '',
+                       constants.DRAGONFLOW_VIRTUAL_PORT):
+            LOG.debug(("Port %s has not been bound or it is a vPort ") %
+                      lport.get_id())
             return
 
         chassis_to_ofport, lport_to_ofport = (
