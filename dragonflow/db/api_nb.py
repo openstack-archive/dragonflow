@@ -746,6 +746,35 @@ class NbApi(object):
             topic,
         )
 
+    def update_qos_policy(self, policy_id, topic, **columns):
+        policy = {}
+        policy['id'] = policy_id
+        policy['topic'] = topic
+        for col, val in columns.items():
+            policy[col] = val
+        policy_json = jsonutils.dumps(policy)
+
+        # When delete policy, topic(tenant_id) is not provided, so we must use
+        # None as topic when create policy. If not, the policy can not be
+        # deleted.
+        self.driver.create_key('qospolicy', policy_id, policy_json, None)
+        self._send_db_change_event('qospolicy', policy_id, 'update',
+                                   policy_json, topic)
+
+    def delete_qos_policy(self, policy_id, topic=None):
+        self.driver.delete_key('qospolicy', policy_id, topic)
+        self._send_db_change_event('qospolicy', policy_id, 'delete', policy_id,
+                                   SEND_ALL_TOPIC)
+
+    def get_qos_policy(self, policy_id, topic=None):
+        try:
+            qospolicy_value = self.driver.get_key('qospolicy',
+                                                  policy_id, topic)
+            return QosPolicy(qospolicy_value)
+        except Exception:
+            LOG.exception(_LE('Could not get qos policy %s'), policy_id)
+            return None
+
 
 @six.add_metaclass(abc.ABCMeta)
 class DbStoreObject(object):
@@ -1177,3 +1206,57 @@ class Publisher(DbStoreObject):
 
     def __str__(self):
         return str(self.publisher)
+
+
+class QosPolicy(DbStoreObject):
+
+    def __init__(self, value):
+        self.qospolicy = jsonutils.loads(value)
+
+    def get_id(self):
+        return self.qospolicy.get('id')
+
+    def get_name(self):
+        return self.qospolicy.get('name')
+
+    def get_topic(self):
+        return self.qospolicy.get('topic')
+
+    def get_version(self):
+        return self.qospolicy.get('version')
+
+    def get_rules(self):
+        res = []
+        for rule in self.qospolicy.get('rules'):
+            res.append(QosPolicyRule(rule))
+        return res
+
+    def __str__(self):
+        return self.qospolicy.__str__()
+
+
+class QosPolicyRule(DbStoreObject):
+
+    def __init__(self, value):
+        self.qosrule = value
+
+    def get_id(self):
+        return self.qosrule.get('id')
+
+    def get_topic(self):
+        return self.qosrule.get('topic')
+
+    def get_max_burst_kbps(self):
+        return self.qosrule['max_burst_kbps']
+
+    def get_max_kbps(self):
+        return self.qosrule['max_kbps']
+
+    def get_dscp_marking(self):
+        return self.qosrule['dscp_marking']
+
+    def __eq__(self, other):
+        return self.get_id() == other.get_id()
+
+    def __str__(self):
+        return self.qosrule.__str__()
