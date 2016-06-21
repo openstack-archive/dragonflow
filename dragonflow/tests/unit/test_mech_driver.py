@@ -34,6 +34,7 @@ mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
            stub_wrap_db_lock).start()
 from dragonflow.db.neutron import versionobjects_db as version_db
 from dragonflow.neutron.ml2 import mech_driver
+from neutron.api.rpc.callbacks import events as rpc_events
 from neutron.db import securitygroups_db
 from neutron import manager
 from neutron.tests import base
@@ -77,6 +78,41 @@ class TestDFMechDriver(base.BaseTestCase):
             subnets=[],
             mtu=1450,
             version=self.dbversion)
+
+    def test_update_network_postcommit(self):
+        tenant_id = 'test'
+        network_id = '123'
+        network_type = 'vxlan'
+        segmentation_id = 456
+        subnet = {"dhcp_ip": "1.0.0.2",
+                  "name": "sub1",
+                  "enable_dhcp": True,
+                  "lswitch": "123",
+                  "dns_nameservers": [],
+                  "gateway_ip": "1.0.0.1",
+                  "host_routes": [],
+                  "cidr": "1.0.0.0/24",
+                  "id": "456"}
+
+        self.driver._get_subnets_for_update_network = mock.Mock(
+            return_value=subnet)
+        network_context = self._get_network_context(tenant_id,
+                                                    network_id,
+                                                    network_type,
+                                                    segmentation_id)
+
+        self.driver.update_network_postcommit(network_context)
+        self.driver.nb_api.update_lswitch.assert_called_with(
+            id=network_id,
+            name='FakeNetwork',
+            topic=tenant_id,
+            network_type=network_type,
+            router_external=False,
+            segmentation_id=segmentation_id,
+            subnets=subnet,
+            mtu=1450,
+            version=self.dbversion,
+            qos_policy_id=100)
 
     def test_delete_network_postcommit(self):
         tenant_id = 'test'
@@ -185,7 +221,8 @@ class TestDFMechDriver(base.BaseTestCase):
             enabled=True, chassis=None, tunnel_key=tunnel_key,
             device_owner='compute',
             port_security_enabled=False, security_groups=None,
-            allowed_address_pairs=None, version=self.dbversion)
+            allowed_address_pairs=None, version=self.dbversion,
+            qos_policy_id=100)
 
     def test_update_port_postcommit(self):
         tenant_id = 'test'
@@ -208,7 +245,8 @@ class TestDFMechDriver(base.BaseTestCase):
             macs=['aabb'], ips=['10.0.0.1'],
             enabled=True, chassis=None, port_security_enabled=False,
             allowed_address_pairs=None, security_groups=None,
-            device_owner='compute', version=self.dbversion)
+            device_owner='compute', version=self.dbversion,
+            qos_policy_id=100)
 
     def test_delete_port_postcommit(self):
         tenant_id = 'test'
@@ -327,6 +365,25 @@ class TestDFMechDriver(base.BaseTestCase):
         self.driver.nb_api.delete_security_group_rule.assert_called_with(
             sg_id, sgr_id, tenant_id, sg_version=self.dbversion)
 
+    def test_handle_qos_notification(self):
+
+        # test update qos policy
+        rules = {'id': 123,
+                 'max_burst_kbps': 1000,
+                 'max_kbps': 100,
+                 'qos_policy_id': 123}
+        qos_policy = self._get_qos_policy(rules, rpc_events.UPDATED)
+        self.driver.handle_qos_notification(qos_policy, rpc_events.UPDATED)
+        self.driver.nb_api.update_qos_policy.assert_called_with(
+            123, 456, name='qos1', rules=rules)
+
+        # test delete qos policy
+        rules = None
+        qos_policy = self._get_qos_policy(rules, rpc_events.DELETED)
+        self.driver.handle_qos_notification(qos_policy, rpc_events.DELETED)
+        self.driver.nb_api.delete_qos_policy.assert_called_with(
+            123, topic=None)
+
     def _get_subnet_context(self, tenant_id, net_id, subnet_id, cidr,
                             gateway_ip, enable_dhcp, dns_nameservers):
         # sample data for testing purpose only.
@@ -354,7 +411,8 @@ class TestDFMechDriver(base.BaseTestCase):
                 'admin_state_up': True,
                 'status': 'ACTIVE',
                 'network_id': net_id,
-                'db_version': self.dbversion}
+                'db_version': self.dbversion,
+                'qos_policy_id': 100}
         return FakeContext(port)
 
     def _get_network_context(self, tenant_id, net_id, network_type, seg_id):
@@ -368,7 +426,8 @@ class TestDFMechDriver(base.BaseTestCase):
                    'provider:segmentation_id': seg_id,
                    'router:external': False,
                    'mtu': 1450,
-                   'db_version': self.dbversion}
+                   'db_version': self.dbversion,
+                   'qos_policy_id': 100}
         segments = [{'segmentation_id': seg_id}]
         return FakeNetworkContext(network, segments)
 
@@ -388,6 +447,18 @@ class TestDFMechDriver(base.BaseTestCase):
                   'security_group_rule_id': sgr_id,
                   'context': context}
         return kwargs
+
+    def _get_qos_policy(self, rules, event_type):
+        if event_type == rpc_events.UPDATED:
+            qos_policy = {'id': 123,
+                          'name': 'qos1',
+                          'rules': rules,
+                          'shared': False,
+                          'tenant_id': 456}
+        elif event_type == rpc_events.DELETED:
+            qos_policy = {'id': 123}
+
+        return qos_policy
 
 
 class FakeNetworkContext(object):

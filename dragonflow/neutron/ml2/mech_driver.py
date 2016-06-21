@@ -15,10 +15,15 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 
+from neutron.api.rpc.callbacks.consumer import registry as rpc_registry
+from neutron.api.rpc.callbacks import events as rpc_events
+from neutron.api.rpc.callbacks import resources as api_resources
+from neutron.api.rpc.handlers import resources_rpc as api_resources_rpc
 from neutron.api.v2 import attributes as attr
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
+from neutron.common import rpc as n_rpc
 from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import portbindings
 from neutron.extensions import portsecurity as psec
@@ -26,6 +31,7 @@ from neutron import manager
 from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api
 from neutron.plugins.ml2 import models
+from neutron.services.qos import qos_consts
 
 from dragonflow._i18n import _LI
 from dragonflow.common import common_params
@@ -48,6 +54,10 @@ class DFMechDriver(driver_api.MechanismDriver):
     """
 
     supported_extension_aliases = extensions.SUPPORTED_API_EXTENSIONS
+
+    SUPPORTED_RESOURCES = [api_resources.QOS_POLICY]
+    supported_qos_rule_types = [qos_consts.RULE_TYPE_BANDWIDTH_LIMIT,
+                                qos_consts.RULE_TYPE_DSCP_MARK]
 
     def initialize(self):
         LOG.info(_LI("Starting DFMechDriver"))
@@ -78,6 +88,43 @@ class DFMechDriver(driver_api.MechanismDriver):
         registry.subscribe(self.delete_security_group_rule,
                            resources.SECURITY_GROUP_RULE,
                            events.BEFORE_DELETE)
+        rpc_registry.subscribe(self.handle_qos_notification,
+                               api_resources.QOS_POLICY)
+
+        self.connection = n_rpc.create_connection()
+        self._register_rpc_consumers(self.connection)
+        self.connection.consume_in_threads()
+
+    def _register_rpc_consumers(self, connection):
+        endpoints = [api_resources_rpc.ResourcesPushRpcCallback()]
+        for resource_type in self.SUPPORTED_RESOURCES:
+            topic = api_resources_rpc.resource_type_versioned_topic(
+                resource_type)
+            connection.create_consumer(topic, endpoints, fanout=True)
+
+    def handle_qos_notification(self, qos_policy, event_type):
+        # there are 3 event types for qos policy: CREATED, UPDATED and DELETED.
+        # CREATED: create a qos policy.
+        #          qos service plugin don't publish CREATED event when create
+        #          qos policy, so we don't process CREATED event.
+        # UPDATED: create rule for policy, change rule for policy, delete rule
+        #          for policy.
+        # DELETED: delete qos policy
+        if event_type == rpc_events.UPDATED:
+            self._update_qos_policy(qos_policy)
+        elif event_type == rpc_events.DELETED:
+            self._delete_qos_policy(qos_policy)
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_QOS_POLICY_UPDATE)
+    def _update_qos_policy(self, qos_policy):
+        self.nb_api.update_qos_policy(qos_policy['id'],
+                                      qos_policy['tenant_id'],
+                                      name=qos_policy['name'],
+                                      rules=qos_policy['rules'])
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_QOS_POLICY_DELETE)
+    def _delete_qos_policy(self, qos_policy):
+        self.nb_api.delete_qos_policy(qos_policy['id'], topic=None)
 
     def _set_base_port_binding(self):
         self.base_binding_dict = {
@@ -201,6 +248,61 @@ class DFMechDriver(driver_api.MechanismDriver):
                       "been deleted concurrently" % network_id)
 
         LOG.info(_LI("DFMechDriver: delete network %s"), network_id)
+
+    def update_network_precommit(self, context):
+        nw_version = version_db._update_db_version_row(
+            context._plugin_context.session, context.current['id'])
+        context.current['db_version'] = nw_version
+
+    def _get_subnets_for_update_network(self, context, network):
+        subnet_id_list = network.get('subnets', None)
+        if subnet_id_list is None:
+            return []
+
+        subnets = []
+        plugin_context = context._plugin_context
+        core_plugin = manager.NeutronManager.get_plugin()
+        for subnet_id in subnet_id_list:
+            subnet = core_plugin.get_subnet(plugin_context, subnet_id)
+            if subnet is None:
+                LOG.debug("DFMechDriver: Could not find subnet %s", subnet_id)
+                continue
+
+            port = self._get_dhcp_port_for_subnet(plugin_context, subnet_id)
+            dhcp_address = self._get_ip_from_port(port)
+            subnet_dict = {}
+            subnet_dict['dhcp_ip'] = dhcp_address
+            subnet_dict['name'] = subnet['name']
+            subnet_dict['enable_dhcp'] = subnet['enable_dhcp']
+            subnet_dict['lswitch'] = subnet['network_id']
+            subnet_dict['dns_nameservers'] = subnet['dns_nameservers']
+            subnet_dict['gateway_ip'] = subnet['gateway_ip']
+            subnet_dict['host_routes'] = subnet['host_routes']
+            subnet_dict['cidr'] = subnet['cidr']
+            subnet_dict['id'] = subnet['id']
+            subnets.append(subnet_dict)
+
+        return subnets
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    def update_network_postcommit(self, context):
+        network = context.current
+        subnets = self._get_subnets_for_update_network(context, network)
+
+        self.nb_api.update_lswitch(
+            id=network['id'],
+            topic=network['tenant_id'],
+            name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
+            network_type=network['provider:network_type'],
+            segmentation_id=network['provider:segmentation_id'],
+            router_external=network['router:external'],
+            mtu=network['mtu'],
+            version=network['db_version'],
+            subnets=subnets,
+            qos_policy_id=network.get('qos_policy_id', None))
+
+        LOG.info(_LI("DFMechDriver: update network %s"), network['id'])
+        return network
 
     def _get_dhcp_port_for_subnet(self, context, subnet_id):
         filters = {'fixed_ips': {'subnet_id': [subnet_id]},
@@ -455,7 +557,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             device_owner=port.get('device_owner', None),
             security_groups=port.get('security_groups', None),
             port_security_enabled=port.get(psec.PORTSECURITY, False),
-            allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, None))
+            allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, None),
+            qos_policy_id=port.get('qos_policy_id', None))
 
         LOG.info(_LI("DFMechDriver: create port %s"), port['id'])
         return port
@@ -527,7 +630,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=updated_port.get(addr_pair.ADDRESS_PAIRS,
                                                    None),
-            version=updated_port['db_version'])
+            version=updated_port['db_version'],
+            qos_policy_id=updated_port.get('qos_policy_id', None))
 
         LOG.info(_LI("DFMechDriver: update port %s"), updated_port['id'])
         return updated_port

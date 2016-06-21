@@ -109,6 +109,16 @@ source $DEST/dragonflow/devstack/ovs_setup.sh
 # Entry Points
 # ------------
 
+function configure_qos {
+    Q_SERVICE_PLUGIN_CLASSES+=",qos"
+
+    Q_ML2_PLUGIN_EXT_DRIVERS+=",qos"
+    NEUTRON_ML2_CONF=/etc/neutron/plugins/ml2/ml2_conf.ini
+    if [[ "$USE_ML2_PLUGIN" == "True" ]]; then
+        iniset $NEUTRON_ML2_CONF ml2 extension_drivers "$Q_ML2_PLUGIN_EXT_DRIVERS"
+    fi
+}
+
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
@@ -122,6 +132,10 @@ function configure_df_plugin {
         if [[ "$USE_ML2_PLUGIN" == "False" ]]; then
             Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
             Q_SERVICE_PLUGIN_CLASSES=""
+        fi
+
+        if is_service_enabled q-qos ; then
+            configure_qos
         fi
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
