@@ -814,6 +814,12 @@ class LogicalSwitch(DbStoreObject):
     def get_version(self):
         return self.lswitch['version']
 
+    def get_segment_id(self):
+        return self.lswitch.get('segmentation_id', None)
+
+    def get_network_type(self):
+        return self.lswitch.get('network_type', None)
+
     def __str__(self):
         return self.lswitch.__str__()
 
