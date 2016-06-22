@@ -523,6 +523,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             enabled=updated_port['admin_state_up'],
             chassis=chassis,
             device_owner=updated_port.get('device_owner', None),
+            device_id=updated_port.get('device_id', None),
             security_groups=security_groups,
             port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=updated_port.get(addr_pair.ADDRESS_PAIRS,
