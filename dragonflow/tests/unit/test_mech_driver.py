@@ -181,7 +181,8 @@ class TestDFMechDriver(base.BaseTestCase):
         self.driver.create_port_postcommit(port_context)
         self.driver.nb_api.create_lport.assert_called_with(
             id=port_id, lswitch_id=network_id, topic=tenant_id,
-            macs=['aabb'], ips=['10.0.0.1'], name='FakePort',
+            macs=['aabb'], ips=['10.0.0.1'],
+            name='FakePort', subnets=['sub-1'],
             enabled=True, chassis=None, tunnel_key=tunnel_key,
             device_owner='compute',
             port_security_enabled=False, security_groups=None,
@@ -206,6 +207,7 @@ class TestDFMechDriver(base.BaseTestCase):
         self.driver.nb_api.update_lport.assert_called_with(
             id=port_id, name='FakePort', topic=tenant_id,
             macs=['aabb'], ips=['10.0.0.1'],
+            subnets=['sub-1'],
             enabled=True, chassis=None, port_security_enabled=False,
             allowed_address_pairs=None, security_groups=None,
             device_owner='compute', version=self.dbversion)
