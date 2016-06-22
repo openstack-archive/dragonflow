@@ -530,9 +530,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             port_version = version_db._update_db_version_row(
                     context.session, id)
 
-        ips = []
-        if 'fixed_ips' in updated_port:
-            ips = [ip['ip_address'] for ip in updated_port['fixed_ips']]
+        ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
+        subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
 
         chassis = None
         if 'binding:host_id' in updated_port:
@@ -553,7 +552,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         port_name = updated_port.get('name', df_const.DF_PORT_DEFAULT_NAME)
         self.nb_api.update_lport(id=updated_port['id'],
                                  topic=updated_port['tenant_id'],
-                                 macs=[updated_port['mac_address']], ips=ips,
+                                 macs=[updated_port['mac_address']],
+                                 ips=ips,
+                                 subnets=subnets
                                  name=port_name,
                                  parent_name=parent_name, tag=tag,
                                  enabled=updated_port['admin_'
