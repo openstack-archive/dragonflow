@@ -887,6 +887,12 @@ class LogicalPort(DbStoreObject):
     def get_topic(self):
         return self.lport.get('topic')
 
+    def get_binding_profile(self):
+        return self.lport.get('binding_profile')
+
+    def get_binding_vnic_type(self):
+        return self.lport.get('binding_vnic_type')
+
     def get_version(self):
         return self.lport['version']
 
