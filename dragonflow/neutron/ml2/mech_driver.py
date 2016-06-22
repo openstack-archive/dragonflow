@@ -433,6 +433,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     def create_port_postcommit(self, context):
         port = context.current
         ips = [ip['ip_address'] for ip in port.get('fixed_ips', [])]
+        subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
         tunnel_key = self.nb_api.allocate_tunnel_key()
 
         # Router GW ports are not needed by dragonflow controller and
@@ -448,6 +449,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             lswitch_id=port['network_id'],
             topic=port['tenant_id'],
             macs=[port['mac_address']], ips=ips,
+            subnets=subnets,
             name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
             enabled=port.get('admin_state_up', None),
             chassis=chassis, tunnel_key=tunnel_key,
@@ -514,11 +516,14 @@ class DFMechDriver(driver_api.MechanismDriver):
             security_groups = None
 
         ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
+        subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
 
         self.nb_api.update_lport(
             id=updated_port['id'],
             topic=updated_port['tenant_id'],
-            macs=[updated_port['mac_address']], ips=ips,
+            macs=[updated_port['mac_address']],
+            ips=ips,
+            subnets=subnets,
             name=updated_port.get('name', df_const.DF_PORT_DEFAULT_NAME),
             enabled=updated_port['admin_state_up'],
             chassis=chassis,
