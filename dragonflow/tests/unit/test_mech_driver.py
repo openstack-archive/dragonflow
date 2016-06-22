@@ -185,7 +185,9 @@ class TestDFMechDriver(base.BaseTestCase):
             enabled=True, chassis=None, tunnel_key=tunnel_key,
             device_owner='compute',
             port_security_enabled=False, security_groups=None,
-            allowed_address_pairs=None, version=self.dbversion)
+            allowed_address_pairs=None,
+            binding_profile=None, binding_vnic_type='ovs',
+            version=self.dbversion)
 
     def test_update_port_postcommit(self):
         tenant_id = 'test'
@@ -208,7 +210,9 @@ class TestDFMechDriver(base.BaseTestCase):
             macs=['aabb'], ips=['10.0.0.1'],
             enabled=True, chassis=None, port_security_enabled=False,
             allowed_address_pairs=None, security_groups=None,
-            device_owner='compute', version=self.dbversion)
+            device_owner='compute',
+            binding_profile=None, binding_vnic_type='ovs',
+            version=self.dbversion)
 
     def test_delete_port_postcommit(self):
         tenant_id = 'test'
@@ -354,6 +358,8 @@ class TestDFMechDriver(base.BaseTestCase):
                 'admin_state_up': True,
                 'status': 'ACTIVE',
                 'network_id': net_id,
+                'binding:profile': None,
+                'binding:vnic_type': 'ovs',
                 'db_version': self.dbversion}
         return FakeContext(port)
 
