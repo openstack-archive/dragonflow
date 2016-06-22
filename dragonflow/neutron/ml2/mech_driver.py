@@ -456,7 +456,9 @@ class DFMechDriver(driver_api.MechanismDriver):
             device_id=port.get('device_id', None),
             security_groups=port.get('security_groups', None),
             port_security_enabled=port.get(psec.PORTSECURITY, False),
-            allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, None))
+            allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, None),
+            binding_profile=port.get(portbindings.VNIC_TYPE, None),
+            binding_vnic_type=port.get(portbindings.PROFILE, None))
 
         LOG.info(_LI("DFMechDriver: create port %s"), port['id'])
         return port
@@ -529,6 +531,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=updated_port.get(addr_pair.ADDRESS_PAIRS,
                                                    None),
+            binding_profile=updated_port.get(portbindings.VNIC_TYPE, None),
+            binding_vnic_type=updated_port.get(portbindings.PROFILE, None))
             version=updated_port['db_version'])
 
         LOG.info(_LI("DFMechDriver: update port %s"), updated_port['id'])
