@@ -527,6 +527,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=updated_port.get(addr_pair.ADDRESS_PAIRS,
                                                    None),
+            binding_profile=updated_port.get('binding:profile', None),
+            binding_vnic_type=updated_port.get('binding:vnic_type', None),
             version=updated_port['db_version'])
 
         LOG.info(_LI("DFMechDriver: update port %s"), updated_port['id'])
