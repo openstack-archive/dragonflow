@@ -568,6 +568,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                      psec.PORTSECURITY],
                                  allowed_address_pairs=updated_port[
                                      addr_pair.ADDRESS_PAIRS],
+                                 binding_profile=updated_port.get(
+                                     'binding:profile', None),
+                                 binding_vnic_type=updated_port.get(
+                                     'binding:vnic_type', None),
                                  version=port_version)
         return updated_port
 
