@@ -514,11 +514,14 @@ class DFMechDriver(driver_api.MechanismDriver):
             security_groups = None
 
         ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
+        subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
 
         self.nb_api.update_lport(
             id=updated_port['id'],
             topic=updated_port['tenant_id'],
-            macs=[updated_port['mac_address']], ips=ips,
+            macs=[updated_port['mac_address']],
+            ips=ips,
+            subnets=subnets,
             name=updated_port.get('name', df_const.DF_PORT_DEFAULT_NAME),
             enabled=updated_port['admin_state_up'],
             chassis=chassis,
