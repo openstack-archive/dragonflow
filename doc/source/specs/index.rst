@@ -48,7 +48,8 @@ Spec Template
     metadata_service
     redis_availability
     allowed_address_pairs
-
+    vlan_networking
+    port_qos
 
 Indices and tables
 ------------------
