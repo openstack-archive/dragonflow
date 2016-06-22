@@ -75,13 +75,13 @@ class DBNotifyInterface(object):
         belongs to
         """
 
-    def delete_router_port(self, router_port, local_network_id):
-        """delata a  router port hook callback
+    def remove_router_port(self, router_port, local_network_id):
+        """delete a  router port hook callback
 
 
-        param router_port: the deleted port
-        param local_network_id: the id of the local network that the deleted
-        port belongs to
+        param router_port: the port to be deleted
+        param local_network_id: the id of the local network that the port 
+        belongs to
         """
 
     def logical_switch_deleted(self, lswitch):
