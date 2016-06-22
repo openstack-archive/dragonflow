@@ -453,6 +453,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             chassis=chassis, tunnel_key=tunnel_key,
             version=port['db_version'],
             device_owner=port.get('device_owner', None),
+            device_id=port.get('device_id', None),
             security_groups=port.get('security_groups', None),
             port_security_enabled=port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, None))
@@ -523,6 +524,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             enabled=updated_port['admin_state_up'],
             chassis=chassis,
             device_owner=updated_port.get('device_owner', None),
+            device_id=updated_port.get('device_id', None),
             security_groups=security_groups,
             port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=updated_port.get(addr_pair.ADDRESS_PAIRS,
