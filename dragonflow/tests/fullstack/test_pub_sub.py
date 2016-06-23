@@ -387,33 +387,38 @@ class TestDbTableMonitors(test_base.DFTestBase):
         if not self.do_test:
             return
 
+        test_chassis = {
+            "ip": "1.2.3.4",
+            "id": "chassis-1",
+            "tunnel_type": "geneve"
+        }
+
         expected_event = {
             'table': unicode('chassis'),
             'key': unicode('chassis-1'),
             'action': unicode('create'),
-            # Due to the current implementation, value is not sent in event
-            'value': None,
+            'value': unicode(jsonutils.dumps(test_chassis)),
         }
         self.assertNotIn(expected_event, self.namespace.events)
         self.nb_api.driver.create_key(
             'chassis',
             'chassis-1',
-            jsonutils.dumps({'name': 'chassis-1', 'data': 'chassis-1-data-1'}))
+            jsonutils.dumps(test_chassis))
         eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertIn(expected_event, self.namespace.events)
 
+        test_chassis["ip"] = "2.3.4.5"
         expected_event = {
             'table': unicode('chassis'),
             'key': unicode('chassis-1'),
             'action': unicode('set'),
-            # Due to the current implementation, value is not sent in event
-            'value': None,
+            'value': unicode(jsonutils.dumps(test_chassis)),
         }
         self.assertNotIn(expected_event, self.namespace.events)
         self.nb_api.driver.set_key(
             'chassis',
             'chassis-1',
-            jsonutils.dumps({'name': 'chassis-1', 'data': 'chassis-1-data-2'}))
+            jsonutils.dumps(test_chassis))
         eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         self.assertIn(expected_event, self.namespace.events)
 
@@ -421,7 +426,6 @@ class TestDbTableMonitors(test_base.DFTestBase):
             'table': unicode('chassis'),
             'key': unicode('chassis-1'),
             'action': unicode('delete'),
-            # Due to the current implementation, value is not sent in event
             'value': None,
         }
         self.assertNotIn(expected_event, self.namespace.events)
