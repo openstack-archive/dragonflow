@@ -936,6 +936,10 @@ class TestSGApp(test_base.DFTestBase):
         # the rules of the initial security group associated with port3
         # only let icmp echo requests from port1 pass.
         self.policy.start(self.topology)
+        time.sleep(5)
+        test_flows = test_utils.OvsFlowsParser().get_ovs_flows(
+            self.integration_bridge)
+        print test_flows
         self.policy.wait(30)
 
         # switch the associated security group with port3 to a new security
