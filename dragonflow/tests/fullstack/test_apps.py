@@ -651,6 +651,19 @@ class TestSGApp(test_base.DFTestBase):
                 )
             )
 
+            self.subnet = self.topology.create_subnet(cidr='192.168.14.0/24')
+            self.port1 = self.subnet.create_port()
+            self.port2 = self.subnet.create_port()
+            self.port3 = self.subnet.create_port([security_group_id])
+
+            port1_lport = self.port1.port.get_logical_port()
+            self.assertIsNotNone(port1_lport)
+            port1_fixed_ip = port1_lport.get_ip()
+
+            port2_lport = self.port2.port.get_logical_port()
+            self.assertIsNotNone(port2_lport)
+            port2_fixed_ip = port2_lport.get_ip()
+
             egress_rule_info = {'ethertype': 'IPv4',
                                 'direction': 'egress',
                                 'protocol': 'icmp'}
@@ -664,7 +677,7 @@ class TestSGApp(test_base.DFTestBase):
             ingress_rule_info = {'ethertype': 'IPv4',
                                  'direction': 'ingress',
                                  'protocol': 'icmp',
-                                 'remote_ip_prefix': "192.168.14.3/32"}
+                                 'remote_ip_prefix': port1_fixed_ip + "/32"}
             ingress_rule_id = security_group.rule_create(
                 secrule=ingress_rule_info)
             self.assertTrue(security_group.rule_exists(ingress_rule_id))
@@ -672,15 +685,10 @@ class TestSGApp(test_base.DFTestBase):
             ingress_rule_info2 = {'ethertype': 'IPv4',
                                   'direction': 'ingress',
                                   'protocol': 'icmp',
-                                  'remote_ip_prefix': "192.168.14.4/32"}
+                                  'remote_ip_prefix': port2_fixed_ip + "/32"}
             ingress_rule_id2 = security_group2.rule_create(
                 secrule=ingress_rule_info2)
             self.assertTrue(security_group2.rule_exists(ingress_rule_id2))
-
-            self.subnet = self.topology.create_subnet(cidr='192.168.14.0/24')
-            self.port1 = self.subnet.create_port()
-            self.port2 = self.subnet.create_port()
-            self.port3 = self.subnet.create_port([security_group_id])
 
             self.active_security_group_id = security_group_id
             self.inactive_security_group_id = security_group_id2
