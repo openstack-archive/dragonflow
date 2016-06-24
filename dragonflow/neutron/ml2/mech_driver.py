@@ -443,6 +443,14 @@ class DFMechDriver(driver_api.MechanismDriver):
         else:
             chassis = port.get('binding:host_id', None)
 
+        binding_profile = port.get('binding:profile')
+        remote_vtep = None
+        if binding_profile and binding_profile.get(
+                df_const.DF_BINDING_PROFILE_PORT_KEY) ==\
+                df_const.DF_REMOTE_PORT_TYPE:
+            chassis = binding_profile.get(df_const.DF_BINDING_PROFILE_HOST_IP)
+            remote_vtep = chassis
+
         self.nb_api.create_lport(
             id=port['id'],
             lswitch_id=port['network_id'],
@@ -455,6 +463,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             device_owner=port.get('device_owner', None),
             security_groups=port.get('security_groups', None),
             port_security_enabled=port.get(psec.PORTSECURITY, False),
+            remote_vtep=remote_vtep,
             allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, None))
 
         LOG.info(_LI("DFMechDriver: create port %s"), port['id'])
@@ -507,6 +516,14 @@ class DFMechDriver(driver_api.MechanismDriver):
         else:
             chassis = updated_port.get('binding:host_id', None)
 
+        binding_profile = updated_port.get('binding:profile')
+        remote_vtep = None
+        if binding_profile and binding_profile.get(
+                df_const.DF_BINDING_PROFILE_PORT_KEY) ==\
+                df_const.DF_REMOTE_PORT_TYPE:
+            chassis = binding_profile.get(df_const.DF_BINDING_PROFILE_HOST_IP)
+            remote_vtep = chassis
+
         updated_security_groups = updated_port.get('security_groups')
         if updated_security_groups:
             security_groups = updated_security_groups
@@ -527,6 +544,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=updated_port.get(addr_pair.ADDRESS_PAIRS,
                                                    None),
+            remote_vtep=remote_vtep,
             version=updated_port['db_version'])
 
         LOG.info(_LI("DFMechDriver: update port %s"), updated_port['id'])
