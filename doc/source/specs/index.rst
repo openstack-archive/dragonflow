@@ -48,6 +48,7 @@ Spec Template
     metadata_service
     redis_availability
     allowed_address_pairs
+    update_port_status
 
 
 Indices and tables
