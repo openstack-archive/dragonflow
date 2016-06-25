@@ -173,10 +173,10 @@ class DFMechDriver(driver_api.MechanismDriver):
             id=network['id'],
             topic=network['tenant_id'],
             name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
-            network_type=network['provider:network_type'],
-            segmentation_id=network['provider:segmentation_id'],
+            network_type=network.get('provider:network_type'),
+            segmentation_id=network.get('provider:segmentation_id'),
             router_external=network['router:external'],
-            mtu=network['mtu'],
+            mtu=network.get('mtu'),
             version=network['db_version'],
             subnets=[])
 
