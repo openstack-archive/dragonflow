@@ -51,6 +51,7 @@ Spec Template
     allowed_address_pairs
     security_groups
     vlan_networking
+    port_status_update
 
 
 Indices and tables
