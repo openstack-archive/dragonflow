@@ -551,6 +551,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             security_groups = updated_security_groups
 
         port_name = updated_port.get('name', df_const.DF_PORT_DEFAULT_NAME)
+
         self.nb_api.update_lport(id=updated_port['id'],
                                  topic=updated_port['tenant_id'],
                                  macs=[updated_port['mac_address']], ips=ips,
