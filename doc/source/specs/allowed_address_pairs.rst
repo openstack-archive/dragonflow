@@ -11,7 +11,7 @@ Allowed address pairs
 https://blueprints.launchpad.net/dragonflow/+spec/allowed-address-pairs
 
 This blueprint describes how to support allowed address pairs for
-Dragonflow.
+dragonflow.
 
 Problem Description
 ===================
@@ -54,17 +54,39 @@ fixed IP address and the IP addresses in allowed address pairs.
 L2/L3 Lookup
 ----------------------
 One or more VM ports could share a same IP address (and a same MAC address in
-some scenarios) in allowed address pairs. In L2/L3 Lookup table, we could
+some scenarios) in allowed address pairs. In L2/L3 lookup table, we could
 simply send the packets of which destination address is this address to all
-VM ports which have this address in their allowed address pairs field.
+VM ports which have this address in their allowed address pairs field,
+but that will cause extra bandwidth cost if there are only few VMs actually
+using the IP/MAC address in the allowed address pairs field of its port.
+
+A alternative way is sending those packets only to the ports of the VMs who
+actually using this IP/MAC. We can distinguish those VMs by receiving its
+gratuitous ARP packets of this IP/MAC from their ports, or by periodically
+sending ARP requests to the IP and receiving the corresponding ARP replies.
+Once those active VMs have been detected, local controllers should save this
+information in dragonflow DB and publish it. When L2/L3 APPs receive this
+notification, they could install flows to forwarding packets to the ports of
+those active VMs like they do for fixed IP/MAC.
+
+In particularly, if there is only one VM who could use the IP/MAC among VMs
+who have this IP/MAC in allowed address pairs field of their ports, the
+processes of L2/L3 APPs to install those flows could be simpler. Because
+this is a more common usage of allowed address pairs (for example, VRRP),
+we only support this situation in dragonflow as the first step.
+
+In dragonflow, we propose to support both the first "broadcast way" and the
+latter "detectation way", and add an option in the configuration for users to
+choose one of them.
 
 ARP Responder
 ---------------
 Because more than one VM ports' allowed address pairs could have a same IP
 address but different MAC addresses, ARP responder can hardly know which MAC
 address should be responded to an ARP request to this IP. We could simply
-continue to broadcast those ARP requests rather than try to response them in
-ARP table.
+continue to broadcast those ARP requests, or we could only use the detected
+MAC address of the active VM's port to reply those ARP requests, if the active
+VMs mentioned above was detected.
 
 
 References
