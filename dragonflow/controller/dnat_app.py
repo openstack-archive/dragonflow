@@ -71,6 +71,7 @@ class DNATApp(DFlowApp):
     def switch_features_handler(self, ev):
         self._init_external_bridge()
         self._init_external_network_bridge_check()
+        self._install_output_to_physical_patch(self.external_ofport)
 
     def _check_for_external_network_bridge_mac(self):
         idl = self.vswitch_api.idl
@@ -246,10 +247,12 @@ class DNATApp(DFlowApp):
         actions = [
             parser.OFPActionSetField(eth_src=fip_mac),
             parser.OFPActionSetField(eth_dst=network_bridge_mac),
-            parser.OFPActionSetField(ipv4_src=fip_ip),
-            parser.OFPActionOutput(port=self.external_ofport)]
-        inst = [self.get_datapath().ofproto_parser.OFPInstructionActions(
+            parser.OFPActionSetField(ipv4_src=fip_ip)]
+        action_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_EXTERNAL_TABLE)
+
+        inst = [action_inst, goto_inst]
 
         self.mod_flow(
             self.get_datapath(),
@@ -389,3 +392,15 @@ class DNATApp(DFlowApp):
                 topic=fip.get_topic(),
                 notify=False,
                 external_gateway_ip=fip.get_external_gateway_ip())
+
+    def _install_output_to_physical_patch(self, ofport):
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+        actions = [parser.OFPActionOutput(ofport,
+                                          ofproto.OFPCML_NO_BUFFER)]
+        actions_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        inst = [actions_inst]
+        self.mod_flow(self.get_datapath(), inst=inst,
+                      table_id=const.EGRESS_EXTERNAL_TABLE,
+                      priority=const.PRIORITY_MEDIUM, match=None)

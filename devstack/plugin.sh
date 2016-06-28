@@ -16,6 +16,8 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.5}
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
+ML2_APPS_LIST_DEFAULT="l2_ml2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
+"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
@@ -23,7 +25,7 @@ REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
 REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
-
+ML2_APPS_LIST=${ML2_APPS_LIST:-$ML2_APPS_LIST_DEFAULT}
 # OVS bridge definition
 PUBLIC_BRIDGE=${PUBLIC_BRIDGE:-br-ex}
 INTEGRATION_BRIDGE=${INTEGRATION_BRIDGE:-br-int}
@@ -122,6 +124,8 @@ function configure_df_plugin {
         if [[ "$USE_ML2_PLUGIN" == "False" ]]; then
             Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
             Q_SERVICE_PLUGIN_CLASSES=""
+         else
+            DF_APPS_LIST=$ML2_APPS_LIST
         fi
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
