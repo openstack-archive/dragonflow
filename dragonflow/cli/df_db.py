@@ -181,14 +181,17 @@ def main():
     if action == 'clean':
         for table in db_tables:
             clean_whole_table(db_driver, table)
+	return
 
     if action == 'init':
         for table in db_tables:
             create_table(db_driver, table)
+        return
 
     if action == 'dropall':
         for table in db_tables:
             drop_table(db_driver, table)
+	return
 
     if action == 'rm':
         if len(sys.argv) < 4:
