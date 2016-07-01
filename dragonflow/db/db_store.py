@@ -275,5 +275,8 @@ class DbStore(object):
     def get_publisher(self, uuid, topic=None):
         return self.get('publishers', uuid, topic)
 
+    def get_publishers(self, topic=None):
+        return self.values('publishers', topic)
+
     def delete_publisher(self, uuid, topic=None):
         self.delete('publishers', uuid, topic)
