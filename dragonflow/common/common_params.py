@@ -89,6 +89,11 @@ df_opts = [
         help=_('Publisher idle timeout before it is removed from the table')
     ),
     cfg.IntOpt(
+        'db_sync_time',
+        default=300,
+        help=_('periodically db comparison time')
+    ),
+    cfg.IntOpt(
         'publisher_rate_limit_timeout',
         default=180,
         help=_(
