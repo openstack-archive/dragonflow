@@ -50,6 +50,7 @@ class DFTestBase(base.BaseTestCase):
         common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
         self.conf = cfg.CONF.df
         self.integration_bridge = self.conf.integration_bridge
+        self.db_sync_time = self.conf.db_sync_time
 
         db_driver_class = importutils.import_class(self.conf.nb_db_class)
         self.nb_api = api_nb.NbApi(db_driver_class())
