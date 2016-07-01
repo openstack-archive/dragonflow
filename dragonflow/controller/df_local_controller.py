@@ -30,6 +30,7 @@ from dragonflow.common import constants
 from dragonflow.controller.ryu_base_app import RyuDFAdapter
 from dragonflow.controller.topology import Topology
 from dragonflow.db import api_nb
+from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_vswitch_impl
 
@@ -65,6 +66,7 @@ class DfLocalController(object):
         self.open_flow_app = app_mgr.instantiate(RyuDFAdapter, **kwargs)
 
         self.topology = None
+        self.db_consistent = None
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
         self.integration_bridge = cfg.CONF.df.integration_bridge
@@ -74,6 +76,9 @@ class DfLocalController(object):
                                db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api.initialize()
         self.topology = Topology(self, self.enable_selective_topo_dist)
+        self.db_consistent = db_consistent.DBConsistent(
+                self.topology, self.nb_api, self.db_store, self)
+        self.nb_api.set_db_consistent(self.db_consistent)
 
         self.vswitch_api.sync()
         # both set_controller and del_controller will delete flows.
@@ -93,6 +98,7 @@ class DfLocalController(object):
                 self.integration_bridge, 'secure').execute()
         self.open_flow_app.start()
         self.db_sync_loop()
+        self.db_consistent.daemonize()
 
     def db_sync_loop(self):
         while True:
