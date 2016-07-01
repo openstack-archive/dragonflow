@@ -47,6 +47,7 @@ class NbApi(object):
         self.use_pubsub = use_pubsub
         self.publisher = None
         self.subscriber = None
+        self.db_consistent = None
         self.is_neutron_server = is_neutron_server
         self.db_table_monitors = None
         self.enable_selective_topo_dist = \
@@ -75,11 +76,15 @@ class NbApi(object):
                     self.db_change_callback)
                 self.subscriber.register_hamsg_for_db()
 
+    def set_db_consistent(self, db_consistent):
+        self.db_consistent = db_consistent
+
     def db_recover_callback(self):
         # only db with HA func can go in here
         self.driver.process_ha()
         self.publisher.process_ha()
         self.subscriber.process_ha()
+        self.db_consistent.process(True)
 
     def _get_publisher(self):
         if cfg.CONF.df.pub_sub_use_multiproc:
@@ -1150,6 +1155,9 @@ class Publisher(DbStoreObject):
 
     def get_last_activity_timestamp(self):
         return self.publisher.get('last_activity_timestamp', None)
+
+    def get_version(self):
+        return self.publisher.get('last_activity_timestamp', 0)
 
     def __str__(self):
         return str(self.publisher)
