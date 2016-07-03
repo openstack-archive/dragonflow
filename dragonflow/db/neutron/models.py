@@ -24,7 +24,7 @@ class DFLockedObjects(model_base.BASEV2):
     object_uuid = sa.Column(sa.String(36), primary_key=True)
     lock = sa.Column(sa.Boolean, default=False)
     session_id = sa.Column(sa.BigInteger, default=0)
-    created_at = sa.Column(sa.DateTime)
+    created_at = sa.Column(sa.DateTime, onupdate=sa.func.utc_timestamp())
 
 
 class DFVersionObjects(model_base.BASEV2):
