@@ -830,7 +830,7 @@ class Subnet(DbStoreObject):
         return self.subnet['topic']
 
     def get_host_routes(self):
-        return self.subnet.get('host_routes', [])
+        return self.subnet.get('host_routes')
 
 
 class LogicalPort(DbStoreObject):
@@ -870,7 +870,7 @@ class LogicalPort(DbStoreObject):
         return self.lport.get('allowed_address_pairs')
 
     def get_port_security_enable(self):
-        return self.lport.get('port_security_enabled', True)
+        return self.lport.get('port_security_enabled', False)
 
     def set_external_value(self, key, value):
         self.external_dict[key] = value
