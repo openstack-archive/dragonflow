@@ -208,8 +208,7 @@ def _lock_free_update(session, id, lock_state=False, session_id=0):
     if not lock_state:
         # acquire lock
         search_params = {'object_uuid': id, 'lock': lock_state}
-        update_params = {'lock': not lock_state, 'session_id': session_id,
-                         'created_at': func.now()}
+        update_params = {'lock': not lock_state, 'session_id': session_id}
     else:
         # release or reset lock
         search_params = {'object_uuid': id, 'lock': lock_state,
@@ -227,21 +226,8 @@ def _lock_free_update(session, id, lock_state=False, session_id=0):
         raise db_exc.RetryRequest(df_exc.DBLockFailed(oid=id, sid=session_id))
 
 
-def _update_lock(session, row, lock, session_id):
-    row.lock = lock
-    row.session_id = session_id
-
-    # NOTE(nick-ma-z): created_at means the time when the lock is acquired.
-    if session_id:
-        row.created_at = func.now()
-
-    session.merge(row)
-    session.flush()
-
-
 def _create_db_row(session, oid):
     row = models.DFLockedObjects(object_uuid=oid,
-                                 lock=False, session_id=0,
-                                 created_at=func.now())
+                                 lock=False, session_id=0)
     session.add(row)
     session.flush()
