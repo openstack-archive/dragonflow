@@ -160,12 +160,12 @@ class NbApi(object):
                                      self.next_update.key,
                                      self.next_update.action,
                                      value)
-                self._queue.task_done()
             except Exception as e:
                 if "ofport is 0" not in e.message:
                     LOG.exception(e)
                 if not sync_rate_limiter():
                     self.apply_db_change(None, None, 'sync', None)
+            self._queue.task_done()
 
     def apply_db_change(self, table, key, action, value):
         # determine if the action is allowed or not
