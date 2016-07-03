@@ -773,10 +773,14 @@ class LogicalSwitch(DbStoreObject):
         return self.lswitch.get('mtu', None)
 
     def get_subnets(self):
-        res = []
-        for subnet in self.lswitch['subnets']:
-            res.append(Subnet(subnet))
-        return res
+        subnets = self.lswitch.get('subnets')
+        if subnets:
+            res = []
+            for subnet in subnets:
+                res.append(Subnet(subnet))
+            return res
+        else:
+            return None
 
     def get_topic(self):
         return self.lswitch['topic']
@@ -830,7 +834,7 @@ class Subnet(DbStoreObject):
         return self.subnet['topic']
 
     def get_host_routes(self):
-        return self.subnet.get('host_routes', [])
+        return self.subnet.get('host_routes')
 
 
 class LogicalPort(DbStoreObject):
@@ -870,7 +874,7 @@ class LogicalPort(DbStoreObject):
         return self.lport.get('allowed_address_pairs')
 
     def get_port_security_enable(self):
-        return self.lport.get('port_security_enabled', True)
+        return self.lport.get('port_security_enabled', False)
 
     def set_external_value(self, key, value):
         self.external_dict[key] = value
@@ -906,10 +910,14 @@ class LogicalRouter(DbStoreObject):
         return self.lrouter.get('name')
 
     def get_ports(self):
-        res = []
-        for port in self.lrouter.get('ports'):
-            res.append(LogicalRouterPort(port))
-        return res
+        ports = self.lrouter.get('ports')
+        if ports:
+            res = []
+            for port in ports:
+                res.append(LogicalRouterPort(port))
+            return res
+        else:
+            return None
 
     def get_topic(self):
         return self.lrouter.get('topic')
@@ -979,10 +987,14 @@ class SecurityGroup(DbStoreObject):
         return self.secgroup.get('version')
 
     def get_rules(self):
-        res = []
-        for rule in self.secgroup.get('rules'):
-            res.append(SecurityGroupRule(rule))
-        return res
+        rules = self.secgroup.get('rules')
+        if rules:
+            res = []
+            for rule in rules:
+                res.append(SecurityGroupRule(rule))
+            return res
+        else:
+            return None
 
     def __str__(self):
         return self.secgroup.__str__()
