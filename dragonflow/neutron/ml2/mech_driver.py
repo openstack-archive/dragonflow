@@ -27,7 +27,7 @@ from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api
 from neutron.plugins.ml2 import models
 
-from dragonflow._i18n import _LI
+from dragonflow._i18n import _LI, _LW
 from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
@@ -178,7 +178,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             router_external=network['router:external'],
             mtu=network.get('mtu'),
             version=network['db_version'],
-            subnets=[])
+            subnets=network.get('subnets'))
 
         LOG.info(_LI("DFMechDriver: create network %s"), network['id'])
         return network
@@ -318,8 +318,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             cidr=subnet['cidr'],
             dhcp_ip=dhcp_address,
             gateway_ip=subnet['gateway_ip'],
-            dns_nameservers=subnet.get('dns_nameservers', []),
-            host_routes=subnet.get('host_routes', []))
+            dns_nameservers=subnet.get('dns_nameservers', None),
+            host_routes=subnet.get('host_routes', None))
 
         LOG.info(_LI("DFMechDriver: create subnet %s"), subnet['id'])
         return subnet
@@ -392,8 +392,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             cidr=new_subnet['cidr'],
             dhcp_ip=dhcp_address,
             gateway_ip=new_subnet['gateway_ip'],
-            dns_nameservers=new_subnet.get('dns_nameservers', []),
-            host_routes=new_subnet.get('host_routes', []))
+            dns_nameservers=new_subnet.get('dns_nameservers', None),
+            host_routes=new_subnet.get('host_routes', None))
 
         LOG.info(_LI("DFMechDriver: update subnet %s"), new_subnet['id'])
         return new_subnet
@@ -429,10 +429,20 @@ class DFMechDriver(driver_api.MechanismDriver):
             context._plugin_context.session, context.current['id'])
         context.current['db_version'] = port_version
 
+    def _get_ips_by_port(self, port):
+        fixed_ips = port.get('fixed_ips')
+        if fixed_ips:
+            ips = [ip['ip_address'] for ip in fixed_ips]
+        else:
+            ips = None
+            LOG.warning(_LW("No fixed_ips in port(%s)") %
+                        port['id'])
+        return ips
+
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def create_port_postcommit(self, context):
         port = context.current
-        ips = [ip['ip_address'] for ip in port.get('fixed_ips', [])]
+        ips = self._get_ips_by_port(port)
         tunnel_key = self.nb_api.allocate_tunnel_key()
 
         # Router GW ports are not needed by dragonflow controller and
@@ -449,7 +459,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             topic=port['tenant_id'],
             macs=[port['mac_address']], ips=ips,
             name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
-            enabled=port.get('admin_state_up', None),
+            enabled=port.get('admin_state_up', False),
             chassis=chassis, tunnel_key=tunnel_key,
             version=port['db_version'],
             device_owner=port.get('device_owner', None),
@@ -514,7 +524,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         else:
             security_groups = None
 
-        ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
+        ips = self._get_ips_by_port(updated_port)
 
         self.nb_api.update_lport(
             id=updated_port['id'],
