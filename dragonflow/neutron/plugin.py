@@ -127,7 +127,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         # instead of using the hybrid mode.
         self.vif_details = {portbindings.CAP_PORT_FILTER: True}
         registry.subscribe(self.post_fork_initialize, resources.PROCESS,
-                           events.AFTER_CREATE)
+                           events.AFTER_INIT)
 
         self._setup_dhcp()
         self._start_rpc_notifiers()
