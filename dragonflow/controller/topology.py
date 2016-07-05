@@ -10,7 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_config import cfg
 from oslo_log import log
+
+from neutron_lib import constants as n_const
 
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.db import api_nb
@@ -36,6 +39,7 @@ class Topology(object):
 
         self.controller = controller
         self.nb_api = controller.get_nb_api()
+        self.port_status_reporter = controller.get_portstatus_notifier()
         self.db_store = controller.get_db_store()
         self.openflow_app = controller.get_openflow_app()
         self.chassis_name = controller.get_chassis_name()
@@ -132,6 +136,10 @@ class Topology(object):
 
     def _vm_port_added(self, ovs_port):
         self._vm_port_updated(ovs_port)
+        # publish vm port up event
+        if cfg.CONF.df.enable_port_status_notifier:
+            self.port_status_reporter.notify_port_status(
+              ovs_port, n_const.PORT_STATUS_ACTIVE)
 
     def _vm_port_updated(self, ovs_port):
         lport_id = ovs_port.get_iface_id()
@@ -187,12 +195,10 @@ class Topology(object):
             LOG.exception(_LE(
                 'Failed to process logical port offline event %s') % lport_id)
         finally:
-            # TODO(duankebo) publish vm port offline later
-            # currently we will not publish vm port offline event.
-            # lport = self.nb_api.get_logical_port(lport_id)
-            # if lport.get_chassis() == self.chassis_name:
-            #    self.nb_api.update_lport(lport.get_id(), chassis=None,
-            #                             status='DOWN')
+            # publish vm port down event.
+            if cfg.CONF.df.enable_port_status_notifier:
+                self.port_status_reporter.notify_port_status(
+                  ovs_port, n_const.PORT_STATUS_DOWN)
             del self.ovs_to_lport_mapping[ovs_port_id]
             self._del_from_topic_subscribed(topic, lport_id)
 
