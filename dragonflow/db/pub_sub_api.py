@@ -31,8 +31,8 @@ LOG = logging.getLogger(__name__)
 eventlet.monkey_patch(socket=False)
 
 PUBLISHER_TABLE = 'publisher'
-
-MONITOR_TABLES = ['chassis', PUBLISHER_TABLE]
+PORT_STATUS_TABLE = 'statusCounter'
+MONITOR_TABLES = ['chassis', PUBLISHER_TABLE, PORT_STATUS_TABLE]
 
 
 def pack_message(message):
@@ -325,3 +325,26 @@ class StalePublisherMonitor(TableMonitor):
                     # Publisher already deleted. Ignore.
                     pass
         return super(StalePublisherMonitor, self)._poll_once(old_cache)
+
+
+class PortStatusMonitor(TableMonitor):
+    def __init__(self, driver, publisher, timeout, polling_time=10,
+                 local_ip='127.0.0.1'):
+        super(StalePublisherMonitor, self).__init__(
+            PORT_STATUS_TABLE,
+            driver,
+            publisher,
+            polling_time
+        )
+        self._timeout = timeout
+        self._server_ip = local_ip
+        time_start = time.time()
+        self._driver.create_key(self._table_name, 'port_status',
+                                time_start, self._server_ip)
+
+    def _poll_once(self, old_cache):
+        # update server port status timestamp in DB, leave
+        # timeout process to DB sync tool
+        self._driver.create_key(self._table_name, 'port_status',
+                                time.time(), self._server_ip)
+        return super(PortStatusMonitor, self)._poll_once(old_cache)
