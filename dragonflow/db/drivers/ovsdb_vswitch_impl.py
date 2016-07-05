@@ -47,6 +47,8 @@ ovsdb_monitor_table_filter_default = {
         'external_ids',
         'options',
         'mac_in_use',
+        'ingress_policing_burst',
+        'ingress_policing_rate',
     ],
     'Bridge': [
         'ports',
@@ -59,12 +61,21 @@ ovsdb_monitor_table_filter_default = {
         'name',
         'external_ids',
         'interfaces',
+        'qos',
     ],
     'Controller': [
         'target',
     ],
     'Open_vSwitch': [
         'bridges',
+    ],
+    'QoS': [
+        'queues',
+        'type',
+    ],
+    'Queue': [
+        'dscp',
+        'other_config',
     ]
 }
 
@@ -296,6 +307,12 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         cmd = commands.DbGetCommand(self, 'Interface', port, 'ofport')
         return cmd.execute(check_error=False, log_errors=False)
 
+    def add_port_qos(self, ovs_port_name, qos):
+        return AddPortQos(self, ovs_port_name, qos).execute()
+
+    def del_port_qos(self, ovs_port_name):
+        return DelPortQos(self, ovs_port_name).execute()
+
 
 class OvsdbSwitchPort(api_vswitch.SwitchPort):
 
@@ -481,3 +498,75 @@ class AddPatchPort(BaseCommand):
         iface.type = 'patch'
         ifaces.append(iface)
         port.interfaces = ifaces
+
+
+class AddPortQos(BaseCommand):
+    def __init__(self, api, ovs_port_name, qos):
+        super(AddPortQos, self).__init__(api)
+        self.ovs_port_name = ovs_port_name
+        self.qos = qos
+
+    def run_idl(self, txn):
+        interface_name = self.ovs_port_name
+
+        interface = idlutils.row_by_value(self.api.idl, 'Interface',
+                                          'name', interface_name)
+        max_kbps = self.qos.get_max_kbps()
+        max_burst_kbps = self.qos.get_max_burst_kbps()
+        if max_kbps is not None:
+            interface.verify('ingress_policing_rate')
+            interface.ingress_policing_rate = max_kbps
+        if max_burst_kbps is not None:
+            interface.verify('ingress_policing_burst')
+            interface.ingress_policing_burst = max_burst_kbps
+
+        ovs_port = idlutils.row_by_value(self.api.idl, 'Port',
+                                         'name', self.ovs_port_name)
+        ovs_port.verify('qos')
+        qos = txn.insert(self.api.idl.tables['QoS'])
+        qos.type = 'linux-htb'
+        ovs_port.qos = qos.uuid
+
+        queue = txn.insert(self.api.idl.tables['Queue'])
+        dscp = self.qos.get_dscp_marking()
+        if dscp is not None:
+            queue.dscp = dscp
+        queue.verify('other_config')
+        other_config = getattr(queue, 'other_config', {})
+        if max_kbps is not None:
+            max_bps = max_kbps * 1024
+            other_config['max-rate'] = str(max_bps)
+            other_config['min-rate'] = str(max_bps)
+        queue.other_config = other_config
+
+        qos.verify('queues')
+        qos.queues = {0: queue.uuid}
+
+
+class DelPortQos(BaseCommand):
+    def __init__(self, api, ovs_port_name):
+        super(DelPortQos, self).__init__(api)
+        self.ovs_port_name = ovs_port_name
+
+    def run_idl(self, txn):
+        interface_name = self.ovs_port_name
+        interface = idlutils.row_by_value(self.api.idl, 'Interface',
+                                          'name', interface_name)
+        interface.verify('ingress_policing_rate')
+        interface.ingress_policing_rate = 0
+        interface.verify('ingress_policing_burst')
+        interface.ingress_policing_burst = 0
+
+        ovs_port = idlutils.row_by_value(self.api.idl, 'Port',
+                                         'name', self.ovs_port_name)
+        qos = getattr(ovs_port, 'qos', [])
+        ovs_port.verify('qos')
+        ovs_port.qos = []
+        qos_id = qos[0].uuid
+        if qos_id:
+            queues = qos[0].queues
+            if queues is not {}:
+                queue_id = queues[0].uuid
+                if queue_id:
+                    self.api.idl.tables['Queue'].rows[queue_id].delete()
+            self.api.idl.tables['QoS'].rows[qos_id].delete()
