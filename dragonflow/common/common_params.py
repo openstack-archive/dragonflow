@@ -55,6 +55,10 @@ df_opts = [
     cfg.StrOpt('pub_sub_driver',
                default='zmq_pubsub_driver',
                help=_('Drivers to use for the Dragonflow pub/sub')),
+    cfg.StrOpt('port_status_notifier',
+               default='dragonflow.db.pubsub_drivers.'
+                       'redis_port_status_notifier.PortStatusNotifier',
+               help=_('Port status notifier to use for the Dragonflow')),
     cfg.StrOpt('pub_sub_multiproc_driver',
                default='zmq_pubsub_multiproc_driver',
                help=_('Drivers to use for the Dragonflow pub/sub')),
