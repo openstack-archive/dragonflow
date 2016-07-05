@@ -14,6 +14,7 @@ from neutron.api.v2 import attributes as attr
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
+from neutron import context as n_context
 from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import portbindings
 from neutron.extensions import portsecurity as psec
@@ -63,6 +64,12 @@ class DFMechDriver(driver_api.MechanismDriver):
         self._set_base_port_binding()
 
         self.nb_api = api_nb.NbApi.get_instance(True)
+        port_status_notifier = df_utils.load_driver(
+            cfg.CONF.df.port_status_notifier,
+            df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
+        self.port_status_notifier = port_status_notifier
+        self.port_status_notifier.initialize(self, self.nb_api,
+                                             is_neutron_server=True)
 
         registry.subscribe(self.create_security_group,
                            resources.SECURITY_GROUP,
@@ -169,7 +176,6 @@ class DFMechDriver(driver_api.MechanismDriver):
         context = kwargs['context']
         tenant_id = context.tenant_id
         sgr_id = kwargs['security_group_rule_id']
-
         core_plugin = manager.NeutronManager.get_plugin()
         sgr = core_plugin.get_security_group_rule(context, sgr_id)
         sg_id = sgr['security_group_id']
@@ -227,7 +233,6 @@ class DFMechDriver(driver_api.MechanismDriver):
     def _get_dhcp_port_for_subnet(self, context, subnet_id):
         filters = {'fixed_ips': {'subnet_id': [subnet_id]},
                    'device_owner': [n_const.DEVICE_OWNER_DHCP]}
-
         core_plugin = manager.NeutronManager.get_plugin()
         ports = core_plugin.get_ports(context, filters=filters)
         if 0 != len(ports):
@@ -281,7 +286,6 @@ class DFMechDriver(driver_api.MechanismDriver):
                          'device_owner': n_const.DEVICE_OWNER_DHCP,
                          'mac_address': attr.ATTR_NOT_SPECIFIED,
                          'fixed_ips': [{'subnet_id': subnet['id']}]}}
-
         core_plugin = manager.NeutronManager.get_plugin()
         port = core_plugin.create_port(context, port)
 
@@ -523,6 +527,10 @@ class DFMechDriver(driver_api.MechanismDriver):
             return False
 
     def update_port_precommit(self, context):
+        updated_port = context.current
+        if (n_const.DEVICE_OWNER_COMPUTE_PREFIX in updated_port['device_owner']
+                and context.status != context.original_status):
+            return None
         port_version = version_db._update_db_version_row(
             context._plugin_context.session, context.current['id'])
         context.current['db_version'] = port_version
@@ -530,7 +538,11 @@ class DFMechDriver(driver_api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def update_port_postcommit(self, context):
         updated_port = context.current
-
+        # Here we do not want port status update to trigger
+        # sending event to other compute node.
+        if (n_const.DEVICE_OWNER_COMPUTE_PREFIX in updated_port['device_owner']
+                and context.status != context.original_status):
+            return None
         # If a subnet enabled dhcp, the DFMechDriver will create a dhcp server
         # port. When delete this subnet, the port should be deleted.
         # In ml2/plugin.py, when delete subnet, it will call
@@ -610,8 +622,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             if self._check_segment(segment):
                 context.set_binding(segment[driver_api.ID],
                                     self.vif_type,
-                                    self.vif_details,
-                                    status=n_const.PORT_STATUS_ACTIVE)
+                                    self.vif_details)
                 LOG.debug("Bound using segment: %s", segment)
                 return
             else:
@@ -631,3 +642,17 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                     constants.TYPE_GENEVE,
                                                     constants.TYPE_GRE,
                                                     constants.TYPE_LOCAL]
+
+    def set_port_status_up(self, port_id):
+        LOG.debug("DF reports status up for port: %s", port_id)
+        core_plugin = manager.NeutronManager.get_plugin()
+        core_plugin.update_port_status(n_context.get_admin_context(),
+                                       port_id,
+                                       n_const.PORT_STATUS_ACTIVE)
+
+    def set_port_status_down(self, port_id):
+        LOG.debug("DF reports status down for port: %s", port_id)
+        core_plugin = manager.NeutronManager.get_plugin()
+        core_plugin.update_port_status(n_context.get_admin_context(),
+                                       port_id,
+                                       n_const.PORT_STATUS_DOWN)
