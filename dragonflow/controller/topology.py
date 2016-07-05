@@ -132,6 +132,8 @@ class Topology(object):
 
     def _vm_port_added(self, ovs_port):
         self._vm_port_updated(ovs_port)
+        port_id = ovs_port.get_iface_id()
+        self.nb_api.send_port_status_event('lport', port_id, 'update', 'up')
 
     def _vm_port_updated(self, ovs_port):
         lport_id = ovs_port.get_iface_id()
