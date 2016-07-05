@@ -11,7 +11,7 @@
 #    under the License.
 
 from dragonflow.controller.common import constants as const
-from dragonflow.tests.common.utils import OvsFlowsParser, wait_until_none
+from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
@@ -58,21 +58,45 @@ class TestTopology(test_base.DFTestBase):
         self.assertTrue(vm_mac is not None)
         vm_flows = self._get_vm_flows(vm_mac)
         self.assertTrue(any(vm_flows))
+        # test port status update
+        utils.wait_until_is_and_return(
+            lambda: self._get_VM_port_status(vm, 'ACTIVE'),
+            timeout=60,
+            exception=Exception('Port status not change to ACTIVE')
+        )
         return vm
 
     def _remove_vm(self, vm):
         vm_mac = vm.get_first_mac()
         vm.server.stop()
+        # test port status update
+        utils.wait_until_is_and_return(
+            lambda: self._get_VM_port_status(vm, 'DOWN'),
+            timeout=60,
+            exception=Exception('Port status not change to DOWN')
+        )
+        # delete vm
         vm.close()
-        wait_until_none(
+        utils.wait_until_none(
             lambda: 1 if any(self._get_vm_flows(vm_mac)) else None, timeout=60,
             exception=Exception('VM flow was not deleted')
         )
 
     def _get_vm_flows(self, vm_mac):
-        ovs_flows_parser = OvsFlowsParser()
+        ovs_flows_parser = utils.OvsFlowsParser()
         flows = ovs_flows_parser.dump(self.integration_bridge)
         flows = [flow for flow in flows if
                  flow['table'] == str(const.ARP_TABLE) and
                  vm_mac in flow['actions']]
         return flows
+
+    def _get_VM_port_status(self, vm, status):
+        port = vm._get_VM_port()
+        if port:
+            port_status = port['status']
+            if port_status == status:
+                return port
+            else:
+                return None
+        else:
+            return None
