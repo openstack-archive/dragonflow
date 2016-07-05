@@ -211,7 +211,14 @@ class NbApi(object):
             self.db_recover_callback()
             return
 
-        if 'secgroup' == table:
+        if 'qos' == table:
+            if action == 'update' or action == 'create':
+                qos = QosPolicy(value)
+                self.controller.qos_updated(qos)
+            elif action == 'delete':
+                qos_id = key
+                self.controller.qos_deleted(qos_id)
+        elif 'secgroup' == table:
             if action == 'set' or action == 'create':
                 secgroup = SecurityGroup(value)
                 self.controller.security_group_updated(secgroup)
@@ -609,6 +616,11 @@ class NbApi(object):
         for secgroup_value in self.driver.get_all_entries('secgroup', topic):
             res.append(SecurityGroup(secgroup_value))
         return res
+    def get_qoses(self, topic=None):
+        res = []
+        for qos in self.driver.get_all_entries('qos', topic):
+            res.append(QosPolicy(qos))
+        return res
 
     def get_all_logical_switches(self, topic=None):
         res = []
@@ -913,6 +925,12 @@ class LogicalPort(DbStoreObject):
 
     def get_version(self):
         return self.lport['version']
+
+    def get_qos(self):
+        return self.lport.get('qos_policy_id')
+
+    def get_ovs_port_id(self):
+        return self.lport.get('ovs_port_id')
 
     def __str__(self):
         return self.lport.__str__() + self.external_dict.__str__()
