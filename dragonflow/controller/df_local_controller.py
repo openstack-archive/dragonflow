@@ -32,6 +32,7 @@ from dragonflow.controller.topology import Topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_vswitch_impl
+from dragonflow.db import port_status
 
 from ryu.base.app_manager import AppManager
 
@@ -54,6 +55,11 @@ class DfLocalController(object):
         self.nb_api = api_nb.NbApi(
             nb_driver_class(),
             use_pubsub=cfg.CONF.df.enable_df_pub_sub)
+        self.port_status = port_status.PortStatus(
+            mech_driver=None,
+            nb_api=self.nb_api,
+            use_pubsub=cfg.CONF.df.enable_df_pub_sub,
+            is_neutron_server=False)
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(
             self.ip, self.nb_api)
         kwargs = dict(
@@ -72,6 +78,7 @@ class DfLocalController(object):
     def run(self):
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
+        self.port_status.initialise()
         self.vswitch_api.initialize()
         self.topology = Topology(self, self.enable_selective_topo_dist)
 
@@ -528,6 +535,9 @@ class DfLocalController(object):
 
     def get_nb_api(self):
         return self.nb_api
+
+    def get_port_status(self):
+        return self.port_status
 
     def get_db_store(self):
         return self.db_store
