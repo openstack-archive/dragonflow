@@ -9,6 +9,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import eventlet
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common.utils import OvsFlowsParser, wait_until_none
@@ -58,11 +59,23 @@ class TestTopology(test_base.DFTestBase):
         self.assertTrue(vm_mac is not None)
         vm_flows = self._get_vm_flows(vm_mac)
         self.assertTrue(any(vm_flows))
+        # test port status update
+        eventlet.sleep(5)
+        port = vm._get_VM_port()
+        status = port['status']
+        self.assertEqual(status, 'ACTIVE')
+
         return vm
 
     def _remove_vm(self, vm):
         vm_mac = vm.get_first_mac()
         vm.server.stop()
+        # test port status update
+        eventlet.sleep(15)
+        port = vm._get_VM_port()
+        status = port['status']
+        self.assertEqual(status, 'DOWN')
+        # delete vm
         vm.close()
         wait_until_none(
             lambda: 1 if any(self._get_vm_flows(vm_mac)) else None, timeout=60,
