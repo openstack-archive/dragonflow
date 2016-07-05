@@ -358,7 +358,8 @@ class DNATApp(DFlowApp):
 
     def remove_local_port(self, lport):
         port_id = lport.get_id()
-        for key, floatingip in six.iteritems(self.local_floatingips):
+        fip_iter = six.iteritems(copy.deepcopy(self.local_floatingips))
+        for key, floatingip in fip_iter:
             if floatingip.get_lport_id() == port_id:
                 self.disassociate_floatingip(floatingip)
 
