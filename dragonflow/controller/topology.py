@@ -14,6 +14,7 @@ from oslo_log import log
 
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.db.api_nb import OvsPort
+from dragonflow.db.port_status import PortStatus
 
 LOG = log.getLogger(__name__)
 
@@ -36,6 +37,7 @@ class Topology(object):
 
         self.controller = controller
         self.nb_api = controller.get_nb_api()
+        self.port_status = controller.get_port_status()
         self.db_store = controller.get_db_store()
         self.openflow_app = controller.get_openflow_app()
         self.chassis_name = controller.get_chassis_name()
@@ -132,6 +134,7 @@ class Topology(object):
 
     def _vm_port_added(self, ovs_port):
         self._vm_port_updated(ovs_port)
+        self.port_status.send_port_status(ovs_port)
 
     def _vm_port_updated(self, ovs_port):
         lport_id = ovs_port.get_iface_id()
