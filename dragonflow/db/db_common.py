@@ -15,6 +15,7 @@
 from oslo_utils import timeutils
 
 SEND_ALL_TOPIC = b'D'
+PORT_STATUS_TOPIC = b'F'
 DB_SYNC_MINIMUM_INTERVAL = 180
 
 
