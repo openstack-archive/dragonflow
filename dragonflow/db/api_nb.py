@@ -15,6 +15,7 @@
 #    under the License.
 
 import abc
+import random
 import time
 
 import eventlet
@@ -143,6 +144,15 @@ class NbApi(object):
 
     def allocate_tunnel_key(self):
         return self.driver.allocate_unique_key()
+
+    def get_all_port_status_keys(self):
+        topics = self.driver.get_all_entries('portstats')
+        topic = random.choice(topics)
+        return topic
+
+    def create_port_status(self, server_ip):
+        self.driver.create_key('portstats', server_ip,
+                               server_ip, None)
 
     def register_notification_callback(self, controller):
         self.controller = controller
