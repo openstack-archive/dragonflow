@@ -19,6 +19,8 @@ from neutron.api.v2 import attributes as attr
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
+from neutron import context as n_context
+from neutron.db import provisioning_blocks
 from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import portbindings
 from neutron.extensions import portsecurity as psec
@@ -35,6 +37,7 @@ from dragonflow.common import extensions
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.db.neutron import versionobjects_db as version_db
+from dragonflow.db import port_status
 from dragonflow.neutron.common import constants as df_const
 
 LOG = log.getLogger(__name__)
@@ -60,11 +63,17 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
         self.nb_api = api_nb.NbApi(
-                nb_driver_class(),
-                use_pubsub=cfg.CONF.df.enable_df_pub_sub,
-                is_neutron_server=True)
+            nb_driver_class(),
+            use_pubsub=cfg.CONF.df.enable_df_pub_sub,
+            is_neutron_server=True)
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
+        self.port_status = port_status.PortStatus(
+            self,
+            self.nb_api,
+            use_pubsub=cfg.CONF.df.enable_df_pub_sub,
+            is_neutron_server=True)
+        self.port_status.intialise()
 
         registry.subscribe(self.create_security_group,
                            resources.SECURITY_GROUP,
@@ -425,9 +434,28 @@ class DFMechDriver(driver_api.MechanismDriver):
         LOG.info(_LI("DFMechDriver: delete subnet %s"), subnet_id)
 
     def create_port_precommit(self, context):
+        port = context.current
+        if port['status'] == n_const.PORT_STATUS_ACTIVE:
+            return
         port_version = version_db._create_db_version_row(
             context._plugin_context.session, context.current['id'])
         context.current['db_version'] = port_version
+
+    def _insert_port_provisioning_block(self, port):
+        vnic_type = port.get(portbindings.VNIC_TYPE, portbindings.VNIC_NORMAL)
+        if vnic_type not in self.supported_vnic_types:
+            LOG.debug("No provisioning block due to unsupported vnic_type: %s",
+                      vnic_type)
+            return
+        # Insert a provisioning block to prevent the port from
+        # transitioning to active until DF reports back that
+        # the port is up.
+        if port['status'] != n_const.PORT_STATUS_ACTIVE:
+            provisioning_blocks.add_provisioning_component(
+                n_context.get_admin_context(),
+                port['id'], resources.PORT,
+                provisioning_blocks.L2_AGENT_ENTITY
+            )
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def create_port_postcommit(self, context):
@@ -435,7 +463,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         ips = [ip['ip_address'] for ip in port.get('fixed_ips', [])]
         subnets = [ip['subnet_id'] for ip in port.get('fixed_ips', [])]
         tunnel_key = self.nb_api.allocate_tunnel_key()
-
+        self._insert_port_provisioning_block(port)
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldnt be mapped to
         # a valid ofport (or location)
@@ -493,7 +521,12 @@ class DFMechDriver(driver_api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def update_port_postcommit(self, context):
         updated_port = context.current
-
+        # Here we don not want port status update to trigger
+        # sending event to other compute node.
+        if (updated_port['device_owner'] == 'compute:None'
+                and context.status == n_const.PORT_STATUS_ACTIVE
+                and context.original_status == n_const.PORT_STATUS_DOWN):
+            return None
         # If a subnet enabled dhcp, the DFMechDriver will create a dhcp server
         # port. When delete this subnet, the port should be deleted.
         # In ml2/plugin.py, when delete subnet, it will call
@@ -573,8 +606,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             if self._check_segment(segment):
                 context.set_binding(segment[driver_api.ID],
                                     self.vif_type,
-                                    self.vif_details,
-                                    status=n_const.PORT_STATUS_ACTIVE)
+                                    self.vif_details)
                 LOG.debug("Bound using segment: %s", segment)
                 return
             else:
@@ -594,3 +626,19 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                     constants.TYPE_GENEVE,
                                                     constants.TYPE_GRE,
                                                     constants.TYPE_LOCAL]
+
+    def set_port_status_up(self, port_id):
+        # Port provisioning is complete now that DF controller has reported
+        # that the port is up.
+        LOG.debug("DF reports status up for port: %s", port_id)
+        provisioning_blocks.provisioning_complete(
+            n_context.get_admin_context(),
+            port_id,
+            resources.PORT,
+            provisioning_blocks.L2_AGENT_ENTITY)
+
+    def set_port_status_down(self, port_id):
+        LOG.debug("DF reports status down for port: %s", port_id)
+        self._plugin.update_port_status(n_context.get_admin_context(),
+                                        port_id,
+                                        n_const.PORT_STATUS_DOWN)
