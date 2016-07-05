@@ -59,6 +59,7 @@ class DfLocalController(object):
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
         self.sync_finished = False
+        self.port_status_notifier = None
         nb_driver = df_utils.load_driver(
             cfg.CONF.df.nb_db_class,
             df_utils.DF_NB_DB_DRIVER_NAMESPACE)
@@ -66,6 +67,10 @@ class DfLocalController(object):
             nb_driver,
             use_pubsub=cfg.CONF.df.enable_df_pub_sub)
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
+        if cfg.CONF.df.enable_port_status_notifier:
+            self.port_status_notifier = df_utils.load_driver(
+                     cfg.CONF.df.port_status_notifier,
+                     df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
         kwargs = dict(
             nb_api=self.nb_api,
             vswitch_api=self.vswitch_api,
@@ -84,6 +89,10 @@ class DfLocalController(object):
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api.initialize(self.nb_api)
+        if cfg.CONF.df.enable_port_status_notifier:
+            self.port_status_notifier.initialize(mech_driver=None,
+                                             nb_api=self.nb_api,
+                                             is_neutron_server=False)
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)
 
@@ -558,6 +567,9 @@ class DfLocalController(object):
 
     def get_nb_api(self):
         return self.nb_api
+
+    def get_portstatus_notifier(self):
+        return self.port_status_notifier
 
     def get_db_store(self):
         return self.db_store
