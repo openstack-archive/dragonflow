@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_config import cfg
+
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
@@ -58,10 +60,28 @@ class TestTopology(test_base.DFTestBase):
         self.assertTrue(vm_mac is not None)
         vm_flows = self._get_vm_flows(vm_mac)
         self.assertTrue(any(vm_flows))
+        core_plugin = cfg.CONF.core_plugin
+        if core_plugin == 'ml2':
+            # test port status update
+            utils.wait_until_true(
+                lambda: self._is_VM_port_status(vm, 'ACTIVE'),
+                timeout=60,
+                exception=Exception('Port status not change to ACTIVE')
+            )
         return vm
 
     def _remove_vm(self, vm):
         vm_mac = vm.get_first_mac()
+        core_plugin = cfg.CONF.core_plugin
+        if core_plugin == 'ml2':
+            # test port status update
+            vm.server.stop()
+            utils.wait_until_true(
+                lambda: self._is_VM_port_status(vm, 'DOWN'),
+                timeout=60,
+                exception=Exception('Port status not change to DOWN')
+            )
+        # delete vm
         vm.close()
         utils.wait_until_none(
             lambda: 1 if any(self._get_vm_flows(vm_mac)) else None, timeout=60,
@@ -75,3 +95,11 @@ class TestTopology(test_base.DFTestBase):
                  flow['table'] == str(const.ARP_TABLE) and
                  vm_mac in flow['actions']]
         return flows
+
+    def _is_VM_port_status(self, vm, status):
+        port = vm._get_VM_port()
+        if port:
+            port_status = port['status']
+            return port_status == status
+        else:
+            return False
