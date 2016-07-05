@@ -44,7 +44,6 @@ class TestDFMechDriver(base.BaseTestCase):
     def setUp(self):
         super(TestDFMechDriver, self).setUp()
         self.driver = mech_driver.DFMechDriver()
-        self.driver.initialize()
         self.driver.nb_api = mock.Mock()
         self.dbversion = 0
         version_db._create_db_version_row = mock.Mock(
