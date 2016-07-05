@@ -19,6 +19,7 @@ import eventlet
 import netaddr
 import six
 import time
+import random
 
 from oslo_config import cfg
 from oslo_log import log
@@ -39,8 +40,9 @@ DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
 
 class NbApi(object):
 
-    def __init__(self, db_driver, use_pubsub=False, is_neutron_server=False):
+    def __init__(self, driver, db_driver, use_pubsub=False, is_neutron_server=False):
         super(NbApi, self).__init__()
+        self.mech_driver = driver
         self.driver = db_driver
         self.controller = None
         self._queue = eventlet.queue.PriorityQueue()
@@ -60,11 +62,14 @@ class NbApi(object):
             if self.is_neutron_server:
                 # Publisher is part of the neutron server Plugin
                 self.publisher.initialize()
+                self._start_db_table_monitors()
                 # Start a thread to detect DB failover in Plugin
                 self.publisher.set_publisher_for_failover(
                     self.publisher,
                     self.db_recover_callback)
                 self.publisher.start_detect_for_failover()
+                # Start server subscriber
+                self._server_start_subsciber()
             else:
                 # NOTE(gampel) we want to start queuing event as soon
                 # as possible
@@ -74,6 +79,8 @@ class NbApi(object):
                     self.subscriber,
                     self.db_change_callback)
                 self.subscriber.register_hamsg_for_db()
+                # start publisher for status update
+                self.publisher.initialize()
 
     def db_recover_callback(self):
         # only db with HA func can go in here
@@ -96,6 +103,76 @@ class NbApi(object):
             cfg.CONF.df.pub_sub_driver,
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_subscriber()
+
+    def _start_db_table_monitors(self):
+        self.db_table_monitors = [self._start_db_table_monitor(table_name)
+                                  for table_name in pub_sub_api.MONITOR_TABLES]
+
+    def _start_db_table_monitor(self, table_name):
+        if table_name == 'publisher':
+            table_monitor = pub_sub_api.StalePublisherMonitor(
+                self.driver,
+                self.publisher,
+                cfg.CONF.df.publisher_timeout,
+                cfg.CONF.df.monitor_table_poll_time,
+            )
+        elif table_name == 'statusCounter':
+            table_monitor = pub_sub_api.PortStatusMonitor(
+                self.driver,
+                self.publisher,
+                cfg.CONF.df.publisher_timeout,
+                cfg.CONF.df.monitor_table_poll_time,
+                cfg.CONF.df.local_ip
+            )
+        else:
+            table_monitor = pub_sub_api.TableMonitor(
+                table_name,
+                self.driver,
+                self.publisher,
+                cfg.CONF.df.monitor_table_poll_time,
+            )
+        table_monitor.daemonize()
+        return table_monitor
+
+    def _stop_db_table_monitors(self):
+        if not self.db_table_monitors:
+            return
+        for monitor in self.db_table_monitors:
+            monitor.stop()
+        self.db_table_monitors = None
+
+    # NOTE(Kang) Server subscriber start for southbound status
+    def _server_start_subsciber(self):
+        self.subscriber.initialize(self.port_status_callback)
+        server_ip = cfg.CONF.df.local_ip
+        server_topic = server_ip + PORT_STATUS_TOPIC
+        self.driver.create_key('portstats', 'port_status', server_topic, server_ip)
+        self.subscriber.register_topic(server_ip + server_topic)
+        publishers_ips = cfg.CONF.df.publishers_ips
+        uris = {'%s://%s:%s' % (
+                cfg.CONF.df.publisher_transport,
+                ip,
+                cfg.CONF.df.publisher_port) for ip in publishers_ips}
+        publishers = self.get_publishers()
+        uris |= {publisher.get_uri() for publisher in publishers}
+        for uri in uris:
+            self.subscriber.register_listen_address(uri)
+        self.subscriber.daemonize()
+
+    def port_status_callback(self, table, key, action, value, topic=None):
+        if 'lport' == table and 'update' == action:
+            LOG.info(_LI("Port status update"))
+            if 'up' == value:
+                self.mech_driver.set_port_status_up(key)
+            eventlet.sleep(0)
+
+    def send_port_status_event(self, table, key, action, value):
+        if self.use_pubsub:
+            topics = self.driver.get_all_key('portstats')
+            topic = random.choice(topics)
+            update = DbUpdate(table, key, action, value, topic)
+            self.publisher.send_event(update)
+            eventlet.sleep(0)
 
     def _start_subsciber(self):
         self.subscriber.initialize(self.db_change_callback)
