@@ -56,6 +56,9 @@ OVS_DB_PID=$OVS_DIR"/"$OVS_DB_SERVICE".pid"
 OVS_VSWITCHD_PID=$OVS_DIR"/"$OVS_VSWITCHD_SERVICE".pid"
 OVS_VSWITCH_OCSSCHEMA_FILE=${OVS_VSWITCH_OCSSCHEMA_FILE:-"/usr/share/openvswitch/vswitch.ovsschema"}
 
+# Port status notifier
+ENABLE_PORT_STATUS_NOTIFIER=${ENABLE_PORT_STATUS_NOTIFIER:-"True"}
+
 ACTION=$1
 STAGE=$2
 
@@ -114,6 +117,7 @@ fi
 if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
     DF_PUB_SUB="True"
     DF_PUB_SUB_USE_MULTIPROC="False"
+    PORT_STATUS_NOTIFIER="redis_port_status_notifier_driver"
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
 
@@ -163,6 +167,8 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
         iniset $NEUTRON_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
+        iniset $NEUTRON_CONF df port_status_notifier "$PORT_STATUS_NOTIFIER"
+        iniset $NEUTRON_CONF df enable_port_status_notifier "$ENABLE_PORT_STATUS_NOTIFIER"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $NEUTRON_CONF df integration_bridge "$INTEGRATION_BRIDGE"
@@ -222,6 +228,8 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
         iniset $NEUTRON_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
+        iniset $NEUTRON_CONF df port_status_notifier "$PORT_STATUS_NOTIFIER"
+        iniset $NEUTRON_CONF df enable_port_status_notifier "$ENABLE_PORT_STATUS_NOTIFIER"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
         iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $NEUTRON_CONF df integration_bridge "$INTEGRATION_BRIDGE"
