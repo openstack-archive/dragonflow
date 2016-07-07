@@ -321,7 +321,8 @@ class SGApp(DFlowApp):
                                      alg=0,
                                      flags=const.CT_FLAG_COMMIT,
                                      recirc_table=recirc_table,
-                                     zone_ofs_nbits=15,
+                                     zone_start=0,
+                                     zone_end=15,
                                      zone_src=const.CT_ZONE_REG)]
         action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
@@ -494,7 +495,8 @@ class SGApp(DFlowApp):
                                      alg=0,
                                      flags=0,
                                      recirc_table=table_id,
-                                     zone_ofs_nbits=15,
+                                     zone_start=0,
+                                     zone_end=15,
                                      zone_src=const.METADATA_REG)]
         action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
@@ -761,7 +763,8 @@ class SGApp(DFlowApp):
                                      alg=0,
                                      flags=const.CT_FLAG_COMMIT,
                                      recirc_table=goto_table_id,
-                                     zone_ofs_nbits=15,
+                                     zone_start=0,
+                                     zone_end=15,
                                      zone_src=const.CT_ZONE_REG)]
         action_inst = self.get_datapath(). \
             ofproto_parser.OFPInstructionActions(
