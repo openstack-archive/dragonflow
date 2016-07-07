@@ -49,27 +49,55 @@ class SGApp(DFlowApp):
 
     @staticmethod
     def _split_range(range_start, range_end, full_mask):
+        """get port/mask serial by port range."""
+        if range_start < 1 or range_end > full_mask or range_start > range_end:
+            return None
 
-        bit_flag = 1
-        last_temp_start = range_start
-        last_temp_end = last_temp_start
-        result_list = []
+        masks = []
+        if range_end == range_start:
+            masks.append({"prefix": range_start, "mask": full_mask})
+            return masks
 
-        while True:
-            if ((last_temp_start & bit_flag) == 0) and \
-                    ((last_temp_end | bit_flag) <= range_end):
-                last_temp_end |= bit_flag
-                bit_flag <<= 1
-            else:
-                mask = full_mask - (bit_flag - 1)
-                result_list.append({"prefix": last_temp_start, "mask": mask})
-                if last_temp_end >= range_end:
+        i = 0
+        while range_start >> i != range_end >> i:
+            i += 1
+
+        boundary = range_end >> i << i
+        boundary += 1 << (i-1)
+
+        if range_end - range_start == (1 << i) - 1:
+            masks.append({"prefix": range_start,
+                          "mask": full_mask ^ ((1 << i) - 1)})
+            return masks
+
+        mask = full_mask
+        while range_start <= boundary-1:
+            while mask != 0:
+                next_mask = (mask << 1) & full_mask
+                port_start = range_start & next_mask
+                port_end = range_start + (next_mask ^ full_mask)
+                if port_start == range_start and port_end <= boundary-1:
+                    mask = next_mask
+                else:
                     break
-                bit_flag = 1
-                last_temp_start = last_temp_end + 1
-                last_temp_end = last_temp_start
+            masks.append({"prefix": range_start, "mask": mask})
+            range_start = range_start + (mask ^ full_mask) + 1
 
-        return result_list
+        mask = full_mask
+        while boundary <= range_end:
+            while mask != 0:
+                next_mask = (mask << 1) & full_mask
+                port_start = range_end & next_mask
+                port_end = port_start + (next_mask ^ full_mask)
+                if port_end == range_end and port_start >= boundary:
+                    mask = next_mask
+                else:
+                    break
+            masks.append({"prefix": range_end & mask, "mask": mask})
+            range_end = range_end - (mask ^ full_mask) - 1
+
+        return masks
+
 
     @staticmethod
     def _try_merge_cidr(current_prefix, current_mask, last_item, full_mask):
