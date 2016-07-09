@@ -132,5 +132,5 @@ df_opts = [
     cfg.StrOpt("vhost_sock_dir",
                default="/var/run/openvswitch",
                help=_("The directory in which vhost virtio socket"
-                      "is created by all the vswitch daemons"))
+                      "is created by all the vswitch daemons")))
 ]
