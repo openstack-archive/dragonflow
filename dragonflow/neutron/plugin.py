@@ -479,6 +479,16 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    version=network_version)
         return result
 
+    def _check_allowed_address_pairs(self, allowed_address_pairs):
+        if not attr.is_attr_set(allowed_address_pairs):
+            return True
+
+        # Not support IP address prefix yet
+        for pair in allowed_address_pairs:
+            if '/' in pair["ip_address"]:
+                return False
+        return True
+
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_port(self, context, id, port):
         with context.session.begin(subtransactions=True):
@@ -515,8 +525,13 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
             address_pairs_updated = False
             if addr_pair.ADDRESS_PAIRS in port['port']:
-                address_pairs_updated = self.update_address_pairs_on_port(
-                    context, id, port, original_port, updated_port)
+                if self._check_allowed_address_pairs(
+                        port['port'].get(addr_pair.ADDRESS_PAIRS)):
+                    address_pairs_updated = self.update_address_pairs_on_port(
+                        context, id, port, original_port, updated_port)
+                else:
+                    LOG.info(_LI("Not support ip prefix in "
+                                 "allowed-address-pairs yet"))
             if not address_pairs_updated:
                 updated_port[addr_pair.ADDRESS_PAIRS] = original_port.get(
                     addr_pair.ADDRESS_PAIRS, [])
@@ -658,10 +673,15 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                         port['port'][df_const.DF_PORT_BINDING_PROFILE])):
                 db_port[df_const.DF_PORT_BINDING_PROFILE] = (
                     port['port'][df_const.DF_PORT_BINDING_PROFILE])
-            db_port[addr_pair.ADDRESS_PAIRS] = (
-                self._process_create_allowed_address_pairs(
-                    context, db_port,
-                    port['port'].get(addr_pair.ADDRESS_PAIRS)))
+            if self._check_allowed_address_pairs(
+                    port['port'].get(addr_pair.ADDRESS_PAIRS)):
+                db_port[addr_pair.ADDRESS_PAIRS] = (
+                    self._process_create_allowed_address_pairs(
+                        context, db_port,
+                        port['port'].get(addr_pair.ADDRESS_PAIRS)))
+            else:
+                LOG.info(_LI("Not support ip prefix in "
+                             "allowed-address-pairs yet"))
             self._process_port_create_extra_dhcp_opts(context, db_port,
                                                       dhcp_opts)
             port_version = version_db._create_db_version_row(

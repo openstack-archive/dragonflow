@@ -14,6 +14,7 @@
 #    under the License.
 
 import netaddr
+from oslo_config import cfg
 from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import ethernet
@@ -28,6 +29,7 @@ from dragonflow.controller.common import constants as const
 from dragonflow.controller.common.icmp_responder import ICMPResponder
 from dragonflow.controller.df_base_app import DFlowApp
 
+
 LOG = log.getLogger(__name__)
 
 
@@ -38,6 +40,8 @@ class L3App(DFlowApp):
         self.hard_timeout = 0
         self.api.register_table_handler(const.L3_LOOKUP_TABLE,
                 self.packet_in_handler)
+        self.use_active_detection_for_allowed_address_pairs = \
+            cfg.CONF.df.use_active_detection_for_allowed_address_pairs
 
     def switch_features_handler(self, ev):
         self.add_flow_go_to_table(self.get_datapath(),
@@ -82,16 +86,44 @@ class L3App(DFlowApp):
                 for out_port in dst_ports:
                     if out_port.get_ip() == pkt_ip.dst:
                         self._install_l3_flow(router_port,
-                                              out_port, msg,
+                                              out_port.get_tunnel_key(),
+                                              out_port.get_ip(),
+                                              out_port.get_mac(),
+                                              msg,
                                               network_id)
                         return
 
-    def _install_l3_flow(self, dst_router_port, dst_port, msg,
-                         src_network_id):
-        reg7 = dst_port.get_tunnel_key()
-        dst_ip = dst_port.get_ip()
+                # Only support to use active detection for allowed address
+                #  pairs for now.
+                if self.use_active_detection_for_allowed_address_pairs:
+                    # if there is none port have this ip, try to find this ip
+                    # among active nodes.
+                    active_ports = \
+                        self.db_store.get_active_ports_by_network_id(
+                            router_port.get_lswitch_id())
+                    for active_port in active_ports:
+                        if active_port.get_ip() == pkt_ip.dst:
+                            lport_id = active_port.get_detected_lport_id()
+                            if lport_id is None:
+                                # TODO(yuan wei) log error
+                                continue
+                            lport = self.db_store.get_local_port(lport_id)
+                            if lport is None:
+                                # TODO(yuan wei) log error
+                                continue
+                            self._install_l3_flow(
+                                router_port,
+                                lport.get_tunnel_key(),
+                                active_port.get_ip(),
+                                active_port.get_detected_mac(),
+                                msg,
+                                network_id)
+                            return
+
+    def _install_l3_flow(self, dst_router_port, dst_port_key, dst_ip, dst_mac,
+                         msg, src_network_id):
+        reg7 = dst_port_key
         src_mac = dst_router_port.get_mac()
-        dst_mac = dst_port.get_mac()
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
