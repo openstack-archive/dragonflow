@@ -244,7 +244,15 @@ class Topology(object):
         for floating_ip in floating_ips:
             self.controller.floatingip_updated(floating_ip)
 
+        active_ports = self.nb_api.get_active_ports(tenant_id)
+        for active_port in active_ports:
+            self.controller.active_port_updated(active_port)
+
     def _clear_tenant_topology(self, tenant_id):
+        active_ports_keys = self.db_store.get_active_port_keys(tenant_id)
+        for active_port_key in active_ports_keys:
+            self.controller.active_port_deleted(active_port_key)
+
         ports = self.db_store.get_ports()
         for port in ports:
             if tenant_id == port.get_topic():
