@@ -132,5 +132,13 @@ df_opts = [
     cfg.StrOpt("vhost_sock_dir",
                default="/var/run/openvswitch",
                help=_("The directory in which vhost virtio socket"
-                      "is created by all the vswitch daemons"))
+                      "is created by all the vswitch daemons")),
+    cfg.BoolOpt('use_active_detection_for_allowed_address_pairs',
+                default=True,
+                help=_('When enabled, packets to the address in allowed '
+                       'address pairs will be only sent to the VM ports '
+                       'which is be detected active for this address. '
+                       'Otherwise, those packets will be broadcast to all '
+                       'VM ports with this address in allowed address '
+                       'pairs.'))
 ]
