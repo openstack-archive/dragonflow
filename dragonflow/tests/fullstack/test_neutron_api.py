@@ -501,8 +501,8 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         })
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_pairs = lport.get_allow_address_pairs()
-        self.assertEqual(expected_pairs, real_pairs)
+        real_pairs = lport.get_allowed_address_pairs()
+        self.assertEqual(set(expected_pairs), set(real_pairs))
 
         expected_pairs = [
                 {"ip_address": "192.168.127.211",
@@ -513,5 +513,5 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         port.update({'allowed_address_pairs': expected_pairs})
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_pairs = lport.get_allow_address_pairs()
-        self.assertEqual(expected_pairs, real_pairs)
+        real_pairs = lport.get_allowed_address_pairs()
+        self.assertEqual(set(expected_pairs), set(real_pairs))

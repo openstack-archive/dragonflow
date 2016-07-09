@@ -348,11 +348,11 @@ class SubnetTestObj(object):
 
 class PortTestObj(object):
 
-    def __init__(self, neutron, nb_api, network_id=None):
+    def __init__(self, neutron, nb_api, network_id=None, port_id=None):
         self.neutron = neutron
         self.nb_api = nb_api
         self.network_id = network_id
-        self.port_id = None
+        self.port_id = port_id
         self.closed = False
 
     def create(self, port=None):
