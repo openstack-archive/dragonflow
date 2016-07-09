@@ -236,7 +236,7 @@ class SGApp(df_base_app.DFlowApp):
                             "address %(ip)s of %(lport)s was ignored."),
                         {'ip': fixed_ip, 'lport': lport.get_id()})
 
-        allowed_address_pairs = lport.get_allow_address_pairs()
+        allowed_address_pairs = lport.get_allowed_address_pairs()
         if allowed_address_pairs is not None:
             for pair in allowed_address_pairs:
                 ip = pair["ip_address"]
