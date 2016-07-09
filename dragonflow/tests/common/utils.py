@@ -159,3 +159,13 @@ class OvsDBParser(object):
                 if iface_id == port_id:
                     return item.get('ofport', None)
         return None
+
+    def get_port_id_by_vm_id(self, vm_id):
+        interfaces = self.list_interfaces()
+        for item in interfaces:
+            external_ids = item.get('external_ids', None)
+            if external_ids is not None:
+                temp_vm_id = external_ids.get('vm-id', None)
+                if temp_vm_id == vm_id:
+                    return external_ids.get('iface-id', None)
+        return None
