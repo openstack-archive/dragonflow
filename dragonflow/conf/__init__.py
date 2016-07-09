@@ -12,6 +12,7 @@
 
 from oslo_config import cfg
 
+from dragonflow.conf import df_active_port_detection
 from dragonflow.conf import df_metadata_service
 
 
@@ -19,3 +20,4 @@ CONF = cfg.CONF
 
 
 df_metadata_service.register_opts()
+df_active_port_detection.register_opts()
