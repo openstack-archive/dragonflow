@@ -56,7 +56,7 @@ from oslo_utils import importutils
 import six
 from sqlalchemy.orm import exc as sa_exc
 
-from dragonflow._i18n import _, _LE, _LI
+from dragonflow._i18n import _, _LE, _LI, _LW
 from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
@@ -503,6 +503,26 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    version=network_version)
         return result
 
+    def _filter_unsupported_allowed_address_pairs(self,
+                                                  allowed_address_pairs):
+        if not attr.is_attr_set(allowed_address_pairs):
+            return allowed_address_pairs
+
+        supported_allowed_address_pairs = []
+        # Not support IP address prefix yet
+        for pair in allowed_address_pairs:
+            if '/' in pair["ip_address"]:
+                LOG.warning(_LW("Not support IP prefix in allowed address "
+                                "pairs yet. This allowed address pair "
+                                "(ip_address = %(ip_address), "
+                                "mac_address = %(mac_address)) will be "
+                                "ignored.} "),
+                            {'ip_address': pair["ip_address"],
+                             'mac_address': pair["mac_address"]})
+            else:
+                supported_allowed_address_pairs.append(pair)
+        return supported_allowed_address_pairs
+
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_port(self, context, id, port):
         with context.session.begin(subtransactions=True):
@@ -574,6 +594,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             security_groups = updated_security_groups
 
         port_name = updated_port.get('name', df_const.DF_PORT_DEFAULT_NAME)
+
+        # filter unsupported allowed address pairs
+        updated_port[addr_pair.ADDRESS_PAIRS] = \
+            self._filter_unsupported_allowed_address_pairs(
+                updated_port[addr_pair.ADDRESS_PAIRS])
 
         self.nb_api.update_lport(id=updated_port['id'],
                                  topic=updated_port['tenant_id'],
@@ -689,6 +714,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                                       dhcp_opts)
             port_version = version_db._create_db_version_row(
                     context.session, db_port['id'])
+
+        # filter unsupported allowed address pairs
+        db_port[addr_pair.ADDRESS_PAIRS] = \
+            self._filter_unsupported_allowed_address_pairs(
+                db_port[addr_pair.ADDRESS_PAIRS])
+
         # This extra lookup is necessary to get the latest db model
         # for the extension functions.
         port_model = self._get_port(context, db_port['id'])
