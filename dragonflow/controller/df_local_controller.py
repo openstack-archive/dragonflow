@@ -130,6 +130,8 @@ class DfLocalController(object):
 
                 self.read_floatingip()
 
+                self.read_active_ports()
+
             self.sync_finished = True
 
         except Exception as e:
@@ -190,6 +192,19 @@ class DfLocalController(object):
         self.db_store.del_lswitch(lswitch_id)
         self.db_store.del_network_id(lswitch_id)
 
+    def _notify_active_ports_updated_when_lport_created(self, lport):
+        active_ports = self.db_store.get_active_ports(lport.get_topic())
+        for active_port in active_ports:
+            if active_port.get_detected_lport_id() == lport.get_id():
+                self.open_flow_app.notify_update_active_port(active_port,
+                                                             None)
+
+    def _notify_active_ports_updated_when_lport_removed(self, lport):
+        active_ports = self.db_store.get_active_ports(lport.get_topic())
+        for active_port in active_ports:
+            if active_port.get_detected_lport_id() == lport.get_id():
+                self.open_flow_app.notify_remove_active_port(active_port)
+
     def _logical_port_process(self, lport, original_lport=None):
         chassis = lport.get_chassis()
         if chassis in (None,
@@ -226,6 +241,7 @@ class DfLocalController(object):
             else:
                 LOG.info(_LI("Local logical port %s was not created yet") %
                          str(lport))
+                return
         else:
             lport.set_external_value('is_local', False)
             ofport = chassis_to_ofport.get(chassis, 0)
@@ -249,6 +265,10 @@ class DfLocalController(object):
                 # if this should never happen raise an exception
                 LOG.warning(_LW("No tunnel for remote logical port %s") %
                             str(lport))
+                return
+
+        if original_lport is None:
+            self._notify_active_ports_updated_when_lport_created(lport)
 
     def logical_port_created(self, lport):
         self._logical_port_process(lport)
@@ -273,6 +293,8 @@ class DfLocalController(object):
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_remote_port(lport)
             self.db_store.delete_port(lport.get_id(), False)
+
+        self._notify_active_ports_updated_when_lport_removed(lport)
 
     def bridge_port_updated(self, lport):
         self.open_flow_app.notify_update_bridge_port(lport)
@@ -516,6 +538,38 @@ class DfLocalController(object):
 
     def ovs_sync_started(self):
         self.open_flow_app.notify_ovs_sync_started()
+
+    def active_port_updated(self, active_port):
+        old_active_port = self.db_store.get_active_port(active_port.get_id())
+        self.db_store.update_active_port(active_port.get_id(), active_port)
+        lport_id = active_port.get_detected_lport_id()
+        lport = self.db_store.get_local_port(lport_id,
+                                             active_port.get_topic())
+        LOG.info(_LI("Active port updated. Active port = %(new)s, "
+                     "old active port = %(old)s") %
+                 {'new': str(active_port), 'old': str(old_active_port)})
+        if lport is not None:
+            self.open_flow_app.notify_update_active_port(active_port,
+                                                         old_active_port)
+        else:
+            LOG.info(_LI("The logical port is not ready for the "
+                         "active node: %s") % str(active_port))
+
+    def active_port_deleted(self, active_port_key):
+        active_port = self.db_store.get_active_port(active_port_key)
+        if active_port is not None:
+            self.db_store.delete_active_port(active_port_key)
+            LOG.info(_LI("Active node was removed. Active node = %s") %
+                     str(active_port))
+            lport_id = active_port.get_detected_lport_id()
+            lport = self.db_store.get_local_port(lport_id,
+                                                 active_port.get_topic())
+            if lport is not None:
+                self.open_flow_app.notify_remove_active_port(active_port)
+
+    def read_active_ports(self):
+        for active_port in self.nb_api.get_active_ports():
+            self.active_port_updated(active_port)
 
     def get_nb_api(self):
         return self.nb_api

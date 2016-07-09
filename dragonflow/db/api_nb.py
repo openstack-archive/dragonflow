@@ -243,6 +243,13 @@ class NbApi(object):
             elif action == 'delete':
                 ovs_port_id = key
                 self.controller.ovs_port_deleted(ovs_port_id)
+        elif 'activeport' == table:
+            if action == 'set' or action == 'create':
+                active_port_dict = jsonutils.loads(value)
+                active_port = AllowedAddressPairsActivePort(active_port_dict)
+                self.controller.active_port_updated(active_port)
+            elif action == 'delete':
+                self.controller.active_port_deleted(key)
         elif 'log' == action:
             message = _LI(
                 'Log event (Info): '
@@ -716,6 +723,28 @@ class NbApi(object):
             topic,
         )
 
+    def update_active_port(self, id, topic, **columns):
+        active_port = {'topic': topic}
+        for col, val in columns.items():
+            active_port[col] = val
+        active_port_json = jsonutils.dumps(active_port)
+        self.driver.create_key('activeport', id, active_port_json, topic)
+        self._send_db_change_event('activeport', id, 'set',
+                                   active_port_json, topic)
+
+    def delete_active_port(self, id, topic):
+        self.driver.delete_key('activeport', id, topic)
+        self._send_db_change_event('activeport', id, 'delete', id,
+                                   topic)
+
+    def get_active_ports(self, topic=None):
+        res = []
+        for active_port_json in self.driver.get_all_entries(
+                'activeport', topic):
+            active_port_dict = jsonutils.loads(active_port_json)
+            res.append(AllowedAddressPairsActivePort(active_port_dict))
+        return res
+
 
 @six.add_metaclass(abc.ABCMeta)
 class DbStoreObject(object):
@@ -866,7 +895,7 @@ class LogicalPort(DbStoreObject):
     def get_security_groups(self):
         return self.lport.get('security_groups')
 
-    def get_allow_address_pairs(self):
+    def get_allowed_address_pairs(self):
         return self.lport.get('allowed_address_pairs')
 
     def get_port_security_enable(self):
@@ -1138,6 +1167,49 @@ class OvsPort(DbStoreObject):
 
     def __str__(self):
         return str(self.ovs_port)
+
+
+class AllowedAddressPairsActivePort(DbStoreObject):
+
+    def __init__(self, value):
+        self.active_port = value
+
+    def get_id(self):
+        return self.active_port['network_id'] + self.active_port['ip']
+
+    def get_topic(self):
+        return self.active_port['topic']
+
+    def get_ip(self):
+        return self.active_port['ip']
+
+    def get_network_id(self):
+        return self.active_port['network_id']
+
+    def get_detected_mac(self):
+        return self.active_port['detected_mac']
+
+    def get_detected_lport_id(self):
+        return self.active_port['detected_lport_id']
+
+    def __str__(self):
+        return str(self.active_port)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            if (self.get_network_id() == other.get_network_id()) and \
+                    (self.get_ip() == other.get_ip()) and \
+                    (self.get_detected_mac() == other.get_detected_mac()) and \
+                    (self.get_detected_lport_id() ==
+                     other.get_detected_lport_id()) and \
+                    (self.get_topic() == other.get_topic()):
+                return True
+        return False
+
+    def __ne__(self, other):
+        if self == other:
+            return False
+        return True
 
 
 class Publisher(DbStoreObject):

@@ -56,7 +56,7 @@ class PortSecApp(DFlowApp):
                     {'ip_address': fixed_ip,
                      'mac_address': fixed_mac})
 
-        allow_address_pairs = lport.get_allow_address_pairs()
+        allow_address_pairs = lport.get_allowed_address_pairs()
         if allow_address_pairs is not None:
             allowed_ip_mac_pairs.extend(allow_address_pairs)
 
@@ -69,7 +69,7 @@ class PortSecApp(DFlowApp):
         if fixed_mac is not None:
             allowed_macs.add(fixed_mac)
 
-        allow_address_pairs = lport.get_allow_address_pairs()
+        allow_address_pairs = lport.get_allowed_address_pairs()
         if allow_address_pairs is not None:
             for allow_address_pair in allow_address_pairs:
                 allowed_macs.add(allow_address_pair['mac_address'])
