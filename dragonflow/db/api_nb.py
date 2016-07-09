@@ -52,6 +52,10 @@ class NbApi(object):
         self.is_neutron_server = is_neutron_server
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
+        self.pub_sub_use_multiproc = False
+        if self.is_neutron_server:
+            # multiproc pub/sub is only supported in neutron server
+            self.pub_sub_use_multiproc = cfg.CONF.df.pub_sub_use_multiproc
 
     @staticmethod
     def get_instance(is_neutron_server):
@@ -74,9 +78,8 @@ class NbApi(object):
         if self.use_pubsub:
             self.publisher = self._get_publisher()
             self.subscriber = self._get_subscriber()
+            self.publisher.initialize()
             if self.is_neutron_server:
-                # Publisher is part of the neutron server Plugin
-                self.publisher.initialize()
                 # Start a thread to detect DB failover in Plugin
                 self.publisher.set_publisher_for_failover(
                     self.publisher,
@@ -105,7 +108,7 @@ class NbApi(object):
             self.db_consistency_manager.process(True)
 
     def _get_publisher(self):
-        if cfg.CONF.df.pub_sub_use_multiproc:
+        if self.pub_sub_use_multiproc:
             pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
         else:
             pubsub_driver_name = cfg.CONF.df.pub_sub_driver
@@ -279,6 +282,12 @@ class NbApi(object):
             elif action == 'delete':
                 ovs_port = db_models.OvsPort(value)
                 self.controller.ovs_port_deleted(ovs_port)
+        elif db_models.AllowedAddressPairsActivePort.table_name == table:
+            if action == 'set' or action == 'create':
+                active_port = db_models.AllowedAddressPairsActivePort(value)
+                self.controller.active_port_updated(active_port)
+            elif action == 'delete':
+                self.controller.active_port_deleted(key)
         elif 'log' == action:
             message = _LI(
                 'Log event (Info): '
@@ -851,3 +860,44 @@ class NbApi(object):
         except Exception:
             LOG.exception(_LE('Could not get qos policy %s'), policy_id)
             return None
+
+    def create_active_port(self, id, topic, **columns):
+        active_port = {'topic': topic}
+        for col, val in columns.items():
+            active_port[col] = val
+        active_port_json = jsonutils.dumps(active_port)
+        self.driver.create_key(
+            db_models.AllowedAddressPairsActivePort.table_name, id,
+            active_port_json, topic)
+        self._send_db_change_event(
+            db_models.AllowedAddressPairsActivePort.table_name, id, 'create',
+            active_port_json, topic)
+
+    def update_active_port(self, id, topic, **columns):
+        active_port_json = self.driver.get_key(
+            db_models.AllowedAddressPairsActivePort.table_name, id, topic)
+        active_port = jsonutils.loads(active_port_json)
+        active_port['topic'] = topic
+        for col, val in columns.items():
+            active_port[col] = val
+        active_port_json = jsonutils.dumps(active_port)
+        self.driver.set_key(db_models.AllowedAddressPairsActivePort.table_name,
+                            id, active_port_json, topic)
+        self._send_db_change_event(
+            db_models.AllowedAddressPairsActivePort.table_name, id, 'set',
+            active_port_json, topic)
+
+    def delete_active_port(self, id, topic):
+        self.driver.delete_key(
+            db_models.AllowedAddressPairsActivePort.table_name, id, topic)
+        self._send_db_change_event(
+            db_models.AllowedAddressPairsActivePort.table_name, id, 'delete',
+            id, topic)
+
+    def get_active_ports(self, topic=None):
+        res = []
+        for active_port_json in self.driver.get_all_entries(
+                db_models.AllowedAddressPairsActivePort.table_name, topic):
+            res.append(db_models.AllowedAddressPairsActivePort(
+                active_port_json))
+        return res
