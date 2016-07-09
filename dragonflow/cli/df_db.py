@@ -25,7 +25,7 @@ cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
              'tunnel_key', 'floatingip', 'publisher', 'qospolicy',
-             'portstats']
+             'portstats', 'activeport']
 
 
 def print_tables():
