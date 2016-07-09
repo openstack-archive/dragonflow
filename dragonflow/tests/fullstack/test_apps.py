@@ -1156,7 +1156,7 @@ class TestPortSecApp(test_base.DFTestBase):
         return result.data
 
     def _create_ping_using_allowed_address_pair(self, buf):
-        pairs = self.port1.port.get_logical_port().get_allow_address_pairs()
+        pairs = self.port1.port.get_logical_port().get_allowed_address_pairs()
         ip = pairs[0]["ip_address"]
         mac = pairs[0]["mac_address"]
 
