@@ -599,6 +599,22 @@ class RyuIPv6Filter(object):
         return (pkt.get_protocol(ipv6.ipv6) is not None)
 
 
+class RyuARPRequestFilter(object):
+    """Use ryu to parse the packet and test if it's an ARP request."""
+    def __init__(self, arp_tpa=None):
+        self.arp_tpa = arp_tpa
+
+    def __call__(self, buf):
+        pkt = packet.Packet(buf)
+        pkt_arp_protocol = pkt.get_protocol(arp.arp)
+        if (not arp) or (pkt_arp_protocol.opcode != arp.ARP_REQUEST):
+            return False
+        if self.arp_tpa is not None:
+            return pkt_arp_protocol.dst_ip == self.arp_tpa
+
+        return True
+
+
 class RyuARPReplyFilter(object):
     """Use ryu to parse the packet and test if it's an ARP reply."""
     def __call__(self, buf):
