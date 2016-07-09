@@ -15,12 +15,14 @@ import netaddr
 from ryu.lib.mac import haddr_to_bin
 from ryu.ofproto import ether
 
+from dragonflow._i18n import _LI
 from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common.icmp_responder import ICMPResponder
 from dragonflow.controller.df_base_app import DFlowApp
 
 from neutron_lib import constants as common_const
+from oslo_config import cfg
 from oslo_log import log
 
 
@@ -30,6 +32,8 @@ LOG = log.getLogger(__name__)
 class L3ProactiveApp(DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L3ProactiveApp, self).__init__(*args, **kwargs)
+        self.use_active_detection_for_allowed_address_pairs = \
+            cfg.CONF.df.use_active_detection_for_allowed_address_pairs
 
     def switch_features_handler(self, ev):
         self.add_flow_go_to_table(self.get_datapath(),
@@ -241,11 +245,23 @@ class L3ProactiveApp(DFlowApp):
         self.mod_flow(
             datapath=self.get_datapath(),
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
+            command=ofproto.OFPFC_DELETE_STRICT,
             priority=const.PRIORITY_HIGH,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
+
+    def _install_flows_for_allowed_address_pairs(self, lport):
+        # TODO(yuan wei)
+        if not self.use_active_detection_for_allowed_address_pairs:
+            LOG.info(_LI("Only support to use active detection"
+                         "for allowed address pairs for now."))
+
+    def _uninstall_flows_for_allowed_address_pairs(self, lport):
+        # TODO(yuan wei)
+        if not self.use_active_detection_for_allowed_address_pairs:
+            LOG.info(_LI("Only support to use active detection"
+                         "for allowed address pairs for now."))
 
     def add_local_port(self, lport):
         self._add_port(lport)
@@ -253,15 +269,42 @@ class L3ProactiveApp(DFlowApp):
     def add_remote_port(self, lport):
         self._add_port(lport)
 
+    def update_active_node(self, active_node, old_active_node):
+        if self.get_datapath() is None:
+            return
+
+        dst_ip = active_node.get_ip()
+        dst_mac = active_node.get_detected_mac()
+        active_node.get_network_id()
+        network_id = self.db_store.get_network_id(
+            active_node.get_network_id()
+        )
+        lport_id = active_node.get_detected_lport_id()
+        lport = self.db_store.get_port(lport_id)
+        if lport is None:
+            return
+        tunnel_key = lport.get_tunnel_key()
+
+        self._add_port_process(dst_ip, dst_mac, network_id, tunnel_key,
+                               const.PRIORITY_MEDIUM)
+
     def _add_port(self, lport):
         if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
             return
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+
         dst_ip = lport.get_ip()
         dst_mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
         tunnel_key = lport.get_tunnel_key()
+
+        self._add_port_process(dst_ip, dst_mac, network_id, tunnel_key)
+
+        self._install_flows_for_allowed_address_pairs(lport)
+
+    def _add_port_process(self, dst_ip, dst_mac, network_id, tunnel_key,
+                          priority=const.PRIORITY_HIGH):
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
 
         if netaddr.IPAddress(dst_ip).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -284,7 +327,7 @@ class L3ProactiveApp(DFlowApp):
             self.get_datapath(),
             inst=inst,
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
-            priority=const.PRIORITY_HIGH,
+            priority=priority,
             match=match)
 
     def remove_local_port(self, lport):
@@ -293,13 +336,33 @@ class L3ProactiveApp(DFlowApp):
     def remove_remote_port(self, lport):
         self._remove_port(lport)
 
+    def remove_active_node(self, active_node):
+        if self.get_datapath() is None:
+            return
+
+        dst_ip = active_node.get_ip()
+        active_node.get_network_id()
+        network_id = self.db_store.get_network_id(
+            active_node.get_network_id()
+        )
+
+        self._remove_port_process(dst_ip, network_id, const.PRIORITY_MEDIUM)
+
     def _remove_port(self, lport):
         if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
             return
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+
         dst_ip = lport.get_ip()
         network_id = lport.get_external_value('local_network_id')
+
+        self._remove_port_process(dst_ip, network_id)
+
+        self._uninstall_flows_for_allowed_address_pairs(lport)
+
+    def _remove_port_process(self, dst_ip, network_id,
+                             priority=const.PRIORITY_HIGH):
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
 
         if netaddr.IPAddress(dst_ip).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -313,8 +376,8 @@ class L3ProactiveApp(DFlowApp):
         self.mod_flow(
             datapath=self.get_datapath(),
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_HIGH,
+            command=ofproto.OFPFC_DELETE_STRICT,
+            priority=priority,
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)

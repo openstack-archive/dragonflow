@@ -31,6 +31,7 @@ class TenantDbStore(object):
         self.floatingips = {}
         self.secgroups = {}
         self.publishers = {}
+        self.activenodes = {}
         self.lock = threading.Lock()
         self._table_name_mapping = {
             'lswitchs': self.lswitchs,
@@ -41,6 +42,7 @@ class TenantDbStore(object):
             'floatingips': self.floatingips,
             'secgroups': self.secgroups,
             'publishers': self.publishers,
+            'activenodes': self.activenodes
         }
 
     def _get_table_by_name(self, table_name):
@@ -277,3 +279,25 @@ class DbStore(object):
 
     def delete_publisher(self, uuid, topic=None):
         self.delete('publishers', uuid, topic)
+
+    def get_active_node(self, active_node_key, topic=None):
+        return self.get('activenodes', active_node_key, topic)
+
+    def update_active_node(self, active_node_key, active_node, topic=None):
+        self.set('activenodes', active_node_key, active_node, topic)
+
+    def delete_active_node(self, active_node_key, topic=None):
+        self.delete('activenodes', active_node_key, topic)
+
+    def get_active_nodes(self, topic=None):
+        return self.values('activenodes', topic)
+
+    def get_active_node_keys(self, topic=None):
+        return self.keys('activenodes', topic)
+
+    def get_active_nodes_by_network_id(self, network_id, topic=None):
+        activenodes = self.values('activenodes', topic)
+        return filter(
+            lambda activenode: activenode.get_network_id() == network_id,
+            activenodes,
+        )

@@ -505,7 +505,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         })
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_pairs = lport.get_allow_address_pairs()
+        real_pairs = lport.get_allowed_address_pairs()
         self.assertEqual(expected_pairs, real_pairs)
 
         expected_pairs = [
@@ -517,5 +517,5 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         port.update({'allowed_address_pairs': expected_pairs})
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_pairs = lport.get_allow_address_pairs()
+        real_pairs = lport.get_allowed_address_pairs()
         self.assertEqual(expected_pairs, real_pairs)

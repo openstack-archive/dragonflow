@@ -85,6 +85,7 @@ class TestTopology(tests_base.BaseTestCase):
         self.mock_nb_api.get_routers.return_value = []
         self.mock_nb_api.get_security_groups.return_value = []
         self.mock_nb_api.get_floatingips.return_value = []
+        self.mock_nb_api.get_active_nodes.return_value = []
 
         self.topology.ovs_port_updated(self.ovs_port1)
 
@@ -107,6 +108,7 @@ class TestTopology(tests_base.BaseTestCase):
         self.mock_nb_api.get_routers.return_value = []
         self.mock_nb_api.get_security_groups.return_value = []
         self.mock_nb_api.get_floatingips.return_value = []
+        self.mock_nb_api.get_active_nodes.return_value = []
 
         self.topology.ovs_port_updated(self.ovs_port1)
 
