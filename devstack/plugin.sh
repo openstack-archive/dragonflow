@@ -17,9 +17,11 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.5}
 
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
-"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
+"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"\
+"active_port_detection_app.ActivePortDetectionApp"
 ML2_APPS_LIST_DEFAULT="l2_ml2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
-"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
+"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"\
+"active_port_detection_app.ActivePortDetectionApp"
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
@@ -145,6 +147,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
         iniset $NEUTRON_CONF df publisher_rate_limit_timeout "$PUBLISHER_RATE_LIMIT_TIMEOUT"
         iniset $NEUTRON_CONF df publisher_rate_limit_count "$PUBLISHER_RATE_LIMIT_COUNT"
+        iniset $NEUTRON_CONF df use_active_detection_for_allowed_address_pairs "$DF_DETECTION_FOR_ALLOWED_ADDRESS_PAIRS"
         iniset $NEUTRON_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
         iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
         iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"

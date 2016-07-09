@@ -29,12 +29,14 @@ class ArpResponder(object):
             of remove.
     """
     def __init__(self, datapath, network_id, interface_ip,
-                 interface_mac=None, table_id=const.ARP_TABLE):
+                 interface_mac=None, table_id=const.ARP_TABLE,
+                 priority=const.PRIORITY_MEDIUM):
         self.datapath = datapath
         self.network_id = network_id
         self.interface_ip = interface_ip
         self.mac_address = interface_mac
         self.table_id = table_id
+        self.priority = priority
 
     def _get_match(self):
         parser = self.datapath.ofproto_parser
@@ -73,7 +75,7 @@ class ArpResponder(object):
                                 table_id=self.table_id,
                                 cookie=utils.set_aging_cookie_bits(0),
                                 command=ofproto.OFPFC_ADD,
-                                priority=const.PRIORITY_MEDIUM,
+                                priority=self.priority,
                                 match=match, instructions=instructions,
                                 flags=ofproto.OFPFF_SEND_FLOW_REM)
         self.datapath.send_msg(msg)
@@ -87,8 +89,8 @@ class ArpResponder(object):
                                 cookie=utils.set_aging_cookie_bits(0),
                                 cookie_mask=0,
                                 table_id=self.table_id,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_MEDIUM,
+                                command=ofproto.OFPFC_DELETE_STRICT,
+                                priority=self.priority,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)

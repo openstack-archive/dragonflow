@@ -1156,7 +1156,7 @@ class TestPortSecApp(test_base.DFTestBase):
         return result.data
 
     def _create_ping_using_allowed_address_pair(self, buf):
-        pairs = self.port1.port.get_logical_port().get_allow_address_pairs()
+        pairs = self.port1.port.get_logical_port().get_allowed_address_pairs()
         ip = pairs[0]["ip_address"]
         mac = pairs[0]["mac_address"]
 
@@ -1201,3 +1201,261 @@ class TestPortSecApp(test_base.DFTestBase):
         self.policy.wait(30)
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
+
+
+class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
+
+    def _create_policy_to_reply_arp_request(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        key1 = (self.subnet.subnet_id, self.port1.port_id)
+        port_policies = {
+            key1: app_testing_objects.PortPolicy(
+                rules=[
+                    app_testing_objects.PortPolicyRule(
+                        # Detect arp requests
+                        app_testing_objects.RyuARPRequestFilter(
+                            self.allowed_address_pair_ip_address
+                        ),
+                        actions=[
+                            app_testing_objects.SendAction(
+                                self.subnet.subnet_id,
+                                self.port1.port_id,
+                                self._create_arp_response
+                            ),
+                            app_testing_objects.WaitAction(5),
+                            app_testing_objects.DisableRuleAction(),
+                            app_testing_objects.StopSimulationAction()
+                        ]
+                    )
+                ],
+                default_action=ignore_action
+            ),
+        }
+
+        return port_policies
+
+    def _create_policy_to_test_ping(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        key1 = (self.subnet.subnet_id, self.port1.port_id)
+        port_policies = {
+            key1: app_testing_objects.PortPolicy(
+                rules=[
+                    app_testing_objects.PortPolicyRule(
+                        # Detect arp requests
+                        app_testing_objects.RyuICMPPingFilter(self._get_ping),
+                        actions=[
+                            app_testing_objects.DisableRuleAction(),
+                            app_testing_objects.StopSimulationAction()
+                        ]
+                    )
+                ],
+                default_action=ignore_action
+            ),
+        }
+
+        return port_policies
+
+    def _create_policy_to_test_arp(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        key1 = (self.subnet.subnet_id, self.port2.port_id)
+        port_policies = {
+            key1: app_testing_objects.PortPolicy(
+                rules=[
+                    app_testing_objects.PortPolicyRule(
+                        # Detect arp requests
+                        app_testing_objects.RyuARPReplyFilter(
+                            self.allowed_address_pair_ip_address
+                        ),
+                        actions=[
+                            app_testing_objects.DisableRuleAction(),
+                            app_testing_objects.StopSimulationAction()
+                        ]
+                    )
+                ],
+                default_action=ignore_action
+            ),
+        }
+
+        return port_policies
+
+    def setUp(self):
+        super(TestAllowedAddressPairsDetectActive, self).setUp()
+        self.topology = None
+        self.policy1 = None
+        self.policy2 = None
+        self.policy3 = None
+        self.allowed_address_pair_ip_address = None
+        self.allowed_address_pair_mac_address = None
+        try:
+            self.topology = self.store(app_testing_objects.Topology(
+                self.neutron,
+                self.nb_api))
+            subnet = self.topology.create_subnet(cidr='192.168.98.0/24')
+            self.subnet = subnet
+            port1 = subnet.create_port()
+            self.port1 = port1
+            port2 = subnet.create_port()
+            self.port2 = port2
+
+            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+
+            port1.update({'allowed_address_pairs': [{
+                'ip_address': '192.168.98.100'}]})
+
+            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+
+            port1_lport = port1.port.get_logical_port()
+            self.assertIsNotNone(port1_lport)
+
+            allowed_address_pairs = port1_lport.get_allowed_address_pairs()
+            self.assertIsNotNone(allowed_address_pairs)
+
+            self.allowed_address_pair_ip_address = \
+                allowed_address_pairs[0]['ip_address']
+            self.allowed_address_pair_mac_address = \
+                allowed_address_pairs[0]['mac_address']
+
+            # Create policy to reply arp request sent from controller
+            self.policy1 = self.store(
+                app_testing_objects.Policy(
+                    initial_actions=[],
+                    port_policies=self._create_policy_to_reply_arp_request(),
+                    unknown_port_action=app_testing_objects.IgnoreAction()
+                )
+            )
+
+            # Create policy for test ping
+            self.policy2 = self.store(
+                app_testing_objects.Policy(
+                    initial_actions=[
+                        app_testing_objects.SendAction(
+                            self.subnet.subnet_id,
+                            self.port2.port_id,
+                            self._create_ping_request
+                        )
+                    ],
+                    port_policies=self._create_policy_to_test_ping(),
+                    unknown_port_action=app_testing_objects.IgnoreAction()
+                )
+            )
+
+            # Create policy for test arp request
+            self.policy3 = self.store(
+                app_testing_objects.Policy(
+                    initial_actions=[
+                        app_testing_objects.SendAction(
+                            self.subnet.subnet_id,
+                            self.port2.port_id,
+                            self._create_arp_request
+                        )
+                    ],
+                    port_policies=self._create_policy_to_test_arp(),
+                    unknown_port_action=app_testing_objects.IgnoreAction()
+                )
+            )
+        except Exception:
+            if self.topology:
+                self.topology.close()
+            raise
+
+    def _create_arp_request(self, buf):
+        lport = self.port2.port.get_logical_port()
+        ethernet = ryu.lib.packet.ethernet.ethernet(
+            src=lport.get_mac(),
+            dst="ff:ff:ff:ff:ff:ff",
+            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_ARP,
+        )
+        arp = ryu.lib.packet.arp.arp_ip(
+            opcode=ryu.lib.packet.arp.ARP_REQUEST,
+            src_mac=lport.get_mac(), src_ip=lport.get_ip(),
+            dst_mac='00:00:00:00:00:00',
+            dst_ip=self.allowed_address_pair_ip_address,
+        )
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ethernet)
+        result.add_protocol(arp)
+        result.serialize()
+        return result.data
+
+    def _create_arp_response(self, buf):
+        pkt = ryu.lib.packet.packet.Packet(buf)
+        ether = pkt.get_protocol(ryu.lib.packet.ethernet.ethernet)
+        arp = pkt.get_protocol(ryu.lib.packet.arp.arp)
+
+        src_mac = self.allowed_address_pair_mac_address
+        dst_mac = ether.src
+        ether.src = src_mac
+        ether.dst = dst_mac
+
+        self.assertEqual(
+            arp.dst_ip,
+            self.allowed_address_pair_ip_address
+        )
+        arp_sha = self.allowed_address_pair_mac_address
+        arp_spa = self.allowed_address_pair_ip_address
+        arp_tha = arp.src_mac
+        arp_tpa = arp.src_ip
+        arp.opcode = ryu.lib.packet.arp.ARP_REPLY
+        arp.src_mac = arp_sha
+        arp.src_ip = arp_spa
+        arp.dst_mac = arp_tha
+        arp.dst_ip = arp_tpa
+
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ether)
+        result.add_protocol(arp)
+        result.serialize()
+        return result.data
+
+    def _create_ping_request(self, buf):
+        lport = self.port2.port.get_logical_port()
+        ethernet = ryu.lib.packet.ethernet.ethernet(
+            src=lport.get_mac(),
+            dst=self.allowed_address_pair_mac_address,
+            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+        )
+        ip = ryu.lib.packet.ipv4.ipv4(
+            src=lport.get_ip(),
+            dst=self.allowed_address_pair_ip_address,
+            proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+        )
+        icmp_id = 0x1234
+        icmp_seq = 0
+        icmp = ryu.lib.packet.icmp.icmp(
+            type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
+            data=ryu.lib.packet.icmp.echo(id_=icmp_id,
+                                          seq=icmp_seq,
+                                          data=self._create_random_string())
+        )
+        self.icmp = icmp
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ethernet)
+        result.add_protocol(ip)
+        result.add_protocol(icmp)
+        result.serialize()
+        return result.data
+
+    def _get_ping(self):
+        return self.icmp
+
+    def _create_random_string(self, length=16):
+        alphabet = string.printable
+        return ''.join([random.choice(alphabet) for _ in range(length)])
+
+    def test_detected_active_port(self):
+        self.policy1.start(self.topology)
+        self.policy1.wait(30)
+        if len(self.policy1.exceptions) > 0:
+            raise self.policy1.exceptions[0]
+
+        time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+
+        self.policy2.start(self.topology)
+        self.policy2.wait(30)
+        if len(self.policy2.exceptions) > 0:
+            raise self.policy2.exceptions[0]
+
+        self.policy3.start(self.topology)
+        self.policy3.wait(30)
+        if len(self.policy3.exceptions) > 0:
+            raise self.policy3.exceptions[0]
