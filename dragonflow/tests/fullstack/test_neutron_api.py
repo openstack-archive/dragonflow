@@ -468,6 +468,15 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         real_switch = lport.get_port_security_enable()
         self.assertEqual(expected_switch, real_switch)
 
+    def _get_differnt_pairs_between_expected_and_real(self, expected_pairs,
+                                                      real_pairs):
+        differnt_pairs = \
+            [pair for pair in expected_pairs if pair not in real_pairs]
+        differnt_pairs.extend(
+            [pair for pair in real_pairs if pair not in expected_pairs]
+        )
+        return differnt_pairs
+
     def test_add_remove_allowed_address_pairs(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
@@ -501,8 +510,11 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         })
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_pairs = lport.get_allow_address_pairs()
-        self.assertEqual(expected_pairs, real_pairs)
+        real_pairs = lport.get_allowed_address_pairs()
+        wrong_pairs = self._get_differnt_pairs_between_expected_and_real(
+            expected_pairs, real_pairs
+        )
+        self.assertEqual(0, len(wrong_pairs))
 
         expected_pairs = [
                 {"ip_address": "192.168.127.211",
@@ -513,5 +525,8 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         port.update({'allowed_address_pairs': expected_pairs})
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_pairs = lport.get_allow_address_pairs()
-        self.assertEqual(expected_pairs, real_pairs)
+        real_pairs = lport.get_allowed_address_pairs()
+        wrong_pairs = self._get_differnt_pairs_between_expected_and_real(
+            expected_pairs, real_pairs
+        )
+        self.assertEqual(0, len(wrong_pairs))
