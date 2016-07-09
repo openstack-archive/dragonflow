@@ -166,7 +166,7 @@ class LogicalPort(NbDbObjectWithUniqueKey):
     def get_security_groups(self):
         return self.inner_obj.get('security_groups', [])
 
-    def get_allow_address_pairs(self):
+    def get_allowed_address_pairs(self):
         return self.inner_obj.get('allowed_address_pairs', [])
 
     def get_port_security_enable(self):
@@ -368,6 +368,41 @@ class Publisher(NbDbObject):
 
     def get_last_activity_timestamp(self):
         return self.inner_obj.get('last_activity_timestamp')
+
+
+class AllowedAddressPairsActivePort(NbDbObject):
+
+    def get_id(self):
+        id = self.inner_obj.get('network_id') + self.inner_obj.get('ip')
+        return id
+
+    def get_ip(self):
+        return self.inner_obj.get('ip')
+
+    def get_network_id(self):
+        return self.inner_obj.get('network_id')
+
+    def get_detected_mac(self):
+        return self.inner_obj.get('detected_mac')
+
+    def get_detected_lport_id(self):
+        return self.inner_obj.get('detected_lport_id')
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            if (self.get_network_id() == other.get_network_id() and
+                self.get_ip() == other.get_ip() and
+                self.get_detected_mac() == other.get_detected_mac() and
+                self.get_topic() == other.get_topic() and
+                (self.get_detected_lport_id() ==
+                 other.get_detected_lport_id())):
+                return True
+        return False
+
+    def __ne__(self, other):
+        if self == other:
+            return False
+        return True
 
 
 class OvsPort(object):
