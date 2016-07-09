@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
 from oslo_config import cfg
 from oslo_log import log
 from ovs import vlog
@@ -117,6 +118,24 @@ class OvsApi(object):
 
         return True
 
+    @staticmethod
+    def _check_mac_in_use(port_name, mac_in_use):
+        if mac_in_use is None:
+            LOG.warning(_LW("Can't find mac_in_use for port %s."), port_name)
+            return False
+        try:
+            valid_mac = netaddr.valid_mac(mac_in_use)
+        except Exception:
+            valid_mac = False
+
+        if not valid_mac:
+            LOG.warning(
+                _LW("mac_in_use %(mac)s for port %(port)s is invalid."),
+                {'mac': mac_in_use, 'port': port_name})
+            return False
+
+        return True
+
     def get_chassis_ofport(self, chassis_id):
         # TODO(xiaohhui): Can we just call get_port_ofport('df-'+chassis_id)?
         ports = self.ovsdb.db_find(
@@ -127,18 +146,34 @@ class OvsApi(object):
             if self._check_ofport(port['name'], ofport):
                 return ofport
 
-    def get_port_ofport_by_id(self, port_id):
+    def _get_port_by_id_with_only_specified_columns(self, port_id,
+                                                    specified_columns):
+        columns = {'external_ids', 'name'}
+        columns.update(specified_columns)
         ifaces = self.ovsdb.db_find(
             'Interface', ('external_ids', '=', {'iface-id': port_id}),
-            columns=['external_ids', 'name', 'ofport']).execute()
+            columns=columns).execute()
+
         for iface in ifaces:
             if (self.integration_bridge !=
                     self._get_bridge_for_iface(iface['name'])):
                 # iface-id is the port id in neutron, the same neutron port
                 # might create multiple interfaces in different bridges
                 continue
-            if self._check_ofport(iface['name'], iface['ofport']):
-                return iface['ofport']
+            return iface
+
+    def get_port_ofport_by_id(self, port_id):
+        iface = self._get_port_by_id_with_only_specified_columns(
+            port_id, {'name', 'ofport'})
+        if iface and self._check_ofport(iface['name'], iface['ofport']):
+            return iface['ofport']
+
+    def get_local_port_mac_in_use(self, port_id):
+        iface = self._get_port_by_id_with_only_specified_columns(
+            port_id, {'name', 'mac_in_use'})
+        if iface and self._check_mac_in_use(
+                iface['name'], iface['mac_in_use']):
+            return iface['mac_in_use']
 
     def create_patch_port(self, bridge, port, remote_name):
         self.ovsdb.add_br(bridge, datapath_type='system').execute()
