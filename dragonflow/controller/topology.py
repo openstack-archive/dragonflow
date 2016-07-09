@@ -244,6 +244,10 @@ class Topology(object):
         for floating_ip in floating_ips:
             self.controller.floatingip_updated(floating_ip)
 
+        active_nodes = self.nb_api.get_active_nodes(tenant_id)
+        for active_node in active_nodes:
+            self.controller.active_node_updated(active_node)
+
     def _clear_tenant_topology(self, tenant_id):
         ports = self.db_store.get_ports()
         for port in ports:
@@ -254,6 +258,10 @@ class Topology(object):
         for floating_ip in floating_ips:
             if tenant_id == floating_ip.get_topic():
                 self.controller.floatingip_deleted(floating_ip.get_id())
+
+        active_nodes_keys = self.db_store.get_active_node_keys(tenant_id)
+        for active_node_key in active_nodes_keys:
+            self.controller.active_node_deleted(active_node_key)
 
         switches = self.db_store.get_lswitchs()
         for switch in switches:
