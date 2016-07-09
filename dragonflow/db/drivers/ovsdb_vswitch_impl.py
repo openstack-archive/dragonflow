@@ -266,6 +266,15 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
 
         return chassis_to_ofport, lport_to_ofport
 
+    def get_local_port_mac_in_use(self, port_id):
+        interfaces = self.idl.tables['Interface'].rows.values()
+        for interface in interfaces:
+            ifaceid = interface.external_ids.get('iface-id')
+            if (ifaceid == port_id) and (interface.mac_in_use is not None):
+                mac_in_use = interface.mac_in_use
+                if not mac_in_use:
+                    return mac_in_use[0]
+
     def create_patch_port(self, bridge, port, remote_name):
         if not commands.BridgeExistsCommand(self, bridge).execute():
             commands.AddBridgeCommand(self, bridge, True,
