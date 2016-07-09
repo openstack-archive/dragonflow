@@ -517,6 +517,26 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         LOG.info(_LI("DFMechDriver: delete subnet %s"), subnet_id)
 
+    def _filter_unsupported_allowed_address_pairs(self,
+                                                  allowed_address_pairs):
+        if not validators.is_attr_set(allowed_address_pairs):
+            return []
+
+        supported_allowed_address_pairs = []
+        # Not support IP address prefix yet
+        for pair in allowed_address_pairs:
+            if '/' in pair["ip_address"]:
+                raise Exception(_("DF don't support IP prefix in allowed"
+                                  "address pairs yet. The allowed address"
+                                  "pair {ip_address = %(ip_address), "
+                                  "mac_address = %(mac_address)} "
+                                  "caused this exception.} "),
+                                {'ip_address': pair["ip_address"],
+                                 'mac_address': pair["mac_address"]})
+            else:
+                supported_allowed_address_pairs.append(pair)
+        return supported_allowed_address_pairs
+
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def create_port_postcommit(self, context):
         port = context.current
@@ -540,6 +560,11 @@ class DFMechDriver(driver_api.MechanismDriver):
             chassis = binding_profile.get(df_const.DF_BINDING_PROFILE_HOST_IP)
             remote_vtep = True
 
+        # filter unsupported allowed address pairs
+        filtered_allowed_adress_pairs = \
+            self._filter_unsupported_allowed_address_pairs(
+                port.get(addr_pair.ADDRESS_PAIRS, []))
+
         self.nb_api.create_lport(
             id=port['id'],
             lswitch_id=port['network_id'],
@@ -555,7 +580,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             security_groups=port.get('security_groups', []),
             port_security_enabled=port.get(psec.PORTSECURITY, False),
             remote_vtep=remote_vtep,
-            allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, []),
+            allowed_address_pairs=filtered_allowed_adress_pairs,
             binding_profile=port.get(portbindings.PROFILE, None),
             binding_vnic_type=port.get(portbindings.VNIC_TYPE, None),
             qos_policy_id=port.get('qos_policy_id', None))
@@ -635,6 +660,11 @@ class DFMechDriver(driver_api.MechanismDriver):
         else:
             security_groups = []
 
+        # filter unsupported allowed address pairs
+        filtered_allowed_adress_pairs = \
+            self._filter_unsupported_allowed_address_pairs(
+                updated_port.get(addr_pair.ADDRESS_PAIRS, []))
+
         ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
         subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
 
@@ -651,8 +681,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             device_id=updated_port.get('device_id', None),
             security_groups=security_groups,
             port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
-            allowed_address_pairs=updated_port.get(addr_pair.ADDRESS_PAIRS,
-                                                   []),
+            allowed_address_pairs=filtered_allowed_adress_pairs,
             binding_profile=updated_port.get(portbindings.PROFILE, None),
             binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE, None),
             version=updated_port['revision_number'], remote_vtep=remote_vtep,
