@@ -25,7 +25,7 @@ from neutron_lib import constants as n_const
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow._i18n import _LI
+from dragonflow._i18n import _LI, _LW
 from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
@@ -450,6 +450,26 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         LOG.info(_LI("DFMechDriver: delete subnet %s"), subnet_id)
 
+    def _filter_unsupported_allowed_address_pairs(self,
+                                                  allowed_address_pairs):
+        if not attr.is_attr_set(allowed_address_pairs):
+            return []
+
+        supported_allowed_address_pairs = []
+        # Not support IP address prefix yet
+        for pair in allowed_address_pairs:
+            if '/' in pair["ip_address"]:
+                LOG.warning(_LW("Not support IP prefix in allowed address "
+                                "pairs yet. This allowed address pair "
+                                "(ip_address = %(ip_address), "
+                                "mac_address = %(mac_address)) will be "
+                                "ignored.} "),
+                            {'ip_address': pair["ip_address"],
+                             'mac_address': pair["mac_address"]})
+            else:
+                supported_allowed_address_pairs.append(pair)
+        return supported_allowed_address_pairs
+
     def create_port_precommit(self, context):
         port_version = version_db._create_db_version_row(
             context._plugin_context.session, context.current['id'])
@@ -470,6 +490,11 @@ class DFMechDriver(driver_api.MechanismDriver):
         else:
             chassis = port.get('binding:host_id', None)
 
+        # filter unsupported allowed address pairs
+        filtered_allowed_adress_pairs = \
+            self._filter_unsupported_allowed_address_pairs(
+                port.get(addr_pair.ADDRESS_PAIRS, []))
+
         self.nb_api.create_lport(
             id=port['id'],
             lswitch_id=port['network_id'],
@@ -484,7 +509,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             device_id=port.get('device_id', None),
             security_groups=port.get('security_groups', []),
             port_security_enabled=port.get(psec.PORTSECURITY, False),
-            allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, []),
+            allowed_address_pairs=filtered_allowed_adress_pairs,
             binding_profile=port.get(portbindings.PROFILE, None),
             binding_vnic_type=port.get(portbindings.VNIC_TYPE, None))
 
@@ -544,6 +569,11 @@ class DFMechDriver(driver_api.MechanismDriver):
         else:
             security_groups = []
 
+        # filter unsupported allowed address pairs
+        filtered_allowed_adress_pairs = \
+            self._filter_unsupported_allowed_address_pairs(
+                updated_port.get(addr_pair.ADDRESS_PAIRS, []))
+
         ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
         subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
 
@@ -560,8 +590,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             device_id=updated_port.get('device_id', None),
             security_groups=security_groups,
             port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
-            allowed_address_pairs=updated_port.get(addr_pair.ADDRESS_PAIRS,
-                                                   []),
+            allowed_address_pairs=filtered_allowed_adress_pairs,
             binding_profile=updated_port.get(portbindings.PROFILE, None),
             binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE, None),
             version=updated_port['db_version'])

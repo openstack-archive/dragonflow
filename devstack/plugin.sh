@@ -23,10 +23,11 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.5}
 
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
-"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
+"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp,"\
+"active_port_detection_app.ActivePortDetectionApp"
 ML2_APPS_LIST_DEFAULT="l2_ml2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
-"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
-
+"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp,"\
+"active_port_detection_app.ActivePortDetectionApp"
 if is_service_enabled df-metadata ; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,metadata_service_app.MetadataServiceApp"
     ML2_APPS_LIST_DEFAULT="$ML2_APPS_LIST_DEFAULT,metadata_service_app.MetadataServiceApp"

@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from oslo_config import cfg
 from ryu.lib import addrconv
 import struct
 
@@ -18,6 +19,8 @@ from dragonflow.controller.common import constants as const
 
 UINT32_MAX = 0xffffffff
 _aging_cookie = 0
+ACTIVE_PORT_DETECTION_APP = \
+    "active_port_detection_app.ActivePortDetectionApp"
 
 
 def ipv4_text_to_int(ip_text):
@@ -55,3 +58,11 @@ def set_aging_cookie_bits(cookie):
 
 def get_xor_cookie(cookie):
     return cookie ^ const.GLOBAL_INIT_AGING_COOKIE
+
+
+def check_active_port_detection_app():
+    apps_list = cfg.CONF.df.apps_list
+    if ACTIVE_PORT_DETECTION_APP in apps_list:
+        return True
+    else:
+        return False
