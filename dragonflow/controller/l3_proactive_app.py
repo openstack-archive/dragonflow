@@ -21,10 +21,7 @@ from dragonflow.controller.common.icmp_responder import ICMPResponder
 from dragonflow.controller.df_base_app import DFlowApp
 
 from neutron_lib import constants as common_const
-from oslo_log import log
 
-
-LOG = log.getLogger(__name__)
 
 
 class L3ProactiveApp(DFlowApp):

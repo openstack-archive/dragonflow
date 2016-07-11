@@ -29,13 +29,9 @@ from neutron.agent.ovsdb.native import helpers
 from neutron.agent.ovsdb.native import idlutils
 
 from oslo_config import cfg
-from oslo_log import log
 
 from ovs.db import idl
 from ovs import poller
-
-
-LOG = log.getLogger(__name__)
 
 
 ovsdb_monitor_table_filter_default = {

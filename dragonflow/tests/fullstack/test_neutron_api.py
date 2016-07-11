@@ -13,15 +13,11 @@
 import contextlib
 
 from oslo_concurrency import lockutils
-from oslo_log import log
 
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 from neutronclient.common import exceptions as n_exc
-
-
-LOG = log.getLogger(__name__)
 
 
 class TestNeutronAPIandDB(test_base.DFTestBase):
