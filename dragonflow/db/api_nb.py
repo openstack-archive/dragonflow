@@ -717,6 +717,44 @@ class NbApi(object):
             topic,
         )
 
+    def create_qos_policy(self, policy_id, topic, **columns):
+        policy = {}
+        policy['id'] = policy_id
+        policy['topic'] = topic
+        for col, val in columns.items():
+            policy[col] = val
+        policy_json = jsonutils.dumps(policy)
+
+        self.driver.create_key('qospolicy', policy_id, policy_json, topic)
+        self._send_db_change_event('qospolicy', policy_id, 'create',
+                                   policy_json, topic)
+
+    def update_qos_policy(self, policy_id, topic, **columns):
+        policy = {}
+        policy['id'] = policy_id
+        policy['topic'] = topic
+        for col, val in columns.items():
+            policy[col] = val
+        policy_json = jsonutils.dumps(policy)
+
+        self.driver.set_key('qospolicy', policy_id, policy_json, topic)
+        self._send_db_change_event('qospolicy', policy_id, 'set',
+                                   policy_json, topic)
+
+    def delete_qos_policy(self, policy_id, topic):
+        self.driver.delete_key('qospolicy', policy_id, topic)
+        self._send_db_change_event('qospolicy', policy_id, 'delete', policy_id,
+                                   topic)
+
+    def get_qos_policy(self, policy_id, topic=None):
+        try:
+            qospolicy_value = self.driver.get_key('qospolicy',
+                                                  policy_id, topic)
+            return QosPolicy(qospolicy_value)
+        except Exception:
+            LOG.exception(_LE('Could not get qos policy %s'), policy_id)
+            return None
+
 
 @six.add_metaclass(abc.ABCMeta)
 class DbStoreObject(object):
@@ -1166,3 +1204,66 @@ class Publisher(DbStoreObject):
 
     def __str__(self):
         return str(self.publisher)
+
+
+class QosPolicy(DbStoreObject):
+
+    def __init__(self, value):
+        self.qospolicy = jsonutils.loads(value)
+
+    def get_id(self):
+        return self.qospolicy.get('id')
+
+    def get_name(self):
+        return self.qospolicy.get('name')
+
+    def get_topic(self):
+        return self.qospolicy.get('topic')
+
+    def get_type(self):
+        return self.qospolicy.get('type')
+
+    def get_version(self):
+        return self.qospolicy.get('version')
+
+    def get_max_burst_kbps(self):
+        rules = self.qospolicy.get('rules')
+        if rules is []:
+            return None
+
+        max_burst_kbps = None
+        for rule in rules:
+            if rule['type'] is 'bandwidth_limit':
+                max_burst_kbps = rule.get('max_burst_kbps', None)
+                break
+
+        return max_burst_kbps
+
+    def get_max_kbps(self):
+        rules = self.qospolicy.get('rules')
+        if rules is []:
+            return None
+
+        max_kbps = None
+        for rule in rules:
+            if rule['type'] is 'bandwidth_limit':
+                max_kbps = rule.get('max_kbps', None)
+                break
+
+        return max_kbps
+
+    def get_dscp_marking(self):
+        rules = self.qospolicy.get('rules')
+        if rules is []:
+            return None
+
+        dscp_marking = None
+        for rule in rules:
+            if rule['type'] is 'dscp_marking':
+                dscp_marking = rule.get('dscp_marking', None)
+                break
+
+        return dscp_marking
+
+    def __str__(self):
+        return self.qospolicy.__str__()
