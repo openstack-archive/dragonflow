@@ -78,6 +78,41 @@ class TestDFMechDriver(base.BaseTestCase):
             mtu=1450,
             version=self.dbversion)
 
+    def test_update_network_postcommit(self):
+        tenant_id = 'test'
+        network_id = '123'
+        network_type = 'vxlan'
+        segmentation_id = 456
+        subnet = {"dhcp_ip": "1.0.0.2",
+                  "name": "sub1",
+                  "enable_dhcp": True,
+                  "lswitch": "123",
+                  "dns_nameservers": [],
+                  "gateway_ip": "1.0.0.1",
+                  "host_routes": [],
+                  "cidr": "1.0.0.0/24",
+                  "id": "456"}
+
+        self.driver._get_subnets_for_update_network = mock.Mock(
+            return_value=subnet)
+        network_context = self._get_network_context(tenant_id,
+                                                    network_id,
+                                                    network_type,
+                                                    segmentation_id)
+
+        self.driver.update_network_postcommit(network_context)
+        self.driver.nb_api.update_lswitch.assert_called_with(
+            id=network_id,
+            name='FakeNetwork',
+            topic=tenant_id,
+            network_type=network_type,
+            router_external=False,
+            segmentation_id=segmentation_id,
+            subnets=subnet,
+            mtu=1450,
+            version=self.dbversion,
+            qos_policy_id=100)
+
     def test_delete_network_postcommit(self):
         tenant_id = 'test'
         network_id = '123'
@@ -187,7 +222,8 @@ class TestDFMechDriver(base.BaseTestCase):
             device_owner='compute', device_id='d1',
             port_security_enabled=False, security_groups=None,
             binding_profile=None, binding_vnic_type='ovs',
-            allowed_address_pairs=None, version=self.dbversion)
+            allowed_address_pairs=None, version=self.dbversion,
+            qos_policy_id=100)
 
     def test_update_port_postcommit(self):
         tenant_id = 'test'
@@ -213,7 +249,7 @@ class TestDFMechDriver(base.BaseTestCase):
             allowed_address_pairs=None, security_groups=None,
             device_owner='compute', device_id='d1',
             binding_profile=None, binding_vnic_type='ovs',
-            version=self.dbversion)
+            version=self.dbversion, qos_policy_id=100)
 
     def test_delete_port_postcommit(self):
         tenant_id = 'test'
@@ -362,7 +398,8 @@ class TestDFMechDriver(base.BaseTestCase):
                 'network_id': net_id,
                 'binding:profile': None,
                 'binding:vnic_type': 'ovs',
-                'db_version': self.dbversion}
+                'db_version': self.dbversion,
+                'qos_policy_id': 100}
         return FakeContext(port)
 
     def _get_network_context(self, tenant_id, net_id, network_type, seg_id):
@@ -376,7 +413,8 @@ class TestDFMechDriver(base.BaseTestCase):
                    'provider:segmentation_id': seg_id,
                    'router:external': False,
                    'mtu': 1450,
-                   'db_version': self.dbversion}
+                   'db_version': self.dbversion,
+                   'qos_policy_id': 100}
         segments = [{'segmentation_id': seg_id}]
         return FakeNetworkContext(network, segments)
 
