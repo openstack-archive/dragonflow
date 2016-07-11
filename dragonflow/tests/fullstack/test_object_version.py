@@ -13,13 +13,9 @@
 import contextlib
 
 from oslo_concurrency import lockutils
-from oslo_log import log
 
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-
-
-LOG = log.getLogger(__name__)
 
 
 class TestObjectVersion(test_base.DFTestBase):

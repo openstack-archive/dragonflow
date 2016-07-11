@@ -29,10 +29,7 @@ from ryu.ofproto import ether
 
 from neutron_lib import constants as n_const
 from oslo_config import cfg
-from oslo_log import log
 from oslo_service import loopingcall
-
-LOG = log.getLogger(__name__)
 
 
 DF_DNAT_APP_OPTS = [
