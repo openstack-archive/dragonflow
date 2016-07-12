@@ -490,13 +490,13 @@ class DfLocalController(object):
     def _associate_floatingip(self, floatingip):
         self.db_store.update_floatingip(floatingip.get_id(), floatingip)
         self.open_flow_app.notify_associate_floatingip(floatingip)
-        LOG.info(_LI("Floatingip is assoicated with port. Floatingip = %s") %
+        LOG.info(_LI("Floatingip is associated with port. Floatingip = %s") %
                  str(floatingip))
 
     def _disassociate_floatingip(self, floatingip):
         self.db_store.delete_floatingip(floatingip.get_id())
         self.open_flow_app.notify_disassociate_floatingip(floatingip)
-        LOG.info(_LI("Floatingip is disassoicated from port."
+        LOG.info(_LI("Floatingip is disassociated from port."
                  " Floatingip = %s") % str(floatingip))
 
     def _update_floatingip(self, old_floatingip, new_floatingip):
