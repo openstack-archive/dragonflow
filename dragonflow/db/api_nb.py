@@ -899,6 +899,9 @@ class LogicalPort(DbStoreObject):
     def get_version(self):
         return self.lport['version']
 
+    def get_remote_vtep(self):
+        return self.lport['remote_vtep']
+
     def __str__(self):
         return self.lport.__str__() + self.external_dict.__str__()
 
