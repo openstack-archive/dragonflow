@@ -74,7 +74,7 @@ class TestDFMechDriver(base.BaseTestCase):
             network_type=network_type,
             router_external=False,
             segmentation_id=segmentation_id,
-            subnets=[],
+            subnets=None,
             mtu=1450,
             version=self.dbversion)
 
@@ -116,7 +116,7 @@ class TestDFMechDriver(base.BaseTestCase):
             subnet_id, network_id, tenant_id, enable_dhcp=enable_dhcp,
             cidr=cidr, dhcp_ip=dhcp_ip, gateway_ip=gateway_ip,
             dns_nameservers=dns_nameservers, name='FakeSubnet',
-            host_routes=[],
+            host_routes=None,
             nw_version=self.dbversion)
 
     def test_update_subnet_postcommit(self):
@@ -141,7 +141,7 @@ class TestDFMechDriver(base.BaseTestCase):
             subnet_id, network_id, tenant_id, enable_dhcp=enable_dhcp,
             cidr=cidr, dhcp_ip=dhcp_ip, gateway_ip=gateway_ip,
             dns_nameservers=dns_nameservers, name='FakeSubnet',
-            host_routes=[],
+            host_routes=None,
             nw_version=self.dbversion)
 
     def test_delete_subnet_postcommit(self):

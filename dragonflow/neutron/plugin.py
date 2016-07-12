@@ -437,9 +437,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 LOG.debug("lswitch %s is not found in DF DB, might have "
                           "been deleted concurrently" % network_id)
             if lswitch is not None:
-                subnets = [subnet.get_id() for subnet in lswitch.get_subnets()]
-                dhcp_ports = self._get_ports_by_subnets_and_owners(
-                    context, subnets, [const.DEVICE_OWNER_DHCP])
+                subnets = lswitch.get_subnets()
+                if subnets:
+                    subnet_ids = [subnet.get_id() for subnet in subnets]
+                    dhcp_ports = self._get_ports_by_subnets_and_owners(
+                        context, subnet_ids, [const.DEVICE_OWNER_DHCP])
             super(DFPlugin, self).delete_network(context, network_id)
             version_db._delete_db_version_row(context.session, network_id)
 
