@@ -27,7 +27,7 @@ from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api
 from neutron.plugins.ml2 import models
 
-from dragonflow._i18n import _LI
+from dragonflow._i18n import _LI, _LW
 from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
@@ -429,11 +429,21 @@ class DFMechDriver(driver_api.MechanismDriver):
             context._plugin_context.session, context.current['id'])
         context.current['db_version'] = port_version
 
+    def _get_ips_and_subnets_by_port(self, port):
+        fixed_ips = port.get('fixed_ips')
+        if fixed_ips:
+            ips = [ip['ip_address'] for ip in fixed_ips]
+            subnets = [ip['subnet_id'] for ip in fixed_ips]
+        else:
+            ips = []
+            subnets = []
+            LOG.warning(_LW("No fixed_ips in port %s"), port['id'])
+        return ips, subnets
+
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def create_port_postcommit(self, context):
         port = context.current
-        ips = [ip['ip_address'] for ip in port.get('fixed_ips', [])]
-        subnets = [ip['subnet_id'] for ip in port.get('fixed_ips', [])]
+        ips, subnets = self._get_ips_and_subnets_by_port(port)
         tunnel_key = self.nb_api.allocate_tunnel_key()
 
         # Router GW ports are not needed by dragonflow controller and
@@ -451,14 +461,14 @@ class DFMechDriver(driver_api.MechanismDriver):
             macs=[port['mac_address']], ips=ips,
             subnets=subnets,
             name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
-            enabled=port.get('admin_state_up', None),
+            enabled=port.get('admin_state_up', False),
             chassis=chassis, tunnel_key=tunnel_key,
             version=port['db_version'],
             device_owner=port.get('device_owner', None),
             device_id=port.get('device_id', None),
-            security_groups=port.get('security_groups', None),
+            security_groups=port.get('security_groups', []),
             port_security_enabled=port.get(psec.PORTSECURITY, False),
-            allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, None),
+            allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, []),
             binding_profile=port.get(portbindings.PROFILE, None),
             binding_vnic_type=port.get(portbindings.VNIC_TYPE, None))
 
@@ -516,10 +526,9 @@ class DFMechDriver(driver_api.MechanismDriver):
         if updated_security_groups:
             security_groups = updated_security_groups
         else:
-            security_groups = None
+            security_groups = []
 
-        ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
-        subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
+        ips, subnets = self._get_ips_and_subnets_by_port(updated_port)
 
         self.nb_api.update_lport(
             id=updated_port['id'],
@@ -535,7 +544,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             security_groups=security_groups,
             port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=updated_port.get(addr_pair.ADDRESS_PAIRS,
-                                                   None),
+                                                   []),
             binding_profile=updated_port.get(portbindings.PROFILE, None),
             binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE, None),
             version=updated_port['db_version'])
