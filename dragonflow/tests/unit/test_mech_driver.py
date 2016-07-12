@@ -185,9 +185,9 @@ class TestDFMechDriver(base.BaseTestCase):
             name='FakePort', subnets=['sub-1'],
             enabled=True, chassis=None, tunnel_key=tunnel_key,
             device_owner='compute', device_id='d1',
-            port_security_enabled=False, security_groups=None,
+            port_security_enabled=False, security_groups=[],
             binding_profile=None, binding_vnic_type='ovs',
-            allowed_address_pairs=None, version=self.dbversion)
+            allowed_address_pairs=[], version=self.dbversion)
 
     def test_update_port_postcommit(self):
         tenant_id = 'test'
@@ -210,7 +210,7 @@ class TestDFMechDriver(base.BaseTestCase):
             macs=['aabb'], ips=['10.0.0.1'],
             subnets=['sub-1'],
             enabled=True, chassis=None, port_security_enabled=False,
-            allowed_address_pairs=None, security_groups=None,
+            allowed_address_pairs=[], security_groups=[],
             device_owner='compute', device_id='d1',
             binding_profile=None, binding_vnic_type='ovs',
             version=self.dbversion)
