@@ -364,6 +364,15 @@ class DNATApp(DFlowApp):
         for floatingip in ips_to_disassociate:
             self.disassociate_floatingip(floatingip)
 
+    def add_local_port(self, lport):
+        port_id = lport.get_id()
+        ips_to_associate = [
+            fip for fip in six.itervalues(self.local_floatingips)
+            if fip.get_lport_id() == port_id]
+        for floatingip in ips_to_associate:
+            self._install_ingress_nat_rules(floatingip)
+            self._install_egress_nat_rules(floatingip)
+
     def update_bridge_port(self, lport):
         port_name = lport.get_name()
         if port_name != self.external_network_bridge:
