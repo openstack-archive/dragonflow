@@ -277,6 +277,8 @@ class TableMonitor(object):
             entry_value = self._driver.get_key(
                 self._table_name,
                 entry_key)
+            if entry_value is None:
+                continue
             old_value = old_cache.pop(entry_key, None)
             if old_value is None:
                 self._send_event('create', entry_key, entry_value)
@@ -313,6 +315,8 @@ class StalePublisherMonitor(TableMonitor):
         """Scan for stale entries of other publishers"""
         for entry_key in self._driver.get_all_keys(self._table_name):
             publisher_json = self._driver.get_key(self._table_name, entry_key)
+            if publisher_json is None:
+                continue
             publisher = jsonutils.loads(publisher_json)
             if publisher['id'] == self._uuid:
                 continue
