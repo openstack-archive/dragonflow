@@ -487,6 +487,8 @@ class L2App(DFlowApp):
 
         if network_type == 'vlan':
             self._del_network_flows_for_vlan(segmentation_id)
+        elif network_type == 'flat':
+            self._del_network_flows_for_flat()
         else:
             self._del_network_flows_for_tunnel(segmentation_id)
 
@@ -786,12 +788,12 @@ class L2App(DFlowApp):
 
         self._add_arp_responder(lport)
 
-        if network_type == 'vlan':
+        if network_type == 'vlan' or network_type == 'flat':
             return
 
         match = parser.OFPMatch(reg7=port_key)
         actions = [parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
-                  parser.OFPActionOutput(port=ofport)]
+                   parser.OFPActionOutput(port=ofport)]
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
@@ -832,12 +834,13 @@ class L2App(DFlowApp):
                 return
 
         if network_type == 'vlan':
-            self._install_network_flows_for_vlan(network_type,
-                                                 segmentation_id,
+            self._install_network_flows_for_vlan(segmentation_id,
                                                  local_network_id)
+        elif network_type == 'flat':
+            self._install_network_flows_for_flat(local_network_id)
         else:
             self._install_network_flows_for_tunnel(segmentation_id,
-                                               local_network_id)
+                                                   local_network_id)
 
     """
     Install Ingress network flow for vxlan
@@ -875,14 +878,15 @@ class L2App(DFlowApp):
     """
     Install network flows for vlan
     """
-    def _install_network_flows_for_vlan(self, network_type,
+    def _install_network_flows_for_vlan(self,
                                         segmentation_id,
                                         local_network_id):
-        LOG.info(_LI("Install network flows on first %s up"), network_type)
+        LOG.info(_LI("Install network flows on first vlan up"))
 
         # L2_LOOKUP for Remote ports
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
         match = parser.OFPMatch()
 
         addint = haddr_to_bin('00:00:00:00:00:00')
@@ -901,10 +905,6 @@ class L2App(DFlowApp):
         # Table=Egress
         # Match: metadata=network_id
         # Actions: mod_vlan, output:patch
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
-
         match = parser.OFPMatch(metadata=local_network_id)
         actions = [parser.OFPActionPushVlan(ether.ETH_TYPE_8021Q),
                    parser.OFPActionSetField(
@@ -924,12 +924,64 @@ class L2App(DFlowApp):
         # Ingress
         # Match: dl_vlan=vlan_id,
         # Actions: metadata=network_id,
-        #goto 'Destiantion Port Classification'
+        # goto 'Destination Port Classification'
         match = parser.OFPMatch()
         match.set_vlan_vid(segmentation_id)
         actions = [parser.OFPActionSetField(metadata=local_network_id),
                    parser.OFPActionPopVlan()]
 
+        action_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+
+        goto_inst = parser.OFPInstructionGotoTable(
+            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
+
+        inst = [action_inst, goto_inst]
+        self.mod_flow(
+            datapath=datapath,
+            inst=inst,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            priority=const.PRIORITY_LOW,
+            match=match)
+
+    def _install_network_flows_for_flat(self, local_network_id):
+        datapath = self.get_datapath()
+        parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
+        match = parser.OFPMatch()
+
+        addint = haddr_to_bin('00:00:00:00:00:00')
+        add_mask_int = haddr_to_bin('01:00:00:00:00:00')
+        match.set_dl_dst_masked(addint, add_mask_int)
+        match.set_metadata(local_network_id)
+        inst = [parser.OFPInstructionGotoTable(const.EGRESS_TABLE)]
+        self.mod_flow(
+            datapath=datapath,
+            inst=inst,
+            table_id=const.L2_LOOKUP_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match)
+
+        # EGRESS for Remote ports
+        # Table=Egress
+        # Match: metadata=network_id
+        # Actions: goto: egress_external_table
+        match = parser.OFPMatch(metadata=local_network_id)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_EXTERNAL_TABLE)
+
+        inst = [goto_inst]
+        self.mod_flow(
+            datapath=datapath,
+            inst=inst,
+            table_id=const.EGRESS_TABLE,
+            priority=const.PRIORITY_LOW,
+            match=match)
+
+        # Ingress
+        # Flat: Match: vlan_tci=0,
+        # Actions: metadata=network_id, goto 'Destination Port Classification'
+        match = parser.OFPMatch(vlan_vid=(0x0000 & 0xffff))
+        actions = [parser.OFPActionSetField(metadata=local_network_id)]
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
 
@@ -970,3 +1022,19 @@ class L2App(DFlowApp):
         match.set_dl_dst_masked(addint, addint)
         match.set_metadata(network_id)
         return match
+
+    def _del_network_flows_for_flat(self):
+        LOG.info(_LI("Delete network flows for flat"))
+
+        datapath = self.get_datapath()
+        parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
+        match = parser.OFPMatch(vlan_vid=(0x0000 & 0xffff))
+        self.mod_flow(
+            datapath=datapath,
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_LOW,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
