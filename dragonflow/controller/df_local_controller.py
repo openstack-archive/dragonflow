@@ -17,12 +17,12 @@ import socket
 import sys
 import time
 
+from neutron.agent.common import config
+from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
-
-from neutron.agent.common import config
-from neutron.common import config as common_config
+from ryu.base.app_manager import AppManager
 
 from dragonflow._i18n import _LI, _LW
 from dragonflow.common import common_params
@@ -33,7 +33,6 @@ from dragonflow.db import api_nb
 from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_vswitch_impl
 
-from ryu.base.app_manager import AppManager
 
 config.setup_logging()
 LOG = log.getLogger("dragonflow.controller.df_local_controller")

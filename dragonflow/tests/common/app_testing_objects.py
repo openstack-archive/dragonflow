@@ -11,20 +11,19 @@
 #    under the License.
 
 import collections
-import eventlet
 import fcntl
 import os
-import pytun
 import re
-import ryu.lib.packet
 import socket
 import threading
 import time
 
+import eventlet
 from oslo_config import cfg
 from oslo_log import log
-
 from neutron.agent.common import utils
+import pytun
+import ryu.lib.packet
 
 from dragonflow._i18n import _LI, _LE
 from dragonflow.common import common_params

@@ -10,14 +10,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os_client_config
 import six
 import time
 
 from neutron.agent.linux.utils import wait_until_true
 from neutronclient.common import exceptions
 from novaclient import client as novaclient
-
+import os_client_config
 from oslo_log import log
 
 from dragonflow._i18n import _LW

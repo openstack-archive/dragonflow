@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import copy
-
 from collections import defaultdict
-import six
+import copy
 import threading
+
+import six
 
 
 class TenantDbStore(object):

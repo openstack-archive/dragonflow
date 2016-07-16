@@ -9,12 +9,15 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import re
+
+from oslo_config import cfg
+
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-from oslo_config import cfg
-import re
 
 ML2_CONF_INI = '/etc/neutron/plugins/ml2/ml2_conf.ini'
 L2_ML2_APP_NAME = 'l2_ml2_app.L2App'

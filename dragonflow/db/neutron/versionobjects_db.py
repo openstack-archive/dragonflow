@@ -15,7 +15,6 @@
 
 from oslo_db import exception as db_exc
 from oslo_log import log
-
 from sqlalchemy.orm import exc as orm_exc
 
 from dragonflow._i18n import _LW

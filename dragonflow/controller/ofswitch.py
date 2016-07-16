@@ -14,9 +14,7 @@
 #    under the License.
 
 import eventlet
-
 from oslo_log import log
-
 import ryu.app.ofctl.api as ofctl_api
 from ryu.app.ofctl.service import OfctlService
 from ryu.base.app_manager import AppManager

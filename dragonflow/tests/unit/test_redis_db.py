@@ -13,9 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+
 from dragonflow.db.drivers.redis_db_driver import RedisDbDriver
 from dragonflow.tests import base as tests_base
-import mock
 
 
 class TestRedisDB(tests_base.BaseTestCase):

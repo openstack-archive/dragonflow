@@ -10,11 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import re
+
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-import re
 
 
 class TestL2Multicast(test_base.DFTestBase):
