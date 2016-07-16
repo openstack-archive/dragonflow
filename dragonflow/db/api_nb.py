@@ -357,6 +357,7 @@ class NbApi(object):
         subnet = {}
         subnet['id'] = id
         subnet['lswitch'] = lswitch_id
+        subnet['topic'] = topic
         for col, val in columns.items():
             if col == 'nw_version':
                 network_version = val
