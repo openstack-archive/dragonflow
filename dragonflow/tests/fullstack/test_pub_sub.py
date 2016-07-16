@@ -14,10 +14,9 @@ import eventlet
 import random
 import six
 
+from neutron.agent.linux.utils import wait_until_true
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-
-from neutron.agent.linux.utils import wait_until_true
 
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC

@@ -11,20 +11,19 @@
 #    under the License.
 
 import random
-import ryu.lib.packet
 import string
 import sys
 import time
 
 from neutron.agent.linux.utils import wait_until_true
+from oslo_log import log
+import ryu.lib.packet
 
 from dragonflow._i18n import _LI
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-
-from oslo_log import log
 
 LOG = log.getLogger(__name__)
 

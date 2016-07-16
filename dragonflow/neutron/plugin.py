@@ -12,16 +12,8 @@
 #    under the License.
 
 import netaddr
-import six
-
 from neutron_lib import constants as const
 from neutron_lib import exceptions as n_exc
-from oslo_config import cfg
-from oslo_log import log
-from oslo_utils import excutils
-from oslo_utils import importutils
-from sqlalchemy.orm import exc as sa_exc
-
 from neutron.api.rpc.agentnotifiers import dhcp_rpc_agent_api
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import dhcp_rpc
@@ -31,12 +23,6 @@ from neutron.api.v2 import attributes as attr
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
-from neutron.extensions import allowedaddresspairs as addr_pair
-from neutron.extensions import extra_dhcp_opt as edo_ext
-from neutron.extensions import portbindings
-from neutron.extensions import portsecurity as psec
-from neutron.extensions import providernet as pnet
-
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.common import utils
@@ -56,7 +42,18 @@ from neutron.db import netmtu_db
 from neutron.db import portbindings_db
 from neutron.db import portsecurity_db_common
 from neutron.db import securitygroups_db
+from neutron.extensions import allowedaddresspairs as addr_pair
+from neutron.extensions import extra_dhcp_opt as edo_ext
+from neutron.extensions import portbindings
+from neutron.extensions import portsecurity as psec
+from neutron.extensions import providernet as pnet
 from neutron.quota import resource_registry
+from oslo_config import cfg
+from oslo_log import log
+from oslo_utils import excutils
+from oslo_utils import importutils
+import six
+from sqlalchemy.orm import exc as sa_exc
 
 from dragonflow._i18n import _, _LE, _LI
 from dragonflow.common import common_params

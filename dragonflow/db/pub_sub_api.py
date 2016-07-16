@@ -11,15 +11,15 @@
 #    under the License.
 
 import abc
-import eventlet
-import msgpack
-import six
 import socket
 import time
 import uuid
 
+import eventlet
+import msgpack
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
+import six
 
 from dragonflow._i18n import _LE, _LI
 from dragonflow.common import exceptions

@@ -10,25 +10,23 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from socket import timeout as SocketTimeout
+
+from contextlib import contextmanager
 import etcd
 import eventlet
-
 from oslo_log import log
+import urllib3
+from urllib3.connection import HTTPException, BaseSSLError
+from urllib3.exceptions import ReadTimeoutError, ProtocolError
 
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
 
 LOG = log.getLogger(__name__)
 
-
 # Monkey patch urllib3 to close connections that time out.  Otherwise
 # etcd will leak socket handles when we time out watches.
-from contextlib import contextmanager
-from socket import timeout as SocketTimeout
-import urllib3
-from urllib3.connection import HTTPException, BaseSSLError
-from urllib3.exceptions import ReadTimeoutError, ProtocolError
-
 
 ETCD_READ_TIMEOUT = 20
 

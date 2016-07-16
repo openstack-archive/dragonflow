@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from dragonflow.controller.common import constants as const
-
 from ryu.lib.packet import icmp
 from ryu.lib.packet import in_proto
 from ryu.ofproto import ether
+
+from dragonflow.controller.common import constants as const
 
 
 class ICMPResponder(object):

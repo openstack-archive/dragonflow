@@ -11,6 +11,8 @@
 #    under the License.
 
 import netaddr
+from neutron_lib import constants as common_const
+from oslo_log import log
 
 from ryu.lib.mac import haddr_to_bin
 from ryu.ofproto import ether
@@ -19,10 +21,6 @@ from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common.icmp_responder import ICMPResponder
 from dragonflow.controller.df_base_app import DFlowApp
-
-from neutron_lib import constants as common_const
-from oslo_log import log
-
 
 LOG = log.getLogger(__name__)
 

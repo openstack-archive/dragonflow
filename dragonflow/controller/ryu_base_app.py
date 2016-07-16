@@ -17,7 +17,6 @@ import time
 
 from oslo_config import cfg
 from oslo_log import log
-
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_handler

@@ -13,7 +13,6 @@
 import os_client_config
 from oslo_config import cfg
 from oslo_utils import importutils
-
 from neutron.agent.linux.utils import wait_until_true
 from neutron.common import config as common_config
 from neutronclient.neutron import client
