@@ -14,7 +14,6 @@ import kazoo
 from kazoo.client import KazooClient
 from kazoo.handlers.eventlet import SequentialEventletHandler
 from kazoo.retry import KazooRetry
-
 from oslo_log import log
 import six
 

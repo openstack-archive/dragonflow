@@ -10,19 +10,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from dragonflow._i18n import _LE, _LW
-from dragonflow.db import db_api
-from dragonflow.db.drivers.redis_mgt import RedisMgt
-from oslo_log import log
-
 import re
-import redis
-import six
 
+from oslo_log import log
+import redis
 from redis.exceptions import (
     ConnectionError,
     ResponseError,
 )
+import six
+
+from dragonflow._i18n import _LE, _LW
+from dragonflow.db import db_api
+from dragonflow.db.drivers.redis_mgt import RedisMgt
 
 LOG = log.getLogger(__name__)
 

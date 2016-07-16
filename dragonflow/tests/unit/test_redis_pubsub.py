@@ -12,6 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+
+from oslo_serialization import jsonutils
+
 from dragonflow.db.db_common import DbUpdate
 from dragonflow.db import pub_sub_api
 from dragonflow.db.pubsub_drivers.redis_db_pubsub_driver \
@@ -19,8 +23,6 @@ from dragonflow.db.pubsub_drivers.redis_db_pubsub_driver \
 from dragonflow.db.pubsub_drivers.redis_db_pubsub_driver \
     import RedisSubscriberAgent
 from dragonflow.tests import base as tests_base
-import mock
-from oslo_serialization import jsonutils
 
 
 class TestRedisPubSub(tests_base.BaseTestCase):

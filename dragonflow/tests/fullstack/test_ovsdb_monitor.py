@@ -10,12 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron.agent.linux.utils import wait_until_true
+
 from dragonflow.db.drivers import ovsdb_vswitch_impl
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-
-from neutron.agent.linux.utils import wait_until_true
 
 
 class TestOvsdbMonitor(test_base.DFTestBase):

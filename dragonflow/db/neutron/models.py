@@ -13,9 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import sqlalchemy as sa
-
 from neutron.db import model_base
+import sqlalchemy as sa
 
 
 class DFLockedObjects(model_base.BASEV2):

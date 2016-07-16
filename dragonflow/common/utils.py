@@ -11,20 +11,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import time
+
+from collections import deque
+import eventlet
+import greenlet
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import reflection
-
-from collections import deque
-import eventlet
+import six
 from stevedore import driver
-import sys
-import time
 
 from dragonflow._i18n import _, _LE
-import greenlet
-import six
 
 DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
 LOG = logging.getLogger(__name__)
