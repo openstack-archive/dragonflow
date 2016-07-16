@@ -11,20 +11,18 @@
 #    under the License.
 
 import random
-import redis
-import six
 import string
 
 import eventlet
+from oslo_log import log
+from oslo_serialization import jsonutils
+import redis
+import six
 
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate
 from dragonflow.db.drivers import redis_calckey
-
-from oslo_log import log
-from oslo_serialization import jsonutils
-
 
 LOG = log.getLogger(__name__)
 

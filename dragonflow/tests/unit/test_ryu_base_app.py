@@ -15,9 +15,10 @@
 
 import mock
 
+from oslo_config import cfg
+
 from dragonflow.controller.ryu_base_app import RyuDFAdapter
 from dragonflow.tests import base as tests_base
-from oslo_config import cfg
 
 
 class TestRyuDFAdapter(tests_base.BaseTestCase):

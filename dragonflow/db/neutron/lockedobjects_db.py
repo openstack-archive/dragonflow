@@ -16,15 +16,7 @@
 import inspect
 import random
 
-from sqlalchemy import func
-from sqlalchemy.orm import exc as orm_exc
-
-from dragonflow._i18n import _LI, _LW
-from dragonflow.common import exceptions as df_exc
-from dragonflow.db.neutron import models
-
 from neutron.db import api as db_api
-
 from oslo_config import cfg
 from oslo_db import api as oslo_db_api
 from oslo_db import exception as db_exc
@@ -32,7 +24,12 @@ from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import timeutils
 import six
+from sqlalchemy import func
+from sqlalchemy.orm import exc as orm_exc
 
+from dragonflow._i18n import _LI, _LW
+from dragonflow.common import exceptions as df_exc
+from dragonflow.db.neutron import models
 
 # Used to identify each API session
 LOCK_SEED = 9876543210

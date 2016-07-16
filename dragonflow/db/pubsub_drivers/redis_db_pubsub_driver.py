@@ -12,15 +12,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from dragonflow._i18n import _LE, _LW
-from dragonflow.common import common_params
-from dragonflow.db.drivers.redis_mgt import RedisMgt
-from dragonflow.db import pub_sub_api
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import redis
+
+from dragonflow._i18n import _LE, _LW
+from dragonflow.common import common_params
+from dragonflow.db.drivers.redis_mgt import RedisMgt
+from dragonflow.db import pub_sub_api
 
 LOG = logging.getLogger(__name__)
 
