@@ -13,11 +13,10 @@
 import socket
 import sys
 
+from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
-
-from neutron.common import config as common_config
 
 from dragonflow.common import common_params
 from dragonflow.common import exceptions as df_exceptions

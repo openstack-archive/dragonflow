@@ -13,15 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import math
-import netaddr
 import struct
 
-from oslo_config import cfg
-from oslo_log import log
-
+import netaddr
 from neutron.common import config as common_config
 from neutron.plugins.common import constants as n_p_const
-
+from oslo_config import cfg
+from oslo_log import log
 from ryu.lib import addrconv
 from ryu.lib.packet import dhcp
 from ryu.lib.packet import ethernet

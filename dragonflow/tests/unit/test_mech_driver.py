@@ -12,6 +12,7 @@
 
 """Unit testing for dragonflow mechanism driver."""
 
+import mock
 import six
 
 
@@ -24,9 +25,6 @@ class stub_wrap_db_lock(object):
         def stub_wrap_db_lock(*args, **kwargs):
             f(*args, **kwargs)
         return stub_wrap_db_lock
-
-
-import mock
 
 # mock.patch must before import mech_driver, because mech_driver will load the
 # lockedobjects_db

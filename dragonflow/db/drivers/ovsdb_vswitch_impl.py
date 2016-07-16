@@ -14,26 +14,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import retrying
-import six
-import threading
-
-from dragonflow.common import constants
-from dragonflow.db import api_vswitch
-
 from neutron.agent.ovsdb import impl_idl
 from neutron.agent.ovsdb.native import commands
 from neutron.agent.ovsdb.native.commands import BaseCommand
 from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import helpers
 from neutron.agent.ovsdb.native import idlutils
-
 from oslo_config import cfg
 from oslo_log import log
-
 from ovs.db import idl
 from ovs import poller
+import retrying
+import six
+import threading
 
+from dragonflow.common import constants
+from dragonflow.db import api_vswitch
 
 LOG = log.getLogger(__name__)
 

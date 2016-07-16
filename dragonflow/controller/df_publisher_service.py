@@ -16,13 +16,12 @@ import sys
 import time
 import traceback
 
+from neutron.agent.common import config
+from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
-
-from neutron.agent.common import config
-from neutron.common import config as common_config
 
 from dragonflow._i18n import _LW
 from dragonflow.common import common_params

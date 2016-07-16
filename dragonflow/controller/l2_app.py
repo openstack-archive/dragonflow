@@ -14,16 +14,14 @@
 #    under the License.
 
 import netaddr
-
+from neutron_lib import constants as common_const
+from oslo_config import cfg
 from ryu.lib.mac import haddr_to_bin
 
 from dragonflow._i18n import _
 from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
-
-from neutron_lib import constants as common_const
-from oslo_config import cfg
 
 DF_L2_APP_OPTS = [
     cfg.BoolOpt(
