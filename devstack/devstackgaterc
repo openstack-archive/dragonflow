@@ -19,6 +19,7 @@
 
 export OVERRIDE_ENABLED_SERVICES=key,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,c-sch,c-api,c-vol,horizon,rabbit,mysql,dstat,df-controller,df-redis,df-redis-server,q-svc,df-l3-agent
 export DF_REDIS_PUBSUB=True
+export NEUTRON_CREATE_INITIAL_NETWORKS=False
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_RUNNING_IN_GATE=True"
 
 if [ -z "${RALLY_SCENARIO}" ] ; then
