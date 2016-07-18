@@ -18,7 +18,7 @@ Overview
 Dragonflow implements Neutron using a lightweight embedded SDN Controller.
 
 Our project mission is *to Implement advanced networking services in a manner
-that is efficient, elegant and resource-nimble*
+that is efficient, elegant and resource-nimble.*
 
 Distributed Dragonflow
 ======================
