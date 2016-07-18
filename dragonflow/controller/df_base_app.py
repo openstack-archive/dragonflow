@@ -15,13 +15,11 @@
 
 from dragonflow.controller.common.utils import set_aging_cookie_bits
 from dragonflow.controller.df_db_notifier import DBNotifyInterface
-from oslo_log import log as logging
 from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
-LOG = logging.getLogger(__name__)
 
 
 class DFlowApp(DBNotifyInterface):
