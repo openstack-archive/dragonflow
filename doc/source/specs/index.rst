@@ -49,6 +49,7 @@ Spec Template
     redis_availability
     remote_device_communication
     allowed_address_pairs
+    security_groups
 
 
 Indices and tables
