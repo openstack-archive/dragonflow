@@ -19,6 +19,7 @@ import time
 from neutron.agent.linux.utils import wait_until_true
 
 from dragonflow._i18n import _LI
+from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_base
@@ -67,6 +68,13 @@ class TestApps(test_base.DFTestBase):
 
 class TestArpResponder(test_base.DFTestBase):
 
+    def _get_arp_table_flows(self):
+        ovs_flows_parser = test_utils.OvsFlowsParser()
+        flows = ovs_flows_parser.dump("br-int")
+        flows = [flow for flow in flows
+                if flow['table'] == str(const.ARP_TABLE)]
+        return flows
+
     def setUp(self):
         super(TestArpResponder, self).setUp()
         self.topology = None
@@ -79,6 +87,10 @@ class TestArpResponder(test_base.DFTestBase):
             port1 = subnet1.create_port()
             port2 = subnet1.create_port()
             time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+
+            print self._get_arp_table_flows()
+            LOG.info(self._get_arp_table_flows())
+
             # Create policy
             arp_packet = self._create_arp_request(
                 src_port=port1.port.get_logical_port(),
