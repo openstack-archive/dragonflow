@@ -192,6 +192,7 @@ class DfLocalController(object):
 
     def _logical_port_process(self, lport, original_lport=None):
         chassis = lport.get_chassis()
+        LOG.debug(("The logical port to process is %s.") % str(lport))
         if chassis in (None,
                        '',
                        constants.DRAGONFLOW_VIRTUAL_PORT):

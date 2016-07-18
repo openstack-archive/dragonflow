@@ -174,6 +174,10 @@ class NbApi(object):
                             '%(table)s'), {'action': action, 'table': table})
             return
 
+        LOG.debug(('Action %(action)s, table %(table)s, '
+                   'key %(key)s, value %(value)s.') % {'action': action,
+                                                       'table': table})
+
         if action == 'sync':
             self.controller.run_sync()
             return
