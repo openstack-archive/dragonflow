@@ -14,6 +14,7 @@ import random
 import ryu.lib.packet
 import string
 import sys
+import testtools
 import time
 
 from neutron.agent.linux.utils import wait_until_true
@@ -79,6 +80,7 @@ class TestArpResponder(test_base.DFTestBase):
             port1 = subnet1.create_port()
             port2 = subnet1.create_port()
             time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+
             # Create policy
             arp_packet = self._create_arp_request(
                 src_port=port1.port.get_logical_port(),
@@ -150,6 +152,7 @@ class TestArpResponder(test_base.DFTestBase):
         self.policy.close()
         self.topology.close()
 
+    @testtools.skip('bug/1599458')
     def test_simple_response(self):
         """
         2 ports on 1 subnet. 1 port asks for MAC of other.
