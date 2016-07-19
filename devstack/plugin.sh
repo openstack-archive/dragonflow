@@ -386,7 +386,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
             install_df
             install_ovs
         fi
-        echo export PYTHONPATH=\$PYTHONPATH:$DRAGONFLOW_DIR >> $RC_DIR/.localrc.auto
+        setup_develop $DRAGONFLOW_DIR
         init_ovs
         # We have to start at install time, because Neutron's post-config
         # phase runs ovs-vsctl.
