@@ -248,8 +248,8 @@ class DNATApp(DFlowApp):
             parser.OFPActionSetField(eth_src=fip_mac),
             parser.OFPActionSetField(eth_dst=network_bridge_mac),
             parser.OFPActionSetField(ipv4_src=fip_ip)]
-        action_inst = [parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        action_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_EXTERNAL_TABLE)
 
         inst = [action_inst, goto_inst]
