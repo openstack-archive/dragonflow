@@ -255,15 +255,15 @@ class Topology(object):
             if tenant_id == floating_ip.get_topic():
                 self.controller.floatingip_deleted(floating_ip.get_id())
 
-        switches = self.db_store.get_lswitchs()
-        for switch in switches:
-            if tenant_id == switch.get_topic():
-                self.controller.logical_switch_deleted(switch.get_id())
-
         routers = self.db_store.get_routers()
         for router in routers:
             if tenant_id == router.get_topic():
                 self.controller.router_deleted(router.get_id())
+        switches = self.db_store.get_lswitchs()
+
+        for switch in switches:
+            if tenant_id == switch.get_topic():
+                self.controller.logical_switch_deleted(switch.get_id())
 
         sg_groups = self.db_store.get_security_groups()
         for sg_group in sg_groups:
