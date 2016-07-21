@@ -440,6 +440,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             chassis = None
         else:
             chassis = port.get('binding:host_id', None)
+            if chassis == '':
+                chassis = None
 
         self.nb_api.create_lport(
             id=port['id'],
@@ -508,6 +510,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             chassis = None
         else:
             chassis = updated_port.get('binding:host_id', None)
+            if chassis == '':
+                chassis = None
 
         updated_security_groups = updated_port.get('security_groups')
         if updated_security_groups:
