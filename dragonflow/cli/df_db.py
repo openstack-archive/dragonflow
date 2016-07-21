@@ -142,7 +142,7 @@ def main():
 
     action = sys.argv[1]
 
-    if action == 'ls':
+    if action == 'ls' and len(sys.argv) < 4:
         if len(sys.argv) == 2:
             print_tables()
             return
@@ -154,7 +154,7 @@ def main():
         print_table(db_driver, table)
         return
 
-    if action == 'get':
+    if action == 'get' and len(sys.argv) < 5:
         if len(sys.argv) < 4:
             print "must supply a key"
             print usage_str
@@ -168,32 +168,32 @@ def main():
         print_key(db_driver, table, key)
         return
 
-    if action == 'dump':
+    if action == 'dump' and len(sys.argv) < 3:
         for table in db_tables:
             print_whole_table(db_driver, table)
         return
 
-    if action == 'bind':
+    if action == 'bind' and len(sys.argv) < 4:
         port_id = sys.argv[2]
         bind_port_to_localhost(db_driver, port_id)
         return
 
-    if action == 'clean':
+    if action == 'clean' and len(sys.argv) < 3:
         for table in db_tables:
             clean_whole_table(db_driver, table)
         return
 
-    if action == 'init':
+    if action == 'init' and len(sys.argv) < 3:
         for table in db_tables:
             create_table(db_driver, table)
         return
 
-    if action == 'dropall':
+    if action == 'dropall' and len(sys.argv) < 3:
         for table in db_tables:
             drop_table(db_driver, table)
         return
 
-    if action == 'rm':
+    if action == 'rm' and len(sys.argv) < 5:
         if len(sys.argv) < 4:
             print "must supply a key"
             print usage_str
