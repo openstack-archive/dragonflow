@@ -49,6 +49,7 @@ Spec Template
     redis_availability
     remote_device_communication
     allowed_address_pairs
+    port_qos
     security_groups
     vlan_networking
 
