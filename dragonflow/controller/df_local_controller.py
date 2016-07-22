@@ -162,8 +162,14 @@ class DfLocalController(object):
                 return
 
     def read_switches(self):
+        lswitches_to_remove = self.db_store.get_lswitch_keys()
         for lswitch in self.nb_api.get_all_logical_switches():
             self.logical_switch_updated(lswitch)
+            if lswitch.get_id() in lswitches_to_remove:
+                lswitches_to_remove.remove(lswitch.get_id())
+
+        for lswitch_to_remove in lswitches_to_remove:
+            self.logical_switch_deleted(lswitch_to_remove)
 
     def logical_switch_updated(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
@@ -372,8 +378,14 @@ class DfLocalController(object):
             return self.next_network_id
 
     def read_routers(self):
+        routers_to_remove = self.db_store.get_router_keys()
         for lrouter in self.nb_api.get_routers():
             self.router_updated(lrouter)
+            if lrouter.get_id() in routers_to_remove:
+                routers_to_remove.remove(lrouter.get_id())
+
+        for router_to_remove in routers_to_remove:
+            self.router_deleted(router_to_remove)
 
     def _update_router_interfaces(self, old_router, new_router):
         new_router_ports = new_router.get_ports()
@@ -456,8 +468,14 @@ class DfLocalController(object):
                  secgroup, secgroup_rule)
 
     def read_floatingip(self):
+        fips_to_remove = self.db_store.get_floatingip_keys()
         for floatingip in self.nb_api.get_floatingips():
             self.floatingip_updated(floatingip)
+            if floatingip.get_id() in fips_to_remove:
+                fips_to_remove.remove(floatingip.get_id())
+
+        for fip_to_remove in fips_to_remove:
+            self.floatingip_deleted(fip_to_remove)
 
     def floatingip_updated(self, floatingip):
         # check whether this floatingip is associated with a lport or not

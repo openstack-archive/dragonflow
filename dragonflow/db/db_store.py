@@ -138,6 +138,15 @@ class DbStore(object):
     def get_port_keys(self, topic=None):
         return self.keys('ports', topic)
 
+    def get_lswitch_keys(self, topic=None):
+        return self.keys('lswitchs', topic)
+
+    def get_router_keys(self, topic=None):
+        return self.keys('routers', topic)
+
+    def get_floatingip_keys(self, topic=None):
+        return self.keys('floatingips', topic)
+
     def set_port(self, port_id, port, is_local, topic=None):
         if not topic:
             topic = port.get_topic()
