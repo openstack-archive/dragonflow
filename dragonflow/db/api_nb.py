@@ -773,10 +773,11 @@ class LogicalSwitch(DbStoreObject):
         return self.lswitch.get('mtu', None)
 
     def get_subnets(self):
-        res = []
-        for subnet in self.lswitch['subnets']:
-            res.append(Subnet(subnet))
-        return res
+        subnets = self.lswitch.get('subnets')
+        if subnets:
+            return [Subnet(subnet) for subnet in subnets]
+        else:
+            return []
 
     def get_topic(self):
         return self.lswitch['topic']
@@ -867,13 +868,13 @@ class LogicalPort(DbStoreObject):
         return int(self.lport['tunnel_key'])
 
     def get_security_groups(self):
-        return self.lport.get('security_groups')
+        return self.lport.get('security_groups', [])
 
     def get_allow_address_pairs(self):
-        return self.lport.get('allowed_address_pairs')
+        return self.lport.get('allowed_address_pairs', [])
 
     def get_port_security_enable(self):
-        return self.lport.get('port_security_enabled', True)
+        return self.lport.get('port_security_enabled', False)
 
     def set_external_value(self, key, value):
         self.external_dict[key] = value
@@ -915,10 +916,11 @@ class LogicalRouter(DbStoreObject):
         return self.lrouter.get('name')
 
     def get_ports(self):
-        res = []
-        for port in self.lrouter.get('ports'):
-            res.append(LogicalRouterPort(port))
-        return res
+        ports = self.lrouter.get('ports')
+        if ports:
+            return [LogicalRouterPort(port) for port in ports]
+        else:
+            return []
 
     def get_topic(self):
         return self.lrouter.get('topic')
@@ -988,10 +990,11 @@ class SecurityGroup(DbStoreObject):
         return self.secgroup.get('version')
 
     def get_rules(self):
-        res = []
-        for rule in self.secgroup.get('rules'):
-            res.append(SecurityGroupRule(rule))
-        return res
+        rules = self.secgroup.get('rules')
+        if rules:
+            return [SecurityGroupRule(rule) for rule in rules]
+        else:
+            return []
 
     def __str__(self):
         return self.secgroup.__str__()
