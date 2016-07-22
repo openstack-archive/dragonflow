@@ -32,10 +32,11 @@ usage_str = "The following commands are supported:\n" \
             "2) df-db ls <table_name> - print all the keys for specific table \n" \
             "3) df-db get <table_name> <key> - print value for specific key\n" \
             "4) df-db dump - dump all tables\n" \
-            "5) df-db clean - clean up all keys\n" \
-            "6) df-db rm <table name> <key> - remove the specified db record\n" \
-            "7) df-db init - initialize all tables\n" \
-            "8) df-db dropall - drop all tables\n"
+            "5) df-db bind <port id> - bind a port to localhost\n" \
+            "6) df-db clean - clean up all keys\n" \
+            "7) df-db rm <table name> <key> - remove the specified db record\n" \
+            "8) df-db init - initialize all tables\n" \
+            "9) df-db dropall - drop all tables\n"
 
 
 def print_tables():
