@@ -39,9 +39,9 @@ usage_str = "The following commands are supported:\n" \
 
 
 def print_tables():
-    print (' ')
-    print ('DB Tables')
-    print ('----------')
+    print(' ')
+    print('DB Tables')
+    print('----------')
     for table in db_tables:
         print table
     print(' ')
@@ -52,12 +52,12 @@ def print_table(db_driver, table):
         keys = db_driver.get_all_keys(table)
     except df_exceptions.DBKeyNotFound:
         keys = []
-    print (' ')
-    print ('Keys for table ' + table)
-    print ('------------------------------------------------------------')
+    print(' ')
+    print('Keys for table ' + table)
+    print('------------------------------------------------------------')
     for key in keys:
         print key
-    print (' ')
+    print(' ')
 
 
 def print_whole_table(db_driver, table):
@@ -66,15 +66,15 @@ def print_whole_table(db_driver, table):
     except df_exceptions.DBKeyNotFound:
         print('Table not found: ' + table)
         return
-    print (' ')
-    print ('------------------------------------------------------------')
-    print ('Table = ' + table)
-    print ('------------------------------------------------------------')
+    print(' ')
+    print('------------------------------------------------------------')
+    print('Table = ' + table)
+    print('------------------------------------------------------------')
     for key in keys:
         value = db_driver.get_key(table, key)
         if value:
             print ('Key = ' + key + ' , Value = ' + value)
-    print (' ')
+    print(' ')
 
 
 def print_key(db_driver, table, key):
@@ -83,11 +83,11 @@ def print_key(db_driver, table, key):
     except df_exceptions.DBKeyNotFound:
         print('Key not found: ' + table)
         return
-    print (' ')
-    print ('Table = ' + table + ' , Key = ' + key)
-    print ('------------------------------------------------------------')
+    print(' ')
+    print('Table = ' + table + ' , Key = ' + key)
+    print('------------------------------------------------------------')
     print value
-    print (' ')
+    print(' ')
 
 
 def bind_port_to_localhost(db_driver, port_id):
