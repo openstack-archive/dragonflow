@@ -174,6 +174,10 @@ def main():
         return
 
     if action == 'bind':
+        if len(sys.argv) < 3:
+            print "must supply a key"
+            print usage_str
+            return
         port_id = sys.argv[2]
         bind_port_to_localhost(db_driver, port_id)
         return
