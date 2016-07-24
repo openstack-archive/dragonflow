@@ -15,14 +15,14 @@
 #    under the License.
 
 import abc
-import eventlet
-import netaddr
-import six
 import time
 
+import eventlet
+import netaddr
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
+import six
 
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.common import utils as df_utils

@@ -10,11 +10,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+
+from neutron.agent.linux.utils import wait_until_true
+
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-from neutron.agent.linux.utils import wait_until_true
-import time
 
 
 class TestOVSFlowsForDHCP(test_base.DFTestBase):

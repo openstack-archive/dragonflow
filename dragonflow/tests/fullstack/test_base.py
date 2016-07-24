@@ -10,13 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os_client_config
-from oslo_config import cfg
-from oslo_utils import importutils
-
 from neutron.agent.linux.utils import wait_until_true
 from neutron.common import config as common_config
 from neutronclient.neutron import client
+import os_client_config
+from oslo_config import cfg
+from oslo_utils import importutils
 
 from dragonflow.common import common_params
 from dragonflow.db import api_nb

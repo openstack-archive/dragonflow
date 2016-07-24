@@ -10,11 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron_lib import constants as n_const
-from oslo_config import cfg
-from oslo_log import log
-from oslo_utils import importutils
-
 from neutron.api.v2 import attributes as attr
 from neutron.callbacks import events
 from neutron.callbacks import registry
@@ -26,6 +21,10 @@ from neutron import manager
 from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api
 from neutron.plugins.ml2 import models
+from neutron_lib import constants as n_const
+from oslo_config import cfg
+from oslo_log import log
+from oslo_utils import importutils
 
 from dragonflow._i18n import _LI
 from dragonflow.common import common_params

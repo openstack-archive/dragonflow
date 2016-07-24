@@ -13,9 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import collections
+
 import netaddr
+from neutron.agent.ovsdb.native import idlutils
+from neutron_lib import constants as n_const
+from oslo_config import cfg
+from oslo_log import log
+from oslo_service import loopingcall
+from ryu.lib.packet import arp
+from ryu.ofproto import ether
 import six
 
 from dragonflow._i18n import _
@@ -23,14 +30,6 @@ from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller.df_base_app import DFlowApp
-from neutron.agent.ovsdb.native import idlutils
-from ryu.lib.packet import arp
-from ryu.ofproto import ether
-
-from neutron_lib import constants as n_const
-from oslo_config import cfg
-from oslo_log import log
-from oslo_service import loopingcall
 
 LOG = log.getLogger(__name__)
 

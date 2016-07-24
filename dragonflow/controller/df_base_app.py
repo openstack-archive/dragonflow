@@ -13,13 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from dragonflow.controller.common.utils import set_aging_cookie_bits
-from dragonflow.controller.df_db_notifier import DBNotifyInterface
 from oslo_log import log as logging
 from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
+
+from dragonflow.controller.common.utils import set_aging_cookie_bits
+from dragonflow.controller.df_db_notifier import DBNotifyInterface
 
 LOG = logging.getLogger(__name__)
 

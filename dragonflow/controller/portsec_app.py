@@ -14,16 +14,14 @@
 #    under the License.
 
 import netaddr
-
 from neutron.agent.common import config
-
+from oslo_log import log
 from ryu.ofproto import ether
 
 from dragonflow._i18n import _LI
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
 
-from oslo_log import log
 
 config.setup_logging()
 LOG = log.getLogger(__name__)

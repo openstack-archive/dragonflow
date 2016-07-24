@@ -15,13 +15,11 @@
 #    under the License.
 
 import netaddr
-
-from dragonflow.db import api_nb
-
-from ovs.db import idl
-
 from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import idlutils
+from ovs.db import idl
+
+from dragonflow.db import api_nb
 
 
 class OvsdbNbApi(api_nb.NbApi):
