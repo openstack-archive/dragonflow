@@ -49,7 +49,6 @@ class SGApp(DFlowApp):
 
     @staticmethod
     def _split_range(range_start, range_end, full_mask):
-
         bit_flag = 1
         last_temp_start = range_start
         last_temp_end = last_temp_start
@@ -231,7 +230,6 @@ class SGApp(DFlowApp):
 
     @staticmethod
     def _get_rule_flows_match_except_net_addresses(secgroup_rule):
-
         protocol = secgroup_rule.get_protocol()
         port_range_max = secgroup_rule.get_port_range_max()
         port_range_min = secgroup_rule.get_port_range_min()
