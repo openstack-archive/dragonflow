@@ -128,7 +128,6 @@ class TestObjectVersion(test_base.DFTestBase):
         self.assertFalse(secgroup.exists())
 
     def test_qospolicy_version(self):
-
         qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
                                                         self.nb_api))
         policy_id = qospolicy.create()
@@ -136,7 +135,7 @@ class TestObjectVersion(test_base.DFTestBase):
         version = self.nb_api.get_qos_policy(policy_id).get_version()
 
         rule = {'max_kbps': '1000', 'max_burst_kbps': '100'}
-        qospolicy.create_rule(policy_id, rule)
+        qospolicy.create_rule(policy_id, rule, 'bandwidth_limit')
         self.assertTrue(qospolicy.exists())
         new_version = self.nb_api.get_qos_policy(policy_id).get_version()
         self.assertGreater(new_version, version)

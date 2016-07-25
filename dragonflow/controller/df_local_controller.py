@@ -391,6 +391,16 @@ class DfLocalController(object):
             return
         self._delete_old_security_group(old_secgroup)
 
+    def qos_policy_created(self, qos):
+        self.db_store.set_qos_policy(qos.get_id(), qos)
+
+    def qos_policy_updated(self, qos):
+        self.db_store.set_qos_policy(qos.get_id(), qos)
+        self.open_flow_app.notify_update_qos_policy(qos)
+
+    def qos_policy_deleted(self, qos_id):
+        self.db_store.delete_qos_policy(qos_id)
+
     def register_chassis(self):
         # Get all chassis from nb db to db store.
         for c in self.nb_api.get_all_chassis():
