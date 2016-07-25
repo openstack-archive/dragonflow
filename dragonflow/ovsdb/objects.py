@@ -158,3 +158,17 @@ class OvsdbVirtuaTunnelPort(OvsdbPort):
 
     def get_tunnel_type(self):
         return self.tunnel_type
+
+
+class OvsdbQos(object):
+
+    def __init__(self, qos_id, version):
+        super(OvsdbQos, self).__init__()
+        self.qos_id = qos_id
+        self.version = int(version)
+
+    def get_qos_id(self):
+        return self.qos_id
+
+    def get_version(self):
+        return self.version

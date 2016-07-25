@@ -458,16 +458,18 @@ class QosPolicyTestObj(object):
         self.nb_api = nb_api
         self.closed = False
 
-    def create(self, qospolicy={'name': 'myqospolicy1'}):
-        new_qospolicy = self.neutron.create_qos_policy({'policy':
-                                                        qospolicy})
+    def create(self, qospolicy={'name': 'myqospolicy'}):
+        new_qospolicy = self.neutron.create_qos_policy({'policy': qospolicy})
         self.policy_id = new_qospolicy['policy']['id']
         return self.policy_id
 
-    def create_rule(self, policy_id, rule):
-        self.neutron.create_bandwidth_limit_rule(
-            policy_id, {'bandwidth_limit_rule': rule})
-        return
+    def create_rule(self, policy_id, rule, rule_type):
+        if rule_type == 'bandwidth_limit':
+            self.neutron.create_bandwidth_limit_rule(
+                policy_id, {'bandwidth_limit_rule': rule})
+        elif rule_type == 'dscp_marking':
+            self.neutron.create_dscp_marking_rule(
+                policy_id, {'dscp_marking_rule': rule})
 
     def close(self):
         if self.closed or self.policy_id is None:
