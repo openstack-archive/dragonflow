@@ -32,6 +32,7 @@ class TenantDbStore(object):
         self.floatingips = {}
         self.secgroups = {}
         self.publishers = {}
+        self.qos_policies = {}
         self.lock = threading.Lock()
         self._table_name_mapping = {
             models.LogicalSwitch.table_name: self.lswitchs,
@@ -41,6 +42,7 @@ class TenantDbStore(object):
             models.Floatingip.table_name: self.floatingips,
             models.SecurityGroup.table_name: self.secgroups,
             models.Publisher.table_name: self.publishers,
+            models.QosPolicy.table_name: self.qos_policies,
         }
 
     def _get_table_by_name(self, table_name):
@@ -199,6 +201,9 @@ class DbStore(object):
     def get_local_port(self, port_id, topic=None):
         return self.get('local_ports', port_id, topic)
 
+    def get_local_ports(self, topic=None):
+        return self.values('local_ports', topic)
+
     def get_local_port_by_name(self, port_name, topic=None):
         # TODO(oanson) This will be bad for performance
         ports = self.values('local_ports', topic)
@@ -296,6 +301,21 @@ class DbStore(object):
         for fip in self.get_floatingips():
             if fip.get_floating_network_id() == network_id:
                 return fip
+
+    def set_qos_policy(self, qos_id, qos, topic=None):
+        self.set(models.QosPolicy.table_name, qos_id, qos, topic)
+
+    def get_qos_policy(self, qos_id, topic=None):
+        return self.get(models.QosPolicy.table_name, qos_id, topic)
+
+    def delete_qos_policy(self, qos_id, topic=None):
+        self.delete(models.QosPolicy.table_name, qos_id, topic)
+
+    def get_qos_policy_keys(self, topic=None):
+        return self.keys(models.QosPolicy.table_name, topic)
+
+    def get_qos_policies(self, topic=None):
+        return self.values(models.QosPolicy.table_name, topic)
 
     def update_publisher(self, uuid, publisher, topic=None):
         self.set(models.Publisher.table_name, uuid, publisher, topic)
