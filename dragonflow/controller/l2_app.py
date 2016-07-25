@@ -81,7 +81,9 @@ class L2App(df_base_app.DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.INGRESS_DISPATCH_TABLE)
 
-        self._install_flows_on_switch_up()
+        # Clear local networks cache so the multicast/broadcast flows
+        # are installed correctly
+        self.local_networks.clear()
 
     def _add_arp_responder(self, lport):
         if not self.is_install_arp_responder:
@@ -143,7 +145,6 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
     def remove_local_port(self, lport):
-
         lport_id = lport.get_id()
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
@@ -203,9 +204,7 @@ class L2App(df_base_app.DFlowApp):
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
-
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
-
         self._remove_arp_responder(lport)
 
     def remove_remote_port(self, lport):
@@ -233,13 +232,10 @@ class L2App(df_base_app.DFlowApp):
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
-
         self._del_multicast_broadcast_handling_for_port(network_id, lport_id)
-
         self._remove_arp_responder(lport)
 
     def add_local_port(self, lport):
-
         if self.get_datapath() is None:
             return
 
@@ -422,7 +418,6 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
     def add_remote_port(self, lport):
-
         if self.get_datapath() is None:
             return
 
@@ -455,18 +450,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
-
         self._add_multicast_broadcast_handling_for_port(network_id, lport_id,
                                                         tunnel_key)
-
         self._add_arp_responder(lport)
-
-    def _install_flows_on_switch_up(self):
-        # Clear local networks cache so the multicast/broadcast flows
-        # are installed correctly
-        self.local_networks.clear()
-        for port in self.db_store.get_ports():
-            if port.get_external_value('is_local'):
-                self.add_local_port(port)
-            else:
-                self.add_remote_port(port)
