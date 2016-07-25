@@ -244,6 +244,10 @@ class Topology(object):
         for floating_ip in floating_ips:
             self.controller.floatingip_updated(floating_ip)
 
+        qoses = self.nb_api.get_qoses(tenant_id)
+        for qos in qoses:
+            self.controller.qos_updated(qos)
+
     def _clear_tenant_topology(self, tenant_id):
         ports = self.db_store.get_ports()
         for port in ports:
@@ -269,6 +273,11 @@ class Topology(object):
         for sg_group in sg_groups:
             if tenant_id == sg_group.get_topic():
                 self.controller.security_group_deleted(sg_group.get_id())
+
+        qoses = self.db_store.get_qoses()
+        for qos in qoses:
+            if tenant_id == qos.get_topic():
+                self.controller.qos_deleted(qos.get_id())
 
     def _get_lport(self, port_id, topic=None):
         lport = self.db_store.get_port(port_id)
