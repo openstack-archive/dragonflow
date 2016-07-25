@@ -88,7 +88,8 @@ function nb_db_driver_install_server {
 }
 
 function nb_db_driver_install_client {
-    sudo pip install redis
+    sudo pip install redis>=2.10.0
+    sudo pip install hiredis>=0.2.0
 }
 
 function nb_db_driver_status_server
