@@ -156,6 +156,9 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def notify_delete_floatingip(self, floatingip):
         self.dispatcher.dispatch('delete_floatingip', floatingip)
 
+    def notify_update_qos(self, qos=None):
+        self.dispatcher.dispatch('update_qos', qos=qos)
+
     @handler.set_ev_handler(ofp_event.EventOFPSwitchFeatures,
                             handler.CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
