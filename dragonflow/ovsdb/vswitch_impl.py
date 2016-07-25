@@ -154,3 +154,15 @@ class OvsApi(object):
     def get_port_ofport(self, port):
         return self._db_get_val('Interface', port, 'ofport',
                                 check_error=False, log_errors=False)
+
+    def add_port_qos(self, port_id, qos, version):
+        return self.ovsdb.add_port_qos(port_id, qos, version).execute()
+
+    def del_port_qos(self, port_id):
+        return self.ovsdb.del_port_qos(port_id).execute()
+
+    def del_all_qos(self, version):
+        return self.ovsdb.del_all_qos(version).execute()
+
+    def del_qos_and_queue(self, port_id):
+        return self.ovsdb.del_qos_and_queue(port_id).execute()

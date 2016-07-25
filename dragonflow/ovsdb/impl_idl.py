@@ -34,6 +34,8 @@ ovsdb_monitor_table_filter_default = {
         'external_ids',
         'options',
         'mac_in_use',
+        'ingress_policing_burst',
+        'ingress_policing_rate',
     ],
     'Bridge': [
         'ports',
@@ -46,6 +48,17 @@ ovsdb_monitor_table_filter_default = {
         'name',
         'external_ids',
         'interfaces',
+        'qos',
+    ],
+    'QoS': [
+        'queues',
+        'external_ids',
+        'type',
+    ],
+    'Queue': [
+        'dscp',
+        'external_ids',
+        'other_config',
     ],
     'Controller': [
         'target',
@@ -174,3 +187,15 @@ class DFOvsdbApi(impl_idl.OvsdbIdl):
 
     def add_patch_port(self, bridge, port, remote_name):
         return commands.AddPatchPort(self, bridge, port, remote_name)
+
+    def add_port_qos(self, port_id, qos, version):
+        return commands.AddPortQos(self, port_id, qos, version)
+
+    def del_port_qos(self, port_id):
+        return commands.DelPortQos(self, port_id)
+
+    def del_all_qos(self, version):
+        return commands.DelAllQos(self, version)
+
+    def del_qos_and_queue(self, port_id):
+        return commands.DelQosAndQueue(self, port_id)
