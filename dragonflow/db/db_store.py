@@ -30,6 +30,7 @@ class TenantDbStore(object):
         self.floatingips = {}
         self.secgroups = {}
         self.publishers = {}
+        self.qos_policies = {}
         self.lock = threading.Lock()
         self._table_name_mapping = {
             'lswitchs': self.lswitchs,
@@ -39,6 +40,7 @@ class TenantDbStore(object):
             'floatingips': self.floatingips,
             'secgroups': self.secgroups,
             'publishers': self.publishers,
+            'qos_policies': self.qos_policies,
         }
 
     def _get_table_by_name(self, table_name):
@@ -196,6 +198,9 @@ class DbStore(object):
     def get_local_port(self, port_id, topic=None):
         return self.get('local_ports', port_id, topic)
 
+    def get_local_ports(self, topic=None):
+        return self.values('local_ports', topic)
+
     def get_local_port_by_name(self, port_name, topic=None):
         # TODO(oanson) This will be bad for performance
         ports = self.values('local_ports', topic)
@@ -301,3 +306,18 @@ class DbStore(object):
 
     def delete_publisher(self, uuid, topic=None):
         self.delete('publishers', uuid, topic)
+
+    def set_qos_policy(self, qos_id, qos, topic=None):
+        self.set('qos_policies', qos_id, qos, topic)
+
+    def get_qos_policy(self, qos_id, topic=None):
+        return self.get('qos_policies', qos_id, topic)
+
+    def delete_qos_policy(self, qos_id, topic=None):
+        self.delete('qos_policies', qos_id, topic)
+
+    def get_qos_policy_keys(self, topic=None):
+        return self.keys('qos_policies', topic)
+
+    def get_qos_policies(self, topic=None):
+        return self.values('qos_policies', topic)

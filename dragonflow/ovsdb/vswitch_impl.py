@@ -140,6 +140,19 @@ class OvsApi(object):
             if self._check_ofport(iface['name'], iface['ofport']):
                 return iface['ofport']
 
+    def _get_port_name_by_id(self, port_id):
+        ifaces = self.ovsdb.db_find(
+            'Interface', ('external_ids', '=', {'iface-id': port_id}),
+            columns=['external_ids', 'name']).execute()
+        for iface in ifaces:
+            if (self.integration_bridge !=
+                    self._get_bridge_for_iface(iface['name'])):
+                # iface-id is the port id in neutron, the same neutron port
+                # might create multiple interfaces in different bridges
+                continue
+
+            return iface['name']
+
     def create_patch_port(self, bridge, port, remote_name):
         self.ovsdb.add_br(bridge, datapath_type='system').execute()
         if not self.patch_port_exist(port):
@@ -154,3 +167,67 @@ class OvsApi(object):
     def get_port_ofport(self, port):
         return self._db_get_val('Interface', port, 'ofport',
                                 check_error=False, log_errors=False)
+
+    def update_port_qos(self, port_id, qos):
+        port_name = self._get_port_name_by_id(port_id)
+        if not port_name:
+            return
+
+        max_kbps = qos.get_max_kbps()
+        max_burst_kbps = qos.get_max_burst_kbps()
+
+        def _is_qos_set():
+            return max_kbps and max_burst_kbps
+
+        port_qoses = self.ovsdb.db_find(
+            'QoS', ('external_ids', '=', {'iface-id': port_id}),
+            columns=['external_ids', '_uuid']).execute()
+        if not port_qoses:
+            # There is no qos for port before, just add the qos.
+            if not _is_qos_set():
+                return
+
+            with self.ovsdb.transaction(check_error=True) as txn:
+                qos_uuid = txn.add(self.ovsdb.create_qos(port_id, qos))
+                txn.add(self.ovsdb.db_set('Interface', port_name,
+                                          ('ingress_policing_rate', max_kbps),
+                                          ('ingress_policing_burst',
+                                           max_burst_kbps)))
+                txn.add(self.ovsdb.db_set('Port', port_name,
+                                          ('qos', qos_uuid)))
+            return
+
+        ovsdb_qos = port_qoses[0]
+        if ovsdb_qos['external_ids'].get('qos_id') == qos.get_id():
+            if ovsdb_qos['external_ids'].get('version') >= qos.get_version():
+                # The qos keeps unchanged, do nothing.
+                return
+
+        if _is_qos_set():
+            with self.ovsdb.transaction(check_error=True) as txn:
+                txn.add(self.ovsdb.db_set('Interface', port_name,
+                                          ('ingress_policing_rate',
+                                           max_kbps),
+                                          ('ingress_policing_burst',
+                                           max_burst_kbps)))
+                txn.add(self.ovsdb.update_qos(port_id, qos))
+        else:
+            self._clear_port_qos(port_id, port_name)
+
+    def _clear_port_qos(self, port_id, port_name):
+        with self.ovsdb.transaction(check_error=True) as txn:
+            txn.add(self.ovsdb.db_set('Interface', port_name,
+                                      ('ingress_policing_rate', 0),
+                                      ('ingress_policing_burst', 0)))
+            txn.add(self.ovsdb.db_set('Port', port_name, ('qos', [])))
+            txn.add(self.ovsdb.delete_qos(port_id))
+
+    def clear_port_qos(self, port_id):
+        port_name = self._get_port_name_by_id(port_id)
+        if not port_name:
+            return
+
+        self._clear_port_qos(port_id, port_name)
+
+    def delete_port_qos_and_queue(self, port_id):
+        self.ovsdb.delete_qos(port_id).execute()

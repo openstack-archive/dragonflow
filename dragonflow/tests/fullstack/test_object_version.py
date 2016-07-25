@@ -15,10 +15,9 @@ import contextlib
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 
+from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-
-DF_PLUGIN = 'dragonflow.neutron.plugin.DFPlugin'
 
 
 class TestObjectVersion(test_base.DFTestBase):
@@ -131,7 +130,7 @@ class TestObjectVersion(test_base.DFTestBase):
         self.assertFalse(secgroup.exists())
 
     def test_qospolicy_version(self):
-        if cfg.CONF.core_plugin == DF_PLUGIN:
+        if cfg.CONF.core_plugin == utils.DF_PLUGIN:
             return
 
         qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
@@ -141,7 +140,7 @@ class TestObjectVersion(test_base.DFTestBase):
         version = self.nb_api.get_qos_policy(policy_id).get_version()
 
         rule = {'max_kbps': '1000', 'max_burst_kbps': '100'}
-        qospolicy.create_rule(policy_id, rule)
+        qospolicy.create_rule(policy_id, rule, 'bandwidth_limit')
         self.assertTrue(qospolicy.exists())
         new_version = self.nb_api.get_qos_policy(policy_id).get_version()
         self.assertGreater(new_version, version)

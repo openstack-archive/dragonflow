@@ -261,6 +261,10 @@ class Topology(object):
         for sg_group in sg_groups:
             self.controller.security_group_updated(sg_group)
 
+        qos_policies = self.nb_api.get_qos_policies(tenant_id)
+        for qos in qos_policies:
+            self.controller.qos_policy_updated(qos)
+
         ports = self.nb_api.get_all_logical_ports(tenant_id)
         for port in ports:
             if port.get_id() == lport_id:
@@ -300,6 +304,11 @@ class Topology(object):
         for sg_group in sg_groups:
             if tenant_id == sg_group.get_topic():
                 self.controller.security_group_deleted(sg_group.get_id())
+
+        qos_policies = self.db_store.get_qos_policies()
+        for qos in qos_policies:
+            if tenant_id == qos.get_topic():
+                self.controller.qos_policy_deleted(qos.get_id())
 
     def _get_lport(self, port_id, topic=None):
         lport = self.db_store.get_port(port_id)
