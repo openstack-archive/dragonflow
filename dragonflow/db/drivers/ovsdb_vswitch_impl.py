@@ -21,6 +21,7 @@ from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import helpers
 from neutron.agent.ovsdb.native import idlutils
 from oslo_config import cfg
+from oslo_log import log
 from ovs.db import idl
 from ovs import poller
 from ovs.vlog import Vlog
@@ -28,8 +29,12 @@ import retrying
 import six
 import threading
 
+from dragonflow._i18n import _LE, _LI
 from dragonflow.common import constants
 from dragonflow.db import api_vswitch
+
+
+LOG = log.getLogger(__name__)
 
 
 ovsdb_monitor_table_filter_default = {
@@ -41,6 +46,8 @@ ovsdb_monitor_table_filter_default = {
         'external_ids',
         'options',
         'mac_in_use',
+        'ingress_policing_burst',
+        'ingress_policing_rate',
     ],
     'Bridge': [
         'ports',
@@ -53,12 +60,23 @@ ovsdb_monitor_table_filter_default = {
         'name',
         'external_ids',
         'interfaces',
+        'qos',
     ],
     'Controller': [
         'target',
     ],
     'Open_vSwitch': [
         'bridges',
+    ],
+    'QoS': [
+        'queues',
+        'external_ids',
+        'type',
+    ],
+    'Queue': [
+        'dscp',
+        'external_ids',
+        'other_config',
     ]
 }
 
@@ -291,6 +309,18 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         cmd = commands.DbGetCommand(self, 'Interface', port, 'ofport')
         return cmd.execute(check_error=False, log_errors=False)
 
+    def add_port_qos(self, port_id, qos, version):
+        return AddPortQos(self, port_id, qos, version).execute()
+
+    def del_port_qos(self, port_id):
+        return DelPortQos(self, port_id).execute()
+
+    def del_all_qos(self, version):
+        return DelAllQos(self, version).execute()
+
+    def del_qos_and_queue(self, port_id):
+        return DelQosAndQueue(self, port_id).execute()
+
 
 class OvsdbSwitchPort(api_vswitch.SwitchPort):
 
@@ -476,3 +506,148 @@ class AddPatchPort(BaseCommand):
         iface.type = 'patch'
         ifaces.append(iface)
         port.interfaces = ifaces
+
+
+class DelAllQos(BaseCommand):
+    def __init__(self, api, version):
+        super(DelAllQos, self).__init__(api)
+        self.version = version
+
+    def _delete_rows_by_version(self, table_name):
+        rows = self.api.idl.tables[table_name].rows
+        delete_rows = []
+        for row in six.itervalues(rows):
+            external_dict = row.external_ids
+            version = external_dict.get('version')
+            if not version or version == str(self.version):
+                delete_rows.append(row)
+        for row in delete_rows:
+            row.delete()
+
+    def run_idl(self, txn):
+        self._delete_rows_by_version('QoS')
+        self._delete_rows_by_version('Queue')
+
+
+class AddPortQos(BaseCommand):
+    def __init__(self, api, port_id, qos, version):
+        super(AddPortQos, self).__init__(api)
+        self.port_id = port_id
+        self.qos = qos
+        self.version = version
+
+    def run_idl(self, txn):
+        max_kbps = self.qos.get_max_kbps()
+        max_burst_kbps = self.qos.get_max_burst_kbps()
+        if not max_kbps or not max_burst_kbps:
+            return
+
+        wanted_interface = None
+        interfaces = self.api.idl.tables['Interface'].rows
+        for interface in six.itervalues(interfaces):
+            external_dict = interface.external_ids
+            iface_id = external_dict.get('iface-id')
+            if iface_id == self.port_id and interface.type != 'patch':
+                wanted_interface = interface
+                break
+        if not wanted_interface:
+            LOG.error(_LE("Could not get interface "
+                          "for qos by lport_id:%s"), self.port_id)
+            return
+
+        wanted_interface.verify('ingress_policing_rate')
+        wanted_interface.ingress_policing_rate = max_kbps
+        wanted_interface.verify('ingress_policing_burst')
+        wanted_interface.ingress_policing_burst = max_burst_kbps
+
+        port_name = wanted_interface.name
+        ovs_port = idlutils.row_by_value(self.api.idl, 'Port',
+                                         'name', port_name)
+        ovs_port.verify('qos')
+        qos = txn.insert(self.api.idl.tables['QoS'])
+        qos.type = 'linux-htb'
+        qos_external_ids = {}
+        qos_external_ids['version'] = str(self.version)
+        qos_external_ids['iface-id'] = self.port_id
+        qos.external_ids = qos_external_ids
+        ovs_port.qos = qos.uuid
+
+        queue = txn.insert(self.api.idl.tables['Queue'])
+        dscp = self.qos.get_dscp_marking()
+        if dscp is None:
+            LOG.info(_LI("The dscp is None"))
+        else:
+            queue.dscp = dscp
+        queue_external_ids = {}
+        queue_external_ids['version'] = str(self.version)
+        queue_external_ids['iface-id'] = self.port_id
+        queue.external_ids = queue_external_ids
+        queue.verify('other_config')
+        other_config = getattr(queue, 'other_config', {})
+        max_bps = max_kbps * 1024
+        other_config['max-rate'] = str(max_bps)
+        other_config['min-rate'] = str(max_bps)
+        queue.other_config = other_config
+
+        qos.verify('queues')
+        qos.queues = {0: queue.uuid}
+
+
+class DelPortQos(BaseCommand):
+    def __init__(self, api, port_id):
+        super(DelPortQos, self).__init__(api)
+        self.port_id = port_id
+
+    def run_idl(self, txn):
+        wanted_interface = None
+        interfaces = self.api.idl.tables['Interface'].rows
+        for interface in six.itervalues(interfaces):
+            external_dict = interface.external_ids
+            iface_id = external_dict.get('iface-id')
+            if iface_id == self.port_id and interface.type != 'patch':
+                wanted_interface = interface
+                break
+        if not wanted_interface:
+            LOG.error(_LE("Could not get interface "
+                          "for qos by lport_id:%s"), self.port_id)
+            return
+
+        wanted_interface.verify('ingress_policing_rate')
+        wanted_interface.ingress_policing_rate = 0
+        wanted_interface.verify('ingress_policing_burst')
+        wanted_interface.ingress_policing_burst = 0
+
+        port_name = wanted_interface.name
+        ovs_port = idlutils.row_by_value(self.api.idl, 'Port',
+                                         'name', port_name)
+        qos = getattr(ovs_port, 'qos', [])
+        ovs_port.verify('qos')
+        ovs_port.qos = []
+        if len(qos) > 0:
+            qos_id = qos[0].uuid
+            queues = qos[0].queues
+            if queues and len(queues) > 0:
+                queue_id = queues[0].uuid
+                self.api.idl.tables['Queue'].rows[queue_id].delete()
+            self.api.idl.tables['QoS'].rows[qos_id].delete()
+
+
+class DelQosAndQueue(BaseCommand):
+    def __init__(self, api, port_id):
+        super(DelQosAndQueue, self).__init__(api)
+        self.port_id = port_id
+
+    def _delete_rows_by_port_id(self, table_name):
+        rows = self.api.idl.tables[table_name].rows
+        delete_rows = []
+        for row in six.itervalues(rows):
+            external_dict = row.external_ids
+            iface_id = external_dict.get('iface-id')
+            if not iface_id or iface_id == self.port_id:
+                delete_rows.append(row)
+        for row in delete_rows:
+            row.delete()
+
+    def run_idl(self, txn):
+        self._delete_rows_by_port_id('QoS')
+        self._delete_rows_by_port_id('Queue')

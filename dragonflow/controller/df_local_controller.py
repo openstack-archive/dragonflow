@@ -131,6 +131,8 @@ class DfLocalController(object):
 
                 self.read_floatingip()
 
+                self.read_qoses()
+
             self.sync_finished = True
 
         except Exception as e:
@@ -328,6 +330,16 @@ class DfLocalController(object):
             return
         self._delete_old_security_group(old_secgroup)
 
+    def qos_created(self, qos):
+        self.db_store.set_qos(qos.get_id(), qos)
+
+    def qos_updated(self, qos):
+        self.db_store.set_qos(qos.get_id(), qos)
+        self.open_flow_app.notify_update_qos(qos)
+
+    def qos_deleted(self, qos_id):
+        self.db_store.delete_qos(qos_id)
+
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
         # TODO(gsagie) Support tunnel type change here ?
@@ -433,6 +445,16 @@ class DfLocalController(object):
 
         for secgroup_to_remove in secgroups_to_remove:
             self.security_group_deleted(secgroup_to_remove)
+
+    def read_qoses(self):
+        qoses_to_remove = self.db_store.get_qos_keys()
+        for qos in self.nb_api.get_qoses():
+            self.db_store.set_qos(qos.get_id(), qos)
+            if qos.get_id() in qoses_to_remove:
+                qoses_to_remove.remove(qos.get_id())
+
+        for qos in qoses_to_remove:
+            self.db_store.delete_qos(qos)
 
     def _update_security_group_rules(self, old_secgroup, new_secgroup):
         new_secgroup_rules = new_secgroup.get_rules()
