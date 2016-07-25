@@ -156,6 +156,12 @@ class DfLocalController(object):
                         self.security_group_updated,
                         self.security_group_deleted),
                     df_db_objects_refresh.DfObjectRefresher(
+                        'QoS Policies',
+                        self.db_store.get_qos_policy_keys,
+                        self.nb_api.get_qos_policies,
+                        self.qos_policy_updated,
+                        self.qos_policy_deleted),
+                    df_db_objects_refresh.DfObjectRefresher(
                         'Ports',
                         self.db_store.get_port_keys,
                         self.nb_api.get_all_logical_ports,
@@ -429,6 +435,16 @@ class DfLocalController(object):
         if old_secgroup is None:
             return
         self._delete_old_security_group(old_secgroup)
+
+    def qos_policy_created(self, qos):
+        self.db_store.set_qos_policy(qos.get_id(), qos)
+
+    def qos_policy_updated(self, qos):
+        self.db_store.set_qos_policy(qos.get_id(), qos)
+        self.open_flow_app.notify_update_qos_policy(qos)
+
+    def qos_policy_deleted(self, qos_id):
+        self.db_store.delete_qos_policy(qos_id)
 
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
