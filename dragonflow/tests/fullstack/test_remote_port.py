@@ -19,7 +19,6 @@ from dragonflow.tests.fullstack import test_objects as objects
 class TestRemotePort(test_base.DFTestBase):
 
     def test_remote_port(self):
-
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create(network={'name': 'network1'})
         self.assertTrue(network.exists())
