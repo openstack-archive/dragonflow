@@ -159,3 +159,134 @@ class OvsDBParser(object):
                 if iface_id == port_id:
                     return item.get('ofport', None)
         return None
+
+    def get_port_id_by_vm_id(self, vm_id):
+        interfaces = self.list_interfaces()
+        for item in interfaces:
+            external_ids = item.get('external_ids', None)
+            if external_ids is not None:
+                temp_vm_id = external_ids.get('vm-id', None)
+                if temp_vm_id == vm_id:
+                    return external_ids.get('iface-id', None)
+        return None
+
+    def _ovsdb_list_ports(self, specify_port=None):
+        full_args = ["ovs-vsctl", "list", "port"]
+        if specify_port:
+            full_args.append(specify_port)
+        ports_info = utils.execute(full_args, run_as_root=True,
+                                   process_input=None)
+        return ports_info
+
+    def _parse_ovsdb_ports(self, ports):
+        ports_list = ports.split("\n\n")
+        ports_as_dicts = []
+        for port in ports_list:
+            if len(port) == 0:
+                continue
+            fs = port.split("\n")
+            res = {}
+            for item in fs:
+                if item.startswith('qos'):
+                    res['qos'] = self._parse_one_item(item)
+                if item.startswith('interfaces'):
+                    res['interfaces'] = self._parse_one_item(item)
+            ports_as_dicts.append(res)
+        return ports_as_dicts
+
+    def _ovsdb_list_qoss(self, qos=None):
+        full_args = ["ovs-vsctl", "list", "qos"]
+        if qos:
+            full_args.append(qos)
+        qoss_info = utils.execute(full_args, run_as_root=True,
+                                  process_input=None)
+        return qoss_info
+
+    def _parse_ovsdb_qoss(self, qoss):
+        qoss_list = qoss.split("\n\n")
+        qoss_as_dicts = []
+        for qos in qoss_list:
+            if len(qos) == 0:
+                continue
+            fs = qos.split("\n")
+            res = {}
+            for item in fs:
+                if item.startswith('external_ids'):
+                    res['external_ids'] = self._parse_one_item(item)
+                if item.startswith('queues'):
+                    res['queues'] = self._parse_one_item(item)
+                if item.startswith('_uuid'):
+                    res['_uuid'] = self._parse_one_item(item)
+            qoss_as_dicts.append(res)
+        return qoss_as_dicts
+
+    def _ovsdb_list_queues(self, queue=None):
+        full_args = ["ovs-vsctl", "list", "queue"]
+        if queue:
+            full_args.append(queue)
+        queues_info = utils.execute(full_args, run_as_root=True,
+                                    process_input=None)
+        return queues_info
+
+    def _parse_ovsdb_queues(self, queues):
+        queues_list = queues.split("\n\n")
+        queues_as_dicts = []
+        for queue in queues_list:
+            if len(queue) == 0:
+                continue
+            fs = queue.split("\n")
+            res = {}
+            for item in fs:
+                if item.startswith('_uuid'):
+                    res['_uuid'] = self._parse_one_item(item)
+                if item.startswith('dscp'):
+                    res['dscp'] = self._parse_one_item(item)
+                if item.startswith('other_config'):
+                    res['other_config'] = self._parse_one_item(item)
+                if item.startswith('external_ids'):
+                    res['external_ids'] = self._parse_one_item(item)
+            queues_as_dicts.append(res)
+        return queues_as_dicts
+
+    def get_port_by_interface_id(self, interface_id):
+        ports_info = self._ovsdb_list_ports()
+        ports_as_dict_list = self._parse_ovsdb_ports(ports_info)
+        for item in ports_as_dict_list:
+            interfaces = item.get('interfaces', None)
+            if interfaces is not None:
+                temp_interface_id = interfaces[0]
+                if temp_interface_id == interface_id:
+                    return item
+        return None
+
+    def get_interface_by_port_id(self, port_id):
+        interfaces = self.list_interfaces()
+        for item in interfaces:
+            external_ids = item.get('external_ids', None)
+            if external_ids is not None:
+                iface_id = external_ids.get('iface-id', None)
+                if iface_id == port_id:
+                    return item
+        return None
+
+    def get_qos_by_port_id(self, port_id):
+        qoss_info = self._ovsdb_list_qoss()
+        qoss_as_dict_list = self._parse_ovsdb_qoss(qoss_info)
+        for item in qoss_as_dict_list:
+            external_ids = item.get('external_ids', None)
+            if external_ids is not None:
+                iface_id = external_ids.get('iface-id', None)
+                if iface_id == port_id:
+                    return item
+        return None
+
+    def get_queue_by_port_id(self, port_id):
+        queues_info = self._ovsdb_list_queues()
+        queues_as_dict_list = self._parse_ovsdb_queues(queues_info)
+        for item in queues_as_dict_list:
+            external_ids = item.get('external_ids', None)
+            if external_ids is not None:
+                iface_id = external_ids.get('iface-id', None)
+                if iface_id == port_id:
+                    return item
+        return None
