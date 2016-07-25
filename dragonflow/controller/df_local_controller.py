@@ -168,10 +168,18 @@ class DfLocalController(object):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
         if old_lswitch == lswitch:
             return
-        #Make sure we have a local network_id mapped before we dispatch
-        network_id = self.get_network_id(
-            lswitch.get_id(),
-        )
+
+        network_type = lswitch.get_network_type()
+        network_id = None
+
+        if network_type is None:
+             network_id = self.get_network_id(lswitch.get_id())
+        else:
+            network_id = lswitch.get_segment_id()
+            if network_type == 'flat':
+                network_id = 0
+            self.db_store.set_network_id(lswitch.get_id(), int(network_id))
+
         lswitch_conf = {'network_id': network_id, 'lswitch':
             lswitch.__str__()}
         LOG.info(_LI("Adding/Updating Logical Switch = %s") % lswitch_conf)
@@ -200,8 +208,8 @@ class DfLocalController(object):
 
         chassis_to_ofport, lport_to_ofport = (
             self.vswitch_api.get_local_ports_to_ofport_mapping())
-        local_network_id = self.get_network_id(
-            lport.get_lswitch_id(),
+        network_id = self.db_store.get_network_id(
+            lport.get_lswitch_id()
         )
         lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
         if lswitch is not None:
@@ -212,7 +220,7 @@ class DfLocalController(object):
             if segment_id is not None:
                 lport.set_external_value('segmentation_id',
                                      int(segment_id))
-        lport.set_external_value('local_network_id', local_network_id)
+        lport.set_external_value('local_network_id', network_id)
 
         if chassis == self.chassis_name:
             lport.set_external_value('is_local', True)
