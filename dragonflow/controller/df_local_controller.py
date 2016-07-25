@@ -157,6 +157,12 @@ class DfLocalController(object):
                         self.security_group_updated,
                         self.security_group_deleted),
                     df_db_objects_refresh.DfObjectRefresher(
+                        'QoS Policies',
+                        self.db_store.get_qos_policy_keys,
+                        self.nb_api.get_qos_policies,
+                        self.qos_policy_updated,
+                        self.qos_policy_deleted),
+                    df_db_objects_refresh.DfObjectRefresher(
                         'Ports',
                         self.db_store.get_port_keys,
                         self.nb_api.get_all_logical_ports,
@@ -372,7 +378,11 @@ class DfLocalController(object):
                 if lport.get_remote_vtep():
                     self._add_remote_port_on_chassis(lport)
         if not self._is_valid_version(original_lport, lport):
-            return
+            if original_lport.get_qos_policy_id() == lport.get_qos_policy_id():
+                # FIXME(xiaohhui): This should be removed once
+                # https://review.openstack.org/#/c/398827/ has been merged in
+                # neutron
+                return
         self._logical_port_process(lport, original_lport)
 
     def logical_port_deleted(self, lport_id):
@@ -436,6 +446,16 @@ class DfLocalController(object):
         if old_secgroup is None:
             return
         self._delete_old_security_group(old_secgroup)
+
+    def qos_policy_created(self, qos):
+        self.db_store.set_qos_policy(qos.get_id(), qos)
+
+    def qos_policy_updated(self, qos):
+        self.db_store.set_qos_policy(qos.get_id(), qos)
+        self.open_flow_app.notify_update_qos_policy(qos)
+
+    def qos_policy_deleted(self, qos_id):
+        self.db_store.delete_qos_policy(qos_id)
 
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)

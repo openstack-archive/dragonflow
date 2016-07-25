@@ -209,7 +209,17 @@ class NbApi(object):
             self.db_recover_callback()
             return
 
-        if 'secgroup' == table:
+        if 'qospolicy' == table:
+            if action == 'create':
+                qos = QosPolicy(value)
+                self.controller.qos_policy_created(qos)
+            elif action == 'set':
+                qos = QosPolicy(value)
+                self.controller.qos_policy_updated(qos)
+            elif action == 'delete':
+                qos_id = key
+                self.controller.qos_policy_deleted(qos_id)
+        elif 'secgroup' == table:
             if action == 'set' or action == 'create':
                 secgroup = SecurityGroup(value)
                 self.controller.security_group_updated(secgroup)
@@ -611,6 +621,12 @@ class NbApi(object):
         res = []
         for secgroup_value in self.driver.get_all_entries('secgroup', topic):
             res.append(SecurityGroup(secgroup_value))
+        return res
+
+    def get_qos_policies(self, topic=None):
+        res = []
+        for qos in self.driver.get_all_entries('qospolicy', topic):
+            res.append(QosPolicy(qos))
         return res
 
     def get_all_logical_switches(self, topic=None):
