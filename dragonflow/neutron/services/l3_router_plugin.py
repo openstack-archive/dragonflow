@@ -63,6 +63,9 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     request/response.
     """
 
+    supported_extension_aliases = ["router", "extraroute",
+                                   "l3_agent_scheduler"]
+
     @resource_registry.tracked_resources(
         router=l3_db.Router,
         floatingip=l3_db.FloatingIP)
