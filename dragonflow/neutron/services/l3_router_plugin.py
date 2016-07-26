@@ -71,13 +71,14 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             cfg.CONF.router_scheduler_driver)
         super(DFL3RouterPlugin, self).__init__()
         nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
-        self.nb_api = api_nb.NbApi(
-                nb_driver_class(),
-                use_pubsub=cfg.CONF.df.enable_df_pub_sub,
-                is_neutron_server=True)
-        # TODO(hshan) provide interface to get nb_api
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                               db_port=cfg.CONF.df.remote_db_port)
+        self.nb_api = api_nb.get_nb_api()
+        if self.nb_api is None:
+            self.nb_api = api_nb.NbApi(
+                    nb_driver_class(),
+                    use_pubsub=cfg.CONF.df.enable_df_pub_sub,
+                    is_neutron_server=True)
+            self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
+                                   db_port=cfg.CONF.df.remote_db_port)
         self.core_plugin = None
         self._start_rpc_notifiers()
 
