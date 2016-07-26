@@ -30,7 +30,6 @@ from dragonflow._i18n import _LI
 from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
-from dragonflow.common import extensions
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.db.neutron import versionobjects_db as version_db
@@ -46,7 +45,15 @@ class DFMechDriver(driver_api.MechanismDriver):
 
     """
 
-    supported_extension_aliases = extensions.SUPPORTED_API_EXTENSIONS
+    supported_extension_aliases = ['security-group',
+                                   'extra_dhcp_opt'
+                                   'binding',
+                                   'security-group',
+                                   'external-net',
+                                   'router',
+                                   'port-security',
+                                   'allowed-address-pairs',
+                                   'net-mtu']
 
     def initialize(self):
         LOG.info(_LI("Starting DFMechDriver"))
