@@ -46,7 +46,13 @@ class DFMechDriver(driver_api.MechanismDriver):
 
     """
 
-    supported_extension_aliases = extensions.SUPPORTED_API_EXTENSIONS
+    supported_extension_aliases = ['security-group',
+                                   'extra_dhcp_opt'
+                                   'binding',
+                                   'external-net',
+                                   'port-security',
+                                   'allowed-address-pairs',
+                                   'net-mtu']
 
     def initialize(self):
         LOG.info(_LI("Starting DFMechDriver"))
