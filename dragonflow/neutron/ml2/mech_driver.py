@@ -29,7 +29,6 @@ from dragonflow._i18n import _LI
 from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
-from dragonflow.common import utils as df_utils
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.db.neutron import versionobjects_db as version_db
@@ -62,15 +61,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         self.vif_type = portbindings.VIF_TYPE_OVS
         self._set_base_port_binding()
 
-        nb_driver = df_utils.load_driver(
-            cfg.CONF.df.nb_db_class,
-            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-        self.nb_api = api_nb.NbApi(
-                nb_driver,
-                use_pubsub=cfg.CONF.df.enable_df_pub_sub,
-                is_neutron_server=True)
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                               db_port=cfg.CONF.df.remote_db_port)
+        self.nb_api = api_nb.NbApi.get_instance(True)
 
         registry.subscribe(self.create_security_group,
                            resources.SECURITY_GROUP,

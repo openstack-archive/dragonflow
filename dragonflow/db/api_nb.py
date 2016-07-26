@@ -36,6 +36,8 @@ LOG = log.getLogger(__name__)
 DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
                   'sync', 'sync_started', 'sync_finished', 'dbrestart']
 
+_nb_api = None
+
 
 class NbApi(object):
 
@@ -51,6 +53,22 @@ class NbApi(object):
         self.db_table_monitors = None
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
+
+    @staticmethod
+    def get_instance(is_neutron_server):
+        global _nb_api
+        if _nb_api is None:
+            nb_driver = df_utils.load_driver(
+                cfg.CONF.df.nb_db_class,
+                df_utils.DF_NB_DB_DRIVER_NAMESPACE)
+            nb_api = NbApi(
+                nb_driver,
+                use_pubsub=cfg.CONF.df.enable_df_pub_sub,
+                is_neutron_server=is_neutron_server)
+            nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
+                              db_port=cfg.CONF.df.remote_db_port)
+            _nb_api = nb_api
+        return _nb_api
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
