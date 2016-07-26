@@ -36,6 +36,13 @@ LOG = log.getLogger(__name__)
 DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
                   'sync', 'sync_started', 'sync_finished', 'dbrestart']
 
+_nb_api = None
+
+
+def get_nb_api():
+    global _nb_api
+    return _nb_api
+
 
 class NbApi(object):
 
@@ -51,6 +58,8 @@ class NbApi(object):
         self.db_table_monitors = None
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
+        global _nb_api
+        _nb_api = self
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
