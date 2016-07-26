@@ -1174,7 +1174,7 @@ class TestPortSecApp(test_base.DFTestBase):
 
     def _create_ping_using_fake_mac(self, buf):
         ip = self.port1.port.get_logical_port().get_ip()
-        fake_mac = "11:22:33:44:55:66"
+        fake_mac = "00:11:22:33:44:55"
 
         result, icmp = self._create_ping_request(ip, fake_mac, self.port2)
         self._ping_using_fake_mac = icmp

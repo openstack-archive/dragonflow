@@ -493,7 +493,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             objects.PortTestObj(self.neutron, self.nb_api, network_id))
         expected_pairs = [
                 {"ip_address": "192.168.127.201",
-                 "mac_address": "11:22:33:44:55:66"},
+                 "mac_address": "00:22:33:44:55:66"},
                 {"ip_address": "192.168.127.202",
                  "mac_address": "22:22:33:44:55:66"}
         ]
