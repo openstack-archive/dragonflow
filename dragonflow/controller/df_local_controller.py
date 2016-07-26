@@ -21,12 +21,12 @@ from neutron.agent.common import config
 from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_log import log
-from oslo_utils import importutils
 from ryu.base.app_manager import AppManager
 
 from dragonflow._i18n import _LI, _LW
 from dragonflow.common import common_params
 from dragonflow.common import constants
+from dragonflow.common import utils as df_utils
 from dragonflow.controller.ryu_base_app import RyuDFAdapter
 from dragonflow.controller.topology import Topology
 from dragonflow.db import api_nb
@@ -49,9 +49,11 @@ class DfLocalController(object):
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
         self.sync_finished = False
-        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        nb_driver = df_utils.load_driver(
+            cfg.CONF.df.nb_db_class,
+            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
         self.nb_api = api_nb.NbApi(
-            nb_driver_class(),
+            nb_driver,
             use_pubsub=cfg.CONF.df.enable_df_pub_sub)
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(
             self.ip, self.nb_api)
