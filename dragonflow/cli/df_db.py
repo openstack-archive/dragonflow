@@ -16,10 +16,10 @@ import sys
 from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-from oslo_utils import importutils
 
 from dragonflow.common import common_params
 from dragonflow.common import exceptions as df_exceptions
+from dragonflow.common import utils as df_utils
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
 
@@ -134,8 +134,9 @@ def main():
         return
 
     common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
-    db_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
-    db_driver = db_driver_class()
+    db_driver = df_utils.load_driver(
+        cfg.CONF.df.nb_db_class,
+        df_utils.DF_NB_DB_DRIVER_NAMESPACE)
     db_driver.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                          db_port=cfg.CONF.df.remote_db_port,
                          config=cfg.CONF.df)

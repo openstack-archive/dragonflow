@@ -27,6 +27,7 @@ from stevedore import driver
 from dragonflow._i18n import _, _LE
 
 DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
+DF_NB_DB_DRIVER_NAMESPACE = 'dragonflow.nb_db_driver'
 LOG = logging.getLogger(__name__)
 
 

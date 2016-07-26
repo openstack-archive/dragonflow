@@ -21,7 +21,6 @@ from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
-from oslo_utils import importutils
 
 from dragonflow._i18n import _LW
 from dragonflow.common import common_params
@@ -39,8 +38,9 @@ class PublisherService(object):
         self._queue = Queue()
         self.publisher = self._get_publisher()
         self.multiproc_subscriber = self._get_multiproc_subscriber()
-        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
-        self.db = nb_driver_class()
+        self.db = df_utils.load_driver(
+            cfg.CONF.df.nb_db_class,
+            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
         self.uuid = pub_sub_api.generate_publisher_uuid()
         self._rate_limit = df_utils.RateLimiter(
             cfg.CONF.df.publisher_rate_limit_count,
