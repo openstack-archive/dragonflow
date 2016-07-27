@@ -392,8 +392,8 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         init_ovs
         # We have to start at install time, because Neutron's post-config
         # phase runs ovs-vsctl.
-        nb_db_driver_start_server
         start_ovs
+        nb_db_driver_start_server
         disable_libvirt_apparmor
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         configure_df_plugin
