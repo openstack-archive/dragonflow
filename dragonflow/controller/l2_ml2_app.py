@@ -367,8 +367,8 @@ class L2App(DFlowApp):
         topic = lport.get_topic()
 
         datapath = self.get_datapath()
-        parser = self.datapath.ofproto_parser
-        ofproto = self.datapath.ofproto
+        parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
 
         # Ingress classifier for port
         match = parser.OFPMatch()
@@ -684,7 +684,7 @@ class L2App(DFlowApp):
         actions = [parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
                    parser.OFPActionOutput(port=ofport)]
 
-        tunnels = set(ofport)
+        tunnels = set(str(ofport))
 
         # todo
         # aggregate  remote tunnel
@@ -694,8 +694,10 @@ class L2App(DFlowApp):
                 continue
             tunnel_port = lport.get_external_value('ofport')
 
-            if tunnel_port not in tunnels:
-                tunnels.add(tunnel_port)
+            tunnel_port_str = str(tunnel_port)
+
+            if tunnel_port_str not in tunnels:
+                tunnels.add(tunnel_port_str)
                 actions.append(parser.OFPActionSetField(
                     tunel_id_nxm=segmentation_id))
                 actions.append(parser.OFPActionOutput(port=tunnel_port))
