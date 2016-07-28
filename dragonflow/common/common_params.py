@@ -13,6 +13,7 @@
 from oslo_config import cfg
 
 from dragonflow._i18n import _
+from neutron.extensions import portbindings
 
 df_opts = [
     cfg.IPOpt('remote_db_ip',
@@ -120,4 +121,16 @@ df_opts = [
                default=120,
                help=_('The TTL of the distributed lock. The lock will be '
                       'reset if it is timeout.')),
+    cfg.StrOpt("vif_type",
+               default=portbindings.VIF_TYPE_OVS,
+               help=_("Type of VIF to be used for ports valid values are"
+                      "(%(ovs)s, %(dpdk)s) default %(ovs)s") % {
+                          "ovs": portbindings.VIF_TYPE_OVS,
+                          "dpdk": portbindings.VIF_TYPE_VHOST_USER},
+               choices=[portbindings.VIF_TYPE_OVS,
+                        portbindings.VIF_TYPE_VHOST_USER]),
+    cfg.StrOpt("vhost_sock_dir",
+               default="/var/run/openvswitch",
+               help=_("The directory in which vhost virtio socket"
+                      "is created by all the vswitch daemons"))
 ]
