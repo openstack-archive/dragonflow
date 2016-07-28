@@ -1,0 +1,59 @@
+DPDK_VERSION=16.07
+DPDK_DIR=$DEST/dpdk/dpdk-${DPDK_VERSION}
+DPDK_TARGET=x86_64-native-linuxapp-gcc
+DPDK_BUILD=$DPDK_DIR/$DPDK_TARGET
+
+PCI_BUS_INFO=`sudo ethtool -i ${DPDK_NIC_NAME} | grep bus-info`
+DPDK_PCI_TARGET=${PCI_BUS_INFO#*:}
+
+function configure_ovs_dpdk {
+    # By default, dragonflow uses OVS kernel datapath. If you want to use
+    # user space datapath powered by DPDK, please use 'netdev'.
+    OVS_DATAPATH_TYPE=netdev
+
+    # Configure user space datapath
+    iniset $NEUTRON_CONF df vif_type vhostuser
+    iniset $NEUTRON_CONF df vhost_sock_dir ${OVS_DIR}
+
+    # Configure huge-pages
+    sudo sysctl -w vm.nr_hugepages=${DPDK_NUM_OF_HUGEPAGES}
+    sudo mkdir -p /dev/hugepages
+    sudo mount -t hugetlbfs none /dev/hugepages
+
+    # Configure UIO
+    sudo modprobe uio
+    sudo insmod $DPDK_BUILD/kmod/${DPDK_BIND_DRIVER}.ko
+
+    # Set up DPDK NIC
+    sudo ip link set ${DPDK_NIC_NAME} down
+    sudo dpdk_nic_bind --bind=${DPDK_BIND_DRIVER} ${DPDK_PCI_TARGET}
+
+    # Configure Open vSwitch to connect dpdk-enabled physical NIC
+    # to the OVS bridge. For example:
+    sudo ovs-vsctl add-port ${INTEGRATION_BRIDGE} dpdk0 -- set interface \
+        dpdk0 type=dpdk ofport_request=1
+}
+
+function install_dpdk {
+    mkdir -p $DEST/dpdk
+    pushd $DEST/dpdk
+    if [ ! -e $DEST/dpdk/dpdk-${DPDK_VERSION}.zip ]
+    then
+        wget http://dpdk.org/browse/dpdk/snapshot/dpdk-${DPDK_VERSION}.zip
+        unzip dpdk-${DPDK_VERSION}.zip
+    fi
+    cd $DPDK_DIR
+    sudo make install T=$DPDK_TARGET DESTDIR=install
+    popd
+}
+
+function uninstall_dpdk {
+    sudo dpdk_nic_bind -u ${DPDK_PCI_TARGET}
+    sudo rmmod $DPDK_BUILD/kmod/${DPDK_BIND_DRIVER}.ko
+    sudo modprobe -r uio
+    sudo ip link set ${DPDK_NIC_NAME} up
+
+    pushd $DPDK_DIR
+    sudo make uninstall
+    popd
+}

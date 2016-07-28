@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 function _neutron_ovs_get_dnf {
     if is_fedora; then
         if [ $os_RELEASE -ge 22 ]; then
@@ -15,7 +14,7 @@ function _neutron_ovs_get_dnf {
 
 function _neutron_ovs_install_ovs_deps_fedora {
     DNF=${1:-`_neutron_ovs_get_dnf`}
-    sudo $DNF install -y rpm-build rpmrebuild
+    sudo $DNF install -y rpm-build rpmrebuild kernel-devel
     # So apparently we need to compile to learn the requirements...
     set `rpmspec -q --buildrequires rhel/openvswitch-fedora.spec`
     set "$@" `rpmspec -q --buildrequires rhel/openvswitch-kmod-fedora.spec`
@@ -59,7 +58,12 @@ function _neutron_ovs_install_ovs_fedora {
     ./boot.sh
     popd
 
-    ../configure
+    if [[ "$ENABLE_DPDK" == "True" ]]; then
+        ../configure --with-dpdk=$DPDK_BUILD
+    else
+        ../configure
+    fi
+
     make dist
     VERSION=`awk '/^Version:/ { print $2 }' ../rhel/openvswitch-fedora.spec | head -1`
     DNF=`_neutron_ovs_get_dnf`
@@ -163,7 +167,13 @@ function start_ovs {
         # breaks testing in OpenStack CI where geneve isn't available.
         load_module_if_not_loaded geneve || true
         load_module_if_not_loaded vport_geneve || true
+    fi
 
+    cd $_pwd
+}
+
+function configure_ovs {
+    if is_service_enabled df-controller ; then
         # setup external bridge if necessary
         check_dnat=$(echo $DF_APPS_LIST | grep "DNATApp")
         if [[ "$check_dnat" != "" ]]; then
@@ -174,8 +184,6 @@ function start_ovs {
         _neutron_ovs_base_setup_bridge $INTEGRATION_BRIDGE
         sudo ovs-vsctl --no-wait set bridge $INTEGRATION_BRIDGE fail-mode=secure other-config:disable-in-band=true
     fi
-
-    cd $_pwd
 }
 
 function cleanup_ovs {
