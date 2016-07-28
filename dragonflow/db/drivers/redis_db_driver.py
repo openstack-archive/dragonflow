@@ -60,8 +60,16 @@ class RedisDbDriver(db_api.DbApi):
         pass
 
     def delete_table(self, table):
-        # Not needed in redis
-        pass
+        local_key = self.uuid_to_key(table, '*', '*')
+        for host, client in six.iteritems(self.clients):
+            local_keys = client.keys(local_key)
+            if len(local_keys) > 0:
+                for tmp_key in local_keys:
+                    try:
+                        self._execute_cmd("DEL", tmp_key)
+                except Exception:
+                    LOG.exception(_LE("exception when delete_table: "
+                              "%(key)s ") % {'key': local_key})
 
     def _handle_db_conn_error(self, ip_port, local_key=None):
         self.redis_mgt.remove_node_from_master_list(ip_port)
