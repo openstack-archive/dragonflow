@@ -60,6 +60,7 @@ from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import extensions
+from dragonflow.common import utils as df_utils
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.db.neutron import versionobjects_db as version_db
@@ -130,10 +131,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self._start_rpc_notifiers()
 
     def post_fork_initialize(self, resource, event, trigger, **kwargs):
-        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        nb_driver = df_utils.load_driver(
+            cfg.CONF.df.nb_db_class,
+            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
 
         self.nb_api = api_nb.NbApi(
-                nb_driver_class(),
+                nb_driver,
                 use_pubsub=cfg.CONF.df.enable_df_pub_sub,
                 is_neutron_server=True)
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
