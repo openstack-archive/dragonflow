@@ -7,6 +7,9 @@
 # local.conf file to configure "ML2_L3_PLUGIN=df-l3"
 USE_ML2_PLUGIN=${USE_ML2_PLUGIN:-"False"}
 
+# Enable DPDK for Open vSwitch user space datapath
+ENABLE_DPDK=${ENABLE_DPDK:-False}
+
 # The git repo to use
 OVS_REPO=${OVS_REPO:-http://github.com/openvswitch/ovs.git}
 OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
@@ -20,14 +23,15 @@ DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
 ML2_APPS_LIST_DEFAULT="l2_ml2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
+DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
+ML2_APPS_LIST=${ML2_APPS_LIST:-$ML2_APPS_LIST_DEFAULT}
+TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
 REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
 REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
-TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
-DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
-ML2_APPS_LIST=${ML2_APPS_LIST:-$ML2_APPS_LIST_DEFAULT}
+
 # OVS bridge definition
 PUBLIC_BRIDGE=${PUBLIC_BRIDGE:-br-ex}
 INTEGRATION_BRIDGE=${INTEGRATION_BRIDGE:-br-int}
@@ -105,6 +109,7 @@ if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
     DF_PUB_SUB_USE_MULTIPROC="False"
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
+
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
 source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
@@ -209,6 +214,11 @@ function configure_df_plugin {
         fi
         iniset $NEUTRON_CONF df enable_selective_topology_distribution \
                                 "$DF_SELECTIVE_TOPO_DIST"
+    fi
+
+    # Configure OVS Datapath
+    if [[ "$ENABLE_DPDK" == "True" ]]; then
+        source $DEST/dragonflow/devstack/ovs_dpdk
     fi
 }
 
@@ -399,6 +409,8 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         configure_df_plugin
         # initialize the nb db
         init_nb_db
+        # configure ovs
+        configure_ovs
 
         if [[ "$DF_PUB_SUB" == "True" ]]; then
             # Implemented by the pub/sub plugin
