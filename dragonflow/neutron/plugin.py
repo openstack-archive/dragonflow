@@ -146,12 +146,35 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self._set_base_port_binding()
 
     def _set_base_port_binding(self):
-        self.base_binding_dict = {
-            portbindings.VIF_TYPE: portbindings.VIF_TYPE_OVS,
-            portbindings.VIF_DETAILS: {
-                # TODO(rkukura): Replace with new VIF security details
-                portbindings.CAP_PORT_FILTER:
-                'security-group' in self.supported_extension_aliases}}
+        if cfg.CONF.df.vif_type == portbindings.VIF_TYPE_VHOST_USER:
+            self.base_binding_dict = {
+                portbindings.VIF_TYPE: portbindings.VIF_TYPE_VHOST_USER,
+                portbindings.VIF_DETAILS: {
+                    # TODO(nick-ma-z): VIF security is disabled for vhu port.
+                    # This will be revisited if the function is supported by
+                    # OVS upstream.
+                    portbindings.CAP_PORT_FILTER: False,
+                    portbindings.VHOST_USER_MODE:
+                    portbindings.VHOST_USER_MODE_CLIENT,
+                    portbindings.VHOST_USER_OVS_PLUG: True,
+                }
+            }
+        else:
+            self.base_binding_dict = {
+                portbindings.VIF_TYPE: portbindings.VIF_TYPE_OVS,
+                portbindings.VIF_DETAILS: {
+                    # TODO(rkukura): Replace with new VIF security details
+                    portbindings.CAP_PORT_FILTER:
+                    'security-group' in self.supported_extension_aliases}}
+
+    def _update_port_binding(self, port_res):
+        port_res[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
+        if cfg.CONF.df.vif_type == portbindings.VIF_TYPE_VHOST_USER:
+            port_res[portbindings.VIF_DETAILS].update({
+                portbindings.VHOST_USER_SOCKET: utils.get_vhu_sockpath(
+                    cfg.CONF.df.vhost_sock_dir, port_res['id']
+                )
+            })
 
     def _setup_dhcp(self):
         """Initialize components to support DHCP."""
@@ -652,7 +675,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                                          port['port'],
                                                          db_port)
 
-            db_port[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
+            self._update_port_binding(db_port)
             if (df_const.DF_PORT_BINDING_PROFILE in port['port'] and
                     attr.is_attr_set(
                         port['port'][df_const.DF_PORT_BINDING_PROFILE])):
@@ -759,7 +782,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     def extend_port_dict_binding(self, port_res, port_db):
         super(DFPlugin, self).extend_port_dict_binding(port_res, port_db)
-        port_res[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
+        self._update_port_binding(port_res)
 
     def _create_router_db(self, context, router, tenant_id):
         """Create a router db object with dvr additions."""

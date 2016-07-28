@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 function _neutron_ovs_get_dnf {
     if is_fedora; then
         if [ $os_RELEASE -ge 22 ]; then
@@ -60,6 +59,7 @@ function _neutron_ovs_install_ovs_fedora {
     popd
 
     ../configure
+
     make dist
     VERSION=`awk '/^Version:/ { print $2 }' ../rhel/openvswitch-fedora.spec | head -1`
     DNF=`_neutron_ovs_get_dnf`
@@ -113,11 +113,6 @@ function _neutron_ovs_install_ovs {
             fi
         done
 
-        # try to unload openvswitch module from kernel
-        if test -n "`lsmod | grep openvswitch`"; then
-            sudo modprobe -r openvswitch
-        fi
-
         if is_ubuntu; then
             _neutron_ovs_install_ovs_ubuntu
         elif is_fedora; then
@@ -163,7 +158,13 @@ function start_ovs {
         # breaks testing in OpenStack CI where geneve isn't available.
         load_module_if_not_loaded geneve || true
         load_module_if_not_loaded vport_geneve || true
+    fi
 
+    cd $_pwd
+}
+
+function configure_ovs {
+    if is_service_enabled df-controller ; then
         # setup external bridge if necessary
         check_dnat=$(echo $DF_APPS_LIST | grep "DNATApp")
         if [[ "$check_dnat" != "" ]]; then
@@ -181,6 +182,7 @@ function start_ovs {
     if [ -n "$OVS_MANAGER" ]; then
         sudo ovs-vsctl set-manager $OVS_MANAGER
     fi
+
     cd $_pwd
 }
 
@@ -230,4 +232,26 @@ function stop_ovs
         SERVICE_NAME=openvswitch-switch
     fi
     stop_service $SERVICE_NAME
+}
+
+function init_ovs {
+    # clean up from previous (possibly aborted) runs
+    # create required data files
+
+    # Assumption: this is a dedicated test system and there is nothing important
+    #  ovs databases.  We're going to trash them and
+    # create new ones on each devstack run.
+
+    base_dir=$DATA_DIR/ovs
+    mkdir -p $base_dir
+
+    for db in conf.db ; do
+        if [ -f $base_dir/$db ] ; then
+            rm -f $base_dir/$db
+        fi
+    done
+    rm -f $base_dir/.*.db.~lock~
+
+    echo "Creating OVS Database"
+    ovsdb-tool create $base_dir/conf.db $OVS_VSWITCH_OCSSCHEMA_FILE
 }
