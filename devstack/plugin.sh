@@ -7,6 +7,12 @@
 # local.conf file to configure "ML2_L3_PLUGIN=df-l3"
 USE_ML2_PLUGIN=${USE_ML2_PLUGIN:-"False"}
 
+# Enable DPDK for Open vSwitch user space datapath
+ENABLE_DPDK=${ENABLE_DPDK:-False}
+DPDK_NUM_OF_HUGEPAGES=${DPDK_NUM_OF_HUGEPAGES:-1024}
+DPDK_BIND_DRIVER=${DPDK_BIND_DRIVER:-igb_uio}
+DPDK_NIC_NAME=${DPDK_NIC_NAME:-eth1}
+
 # The git repo to use
 OVS_REPO=${OVS_REPO:-http://github.com/openvswitch/ovs.git}
 OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
@@ -20,14 +26,15 @@ DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
 ML2_APPS_LIST_DEFAULT="l2_ml2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
+DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
+ML2_APPS_LIST=${ML2_APPS_LIST:-$ML2_APPS_LIST_DEFAULT}
+TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
 REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
 REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
-TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
-DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
-ML2_APPS_LIST=${ML2_APPS_LIST:-$ML2_APPS_LIST_DEFAULT}
+
 # OVS bridge definition
 PUBLIC_BRIDGE=${PUBLIC_BRIDGE:-br-ex}
 INTEGRATION_BRIDGE=${INTEGRATION_BRIDGE:-br-int}
@@ -105,10 +112,16 @@ if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
     DF_PUB_SUB_USE_MULTIPROC="False"
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
+
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
 source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
-source $DEST/dragonflow/devstack/ovs_setup.sh
+
+if [[ "$ENABLE_DPDK" == "True" ]]; then
+    source $DEST/dragonflow/devstack/ovs_dpdk_setup.sh
+else
+    source $DEST/dragonflow/devstack/ovs_setup.sh
+fi
 
 # Entry Points
 # ------------
@@ -126,7 +139,7 @@ function configure_df_plugin {
         if [[ "$USE_ML2_PLUGIN" == "False" ]]; then
             Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
             Q_SERVICE_PLUGIN_CLASSES=""
-         else
+        else
             DF_APPS_LIST=$ML2_APPS_LIST
         fi
 
@@ -210,29 +223,6 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF df enable_selective_topology_distribution \
                                 "$DF_SELECTIVE_TOPO_DIST"
     fi
-}
-
-# init_ovs() - Initialize databases, etc.
-function init_ovs {
-    # clean up from previous (possibly aborted) runs
-    # create required data files
-
-    # Assumption: this is a dedicated test system and there is nothing important
-    #  ovs databases.  We're going to trash them and
-    # create new ones on each devstack run.
-
-    base_dir=$DATA_DIR/ovs
-    mkdir -p $base_dir
-
-    for db in conf.db ; do
-        if [ -f $base_dir/$db ] ; then
-            rm -f $base_dir/$db
-        fi
-    done
-    rm -f $base_dir/.*.db.~lock~
-
-    echo "Creating OVS Database"
-    ovsdb-tool create $base_dir/conf.db $OVS_VSWITCH_OCSSCHEMA_FILE
 }
 
 function install_zeromq {
@@ -396,6 +386,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         nb_db_driver_start_server
         disable_libvirt_apparmor
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
+        configure_ovs
         configure_df_plugin
         # initialize the nb db
         init_nb_db
