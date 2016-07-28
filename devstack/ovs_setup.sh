@@ -163,7 +163,13 @@ function start_ovs {
         # breaks testing in OpenStack CI where geneve isn't available.
         load_module_if_not_loaded geneve || true
         load_module_if_not_loaded vport_geneve || true
+    fi
 
+    cd $_pwd
+}
+
+function configure_ovs {
+    if is_service_enabled df-controller ; then
         # setup external bridge if necessary
         check_dnat=$(echo $DF_APPS_LIST | grep "DNATApp")
         if [[ "$check_dnat" != "" ]]; then
@@ -174,8 +180,6 @@ function start_ovs {
         _neutron_ovs_base_setup_bridge $INTEGRATION_BRIDGE
         sudo ovs-vsctl --no-wait set bridge $INTEGRATION_BRIDGE fail-mode=secure other-config:disable-in-band=true
     fi
-
-    cd $_pwd
 }
 
 function cleanup_ovs {

@@ -1,0 +1,12 @@
+# By default, dragonflow uses OVS kernel datapath. If you want to use
+# user space datapath powered by DPDK, please use 'netdev'.
+OVS_DATAPATH_TYPE=netdev
+
+# Configure user space datapath
+iniset $NEUTRON_CONF df vif_type vhostuser
+iniset $NEUTRON_CONF df vhost_sock_dir /var/run/openstack
+
+# Configure Open vSwitch to connect dpdk-enabled physical NIC
+# to the OVS bridge. For example:
+#ovs-vsctl add-port br_int dpdk0 -- set interface \
+#    dpdk0 type=dpdk ofport_request=1
