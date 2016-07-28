@@ -86,11 +86,35 @@ class DFMechDriver(driver_api.MechanismDriver):
                            events.BEFORE_DELETE)
 
     def _set_base_port_binding(self):
-        self.base_binding_dict = {
-            portbindings.VIF_TYPE: portbindings.VIF_TYPE_OVS,
-            portbindings.VIF_DETAILS: {
-                portbindings.CAP_PORT_FILTER:
-                'security-group' in self.supported_extension_aliases}}
+        if cfg.CONF.df.vif_type == portbindings.VIF_TYPE_VHOST_USER:
+            self.base_binding_dict = {
+                portbindings.VIF_TYPE: portbindings.VIF_TYPE_VHOST_USER,
+                portbindings.VIF_DETAILS: {
+                    # TODO(nick-ma-z): VIF security is disabled for vhu port.
+                    # This will be revisited if the function is supported by
+                    # OVS upstream.
+                    portbindings.CAP_PORT_FILTER: False,
+                    portbindings.VHOST_USER_MODE:
+                    portbindings.VHOST_USER_MODE_CLIENT,
+                    portbindings.VHOST_USER_OVS_PLUG: True,
+                }
+            }
+        else:
+            self.base_binding_dict = {
+                portbindings.VIF_TYPE: portbindings.VIF_TYPE_OVS,
+                portbindings.VIF_DETAILS: {
+                    # TODO(rkukura): Replace with new VIF security details
+                    portbindings.CAP_PORT_FILTER:
+                    'security-group' in self.supported_extension_aliases}}
+
+    def _update_port_binding(self, port_res):
+        port_res[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
+        if cfg.CONF.df.vif_type == portbindings.VIF_TYPE_VHOST_USER:
+            port_res[portbindings.VIF_DETAILS].update({
+                portbindings.VHOST_USER_SOCKET: df_utils.get_vhu_sockpath(
+                    cfg.CONF.df.vhost_sock_dir, port_res['id']
+                )
+            })
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
     def create_security_group(self, resource, event, trigger, **kwargs):
@@ -247,6 +271,10 @@ class DFMechDriver(driver_api.MechanismDriver):
             else:
                 host = bind_port.host if bind_port else None
         self._extend_port_dict_binding_host(port, host)
+
+    def extend_port_dict_binding(self, port_res, port_db):
+        super(DFMechDriver, self).extend_port_dict_binding(port_res, port_db)
+        self._update_port_binding(port_res)
 
     def _create_dhcp_server_port(self, context, subnet):
         """Create and return dhcp port information.
