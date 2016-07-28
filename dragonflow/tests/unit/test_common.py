@@ -16,6 +16,15 @@ from dragonflow.common import utils
 from dragonflow.tests import base as tests_base
 
 
+class TestVHUSockPath(tests_base.BaseTestCase):
+
+    def test_vhu_sock_path(self):
+        fake_sock_dir = '/tmp'
+        fake_port_id = '7d411f48-ecc7-45e0-9ece-3b5bdb54fcef'
+        path = utils.get_vhu_sockpath(fake_sock_dir, fake_port_id)
+        self.assertEqual('/tmp/vhu7d411f48-ec', path)
+
+
 class TestRetryFunc(tests_base.BaseTestCase):
 
     def test_retry_wrapper_succeeds(self):
