@@ -7,6 +7,11 @@
 # local.conf file to configure "ML2_L3_PLUGIN=df-l3"
 USE_ML2_PLUGIN=${USE_ML2_PLUGIN:-"False"}
 
+# By default, dragonflow uses OVS kernel datapath. If you want to use
+# user space datapath powered by DPDK, you can edit local.conf file to
+# configure "OVS_DATAPATH_TYPE=netdev"
+OVS_DATAPATH_TYPE=${OVS_DATAPATH_TYPE:-system}
+
 # The git repo to use
 OVS_REPO=${OVS_REPO:-http://github.com/openvswitch/ovs.git}
 OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
