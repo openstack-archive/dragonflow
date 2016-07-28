@@ -11,12 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import time
 
 from collections import deque
 import eventlet
 import greenlet
+from neutron_lib import constants as n_const
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -29,6 +31,15 @@ from dragonflow._i18n import _, _LE
 DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
 DF_NB_DB_DRIVER_NAMESPACE = 'dragonflow.nb_db_driver'
 LOG = logging.getLogger(__name__)
+
+
+def get_vhu_sockpath(sock_dir, port_id):
+    # Frame the socket path of a virtio socket
+    return os.path.join(
+        sock_dir,
+        # this parameter will become the virtio port name,
+        # so it should not exceed IFNAMSIZ(16).
+        (n_const.VHOST_USER_DEVICE_PREFIX + port_id)[:14])
 
 
 def load_driver(driver_cfg, namespace):
