@@ -508,7 +508,8 @@ class DFMechDriver(driver_api.MechanismDriver):
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldnt be mapped to
         # a valid ofport (or location)
-        if updated_port.get('device_owner') == n_const.DEVICE_OWNER_ROUTER_GW:
+        if (updated_port.get('device_owner') ==
+            n_const.DEVICE_OWNER_ROUTER_INTF):
             chassis = None
         else:
             chassis = updated_port.get('binding:host_id', None)
