@@ -16,7 +16,7 @@ import math
 import struct
 
 import netaddr
-from neutron.common import config as common_config
+from neutron.conf import common as common_config
 from neutron.plugins.common import constants as n_p_const
 from oslo_config import cfg
 from oslo_log import log
