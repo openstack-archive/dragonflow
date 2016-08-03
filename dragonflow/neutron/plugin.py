@@ -410,10 +410,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             self._process_l3_create(context, result, data)
             nw_version = version_db._create_db_version_row(
                     context.session, result['id'])
-        self.create_network_nb_api(context, result, nw_version)
+        self._create_network_nb_api(context, result, nw_version)
         return result
 
-    def create_network_nb_api(self, context, network, nw_version):
+    def _create_network_nb_api(self, context, network, nw_version):
         nw_name = network.get('name', df_const.DF_NETWORK_DEFAULT_NAME)
         self.nb_api.create_lswitch(id=network['id'],
                                    topic=network['tenant_id'],
@@ -671,10 +671,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         port_model = self._get_port(context, db_port['id'])
         self._apply_dict_extend_functions('ports', db_port, port_model)
 
-        return self.create_port_in_nb_api(db_port, parent_name,
+        return self._create_port_in_nb_api(db_port, parent_name,
                                           tag, port_version)
 
-    def create_port_in_nb_api(self, port, parent_name, tag, port_version):
+    def _create_port_in_nb_api(self, port, parent_name, tag, port_version):
         # The port name *must* be port['id'].  It must match the iface-id set
         # in the Interfaces table of the Open_vSwitch database, which nova sets
         # to be the port ID.
