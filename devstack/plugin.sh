@@ -56,27 +56,29 @@ function is_df_db_driver_selected {
     return 1
 }
 
-# Make sure this argument is not manually set by the user in local.conf
-is_df_db_driver_selected && die $LINENO "Database service is already set for Dragonflow."
+function is_fn_exists {
+    [ `type -t $1`"" == 'function' ]
+}
 
 if is_service_enabled df-etcd ; then
+    is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/etcd_driver
-    NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
+    NB_DRIVER_CLASS="etcd_nb_db_driver"
 fi
 if is_service_enabled df-ramcloud ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/ramcloud_driver
-    NB_DRIVER_CLASS="dragonflow.db.drivers.ramcloud_db_driver.RamCloudDbDriver"
+    NB_DRIVER_CLASS="ramcloud_nb_db_driver"
 fi
 if is_service_enabled df-zookeeper ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/zookeeper_driver
-    NB_DRIVER_CLASS="dragonflow.db.drivers.zookeeper_db_driver.ZookeeperDbDriver"
+    NB_DRIVER_CLASS="zookeeper_nb_db_driver"
 fi
 if is_service_enabled df-redis ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/redis_driver
-    NB_DRIVER_CLASS="dragonflow.db.drivers.redis_db_driver.RedisDbDriver"
+    NB_DRIVER_CLASS="redis_nb_db_driver"
     DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:-"True"}
 else
     DF_REDIS_PUBSUB="False"
@@ -255,9 +257,13 @@ function install_df {
 
     install_zeromq
 
-    nb_db_driver_install_server
+    if is_fn_exists nb_db_driver_install_server; then
+        nb_db_driver_install_server
+    fi
 
-    nb_db_driver_install_client
+    if is_fn_exists nb_db_driver_install_client; then
+        nb_db_driver_install_client
+    fi
 
     setup_package $DRAGONFLOW_DIR
 }
@@ -339,7 +345,9 @@ function stop_df {
     cleanup_nb_db
     drop_nb_db
 
-    nb_db_driver_stop_server
+    if is_fn_exists nb_db_driver_stop_server; then
+        nb_db_driver_stop_server
+    fi
 }
 
 function disable_libvirt_apparmor {
@@ -393,7 +401,9 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         # We have to start at install time, because Neutron's post-config
         # phase runs ovs-vsctl.
         start_ovs
-        nb_db_driver_start_server
+        if is_fn_exists nb_db_driver_start_server; then
+            nb_db_driver_start_server
+        fi
         disable_libvirt_apparmor
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         configure_df_plugin
