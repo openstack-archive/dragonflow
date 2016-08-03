@@ -18,7 +18,7 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import redis
 
-from dragonflow._i18n import _LE, _LW
+from dragonflow._i18n import _LE, _LW, _LI
 from dragonflow.common import common_params
 from dragonflow.db.drivers.redis_mgt import RedisMgt
 from dragonflow.db import pub_sub_api
@@ -44,6 +44,8 @@ class RedisPubSub(pub_sub_api.PubSubApi):
 
 
 class RedisPublisherAgent(pub_sub_api.PublisherApi):
+
+    PublishRetryTimes = 5
 
     def __init__(self):
         super(RedisPublisherAgent, self).__init__()
@@ -73,6 +75,12 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
         if self.remote is None:
             self._update_client()
 
+    def _sync_master_list(self):
+        result = self.redis_mgt.redis_get_master_list_from_syncstring(
+            RedisMgt.global_sharedlist.raw)
+        if result:
+            self._update_client()
+
     def send_event(self, update, topic=None):
         if topic:
             update.topic = topic
@@ -80,22 +88,28 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
         event_json = jsonutils.dumps(update.to_dict())
         local_topic = local_topic.encode('utf8')
         data = pub_sub_api.pack_message(event_json)
-        try:
-            if self.client is not None:
-                self.client.publish(local_topic, data)
-        except Exception as e:
-            LOG.exception(_LE("publish connection get exception "
-                              "%(e)s") % {'e': e})
-            self.redis_mgt.remove_node_from_master_list(self.remote)
-            self._update_client()
+
+        ttl = self.PublishRetryTimes
+        alreadysync = False
+        while ttl > 0:
+            ttl -= 1
             try:
                 if self.client is not None:
                     self.client.publish(local_topic, data)
-            except Exception:
+                    break
+            except Exception as e:
+                if not alreadysync:
+                    LOG.info(_LI("publish connection old masterlist %s")
+                             % self.redis_mgt.master_list)
+                    self._sync_master_list()
+                    LOG.info(_LI("publish connection mew masterlist %s")
+                             % self.redis_mgt.master_list)
+                    alreadysync = True
+                    LOG.exception(_LE("publish error remote:%(remote)s")
+                                  % {'remote': self.remote})
+                    continue
                 self.redis_mgt.remove_node_from_master_list(self.remote)
                 self._update_client()
-                LOG.exception(_LE("publish error remote:%(remote)s")
-                              % {'remote': self.remote})
 
     def set_publisher_for_failover(self, pub, callback):
         self.redis_mgt.set_publisher(pub, callback)
