@@ -33,6 +33,7 @@ class RedisDbDriver(db_api.DbApi):
         self.clients = {}
         self.remote_server_lists = []
         self.redis_mgt = None
+        self.is_neutron_server = False
 
     def initialize(self, db_ip, db_port, **args):
         # get remote ip port list
@@ -66,7 +67,7 @@ class RedisDbDriver(db_api.DbApi):
                         self._execute_cmd("DEL", tmp_key)
                     except Exception:
                         LOG.exception(_LE("exception when delete_table: "
-                              "%(key)s "), {'key': local_key})
+                                          "%(key)s "), {'key': local_key})
 
     def _handle_db_conn_error(self, ip_port, local_key=None):
         self.redis_mgt.remove_node_from_master_list(ip_port)
@@ -75,6 +76,13 @@ class RedisDbDriver(db_api.DbApi):
         if local_key is not None:
             LOG.exception(_LE("update server list, key: %(key)s")
                           % {'key': local_key})
+
+    def _sync_master_list(self):
+        if self.is_neutron_server:
+            result = self.redis_mgt.redis_get_master_list_from_syncstring(
+                redis_mgt.RedisMgt.global_sharedlist.raw)
+            if result:
+                self._update_server_list()
 
     def _gen_args(self, local_key, value):
         args = []
@@ -90,12 +98,18 @@ class RedisDbDriver(db_api.DbApi):
 
         return False
 
+    def _update_client(self, local_key):
+        self._sync_master_list()
+        ip_port = self.redis_mgt.get_ip_by_key(local_key)
+        client = self._get_client(local_key, ip_port)
+        return client
+
     def _execute_cmd(self, oper, local_key, value=None):
         if not self._is_oper_valid(oper):
             LOG.warning(_LW("invalid oper: %(oper)s")
                         % {'oper': oper})
             return None
-
+        self._sync_master_list()
         ip_port = self.redis_mgt.get_ip_by_key(local_key)
         client = self._get_client(local_key, ip_port)
         if client is None:
@@ -105,6 +119,7 @@ class RedisDbDriver(db_api.DbApi):
 
         ttl = self.RequestRetryTimes
         asking = False
+        alreadysync = False
         while ttl > 0:
             ttl -= 1
             try:
@@ -114,11 +129,19 @@ class RedisDbDriver(db_api.DbApi):
 
                 return client.execute_command(oper, *arg)
             except exceptions.ConnectionError as e:
+                if not alreadysync:
+                    client = self._update_client(local_key)
+                    alreadysync = True
+                    continue
                 self._handle_db_conn_error(ip_port, local_key)
                 LOG.exception(_LE("connection error while sending "
                                   "request to db: %(e)s") % {'e': e})
                 raise e
             except exceptions.ResponseError as e:
+                if not alreadysync:
+                    client = self._update_client(local_key)
+                    alreadysync = True
+                    continue
                 resp = str(e).split(' ')
                 if 'ASK' in resp[0]:
                     # one-time flag to force a node to serve a query about an
@@ -141,6 +164,10 @@ class RedisDbDriver(db_api.DbApi):
                                   % {'e': e})
                     raise e
             except Exception as e:
+                if not alreadysync:
+                    client = self._update_client(local_key)
+                    alreadysync = True
+                    continue
                 self._handle_db_conn_error(ip_port, local_key)
                 LOG.exception(_LE("exception while sending request to "
                                   "db: %(e)s") % {'e': e})
@@ -149,6 +176,7 @@ class RedisDbDriver(db_api.DbApi):
     def get_key(self, table, key, topic=None):
         if topic is None:
             local_key = self._uuid_to_key(table, key, '*')
+            self._sync_master_list()
             try:
                 for host, client in six.iteritems(self.clients):
                     local_keys = client.keys(local_key)
@@ -200,6 +228,7 @@ class RedisDbDriver(db_api.DbApi):
     def get_all_entries(self, table, topic=None):
         res = []
         ip_port = None
+        self._sync_master_list()
         if topic is None:
             local_key = self._uuid_to_key(table, '*', '*')
             try:
@@ -234,6 +263,7 @@ class RedisDbDriver(db_api.DbApi):
     def get_all_keys(self, table, topic=None):
         res = []
         ip_port = None
+        self._sync_master_list()
         if topic is None:
             local_key = self._uuid_to_key(table, '*', '*')
             try:
@@ -273,6 +303,7 @@ class RedisDbDriver(db_api.DbApi):
         local_key = self._uuid_to_key('tunnel_key', 'key', None)
         ip_port = None
         try:
+            self._sync_master_list()
             ip_port = self.redis_mgt.get_ip_by_key(local_key)
             client = self._get_client(local_key, ip_port)
             if client is None:
@@ -316,7 +347,10 @@ class RedisDbDriver(db_api.DbApi):
             return None
 
     def process_ha(self):
-        self._update_server_list()
+        if self.is_neutron_server:
+            self._sync_master_list()
+        else:
+            self._update_server_list()
 
     def register_topic_for_notification(self, topic):
         pass
