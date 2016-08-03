@@ -61,22 +61,22 @@ is_df_db_driver_selected && die $LINENO "Database service is already set for Dra
 
 if is_service_enabled df-etcd ; then
     source $DEST/dragonflow/devstack/etcd_driver
-    NB_DRIVER_CLASS="dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver"
+    NB_DRIVER_CLASS="etcd_nb_db_driver"
 fi
 if is_service_enabled df-ramcloud ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/ramcloud_driver
-    NB_DRIVER_CLASS="dragonflow.db.drivers.ramcloud_db_driver.RamCloudDbDriver"
+    NB_DRIVER_CLASS="ramcloud_nb_db_driver"
 fi
 if is_service_enabled df-zookeeper ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/zookeeper_driver
-    NB_DRIVER_CLASS="dragonflow.db.drivers.zookeeper_db_driver.ZookeeperDbDriver"
+    NB_DRIVER_CLASS="zookeeper_nb_db_driver"
 fi
 if is_service_enabled df-redis ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/redis_driver
-    NB_DRIVER_CLASS="dragonflow.db.drivers.redis_db_driver.RedisDbDriver"
+    NB_DRIVER_CLASS="redis_nb_db_driver"
     DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:-"True"}
 else
     DF_REDIS_PUBSUB="False"

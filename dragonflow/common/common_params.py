@@ -25,7 +25,7 @@ df_opts = [
                 default=['$remote_db_ip:$remote_db_port'],
                 help=_('Remote DB cluster host:port pairs.')),
     cfg.StrOpt('nb_db_class',
-               default='dragonflow.db.drivers.etcd_db_driver.EtcdDbDriver',
+               default='etcd_nb_db_driver',
                help=_('The driver class for the NB DB driver')),
     cfg.IPOpt('local_ip',
               default='127.0.0.1',
