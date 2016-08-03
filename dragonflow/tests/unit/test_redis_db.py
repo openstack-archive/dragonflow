@@ -13,10 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-
 from dragonflow.db.drivers.redis_db_driver import RedisDbDriver
 from dragonflow.tests import base as tests_base
+import mock
 
 
 class TestRedisDB(tests_base.BaseTestCase):
@@ -28,6 +27,7 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_set_success(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.set.return_value = 1
         client.execute_command.return_value = 1
@@ -41,6 +41,7 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_set_failed(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.set.return_value = 0
         client.execute_command.return_value = 0
@@ -55,6 +56,7 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_get_success(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         redis_mgt = mock.Mock()
         self.RedisDbDriver.redis_mgt = redis_mgt
@@ -70,6 +72,7 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_get_all_entries(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.keys.return_value = 'a'
         client.mget.return_value = 'value'
@@ -87,6 +90,7 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_delete_key(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.delete.return_value = 1
         client.execute_command.return_value = 1
@@ -100,6 +104,7 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_allocate_unique_key(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.incr.return_value = 1
         redis_mgt = mock.Mock()
@@ -111,6 +116,7 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_check_connection(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.get.return_value = 1
         client.execute_command.return_value = 1
