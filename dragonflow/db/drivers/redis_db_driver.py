@@ -10,19 +10,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import re
-
+from dragonflow._i18n import _LE, _LW
+from dragonflow.db import db_api
+from dragonflow.db.drivers.redis_mgt import RedisMgt
 from oslo_log import log
+
+import re
 import redis
+import six
+
 from redis.exceptions import (
     ConnectionError,
     ResponseError,
 )
-import six
-
-from dragonflow._i18n import _LE, _LW
-from dragonflow.db import db_api
-from dragonflow.db.drivers.redis_mgt import RedisMgt
 
 LOG = log.getLogger(__name__)
 
@@ -71,6 +71,16 @@ class RedisDbDriver(db_api.DbApi):
             LOG.exception(_LE("update server list, key: %(key)s")
                           % {'key': local_key})
 
+    def _sync_master_list(self):
+        LOG.info(_LI("_sync_master_list:global_sharedlist.raw %s")
+                 % RedisMgt.global_sharedlist.raw)
+        LOG.info(_LI("_sync_master_list:new msterlist %s")
+                 % self.redis_mgt.master_list)
+        result = self.redis_mgt.redis_get_master_list_from_syncstring(
+            RedisMgt.global_sharedlist.raw)
+        if result:
+            self._update_server_list()
+
     def _gen_args(self, local_key, value):
         args = []
         args.append(local_key)
@@ -90,7 +100,7 @@ class RedisDbDriver(db_api.DbApi):
             LOG.warning(_LW("invalid oper: %(oper)s")
                         % {'oper': oper})
             return None
-
+        self._sync_master_list()
         ip_port = self.redis_mgt.get_ip_by_key(local_key)
         client = self._get_client(local_key)
         if client is None:
@@ -100,6 +110,7 @@ class RedisDbDriver(db_api.DbApi):
 
         ttl = self.RequestRetryTimes
         asking = False
+        alreadysync = False
         while ttl > 0:
             ttl -= 1
             try:
@@ -109,11 +120,27 @@ class RedisDbDriver(db_api.DbApi):
 
                 return client.execute_command(oper, *arg)
             except ConnectionError as e:
+                if not alreadysync:
+                    LOG.info(_LI("redis driver sync old masterlist %s")
+                             % self.redis_mgt.master_list)
+                    self._sync_master_list()
+                    LOG.info(_LI("redis driver sync new masterlist %s")
+                             % self.redis_mgt.master_list)
+                    alreadysync = True
+                    continue
                 self._handle_db_conn_error(ip_port, local_key)
                 LOG.exception(_LE("connection error while sending "
                                   "request to db: %(e)s") % {'e': e})
                 raise e
             except ResponseError as e:
+                if not alreadysync:
+                    LOG.info(_LI("redis driver sync old masterlist %s")
+                             % self.redis_mgt.master_list)
+                    self._sync_master_list()
+                    LOG.info(_LI("redis driver sync new masterlist %s")
+                             % self.redis_mgt.master_list)
+                    alreadysync = True
+                    continue
                 resp = str(e).split(' ')
                 if 'ASK' in resp[0]:
                     # one-time flag to force a node to serve a query about an
@@ -136,6 +163,14 @@ class RedisDbDriver(db_api.DbApi):
                                   % {'e': e})
                     raise e
             except Exception as e:
+                if not alreadysync:
+                    LOG.info(_LI("redis driver sync old masterlist %s")
+                             % self.redis_mgt.master_list)
+                    self._sync_master_list()
+                    LOG.info(_LI("redis driver sync new masterlist %s")
+                             % self.redis_mgt.master_list)
+                    alreadysync = True
+                    continue
                 self._handle_db_conn_error(ip_port, local_key)
                 LOG.exception(_LE("exception while sending request to "
                                   "db: %(e)s") % {'e': e})
@@ -212,6 +247,7 @@ class RedisDbDriver(db_api.DbApi):
         else:
             local_key = self.uuid_to_key(table, '*', topic)
             try:
+                self._sync_master_list()
                 ip_port = self.redis_mgt.get_ip_by_key(local_key)
                 client = self._get_client(local_key)
                 if client is None:
@@ -245,6 +281,7 @@ class RedisDbDriver(db_api.DbApi):
         else:
             local_key = self.uuid_to_key(table, '*', topic)
             try:
+                self._sync_master_list()
                 ip_port = self.redis_mgt.get_ip_by_key(local_key)
                 client = self._get_client(local_key)
                 if client is None:
@@ -268,6 +305,7 @@ class RedisDbDriver(db_api.DbApi):
         local_key = self.uuid_to_key('tunnel_key', 'key', None)
         ip_port = None
         try:
+            self._sync_master_list()
             ip_port = self.redis_mgt.get_ip_by_key(local_key)
             client = self._get_client(local_key)
             if client is None:
@@ -321,7 +359,10 @@ class RedisDbDriver(db_api.DbApi):
             return None
 
     def process_ha(self):
-        self._update_server_list()
+        result = self.redis_mgt.redis_get_master_list_from_syncstring(
+            RedisMgt.global_sharedlist.raw)
+        if result:
+            self._update_server_list()
 
     def register_topic_for_notification(self, topic):
         pass
