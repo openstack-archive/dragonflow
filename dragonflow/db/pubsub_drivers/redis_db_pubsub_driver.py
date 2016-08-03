@@ -18,7 +18,7 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import redis
 
-from dragonflow._i18n import _LE, _LW
+from dragonflow._i18n import _LE, _LW, _LI
 from dragonflow.common import common_params
 from dragonflow.db.drivers import redis_mgt
 from dragonflow.db import pub_sub_api
@@ -44,6 +44,8 @@ class RedisPubSub(pub_sub_api.PubSubApi):
 
 
 class RedisPublisherAgent(pub_sub_api.PublisherApi):
+
+    publish_retry_times = 5
 
     def __init__(self):
         super(RedisPublisherAgent, self).__init__()
@@ -74,28 +76,39 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
         if self.remote is None:
             self._update_client()
 
+    def _sync_master_list(self):
+        LOG.info(_LI("publish connection old masterlist %s"),
+                 self.redis_mgt.master_list)
+        result = self.redis_mgt.redis_get_master_list_from_syncstring(
+            redis_mgt.RedisMgt.global_sharedlist.raw)
+        LOG.info(_LI("publish connection new masterlist %s"),
+                 self.redis_mgt.master_list)
+        if result:
+            self._update_client()
+
     def send_event(self, update, topic=None):
         if topic:
             update.topic = topic
         local_topic = update.topic
         local_topic = local_topic.encode('utf8')
         data = pub_sub_api.pack_message(update.to_dict())
-        try:
-            if self.client is not None:
-                self.client.publish(local_topic, data)
-        except Exception as e:
-            LOG.exception(_LE("publish connection get exception "
-                              "%(e)s") % {'e': e})
-            self.redis_mgt.remove_node_from_master_list(self.remote)
-            self._update_client()
+        ttl = self.publish_retry_times
+        alreadysync = False
+        while ttl > 0:
+            ttl -= 1
             try:
                 if self.client is not None:
                     self.client.publish(local_topic, data)
-            except Exception:
+                    break
+            except Exception as e:
+                if not alreadysync:
+                    self._sync_master_list()
+                    alreadysync = True
+                    LOG.exception(_LE("publish error remote:%(remote)s "),
+                                  {'remote': self.remote})
+                    continue
                 self.redis_mgt.remove_node_from_master_list(self.remote)
                 self._update_client()
-                LOG.exception(_LE("publish error remote:%(remote)s")
-                              % {'remote': self.remote})
 
     def set_publisher_for_failover(self, pub, callback):
         self.redis_mgt.set_publisher(pub, callback)
@@ -194,20 +207,20 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                                     value)
                         else:
                             LOG.warning(_LW("receive unknown message in "
-                                            "subscriber %(type)s")
-                                        % {'type': data['type']})
+                                            "subscriber %(type)s"),
+                                        {'type': data['type']})
 
                 else:
                     LOG.warning(_LW("pubsub lost connection %(ip)s:"
-                                    "%(port)s")
-                                % {'ip': self.ip,
-                                   'port': self.plugin_updates_port})
+                                    "%(port)s"),
+                                {'ip': self.ip,
+                                 'port': self.plugin_updates_port})
                     eventlet.sleep(1)
 
             except Exception as e:
                 LOG.warning(_LW("subscriber listening task lost "
                                 "connection "
-                                "%(e)s") % {'e': e})
+                                "%(e)s"), {'e': e})
 
                 try:
                     connection = self.pub_sub.connection
@@ -230,6 +243,6 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                         LOG.warning(_LW("there is no more db node "
                                         "available"))
 
-                    LOG.exception(_LE("reconnect error %(ip)s:%(port)s")
-                                  % {'ip': self.ip,
-                                     'port': self.plugin_updates_port})
+                    LOG.exception(_LE("reconnect error %(ip)s:%(port)s"),
+                                  {'ip': self.ip,
+                                   'port': self.plugin_updates_port})
