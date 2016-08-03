@@ -65,6 +65,7 @@ class NbApi(object):
                     self.publisher,
                     self.db_recover_callback)
                 self.publisher.start_detect_for_failover()
+                self.driver.set_neutron_server(self.is_neutron_server)
             else:
                 # NOTE(gampel) we want to start queuing event as soon
                 # as possible
