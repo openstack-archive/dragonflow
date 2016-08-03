@@ -190,3 +190,10 @@ class DbApi(object):
 
         :returns:     Unique id
         """
+
+    @abc.abstractmethod
+    def set_neutron_server(self, is_neutron_server):
+        """mark whether driver runs on neturon servier
+
+        :returns:     None
+        """
