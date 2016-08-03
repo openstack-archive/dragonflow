@@ -36,6 +36,7 @@ class RedisDbDriver(db_api.DbApi):
         self.clients = {}
         self.remote_server_lists = []
         self.redis_mgt = None
+        self.is_neutron_server = False
 
     def initialize(self, db_ip, db_port, **args):
         # get remote ip port list
@@ -60,7 +61,7 @@ class RedisDbDriver(db_api.DbApi):
         pass
 
     def delete_table(self, table):
-        local_key = self.uuid_to_key(table, '*', '*')
+        local_key = self._uuid_to_key(table, '*', '*')
         for host, client in six.iteritems(self.clients):
             local_keys = client.keys(local_key)
             if len(local_keys) > 0:
@@ -78,6 +79,13 @@ class RedisDbDriver(db_api.DbApi):
         if local_key is not None:
             LOG.exception(_LE("update server list, key: %(key)s")
                           % {'key': local_key})
+
+    def _sync_master_list(self):
+        if self.is_neutron_server:
+            result = self.redis_mgt.redis_get_master_list_from_syncstring(
+                redis_mgt.RedisMgt.global_sharedlist.raw)
+            if result:
+                self._update_server_list()
 
     def _gen_args(self, local_key, value):
         args = []
@@ -98,7 +106,7 @@ class RedisDbDriver(db_api.DbApi):
             LOG.warning(_LW("invalid oper: %(oper)s")
                         % {'oper': oper})
             return None
-
+        self._sync_master_list()
         ip_port = self.redis_mgt.get_ip_by_key(local_key)
         client = self._get_client(local_key, ip_port)
         if client is None:
@@ -151,7 +159,8 @@ class RedisDbDriver(db_api.DbApi):
 
     def get_key(self, table, key, topic=None):
         if topic is None:
-            local_key = self.uuid_to_key(table, key, '*')
+            local_key = self._uuid_to_key(table, key, '*')
+            self._sync_master_list()
             try:
                 for host, client in six.iteritems(self.clients):
                     local_keys = client.keys(local_key)
@@ -162,7 +171,7 @@ class RedisDbDriver(db_api.DbApi):
                               % {'key': local_key})
 
         else:
-            local_key = self.uuid_to_key(table, key, topic)
+            local_key = self._uuid_to_key(table, key, topic)
             try:
                 # return nil if not found
                 return self._execute_cmd("GET", local_key)
@@ -171,7 +180,7 @@ class RedisDbDriver(db_api.DbApi):
                               % {'key': local_key})
 
     def set_key(self, table, key, value, topic=None):
-        local_key = self.uuid_to_key(table, key, topic)
+        local_key = self._uuid_to_key(table, key, topic)
 
         try:
             res = self._execute_cmd("SET", local_key, value)
@@ -188,7 +197,7 @@ class RedisDbDriver(db_api.DbApi):
 
     def delete_key(self, table, key, topic=None):
         local_topic = topic
-        local_key = self.uuid_to_key(table, key, local_topic)
+        local_key = self._uuid_to_key(table, key, local_topic)
 
         try:
             res = self._execute_cmd("DEL", local_key)
@@ -204,8 +213,9 @@ class RedisDbDriver(db_api.DbApi):
         res = []
         ip_port = None
         if topic is None:
-            local_key = self.uuid_to_key(table, '*', '*')
+            local_key = self._uuid_to_key(table, '*', '*')
             try:
+                self._sync_master_list()
                 for host, client in six.iteritems(self.clients):
                     local_keys = client.keys(local_key)
                     if len(local_keys) > 0:
@@ -218,8 +228,9 @@ class RedisDbDriver(db_api.DbApi):
                               % {'key': local_key})
 
         else:
-            local_key = self.uuid_to_key(table, '*', topic)
+            local_key = self._uuid_to_key(table, '*', topic)
             try:
+                self._sync_master_list()
                 ip_port = self.redis_mgt.get_ip_by_key(local_key)
                 client = self._get_client(local_key, ip_port)
                 if client is None:
@@ -238,8 +249,9 @@ class RedisDbDriver(db_api.DbApi):
         res = []
         ip_port = None
         if topic is None:
-            local_key = self.uuid_to_key(table, '*', '*')
+            local_key = self._uuid_to_key(table, '*', '*')
             try:
+                self._sync_master_list()
                 for host, client in six.iteritems(self.clients):
                     ip_port = host
                     res.extend(client.keys(local_key))
@@ -251,8 +263,9 @@ class RedisDbDriver(db_api.DbApi):
                               % {'key': local_key, 'e': e})
 
         else:
-            local_key = self.uuid_to_key(table, '*', topic)
+            local_key = self._uuid_to_key(table, '*', topic)
             try:
+                self._sync_master_list()
                 ip_port = self.redis_mgt.get_ip_by_key(local_key)
                 client = self._get_client(local_key, ip_port)
                 if client is None:
@@ -273,9 +286,10 @@ class RedisDbDriver(db_api.DbApi):
         return m.group(1)
 
     def _allocate_unique_key(self):
-        local_key = self.uuid_to_key('tunnel_key', 'key', None)
+        local_key = self._uuid_to_key('tunnel_key', 'key', None)
         ip_port = None
         try:
+            self._sync_master_list()
             ip_port = self.redis_mgt.get_ip_by_key(local_key)
             client = self._get_client(local_key, ip_port)
             if client is None:
@@ -297,22 +311,12 @@ class RedisDbDriver(db_api.DbApi):
     def register_notification_callback(self, callback, topics=None):
         pass
 
-    def uuid_to_key(self, table, key, topic):
+    def _uuid_to_key(self, table, key, topic):
         if topic is None:
             local_key = ('{' + table + '.' + '}' + '.' + key)
         else:
             local_key = ('{' + table + '.' + topic + '}' + '.' + key)
         return local_key
-
-    def check_connection(self, ip_port):
-        try:
-            if self.clients[ip_port] is None:
-                return False
-            self.clients[ip_port].get(None)
-        except (redis.exceptions.ConnectionError,
-                redis.exceptions.BusyLoadingError):
-            return False
-        return True
 
     def _get_client(self, key=None, host=None):
         if host is None:
@@ -329,10 +333,16 @@ class RedisDbDriver(db_api.DbApi):
             return None
 
     def process_ha(self):
-        self._update_server_list()
+        if self.is_neutron_server:
+            self._sync_master_list()
+        else:
+            self._update_server_list()
 
     def register_topic_for_notification(self, topic):
         pass
 
     def unregister_topic_for_notification(self, topic):
         pass
+
+    def set_neutron_server(self, is_neutron_server):
+        self.is_neutron_server = is_neutron_server
