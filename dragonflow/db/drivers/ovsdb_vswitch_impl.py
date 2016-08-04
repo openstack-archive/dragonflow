@@ -20,6 +20,7 @@ from neutron.agent.ovsdb.native.commands import BaseCommand
 from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import helpers
 from neutron.agent.ovsdb.native import idlutils
+from neutron.conf.agent import ovs_conf
 from oslo_config import cfg
 from oslo_log import log
 from ovs.db import idl
@@ -32,6 +33,9 @@ from dragonflow.common import constants
 from dragonflow.db import api_vswitch
 
 LOG = log.getLogger(__name__)
+
+
+ovs_conf.register_ovs_agent_opts()
 
 
 ovsdb_monitor_table_filter_default = {
