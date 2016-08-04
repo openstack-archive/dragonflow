@@ -56,10 +56,6 @@ function is_df_db_driver_selected {
     return 1
 }
 
-function is_fn_exists {
-    [ `type -t $1`"" == 'function' ]
-}
-
 if is_service_enabled df-etcd ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/etcd_driver
@@ -257,11 +253,11 @@ function install_df {
 
     install_zeromq
 
-    if is_fn_exists nb_db_driver_install_server; then
+    if function_exists nb_db_driver_install_server; then
         nb_db_driver_install_server
     fi
 
-    if is_fn_exists nb_db_driver_install_client; then
+    if function_exists nb_db_driver_install_client; then
         nb_db_driver_install_client
     fi
 
@@ -345,7 +341,7 @@ function stop_df {
     cleanup_nb_db
     drop_nb_db
 
-    if is_fn_exists nb_db_driver_stop_server; then
+    if function_exists nb_db_driver_stop_server; then
         nb_db_driver_stop_server
     fi
 }
@@ -401,7 +397,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         # We have to start at install time, because Neutron's post-config
         # phase runs ovs-vsctl.
         start_ovs
-        if is_fn_exists nb_db_driver_start_server; then
+        if function_exists nb_db_driver_start_server; then
             nb_db_driver_start_server
         fi
         disable_libvirt_apparmor
