@@ -24,6 +24,7 @@ from oslo_config import cfg
 from oslo_log import log
 from ovs.db import idl
 from ovs import poller
+from ovs.vlog import Vlog
 import retrying
 import six
 import threading
@@ -130,6 +131,7 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.nb_api = nb_api
         self.ovsdb_monitor = None
         self.integration_bridge = cfg.CONF.df.integration_bridge
+        Vlog.init('dragonflow')
 
     def initialize(self):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
