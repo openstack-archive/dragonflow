@@ -207,7 +207,7 @@ in the same way as the original flow.
 The controller installs an ARP responder mapping the modified IP address to the
 MAC address of the VM initiating the request. The ARP responder flow is matched
 with the tap-metadata in_port, so that the installed ARP responder can only
-affect the metadata service interface. This is preferrable to directly changing
+affect the metadata service interface. This is preferable to directly changing
 the interface's ARP table, since it includes sending a command to OVS, rather
 than modifying the Linux kernel via CLI.
 
@@ -223,7 +223,7 @@ these packets will be routed back to the VM via OVS.
 
 The return flows are installed in the metadata service reply table. They detect
 the destination VM by the destination IP, which contains the in_port. The flows
-then re-set the destination IP to the VMs link-locak IP address, and then route
+then re-set the destination IP to the VMs link-local IP address, and then route
 the packet to that VM via the L2 forwarding mechanism.
 
 Note that in this method, the VMs can select conflicting link-local IPs, and
