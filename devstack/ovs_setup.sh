@@ -173,6 +173,9 @@ function start_ovs {
 
         _neutron_ovs_base_setup_bridge $INTEGRATION_BRIDGE
         sudo ovs-vsctl --no-wait set bridge $INTEGRATION_BRIDGE fail-mode=secure other-config:disable-in-band=true
+        if [ -n "$OVS_INTEGRATION_BRIDGE_PROTOCOLS" ]; then
+            sudo ovs-vsctl set bridge $INTEGRATION_BRIDGE protocols=$OVS_INTEGRATION_BRIDGE_PROTOCOLS
+        fi
     fi
 
     if [ -n "$OVS_MANAGER" ]; then
