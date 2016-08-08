@@ -40,6 +40,7 @@ from neutron.services import service_base
 
 from dragonflow._i18n import _LE
 from dragonflow.common import exceptions as df_exceptions
+from dragonflow.common import utils as df_utils
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.db.neutron import versionobjects_db as version_db
@@ -73,9 +74,12 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         self.router_scheduler = importutils.import_object(
             cfg.CONF.router_scheduler_driver)
         super(DFL3RouterPlugin, self).__init__()
-        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        nb_driver = df_utils.load_driver(
+            cfg.CONF.df.nb_db_class,
+            df_utils.DF_NB_DB_DRIVER_NAMESPACE,
+        )
         self.nb_api = api_nb.NbApi(
-                nb_driver_class(),
+                nb_driver,
                 use_pubsub=cfg.CONF.df.enable_df_pub_sub,
                 is_neutron_server=True)
         # TODO(hshan) provide interface to get nb_api
