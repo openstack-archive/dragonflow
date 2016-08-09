@@ -50,6 +50,7 @@ Spec Template
     remote_device_communication
     allowed_address_pairs
     security_groups
+    vlan_networking
 
 
 Indices and tables
