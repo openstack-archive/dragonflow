@@ -24,8 +24,7 @@ from oslo_utils import importutils
 
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import l3_rpc
-from neutron.common import constants as const
-from neutron.common import exceptions as n_exc
+from neutron.common import exceptions as n_common_exc
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.db import common_db_mixin
@@ -37,6 +36,8 @@ from neutron.db import l3_gwmode_db
 from neutron.plugins.common import constants
 from neutron.quota import resource_registry
 from neutron.services import service_base
+from neutron_lib import constants as const
+from neutron_lib import exceptions as n_exc
 
 from dragonflow._i18n import _LE
 from dragonflow.common import exceptions as df_exceptions
@@ -205,7 +206,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 floatingip_port = self._get_floatingip_port(
                     context, floatingip_dict['id'])
                 if not floatingip_port:
-                    raise n_exc.DeviceNotFoundError(
+                    raise n_common_exc.DeviceNotFoundError(
                         device_name=floatingip_dict['id'])
                 subnet_id = floatingip_port['fixed_ips'][0]['subnet_id']
                 floatingip_subnet = self._get_floatingip_subnet(

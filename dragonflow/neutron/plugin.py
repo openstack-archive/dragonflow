@@ -21,6 +21,7 @@ from neutron.api.v2 import attributes as attr
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
+from neutron.common import exceptions as n_common_exc
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.common import utils
@@ -1007,7 +1008,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 floatingip_port = self._get_floatingip_port(
                     context, floatingip_dict['id'])
                 if not floatingip_port:
-                    raise n_exc.DeviceNotFoundError(
+                    raise n_common_exc.DeviceNotFoundError(
                         device_name=floatingip_dict['id'])
                 subnet_id = floatingip_port['fixed_ips'][0]['subnet_id']
                 floatingip_subnet = self._get_floatingip_subnet(
