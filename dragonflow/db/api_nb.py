@@ -19,6 +19,7 @@ import time
 
 import eventlet
 import netaddr
+from neutron_lib import constants as const
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -471,7 +472,8 @@ class NbApi(object):
         lport_json = self.driver.get_key('lport', id, topic)
         lport = jsonutils.loads(lport_json)
         for col, val in columns.items():
-            lport[col] = val
+            if val != const.ATTR_NOT_SPECIFIED:
+                lport[col] = val
         lport_json = jsonutils.dumps(lport)
         self.driver.set_key('lport', id, lport_json, lport['topic'])
         self._send_db_change_event('lport', id, 'set', lport_json,
