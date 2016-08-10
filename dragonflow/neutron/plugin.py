@@ -502,10 +502,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     # if the port-security-enabled field was not set in the
                     # original port, we should remain this field of the
                     # logical port in the DF DB unchanged.
-                    lport = self.nb_api.get_logical_port(
-                        port_id=id, topic=updated_port['tenant_id'])
-                    updated_port[psec.PORTSECURITY] = \
-                        lport.get_port_security_enable()
+                    updated_port[psec.PORTSECURITY] = api_nb.NB_VAL_NOT_SET
 
             self._process_portbindings_create_and_update(context,
                                                          port['port'],

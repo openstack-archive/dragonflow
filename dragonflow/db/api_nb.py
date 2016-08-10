@@ -36,6 +36,11 @@ LOG = log.getLogger(__name__)
 DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
                   'sync', 'sync_started', 'sync_finished', 'dbrestart']
 
+# If we do not want to change the value in northbound db,
+# we set it 'NOT_SET' in that value in advance and check it
+# in nb-api module.
+NB_VAL_NOT_SET = 'NOT_SET'
+
 
 class NbApi(object):
 
@@ -471,7 +476,8 @@ class NbApi(object):
         lport_json = self.driver.get_key('lport', id, topic)
         lport = jsonutils.loads(lport_json)
         for col, val in columns.items():
-            lport[col] = val
+            if val != NB_VAL_NOT_SET:
+                lport[col] = val
         lport_json = jsonutils.dumps(lport)
         self.driver.set_key('lport', id, lport_json, lport['topic'])
         self._send_db_change_event('lport', id, 'set', lport_json,
