@@ -20,6 +20,11 @@ DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
 ML2_APPS_LIST_DEFAULT="l2_ml2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
+if is_service_enabled df-metadata ; then
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,metadata_service_app.MetadataServiceApp"
+    ML2_APPS_LIST_DEFAULT="$ML2_APPS_LIST_DEFAULT,metadata_service_app.MetadataServiceApp"
+fi
+
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
@@ -111,6 +116,18 @@ source $DEST/dragonflow/devstack/ovs_setup.sh
 # Entry Points
 # ------------
 
+function configure_df_metadata_service {
+    if is_service_enabled df-metadata ; then
+        NOVA_CONF=${NOVA_CONF:-"/etc/nova/nova.conf"}
+        iniset $NOVA_CONF neutron service_metadata_proxy True
+        iniset $NOVA_CONF neutron metadata_proxy_shared_secret $METADATA_PROXY_SHARED_SECRET
+        iniset $NEUTRON_CONF DEFAULT metadata_proxy_shared_secret $METADATA_PROXY_SHARED_SECRET
+        iniset $NEUTRON_CONF df_metadata ip "$DF_METADATA_SERVICE_IP"
+        iniset $NEUTRON_CONF df_metadata port "$DF_METADATA_SERVICE_PORT"
+        iniset $NEUTRON_CONF df_metadata interface "$DF_METADATA_SERVICE_INTERFACE"
+    fi
+}
+
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
@@ -173,6 +190,8 @@ function configure_df_plugin {
             iniset $NEUTRON_CONF quotas quota_floatingip "-1"
             iniset $NEUTRON_CONF quotas quota_security_group_rule "-1"
         fi
+
+        configure_df_metadata_service
     else
         _create_neutron_conf_dir
         # NOTE: We need to manually generate the neutron.conf file here. This
@@ -207,6 +226,7 @@ function configure_df_plugin {
         fi
         iniset $NEUTRON_CONF df enable_selective_topology_distribution \
                                 "$DF_SELECTIVE_TOPO_DIST"
+        configure_df_metadata_service
     fi
 }
 
@@ -382,6 +402,21 @@ function stop_pubsub_service {
     fi
 }
 
+function start_df_metadata_agent {
+    if is_service_enabled df-metadata ; then
+        echo "Starting Dragonflow metadata service"
+        run_process df-metadata "python $DF_METADATA_SERVICE --config-file $NEUTRON_CONF"
+    fi
+}
+
+function stop_df_metadata_agent {
+    if is_service_enabled df-metadata ; then
+        echo "Stopping Dragonflow metadata service"
+        stop_process df-metadata
+        sudo ovs-vsctl del-port br-int $DF_METADATA_SERVICE_INTERFACE
+    fi
+}
+
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
@@ -425,9 +460,11 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         fi
 
         start_df
+        start_df_metadata_agent
     fi
 
     if [[ "$1" == "unstack" ]]; then
+        stop_df_metadata_agent
         stop_df
         cleanup_ovs
         stop_ovs
