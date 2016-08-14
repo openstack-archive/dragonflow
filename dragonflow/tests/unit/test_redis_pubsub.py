@@ -14,8 +14,6 @@
 
 import mock
 
-from oslo_serialization import jsonutils
-
 from dragonflow.db.db_common import DbUpdate
 from dragonflow.db import pub_sub_api
 from dragonflow.db.pubsub_drivers.redis_db_pubsub_driver \
@@ -52,8 +50,7 @@ class TestRedisPubSub(tests_base.BaseTestCase):
                           "action",
                           "value",
                           topic='teststring')
-        event_json = jsonutils.dumps(update.to_dict())
-        data = pub_sub_api.pack_message(event_json)
+        data = pub_sub_api.pack_message(update.to_dict())
         self.RedisSubscriberAgent.pub_sub.listen.return_value = \
             [{'type': 'message', 'data': data}]
         self.RedisSubscriberAgent.pub_sub.subscribe.return_value = 1
