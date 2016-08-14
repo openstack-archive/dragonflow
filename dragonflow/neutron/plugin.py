@@ -492,21 +492,21 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             # TODO(yuanwei): in ML2 plugin, security_groups and
             # allow_address_pairs configuration depend on portsec switch is
             # enabled.
+            port_security_value = None
             if psec.PORTSECURITY in port['port']:
                 self._process_port_port_security_update(
                     context, port['port'], updated_port)
+                port_security_value = updated_port[psec.PORTSECURITY]
             else:
                 original_port_security = original_port.get(psec.PORTSECURITY)
                 if original_port_security is not None:
                     updated_port[psec.PORTSECURITY] = original_port_security
+                    port_security_value = original_port_security
                 else:
                     # if the port-security-enabled field was not set in the
                     # original port, we should remain this field of the
                     # logical port in the DF DB unchanged.
-                    lport = self.nb_api.get_logical_port(
-                        port_id=id, topic=updated_port['tenant_id'])
-                    updated_port[psec.PORTSECURITY] = \
-                        lport.get_port_security_enable()
+                    port_security_value = const.ATTR_NOT_SPECIFIED
 
             self._process_portbindings_create_and_update(context,
                                                          port['port'],
@@ -567,8 +567,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  device_id=updated_port.get(
                                      'device_id', None),
                                  security_groups=security_groups,
-                                 port_security_enabled=updated_port[
-                                     psec.PORTSECURITY],
+                                 port_security_enabled=port_security_value,
                                  allowed_address_pairs=updated_port[
                                      addr_pair.ADDRESS_PAIRS],
                                  binding_profile=updated_port.get(
