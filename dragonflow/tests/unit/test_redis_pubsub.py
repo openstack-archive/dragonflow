@@ -52,8 +52,7 @@ class TestRedisPubSub(tests_base.BaseTestCase):
                           "action",
                           "value",
                           topic='teststring')
-        event_json = jsonutils.dumps(update.to_dict())
-        data = pub_sub_api.pack_message(event_json)
+        data = pub_sub_api.pack_message(update.to_dict())
         self.RedisSubscriberAgent.pub_sub.listen.return_value = \
             [{'type': 'message', 'data': data}]
         self.RedisSubscriberAgent.pub_sub.subscribe.return_value = 1
