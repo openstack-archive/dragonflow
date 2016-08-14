@@ -175,6 +175,9 @@ function start_ovs {
         sudo ovs-vsctl --no-wait set bridge $INTEGRATION_BRIDGE fail-mode=secure other-config:disable-in-band=true
     fi
 
+    if [ -n "$OVS_MANAGER" ]; then
+        sudo ovs-vsctl set-manager $OVS_MANAGER
+    fi
     cd $_pwd
 }
 
