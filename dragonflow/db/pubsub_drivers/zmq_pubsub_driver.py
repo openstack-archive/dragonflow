@@ -16,7 +16,6 @@ import eventlet
 from eventlet.green import zmq
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LI, _LE
 from dragonflow.common.exceptions import UnsupportedTransportException
@@ -85,8 +84,7 @@ class ZMQPublisherAgentBase(pub_sub_api.PublisherApi):
         else:
             topic = db_common.SEND_ALL_TOPIC
             update.topic = topic
-        json_data = jsonutils.dumps(update.to_dict())
-        data = pub_sub_api.pack_message(json_data)
+        data = pub_sub_api.pack_message(update.to_dict())
         self.socket.send_multipart([topic, data])
         LOG.debug("sending %s" % update)
 
@@ -169,8 +167,7 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
             try:
                 eventlet.sleep(0)
                 [topic, data] = self.sub_socket.recv_multipart()
-                entry_json = pub_sub_api.unpack_message(data)
-                message = jsonutils.loads(entry_json)
+                message = pub_sub_api.unpack_message(data)
                 self.db_changes_callback(
                     message['table'],
                     message['key'],

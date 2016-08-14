@@ -77,9 +77,8 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
         if topic:
             update.topic = topic
         local_topic = update.topic
-        event_json = jsonutils.dumps(update.to_dict())
         local_topic = local_topic.encode('utf8')
-        data = pub_sub_api.pack_message(event_json)
+        data = pub_sub_api.pack_message(update.to_dict())
         try:
             if self.client is not None:
                 self.client.publish(local_topic, data)
@@ -177,8 +176,7 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                         elif 'unsubscribe' == data['type']:
                             continue
                         elif 'message' == data['type']:
-                            entry = pub_sub_api.unpack_message(data['data'])
-                            entry_json = jsonutils.loads(entry)
+                            entry_json = pub_sub_api.unpack_message(data['data'])
 
                             if entry_json['table'] != 'ha':
                                 self.db_changes_callback(
