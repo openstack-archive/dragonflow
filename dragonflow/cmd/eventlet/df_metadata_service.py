@@ -23,6 +23,9 @@ from dragonflow.controller import metadata_service_app
 import sys
 
 
+METADATA_ROUTE_TABLE_ID = '2'
+
+
 def environment_setup():
     bridge = cfg.CONF.df.integration_bridge
     interface = cfg.CONF.df_metadata.interface
@@ -37,10 +40,11 @@ def environment_setup():
     cmd = ["ip", "link", "set", "dev", interface, "up"]
     utils.execute(cmd, run_as_root=True)
 
-    cmd = ["ip", "route", "add", "0.0.0.0/0", "dev", interface, "table", "2"]
+    cmd = ["ip", "route", "add", "0.0.0.0/0", "dev", interface,
+           "table", METADATA_ROUTE_TABLE_ID]
     utils.execute(cmd, run_as_root=True)
 
-    cmd = ["ip", "rule", "add", "from", ip, "table", "2"]
+    cmd = ["ip", "rule", "add", "from", ip, "table", METADATA_ROUTE_TABLE_ID]
     utils.execute(cmd, run_as_root=True)
 
 
@@ -49,6 +53,10 @@ def environment_destroy():
     interface = cfg.CONF.df_metadata.interface
     cmd = ["ovs-vsctl", "del-port", bridge, interface]
     utils.execute(cmd, run_as_root=True, check_exit_code=[0])
+
+    ip = cfg.CONF.df_metadata.ip
+    cmd = ["ip", "rule", "del", "from", ip, "table", METADATA_ROUTE_TABLE_ID]
+    utils.execute(cmd, run_as_root=True)
 
 
 def main():
