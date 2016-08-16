@@ -473,9 +473,9 @@ class L2App(DFlowApp):
 
         network = self.local_networks.get(local_network_id, None)
 
-        if network is not None and network.values is not None:
+        if network:
             local_ports = network.get('local')
-            if local_ports is not None and local_ports.values is not None:
+            if local_ports:
                 return
 
         self._del_network_flows_for_tunnel(segmentation_id)
