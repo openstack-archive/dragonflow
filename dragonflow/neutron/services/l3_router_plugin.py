@@ -125,6 +125,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_router(self, context, router_id, router):
         with context.session.begin(subtransactions=True):
+            setattr(context, 'GUARD_TRANSACTION', False)
             router = super(DFL3RouterPlugin, self).update_router(
                 context, router_id, router)
             router_version = version_db._update_db_version_row(
@@ -277,6 +278,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def add_router_interface(self, context, router_id, interface_info):
         with context.session.begin(subtransactions=True):
+            setattr(context, 'GUARD_TRANSACTION', False)
             result = super(DFL3RouterPlugin, self).add_router_interface(
                 context, router_id, interface_info)
             router_version = version_db._update_db_version_row(
@@ -304,6 +306,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def remove_router_interface(self, context, router_id, interface_info):
         with context.session.begin(subtransactions=True):
+            setattr(context, 'GUARD_TRANSACTION', False)
             new_router = super(DFL3RouterPlugin, self).remove_router_interface(
                 context, router_id, interface_info)
             router_version = version_db._update_db_version_row(
