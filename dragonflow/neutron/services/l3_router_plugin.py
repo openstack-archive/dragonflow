@@ -104,6 +104,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_router(self, context, router):
+        setattr(context, 'GUARD_TRANSACTION', False)
         with context.session.begin(subtransactions=True):
             router = super(DFL3RouterPlugin, self).create_router(
                 context, router)
@@ -124,6 +125,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_router(self, context, router_id, router):
+        setattr(context, 'GUARD_TRANSACTION', False)
         with context.session.begin(subtransactions=True):
             router = super(DFL3RouterPlugin, self).update_router(
                 context, router_id, router)
@@ -153,6 +155,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def delete_router(self, context, router_id):
+        setattr(context, 'GUARD_TRANSACTION', False)
         router = self.get_router(context, router_id)
         with context.session.begin(subtransactions=True):
             ret_val = super(DFL3RouterPlugin, self).delete_router(context,
@@ -276,6 +279,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def add_router_interface(self, context, router_id, interface_info):
+        setattr(context, 'GUARD_TRANSACTION', False)
         with context.session.begin(subtransactions=True):
             result = super(DFL3RouterPlugin, self).add_router_interface(
                 context, router_id, interface_info)
@@ -303,6 +307,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def remove_router_interface(self, context, router_id, interface_info):
+        setattr(context, 'GUARD_TRANSACTION', False)
         with context.session.begin(subtransactions=True):
             new_router = super(DFL3RouterPlugin, self).remove_router_interface(
                 context, router_id, interface_info)
