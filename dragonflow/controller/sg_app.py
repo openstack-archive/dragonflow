@@ -994,13 +994,22 @@ class SGApp(DFlowApp):
 
         return added_secgroups, removed_secgroups
 
+    def _if_security_groups_are_not_configured(self, secgroups):
+        if secgroups is None:
+            return True
+
+        if len(secgroups) == 0:
+            return True
+
+        return False
+
     def remove_local_port(self, lport):
         if self.get_datapath() is None:
             LOG.error(_LE("datapath is none"))
             return
 
         secgroups = lport.get_security_groups()
-        if secgroups is None:
+        if self._if_security_groups_are_not_configured(secgroups):
             return
 
         # uninstall ct table
@@ -1015,7 +1024,7 @@ class SGApp(DFlowApp):
             return
 
         secgroups = lport.get_security_groups()
-        if secgroups is None:
+        if self._if_security_groups_are_not_configured(secgroups):
             return
 
         for secgroup_id in secgroups:
@@ -1033,7 +1042,9 @@ class SGApp(DFlowApp):
             self._get_added_and_removed_secgroups(secgroups,
                                                   original_secgroups)
 
-        if secgroups is None and original_secgroups:
+        if (self._if_security_groups_are_not_configured(secgroups)) and \
+           (not self._if_security_groups_are_not_configured(
+               original_secgroups)):
             # uninstall ct table
             self._uninstall_connection_track_flows(lport)
 
@@ -1043,7 +1054,8 @@ class SGApp(DFlowApp):
         for secgroup_id in removed_secgroups:
             self._remove_local_port_associating(lport, secgroup_id)
 
-        if secgroups and original_secgroups is None:
+        if (not self._if_security_groups_are_not_configured(secgroups)) and \
+           (self._if_security_groups_are_not_configured(original_secgroups)):
             # install ct table
             self._install_connection_track_flows(lport)
 
@@ -1071,7 +1083,7 @@ class SGApp(DFlowApp):
             return
 
         secgroups = lport.get_security_groups()
-        if secgroups is None:
+        if self._if_security_groups_are_not_configured(secgroups):
             return
 
         for secgroup_id in secgroups:
@@ -1086,7 +1098,7 @@ class SGApp(DFlowApp):
             return
 
         secgroups = lport.get_security_groups()
-        if secgroups is None:
+        if self._if_security_groups_are_not_configured(secgroups):
             return
 
         for secgroup_id in secgroups:
