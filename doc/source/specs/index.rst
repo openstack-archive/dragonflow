@@ -51,6 +51,7 @@ Spec Template
     allowed_address_pairs
     security_groups
     vlan_networking
+    vm_qos
 
 
 Indices and tables
