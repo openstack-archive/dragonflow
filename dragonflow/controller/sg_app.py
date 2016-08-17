@@ -1000,7 +1000,7 @@ class SGApp(DFlowApp):
             return
 
         secgroups = lport.get_security_groups()
-        if secgroups is None:
+        if not secgroups:
             return
 
         # uninstall ct table
@@ -1015,7 +1015,7 @@ class SGApp(DFlowApp):
             return
 
         secgroups = lport.get_security_groups()
-        if secgroups is None:
+        if not secgroups:
             return
 
         for secgroup_id in secgroups:
@@ -1033,7 +1033,7 @@ class SGApp(DFlowApp):
             self._get_added_and_removed_secgroups(secgroups,
                                                   original_secgroups)
 
-        if secgroups is None and original_secgroups:
+        if (not secgroups) and original_secgroups:
             # uninstall ct table
             self._uninstall_connection_track_flows(lport)
 
@@ -1043,7 +1043,7 @@ class SGApp(DFlowApp):
         for secgroup_id in removed_secgroups:
             self._remove_local_port_associating(lport, secgroup_id)
 
-        if secgroups and original_secgroups is None:
+        if secgroups and (not original_secgroups):
             # install ct table
             self._install_connection_track_flows(lport)
 
@@ -1071,7 +1071,7 @@ class SGApp(DFlowApp):
             return
 
         secgroups = lport.get_security_groups()
-        if secgroups is None:
+        if not secgroups:
             return
 
         for secgroup_id in secgroups:
@@ -1086,7 +1086,7 @@ class SGApp(DFlowApp):
             return
 
         secgroups = lport.get_security_groups()
-        if secgroups is None:
+        if not secgroups:
             return
 
         for secgroup_id in secgroups:
