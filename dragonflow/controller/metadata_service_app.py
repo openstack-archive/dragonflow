@@ -203,6 +203,16 @@ class MetadataServiceApp(DFlowApp):
             ip_proto=ipv4.inet.IPPROTO_TCP,
             tcp_dst=HTTP_PORT,
         )
+        inst = [parser.OFPInstructionGotoTable(
+            const.SERVICES_CLASSIFICATION_TABLE)]
+        # Bypass the ct state check for metadata request.
+        self.mod_flow(
+            datapath=datapath,
+            table_id=const.EGRESS_CONNTRACK_TABLE,
+            command=ofproto.OFPFC_ADD,
+            priority=const.PRIORITY_HIGH,
+            match=match,
+            inst=inst)
 
         inst = self._get_incoming_flow_instructions(ofproto, parser)
         self.mod_flow(
