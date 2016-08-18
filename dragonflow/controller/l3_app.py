@@ -150,12 +150,13 @@ class L3App(DFlowApp):
         dst_ip = router_port.get_ip()
 
         # Add router ARP & ICMP responder for IPv4 Addresses
-        if netaddr.IPAddress(router_port.get_ip()).version == 4:
+        is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
+        if is_ipv4:
             ArpResponder(datapath, local_network_id, dst_ip, mac).add()
             ICMPResponder(datapath, dst_ip, mac).add()
 
         # If router interface IP, send to output table
-        if netaddr.IPAddress(dst_ip).version == 4:
+        if is_ipv4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     metadata=local_network_id,
                                     ipv4_dst=dst_ip)
