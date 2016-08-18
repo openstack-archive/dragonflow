@@ -25,13 +25,13 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_service import loopingcall
 from oslo_utils import encodeutils
-from oslo_utils import importutils
 
 from neutron.agent.ovsdb.native import idlutils
 
 from dragonflow._i18n import _, _LW, _LE
 from dragonflow.common.exceptions import LogicalPortNotFoundByTunnelKey
 from dragonflow.common.exceptions import NoRemoteIPProxyException
+from dragonflow.common import utils as df_utils
 from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.df_base_app import DFlowApp
@@ -480,9 +480,11 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
     def __init__(self, conf):
         super(DFMetadataProxyHandler, self).__init__()
         self.conf = conf
-        nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
+        nb_driver = df_utils.load_driver(
+            cfg.CONF.df.nb_db_class,
+            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
         self.nb_api = api_nb.NbApi(
-            nb_driver_class(),
+            nb_driver,
             use_pubsub=cfg.CONF.df.enable_df_pub_sub)
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
