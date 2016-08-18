@@ -18,17 +18,17 @@ from oslo_log import log
 from dragonflow._i18n import _LI
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils as cookie
-from dragonflow.controller.df_base_app import DFlowApp
-from dragonflow.controller.ofswitch import OpenFlowSwitchMixin
+from dragonflow.controller import df_base_app
+from dragonflow.controller import ofswitch
 
 LOG = log.getLogger("dragonflow.controller.aging")
 
 
-class Aging(DFlowApp, OpenFlowSwitchMixin):
+class Aging(df_base_app.DFlowApp, ofswitch.OpenFlowSwitchMixin):
 
     def __init__(self, *args, **kwargs):
-        DFlowApp.__init__(self, *args, **kwargs)
-        OpenFlowSwitchMixin.__init__(self, args[0])
+        df_base_app.DFlowApp.__init__(self, *args, **kwargs)
+        ofswitch.OpenFlowSwitchMixin.__init__(self, args[0])
         self.aging_mask = const.GLOBAL_AGING_COOKIE_MASK
         self.do_aging = True
 

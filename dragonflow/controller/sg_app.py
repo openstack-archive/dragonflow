@@ -19,7 +19,7 @@ from ryu.ofproto import ether
 
 from dragonflow._i18n import _LI, _LE
 from dragonflow.controller.common import constants as const
-from dragonflow.controller.df_base_app import DFlowApp
+from dragonflow.controller import df_base_app
 
 
 config.setup_logging()
@@ -31,7 +31,7 @@ COOKIE_FULLMASK = 0xffffffffffffffff
 SG_PRIORITY_OFFSET = 2
 
 
-class SGApp(DFlowApp):
+class SGApp(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
         super(SGApp, self).__init__(*args, **kwargs)
