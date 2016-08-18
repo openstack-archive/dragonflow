@@ -20,9 +20,9 @@ from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
 
 from dragonflow._i18n import _, _LI
-from dragonflow.controller.common.arp_responder import ArpResponder
+from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
-from dragonflow.controller.df_base_app import DFlowApp
+from dragonflow.controller import df_base_app
 
 DF_L2_APP_OPTS = [
     cfg.BoolOpt(
@@ -41,7 +41,7 @@ OF_IN_PORT = 0xfff8
 LOG = log.getLogger(__name__)
 
 
-class L2App(DFlowApp):
+class L2App(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L2App, self).__init__(*args, **kwargs)
         self.local_networks = {}
@@ -93,7 +93,8 @@ class L2App(DFlowApp):
             return
         network_id = lport.get_external_value('local_network_id')
         mac = lport.get_mac()
-        ArpResponder(self.get_datapath(), network_id, ip, mac).add()
+        arp_responder.ArpResponder(self.get_datapath(),
+                                   network_id, ip, mac).add()
 
     def _remove_arp_responder(self, lport):
         if not self.is_install_arp_responder:
@@ -102,7 +103,8 @@ class L2App(DFlowApp):
         if netaddr.IPAddress(ip).version != 4:
             return
         network_id = lport.get_external_value('local_network_id')
-        ArpResponder(self.get_datapath(), network_id, ip).remove()
+        arp_responder.ArpResponder(self.get_datapath(),
+                                   network_id, ip).remove()
 
     def remove_local_port(self, lport):
 

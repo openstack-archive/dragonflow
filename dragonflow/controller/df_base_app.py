@@ -20,12 +20,12 @@ from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
 from dragonflow.controller.common.utils import set_aging_cookie_bits
-from dragonflow.controller.df_db_notifier import DBNotifyInterface
+from dragonflow.controller import df_db_notifier
 
 LOG = logging.getLogger(__name__)
 
 
-class DFlowApp(DBNotifyInterface):
+class DFlowApp(df_db_notifier.DBNotifyInterface):
     def __init__(self, api, db_store=None, vswitch_api=None, nb_api=None):
         self.api = api
         self.db_store = db_store
