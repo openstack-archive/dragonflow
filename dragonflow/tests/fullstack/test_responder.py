@@ -79,7 +79,6 @@ class ArpResponderTest(test_base.DFTestBase):
 
         flows_middle = self._get_arp_table_flows()
 
-        vm.server.stop()
         vm.close()
         eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
         flows_delta = [flow for flow in flows_middle
@@ -173,7 +172,6 @@ class ICMPResponderTest(test_base.DFTestBase):
 
         flows_middle = self._get_l2_lookup_table_flows()
 
-        vm.server.stop()
         vm.close()
         router.close()
         eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)

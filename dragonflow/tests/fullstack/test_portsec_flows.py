@@ -216,7 +216,6 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
         )
         self._check_all_flows_existed(expected_flow_list)
 
-        vm.server.stop()
         vm.close()
 
         time.sleep(utils.DEFAULT_CMD_TIMEOUT)

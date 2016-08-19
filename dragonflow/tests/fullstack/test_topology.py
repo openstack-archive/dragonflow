@@ -62,7 +62,6 @@ class TestTopology(test_base.DFTestBase):
 
     def _remove_vm(self, vm):
         vm_mac = vm.get_first_mac()
-        vm.server.stop()
         vm.close()
         wait_until_none(
             lambda: 1 if any(self._get_vm_flows(vm_mac)) else None, timeout=60,
