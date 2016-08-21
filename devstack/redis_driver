@@ -20,11 +20,13 @@ REDIS_PORT=`seq $REMOTE_PORT_START $REMOTE_PORT_END`
 function configure_redis {
 
     pushd /opt/redis3/conf
-    sudo sh -c "echo ulimit -SHn 40960 >> /etc/profile"
+    sudo sh -c "grep -q ulimit /etc/profile ||
+                echo ulimit -SHn 40960 >> /etc/profile"
     sudo sh -c "echo 1 > /proc/sys/net/ipv4/tcp_tw_reuse"
     sudo sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
     sudo sh -c "echo 2048 > /proc/sys/net/core/somaxconn"
-    sudo sh -c "echo vm.overcommit_memory = 1 >> /etc/sysctl.conf"
+    sudo sh -c "grep -q vm.overcommit_memory /etc/sysctl.conf ||
+                echo vm.overcommit_memory = 1 >> /etc/sysctl.conf"
     sudo sh -c "sysctl -p"
     for redisserver in $REDIS_SERVER_LIST; do
         for port in $REDIS_PORT; do
