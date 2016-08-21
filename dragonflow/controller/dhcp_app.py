@@ -175,7 +175,7 @@ class DHCPApp(DFlowApp):
             return
 
         dns = self._get_dns_address_list_bin(subnet)
-        host_routes = self._get_host_routes_list_bin(subnet)
+        host_routes = self._get_host_routes_list_bin(subnet, lport.get_ip())
         dhcp_server_address = str(self._get_dhcp_server_address(subnet))
         gateway_address = self._get_port_gateway_address(subnet)
         netmask_bin = self._get_port_netmask(subnet).packed
@@ -229,7 +229,7 @@ class DHCPApp(DFlowApp):
             return
 
         dns = self._get_dns_address_list_bin(subnet)
-        host_routes = self._get_host_routes_list_bin(subnet)
+        host_routes = self._get_host_routes_list_bin(subnet, lport.get_ip())
         dhcp_server_address = self._get_dhcp_server_address(subnet)
         netmask_bin = self._get_port_netmask(subnet).packed
         lease_time_bin = struct.pack('!I', self.lease_time)
@@ -279,8 +279,12 @@ class DHCPApp(DFlowApp):
             dns_bin += addrconv.ipv4.text_to_bin(address)
         return dns_bin
 
-    def _get_host_routes_list_bin(self, subnet):
+    def _get_host_routes_list_bin(self, subnet, port_ip):
         host_routes = subnet.get_host_routes()
+        # Add route for metadata request.
+        host_routes.append(
+            {'destination': '%s/32' % const.METADATA_SERVICE_IP,
+             'nexthop': port_ip})
         routes_bin = ''
 
         for route in host_routes:

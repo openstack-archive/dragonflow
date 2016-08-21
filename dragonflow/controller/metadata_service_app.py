@@ -44,11 +44,6 @@ from ryu.lib.packet import ipv4
 
 LOG = log.getLogger(__name__)
 
-# These two globals are constant, as defined by the metadata service API. VMs
-# contact 169.254.169.254:80, despite of where we actually listen to the
-# service. This will be modified by flows.
-METADATA_SERVICE_IP = '169.254.169.254'
-HTTP_PORT = 80
 FLOW_IDLE_TIMEOUT = 60
 
 # TODO(oanson) The TCP_* flag constants have already made it into ryu
@@ -199,9 +194,9 @@ class MetadataServiceApp(DFlowApp):
 
         match = parser.OFPMatch(
             eth_type=ethernet.ether.ETH_TYPE_IP,
-            ipv4_dst=METADATA_SERVICE_IP,
+            ipv4_dst=const.METADATA_SERVICE_IP,
             ip_proto=ipv4.inet.IPPROTO_TCP,
-            tcp_dst=HTTP_PORT,
+            tcp_dst=const.HTTP_PORT,
         )
         inst = [parser.OFPInstructionGotoTable(
             const.SERVICES_CLASSIFICATION_TABLE)]
@@ -240,9 +235,9 @@ class MetadataServiceApp(DFlowApp):
 
     def _get_incoming_flow_actions(self, ofproto, parser):
         actions = []
-        if self._ip != METADATA_SERVICE_IP:
+        if self._ip != const.METADATA_SERVICE_IP:
             actions.append(parser.OFPActionSetField(ipv4_dst=self._ip))
-        if self._port != HTTP_PORT:
+        if self._port != const.HTTP_PORT:
             actions.append(parser.OFPActionSetField(tcp_dst=self._port))
         actions.append(parser.OFPActionSetField(reg7=self._ofport))
         return actions
@@ -308,12 +303,12 @@ class MetadataServiceApp(DFlowApp):
                         n_bits=32,
                     ),
                     parser.NXFlowSpecLoad(
-                        src=int(netaddr.IPAddress(METADATA_SERVICE_IP)),
+                        src=int(netaddr.IPAddress(const.METADATA_SERVICE_IP)),
                         dst=('ipv4_src', 0),
                         n_bits=32,
                     ),
                     parser.NXFlowSpecLoad(
-                        src=HTTP_PORT,
+                        src=const.HTTP_PORT,
                         dst=('tcp_src', 0),
                         n_bits=16,
                     ),
@@ -402,7 +397,7 @@ class MetadataServiceApp(DFlowApp):
         self._arp_responder = ArpResponder(
             self.get_datapath(),
             None,
-            METADATA_SERVICE_IP,
+            const.METADATA_SERVICE_IP,
             mac
         )
         self._arp_responder.add()
