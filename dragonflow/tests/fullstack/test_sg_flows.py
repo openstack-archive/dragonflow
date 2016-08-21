@@ -318,7 +318,6 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         self.assertIsNotNone(ingress_associating_flow)
         self.assertIsNotNone(egress_associating_flow)
 
-        vm.server.stop()
         vm.close()
 
         time.sleep(utils.DEFAULT_CMD_TIMEOUT)
@@ -387,7 +386,6 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         # Check if the rule flows were installed.
         self._check_rule_flows(flows_after_change, True)
 
-        vm.server.stop()
         vm.close()
 
         # We can't guarantee that all rule flows have been deleted because

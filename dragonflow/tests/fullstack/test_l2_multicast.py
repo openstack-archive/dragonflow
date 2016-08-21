@@ -88,6 +88,5 @@ class TestL2Multicast(test_base.DFTestBase):
         r = self._check_multicast_rule(ovs.dump(self.integration_bridge),
                                        metadataid, tunnel_key_hex)
         self.assertIsNotNone(r)
-        vm.server.stop()
         vm.close()
         network.close()

@@ -83,7 +83,6 @@ class TestL2FLows(test_base.DFTestBase):
                                      tunnel_key_hex,
                                      mac)
         self.assertIsNotNone(r)
-        vm.server.stop()
         vm.close()
         network.close()
 
