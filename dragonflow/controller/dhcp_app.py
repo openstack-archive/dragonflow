@@ -43,6 +43,9 @@ DF_DHCP_OPTS = [
         help=_('Port Max rate of DHCP messages per second')),
     cfg.IntOpt('df_dhcp_block_time_in_sec', default=100,
         help=_('Time to block port that passe the max rate')),
+    cfg.BoolOpt('df_add_link_local_route', default=True,
+        help=_("Set True to add route for link local address, which will be "
+               "useful for metadata service.")),
 ]
 
 LOG = log.getLogger(__name__)
@@ -175,7 +178,7 @@ class DHCPApp(DFlowApp):
             return
 
         dns = self._get_dns_address_list_bin(subnet)
-        host_routes = self._get_host_routes_list_bin(subnet)
+        host_routes = self._get_host_routes_list_bin(subnet, lport)
         dhcp_server_address = str(self._get_dhcp_server_address(subnet))
         gateway_address = self._get_port_gateway_address(subnet)
         netmask_bin = self._get_port_netmask(subnet).packed
@@ -229,7 +232,7 @@ class DHCPApp(DFlowApp):
             return
 
         dns = self._get_dns_address_list_bin(subnet)
-        host_routes = self._get_host_routes_list_bin(subnet)
+        host_routes = self._get_host_routes_list_bin(subnet, lport)
         dhcp_server_address = self._get_dhcp_server_address(subnet)
         netmask_bin = self._get_port_netmask(subnet).packed
         lease_time_bin = struct.pack('!I', self.lease_time)
@@ -279,8 +282,14 @@ class DHCPApp(DFlowApp):
             dns_bin += addrconv.ipv4.text_to_bin(address)
         return dns_bin
 
-    def _get_host_routes_list_bin(self, subnet):
+    def _get_host_routes_list_bin(self, subnet, lport):
         host_routes = subnet.get_host_routes()
+        if cfg.CONF.df_add_link_local_route:
+            # Add route for metadata request.
+            host_routes.append(
+                {'destination': '%s/32' % const.METADATA_SERVICE_IP,
+                 'nexthop': lport.get_ip()})
+
         routes_bin = ''
 
         for route in host_routes:

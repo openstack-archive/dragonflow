@@ -73,3 +73,9 @@ GLOBAL_AGING_COOKIE_MASK = 0x1
 SECURITY_GROUP_RULE_COOKIE_MASK = 0x1fffffffe
 SECURITY_GROUP_RULE_COOKIE_SHIFT_LEN = 1
 GLOBAL_INIT_AGING_COOKIE = 0x1
+
+# These two globals are constant, as defined by the metadata service API. VMs
+# contact 169.254.169.254:80, despite of where we actually listen to the
+# service. This will be modified by flows.
+METADATA_SERVICE_IP = '169.254.169.254'
+HTTP_PORT = 80
