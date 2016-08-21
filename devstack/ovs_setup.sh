@@ -203,13 +203,17 @@ function cleanup_ovs {
 }
 
 function uninstall_ovs {
-        sudo pip uninstall -y ovs
-        PACKAGES="openvswitch openvswitch-kmod openvswitch-switch openvswitch-common openvswitch-datapath-dkms"
-        for package in $PACKAGES; do
-            if is_package_installed $package ; then
-                uninstall_package $package
-            fi
-        done
+    sudo pip uninstall -y ovs
+    PACKAGES="openvswitch openvswitch-kmod openvswitch-switch openvswitch-common openvswitch-datapath-dkms"
+    for package in $PACKAGES; do
+        if is_package_installed $package ; then
+            uninstall_package $package
+        fi
+    done
+
+    pushd $DEST/ovs
+    make distclean || true
+    popd
 }
 
 # stop_ovs_dp() - Stop OVS datapath
