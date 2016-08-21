@@ -145,7 +145,7 @@ function start_ovs {
         SERVICE_NAME=openvswitch-switch
     fi
 
-    start_service $SERVICE_NAME
+    restart_service $SERVICE_NAME
 
     local _pwd=$(pwd)
     cd $DATA_DIR/ovs
