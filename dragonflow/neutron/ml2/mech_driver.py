@@ -221,8 +221,65 @@ class DFMechDriver(driver_api.MechanismDriver):
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
                       "been deleted concurrently" % network_id)
+            return
 
         LOG.info(_LI("DFMechDriver: delete network %s"), network_id)
+
+    def update_network_precommit(self, context):
+        nw_version = version_db._update_db_version_row(
+            context._plugin_context.session, context.current['id'])
+        context.current['db_version'] = nw_version
+
+    def _get_subnets_for_update_network(self, context, network):
+        subnet_id_list = network.get('subnets', None)
+        if subnet_id_list is None:
+            return []
+
+        subnets = []
+        plugin_context = context._plugin_context
+        core_plugin = manager.NeutronManager.get_plugin()
+        for subnet_id in subnet_id_list:
+            subnet = core_plugin.get_subnet(plugin_context, subnet_id)
+            if subnet is None:
+                LOG.debug("DFMechDriver: Could not find subnet %s", subnet_id)
+                continue
+
+            port = self._get_dhcp_port_for_subnet(plugin_context, subnet_id)
+            dhcp_address = self._get_ip_from_port(port)
+            subnet_dict = {}
+            subnet_dict['dhcp_ip'] = dhcp_address
+            subnet_dict['name'] = subnet['name']
+            subnet_dict['enable_dhcp'] = subnet['enable_dhcp']
+            subnet_dict['lswitch'] = subnet['network_id']
+            subnet_dict['dns_nameservers'] = subnet.get('dns_nameservers', [])
+            subnet_dict['gateway_ip'] = subnet['gateway_ip']
+            subnet_dict['host_routes'] = subnet.get('host_routes', [])
+            subnet_dict['cidr'] = subnet['cidr']
+            subnet_dict['id'] = subnet['id']
+            subnet_dict['topic'] = subnet['tenant_id']
+            subnets.append(subnet_dict)
+
+        return subnets
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    def update_network_postcommit(self, context):
+        network = context.current
+        subnets = self._get_subnets_for_update_network(context, network)
+
+        self.nb_api.update_lswitch(
+            id=network['id'],
+            topic=network['tenant_id'],
+            name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
+            network_type=network.get('provider:network_type', None),
+            segmentation_id=network.get('provider:segmentation_id', None),
+            router_external=network.get('router:external', None),
+            mtu=network.get('mtu', None),
+            version=network['db_version'],
+            subnets=subnets,
+            qos_policy_id=network.get('qos_policy_id', None))
+
+        LOG.info(_LI("DFMechDriver: update network %s"), network['id'])
+        return network
 
     def _get_dhcp_port_for_subnet(self, context, subnet_id):
         filters = {'fixed_ips': {'subnet_id': [subnet_id]},
@@ -447,6 +504,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         except df_exceptions.DBKeyNotFound:
             LOG.debug("network %s is not found in DB, might have "
                       "been deleted concurrently" % net_id)
+            return
 
         LOG.info(_LI("DFMechDriver: delete subnet %s"), subnet_id)
 
@@ -486,7 +544,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             port_security_enabled=port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, []),
             binding_profile=port.get(portbindings.PROFILE, None),
-            binding_vnic_type=port.get(portbindings.VNIC_TYPE, None))
+            binding_vnic_type=port.get(portbindings.VNIC_TYPE, None),
+            qos_policy_id=port.get('qos_policy_id', None))
 
         LOG.info(_LI("DFMechDriver: create port %s"), port['id'])
         return port
@@ -564,7 +623,8 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                    []),
             binding_profile=updated_port.get(portbindings.PROFILE, None),
             binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE, None),
-            version=updated_port['db_version'])
+            version=updated_port['db_version'],
+            qos_policy_id=updated_port.get('qos_policy_id', None))
 
         LOG.info(_LI("DFMechDriver: update port %s"), updated_port['id'])
         return updated_port
@@ -584,6 +644,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         except df_exceptions.DBKeyNotFound:
             LOG.debug("port %s is not found in DF DB, might have "
                       "been deleted concurrently" % port_id)
+            return
 
         LOG.info(_LI("DFMechDriver: delete port %s"), port_id)
 
