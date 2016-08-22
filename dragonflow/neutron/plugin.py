@@ -316,6 +316,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def create_subnet(self, context, subnet):
         net_id = subnet['subnet']['network_id']
         new_subnet = None
+        dhcp_ip = None
         dhcp_port = None
         network_version = None
 
@@ -324,7 +325,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 # create subnet in DB
                 new_subnet = super(DFPlugin,
                                    self).create_subnet(context, subnet)
-                dhcp_port = self._handle_create_subnet_dhcp(
+                dhcp_ip, dhcp_port = self._handle_create_subnet_dhcp(
                                 context, new_subnet)
                 network_version = version_db._update_db_version_row(
                         context.session, net_id)
@@ -340,7 +341,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     pass
 
         if new_subnet:
-            dhcp_address = self._get_ip_from_port(dhcp_port)
             self.nb_api.add_subnet(
                 new_subnet['id'],
                 net_id,
@@ -349,7 +349,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 nw_version=network_version,
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
-                dhcp_ip=dhcp_address,
+                dhcp_ip=dhcp_ip,
                 gateway_ip=new_subnet['gateway_ip'],
                 dns_nameservers=new_subnet.get('dns_nameservers', []),
                 host_routes=new_subnet.get('host_routes', []))
@@ -357,6 +357,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_subnet(self, context, id, subnet):
+        dhcp_ip = None
         dhcp_port = None
         new_subnet = None
         net_id = None
@@ -368,10 +369,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 new_subnet = super(DFPlugin,
                                    self).update_subnet(context, id, subnet)
                 net_id = new_subnet['network_id']
-                dhcp_port = self._update_subnet_dhcp(
-                        context, original_subnet, new_subnet)
+                dhcp_ip, dhcp_port = self._update_subnet_dhcp(
+                                     context, original_subnet, new_subnet)
                 network_version = version_db._update_db_version_row(
-                        context.session, net_id)
+                                  context.session, net_id)
         except Exception:
             with excutils.save_and_reraise_exception() as ctxt:
                 ctxt.reraise = True
@@ -385,7 +386,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         if new_subnet and net_id:
             # update df controller with subnet
-            dhcp_address = self._get_ip_from_port(dhcp_port)
             self.nb_api.update_subnet(
                 new_subnet['id'],
                 net_id,
@@ -394,7 +394,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 nw_version=network_version,
                 enable_dhcp=new_subnet['enable_dhcp'],
                 cidr=new_subnet['cidr'],
-                dhcp_ip=dhcp_address,
+                dhcp_ip=dhcp_ip,
                 gateway_ip=new_subnet['gateway_ip'],
                 dns_nameservers=new_subnet.get('dns_nameservers', []),
                 host_routes=new_subnet.get('host_routes', []))
@@ -958,7 +958,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 return fixed_ip['ip_address']
 
     def _update_subnet_dhcp_centralized(self, context, subnet):
-        """Update the dhcp configration for the subnet
+        """Update the dhcp configuration for the subnet
 
         Returns the dhcp server ip address if configured
         """
@@ -971,12 +971,15 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             return subnet['allocation_pools'][0]['start']
 
     def _update_subnet_dhcp(self, context, old_subnet, new_subnet):
-        """Update the dhcp configration for.
+        """Update the dhcp configuration for.
 
-        Returns the dhcp server port if configured
+        Returns the dhcp ip if exists and optionaly value of dhcp server port
+        if this port was created.
         """
+        dhcp_ip = None
         if cfg.CONF.df.use_centralized_ipv6_DHCP:
-            return self._update_subnet_dhcp_centralized(context, new_subnet)
+            dhcp_ip = self._update_subnet_dhcp_centralized(context, new_subnet)
+            return dhcp_ip, None
 
         if old_subnet['enable_dhcp']:
             port = self._get_dhcp_port_for_subnet(
@@ -986,24 +989,28 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             if old_subnet['enable_dhcp']:
                 if port:
                     self.delete_port(context, port['id'])
-            return None
+            return None, None
         if new_subnet['enable_dhcp'] and not old_subnet['enable_dhcp']:
             port = self._create_dhcp_server_port(context, new_subnet)
-
-        return port
+            dhcp_ip = self._get_ip_from_port(port)
+            return dhcp_ip, port
+        if port:
+            dhcp_ip = self._get_ip_from_port(port)
+        return dhcp_ip, None
 
     def _handle_create_subnet_dhcp(self, context, subnet):
-        """Create the dhcp configration for the subnet
+        """Create the dhcp configuration for the subnet if required.
 
-        Returns the dhcp server port if configured
+        Returns the dhcp ip and dhcp server port (if created).
         """
         if subnet['enable_dhcp']:
             if cfg.CONF.df.use_centralized_ipv6_DHCP:
-                return subnet['allocation_pools'][0]['start']
+                return subnet['allocation_pools'][0]['start'], None
             else:
                 dhcp_port = self._create_dhcp_server_port(context, subnet)
-                return dhcp_port
-        return None
+                dhcp_ip = self._get_ip_from_port(dhcp_port)
+                return dhcp_ip, dhcp_port
+        return None, None
 
     def _get_floatingip_port(self, context, floatingip_id):
         filters = {'device_id': [floatingip_id]}

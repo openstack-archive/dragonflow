@@ -288,17 +288,19 @@ class DFMechDriver(driver_api.MechanismDriver):
         return port
 
     def _handle_create_subnet_dhcp(self, context, subnet):
-        """Create the dhcp configration for the subnet
+        """Create the dhcp configuration for the subnet if required.
 
-        Returns the dhcp server port if configured
+        Returns the dhcp ip and dhcp server port (if created).
         """
         if subnet['enable_dhcp']:
             if cfg.CONF.df.use_centralized_ipv6_DHCP:
-                return subnet['allocation_pools'][0]['start']
+                return subnet['allocation_pools'][0]['start'], None
             else:
+
                 dhcp_port = self._create_dhcp_server_port(context, subnet)
-                return dhcp_port
-        return None
+                dhcp_ip = self._get_ip_from_port(dhcp_port)
+                return dhcp_ip, dhcp_port
+        return None, None
 
     def _get_ip_from_port(self, port):
         """Get The first Ip address from the port.
@@ -325,15 +327,17 @@ class DFMechDriver(driver_api.MechanismDriver):
         subnet = context.current
         net_id = subnet['network_id']
         plugin_context = context._plugin_context
+        dhcp_ip = None
+        dhcp_port = None
 
         try:
-            dhcp_port = self._handle_create_subnet_dhcp(plugin_context,
-                                                        subnet)
+            dhcp_ip, dhcp_port = self._handle_create_subnet_dhcp(
+                                                plugin_context,
+                                                subnet)
         except Exception as e:
             LOG.exception(e)
             return None
 
-        dhcp_address = self._get_ip_from_port(dhcp_port)
         self.nb_api.add_subnet(
             subnet['id'],
             net_id,
@@ -342,7 +346,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             nw_version=subnet['db_version'],
             enable_dhcp=subnet['enable_dhcp'],
             cidr=subnet['cidr'],
-            dhcp_ip=dhcp_address,
+            dhcp_ip=dhcp_ip,
             gateway_ip=subnet['gateway_ip'],
             dns_nameservers=subnet.get('dns_nameservers', []),
             host_routes=subnet.get('host_routes', []))
@@ -351,7 +355,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         return subnet
 
     def _update_subnet_dhcp_centralized(self, context, subnet):
-        """Update the dhcp configration for the subnet.
+        """Update the dhcp configuration for the subnet.
 
         Returns the dhcp server ip address if configured
         """
@@ -368,12 +372,15 @@ class DFMechDriver(driver_api.MechanismDriver):
         core_plugin.delete_port(context, port['id'])
 
     def _handle_update_subnet_dhcp(self, context, old_subnet, new_subnet):
-        """Update the dhcp configration for the subnet.
+        """Update the dhcp configuration for.
 
-        Returns the dhcp server port if configured
+        Returns the dhcp ip if exists and optionaly value of dhcp server port
+        if this port was created.
         """
+        dhcp_ip = None
         if cfg.CONF.df.use_centralized_ipv6_DHCP:
-            return self._update_subnet_dhcp_centralized(context, new_subnet)
+            dhcp_ip = self._update_subnet_dhcp_centralized(context, new_subnet)
+            return dhcp_ip, None
 
         if old_subnet['enable_dhcp']:
             port = self._get_dhcp_port_for_subnet(context, old_subnet['id'])
@@ -381,12 +388,14 @@ class DFMechDriver(driver_api.MechanismDriver):
         if not new_subnet['enable_dhcp'] and old_subnet['enable_dhcp']:
             if port:
                 self._delete_subnet_dhcp_port(context, port)
-            return None
-
+            return None, None
         if new_subnet['enable_dhcp'] and not old_subnet['enable_dhcp']:
             port = self._create_dhcp_server_port(context, new_subnet)
-
-        return port
+            dhcp_ip = self._get_ip_from_port(port)
+            return dhcp_ip, port
+        if port:
+            dhcp_ip = self._get_ip_from_port(port)
+        return dhcp_ip, None
 
     def update_subnet_precommit(self, context):
         network_version = version_db._update_db_version_row(
@@ -398,16 +407,18 @@ class DFMechDriver(driver_api.MechanismDriver):
         new_subnet = context.current
         old_subnet = context.original
         plugin_context = context._plugin_context
+        dhcp_ip = None
+        dhcp_port = None
 
         try:
-            dhcp_port = self._handle_update_subnet_dhcp(plugin_context,
-                                                        old_subnet,
-                                                        new_subnet)
+            dhcp_ip, dhcp_port = self._handle_update_subnet_dhcp(
+                                                    plugin_context,
+                                                    old_subnet,
+                                                    new_subnet)
         except Exception as e:
             LOG.exception(e)
             return None
 
-        dhcp_address = self._get_ip_from_port(dhcp_port)
         self.nb_api.update_subnet(
             new_subnet['id'],
             new_subnet['network_id'],
@@ -416,7 +427,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             nw_version=new_subnet['db_version'],
             enable_dhcp=new_subnet['enable_dhcp'],
             cidr=new_subnet['cidr'],
-            dhcp_ip=dhcp_address,
+            dhcp_ip=dhcp_ip,
             gateway_ip=new_subnet['gateway_ip'],
             dns_nameservers=new_subnet.get('dns_nameservers', []),
             host_routes=new_subnet.get('host_routes', []))
