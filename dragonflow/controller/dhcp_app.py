@@ -42,7 +42,7 @@ DF_DHCP_OPTS = [
     cfg.IntOpt('df_dhcp_max_rate_per_sec', default=3,
         help=_('Port Max rate of DHCP messages per second')),
     cfg.IntOpt('df_dhcp_block_time_in_sec', default=100,
-        help=_('Time to block port that passe the max rate')),
+        help=_('Time to block port that passes the max rate')),
 ]
 
 LOG = log.getLogger(__name__)
