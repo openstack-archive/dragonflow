@@ -274,14 +274,14 @@ class DHCPApp(DFlowApp):
         dns_servers = self.global_dns_list
         if len(subnet.get_dns_name_servers()) > 0:
             dns_servers = subnet.get_dns_name_servers()
-        dns_bin = ''
+        dns_bin = b''
         for address in dns_servers:
             dns_bin += addrconv.ipv4.text_to_bin(address)
         return dns_bin
 
     def _get_host_routes_list_bin(self, subnet):
         host_routes = subnet.get_host_routes()
-        routes_bin = ''
+        routes_bin = b''
 
         for route in host_routes:
             dest, slash, mask = route.get('destination').partition('/')
