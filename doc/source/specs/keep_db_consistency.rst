@@ -47,6 +47,7 @@ is as follows:
 * Scenario 1, in Bug [1]:
 
 ::
+
     with transaction of Neutron DB:
         call Neutron DB API
     call Dragonflow DB API
@@ -59,6 +60,7 @@ disconnected after Neutron DB transaction is committed.
 * Scenario 2, in Bug [2]:
 
 ::
+
     with transaction of Neutron DB:
         call Neutron DB API
     call _some_operation(...)
@@ -122,6 +124,7 @@ The distributed lock is tenant-based and each tenant has its own lock in the
 database. Due to this design, we can allow concurrency to a certain degree.
 
 ::
+
     In Neutron plugin:
         When an API is processing:
             Acquire the distributed lock for the Neutron object.
@@ -132,28 +135,29 @@ database. Due to this design, we can allow concurrency to a certain degree.
             Release the distributed lock.
 
 * When creating the distributed lock record, it starts a DB transaction and
-inserts a lock record into Neutron DB according to the current object.
+  inserts a lock record into Neutron DB according to the current object.
 
 * When acquiring the distributed lock, it first issue SELECT-FOR-UPDATE to
-check the lock has been obtained or not. If not, it updates the lock state
-and commits the transaction. If exception happens, it will re-try it for
-several times. If the lock has been obtained, it will wait and re-try.
+  check the lock has been obtained or not. If not, it updates the lock state
+  and commits the transaction. If exception happens, it will re-try it for
+  several times. If the lock has been obtained, it will wait and re-try.
 
 * If MySQL clustering involves, only one lock transaction will be committed
-and others will be deadlocked. Here we introduce DB retry mechanism.
-If deadlock exception happens, it will retry it to make sure it will be
-committed later.
+  and others will be deadlocked. Here we introduce DB retry mechanism.
+  If deadlock exception happens, it will retry it to make sure it will be
+  committed later.
 
 * Potential Issue: When concurrent write operations on a certain key happen,
-due to the inconsistency window of DF DB. If the update on DF DB is always
-delayed because the previous operations have already been delayed.
-The root cause is that Neutron DB is strongly consistent but DF DB is
-eventually consistent. We cannot guarantee the updates on DF DB is committed.
+  due to the inconsistency window of DF DB. If the update on DF DB is always
+  delayed because the previous operations have already been delayed.
+  The root cause is that Neutron DB is strongly consistent but DF DB is
+  eventually consistent. We cannot guarantee the updates on DF DB is committed.
 
 Pseudo Code in Core Plugin
 --------------------------
 
 ::
+
     def CUD_object(context, obj):
         nb_lock = lock_db.DBLock(context.tenant_id)
         with nb_lock:
@@ -169,6 +173,7 @@ Pseudo Code in Core Plugin
 * This can be simplified by a decorator:
 
 ::
+
     @lock_db.wrap_db_lock()
     def CUD_object(self, context, obj):
         pass
@@ -202,6 +207,7 @@ When Neutron plugin receives a creation object(router/network/subnet/port, etc)
 invoke:
 
 ::
+
     Start Neutron DB transaction for creation operations.
         with session.begin(subtransactions=True):
             Do Neutron DB operations.
@@ -213,14 +219,15 @@ invoke:
             raise creation exception.
 
 * After Neutron plugin commit the creation operation to Neutron DB
-successfully, if there happened some exceptions in DF DB operations or PUB/SUB
-process, Neutron plugin should rollback the previous commit, and raise
-a creation exception.
+  successfully, if there happened some exceptions in DF DB operations or
+  PUB/SUB process, Neutron plugin should rollback the previous commit, and
+  raise a creation exception.
 
 When Neutron plugin receives a update/delete object(router/network/subnet/port,
 etc) invoke:
 
 ::
+
     Start Neutron DB transaction for DB operations.
         with session.begin(subtransactions=True):
             Do Neutron DB operations.
@@ -231,9 +238,9 @@ etc) invoke:
             raise update/delete exception.
 
 * The difference between update/delete invoke and creation invoke is there is
-no need to rollback when catch exception in DF DB operations, for instance,
-it is impossible and unnecessary to rollback all the Neutron DB data for a
-deleted VM, and we can deal with the dirty data in DF DB by other methods.
+  no need to rollback when catch exception in DF DB operations, for instance,
+  it is impossible and unnecessary to rollback all the Neutron DB data for a
+  deleted VM, and we can deal with the dirty data in DF DB by other methods.
 
 When DB driver and pub/sub driver find the read/write connection between
 Neutron plugin and DF DB, and also the pub/sub connection between Neutron
@@ -241,6 +248,7 @@ plugin and pub/sub system are recovered, the driver should notify Neutron
 plugin a recover message, Neutron plugin should process the message:
 
 ::
+
     Start handle the recover message:
         pull data from DF DB.
         pull data from Neutron DB.
@@ -250,12 +258,12 @@ plugin a recover message, Neutron plugin should process the message:
             Emit messages via PUB/SUB.
 
 * During the db comparison, plugin will iterate each object in the two DB,
-if an object in Neutron DB could not be found in DF DB, the object should be
-considered create, if an object in DF DB could not be found in Neutron DB,
-the object should be considered delete, while if an object exists in both DF
-DB and Neutron DB, but the object version is different, the object should be
-considered update, if the version is same, the object should be considered
-same and pass it.
+  if an object in Neutron DB could not be found in DF DB, the object should be
+  considered create, if an object in DF DB could not be found in Neutron DB,
+  the object should be considered delete, while if an object exists in both DF
+  DB and Neutron DB, but the object version is different, the object should be
+  considered update, if the version is same, the object should be considered
+  same and pass it.
 
 As we know, during the data pulling and comparison period, both of the two
 DB data is changing dynamically, for example, a new port data has been written
@@ -284,24 +292,25 @@ During the corresponding operations after confirm the object status, it should
 try to get the distribute lock, after getting the lock:
 
     1. If the status is create, it should try to read the object from DF DB,
-    if the object is still not exist, we should create this object to DF DB,
-    while if the object is exist in DF DB because the object maybe updated
-    during the db comparison, so we consider it is not a creating object any
-     more and delete the status of this object from cache.
+       if the object is still not exist, we should create this object to DF DB,
+       while if the object is exist in DF DB because the object maybe updated
+       during the db comparison, so we consider it is not a creating object any
+       more and delete the status of this object from cache.
 
     2. If the status is update, it should try to read the object from DF DB,
-    if the object is not exist because the object maybe deleted during the
-    db comparison or the object is exist but the object is changed because
-    it maybe updated during the db comparison, so we should delete the
-    status of this object from cache, otherwise, we should update this
-    object to DF DB.
+       if the object is not exist because the object maybe deleted during the
+       db comparison or the object is exist but the object is changed because
+       it maybe updated during the db comparison, so we should delete the
+       status of this object from cache, otherwise, we should update this
+       object to DF DB.
 
     3. If the status is delete, we could delete this object from DF DB
-    directly.
+       directly.
 
 After the above processing is done, the lock will be released.
 
 ::
+
     Start db comparison periodically:
         pull data from DF DB.
         pull data from Neutron DB.
@@ -343,6 +352,8 @@ will only be contained in master plugin record:
 
 The election process should be like this:
 
+::
+
     def get_master_neutron_plugin(context):
         nb_lock = lock_db.DBLock(context.election_key)
         with nb_lock:
@@ -357,16 +368,16 @@ The election process should be like this:
                 return False
 
 * Each Neutron plugin will update its own data record in DF DB and detect
-the current master data record which describe the info of master plugin
-periodically. If normal plugin found master plugin break down, it will update
-its own data record to become new master plugin and change the old master to
-normal and set status to down. Also master Neutron plugin should detect
-other plugins to confirm they are alive periodically.
+  the current master data record which describe the info of master plugin
+  periodically. If normal plugin found master plugin break down, it will update
+  its own data record to become new master plugin and change the old master to
+  normal and set status to down. Also master Neutron plugin should detect
+  other plugins to confirm they are alive periodically.
 
 * If a Neutron plugin has got the db-lock, but it is crashed, the db-lock may
-not be released, so each Neutron plugin should check the created-time in the
-db-lock and if it found the db-lock is timeout, it could own the db-lock
-instead of the crashed Neutron plugin.
+  not be released, so each Neutron plugin should check the created-time in the
+  db-lock and if it found the db-lock is timeout, it could own the db-lock
+  instead of the crashed Neutron plugin.
 
 DB Check Load Balance
 ---------------------
@@ -390,16 +401,17 @@ Local Controller Data Sync
 --------------------------
 
 * When initialize or restart the local controller, ovsdb monitor module will
-notify all the existing local VM ports, and local controller will fetch the
-corresponding data according to the tenants that these VMs belong to from
-DF DB.
+  notify all the existing local VM ports, and local controller will fetch the
+  corresponding data according to the tenants that these VMs belong to from
+  DF DB.
 
 * When DB driver and pub/sub driver find the read/write connection between
-local controller and DF DB, and also the pub/sub connection between local
-controller and pub/sub system are recovered, the driver should notify local
-controller a recover message, local controller process the recover message:
+  local controller and DF DB, and also the pub/sub connection between local
+  controller and pub/sub system are recovered, the driver should notify local
+  controller a recover message, local controller process the recover message:
 
 ::
+
     Start handle the recover message:
         get tenant list according to local VM ports.
         pull data from DF DB according to tenant list.
@@ -433,6 +445,7 @@ Also we will add a version_id attribute into each object in DF DB, when we
 create/update an object, we should do like this:
 
 ::
+
     Start create an object:
         db_lock = lock_db.DBLock(context.tenant_id)
         with db_lock:
@@ -490,26 +503,29 @@ Potential Improvements
 ======================
 
 1. For simplicity, we protect the whole API session by distributed lock.
-This is definitely not optimal. We can use distributed lock to only protect
-NB-API operations and introduce versioned object and synchronization
-mechanism [4]. If the versions in Neutron DB and DF DB are not equal,
-we sync the object from Neutron DB to DF DB to guarantee the data is
-consistent.
+   This is definitely not optimal. We can use distributed lock to only protect
+   NB-API operations and introduce versioned object and synchronization
+   mechanism [4]. If the versions in Neutron DB and DF DB are not equal,
+   we sync the object from Neutron DB to DF DB to guarantee the data is
+   consistent.
 
 2. The SQL-based lock is not optimal solution. If DF DB provides
-atomic operations on a set of read/write operations, we can refactor
-the current SQL-based implementation.
+   atomic operations on a set of read/write operations, we can refactor
+   the current SQL-based implementation.
 
 3. REMOVE Neutron DB. As a result, we don't need to bother the consistency
-of two distinct databases. We only need to make sure a set of read/write
-operations of DF DB is atomic to prevent from race due to concurrency.
-This solution is appealing but not feasible if we cannot solve the
-inconsistent read issue caused by eventual consistency of db backend.
+   of two distinct databases. We only need to make sure a set of read/write
+   operations of DF DB is atomic to prevent from race due to concurrency.
+   This solution is appealing but not feasible if we cannot solve the
+   inconsistent read issue caused by eventual consistency of db backend.
 
 References
 ==========
 
 [1] https://bugs.launchpad.net/dragonflow/+bug/1529326
+
 [2] https://bugs.launchpad.net/dragonflow/+bug/1529812
+
 [3] http://www.joinfu.com/2015/01/understanding-reservations-concurrency-locking-in-nova
+
 [4] https://blueprints.launchpad.net/dragonflow/+spec/sync-neutron-df-db
