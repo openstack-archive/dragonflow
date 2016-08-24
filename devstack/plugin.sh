@@ -337,7 +337,7 @@ function start_df {
     echo "Starting Dragonflow"
 
     if is_service_enabled df-controller ; then
-        sudo ovs-vsctl --no-wait set-controller $INTEGRATION_BRIDGE tcp:$HOST_IP:6633
+        sudo ovs-vsctl --no-wait set-controller $INTEGRATION_BRIDGE tcp:127.0.0.1:6633
         run_process df-controller "$DF_LOCAL_CONTROLLER_BINARY --config-file $NEUTRON_CONF"
         run_process df-ext-services "bash $DEST/dragonflow/devstack/df-ext-services.sh"
     fi
