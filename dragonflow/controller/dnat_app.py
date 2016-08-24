@@ -187,6 +187,16 @@ class DNATApp(DFlowApp):
 
         return (mac, ip, tunnel_key, network_id, segmentation_id)
 
+    def _get_vm_gateway_info(self, floatingip):
+        lport = self.db_store.get_local_port(
+            floatingip.get_lport_id())
+        lrouter = self.db_store.get_router(
+            floatingip.get_lrouter_id())
+        for router_port in lrouter.get_ports():
+            if router_port.get_lswitch_id() == lport.get_lswitch_id():
+                return router_port.get_mac()
+        return None
+
     def _install_dnat_ingress_rules(self, floatingip):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
@@ -195,9 +205,11 @@ class DNATApp(DFlowApp):
 
         vm_mac, vm_ip, vm_tunnel_key, network_id, _ = \
             self._get_vm_port_info(floatingip)
-        fip_mac = floatingip.get_mac_address()
+        vm_gateway_mac = self._get_vm_gateway_info(floatingip)
+        if vm_gateway_mac is None:
+            vm_gateway_mac = floatingip.get_mac_address()
         actions = [
-            parser.OFPActionSetField(eth_src=fip_mac),
+            parser.OFPActionSetField(eth_src=vm_gateway_mac),
             parser.OFPActionSetField(eth_dst=vm_mac),
             parser.OFPActionDecNwTtl(),
             parser.OFPActionSetField(ipv4_dst=vm_ip),
