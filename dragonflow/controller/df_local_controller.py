@@ -22,8 +22,9 @@ from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_log import log
 from ryu.base.app_manager import AppManager
+from ryu import cfg as ryu_cfg
 
-from dragonflow._i18n import _LI, _LW
+from dragonflow._i18n import _LI, _LW, _
 from dragonflow.common import common_params
 from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
@@ -34,10 +35,18 @@ from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_vswitch_impl
 
 
+df_ryu_opts = [
+    cfg.IPOpt('of_listen_address', default=None,
+              help=_("Address to listen on for OpenFlow connections.")),
+    cfg.PortOpt('of_listen_port', default=None,
+                help=_("Port to listen on for OpenFlow connections."))
+]
+
 config.setup_logging()
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
+cfg.CONF.register_opts(df_ryu_opts, 'df_ryu')
 
 
 class DfLocalController(object):
@@ -81,8 +90,8 @@ class DfLocalController(object):
         # for reliability, here we should check if controller is set for OVS,
         # if yes, don't set controller and don't delete controller.
         # if no, set controller
-        # TODO(heshan) port should be configured in cfg file
-        targets = 'tcp:' + self.ip + ':6633'
+        targets = ('tcp:' + cfg.CONF.df_ryu.of_listen_address + ':' +
+            str(cfg.CONF.df_ryu.of_listen_port))
         is_controller_set = self.vswitch_api.check_controller(targets)
         if not is_controller_set:
             self.vswitch_api.set_controllers(self.integration_bridge,
@@ -558,11 +567,18 @@ class DfLocalController(object):
         return self.chassis_name
 
 
+def init_ryu_config():
+    ryu_cfg.CONF(project='ryu', args=[])
+    ryu_cfg.CONF.ofp_listen_host = cfg.CONF.df_ryu.of_listen_address
+    ryu_cfg.CONF.ofp_tcp_listen_port = cfg.CONF.df_ryu.of_listen_port
+
+
 # Run this application like this:
 # python df_local_controller.py <chassis_unique_name>
 # <local ip address> <southbound_db_ip_address>
 def main():
     chassis_name = socket.gethostname()
     common_config.init(sys.argv[1:])
+    init_ryu_config()
     controller = DfLocalController(chassis_name)
     controller.run()
