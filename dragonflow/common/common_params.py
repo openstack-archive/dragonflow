@@ -47,6 +47,10 @@ df_opts = [
                       "bridge acts as a virtual 'patch bay'. All VM VIFs are "
                       "attached to this bridge and then 'patched' according "
                       "to their network connectivity.")),
+    cfg.IPOpt('of_listen_address', default='127.0.0.1',
+              help=_("Address to listen on for OpenFlow connections.")),
+    cfg.PortOpt('of_listen_port', default=6633,
+                help=_("Port to listen on for OpenFlow connections.")),
     cfg.BoolOpt('use_centralized_ipv6_DHCP',
                 default=False,
                 help=_("Enable IPv6 DHCP by using DHCP agent")),
