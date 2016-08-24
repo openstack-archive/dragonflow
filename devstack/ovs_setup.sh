@@ -86,7 +86,7 @@ EOF
 }
 
 function _neutron_ovs_install_ovs_deps_ubuntu {
-    sudo apt-get install -y build-essential fakeroot devscripts equivs dkms
+    sudo apt-get install -y --force-yes build-essential fakeroot devscripts equivs dkms
     sudo mk-build-deps -i -t "/usr/bin/apt-get --no-install-recommends -y"
 }
 

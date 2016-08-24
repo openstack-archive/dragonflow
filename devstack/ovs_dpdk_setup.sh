@@ -19,7 +19,7 @@ function _neutron_ovs_configure_dependencies {
         DNF=${1:-`_neutron_ovs_get_dnf`}
         sudo $DNF install -y kernel-devel
     elif is_ubuntu; then
-        sudo apt-get install -y build-essential
+        sudo apt-get install -y --force-yes build-essential
     fi
 
     # Configure TUN
