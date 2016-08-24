@@ -81,8 +81,7 @@ class DfLocalController(object):
         # for reliability, here we should check if controller is set for OVS,
         # if yes, don't set controller and don't delete controller.
         # if no, set controller
-        # TODO(heshan) port should be configured in cfg file
-        targets = 'tcp:' + self.ip + ':6633'
+        targets = 'tcp:' + cfg.CONF.df.of_listen_address + ':' + cfg.CONF.df.of_listen_port
         is_controller_set = self.vswitch_api.check_controller(targets)
         if not is_controller_set:
             self.vswitch_api.set_controllers(self.integration_bridge,
@@ -557,11 +556,16 @@ class DfLocalController(object):
     def get_chassis_name(self):
         return self.chassis_name
 
+def init_ryu_config():
+    ryu_cfg.CONF(project='ryu', args=[])
+    ryu_cfg.CONF.ofp_listen_host = cfg.CONF.df.of_listen_address
+    ryu_cfg.CONF.ofp_tcp_listen_port = cfg.CONF.df.of_listen_port
 
 # Run this application like this:
 # python df_local_controller.py <chassis_unique_name>
 # <local ip address> <southbound_db_ip_address>
 def main():
+    init_ryu_config()
     chassis_name = socket.gethostname()
     common_config.init(sys.argv[1:])
     controller = DfLocalController(chassis_name)
