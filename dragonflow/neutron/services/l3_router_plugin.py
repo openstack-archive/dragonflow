@@ -104,13 +104,8 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_router(self, context, router):
-        with context.session.begin(subtransactions=True):
-            router = super(DFL3RouterPlugin, self).create_router(
-                context, router)
-            router_version = version_db._create_db_version_row(
-                context.session, router['id']
-            )
-
+        router = super(DFL3RouterPlugin, self).create_router(context, router)
+        router_version = router['revision']
         router_id = router['id']
         tenant_id = router['tenant_id']
         is_distributed = router.get('distributed', False)
@@ -124,11 +119,9 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_router(self, context, router_id, router):
-        with context.session.begin(subtransactions=True):
-            router = super(DFL3RouterPlugin, self).update_router(
-                context, router_id, router)
-            router_version = version_db._update_db_version_row(
-                    context.session, router['id'])
+        router = super(DFL3RouterPlugin, self).update_router(
+                       context, router_id, router)
+        router_version = router['revision']
 
         try:
             gw_info = router.get('external_gateway_info', {})
@@ -154,10 +147,8 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def delete_router(self, context, router_id):
         router = self.get_router(context, router_id)
-        with context.session.begin(subtransactions=True):
-            ret_val = super(DFL3RouterPlugin, self).delete_router(context,
-                                                                  router_id)
-            version_db._delete_db_version_row(context.session, router_id)
+        ret_val = super(DFL3RouterPlugin, self).delete_router(context,
+                                                              router_id)
         try:
             self.nb_api.delete_lrouter(id=router_id,
                                        topic=router['tenant_id'])
@@ -276,11 +267,10 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def add_router_interface(self, context, router_id, interface_info):
-        with context.session.begin(subtransactions=True):
-            result = super(DFL3RouterPlugin, self).add_router_interface(
-                context, router_id, interface_info)
-            router_version = version_db._update_db_version_row(
-                context.session, router_id)
+        result = super(DFL3RouterPlugin, self).add_router_interface(
+                       context, router_id, interface_info)
+        router = self.get_router(context, router_id)
+        router_version = router['revision']
 
         self.core_plugin = self._get_core_plugin()
         port = self.core_plugin.get_port(context, result['port_id'])
@@ -303,11 +293,10 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def remove_router_interface(self, context, router_id, interface_info):
-        with context.session.begin(subtransactions=True):
-            new_router = super(DFL3RouterPlugin, self).remove_router_interface(
+        new_router = super(DFL3RouterPlugin, self).remove_router_interface(
                 context, router_id, interface_info)
-            router_version = version_db._update_db_version_row(
-                context.session, router_id)
+        router = self.get_router(context, router_id)
+        router_version = router['revision']
 
         self.core_plugin = self._get_core_plugin()
         subnet = self.core_plugin.get_subnet(context, new_router['subnet_id'])
