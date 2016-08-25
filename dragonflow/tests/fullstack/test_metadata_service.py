@@ -28,7 +28,6 @@ class TestMetadataService(test_base.DFTestBase):
         self.metadata_ip = cfg.CONF.df_metadata.ip
 
     def test_metadata_proxy_exit_clear_ip_rule(self):
-        df_metadata_service.environment_setup()
         ip_rule = ip_lib.IPRule().rule
         rules = ip_rule.list_rules(4)
         rules_source = [r['from'] for r in rules if 'from' in r]
@@ -38,3 +37,6 @@ class TestMetadataService(test_base.DFTestBase):
         rules = ip_rule.list_rules(4)
         rules_source = [r['from'] for r in rules if 'from' in r]
         self.assertNotIn(self.metadata_ip, rules_source)
+
+        # Rebuild the metadata environment
+        df_metadata_service.environment_setup()
