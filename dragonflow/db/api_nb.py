@@ -556,15 +556,14 @@ class NbApi(object):
         self._send_db_change_event('lrouter', lrouter_id, 'set',
                                    lrouter_json, lrouter['topic'])
 
-    def delete_lrouter_port(
-            self, lrouter_id, lswitch_id, topic, **columns):
+    def delete_lrouter_port(self, uuid, lrouter_id, topic, **columns):
         lrouter_json = self.driver.get_key('lrouter', lrouter_id)
         lrouter = jsonutils.loads(lrouter_json)
         router_version = columns.get('router_version')
 
         new_ports = []
         for port in lrouter.get('ports', []):
-            if port['lswitch'] != lswitch_id:
+            if port['id'] != uuid:
                 new_ports.append(port)
 
         lrouter['ports'] = new_ports

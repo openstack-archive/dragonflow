@@ -56,7 +56,7 @@ class TestApiNb(tests_base.BaseTestCase):
     def test_delete_lrouter_port(self):
         expect_router, original_router = self._setup_fake_lrouter()
         self.driver.get_key.return_value = jsonutils.dumps(original_router)
-        self.api_nb.delete_lrouter_port('fake_router', 'fake_switch',
+        self.api_nb.delete_lrouter_port('fake_id', 'fake_router',
                                         'port_topic',
                                         router_version='fake_version')
         # Router should be retrieved without tenant/topic.
