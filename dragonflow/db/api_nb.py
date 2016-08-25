@@ -531,7 +531,7 @@ class NbApi(object):
 
     def add_lrouter_port(self, id, lrouter_id, lswitch_id,
                          topic, **columns):
-        lrouter_json = self.driver.get_key('lrouter', lrouter_id, topic)
+        lrouter_json = self.driver.get_key('lrouter', lrouter_id)
         lrouter = jsonutils.loads(lrouter_json)
         router_version = None
 
@@ -558,7 +558,7 @@ class NbApi(object):
 
     def delete_lrouter_port(
             self, lrouter_id, lswitch_id, topic, **columns):
-        lrouter_json = self.driver.get_key('lrouter', lrouter_id, topic)
+        lrouter_json = self.driver.get_key('lrouter', lrouter_id)
         lrouter = jsonutils.loads(lrouter_json)
         router_version = columns.get('router_version')
 
