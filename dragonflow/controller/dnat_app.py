@@ -26,10 +26,10 @@ from ryu.ofproto import ether
 import six
 
 from dragonflow._i18n import _
-from dragonflow.controller.common.arp_responder import ArpResponder
+from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
-from dragonflow.controller.df_base_app import DFlowApp
+from dragonflow.controller import df_base_app
 
 LOG = log.getLogger(__name__)
 
@@ -51,7 +51,7 @@ DF_DNAT_APP_OPTS = [
 FIP_GW_RESOLVING_STATUS = 'resolving'
 
 
-class DNATApp(DFlowApp):
+class DNATApp(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
         super(DNATApp, self).__init__(*args, **kwargs)
@@ -157,7 +157,7 @@ class DNATApp(DFlowApp):
         # install floatingip arp responder flow rules
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
-        ArpResponder(self.get_datapath(),
+        arp_responder.ArpResponder(self.get_datapath(),
              None,
              floatingip.get_ip_address(),
              floatingip.get_mac_address(),
@@ -167,7 +167,7 @@ class DNATApp(DFlowApp):
         # install floatingip arp responder flow rules
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
-        ArpResponder(self.get_datapath(),
+        arp_responder.ArpResponder(self.get_datapath(),
              None,
              floatingip.get_ip_address(),
              floatingip.get_mac_address(),
