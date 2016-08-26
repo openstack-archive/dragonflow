@@ -23,15 +23,15 @@ from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
 from dragonflow._i18n import _LE
-from dragonflow.controller.common.arp_responder import ArpResponder
+from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
-from dragonflow.controller.common.icmp_responder import ICMPResponder
-from dragonflow.controller.df_base_app import DFlowApp
+from dragonflow.controller.common import icmp_responder
+from dragonflow.controller import df_base_app
 
 LOG = log.getLogger(__name__)
 
 
-class L3App(DFlowApp):
+class L3App(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L3App, self).__init__(*args, **kwargs)
         self.idle_timeout = 30
@@ -152,8 +152,9 @@ class L3App(DFlowApp):
         # Add router ARP & ICMP responder for IPv4 Addresses
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
         if is_ipv4:
-            ArpResponder(datapath, local_network_id, dst_ip, mac).add()
-            ICMPResponder(datapath, dst_ip, mac).add()
+            arp_responder.ArpResponder(
+                datapath, local_network_id, dst_ip, mac).add()
+            icmp_responder.ICMPResponder(datapath, dst_ip, mac).add()
 
         # If router interface IP, send to output table
         if is_ipv4:
@@ -276,8 +277,9 @@ class L3App(DFlowApp):
         mac = router_port.get_mac()
 
         if netaddr.IPAddress(ip).version == 4:
-            ArpResponder(self.get_datapath(), local_network_id, ip).remove()
-            ICMPResponder(self.get_datapath(), ip, mac).remove()
+            arp_responder.ArpResponder(
+                self.get_datapath(), local_network_id, ip).remove()
+            icmp_responder.ICMPResponder(self.get_datapath(), ip, mac).remove()
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)

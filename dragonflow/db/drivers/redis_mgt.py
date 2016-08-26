@@ -21,7 +21,7 @@ import six
 
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import utils as df_utils
-from dragonflow.db.db_common import DbUpdate
+from dragonflow.db import db_common
 from dragonflow.db.drivers import redis_calckey
 
 LOG = log.getLogger(__name__)
@@ -356,8 +356,9 @@ class RedisMgt(object):
                 if len(nodes) > 0:
                     if self.publisher is not None:
                         nodes_json = jsonutils.dumps(nodes)
-                        update = DbUpdate('ha', 'nodes', 'set', nodes_json,
-                                          topic='redis')
+                        update = db_common.DbUpdate('ha', 'nodes',
+                                                    'set', nodes_json,
+                                                    topic='redis')
                         self.publisher.send_event(update)
 
                     # process new nodes got

@@ -16,7 +16,6 @@
 
 from neutron.agent.ovsdb import impl_idl
 from neutron.agent.ovsdb.native import commands
-from neutron.agent.ovsdb.native.commands import BaseCommand
 from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import helpers
 from neutron.agent.ovsdb.native import idlutils
@@ -24,7 +23,7 @@ from oslo_config import cfg
 from oslo_log import log
 from ovs.db import idl
 from ovs import poller
-from ovs.vlog import Vlog
+from ovs import vlog
 import retrying
 import six
 import threading
@@ -131,7 +130,7 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.nb_api = nb_api
         self.ovsdb_monitor = None
         self.integration_bridge = cfg.CONF.df.integration_bridge
-        Vlog.init('dragonflow')
+        vlog.Vlog.init('dragonflow')
 
     def initialize(self):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
@@ -317,7 +316,7 @@ class OvsdbTunnelPort(OvsdbSwitchPort):
         return self.chassis_id
 
 
-class DelControllerCommand(BaseCommand):
+class DelControllerCommand(commands.BaseCommand):
     def __init__(self, api, bridge):
         super(DelControllerCommand, self).__init__(api)
         self.bridge = bridge
@@ -327,7 +326,7 @@ class DelControllerCommand(BaseCommand):
         br.controller = []
 
 
-class SetControllerCommand(BaseCommand):
+class SetControllerCommand(commands.BaseCommand):
     def __init__(self, api, bridge, targets):
         super(SetControllerCommand, self).__init__(api)
         self.bridge = bridge
@@ -344,7 +343,7 @@ class SetControllerCommand(BaseCommand):
         br.controller = controllers
 
 
-class SetControllerFailModeCommand(BaseCommand):
+class SetControllerFailModeCommand(commands.BaseCommand):
     def __init__(self, api, bridge, fail_mode):
         super(SetControllerFailModeCommand, self).__init__(api)
         self.bridge = bridge
@@ -356,7 +355,7 @@ class SetControllerFailModeCommand(BaseCommand):
         br.fail_mode = [self.fail_mode]
 
 
-class DeleteSwitchPort(BaseCommand):
+class DeleteSwitchPort(commands.BaseCommand):
     def __init__(self, api, switch_port):
         super(DeleteSwitchPort, self).__init__(api)
         self.switch_port = switch_port
@@ -379,7 +378,7 @@ class DeleteSwitchPort(BaseCommand):
         self.api.idl.tables['Port'].rows[port.uuid].delete()
 
 
-class AddTunnelPort(BaseCommand):
+class AddTunnelPort(commands.BaseCommand):
     def __init__(self, api, chassis):
         super(AddTunnelPort, self).__init__(api)
         self.chassis = chassis
@@ -453,7 +452,7 @@ class OvsdbMonitor(object):
             self._notify_update_local_interface(_interface, action)
 
 
-class AddPatchPort(BaseCommand):
+class AddPatchPort(commands.BaseCommand):
     def __init__(self, api, bridge, port, remote_name):
         super(AddPatchPort, self).__init__(api)
         self.bridge = bridge

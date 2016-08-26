@@ -17,22 +17,20 @@ import time
 
 from oslo_config import cfg
 from oslo_log import log
-from ryu.controller.handler import CONFIG_DISPATCHER
-from ryu.controller.handler import MAIN_DISPATCHER
-from ryu.controller.handler import set_ev_handler
+from ryu.controller import handler
 from ryu.controller import ofp_event
-from ryu.controller.ofp_handler import OFPHandler
+from ryu.controller import ofp_handler
 from ryu.ofproto import ofproto_v1_3
 from ryu import utils
 
 from dragonflow._i18n import _LE, _LI
-from dragonflow.controller.dispatcher import AppDispatcher
+from dragonflow.controller import dispatcher as c_dispatcher
 
 
 LOG = log.getLogger(__name__)
 
 
-class RyuDFAdapter(OFPHandler):
+class RyuDFAdapter(ofp_handler.OFPHandler):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OF_AUTO_PORT_DESC_STATS_REQ_VER = 0x04
 
@@ -40,7 +38,7 @@ class RyuDFAdapter(OFPHandler):
         super(RyuDFAdapter, self).__init__(db_store=db_store,
                                            vswitch_api=vswitch_api,
                                            nb_api=nb_api)
-        self.dispatcher = AppDispatcher('dragonflow.controller',
+        self.dispatcher = c_dispatcher.AppDispatcher('dragonflow.controller',
                                         cfg.CONF.df.apps_list)
         self.db_store = db_store
         self.vswitch_api = vswitch_api
@@ -142,7 +140,8 @@ class RyuDFAdapter(OFPHandler):
     def notify_delete_floatingip(self, floatingip):
         self.dispatcher.dispatch('delete_floatingip', floatingip)
 
-    @set_ev_handler(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    @handler.set_ev_handler(
+        ofp_event.EventOFPSwitchFeatures, handler.CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         # TODO(oanson) is there a better way to get the datapath?
         self._datapath = ev.msg.datapath
@@ -158,11 +157,13 @@ class RyuDFAdapter(OFPHandler):
         req = ofp_parser.OFPPortDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
 
-    @set_ev_handler(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
+    @handler.set_ev_handler(
+        ofp_event.EventOFPPortDescStatsReply, handler.MAIN_DISPATCHER)
     def port_desc_stats_reply_handler(self, ev):
         self.dispatcher.dispatch('port_desc_stats_reply_handler', ev)
 
-    @set_ev_handler(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
+    @handler.set_ev_handler(
+        ofp_event.EventOFPPacketIn, handler.MAIN_DISPATCHER)
     def OF_packet_in_handler(self, event):
         msg = event.msg
         table_id = msg.table_id
@@ -172,7 +173,8 @@ class RyuDFAdapter(OFPHandler):
         else:
             LOG.info(_LI("No handler for table id %s"), format(table_id))
 
-    @set_ev_handler(ofp_event.EventOFPErrorMsg, MAIN_DISPATCHER)
+    @handler.set_ev_handler(
+        ofp_event.EventOFPErrorMsg, handler.MAIN_DISPATCHER)
     def OF_error_msg_handler(self, event):
         msg = event.msg
         LOG.error(_LE('OFPErrorMsg received: type=0x%(type)02x '

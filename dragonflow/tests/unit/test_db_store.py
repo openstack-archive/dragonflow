@@ -15,14 +15,14 @@
 
 import mock
 
-from dragonflow.db.db_store import DbStore
+from dragonflow.db import db_store as store
 from dragonflow.tests import base as tests_base
 
 
 class TestDbStore(tests_base.BaseTestCase):
     def setUp(self):
         tests_base.BaseTestCase.setUp(self)
-        self.db_store = DbStore()
+        self.db_store = store.DbStore()
 
     def test_network_id(self):
         self.db_store.set_network_id('ldp1', 'value1')
