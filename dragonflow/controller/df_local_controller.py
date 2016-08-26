@@ -21,14 +21,14 @@ from neutron.agent.common import config
 from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_log import log
-from ryu.base.app_manager import AppManager
+from ryu.base import app_manager
 
 from dragonflow._i18n import _LI, _LW
 from dragonflow.common import common_params
 from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
-from dragonflow.controller.ryu_base_app import RyuDFAdapter
-from dragonflow.controller.topology import Topology
+from dragonflow.controller import ryu_base_app
+from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
 from dragonflow.db.drivers import ovsdb_vswitch_impl
@@ -62,8 +62,9 @@ class DfLocalController(object):
             vswitch_api=self.vswitch_api,
             db_store=self.db_store
         )
-        app_mgr = AppManager.get_instance()
-        self.open_flow_app = app_mgr.instantiate(RyuDFAdapter, **kwargs)
+        app_mgr = app_manager.AppManager.get_instance()
+        self.open_flow_app = \
+            app_mgr.instantiate(ryu_base_app.RyuDFAdapter, **kwargs)
 
         self.topology = None
         self.enable_selective_topo_dist = \
@@ -74,7 +75,8 @@ class DfLocalController(object):
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api.initialize()
-        self.topology = Topology(self, self.enable_selective_topo_dist)
+        self.topology = \
+            topology.Topology(self, self.enable_selective_topo_dist)
 
         self.vswitch_api.sync()
         # both set_controller and del_controller will delete flows.

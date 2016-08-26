@@ -15,7 +15,7 @@
 
 import mock
 
-from dragonflow.db.drivers.redis_db_driver import RedisDbDriver
+from dragonflow.db.drivers import redis_db_driver
 from dragonflow.tests import base as tests_base
 
 
@@ -23,7 +23,7 @@ class TestRedisDB(tests_base.BaseTestCase):
 
     def setUp(self):
         super(TestRedisDB, self).setUp()
-        self.RedisDbDriver = RedisDbDriver()
+        self.RedisDbDriver = redis_db_driver.RedisDbDriver()
 
     def test_set_success(self):
         client = mock.Mock()
