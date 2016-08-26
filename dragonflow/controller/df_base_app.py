@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
@@ -21,8 +20,6 @@ from ryu.ofproto import ether
 
 from dragonflow.controller.common.utils import set_aging_cookie_bits
 from dragonflow.controller import df_db_notifier
-
-LOG = logging.getLogger(__name__)
 
 
 class DFlowApp(df_db_notifier.DBNotifyInterface):
