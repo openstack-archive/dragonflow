@@ -23,7 +23,6 @@ import webob
 
 from oslo_config import cfg
 from oslo_log import log
-from oslo_service import loopingcall
 from oslo_utils import encodeutils
 
 from neutron.agent.ovsdb.native import idlutils
@@ -64,11 +63,6 @@ options = [
         default='18080',
         help=_('The port to which the DF metadata service proxy is bound'),
     ),
-    cfg.StrOpt(
-        'interface',
-        default='tap-metadata',
-        help=_('The name of the interface to bind the metadata service proxy'),
-    ),
 ]
 
 
@@ -85,17 +79,39 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         cfg.CONF.register_opts(options, group='df_metadata')
         self._ip = cfg.CONF.df_metadata.ip
         self._port = cfg.CONF.df_metadata.port
-        self._interface = cfg.CONF.df_metadata.interface
+        self._interface = cfg.CONF.df.metadata_interface
 
-    def ovs_sync_started(self):
-        self.initialize()
+    def ovs_port_updated(self, ovs_port):
+        if ovs_port.get_name() != cfg.CONF.df.metadata_interface:
+            return
 
-    def initialize(self):
-        loopingcall.FixedIntervalLoopingCall(
-            self._wait_for_tap_metadata_interface
-        ).start(0, 1)
+        self._add_metadata_interface_flows()
 
-    def _wait_for_tap_metadata_interface(self):
+    def ovs_port_deleted(self, ovs_port):
+        if ovs_port.get_name() != cfg.CONF.df.metadata_interface:
+            return
+
+        self._remove_metadata_interface_flows()
+
+    def _remove_metadata_interface_flows(self):
+        if not self._ofport:
+            return
+
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+
+        self.mod_flow(
+            datapath=self.get_datapath(),
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=parser.OFPMatch(in_port=self._ofport))
+
+        self._ofport = None
+
+    def _add_metadata_interface_flows(self):
         idl = self.vswitch_api.idl
         if not idl:
             return
@@ -116,7 +132,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         if ofport <= 0:
             return
         self._add_tap_metadata_port(ofport, interface.mac_in_use[0])
-        raise loopingcall.LoopingCallDone()
 
     def _add_tap_metadata_port(self, ofport, mac):
         """
