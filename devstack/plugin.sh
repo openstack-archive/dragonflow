@@ -138,7 +138,7 @@ function configure_df_metadata_service {
         iniset $NEUTRON_CONF DEFAULT metadata_proxy_shared_secret $METADATA_PROXY_SHARED_SECRET
         iniset $NEUTRON_CONF df_metadata ip "$DF_METADATA_SERVICE_IP"
         iniset $NEUTRON_CONF df_metadata port "$DF_METADATA_SERVICE_PORT"
-        iniset $NEUTRON_CONF df_metadata interface "$DF_METADATA_SERVICE_INTERFACE"
+        iniset $NEUTRON_CONF df df_metadata_interface "$DF_METADATA_SERVICE_INTERFACE"
     fi
 }
 

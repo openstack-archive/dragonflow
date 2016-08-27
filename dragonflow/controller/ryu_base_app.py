@@ -133,6 +133,12 @@ class RyuDFAdapter(OFPHandler):
     def notify_ovs_sync_started(self):
         self.dispatcher.dispatch('ovs_sync_started')
 
+    def notify_metadata_interface_updated(self):
+        self.dispatcher.dispatch('metadata_interface_updated')
+
+    def notify_metadata_interface_deleted(self):
+        self.dispatcher.dispatch('metadata_interface_deleted')
+
     def notify_associate_floatingip(self, floatingip):
         self.dispatcher.dispatch('associate_floatingip', floatingip)
 

@@ -12,6 +12,7 @@
 # limitations under the License.
 
 DRAGONFLOW_VIRTUAL_PORT = "DragonflowVirtualPort"
+METADATA_INTERFACE = "df_metadata_interface"
 OVS_INTERFACE = "ovsinterface"
 OVS_VM_INTERFACE = "vm"
 OVS_BRIDGE_INTERFACE = "bridge"

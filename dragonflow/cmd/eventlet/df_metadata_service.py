@@ -11,24 +11,33 @@
 #    under the License.
 
 from oslo_config import cfg
+from oslo_log import log
 
 from neutron.agent.common import utils
+from neutron.agent.linux import ip_lib
 from neutron.agent.metadata import config as metadata_conf
 from neutron.common import config
 from neutron import wsgi
 
+from dragonflow._i18n import _LI
 from dragonflow.common import common_params
 from dragonflow.controller import metadata_service_app
 
 import sys
 
 
+LOG = log.getLogger(__name__)
+
 METADATA_ROUTE_TABLE_ID = '2'
 
 
 def environment_setup():
     bridge = cfg.CONF.df.integration_bridge
-    interface = cfg.CONF.df_metadata.interface
+    interface = cfg.CONF.df.df_metadata_interface
+    if ip_lib.device_exists(interface):
+        LOG.info(_LI("Device %s already exists"), interface)
+        return
+
     cmd = ["ovs-vsctl", "add-port", bridge, interface,
         "--", "set", "Interface", interface, "type=internal"]
     utils.execute(cmd, run_as_root=True)
@@ -50,7 +59,7 @@ def environment_setup():
 
 def environment_destroy():
     bridge = cfg.CONF.df.integration_bridge
-    interface = cfg.CONF.df_metadata.interface
+    interface = cfg.CONF.df.df_metadata_interface
     cmd = ["ovs-vsctl", "del-port", bridge, interface]
     utils.execute(cmd, run_as_root=True, check_exit_code=[0])
 

@@ -26,6 +26,7 @@ from oslo_serialization import jsonutils
 import six
 
 from dragonflow._i18n import _LI, _LW, _LE
+from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC, \
                                      DB_SYNC_MINIMUM_INTERVAL
@@ -262,6 +263,11 @@ class NbApi(object):
             elif action == 'delete':
                 ovs_port_id = key
                 self.controller.ovs_port_deleted(ovs_port_id)
+        elif table == constants.METADATA_INTERFACE:
+            if action == 'set' or action == 'create':
+                self.controller.metadata_interface_updated()
+            elif action == 'delete':
+                self.controller.metadata_interface_deleted()
         elif 'log' == action:
             message = _LI(
                 'Log event (Info): '
