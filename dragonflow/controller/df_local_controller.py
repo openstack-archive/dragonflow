@@ -542,10 +542,18 @@ class DfLocalController(object):
                 self._associate_floatingip(new_floatingip)
 
     def ovs_port_updated(self, ovs_port):
-        self.topology.ovs_port_updated(ovs_port)
+        if ovs_port.get_name() == cfg.CONF.df.metadata_interface:
+            # Notify about the metadata interface upate.
+            self.open_flow_app.notify_metadata_interface_updated()
+        else:
+            self.topology.ovs_port_updated(ovs_port)
 
     def ovs_port_deleted(self, ovs_port_id):
-        self.topology.ovs_port_deleted(ovs_port_id)
+        if ovs_port_id == cfg.CONF.df.metadata_interface:
+            # Notify about the metadata interface delete.
+            self.open_flow_app.notify_metadata_interface_deleted()
+        else:
+            self.topology.ovs_port_deleted(ovs_port_id)
 
     def ovs_sync_finished(self):
         self.open_flow_app.notify_ovs_sync_finished()

@@ -431,6 +431,11 @@ class OvsdbMonitor(object):
             table = constants.OVS_INTERFACE
             key = local_interface.uuid
             self.nb_api.db_change_callback(table, key, action, local_interface)
+        elif local_interface.name == cfg.CONF.df.metadata_interface:
+            # Notify about the metadata proxy device update.
+            table = constants.OVS_INTERFACE
+            key = cfg.CONF.df.metadata_interface
+            self.nb_api.db_change_callback(table, key, action, local_interface)
 
     def _notify_existing_interfaces(self):
         interfaces = self.idl.tables['Interface']
