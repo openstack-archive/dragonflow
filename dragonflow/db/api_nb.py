@@ -260,8 +260,8 @@ class NbApi(object):
             elif action == 'sync_started':
                 self.controller.ovs_sync_started()
             elif action == 'delete':
-                ovs_port_id = key
-                self.controller.ovs_port_deleted(ovs_port_id)
+                ovs_port = OvsPort(value)
+                self.controller.ovs_port_deleted(ovs_port)
         elif 'log' == action:
             message = _LI(
                 'Log event (Info): '
