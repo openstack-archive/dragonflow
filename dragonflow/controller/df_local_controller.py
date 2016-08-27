@@ -545,6 +545,12 @@ class DfLocalController(object):
     def ovs_sync_started(self):
         self.open_flow_app.notify_ovs_sync_started()
 
+    def metadata_interface_updated(self):
+        self.open_flow_app.notify_metadata_interface_updated()
+
+    def metadata_interface_deleted(self):
+        self.open_flow_app.notify_metadata_interface_deleted()
+
     def get_nb_api(self):
         return self.nb_api
 
