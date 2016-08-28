@@ -293,22 +293,18 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def remove_router_interface(self, context, router_id, interface_info):
-        new_router = super(DFL3RouterPlugin, self).remove_router_interface(
+        result = super(DFL3RouterPlugin, self).remove_router_interface(
                 context, router_id, interface_info)
         router = self.get_router(context, router_id)
         router_version = router['revision']
 
-        self.core_plugin = self._get_core_plugin()
-        subnet = self.core_plugin.get_subnet(context, new_router['subnet_id'])
-        network_id = subnet['network_id']
-
         try:
-            self.nb_api.delete_lrouter_port(router_id,
-                                            network_id,
-                                            subnet['tenant_id'],
+            self.nb_api.delete_lrouter_port(result['port_id'],
+                                            router_id,
+                                            result['tenant_id'],
                                             router_version=router_version)
         except df_exceptions.DBKeyNotFound:
             LOG.exception(_LE("logical router %s is not found in DF DB, "
                               "suppressing delete_lrouter_port "
                               "exception") % router_id)
-        return new_router
+        return result
