@@ -891,24 +891,21 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def remove_router_interface(self, context, router_id, interface_info):
         with context.session.begin(subtransactions=True):
-            new_router = super(DFPlugin, self).remove_router_interface(
+            router_port_info = super(DFPlugin, self).remove_router_interface(
                 context, router_id, interface_info)
             router_version = version_db._update_db_version_row(
                     context.session, router_id)
 
-        subnet = self.get_subnet(context, new_router['subnet_id'])
-        network_id = subnet['network_id']
-
         try:
-            self.nb_api.delete_lrouter_port(router_id,
-                                            network_id,
-                                            subnet['tenant_id'],
+            self.nb_api.delete_lrouter_port(router_port_info['port_id'],
+                                            router_id,
+                                            router_port_info['tenant_id'],
                                             router_version=router_version)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("logical router %s is not found in DF DB, "
                       "suppressing delete_lrouter_port "
                       "exception" % router_id)
-        return new_router
+        return router_port_info
 
     def _create_dhcp_server_port(self, context, subnet):
         """Create and return dhcp port information.
