@@ -433,3 +433,36 @@ class FloatingipTestObj(object):
                 return True
             return False
         wait_until_true(internal_predicate, timeout, sleep, exception)
+
+
+class QosPolicyTestObj(object):
+    def __init__(self, neutron, nb_api):
+        self.policy_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.closed = False
+
+    def create(self, qospolicy={'name': 'myqospolicy1'}):
+        new_qospolicy = self.neutron.create_qos_policy({'qos_policy':
+                                                        qospolicy})
+        self.policy_id = new_qospolicy['qos_policy']['id']
+        return self.policy_id
+
+    def update(self):
+        policy = {'id': self.policy_id}
+        self.neutron.create_bandwidth_limit_rule(policy,
+                                                 {'max_burst_kbps': 1000,
+                                                  'max_kbps': 100})
+        return
+
+    def close(self):
+        if self.closed or self.policy_id is None:
+            return
+        self.neutron.delete_qos_policy(self.policy_id)
+        self.closed = True
+
+    def exists(self):
+        qospolicy = self.nb_api.get_qos_policy(self.policy_id)
+        if qospolicy:
+            return True
+        return False

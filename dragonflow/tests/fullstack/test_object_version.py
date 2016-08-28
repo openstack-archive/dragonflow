@@ -132,6 +132,22 @@ class TestObjectVersion(test_base.DFTestBase):
         secgroup.close()
         self.assertFalse(secgroup.exists())
 
+    def test_qospolicy_version(self):
+        qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
+                                                        self.nb_api))
+        policy_id = qospolicy.create()
+        self.assertTrue(qospolicy.exists())
+        version = self.nb_api.get_qos_policy(policy_id).get_version()
+        self.assertEqual(version, 0)
+
+        qospolicy.update()
+        self.assertTrue(qospolicy.exists())
+        version = self.nb_api.get_qos_policy(policy_id).get_version()
+        self.assertEqual(version, 1)
+
+        qospolicy.close()
+        self.assertFalse(qospolicy.exists())
+
     @contextlib.contextmanager
     def _prepare_ext_net(self):
         external_net = objects.find_first_network(self.neutron,
