@@ -44,6 +44,8 @@ function configure_redis {
 }
 
 function nb_db_driver_install_server {
+    sudo pip install crc16
+
     if is_service_enabled df-redis-server ; then
         echo "Installing rediscluster"
         if [ ! -f "$DEST/redis/redis-$REDIS_VERSION/redis" ]; then
@@ -68,7 +70,6 @@ function nb_db_driver_install_server {
                 configure_redis
             fi
 
-            sudo pip install crc16
             mkdir -p $DEST/ruby
             if [ ! -f "$DEST/ruby/ruby-$RUBY_VERSION.0.tar.gz" ]; then
                 wget https://cache.ruby-lang.org/pub/ruby/$RUBY_VERSION/ruby-$RUBY_VERSION.0.tar.gz -O $DEST/ruby/ruby-$RUBY_VERSION.0.tar.gz
