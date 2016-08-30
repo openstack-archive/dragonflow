@@ -73,7 +73,7 @@ def print_whole_table(db_driver, table):
     for key in keys:
         value = db_driver.get_key(table, key)
         if value:
-            print ('Key = ' + key + ' , Value = ' + value)
+            print('Key = ' + key + ' , Value = ' + value)
     print(' ')
 
 
