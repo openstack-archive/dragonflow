@@ -100,7 +100,7 @@ class RedisDbDriver(db_api.DbApi):
             return None
 
         ip_port = self.redis_mgt.get_ip_by_key(local_key)
-        client = self._get_client(local_key)
+        client = self._get_client(local_key, ip_port)
         if client is None:
             return None
 
@@ -221,7 +221,7 @@ class RedisDbDriver(db_api.DbApi):
             local_key = self.uuid_to_key(table, '*', topic)
             try:
                 ip_port = self.redis_mgt.get_ip_by_key(local_key)
-                client = self._get_client(local_key)
+                client = self._get_client(local_key, ip_port)
                 if client is None:
                     return res
 
@@ -254,7 +254,7 @@ class RedisDbDriver(db_api.DbApi):
             local_key = self.uuid_to_key(table, '*', topic)
             try:
                 ip_port = self.redis_mgt.get_ip_by_key(local_key)
-                client = self._get_client(local_key)
+                client = self._get_client(local_key, ip_port)
                 if client is None:
                     return res
 
@@ -277,7 +277,7 @@ class RedisDbDriver(db_api.DbApi):
         ip_port = None
         try:
             ip_port = self.redis_mgt.get_ip_by_key(local_key)
-            client = self._get_client(local_key)
+            client = self._get_client(local_key, ip_port)
             if client is None:
                 return None
             return client.incr(local_key)
