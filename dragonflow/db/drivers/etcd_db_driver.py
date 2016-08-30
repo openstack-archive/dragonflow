@@ -155,11 +155,11 @@ class EtcdDbDriver(db_api.DbApi):
             prev_value = int(self.client.read(key).value)
             self.client.test_and_set(key, str(prev_value + 1), str(prev_value))
             return prev_value + 1
-        except Exception as e:
+        except Exception:
             if prev_value == 0:
                 self.client.write(key, "1", prevExist=False)
                 return 1
-            raise e
+            raise
 
     def allocate_unique_key(self):
         while True:
