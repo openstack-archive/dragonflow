@@ -27,7 +27,6 @@ class TenantDbStore(object):
         self.ports = {}
         self.local_ports = {}
         self.routers = {}
-        self.router_interface_to_key = {}
         self.floatingips = {}
         self.secgroups = {}
         self.publishers = {}
@@ -37,7 +36,6 @@ class TenantDbStore(object):
             'ports': self.ports,
             'local_ports': self.local_ports,
             'routers': self.routers,
-            'router_interface_to_key': self.router_interface_to_key,
             'floatingips': self.floatingips,
             'secgroups': self.secgroups,
             'publishers': self.publishers,
