@@ -112,7 +112,7 @@ We just take broadcast for example.
 When broadcast happens, thus packet should be forwarded to local ports,
 remote ports and unknown outside servers belong to the same vlan.
 
-For remote and unkown outside ports, controller just needs to push vlan header
+For remote and unknown outside ports, controller just needs to push vlan header
 and forward packets to br-1(external).
 Then br-1 will send packets to the physical nic
 according to the flows on br-1 "table=0, priority=0, Actions=Normal".
