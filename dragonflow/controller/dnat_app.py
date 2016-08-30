@@ -19,7 +19,6 @@ import netaddr
 from neutron.agent.ovsdb.native import idlutils
 from neutron_lib import constants as n_const
 from oslo_config import cfg
-from oslo_log import log
 from oslo_service import loopingcall
 from ryu.lib.packet import arp
 from ryu.ofproto import ether
@@ -30,8 +29,6 @@ from dragonflow.controller.common.arp_responder import ArpResponder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller.df_base_app import DFlowApp
-
-LOG = log.getLogger(__name__)
 
 
 DF_DNAT_APP_OPTS = [

@@ -14,14 +14,11 @@ import kazoo
 from kazoo.client import KazooClient
 from kazoo.handlers.eventlet import SequentialEventletHandler
 from kazoo.retry import KazooRetry
-from oslo_log import log
 import six
 
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils
 from dragonflow.db import db_api
-
-LOG = log.getLogger(__name__)
 
 ROOT_NS = '/openstack'
 
