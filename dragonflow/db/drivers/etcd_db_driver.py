@@ -17,8 +17,8 @@ import etcd
 import eventlet
 from oslo_log import log
 import urllib3
-from urllib3.connection import HTTPException, BaseSSLError
-from urllib3.exceptions import ReadTimeoutError, ProtocolError
+from urllib3 import connection
+from urllib3 import exceptions
 
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
@@ -47,20 +47,22 @@ def _error_catcher(self):
             # FIXME: Ideally we'd like to include the url in the
             # ReadTimeoutError but there is yet no clean way to
             # get at it from this context.
-            raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+            raise exceptions.ReadTimeoutError(
+                self._pool, None, 'Read timed out.')
 
-        except BaseSSLError as e:
+        except connection.BaseSSLError as e:
             # FIXME: Is there a better way to differentiate between SSLErrors?
             if 'read operation timed out' not in str(e):  # Defensive:
                 # This shouldn't happen but just in case we're missing an edge
                 # case, let's avoid swallowing SSL errors.
                 raise
 
-            raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+            raise exceptions.ReadTimeoutError(
+                self._pool, None, 'Read timed out.')
 
-        except HTTPException as e:
+        except connection.HTTPException as e:
             # This includes IncompleteRead.
-            raise ProtocolError('Connection broken: %r' % e, e)
+            raise exceptions.ProtocolError('Connection broken: %r' % e, e)
     except Exception:
         # The response may not be closed but we're not going to use it anymore
         # so close it now to ensure that the connection is released back to the

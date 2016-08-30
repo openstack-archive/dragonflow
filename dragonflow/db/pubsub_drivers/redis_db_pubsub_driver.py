@@ -20,7 +20,7 @@ import redis
 
 from dragonflow._i18n import _LE, _LW
 from dragonflow.common import common_params
-from dragonflow.db.drivers.redis_mgt import RedisMgt
+from dragonflow.db.drivers import redis_mgt as d_redis_mgt
 from dragonflow.db import pub_sub_api
 
 LOG = logging.getLogger(__name__)
@@ -54,8 +54,9 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
     def initialize(self):
         # find a publisher server node
         super(RedisPublisherAgent, self).initialize()
-        self.redis_mgt = RedisMgt.get_instance(cfg.CONF.df.remote_db_ip,
-                                               cfg.CONF.df.remote_db_port)
+        self.redis_mgt = d_redis_mgt.RedisMgt.get_instance(
+            cfg.CONF.df.remote_db_ip,
+            cfg.CONF.df.remote_db_port)
         self._update_client()
 
     def _update_client(self):
@@ -122,8 +123,9 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
     def initialize(self, callback):
         # find a subscriber server node and run daemon
         super(RedisSubscriberAgent, self).initialize(callback)
-        self.redis_mgt = RedisMgt.get_instance(cfg.CONF.df.remote_db_ip,
-                                               cfg.CONF.df.remote_db_port)
+        self.redis_mgt = d_redis_mgt.RedisMgt.get_instance(
+            cfg.CONF.df.remote_db_ip,
+            cfg.CONF.df.remote_db_port)
         self._update_client()
 
     def process_ha(self):

@@ -11,7 +11,7 @@
 #    under the License.
 
 import eventlet
-from eventlet.queue import Queue
+from eventlet import queue
 import sys
 import time
 import traceback
@@ -35,7 +35,7 @@ LOG = logging.getLogger(__name__)
 
 class PublisherService(object):
     def __init__(self):
-        self._queue = Queue()
+        self._queue = queue.Queue()
         self.publisher = self._get_publisher()
         self.multiproc_subscriber = self._get_multiproc_subscriber()
         self.db = df_utils.load_driver(

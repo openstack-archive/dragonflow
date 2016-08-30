@@ -18,7 +18,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 
 from dragonflow._i18n import _LI, _LE
-from dragonflow.common.exceptions import UnsupportedTransportException
+from dragonflow.common import exceptions
 from dragonflow.db import db_common
 from dragonflow.db import pub_sub_api
 
@@ -38,7 +38,7 @@ class ZMQPubSub(pub_sub_api.PubSubApi):
                 'transport': transport,
                 'expected': str(SUPPORTED_TRANSPORTS)
             })
-            raise UnsupportedTransportException(transport=transport)
+            raise exceptions.UnsupportedTransportException(transport=transport)
         self.subscriber = ZMQSubscriberAgent()
         self.publisher = ZMQPublisherAgent()
 

@@ -16,8 +16,8 @@
 import eventlet
 from oslo_log import log
 import ryu.app.ofctl.api as ofctl_api
-from ryu.app.ofctl.service import OfctlService
-from ryu.base.app_manager import AppManager
+from ryu.app.ofctl import service
+from ryu.base import app_manager
 import ryu.exception as ryu_exc
 
 from dragonflow._i18n import _LE
@@ -32,8 +32,8 @@ class OpenFlowSwitchMixin(object):
     """
 
     def __init__(self, ryu_app):
-        app_mgr = AppManager.get_instance()
-        self.ofctl_app = app_mgr.instantiate(OfctlService)
+        app_mgr = app_manager.AppManager.get_instance()
+        self.ofctl_app = app_mgr.instantiate(service.OfctlService)
         self.ofctl_app.start()
         self._app = ryu_app
 
