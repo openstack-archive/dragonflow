@@ -39,6 +39,7 @@ from neutron.db import l3_gwmode_db
 from neutron.db import models_v2
 from neutron.db import netmtu_db
 from neutron.db import portbindings_db
+from neutron.db.portbindings_db import PortBindingPort
 from neutron.db import portsecurity_db_common
 from neutron.db import securitygroups_db
 from neutron.extensions import allowedaddresspairs as addr_pair
@@ -47,6 +48,7 @@ from neutron.extensions import portbindings
 from neutron.extensions import portsecurity as psec
 from neutron.extensions import providernet as pnet
 from neutron.quota import resource_registry
+from neutron_lib.api import validators
 from neutron_lib import constants as const
 from neutron_lib import exceptions as n_exc
 from oslo_config import cfg
@@ -780,9 +782,46 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             LOG.debug("port %s is not found in DF DB, might have "
                       "been deleted concurrently" % port_id)
 
+    def _process_portbindings_create_and_update(self, context, port_data,
+                                                port):
+        binding_profile = port.get(portbindings.PROFILE)
+        binding_profile_set = validators.is_attr_set(binding_profile)
+        if not binding_profile_set and binding_profile is not None:
+            del port[portbindings.PROFILE]
+
+        binding_vnic = port.get(portbindings.VNIC_TYPE)
+        binding_vnic_set = validators.is_attr_set(binding_vnic)
+        if not binding_vnic_set and binding_vnic is not None:
+            del port[portbindings.VNIC_TYPE]
+        # REVISIT(irenab) Add support for vnic_type for plugins that
+        # can handle more than one type.
+        # Currently implemented for ML2 plugin that does not use
+        # PortBindingMixin.
+
+        host = port_data.get(portbindings.HOST_ID)
+        host_set = validators.is_attr_set(host)
+        with context.session.begin(subtransactions=True):
+            bind_port = context.session.query(
+                PortBindingPort).filter_by(port_id=port['id']).first()
+            if host_set:
+                if not bind_port:
+                    context.session.add(PortBindingPort(port_id=port['id'],
+                                                        host=host))
+                else:
+                    bind_port.host = host
+            else:
+                host = bind_port.host if bind_port else None
+        if self.base_binding_dict:
+            port.update(self.base_binding_dict)
+        port[portbindings.HOST_ID] = host
+
     def extend_port_dict_binding(self, port_res, port_db):
-        super(DFPlugin, self).extend_port_dict_binding(port_res, port_db)
         self._update_port_binding(port_res)
+        if self.base_binding_dict:
+            port_res.update(self.base_binding_dict)
+        if port_db:
+            host = port_db.portbinding.host if port_db.portbinding else None
+            port_res[portbindings.HOST_ID] = host
 
     def _create_router_db(self, context, router, tenant_id):
         """Create a router db object with dvr additions."""
