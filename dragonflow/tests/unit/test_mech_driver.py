@@ -104,7 +104,7 @@ class TestDFMechDriver(base.BaseTestCase):
         port = {'fixed_ips': [{'subnet_id': subnet_id, 'ip_address': dhcp_ip}]}
 
         self.driver._handle_create_subnet_dhcp = mock.Mock(
-            return_value=port)
+            return_value=[dhcp_ip, port])
         subnet_context = self._get_subnet_context(tenant_id, network_id,
                                                   subnet_id, cidr, gateway_ip,
                                                   enable_dhcp, dns_nameservers)
@@ -129,7 +129,7 @@ class TestDFMechDriver(base.BaseTestCase):
         port = {'fixed_ips': [{'subnet_id': subnet_id, 'ip_address': dhcp_ip}]}
 
         self.driver._handle_update_subnet_dhcp = mock.Mock(
-            return_value=port)
+            return_value=[dhcp_ip, port])
         subnet_context = self._get_subnet_context(tenant_id, network_id,
                                                   subnet_id, cidr, gateway_ip,
                                                   enable_dhcp, dns_nameservers)
