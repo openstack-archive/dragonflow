@@ -46,7 +46,7 @@ function configure_redis {
 function nb_db_driver_install_server {
     sudo pip install crc16
 
-    if is_service_enabled df-redis-server ; then
+    if $DF_REDIS_INSTALL_FROM_GIT == "False"; then
         echo "Installing rediscluster"
         if [ ! -f "$DEST/redis/redis-$REDIS_VERSION/redis" ]; then
             mkdir -p $DEST/redis
@@ -86,6 +86,12 @@ function nb_db_driver_install_server {
             fi
 
             popd
+        fi
+    else
+        if is_ubuntu; then
+           real_install_package -y redis-server
+        elif is_fedora; then
+           real_install_package -y redis
         fi
     fi
 }
