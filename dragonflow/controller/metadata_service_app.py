@@ -29,12 +29,11 @@ from oslo_utils import encodeutils
 from neutron.agent.ovsdb.native import idlutils
 
 from dragonflow._i18n import _, _LW, _LE
-from dragonflow.common.exceptions import LogicalPortNotFoundByTunnelKey
-from dragonflow.common.exceptions import NoRemoteIPProxyException
+from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
-from dragonflow.controller.common.arp_responder import ArpResponder
+from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
-from dragonflow.controller.df_base_app import DFlowApp
+from dragonflow.controller import df_base_app
 from dragonflow.db import api_nb
 
 from ryu.lib.packet import arp
@@ -72,7 +71,7 @@ options = [
 ]
 
 
-class MetadataServiceApp(DFlowApp):
+class MetadataServiceApp(df_base_app.DFlowApp):
     def __init__(self, api, db_store=None, vswitch_api=None, nb_api=None):
         super(MetadataServiceApp, self).__init__(
             api,
@@ -394,7 +393,7 @@ class MetadataServiceApp(DFlowApp):
         ]
 
     def _create_arp_responder(self, mac):
-        self._arp_responder = ArpResponder(
+        self._arp_responder = arp_responder.ArpResponder(
             self.get_datapath(),
             None,
             const.METADATA_SERVICE_IP,
@@ -500,7 +499,7 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
     def get_headers(self, req):
         remote_addr = req.remote_addr
         if not remote_addr:
-            raise NoRemoteIPProxyException()
+            raise exceptions.NoRemoteIPProxyException()
         tunnel_key = int(netaddr.IPAddress(remote_addr) & ~0x80000000)
         lport = self._get_logical_port_by_tunnel_key(tunnel_key)
         headers = dict(req.headers)
@@ -540,7 +539,7 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
         for lport in lports:
             if lport.get_tunnel_key() == tunnel_key:
                 return lport
-        raise LogicalPortNotFoundByTunnelKey(key=tunnel_key)
+        raise exceptions.LogicalPortNotFoundByTunnelKey(key=tunnel_key)
 
     # Taken from Neurton: neutron/agent/metadata/agent.py
     def _sign_instance_id(self, instance_id):

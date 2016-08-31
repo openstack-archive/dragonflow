@@ -11,9 +11,9 @@
 #    under the License.
 
 import kazoo
-from kazoo.client import KazooClient
-from kazoo.handlers.eventlet import SequentialEventletHandler
-from kazoo.retry import KazooRetry
+from kazoo import client as k_client
+from kazoo.handlers import eventlet
+from kazoo import retry
 import six
 
 from dragonflow.common import exceptions as df_exceptions
@@ -57,12 +57,12 @@ class ZookeeperDbDriver(db_api.DbApi):
     def _lazy_initialize(self):
         if not self.client:
             hosts = _parse_hosts(self.config.remote_db_hosts)
-            _handler = SequentialEventletHandler()
-            _retry = KazooRetry(max_tries=CLIENT_CONNECTION_RETRIES,
+            _handler = eventlet.SequentialEventletHandler()
+            _retry = retry.KazooRetry(max_tries=CLIENT_CONNECTION_RETRIES,
                                 delay=0.5,
                                 backoff=2,
                                 sleep_func=_handler.sleep_func)
-            self.client = KazooClient(hosts=hosts,
+            self.client = k_client.KazooClient(hosts=hosts,
                                       handler=_handler,
                                       connection_retry=_retry)
             self.client.start()

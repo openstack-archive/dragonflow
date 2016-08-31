@@ -19,8 +19,8 @@ from oslo_config import cfg
 from oslo_serialization import jsonutils
 
 from dragonflow.common import utils as df_utils
-from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC
-from dragonflow.db.pub_sub_api import TableMonitor
+from dragonflow.db import db_common
+from dragonflow.db import pub_sub_api
 from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -59,7 +59,7 @@ def get_subscriber(callback):
         df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
     subscriber = pub_sub_driver.get_subscriber()
     subscriber.initialize(callback)
-    subscriber.register_topic(SEND_ALL_TOPIC)
+    subscriber.register_topic(db_common.SEND_ALL_TOPIC)
     uri = '%s://%s:%s' % (
         cfg.CONF.df.publisher_transport,
         '127.0.0.1',
@@ -194,7 +194,8 @@ class TestPubSub(test_base.DFTestBase):
         eventlet.sleep(2)
         local_events_num = ns.events_num
         action = "log"
-        update = DbUpdate('info', 'log', action, "test ev no diff ports value")
+        update = db_common.DbUpdate(
+            'info', 'log', action, "test ev no diff ports value")
         publisher.send_event(update)
         eventlet.sleep(1)
 
@@ -229,7 +230,7 @@ class TestPubSub(test_base.DFTestBase):
         eventlet.sleep(0.5)
         local_events_num = self.events_num_t
         action = "log"
-        update = DbUpdate(
+        update = db_common.DbUpdate(
             'info',
             'log',
             action,
@@ -242,7 +243,8 @@ class TestPubSub(test_base.DFTestBase):
         no_topic_action = 'log'
         other_topic = "Other-topic"
         self.events_action_t = None
-        update = DbUpdate('info', None, no_topic_action, "No topic value")
+        update = db_common.DbUpdate(
+            'info', None, no_topic_action, "No topic value")
         publisher.send_event(update, other_topic)
         eventlet.sleep(1)
 
@@ -269,14 +271,14 @@ class TestPubSub(test_base.DFTestBase):
         subscriber = get_subscriber(_db_change_callback)
         eventlet.sleep(2)
         action = "log"
-        update = DbUpdate(
+        update = db_common.DbUpdate(
             'info',
             'log',
             action,
             "value"
         )
         update.action = action
-        update.topic = SEND_ALL_TOPIC
+        update.topic = db_common.SEND_ALL_TOPIC
         publisher.send_event(update)
         eventlet.sleep(1)
         self.assertEqual(ns.events_action, action)
@@ -289,7 +291,7 @@ class TestPubSub(test_base.DFTestBase):
         subscriber.register_listen_address(uri)
         eventlet.sleep(2)
         update.action = action
-        update.topic = SEND_ALL_TOPIC
+        update.topic = db_common.SEND_ALL_TOPIC
         ns.events_action = None
         publisher2.send_event(update)
         eventlet.sleep(1)
@@ -302,12 +304,12 @@ class TestMultiprocPubSub(test_base.DFTestBase):
         super(TestMultiprocPubSub, self).setUp()
         self.do_test = cfg.CONF.df.enable_df_pub_sub
         self.key = 'key-{}'.format(random.random())
-        self.event = DbUpdate(
+        self.event = db_common.DbUpdate(
             'info',
             None,
             "log",
             "TestMultiprocPubSub value",
-            topic=SEND_ALL_TOPIC,
+            topic=db_common.SEND_ALL_TOPIC,
         )
         self.subscriber = None
 
@@ -373,7 +375,7 @@ class TestDbTableMonitors(test_base.DFTestBase):
         })
 
     def _create_monitor(self, table_name):
-        table_monitor = TableMonitor(
+        table_monitor = pub_sub_api.TableMonitor(
             table_name,
             self.nb_api.driver,
             self.publisher,
