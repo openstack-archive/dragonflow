@@ -468,7 +468,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         if port.get('device_owner') == n_const.DEVICE_OWNER_ROUTER_GW:
             chassis = None
         else:
-            chassis = port.get('binding:host_id', None)
+            chassis = port.get('binding:host_id', None) or None
 
         self.nb_api.create_lport(
             id=port['id'],
@@ -536,7 +536,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         if updated_port.get('device_owner') == n_const.DEVICE_OWNER_ROUTER_GW:
             chassis = None
         else:
-            chassis = updated_port.get('binding:host_id', None)
+            chassis = updated_port.get('binding:host_id', None) or None
 
         updated_security_groups = updated_port.get('security_groups')
         if updated_security_groups:
