@@ -20,7 +20,7 @@ from ryu.ofproto import ether
 
 from dragonflow._i18n import _LI
 from dragonflow.controller.common import constants as const
-from dragonflow.controller.df_base_app import DFlowApp
+from dragonflow.controller import df_base_app
 
 
 config.setup_logging()
@@ -32,7 +32,7 @@ DHCP_CLIENT_PORT = 68
 DHCP_SERVER_PORT = 67
 
 
-class PortSecApp(DFlowApp):
+class PortSecApp(df_base_app.DFlowApp):
 
     def _add_flow_drop(self, priority, match):
         drop_inst = None

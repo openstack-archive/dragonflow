@@ -27,7 +27,7 @@ import ryu.lib.packet
 
 from dragonflow._i18n import _LI, _LE
 from dragonflow.common import common_params
-from dragonflow.common.utils import DFDaemon
+from dragonflow.common import utils
 from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_objects as objects
 
@@ -845,7 +845,7 @@ class PortThread(object):
         """
         self.packet_handler = packet_handler
         self.port = port
-        self.daemon = DFDaemon(is_not_light=True)
+        self.daemon = utils.DFDaemon(is_not_light=True)
         self.is_working = False
         self.thread_id = None
 
