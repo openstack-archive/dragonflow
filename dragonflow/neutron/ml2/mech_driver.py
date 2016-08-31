@@ -265,8 +265,8 @@ class DFMechDriver(driver_api.MechanismDriver):
         self._extend_port_dict_binding_host(port, host)
 
     def extend_port_dict_binding(self, port_res, port_db):
-        super(DFMechDriver, self).extend_port_dict_binding(port_res, port_db)
         self._update_port_binding(port_res)
+        super(DFMechDriver, self).extend_port_dict_binding(port_res, port_db)
 
     def _create_dhcp_server_port(self, context, subnet):
         """Create and return dhcp port information.
