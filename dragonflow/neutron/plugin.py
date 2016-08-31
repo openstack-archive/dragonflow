@@ -781,8 +781,12 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                       "been deleted concurrently" % port_id)
 
     def extend_port_dict_binding(self, port_res, port_db):
-        super(DFPlugin, self).extend_port_dict_binding(port_res, port_db)
         self._update_port_binding(port_res)
+        if self.base_binding_dict:
+            port_res.update(self.base_binding_dict)
+        if port_db:
+            host = port_db.portbinding.host if port_db.portbinding else None
+            port_res[portbindings.HOST_ID] = host
 
     def _create_router_db(self, context, router, tenant_id):
         """Create a router db object with dvr additions."""
