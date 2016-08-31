@@ -22,7 +22,7 @@ import six
 
 from dragonflow._i18n import _LE, _LW
 from dragonflow.db import db_api
-from dragonflow.db.drivers.redis_mgt import RedisMgt
+from dragonflow.db.drivers import redis_mgt
 
 LOG = log.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class RedisDbDriver(db_api.DbApi):
 
     def initialize(self, db_ip, db_port, **args):
         # get remote ip port list
-        self.redis_mgt = RedisMgt.get_instance(db_ip, db_port)
+        self.redis_mgt = redis_mgt.RedisMgt.get_instance(db_ip, db_port)
         self._update_server_list()
 
     def _update_server_list(self):
