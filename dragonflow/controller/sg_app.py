@@ -14,6 +14,7 @@
 #    under the License.
 import netaddr
 from neutron.agent.common import config
+from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
 
@@ -241,15 +242,15 @@ class SGApp(df_base_app.DFlowApp):
         dl_type_match = {}
         protocol_match = {}
         port_match_list = [{}]
-        if ethertype == 'IPv4':
+        if ethertype == n_const.IPv4:
             dl_type_match["eth_type"] = ether.ETH_TYPE_IP
             if protocol is not None:
-                if protocol == 'icmp':
-                    protocol = 1
-                elif protocol == 'tcp':
-                    protocol = 6
-                elif protocol == 'udp':
-                    protocol = 17
+                if protocol == n_const.PROTO_NAME_ICMP:
+                    protocol = n_const.PROTO_NUM_ICMP
+                elif protocol == n_const.PROTO_NAME_TCP:
+                    protocol = n_const.PROTO_NUM_TCP
+                elif protocol == n_const.PROTO_NAME_UDP:
+                    protocol = n_const.PROTO_NUM_UDP
                 else:
                     protocol = int(protocol)
 
@@ -277,7 +278,7 @@ class SGApp(df_base_app.DFlowApp):
                                 {port_match_name:
                                  SGApp._get_port_range_match(port_item)}
                             )
-        elif ethertype == 'IPv6':
+        elif ethertype == n_const.IPv6:
             # not support yet
             dl_type_match["eth_type"] = ether.ETH_TYPE_IPV6
         else:
@@ -556,14 +557,14 @@ class SGApp(df_base_app.DFlowApp):
         match_list = \
             SGApp._get_rule_flows_match_except_net_addresses(secgroup_rule)
 
-        if secgroup_rule.get_ethertype() == 'IPv4':
+        if secgroup_rule.get_ethertype() == n_const.IPv4:
             if secgroup_rule.get_direction() == 'ingress':
                 table_id = const.INGRESS_SECURITY_GROUP_TABLE
                 ipv4_match_item = "ipv4_src"
             else:
                 table_id = const.EGRESS_SECURITY_GROUP_TABLE
                 ipv4_match_item = "ipv4_dst"
-        elif secgroup_rule.get_ethertype() == 'IPv6':
+        elif secgroup_rule.get_ethertype() == n_const.IPv6:
             # not support yet
             LOG.info(_LI("IPv6 rules are not supported yet"))
             return
@@ -643,7 +644,7 @@ class SGApp(df_base_app.DFlowApp):
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
 
-        if ethertype == 'IPv4':
+        if ethertype == n_const.IPv4:
             addresses_list = [{}]
             if remote_group_id is not None:
                 aggregate_addresses_range = \
@@ -676,7 +677,7 @@ class SGApp(df_base_app.DFlowApp):
                         table_id=table_id,
                         priority=priority,
                         match=match)
-        elif ethertype == 'IPv6':
+        elif ethertype == n_const.IPv6:
             # not support yet
             LOG.info(_LI("IPv6 rules are not supported yet"))
         else:
