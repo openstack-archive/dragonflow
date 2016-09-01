@@ -279,7 +279,7 @@ class SGApp(df_base_app.DFlowApp):
             # not support yet
             dl_type_match["eth_type"] = ether.ETH_TYPE_IPV6
         else:
-            LOG.error(_LE("wrong ethernet type"))
+            LOG.error(_LE("wrong Ethernet type"))
 
         for port_match in port_match_list:
             parameters_merge = dl_type_match.copy()
