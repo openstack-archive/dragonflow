@@ -209,9 +209,7 @@ class DfLocalController(object):
 
     def _logical_port_process(self, lport, original_lport=None):
         chassis = lport.get_chassis()
-        if chassis in (None,
-                       '',
-                       constants.DRAGONFLOW_VIRTUAL_PORT):
+        if not chassis or chassis == constants.DRAGONFLOW_VIRTUAL_PORT:
             LOG.debug(("Port %s has not been bound or it is a vPort ") %
                       lport.get_id())
             return
