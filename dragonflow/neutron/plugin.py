@@ -36,6 +36,7 @@ from neutron.db import l3_agentschedulers_db
 from neutron.db import l3_attrs_db
 from neutron.db import l3_db
 from neutron.db import l3_gwmode_db
+from neutron.db.models import securitygroup as sg_models
 from neutron.db import models_v2
 from neutron.db import netmtu_db
 from neutron.db import portbindings_db
@@ -111,8 +112,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         port=models_v2.Port,
         subnet=models_v2.Subnet,
         subnetpool=models_v2.SubnetPool,
-        security_group=securitygroups_db.SecurityGroup,
-        security_group_rule=securitygroups_db.SecurityGroupRule,
+        security_group=sg_models.SecurityGroup,
+        security_group_rule=sg_models.SecurityGroupRule,
         router=l3_db.Router,
         floatingip=l3_db.FloatingIP)
     def __init__(self):
