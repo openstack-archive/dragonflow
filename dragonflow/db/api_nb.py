@@ -227,7 +227,7 @@ class NbApi(object):
         elif 'chassis' == table:
             if action == 'set' or action == 'create':
                 chassis = Chassis(value)
-                self.controller.chassis_created(chassis)
+                self.controller.chassis_updated(chassis)
             elif action == 'delete':
                 chassis_id = key
                 self.controller.chassis_deleted(chassis_id)
@@ -355,11 +355,17 @@ class NbApi(object):
             res.append(Chassis(entry_value))
         return res
 
-    def add_chassis(self, id, ip, tunnel_type):
-        chassis = {'id': id, 'ip': ip,
-                   'tunnel_type': tunnel_type}
+    def add_chassis(self, chassis):
         chassis_json = jsonutils.dumps(chassis)
-        self.driver.create_key('chassis', id, chassis_json, None)
+        self.driver.create_key('chassis', chassis['id'], chassis_json, None)
+
+    def update_chassis(self, **columns):
+        chassis_json = self.driver.get_key('chassis', id)
+        chassis = jsonutils.loads(chassis_json)
+        for col, val in columns.items():
+            chassis[col] = val
+        chassis_json = jsonutils.dumps(chassis)
+        self.driver.set_key('chassis', chassis['id'], chassis_json)
 
     def get_lswitch(self, id, topic=None):
         try:
@@ -755,7 +761,10 @@ class DbStoreObject(object):
 class Chassis(DbStoreObject):
 
     def __init__(self, value):
-        self.chassis = jsonutils.loads(value)
+        if isinstance(value, dict):
+            self.chassis = value
+        else:
+            self.chassis = jsonutils.loads(value)
 
     def get_id(self):
         return self.chassis['id']
@@ -774,6 +783,12 @@ class Chassis(DbStoreObject):
 
     def __str__(self):
         return self.chassis.__str__()
+
+    def __eq__(self, other):
+        if isinstance(other, dict):
+            return self.chassis == other
+        elif isinstance(other, Chassis):
+            return self.chassis == other.chassis
 
 
 class LogicalSwitch(DbStoreObject):

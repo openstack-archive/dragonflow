@@ -313,6 +313,19 @@ class OvsdbTunnelPort(OvsdbSwitchPort):
     def get_chassis_id(self):
         return self.chassis_id
 
+    def get_remote_ip(self):
+        # FIXME: any other way to get the right interface ?
+        for itf in self.port_row.interfaces:
+            if "remote_ip" in itf.options:
+                return itf.options['remote_ip']
+
+    def get_type(self):
+        # FIXME: any other way to get the right interface ?
+        for itf in self.port_row.interfaces:
+            if "remote_ip" in itf.options:
+                return itf.type
+        return
+
 
 class DelControllerCommand(BaseCommand):
     def __init__(self, api, bridge):
