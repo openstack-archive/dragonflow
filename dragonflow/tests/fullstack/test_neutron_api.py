@@ -174,6 +174,69 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network.close()
         self.assertFalse(network.exists())
 
+    def test_create_port_with_qospolicy(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create()
+        self.assertTrue(network.exists())
+
+        qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
+                                                        self.nb_api))
+        qos_policy_id = qospolicy.create()
+        self.assertTrue(qospolicy.exists())
+
+        port = self.store(objects.PortTestObj(self.neutron,
+                                              self.nb_api,
+                                              network_id))
+        port_param = {
+            'admin_state_up': True,
+            'name': 'port1',
+            'network_id': self.network_id,
+            'qos_policy_id': qos_policy_id
+        }
+        port.create(port_param)
+        self.assertTrue(port.exists())
+        self.assertEqual(qos_policy_id,
+                         port.get_logical_port().get_qos_policy_id())
+
+        port.close()
+        self.assertFalse(port.exists())
+        network.close()
+        self.assertFalse(network.exists())
+        qospolicy.close()
+        self.assertFalse(qospolicy.exists())
+
+    def test_update_port_with_qospolicy(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create()
+        self.assertTrue(network.exists())
+
+        qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
+                                                        self.nb_api))
+        qos_policy_id = qospolicy.create()
+        self.assertTrue(qospolicy.exists())
+
+        port = self.store(objects.PortTestObj(self.neutron,
+                                              self.nb_api,
+                                              network_id))
+        port.create()
+        self.assertTrue(port.exists())
+
+        port_param = {
+            'admin_state_up': True,
+            'name': 'port1',
+            'qos_policy_id': qos_policy_id
+        }
+        port.update(port_param)
+        self.assertEqual(qos_policy_id,
+                         port.get_logical_port().get_qos_policy_id())
+
+        port.close()
+        self.assertFalse(port.exists())
+        network.close()
+        self.assertFalse(network.exists())
+        qospolicy.close()
+        self.assertFalse(qospolicy.exists())
+
     def test_delete_router_interface_port(self):
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
@@ -240,6 +303,19 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(secgroup.rule_exists(secrule_id))
         secgroup.close()
         self.assertFalse(secgroup.exists())
+
+    def test_create_delete_qos_policy(self):
+        qospolicy = self.store(
+            objects.QosPolicyTestObj(self.neutron, self.nb_api))
+        policy_id = qospolicy.create()
+        self.assertTrue(qospolicy.exists())
+        version1 = self.nb_api.get_qos_policy(policy_id).get_version()
+        qospolicy.update()
+        self.assertTrue(qospolicy.exists())
+        version2 = self.nb_api.get_qos_policy(policy_id).get_version()
+        self.assertTrue(version1 != version2)
+        qospolicy.close()
+        self.assertFalse(qospolicy.exists())
 
     @contextlib.contextmanager
     def _prepare_ext_net(self):
