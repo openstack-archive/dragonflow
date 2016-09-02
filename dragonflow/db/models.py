@@ -65,24 +65,6 @@ class NbDbObjectWithUniqueKey(NbDbObject):
         return self.inner_obj.get(UNIQUE_KEY)
 
 
-class Chassis(NbDbObject):
-
-    def get_ip(self):
-        return self.inner_obj.get('ip')
-
-    def get_encap_type(self):
-        return self.inner_obj.get('tunnel_type')
-
-    def get_topic(self):
-        return None
-
-    def get_name(self):
-        return self.get_id()
-
-    def get_version(self):
-        return None
-
-
 class LogicalSwitch(NbDbObjectWithUniqueKey):
 
     def is_external(self):
@@ -418,3 +400,61 @@ class OvsPort(object):
 
     def __str__(self):
         return str(self.ovs_port)
+
+
+class Chassis(NbDbObject):
+
+    def get_ip(self):
+        return self.inner_obj.get('ip')
+
+    def get_encap_type(self):
+        return self.inner_obj.get('tunnel_type')
+
+    def get_topic(self):
+        return None
+
+    def get_name(self):
+        return self.get_id()
+
+    def get_version(self):
+        return None
+    def __init__(self, value):
+        if isinstance(value, dict):
+            self.chassis = value
+        else:
+            self.chassis = jsonutils.loads(value)
+
+    def get_id(self):
+        return self.chassis['id']
+
+    def get_name(self):
+        return self.chassis['name']
+
+    def get_ip(self):
+        return self.chassis['ip']
+
+    def get_encap_type(self):
+        return self.chassis['tunnel_type']
+
+    def get_topic(self):
+        return None
+
+    def __str__(self):
+        return self.chassis.__str__()
+
+    def __eq__(self, other):
+        if isinstance(other, dict):
+            return self.chassis == other
+        elif isinstance(other, Chassis):
+            return self.chassis == other.chassis
+        return False
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __repr__(self):
+        return "Chassis(%r)" % six.text_type(self.chassis)
+
+    def __hash__(self):
+        return hash(repr(self))
+

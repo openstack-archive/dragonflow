@@ -29,7 +29,9 @@ class DFAppTestBase(tests_base.BaseTestCase):
     def setUp(self):
         cfg.CONF.set_override('apps_list', self.apps_list, group='df')
         super(DFAppTestBase, self).setUp()
-        mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
+        self.app_manager = mock.patch(
+                       'ryu.base.app_manager.AppManager.get_instance')
+        self.app_manager.start()
         self.controller = df_local_controller.DfLocalController('fake_host')
         self.nb_api = self.controller.nb_api = mock.MagicMock()
         self.vswitch_api = self.controller.vswitch_api = mock.MagicMock()
@@ -55,6 +57,12 @@ class DFAppTestBase(tests_base.BaseTestCase):
             'dragonflow.controller.df_base_app.DFlowApp.mod_flow').start()
         mock.patch('dragonflow.controller.df_base_app.DFlowApp.'
                    'add_flow_go_to_table').start()
+        self.addCleanup(self._cleanUp)
+
+    def _cleanUp(self):
+        cfg.CONF.reset()
+        mock.patch.stopall()
+
 
 fake_logic_router1 = db_models.LogicalRouter("{}")
 fake_logic_router1.inner_obj = {
