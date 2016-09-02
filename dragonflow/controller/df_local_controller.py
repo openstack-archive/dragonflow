@@ -338,9 +338,11 @@ class DfLocalController(object):
 
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
-        # TODO(gsagie) Support tunnel type change here ?
+        my_chassis = {'id': self.chassis_name,
+                      'ip': self.ip,
+                      'tunnel_type': self.tunnel_type}
 
-        if chassis is None:
+        if cmp(chassis.chassis, my_chassis) != 0:
             self.nb_api.add_chassis(self.chassis_name,
                                     self.ip,
                                     self.tunnel_type)
