@@ -29,7 +29,9 @@ class DFAppTestBase(tests_base.BaseTestCase):
     def setUp(self):
         cfg.CONF.set_override('apps_list', self.apps_list, group='df')
         super(DFAppTestBase, self).setUp()
-        mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
+        self.app_manager = mock.patch(
+                       'ryu.base.app_manager.AppManager.get_instance')
+        self.app_manager.start()
         self.controller = df_local_controller.DfLocalController('fake_host')
         self.nb_api = self.controller.nb_api = mock.MagicMock()
         self.vswitch_api = self.controller.vswitch_api = mock.MagicMock()
@@ -50,11 +52,24 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.controller.router_updated(fake_logic_router1)
 
         self.arp_responder = mock.patch(
-            'dragonflow.controller.common.arp_responder.ArpResponder').start()
-        mock.patch(
-            'dragonflow.controller.df_base_app.DFlowApp.mod_flow').start()
-        mock.patch('dragonflow.controller.df_base_app.DFlowApp.'
-                   'add_flow_go_to_table').start()
+            'dragonflow.controller.common.arp_responder.ArpResponder')
+        self.mod_flow = mock.patch(
+            'dragonflow.controller.df_base_app.DFlowApp.mod_flow')
+        self.add_flow_go_to = mock.patch('dragonflow.controller.df_base_app.'
+            'DFlowApp.add_flow_go_to_table')
+        self.arp_responder.start()
+        self.mod_flow.start()
+        self.add_flow_go_to.start()
+
+        self.addCleanup(self._cleanUp)
+
+    def _cleanUp(self):
+        cfg.CONF.reset()
+        self.app_manager.stop()
+        self.arp_responder.stop()
+        self.mod_flow.stop()
+        self.add_flow_go_to.stop()
+
 
 fake_logic_router1 = api_nb.LogicalRouter("{}")
 fake_logic_router1.lrouter = {
@@ -151,6 +166,33 @@ fake_local_port1.external_dict = {'is_local': True,
                                   'local_network_id': 1}
 
 
+fake_remote_port1 = api_nb.LogicalPort("{}")
+fake_remote_port1.lport = {
+    'subnets': ['fake_subnet1'],
+    'binding_profile': {},
+    'macs': ['fa:16:3e:8c:2e:af'],
+    'name': '',
+    'allowed_address_pairs': [],
+    'lswitch': 'fake_switch1',
+    'enabled': True,
+    'topic': 'fake_tenant1',
+    'ips': ['10.0.0.8'],
+    'device_owner': 'compute:None',
+    'chassis': 'fake_host2',
+    'version': 2,
+    'tunnel_key': 5,
+    'port_security_enabled': True,
+    'binding_vnic_type': 'normal',
+    'id': 'fake_remote_port',
+    'security_groups': ['fake_security_group_id1'],
+    'device_id': 'fake_device_id'}
+fake_remote_port1.external_dict = {'is_local': False,
+                                  'segmentation_id': 41,
+                                  'ofport': 1,
+                                  'network_type': 'vxlan',
+                                  'local_network_id': 1}
+
+
 fake_floatingip1 = api_nb.Floatingip("{}")
 fake_floatingip1.floatingip = {
     'router_id': 'fake_router_id',
@@ -167,3 +209,32 @@ fake_floatingip1.floatingip = {
     'port_id': 'fake_port1',
     'id': 'fake_floatingip_id1',
     'external_gateway_ip': u'172.24.4.1'}
+
+
+fake_security_group = api_nb.SecurityGroup("{}")
+fake_security_group.secgroup = {
+    "description": "",
+    "name": "fake_security_group",
+    "topic": "fake_tenant1",
+    "version": 5,
+    "id": "fake_security_group_id1",
+    "rules": [{"direction": "egress",
+               "security_group_id": "fake_security_group_id1",
+               "ethertype": "IPv4",
+               "topic": "fake_tenant1",
+               "port_range_max": 53,
+               "port_range_min": 53,
+               "protocol": "udp",
+               "remote_group_id": None,
+               "remote_ip_prefix": "192.168.180.0/28",
+               "id": "fake_security_group_rule_1"},
+              {"direction": "ingress",
+               "security_group_id": "fake_security_group_id1",
+               "ethertype": "IPv4",
+               "topic": "fake_tenant1",
+               "port_range_max": None,
+               "port_range_min": None,
+               "protocol": None,
+               "remote_group_id": "fake_security_group_id1",
+               "remote_ip_prefix": None,
+               "id": "fake_security_group_rule_2"}]}
