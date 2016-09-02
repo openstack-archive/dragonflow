@@ -365,11 +365,21 @@ class NbApi(object):
             res.append(db_models.Chassis(entry_value))
         return res
 
-    def add_chassis(self, id, ip, tunnel_type):
-        chassis = {'id': id, 'ip': ip,
-                   'tunnel_type': tunnel_type}
-        chassis_json = jsonutils.dumps(chassis)
+    def add_chassis(self, id, **columns):
+        columns['id'] = id
+        chassis_json = jsonutils.dumps(columns)
         self.driver.create_key('chassis', id, chassis_json, None)
+
+    def update_chassis(self, id, **columns):
+        chassis_json = self.driver.get_key('chassis', id)
+        ch = jsonutils.loads(chassis_json)
+        for col, val in columns.items():
+            ch[col] = val
+        chassis_json = jsonutils.dumps(ch)
+        self.driver.set_key('chassis', id, chassis_json)
+
+    def delete_chassis(self, id):
+        self.driver.delete_key('chassis', id)
 
     def get_lswitch(self, id, topic=None):
         try:
@@ -777,3 +787,4 @@ class NbApi(object):
         except Exception:
             LOG.exception(_LE('Could not get qos policy %s'), policy_id)
             return None
+
