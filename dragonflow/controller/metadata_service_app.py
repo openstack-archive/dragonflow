@@ -40,6 +40,7 @@ from dragonflow.db import api_nb
 from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
+from ryu.ofproto import nicira_ext
 
 
 LOG = log.getLogger(__name__)
@@ -168,7 +169,9 @@ class MetadataServiceApp(DFlowApp):
         )
         # Response packet
         actions = [
-            parser.NXActionRegLoad(0, 32, 'in_port', 0),
+            parser.NXActionRegLoad(ofs_nbits=nicira_ext.ofs_nbits(0, 31),
+                                   dst="in_port",
+                                   value=0),
         ]
         inst = [
             parser.OFPInstructionActions(
@@ -257,7 +260,10 @@ class MetadataServiceApp(DFlowApp):
                 dst_field='ipv4_src',
                 n_bits=32,
             ),
-            parser.NXActionRegLoad(31, 1, 'ipv4_src', 1),
+            parser.NXActionRegLoad(
+                ofs_nbits=nicira_ext.ofs_nbits(31, 31),
+                dst="ipv4_src",
+                value=1,),
             parser.OFPActionOutput(
                 self._ofport,
                 ofproto.OFPCML_NO_BUFFER,
