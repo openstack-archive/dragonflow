@@ -126,13 +126,27 @@ class LocalInterface(object):
 
 class OvsdbTunnelPort(object):
 
-    def __init__(self, name, chassis_id):
+    def __init__(self, row, chassis_id):
         super(OvsdbTunnelPort, self).__init__()
-        self.name = name
+        self.itf = LocalInterface.from_idl_row(self._get_tunnel_interface(row))
         self.chassis_id = chassis_id
 
     def get_chassis_id(self):
         return self.chassis_id
 
     def get_name(self):
-        return self.name
+        return self.itf.get_name()
+
+    def get_remote_ip(self):
+        return self.itf.get_remote_ip()
+
+    def get_type(self):
+        return self.itf.get_tunnel_type()
+
+    def _get_tunnel_interface(self, row):
+        # FIXME(wangjian): any other way to get the right interface ?
+        # For now we have only one interface in the row, here just in case
+        # we have multiple interface in the future
+        for itf in row.interfaces:
+            if "remote_ip" in itf.options:
+                return itf

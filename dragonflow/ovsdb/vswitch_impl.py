@@ -95,7 +95,7 @@ class OvsApi(object):
         for port in ports:
             if 'df-chassis-id' in port.external_ids:
                 chassis_id = port.external_ids['df-chassis-id']
-                res.append(objects.OvsdbTunnelPort(port.name, chassis_id))
+                res.append(objects.OvsdbTunnelPort(port, chassis_id))
         return res
 
     def add_tunnel_port(self, chassis):
