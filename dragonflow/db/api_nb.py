@@ -50,6 +50,7 @@ class NbApi(object):
         self.publisher = None
         self.subscriber = None
         self.is_neutron_server = is_neutron_server
+        self.db_table_monitors = None
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
 
@@ -225,7 +226,7 @@ class NbApi(object):
         elif 'chassis' == table:
             if action == 'set' or action == 'create':
                 chassis = Chassis(value)
-                self.controller.chassis_created(chassis)
+                self.controller.chassis_updated(chassis)
             elif action == 'delete':
                 chassis_id = key
                 self.controller.chassis_deleted(chassis_id)
@@ -353,11 +354,17 @@ class NbApi(object):
             res.append(Chassis(entry_value))
         return res
 
-    def add_chassis(self, id, ip, tunnel_type):
-        chassis = {'id': id, 'ip': ip,
-                   'tunnel_type': tunnel_type}
-        chassis_json = jsonutils.dumps(chassis)
+    def add_chassis(self, id, **columns):
+        chassis_json = jsonutils.dumps(columns)
         self.driver.create_key('chassis', id, chassis_json, None)
+
+    def update_chassis(self, id, **columns):
+        chassis_json = self.driver.get_key('chassis', id)
+        ch = jsonutils.loads(chassis_json)
+        for col, val in columns.items():
+            ch[col] = val
+        chassis_json = jsonutils.dumps(ch)
+        self.driver.set_key('chassis', ch['id'], chassis_json)
 
     def get_lswitch(self, id, topic=None):
         try:
@@ -753,7 +760,10 @@ class DbStoreObject(object):
 class Chassis(DbStoreObject):
 
     def __init__(self, value):
-        self.chassis = jsonutils.loads(value)
+        if isinstance(value, dict):
+            self.chassis = value
+        else:
+            self.chassis = jsonutils.loads(value)
 
     def get_id(self):
         return self.chassis['id']
@@ -772,6 +782,22 @@ class Chassis(DbStoreObject):
 
     def __str__(self):
         return self.chassis.__str__()
+
+    def __eq__(self, other):
+        if isinstance(other, dict):
+            return self.chassis == other
+        elif isinstance(other, Chassis):
+            return self.chassis == other.chassis
+        return False
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __repr__(self):
+        return "Chassis(%r)" % unicode(self.chassis)
+
+    def __hash__(self):
+        return hash(repr(self))
 
 
 class LogicalSwitch(DbStoreObject):
