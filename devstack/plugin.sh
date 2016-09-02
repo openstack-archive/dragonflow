@@ -142,6 +142,37 @@ function configure_df_metadata_service {
     fi
 }
 
+function configure_qos {
+    Q_SERVICE_PLUGIN_CLASSES+=",qos"
+
+    if [[ "$USE_ML2_PLUGIN" == "True" ]]; then
+        Q_ML2_PLUGIN_EXT_DRIVERS+=",qos"
+        NEUTRON_ML2_CONF=/"$Q_PLUGIN_CONF_PATH"/"$Q_PLUGIN_CONF_FILENAME"
+        iniset $NEUTRON_ML2_CONF ml2 extension_drivers "$Q_ML2_PLUGIN_EXT_DRIVERS"
+
+        # NOTE: QoS plugin use "message_queue" as default driver if no
+        #       notification driver in neutron.conf, or it will use driver
+        #       assigned in neutron.conf.
+        #       If "df" is the only mech driver for ml2, we use
+        #       "df_notification_driver" as notification driver.
+        #       If ml2 has other mech driver except "df", we should add
+        #       "message_queue,df_notification_driver" to existing
+        #       notification driver
+        NEUTRON_CONF=/etc/neutron/neutron.conf
+        if [[ "$Q_ML2_PLUGIN_MECHANISM_DRIVERS" == "df" ]]; then
+            NOTIFICATION_DRIVER="df_notification_driver"
+        else
+            NOTIFICATION_DRIVER=$(iniget ${NEUTRON_CONF} qos notification_drivers)
+            if [[ "$NOTIFICATION_DRIVER" == "" ]]; then
+                NOTIFICATION_DRIVER="message_queue,df_notification_driver"
+            else
+                NOTIFICATION_DRIVER+=",df_notification_driver"
+            fi
+        fi
+        iniset $NEUTRON_CONF qos notification_drivers "$NOTIFICATION_DRIVER"
+    fi
+}
+
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
@@ -157,6 +188,10 @@ function configure_df_plugin {
             Q_SERVICE_PLUGIN_CLASSES=""
         else
             DF_APPS_LIST=$ML2_APPS_LIST
+        fi
+
+        if is_service_enabled q-qos ; then
+            configure_qos
         fi
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
