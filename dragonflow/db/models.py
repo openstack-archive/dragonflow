@@ -11,6 +11,8 @@
 #    under the License.
 
 import netaddr
+import six
+
 from oslo_serialization import jsonutils
 
 
@@ -68,6 +70,14 @@ class NbDbObjectWithUniqueKey(NbDbObject):
 
 
 class Chassis(NbDbObject):
+    def __init__(self, value):
+        if isinstance(value, dict):
+            self.inner_obj = value
+        else:
+            self.inner_obj = jsonutils.loads(value)
+
+    def get_name(self):
+        return self.inner_obj.get('id')
 
     table_name = "chassis"
 
@@ -80,11 +90,27 @@ class Chassis(NbDbObject):
     def get_topic(self):
         return None
 
-    def get_name(self):
-        return self.get_id()
-
     def get_version(self):
         return None
+
+    def __str__(self):
+        return self.chassis.__str__()
+
+    def __eq__(self, other):
+        if isinstance(other, dict):
+            return self.inner_obj == other
+        elif isinstance(other, Chassis):
+            return self.inner_obj == other.inner_obj
+        return False
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __repr__(self):
+        return "Chassis(%r)" % six.text_type(self.chassis)
+
+    def __hash__(self):
+        return hash(repr(self))
 
 
 class LogicalSwitch(NbDbObjectWithUniqueKey):
