@@ -113,6 +113,12 @@ function _neutron_ovs_install_ovs {
             fi
         done
 
+        # Try to unload openvswitch module from kernel. If it is already in
+        # kernal, it might cause the load failure when install it.
+        if test -n "`lsmod | grep openvswitch`"; then
+            sudo modprobe -r openvswitch
+        fi
+
         if is_ubuntu; then
             _neutron_ovs_install_ovs_ubuntu
         elif is_fedora; then
