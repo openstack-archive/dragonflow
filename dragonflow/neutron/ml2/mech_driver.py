@@ -219,10 +219,67 @@ class DFMechDriver(driver_api.MechanismDriver):
             self.nb_api.delete_lswitch(id=network_id,
                                        topic=tenant_id)
         except df_exceptions.DBKeyNotFound:
-            LOG.debug("lswitch %s is not found in DF DB, might have "
-                      "been deleted concurrently" % network_id)
+            LOG.exception("lswitch %s is not found in DF DB" % network_id)
+            return
 
         LOG.info(_LI("DFMechDriver: delete network %s"), network_id)
+
+    def update_network_precommit(self, context):
+        nw_version = version_db._update_db_version_row(
+            context._plugin_context.session, context.current['id'])
+        context.current['db_version'] = nw_version
+
+    def _get_subnets_for_update_network(self, context, network):
+        subnet_id_list = network.get('subnets')
+        if subnet_id_list is None:
+            return []
+
+        subnets = []
+        plugin_context = context._plugin_context
+        core_plugin = manager.NeutronManager.get_plugin()
+        for subnet_id in subnet_id_list:
+            subnet = core_plugin.get_subnet(plugin_context, subnet_id)
+            if subnet is None:
+                LOG.error("DFMechDriver: Could not find subnet %s", subnet_id)
+                continue
+
+            port = self._get_dhcp_port_for_subnet(plugin_context, subnet_id)
+
+            subnet_dict = {
+                'dhcp_ip': self._get_ip_from_port(port),
+                'name': subnet['name'],
+                'enable_dhcp': subnet['enable_dhcp'],
+                'lswitch': subnet['network_id'],
+                'dns_nameservers': subnet.get('dns_nameservers', []),
+                'gateway_ip': subnet['gateway_ip'],
+                'host_routes': subnet.get('host_routes', []),
+                'cidr': subnet['cidr'],
+                'id': subnet['id'],
+                'topic': subnet['tenant_id']
+            }
+            subnets.append(subnet_dict)
+
+        return subnets
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    def update_network_postcommit(self, context):
+        network = context.current
+        subnets = self._get_subnets_for_update_network(context, network)
+
+        self.nb_api.update_lswitch(
+            id=network['id'],
+            topic=network['tenant_id'],
+            name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
+            network_type=network.get('provider:network_type', None),
+            segmentation_id=network.get('provider:segmentation_id', None),
+            router_external=network.get('router:external', None),
+            mtu=network.get('mtu', None),
+            version=network['db_version'],
+            subnets=subnets,
+            qos_policy_id=network.get('qos_policy_id', None))
+
+        LOG.info(_LI("DFMechDriver: update network %s"), network['id'])
+        return network
 
     def _get_dhcp_port_for_subnet(self, context, subnet_id):
         filters = {'fixed_ips': {'subnet_id': [subnet_id]},
@@ -334,8 +391,9 @@ class DFMechDriver(driver_api.MechanismDriver):
             dhcp_ip, dhcp_port = self._handle_create_subnet_dhcp(
                                                 plugin_context,
                                                 subnet)
-        except Exception as e:
-            LOG.exception(e)
+        except Exception:
+            LOG.exception(
+                "Failed to create dhcp port for subnet %s" % subnet['id'])
             return None
 
         self.nb_api.add_subnet(
@@ -416,7 +474,8 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                     old_subnet,
                                                     new_subnet)
         except Exception as e:
-            LOG.exception(e)
+            LOG.exception(
+                "Failed to create dhcp port for subnet %s" % subnet['id'])
             return None
 
         self.nb_api.update_subnet(
@@ -456,8 +515,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             self.nb_api.delete_subnet(subnet_id, net_id, subnet['tenant_id'],
                                       nw_version=subnet['db_version'])
         except df_exceptions.DBKeyNotFound:
-            LOG.debug("network %s is not found in DB, might have "
-                      "been deleted concurrently" % net_id)
+            LOG.exception("network %s is not found in DB" % net_id)
+            return
 
         LOG.info(_LI("DFMechDriver: delete subnet %s"), subnet_id)
 
@@ -497,7 +556,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             port_security_enabled=port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, []),
             binding_profile=port.get(portbindings.PROFILE, None),
-            binding_vnic_type=port.get(portbindings.VNIC_TYPE, None))
+            binding_vnic_type=port.get(portbindings.VNIC_TYPE, None),
+            qos_policy_id=port.get('qos_policy_id', None))
 
         LOG.info(_LI("DFMechDriver: create port %s"), port['id'])
         return port
@@ -575,7 +635,8 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                    []),
             binding_profile=updated_port.get(portbindings.PROFILE, None),
             binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE, None),
-            version=updated_port['db_version'])
+            version=updated_port['db_version'],
+            qos_policy_id=updated_port.get('qos_policy_id', None))
 
         LOG.info(_LI("DFMechDriver: update port %s"), updated_port['id'])
         return updated_port
@@ -593,8 +654,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             topic = port['tenant_id']
             self.nb_api.delete_lport(id=port_id, topic=topic)
         except df_exceptions.DBKeyNotFound:
-            LOG.debug("port %s is not found in DF DB, might have "
-                      "been deleted concurrently" % port_id)
+            LOG.exception("port %s is not found in DF DB" % port_id)
+            return
 
         LOG.info(_LI("DFMechDriver: delete port %s"), port_id)
 
