@@ -55,9 +55,12 @@ class DfLocalController(object):
     def __init__(self, chassis_name):
         self.next_network_id = 0
         self.db_store = db_store.DbStore()
-        self.chassis_name = chassis_name
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
+        chassis = {"id": chassis_name,
+                   "ip": self.ip,
+                   "tunnel_type": self.tunnel_type}
+        self.local_chassis = api_nb.Chassis(chassis)
         self.sync_finished = False
         nb_driver = df_utils.load_driver(
             cfg.CONF.df.nb_db_class,
@@ -148,17 +151,44 @@ class DfLocalController(object):
             LOG.warning(_LW("run_db_poll - suppressing exception"))
             LOG.exception(e)
 
-    def chassis_created(self, chassis):
-        # Check if tunnel already exists to this chassis
-        t_ports = self.vswitch_api.get_tunnel_ports()
-        remote_chassis_name = chassis.get_id()
-        if self.chassis_name == remote_chassis_name:
+    def _tunnel_port_to_chassis(self, port):
+        chassis = {'id': port.get_chassis_id(),
+                   'ip': port.get_remote_ip(),
+                   'tunnel_type': port.get_type()}
+        return api_nb.Chassis(chassis)
+
+    def _remote_chassis_can_be_added(self, chassis):
+        if self.local_chassis == chassis:
+            return False
+
+        if self.local_chassis.get_encap_type() != chassis.get_encap_type():
+            LOG.warning(_LW("Remote Chassis Tunnel %(remote)s has a"
+                            " different type with local chassis %(local)s") %
+                        {'remote': chassis.__str__(),
+                         'local': self.local_chassis.__str__()})
+            return False
+        return True
+
+    def chassis_updated(self, chassis):
+        if self._remote_chassis_can_be_added(chassis) is False:
             return
+
+        t_ports = self.vswitch_api.get_tunnel_ports()
         for t_port in t_ports:
-            if t_port.get_chassis_id() == remote_chassis_name:
-                LOG.info(_LI("remote Chassis Tunnel already installed  = %s") %
+            tunnel_chassis_info = self._tunnel_port_to_chassis(t_port)
+            if tunnel_chassis_info == chassis:
+                LOG.info(_LI("Remote Chassis Tunnel already installed  = %s") %
                      chassis.__str__())
                 return
+            elif (tunnel_chassis_info.get_id() == chassis.get_id()
+                  and tunnel_chassis_info.get_ip() != chassis.get_ip()):
+                LOG.info(_LI("The IP address of remote Chassis Tunnel"
+                    " %(remote)s has been changed, local tunnel is %(local)s") %
+                    {'remote': chassis.__str__(),
+                     'local': self.local_chassis.__str__()})
+                self.vswitch_api.delete_port(t_port).execute()
+                break
+
         # Create tunnel port to this chassis
         LOG.info(_LI("Adding tunnel to remote chassis = %s") %
                  chassis.__str__())
@@ -230,7 +260,7 @@ class DfLocalController(object):
                                      int(segment_id))
         lport.set_external_value('local_network_id', local_network_id)
 
-        if chassis == self.chassis_name:
+        if chassis == self.local_chassis.get_id():
             lport.set_external_value('is_local', True)
             ofport = lport_to_ofport.get(lport.get_id(), 0)
             if ofport != 0:
@@ -337,31 +367,37 @@ class DfLocalController(object):
         self._delete_old_security_group(old_secgroup)
 
     def register_chassis(self):
-        chassis = self.nb_api.get_chassis(self.chassis_name)
-        # TODO(gsagie) Support tunnel type change here ?
+        chassis = self.nb_api.get_chassis(self.local_chassis.get_id())
 
         if chassis is None:
-            self.nb_api.add_chassis(self.chassis_name,
-                                    self.ip,
-                                    self.tunnel_type)
+            self.nb_api.add_chassis(self.local_chassis.chassis)
+            return
+        if not chassis == self.local_chassis:
+            self.nb_api.update_chassis(self.local_chassis.chassis)
 
     def create_tunnels(self):
-        tunnel_ports = {}
         t_ports = self.vswitch_api.get_tunnel_ports()
+        tunnel_ports = {}
         for t_port in t_ports:
             tunnel_ports[t_port.get_chassis_id()] = t_port
+            
+        local_chassis = set(map(self._tunnel_port_to_chassis, t_ports))
+        all_chassis = set(self.nb_api.get_all_chassis())
 
-        for chassis in self.nb_api.get_all_chassis():
-            if chassis.get_id() in tunnel_ports:
-                del tunnel_ports[chassis.get_id()]
-            elif chassis.get_id() == self.chassis_name:
-                pass
-            else:
-                self.chassis_created(chassis)
+        chassis_to_del = local_chassis - all_chassis
+        chassis_to_add = all_chassis - local_chassis
 
-        # Iterate all tunnel ports that needs to be deleted
-        for port in tunnel_ports.values():
-            self.vswitch_api.delete_port(port).execute()
+        # it will fail to create ports with the same id but different ip
+        # or tunnel type, so we need to del first
+        def del_handler(chassis):
+            self.vswitch_api.delete_port(
+                    tunnel_ports[chassis.get_id()]).execute()
+        map(del_handler, chassis_to_del)
+
+        def add_tunnel_port(chassis):
+            if self._remote_chassis_can_be_added(chassis):
+                self.vswitch_api.add_tunnel_port(chassis).execute()
+        map(add_tunnel_port, chassis_to_add)
 
     def port_mappings(self):
         ports_to_remove = self.db_store.get_port_keys()
@@ -563,7 +599,7 @@ class DfLocalController(object):
         return self.open_flow_app
 
     def get_chassis_name(self):
-        return self.chassis_name
+        return self.local_chassis.get_id()
 
 
 def init_ryu_config():
@@ -581,3 +617,5 @@ def main():
     init_ryu_config()
     controller = DfLocalController(chassis_name)
     controller.run()
+
+
