@@ -44,7 +44,6 @@ function configure_redis {
 }
 
 function nb_db_driver_install_server {
-    sudo pip install crc16
 
     if is_service_enabled df-redis-server ; then
         echo "Installing rediscluster"
