@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
+from oslo_log import log
 from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
@@ -20,6 +20,8 @@ from ryu.ofproto import ether
 
 from dragonflow.controller.common.utils import set_aging_cookie_bits
 from dragonflow.controller import df_db_notifier
+
+LOG = log.getLogger(__name__)
 
 
 class DFlowApp(df_db_notifier.DBNotifyInterface):
@@ -86,6 +88,13 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
 
         cookie = set_aging_cookie_bits(cookie)
 
+        LOG.debug("Modifying Flow: cookie=%(cookie)s, mask=%(mask)s, "
+                  "table=%(table)s, command=%(command)s, out_port=%(port)s, "
+                  "out_group=%(group)s, flags=%(flags)s, match=%(match)s, "
+                  "install=%(install)s",
+                  {"cookie": cookie, "mask": cookie_mask, "table": table_id,
+                   "command": command, "port": out_port, "group": out_group,
+                   "flags": flags, "match": match, "install": inst})
         message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
                                                      cookie_mask,
                                                      table_id, command,
@@ -98,7 +107,6 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
                                                      flags,
                                                      match,
                                                      inst)
-
         datapath.send_msg(message)
 
     def send_packet(self, *args, **kwargs):
