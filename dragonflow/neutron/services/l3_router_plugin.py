@@ -105,7 +105,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_router(self, context, router):
         router = super(DFL3RouterPlugin, self).create_router(context, router)
-        router_version = router['revision']
+        router_version = router['revision_number']
         router_id = router['id']
         tenant_id = router['tenant_id']
         is_distributed = router.get('distributed', False)
@@ -121,7 +121,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     def update_router(self, context, router_id, router):
         router = super(DFL3RouterPlugin, self).update_router(
                        context, router_id, router)
-        router_version = router['revision']
+        router_version = router['revision_number']
 
         try:
             gw_info = router.get('external_gateway_info', {})
@@ -270,7 +270,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         result = super(DFL3RouterPlugin, self).add_router_interface(
                        context, router_id, interface_info)
         router = self.get_router(context, router_id)
-        router_version = router['revision']
+        router_version = router['revision_number']
 
         self.core_plugin = self._get_core_plugin()
         port = self.core_plugin.get_port(context, result['port_id'])
@@ -297,7 +297,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             super(DFL3RouterPlugin, self).remove_router_interface(
                 context, router_id, interface_info))
         router = self.get_router(context, router_id)
-        router_version = router['revision']
+        router_version = router['revision_number']
 
         try:
             self.nb_api.delete_lrouter_port(router_port_info['port_id'],
