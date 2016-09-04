@@ -31,7 +31,7 @@ from ryu.ofproto import ether
 from dragonflow.common import utils as df_utils
 from dragonflow._i18n import _, _LI, _LE, _LW
 from dragonflow.controller.common import constants as const
-from dragonflow.controller.df_base_app import DFlowApp
+from dragonflow.controller import df_base_app
 
 DF_DHCP_OPTS = [
     cfg.ListOpt('df_dns_servers',
@@ -59,7 +59,7 @@ DHCP_ACK = 5
 DHCP_CLASSLESS_ROUTE = 121
 
 
-class DHCPApp(DFlowApp):
+class DHCPApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(DHCPApp, self).__init__(*args, **kwargs)
         self.idle_timeout = 30

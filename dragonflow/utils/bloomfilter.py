@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from random import Random
+import random
 
 
 class BloomFilter(object):
@@ -43,8 +43,8 @@ class BloomFilter(object):
         return self._array
 
     def _get_probes(self, key):
-        random = Random(key).random
-        return (int(random() * self._num_bits)
+        rdm = random.Random(key).random
+        return (int(rdm() * self._num_bits)
                 for _probe in range(self._num_probes))
 
     def update(self, keys):

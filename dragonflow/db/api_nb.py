@@ -27,8 +27,7 @@ import six
 
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.common import utils as df_utils
-from dragonflow.db.db_common import DbUpdate, SEND_ALL_TOPIC, \
-                                     DB_SYNC_MINIMUM_INTERVAL
+from dragonflow.db import db_common
 from dragonflow.db import pub_sub_api
 
 LOG = log.getLogger(__name__)
@@ -118,7 +117,7 @@ class NbApi(object):
 
     def _start_subsciber(self):
         self.subscriber.initialize(self.db_change_callback)
-        self.subscriber.register_topic(SEND_ALL_TOPIC)
+        self.subscriber.register_topic(db_common.SEND_ALL_TOPIC)
         publishers_ips = cfg.CONF.df.publishers_ips
         uris = {'%s://%s:%s' % (
                 cfg.CONF.df.publisher_transport,
@@ -138,8 +137,8 @@ class NbApi(object):
     def _send_db_change_event(self, table, key, action, value, topic):
         if self.use_pubsub:
             if not self.enable_selective_topo_dist:
-                topic = SEND_ALL_TOPIC
-            update = DbUpdate(table, key, action, value, topic=topic)
+                topic = db_common.SEND_ALL_TOPIC
+            update = db_common.DbUpdate(table, key, action, value, topic=topic)
             self.publisher.send_event(update)
             eventlet.sleep(0)
 
@@ -155,14 +154,14 @@ class NbApi(object):
         self._read_db_changes_from_queue()
 
     def db_change_callback(self, table, key, action, value, topic=None):
-        update = DbUpdate(table, key, action, value, topic=topic)
+        update = db_common.DbUpdate(table, key, action, value, topic=topic)
         LOG.info(_LI("Pushing Update to Queue: %s"), update)
         self._queue.put(update)
         eventlet.sleep(0)
 
     def _read_db_changes_from_queue(self):
         sync_rate_limiter = df_utils.RateLimiter(
-            max_rate=1, time_unit=DB_SYNC_MINIMUM_INTERVAL)
+            max_rate=1, time_unit=db_common.DB_SYNC_MINIMUM_INTERVAL)
         while True:
             self.next_update = self._queue.get(block=True)
             LOG.debug("Event update: %s", self.next_update)

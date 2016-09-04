@@ -29,7 +29,6 @@
 # installing it
 
 import ctypes
-from ctypes.util import find_library
 import os
 
 
@@ -67,7 +66,7 @@ def get_library_path():
                 path = test_path
                 break
     if not path:
-        path = find_library('ramcloud')
+        path = ctypes.util.find_library('ramcloud')
     return path
 
 
@@ -115,8 +114,6 @@ def load_so():
 
         ctypes.c_bool = c_bool_compat
 
-    from ctypes import POINTER
-
     # argument types aliased to their names for sanity
     # alphabetical order
     address = ctypes.c_char_p
@@ -133,14 +130,14 @@ def load_so():
     keysOnly = ctypes.c_uint32
     name = ctypes.c_char_p
     nanoseconds = ctypes.c_uint64
-    rejectRules = POINTER(RejectRules)
+    rejectRules = ctypes.POINTER(RejectRules)
     serviceLocator = ctypes.c_char_p
     status = ctypes.c_int
     table = ctypes.c_uint64
     version = ctypes.c_uint64
     serverId = ctypes.c_uint64
 
-    so.rc_connect.argtypes = [address, address, POINTER(client)]
+    so.rc_connect.argtypes = [address, address, ctypes.POINTER(client)]
     so.rc_connect.restype = status
 
     so.rc_disconnect.argtypes = [client]
@@ -155,31 +152,34 @@ def load_so():
     so.rc_getStatus.argtypes = []
     so.rc_getStatus.restype = status
 
-    so.rc_getTableId.argtypes = [client, name, POINTER(table)]
+    so.rc_getTableId.argtypes = [client, name, ctypes.POINTER(table)]
     so.rc_getTableId.restype = status
 
     so.rc_enumerateTablePrepare.argtypes = [client, table, keysOnly,
-                                            POINTER(enumerationState)]
+                                            ctypes.POINTER(enumerationState)]
     so.rc_enumerateTablePrepare.restype = None
 
     so.rc_enumerateTableNext.argtypes = [client, enumerationState,
-                                         POINTER(keyLen), POINTER(enum_key),
-                                         POINTER(dataLength), POINTER(data)]
+                                         ctypes.POINTER(keyLen),
+                                         ctypes.POINTER(enum_key),
+                                         ctypes.POINTER(dataLength),
+                                         ctypes.POINTER(data)]
     so.rc_enumerateTableNextrestype = status
 
     so.rc_enumerateTableFinalize.argtypes = [enumerationState]
     so.rc_enumerateTableFinalize.restype = None
 
     so.rc_read.argtypes = [client, table, key, keyLength, rejectRules,
-                           POINTER(version), buf, len, POINTER(len)]
+                           ctypes.POINTER(version), buf, len,
+                           ctypes.POINTER(len)]
     so.rc_read.restype = status
 
     so.rc_remove.argtypes = [client, table, key, keyLength, rejectRules,
-                             POINTER(version)]
+                             ctypes.POINTER(version)]
     so.rc_remove.restype = status
 
     so.rc_write.argtypes = [client, table, key, keyLength, buf, len,
-                            rejectRules, POINTER(version)]
+                            rejectRules, ctypes.POINTER(version)]
     so.rc_write.restype = status
 
     so.rc_testing_kill.argtypes = [client, table, key, keyLength]
@@ -190,7 +190,7 @@ def load_so():
     so.rc_testing_fill.restype = status
 
     so.rc_testing_get_server_id.argtypes = [client, table, key, keyLength,
-                                            POINTER(serverId)]
+                                            ctypes.POINTER(serverId)]
     so.rc_testing_get_server_id.restype = status
 
     so.rc_testing_get_service_locator.argtypes = [client, table, key,
