@@ -30,6 +30,7 @@ class stub_wrap_db_lock(object):
 # lockedobjects_db
 mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
            stub_wrap_db_lock).start()
+from dragonflow.db import api_nb
 from dragonflow.db.neutron import versionobjects_db as version_db
 from dragonflow.neutron.ml2 import mech_driver
 from neutron.db import securitygroups_db
@@ -44,6 +45,7 @@ class TestDFMechDriver(base.BaseTestCase):
     def setUp(self):
         super(TestDFMechDriver, self).setUp()
         self.driver = mech_driver.DFMechDriver()
+        api_nb.NbApi.get_instance = mock.Mock()
         self.driver.initialize()
         self.driver.nb_api = mock.Mock()
         self.dbversion = 0
@@ -183,7 +185,8 @@ class TestDFMechDriver(base.BaseTestCase):
             name='FakePort', subnets=['sub-1'],
             enabled=True, chassis=None, tunnel_key=tunnel_key,
             device_owner='compute', device_id='d1',
-            port_security_enabled=False, security_groups=[],
+            port_security_enabled=False,
+            qos_policy_id=None, security_groups=[],
             binding_profile=None, binding_vnic_type='ovs',
             allowed_address_pairs=[], version=self.dbversion)
 
@@ -208,7 +211,8 @@ class TestDFMechDriver(base.BaseTestCase):
             macs=['aabb'], ips=['10.0.0.1'],
             subnets=['sub-1'],
             enabled=True, chassis=None, port_security_enabled=False,
-            allowed_address_pairs=[], security_groups=[],
+            allowed_address_pairs=[],
+            qos_policy_id=None, security_groups=[],
             device_owner='compute', device_id='d1',
             binding_profile=None, binding_vnic_type='ovs',
             version=self.dbversion)
