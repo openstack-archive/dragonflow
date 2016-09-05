@@ -229,3 +229,6 @@ class OvsdbLogicalRouterPort(api_nb.LogicalRouterPort):
 
     def __eq__(self, other):
         return self.name == other.get_name()
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
