@@ -820,6 +820,9 @@ class LogicalSwitch(DbStoreObject):
         else:
             return False
 
+    def __ne__(self, other):
+        return not (self == other)
+
 
 class Subnet(DbStoreObject):
 
@@ -988,6 +991,9 @@ class LogicalRouterPort(DbStoreObject):
     def __eq__(self, other):
         return self.get_id() == other.get_id()
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def __str__(self):
         return self.router_port.__str__()
 
@@ -1057,6 +1063,9 @@ class SecurityGroupRule(DbStoreObject):
 
     def __eq__(self, other):
         return self.get_id() == other.get_id()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __str__(self):
         return self.secrule.__str__()
