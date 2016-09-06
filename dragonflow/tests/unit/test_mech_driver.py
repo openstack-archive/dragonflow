@@ -35,6 +35,7 @@ from dragonflow.neutron.ml2 import mech_driver
 from neutron.db import securitygroups_db
 from neutron import manager
 from neutron.tests import base
+from neutron.tests.unit.plugins.ml2 import test_plugin
 
 
 class TestDFMechDriver(base.BaseTestCase):
@@ -295,10 +296,12 @@ class TestDFMechDriver(base.BaseTestCase):
         event = 'after_create'
         trigger = '0xffffffff'
 
-        self.driver.create_security_group_rule(resource, event,
-                                               trigger, **kwargs)
-        self.driver.nb_api.add_security_group_rules.assert_called_with(
-            sg_id, tenant_id, sg_rules=[rule], sg_version=self.dbversion)
+        with mock.patch.object(manager.NeutronManager, 'get_plugin',
+                               return_value=core_plugin):
+            self.driver.create_security_group_rule(resource, event,
+                                                   trigger, **kwargs)
+            self.driver.nb_api.add_security_group_rules.assert_called_with(
+                sg_id, tenant_id, sg_rules=[rule], sg_version=self.dbversion)
 
     def test_delete_security_group_rule(self):
         tenant_id = 'test'
@@ -316,19 +319,20 @@ class TestDFMechDriver(base.BaseTestCase):
                 'port_range_min': 2121,
                 'ethertype': 'IPv4'}
 
-        manager.NeutronManager.get_plugin = mock.Mock(return_value=core_plugin)
+        with mock.patch.object(manager.NeutronManager, 'get_plugin',
+                               return_value=core_plugin):
+            context = FakeSecurityGroupRuleContext(tenant_id)
+            kwargs = self._get_security_group_rule_kwargs(
+                rule, sgr_id, context)
 
-        context = FakeSecurityGroupRuleContext(tenant_id)
-        kwargs = self._get_security_group_rule_kwargs(rule, sgr_id, context)
+            resource = 'security_group_rule'
+            event = 'before_delete'
+            trigger = '0xffffffff'
 
-        resource = 'security_group_rule'
-        event = 'before_delete'
-        trigger = '0xffffffff'
-
-        self.driver.delete_security_group_rule(resource, event,
-                                               trigger, **kwargs)
-        self.driver.nb_api.delete_security_group_rule.assert_called_with(
-            sg_id, sgr_id, tenant_id, sg_version=self.dbversion)
+            self.driver.delete_security_group_rule(resource, event,
+                                                   trigger, **kwargs)
+            self.driver.nb_api.delete_security_group_rule.assert_called_with(
+                sg_id, sgr_id, tenant_id, sg_version=self.dbversion + 1)
 
     def _get_subnet_context(self, tenant_id, net_id, subnet_id, cidr,
                             gateway_ip, enable_dhcp, dns_nameservers):
@@ -384,6 +388,7 @@ class TestDFMechDriver(base.BaseTestCase):
                    'id': sg_id,
                    'security_group_rules': rules,
                    'security_group_id': sg_id,
+                   'revision_number': 0,
                    'name': sg_name},
                   'security_group_id': sg_id,
                   'context': fakecontext}
@@ -394,6 +399,63 @@ class TestDFMechDriver(base.BaseTestCase):
                   'security_group_rule_id': sgr_id,
                   'context': context}
         return kwargs
+
+
+class TestDFMechDriverRevision(test_plugin.Ml2PluginV2TestCase):
+    _mechanism_drivers = ['logger', 'df']
+
+    def get_additional_service_plugins(self):
+        p = super(TestDFMechDriverRevision,
+                  self).get_additional_service_plugins()
+        p.update({'revision_plugin_name': 'revisions'})
+        return p
+
+    def setUp(self):
+        super(TestDFMechDriverRevision, self).setUp()
+        mm = self.driver.mechanism_manager
+        mech_driver = mm.mech_drivers['df'].obj
+        self.nb_api = mech_driver.nb_api = mock.MagicMock()
+
+    def _test_create_security_group_revision(self):
+        s = {'security_group': {'tenant_id': 'some_tenant', 'name': '',
+                                'description': 'des'}}
+        sg = self.driver.create_security_group(self.context, s)
+        self.assertGreater(sg['revision_number'], 0)
+        self.nb_api.create_security_group.assert_called_with(
+            id=sg['id'], topic=sg['tenant_id'],
+            name=sg['name'], rules=mock.ANY, version=sg['revision_number'])
+        return sg
+
+    def test_create_security_group_revision(self):
+        self._test_create_security_group_revision()
+
+    def test_create_delete_sg_rule_revision(self):
+        sg = self._test_create_security_group_revision()
+        r = {'security_group_rule': {'tenant_id': 'some_tenant',
+                                     'port_range_min': 80, 'protocol': 6,
+                                     'port_range_max': 90,
+                                     'remote_ip_prefix': '0.0.0.0/0',
+                                     'ethertype': 'IPv4',
+                                     'remote_group_id': None,
+                                     'direction': 'ingress',
+                                     'security_group_id': sg['id']}}
+        rule = self.driver.create_security_group_rule(self.context, r)
+        new_sg = self.driver.get_security_group(self.context, sg['id'])
+        self.assertGreater(new_sg['revision_number'], sg['revision_number'])
+        self.nb_api.add_security_group_rules.assert_called_with(
+            sg['id'], sg['tenant_id'],
+            sg_rules=mock.ANY, sg_version=new_sg['revision_number'])
+
+        self.driver.delete_security_group_rule(self.context, rule['id'])
+        newer_sg = self.driver.get_security_group(self.context, sg['id'])
+        self.assertGreater(newer_sg['revision_number'],
+                           new_sg['revision_number'])
+        # TODO(xiaohhui): this should be changed to
+        # newer_sg['revision_number'], once neutron send security group id
+        # when deleting sg rule.
+        self.nb_api.delete_security_group_rule.assert_called_with(
+            sg['id'], rule['id'], mock.ANY,
+            sg_version=new_sg['revision_number'] + 1)
 
 
 class FakeNetworkContext(object):
@@ -476,6 +538,9 @@ class SessionTransaction(object):
 class CorePlugin(object):
     def __init__(self):
         pass
+
+    def get_security_group(self, context, sg_id):
+        return {'revision_number': 0}
 
     def get_security_group_rule(self, context, sgr_id):
         rule = {'direction': u'ingress',
