@@ -25,7 +25,7 @@ from neutron_lib import constants as n_const
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow._i18n import _LI
+from dragonflow._i18n import _LI, _LE
 from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
@@ -78,7 +78,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                            events.AFTER_CREATE)
         registry.subscribe(self.delete_security_group_rule,
                            resources.SECURITY_GROUP_RULE,
-                           events.BEFORE_DELETE)
+                           events.AFTER_DELETE)
 
     def _set_base_port_binding(self):
         if cfg.CONF.df.vif_type == portbindings.VIF_TYPE_VHOST_USER:
@@ -118,11 +118,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         sg_name = sg.get('name', df_const.DF_SG_DEFAULT_NAME)
         tenant_id = sg['tenant_id']
         rules = sg.get('security_group_rules', [])
-        context = kwargs['context']
-
-        with context.session.begin(subtransactions=True):
-            sg_version = version_db._create_db_version_row(context.session,
-                                                           sg_id)
+        sg_version = sg['revision_number']
 
         for rule in rules:
             rule['topic'] = rule.get('tenant_id')
@@ -164,10 +160,6 @@ class DFMechDriver(driver_api.MechanismDriver):
         sg = kwargs['security_group']
         sg_id = kwargs['security_group_id']
         tenant_id = sg['tenant_id']
-        context = kwargs['context']
-
-        with context.session.begin(subtransactions=True):
-            version_db._delete_db_version_row(context.session, sg_id)
 
         self.nb_api.delete_security_group(sg_id, topic=tenant_id)
         LOG.info(_LI("DFMechDriver: delete security group %s") % sg_id)
@@ -179,15 +171,15 @@ class DFMechDriver(driver_api.MechanismDriver):
         tenant_id = sg_rule['tenant_id']
         context = kwargs['context']
 
-        with context.session.begin(subtransactions=True):
-            sg_version_id = version_db._update_db_version_row(context.session,
-                                                              sg_id)
+        core_plugin = manager.NeutronManager.get_plugin()
+        sg = core_plugin.get_security_group(context, sg_id)
+        sg_version = sg['revision_number']
 
         sg_rule['topic'] = tenant_id
         del sg_rule['tenant_id']
         self.nb_api.add_security_group_rules(sg_id, tenant_id,
                                              sg_rules=[sg_rule],
-                                             sg_version=sg_version_id)
+                                             sg_version=sg_version)
         LOG.info(_LI("DFMechDriver: create security group rule in group %s"),
                  sg_id)
         return sg_rule
@@ -195,19 +187,32 @@ class DFMechDriver(driver_api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE)
     def delete_security_group_rule(self, resource, event, trigger, **kwargs):
         context = kwargs['context']
-        tenant_id = context.tenant_id
         sgr_id = kwargs['security_group_rule_id']
 
-        core_plugin = manager.NeutronManager.get_plugin()
-        sgr = core_plugin.get_security_group_rule(context, sgr_id)
-        sg_id = sgr['security_group_id']
+        # TODO(xiaohhui): For now, query security_group from nb DB. Once
+        # https://review.openstack.org/#/c/367728/ has been merged, just
+        # get security_group from neutron DB.
+        sg_id = None
+        security_groups = self.nb_api.get_security_groups()
+        for sg in security_groups:
+            for sg_rule in sg.get_rules():
+                if sgr_id == sg_rule.get_id():
+                    sg_id = sg.get_id()
+                    break
+        if not sg_id:
+            # There is no such security group in nb DB. No other operations
+            # required.
+            LOG.error(_LE("Can't find security group for deleted security "
+                          "group rule %s"), sgr_id)
+            return
 
-        with context.session.begin(subtransactions=True):
-            sg_version_id = version_db._update_db_version_row(context.session,
-                                                              sg_id)
+        core_plugin = manager.NeutronManager.get_plugin()
+        sg = core_plugin.get_security_group(context, sg_id)
+        sg_version = sg['revision_number']
+        tenant_id = sg['tenant_id']
 
         self.nb_api.delete_security_group_rule(sg_id, sgr_id, tenant_id,
-                                               sg_version=sg_version_id)
+                                               sg_version=sg_version)
         LOG.info(_LI("DFMechDriver: delete security group rule %s"), sgr_id)
 
     def create_network_precommit(self, context):
