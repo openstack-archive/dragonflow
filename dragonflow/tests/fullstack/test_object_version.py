@@ -113,17 +113,17 @@ class TestObjectVersion(test_base.DFTestBase):
         sg_id = secgroup.create()
         self.assertTrue(secgroup.exists())
         version = self.nb_api.get_security_group(sg_id).get_version()
-        self.assertEqual(version, 0)
 
         secrule_id = secgroup.rule_create()
         self.assertTrue(secgroup.rule_exists(secrule_id))
-        version = self.nb_api.get_security_group(sg_id).get_version()
-        self.assertEqual(version, 1)
+        new_version = self.nb_api.get_security_group(sg_id).get_version()
+        self.assertGreater(new_version, version)
 
         secgroup.rule_delete(secrule_id)
         self.assertFalse(secgroup.rule_exists(secrule_id))
-        version = self.nb_api.get_security_group(sg_id).get_version()
-        self.assertEqual(version, 2)
+        version = new_version
+        new_version = self.nb_api.get_security_group(sg_id).get_version()
+        self.assertEqual(new_version, version)
 
         secgroup.close()
         self.assertFalse(secgroup.exists())
