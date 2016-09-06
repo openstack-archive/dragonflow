@@ -532,9 +532,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     # logical port in the DF DB unchanged.
                     port_security_value = const.ATTR_NOT_SPECIFIED
 
-            self._process_portbindings_create_and_update(context,
-                                                         port['port'],
-                                                         updated_port)
             self.update_security_group_on_port(
                 context, id, port, original_port, updated_port)
 
@@ -554,6 +551,11 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
             port_version = version_db._update_db_version_row(
                     context.session, id)
+
+            setattr(context, 'GUARD_TRANSACTION', False)
+            self._process_portbindings_create_and_update(context,
+                                                         port['port'],
+                                                         updated_port)
 
         ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
         subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
@@ -782,8 +784,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                       "been deleted concurrently" % port_id)
 
     def extend_port_dict_binding(self, port_res, port_db):
-        super(DFPlugin, self).extend_port_dict_binding(port_res, port_db)
         self._update_port_binding(port_res)
+        super(DFPlugin, self).extend_port_dict_binding(port_res, port_db)
 
     def _create_router_db(self, context, router, tenant_id):
         """Create a router db object with dvr additions."""
