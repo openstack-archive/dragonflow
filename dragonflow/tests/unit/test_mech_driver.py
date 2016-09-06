@@ -166,6 +166,7 @@ class TestDFMechDriver(base.BaseTestCase):
         fips = [{"subnet_id": "sub-1", "ip_address": "10.0.0.1"}]
         allowed_macs = 'ff:ff:ff:ff:ff:ff'
         tunnel_key = '9999'
+        binding_profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
 
         securitygroups_db.SecurityGroupDbMixin._get_security_groups_on_port = \
             mock.Mock(return_value=None)
@@ -174,7 +175,7 @@ class TestDFMechDriver(base.BaseTestCase):
         self.driver.nb_api.allocate_tunnel_key = mock.Mock(
             return_value=tunnel_key)
         port_context = self._get_port_context(tenant_id, network_id, port_id,
-                                              fips)
+                                              fips, binding_profile)
 
         self.driver.create_port_postcommit(port_context)
         self.driver.nb_api.create_lport.assert_called_with(
@@ -182,9 +183,9 @@ class TestDFMechDriver(base.BaseTestCase):
             macs=['aabb'], ips=['10.0.0.1'],
             name='FakePort', subnets=['sub-1'],
             enabled=True, chassis=None, tunnel_key=tunnel_key,
-            device_owner='compute', device_id='d1',
+            device_owner='compute', device_id='d1', remote_vtep="20.0.0.2",
             port_security_enabled=False, security_groups=[],
-            binding_profile=None, binding_vnic_type='ovs',
+            binding_profile=binding_profile, binding_vnic_type='ovs',
             allowed_address_pairs=[], version=self.dbversion)
 
     def test_update_port_postcommit(self):
@@ -193,6 +194,7 @@ class TestDFMechDriver(base.BaseTestCase):
         port_id = '453'
         fips = [{"subnet_id": "sub-1", "ip_address": "10.0.0.1"}]
         tunnel_key = '9999'
+        binding_profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
 
         securitygroups_db.SecurityGroupDbMixin._get_security_groups_on_port = \
             mock.Mock(return_value=None)
@@ -200,7 +202,7 @@ class TestDFMechDriver(base.BaseTestCase):
         self.driver.nb_api.allocate_tunnel_key = mock.Mock(
             return_value=tunnel_key)
         port_context = self._get_port_context(tenant_id, network_id, port_id,
-                                              fips)
+                                              fips, binding_profile)
 
         self.driver.update_port_postcommit(port_context)
         self.driver.nb_api.update_lport.assert_called_with(
@@ -210,17 +212,18 @@ class TestDFMechDriver(base.BaseTestCase):
             enabled=True, chassis=None, port_security_enabled=False,
             allowed_address_pairs=[], security_groups=[],
             device_owner='compute', device_id='d1',
-            binding_profile=None, binding_vnic_type='ovs',
-            version=self.dbversion)
+            binding_profile=binding_profile, binding_vnic_type='ovs',
+            version=self.dbversion, remote_vtep="20.0.0.2")
 
     def test_delete_port_postcommit(self):
         tenant_id = 'test'
         network_id = '123'
         port_id = '453'
         fips = [{"subnet_id": "sub-1", "ip_address": "10.0.0.1"}]
+        binding_profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
 
         port_context = self._get_port_context(tenant_id, network_id, port_id,
-                                              fips)
+                                              fips, binding_profile)
 
         self.driver.delete_port_postcommit(port_context)
         self.driver.nb_api.delete_lport.assert_called_with(
@@ -345,7 +348,8 @@ class TestDFMechDriver(base.BaseTestCase):
                   'db_version': self.dbversion}
         return FakeContext(subnet)
 
-    def _get_port_context(self, tenant_id, net_id, port_id, fixed_ips):
+    def _get_port_context(self, tenant_id, net_id, port_id,
+                          fixed_ips, binding_profile):
         # sample data for testing purpose only.
         port = {'device_id': '1234',
                 'name': 'FakePort',
@@ -358,7 +362,7 @@ class TestDFMechDriver(base.BaseTestCase):
                 'admin_state_up': True,
                 'status': 'ACTIVE',
                 'network_id': net_id,
-                'binding:profile': None,
+                'binding:profile': binding_profile,
                 'binding:vnic_type': 'ovs',
                 'db_version': self.dbversion}
         return FakeContext(port)
