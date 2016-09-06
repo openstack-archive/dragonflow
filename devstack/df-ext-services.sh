@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+
 # Locate devstack directory
 TOP_DIR=
 
