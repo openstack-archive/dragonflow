@@ -1,3 +1,18 @@
+# NOTE(xiaohhui): By default, devstack will set Q_AGENT as openvswitch.
+# Here we deny that, because there is no agent in DF. But most of
+# functions in lib/neutron_plugins/openvswitch_agent are needed. So,
+# lib/neutron_plugins/openvswitch_agent is still used here. And override
+# functions can be added in this file.
+Q_AGENT=${Q_AGENT:-" "}
+
+source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
+
+# This function is invoked by DevStack's Neutron plugin setup
+# code and is being overridden here since the DF devstack
+# plugin will handle the install.
+function neutron_plugin_install_agent_packages {
+    :
+}
 
 if is_service_enabled df-l3-agent ; then
     Q_L3_ENABLED=${Q_L3_ENABLED:-True}
