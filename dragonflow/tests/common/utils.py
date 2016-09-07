@@ -150,6 +150,16 @@ class OvsDBParser(object):
         interfaces = self._ovsdb_list_intefaces(specify_interface)
         return self._parse_ovsdb_interfaces(interfaces)
 
+    def get_tunnel_ofport(self, chassis_id):
+        interfaces = self.list_interfaces()
+        for item in interfaces:
+            external_ids = item.get('external_ids', None)
+            if external_ids is not None:
+                df_chassis_id = external_ids.get('df-chassis-id', None)
+                if chassis_id == df_chassis_id:
+                    return item.get('ofport', None)
+        return None
+
     def get_ofport(self, port_id):
         interfaces = self.list_interfaces()
         for item in interfaces:
