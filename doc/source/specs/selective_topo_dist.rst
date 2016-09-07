@@ -40,20 +40,20 @@ basic idea
 The idea is quite simple:
 
   * Each Dragonflow local controller only subscribes topology it's interested in
-  from the sub-pub server.
+    from the sub-pub server.
 
   * When northbound topology changed, in addition to save it to the Dragonflow
-  database, Neutron plugin also publish the change to the sub-pub server.
+    database, Neutron plugin also publish the change to the sub-pub server.
 
   * When southbound topology changed, in addition to save it to the Dragonflow
-  database, Dragonflow local controllers also publish the change to the sub-pub
-  server.
+    database, Dragonflow local controllers also publish the change to the sub-pub
+    server.
 
   * On receiving a publish request from Neutron plugin or Dragonflow local controller,
-   the sub-pub server publishes the change to whom subscribe the change.
+    the sub-pub server publishes the change to whom subscribe the change.
 
   * When receives a published event, Dragonflow local controller updates its local
-   cache and flow entries if needed.
+    cache and flow entries if needed.
 
   * When receives a published event, Neutron plugin updates it's status if needed.
 
@@ -71,21 +71,23 @@ in the network and will subscribe change of this network by registering to the
 corresponding topic. These controllers will get notified by the topic when this
 new port is created.
 
-                                      +--------------+
-                                  +---> Subscriber A |
-                                  |   +--------------+
-                                  |
-                     +---------+  |
-                +----> Topic A +--+   +--------------+
-+-----------+   |    +---------+  +--->              |
-| Publisher +---+                     | Subscriber B |
-+-----------+   |    +---------+  +--->              |
-                +----> Topic B +--+   +--------------+
-                     +---------+  |
-                                  |
-                                  |   +--------------+
-                                  +---> Subscriber C |
-                                      +--------------+
+::
+
+                                       +--------------+
+                                   +---> Subscriber A |
+                                   |   +--------------+
+                                   |
+                      +---------+  |
+                 +----> Topic A +--+   +--------------+
+ +-----------+   |    +---------+  +--->              |
+ | Publisher +---+                     | Subscriber B |
+ +-----------+   |    +---------+  +--->              |
+                 +----> Topic B +--+   +--------------+
+                      +---------+  |
+                                   |
+                                   |   +--------------+
+                                   +---> Subscriber C |
+                                       +--------------+
 
 Two ways to distribute topology selectively
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,27 +140,29 @@ Northbound Topology Change
 When a tenant named tenant1 create a port through Neutron's northbound api.
 
 * Dragonflow Neutron plugin will publish a event to the tenant's topic in the
-sub-pub server.
+  sub-pub server.
 
 * The sub-pub server will then check who have subscribed the topic and publish
-the event to them.
+  the event to them.
 
 * On receiving the event, local controllers will save the new port's information
-and install some flow entries on OVS which is not covered in this spec.
+  and install some flow entries on OVS which is not covered in this spec.
 
-+----------------+ +----------------+ +------------------+  +------------------+
-| Neutron plugin | | Sub-pub Server | | Dragonflow local |  | Dragonflow Local |
-+-------+--------+ +------+---------+ | Controller 1     |  | Controller2      |
-        |                 |           +--------+---------+  +--------+---------+
-        |                 |                    |                     |
-        |                 |                    |                     |
-        | publish(tenant1)|                    |                     |
-        +----------------->                    |                     |
-        |                 |   publish(tenant1) |                     |
-        |                 +-------------------->                     |
-        |                 |                    |                     |
-        |                 |                    |                     |
-        +                 +                    +                     +
+::
+
+ +----------------+ +----------------+ +------------------+  +------------------+
+ | Neutron plugin | | Sub-pub Server | | Dragonflow local |  | Dragonflow Local |
+ +-------+--------+ +------+---------+ | Controller 1     |  | Controller2      |
+         |                 |           +--------+---------+  +--------+---------+
+         |                 |                    |                     |
+         |                 |                    |                     |
+         | publish(tenant1)|                    |                     |
+         +----------------->                    |                     |
+         |                 |   publish(tenant1) |                     |
+         |                 +-------------------->                     |
+         |                 |                    |                     |
+         |                 |                    |                     |
+         +                 +                    +                     +
 
 In the above diagram, Dragonflow local controller 2 has no VMs belong to tenant1.
 It will not subscribe tenant1's topic and therefore will not get notified.
@@ -173,24 +177,26 @@ When nova starts a VM in a compute node, it will insert a port on the correspond
 OVS bridge.
 
 * By monitoring OVSDB, Dragonflow local controller get notified when the new port
-is added on OVS bridge.
+  is added on OVS bridge.
 
 * Dragonflow local controller queries the port's topology from Dragonflow database
-and knows which tenant the port belongs to.
+  and knows which tenant the port belongs to.
 
 * Dragonflow local controller queries local cache to see if it has subscribed the
-tenant topic.
+  tenant topic.
 
   + If local controller has already subscribed the tenant's topic. This means there
-  already are local ports of the same tenant. It will not subscribe the topic again.
+    already are local ports of the same tenant. It will not subscribe the topic again.
 
   + If local controller hasn't subscribed the tenant's topic. This means the new
-  port is the only local port in the compute node belongs to the tenant. Local
-  controller will subscribe the tenant's topic.
+    port is the only local port in the compute node belongs to the tenant. Local
+    controller will subscribe the tenant's topic.
 
-+----------+   +----------------+ +------------------+
-| database |   | sub/pub server | | Dragonflow local |
-+-----+----+   +------+---------+ | Controller 1     |
+::
+
+ +----------+   +----------------+ +------------------+
+ | database |   | sub/pub server | | Dragonflow local |
+ +-----+----+   +------+---------+ | Controller 1     |
       |               |           +--------+---------+
       |               |                    |
       |               |                    |
