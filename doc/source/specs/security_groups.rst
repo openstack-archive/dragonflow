@@ -41,31 +41,33 @@ ports)
 
 The following diagram demonstrate how the data path looks like:
 
-   +-------------+                     +---------------+
-   |             |                     |               |
-   |    VM A     |                     |     VM B      |
-   |             |                     |               |
-   +---+------+--+                     +---+-------+---+
-       | eth  |                            |  eth  |
-       +--+---+                            +---+---+
-          |                                    |
-       +--+---+                            +---+---+
-       | tap  |                            |  tap  |
- +-----+------+-----+                 +----+-------+-----+
- |                  |                 |                  |
- |   Linux Bridge   |                 |   Linux Bridge   |
- |                  |                 |                  |
- +-----+------+-----+                 +-----+------+-----+
-       | veth |                             | veth |
-       +--+---+                             +--+---+
-          |                                    |
-       +--+---+                             +--+---+
-       | veth |                             | veth |
-+------+------+-----------------------------+------+----------+
-|                                                             |
-|                     OVS  BRIDGE  (br-int)                   |
-|                                                             |
-+-------------------------------------------------------------+
+::
+
+       +-------------+                     +---------------+
+       |             |                     |               |
+       |    VM A     |                     |     VM B      |
+       |             |                     |               |
+       +---+------+--+                     +---+-------+---+
+           | eth  |                            |  eth  |
+           +--+---+                            +---+---+
+              |                                    |
+           +--+---+                            +---+---+
+           | tap  |                            |  tap  |
+     +-----+------+-----+                 +----+-------+-----+
+     |                  |                 |                  |
+     |   Linux Bridge   |                 |   Linux Bridge   |
+     |                  |                 |                  |
+     +-----+------+-----+                 +-----+------+-----+
+           | veth |                             | veth |
+           +--+---+                             +--+---+
+              |                                    |
+           +--+---+                             +--+---+
+           | veth |                             | veth |
+    +------+------+-----------------------------+------+----------+
+    |                                                             |
+    |                     OVS  BRIDGE  (br-int)                   |
+    |                                                             |
+    +-------------------------------------------------------------+
 
 In Dragonflow we are already connecting the VMs to the OVS bridge directly,
 this design will demonstrate how we plan to leverage OVS connection tracking
@@ -98,32 +100,36 @@ Solution Guidelines
 -------------------
 1) Leverage OVS connection tracking for implementing state full rules
 2) Using conjunction flows mechanism (supported by OVS 2.4 above[3]) to make
-  VM ports configuration about security group and security group rules
-  uncoupled.
+   VM ports configuration about security group and security group rules
+   uncoupled.
 3) Take security group process of egress rules in source side of packets while
-  ingress rules in destination side.
+   ingress rules in destination side.
 
 Pipeline Changes
 ----------------
 Egress Side
 
-            +---------+    +-----------+    +---------+    +---------+
- +-----+    |         |    |           |    |         |    |         |
- |     |    | Port    |    | Egress    |    | Egress  |    |         |
- | VM  +--> | Security+--> | Connection+--> | Security+--> |   QOS   |
- |     |    |         |    | Tracking  |    | Group   |    |         |
- +-----+    |         |    |           |    |         |    |         |
-            +---------+    +-----------+    +---------+    +---------+
+::
+
+               +---------+    +-----------+    +---------+    +---------+
+    +-----+    |         |    |           |    |         |    |         |
+    |     |    | Port    |    | Egress    |    | Egress  |    |         |
+    | VM  +--> | Security+--> | Connection+--> | Security+--> |   QOS   |
+    |     |    |         |    | Tracking  |    | Group   |    |         |
+    +-----+    |         |    |           |    |         |    |         |
+               +---------+    +-----------+    +---------+    +---------+
 
 Ingress Side
 
- +-----------+    +---------+    +---------+
- |           |    |         |    |         |    +-----+
- | Ingress   |    | Ingress |    | Ingress |    |     |
- | Connection+--> | Security+--> | Dispatch+--> | VM  |
- | Tracking  |    | Group   |    |         |    |     |
- |           |    |         |    |         |    +-----+
- +-----------+    +---------+    +---------+
+::
+
+    +-----------+    +---------+    +---------+
+    |           |    |         |    |         |    +-----+
+    | Ingress   |    | Ingress |    | Ingress |    |     |
+    | Connection+--> | Security+--> | Dispatch+--> | VM  |
+    | Tracking  |    | Group   |    |         |    |     |
+    |           |    |         |    |         |    +-----+
+    +-----------+    +---------+    +---------+
 
 Design
 ------
@@ -137,86 +143,94 @@ installed in the OVS integration bridge which could be specified in the
 configuration.
 
 1) In the first, Dragonflow controller should install a default OVS flow in
-  the egress connection tracking table. That flow will let packets from a VM
-  port which isn't associated with any security group and packets without a IP
-  header pass through the security group process.
+   the egress connection tracking table. That flow will let packets from a VM
+   port which isn't associated with any security group and packets without a IP
+   header pass through the security group process.
 
-   priority=1 actions=resubmit(<qos>)
+::
+
+    priority=1 actions=resubmit(<qos>)
 
 2) When a local VM port is firstly associated to a security group, Dragonflow
-  controller will install a OVS flow in the egress connection tracking table,
-  to let IP packets from this VM port to do the CT process:
+   controller will install a OVS flow in the egress connection tracking table,
+   to let IP packets from this VM port to do the CT process:
+   ::
 
-   in_port=5, ip actions=ct(table=<egress_security_group>, zone=OXM_OF_METADATA[0..15])
+        in_port=5, ip actions=ct(table=<egress_security_group>, zone=OXM_OF_METADATA[0..15])
 
    It should be notified that we use the network_id of this VM port saved in
-  metadata as the zone id to avoid the addresses overlap problem in CT.
+   metadata as the zone id to avoid the addresses overlap problem in CT.
 
 3) In the egress security group table, Dragonflow controller need install OVS
-  flows to let packets matched a established/related connection pass and let
-  packets with a invalid CT state be dropped:
+   flows to let packets matched a established/related connection pass and let
+   packets with a invalid CT state be dropped:
+   ::
 
-   priority=65534, ct_state=-new+est-rel-inv+trk actions=resubmit(<qos>)
-   priority=65534, ct_state=-new+rel-inv+trk actions=resubmit(<qos>)
-   priority=65534, ct_state=+new+rel-inv+trk actions=ct(commit,table=<qos>,zone=NXM_NX_CT_ZONE[])
+       priority=65534, ct_state=-new+est-rel-inv+trk actions=resubmit(<qos>)
+       priority=65534, ct_state=-new+rel-inv+trk actions=resubmit(<qos>)
+       priority=65534, ct_state=+new+rel-inv+trk actions=ct(commit,table=<qos>,zone=NXM_NX_CT_ZONE[])
 
 4) To applied conjunction flows mechanism, Dragonflow controller will allocate
-  a global/local conjunction id and a priority number per security group (if
-  locally at each compute node per security group), this is an increasing
-  number. The reason of allocating a priority number to each security group is
-  the restriction of conjunction flows mechanism in OVS.
+   a global/local conjunction id and a priority number per security group (if
+   locally at each compute node per security group), this is an increasing
+   number. The reason of allocating a priority number to each security group is
+   the restriction of conjunction flows mechanism in OVS.
 
 5) In the point view of VM ports, when VM ports are applied to a security
-  group, Dragonflow controller should install the OVS flows in the egress
-  security group table to represent those associating relations, and each
-  of those relations will be converted to one OVS flow. This flow carries a
-  matchs field contains a VM port identification match (input port number
-  for egress side, while reg7 value for ingress side), and a actions field
-  contains a conjunction action that uses the conjunction id of this security
-  group and a mark to indicate it is the first part of the conjunction flows.
-  It should also be mentioned that those flows have the priority number which
-  is allocated to this security group:
+   group, Dragonflow controller should install the OVS flows in the egress
+   security group table to represent those associating relations, and each
+   of those relations will be converted to one OVS flow. This flow carries a
+   matchs field contains a VM port identification match (input port number
+   for egress side, while reg7 value for ingress side), and a actions field
+   contains a conjunction action that uses the conjunction id of this security
+   group and a mark to indicate it is the first part of the conjunction flows.
+   It should also be mentioned that those flows have the priority number which
+   is allocated to this security group:
+   ::
 
-   priority=25, in_port=5, ct_state=+new-est-rel-inv+trk actions=conjunctions(20, 1/2)
-   priority=25, in_port=6, ct_state=+new-est-rel-inv+trk actions=conjunctions(20, 1/2)
+       priority=25, in_port=5, ct_state=+new-est-rel-inv+trk actions=conjunctions(20, 1/2)
+       priority=25, in_port=6, ct_state=+new-est-rel-inv+trk actions=conjunctions(20, 1/2)
 
    In addition, if a new VM port is applied to this security group, a new OVS
-  flow like above but uses this VM port's identification match should be
-  installed.
+   flow like above but uses this VM port's identification match should be
+   installed.
 
 6) In the point view of security groups, when a security group is associated
-  to at least one local VM port, in the egress security group table,
-  Dragonflow controller will install OVS flows representing egress rules of
-  this security group, and each of those egress rules will be converted to at
-  least one OVS flow. This flow carries a matches field contain match items
-  in correspondence with one of the egress rules of this security group, and a
-  actions field contains a conjunction id of the security group and a mark to
-  indicate it is the second part of the conjunction flows. Those flows also
-  have the priority number which is allocated to this security group:
+   to at least one local VM port, in the egress security group table,
+   Dragonflow controller will install OVS flows representing egress rules of
+   this security group, and each of those egress rules will be converted to at
+   least one OVS flow. This flow carries a matches field contain match items
+   in correspondence with one of the egress rules of this security group, and a
+   actions field contains a conjunction id of the security group and a mark to
+   indicate it is the second part of the conjunction flows. Those flows also
+   have the priority number which is allocated to this security group:
+   ::
 
-   priority=25, tcp, tp_dst=80, nw_dst=192.168.10.0/24 actions=conjunction(20, 2/2)
-   priority=25, tcp, tp_dst=8080, nw_dst=192.168.10.0/24 actions=conjunction(20, 2/2)
+       priority=25, tcp, tp_dst=80, nw_dst=192.168.10.0/24 actions=conjunction(20, 2/2)
+       priority=25, tcp, tp_dst=8080, nw_dst=192.168.10.0/24 actions=conjunction(20, 2/2)
 
    In addition, if a new egress rule is added to this security group, one or
-  more new OVS flows like above but match items in corresponded with this new
-  rule should be installed.
+   more new OVS flows like above but match items in corresponded with this new
+   rule should be installed.
 
 7) Besides, Dragonflow controller should also install a OVS flow in the egress
-  security group table, of which matches field contains the conjunction id
-  match of the security group, and actions field contains a CT action to
-  commit connection track entries and send packets to the next process table.
-  The packets who match at least each one OVS flow of all parts of the
-  conjunction flows will meet the match of this OVS flow and do the actions.
-  That means those packets match at least one OVS flow mentioned in section 5
-  and one OVS flow mentioned in section 6.
+   security group table, of which matches field contains the conjunction id
+   match of the security group, and actions field contains a CT action to
+   commit connection track entries and send packets to the next process table.
+   The packets who match at least each one OVS flow of all parts of the
+   conjunction flows will meet the match of this OVS flow and do the actions.
+   That means those packets match at least one OVS flow mentioned in section 5
+   and one OVS flow mentioned in section 6.
+   ::
 
-   conj_id=20 actions=ct(commit,table=<qos>,zone=NXM_NX_CT_ZONE[])
+       conj_id=20 actions=ct(commit,table=<qos>,zone=NXM_NX_CT_ZONE[])
 
 8) After all, we should install a default dropping OVS flow with lowest
-  priority in the egress security group table to make sure we drop any packet
-  that didn't match any of the rules:
+   priority in the egress security group table to make sure we drop any packet
+   that didn't match any of the rules:
+   ::
 
-   priority=1 actions=drop
+       priority=1 actions=drop
 
 Remote security group in rules
 ------------------------------
@@ -230,11 +244,13 @@ CIDR addresses should be necessary.
 Missing Parts
 -------------
 1) OVS connection tracking integration doesnt yet support IP fragmentation.
-  IP defragmentation must be applied before sending the packets to the
-  connection tracking module.
+   IP defragmentation must be applied before sending the packets to the
+   connection tracking module.
 
 References
 ==========
 [1] http://openvswitch.org/support/ovscon2014/17/1030-conntrack_nat.pdf
+
 [2] http://openvswitch.org/pipermail/dev/2014-May/040567.html
+
 [3] http://openvswitch.org/support/dist-docs/ovs-ofctl.8.pdf
