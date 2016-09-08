@@ -28,6 +28,15 @@ def ipv4_text_to_int(ip_text):
         raise exceptions.InvalidIPAddressException(key=ip_text)
 
 
+def ipv6_text_to_int(ip_text):
+    if isinstance(ip_text, unicode):
+        ip_text = ip_text.encode('ascii', 'ignore')
+    try:
+        return list(struct.unpack('!8H', addrconv.ipv6.text_to_bin(ip_text)))
+    except Exception:
+        raise exceptions.InvalidIPAddressException(key=ip_text)
+
+
 def set_aging_cookie(c):
     global _aging_cookie
     _aging_cookie = c
