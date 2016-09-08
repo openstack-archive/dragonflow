@@ -15,8 +15,11 @@ import string
 import sys
 import time
 
+from neutron.agent.common import utils
 from oslo_log import log
 import ryu.lib.packet
+from ryu.ofproto import inet
+
 
 from dragonflow._i18n import _LI
 from dragonflow.controller.common import constants
@@ -157,6 +160,120 @@ class TestArpResponder(test_base.DFTestBase):
             port1:
                 Send ARP request
                 Receive ARP response
+            port2:
+                Do nothing
+        """
+        self.policy.start(self.topology)
+        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(self.policy.exceptions) > 0:
+            raise self.policy.exceptions[0]
+
+
+class TestNsAdvertiser(test_base.DFTestBase):
+
+    def setUp(self):
+        super(TestNsAdvertiser, self).setUp()
+        self.topology = None
+        self.policy = None
+        try:
+            # Prevent Duplicate Address Detection requests
+            self.dad_conf = utils.execute(['sysctl', '-n',
+                'net.ipv6.conf.default.accept_dad'])
+            utils.execute(['sysctl', '-w',
+                'net.ipv6.conf.default.accept_dad=0'], run_as_root=True)
+            self.topology = app_testing_objects.Topology(
+                self.neutron,
+                self.nb_api)
+            subnet1 = self.topology.create_subnet(cidr='1111:1111:1111::/64')
+            port1 = subnet1.create_port()
+            port2 = subnet1.create_port()
+            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+            # Create Neighbor Solicitation packet
+            ns_packet = self._create_ns_request(
+                src_port=port1.port.get_logical_port(),
+                dst_port=port2.port.get_logical_port(),
+            )
+            send_ns_request = app_testing_objects.SendAction(
+                subnet1.subnet_id,
+                port1.port_id,
+                str(ns_packet)
+            )
+            ignore_action = app_testing_objects.IgnoreAction()
+            log_action = app_testing_objects.LogAction()
+            key1 = (subnet1.subnet_id, port1.port_id)
+            port_policies = {
+                key1: app_testing_objects.PortPolicy(
+                    rules=[
+                        app_testing_objects.PortPolicyRule(
+                            # Detect advertisements
+                            app_testing_objects.RyuNeighbAdvertisementFilter(),
+                            actions=[
+                                log_action,
+                                app_testing_objects.StopSimulationAction()
+                            ]
+                        ),
+                        app_testing_objects.PortPolicyRule(
+                            # Filter local VM's Multicast requests
+                            app_testing_objects.RyuIpv6MulticastFilter(),
+                            actions=[ignore_action]
+                        )
+                    ],
+                    default_action=app_testing_objects.RaiseAction(
+                        "Unexpected packet"
+                    )
+                ),
+            }
+            self.policy = app_testing_objects.Policy(
+                initial_actions=[send_ns_request],
+                # initial_actions=[],
+                port_policies=port_policies,
+                unknown_port_action=ignore_action
+            )
+        except Exception:
+            if self.topology:
+                self.topology.close()
+            raise
+        self.store(self.topology)
+        self.store(self.policy)
+
+    def _create_ns_request(self, src_port, dst_port):
+        ethernet = ryu.lib.packet.ethernet.ethernet(
+            src=src_port.get_mac(),
+            dst=constants.BROADCAST_MAC,
+            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IPV6,
+        )
+        ipv6 = ryu.lib.packet.ipv6.ipv6(
+            src=src_port.get_ip(),
+            dst=dst_port.get_ip(),
+            nxt=inet.IPPROTO_ICMPV6
+        )
+        icmpv6 = ryu.lib.packet.icmpv6.icmpv6(
+            type_=ryu.lib.packet.icmpv6.ND_NEIGHBOR_SOLICIT,
+            data=ryu.lib.packet.icmpv6.nd_neighbor(
+                dst=dst_port.get_ip()
+            )
+        )
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ethernet)
+        result.add_protocol(ipv6)
+        result.add_protocol(icmpv6)
+        result.serialize()
+        return result.data
+
+    def tearDown(self):
+        super(TestNsAdvertiser, self).tearDown()
+        self.topology.close()
+        self.policy.close()
+        utils.execute(['sysctl', '-w', 'net.ipv6.conf.default.accept_dad={}'.
+            format(self.default_dad)], run_as_root=True)
+
+    def test_simple_response(self):
+        """
+        2 ports on 1 subnet. 1 port asks for MAC of other.
+        Policy:
+            port1:
+                Send Neighbor Solicitation request
+                Receive Neighbor Advertisement
             port2:
                 Do nothing
         """
