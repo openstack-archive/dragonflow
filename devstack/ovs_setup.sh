@@ -113,6 +113,8 @@ function _neutron_ovs_install_ovs {
             fi
         done
 
+        install_package autoconf automake libtool gcc patch make
+
         if is_ubuntu; then
             _neutron_ovs_install_ovs_ubuntu
         elif is_fedora; then
