@@ -578,8 +578,10 @@ def init_ryu_config():
 # python df_local_controller.py <chassis_unique_name>
 # <local ip address> <southbound_db_ip_address>
 def main():
-    chassis_name = socket.gethostname()
     common_config.init(sys.argv[1:])
     init_ryu_config()
+    chassis_name = cfg.CONF.df.chassis_name
+    if chassis_name is None:
+        chassis_name = socket.gethostname()
     controller = DfLocalController(chassis_name)
     controller.run()
