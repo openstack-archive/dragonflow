@@ -103,15 +103,23 @@ function _neutron_ovs_install_ovs_ubuntu {
 }
 
 function _neutron_ovs_install_ovs {
+    local _is_ovs_installed=false
+
     if [ "$OVS_INSTALL_FROM_GIT" == "True" ]; then
         echo "Installing OVS and dependent packages from git"
         # If OVS is already installed, remove it, because we're about to re-install
         # it from source.
         for package in openvswitch openvswitch-switch openvswitch-common; do
             if is_package_installed $package ; then
-                uninstall_package $package
+                _is_ovs_installed=true
+                break
             fi
         done
+        if [ "$_is_ovs_installed" = true ]; then
+            cleanup_ovs
+            stop_ovs
+            uninstall_ovs
+        fi
 
         if is_ubuntu; then
             _neutron_ovs_install_ovs_ubuntu
@@ -220,9 +228,16 @@ function uninstall_ovs {
 
 # stop_ovs_dp() - Stop OVS datapath
 function stop_ovs_dp {
-    sudo ovs-dpctl dump-dps | sudo xargs -n1 ovs-dpctl del-dp
-    sudo rmmod vport_geneve
-    sudo rmmod openvswitch
+    dp=$(sudo ovs-dpctl dump-dps)
+    if [ $dp ]; then
+         sudo ovs-dpctl del-dp $dp
+    fi
+
+    for module in vport_geneve openvswitch; do
+        if [[ $(lsmod | grep $module) ]]; then
+            sudo rmmod $module
+        fi
+    done
 }
 
 function stop_ovs
