@@ -22,7 +22,7 @@ df_l2_app_opts = [
     cfg.BoolOpt(
         'l2_responder',
         default=True,
-        help=_('Install OVS flows to respond to ARP requests.')),
+        help=_('Install OVS flows to respond to ARP and ND requests.')),
     cfg.ListOpt('bridge_mappings',
                 default=[],
                 help=_("Comma-separated list of <physical_network>:<bridge> "
