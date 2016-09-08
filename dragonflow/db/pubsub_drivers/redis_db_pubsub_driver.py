@@ -179,7 +179,7 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                             continue
                         elif 'message' == data['type']:
                             message = pub_sub_api.unpack_message(data['data'])
-
+                            message = jsonutils.loads(message)
                             if message['table'] != 'ha':
                                 self.db_changes_callback(
                                     message['table'],
@@ -189,9 +189,8 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                                     message['topic'])
                             else:
                                 # redis ha message
-                                value = jsonutils.loads(message['value'])
                                 self.redis_mgt.redis_failover_callback(
-                                    value)
+                                    message)
                         else:
                             LOG.warning(_LW("receive unknown message in "
                                             "subscriber %(type)s")
