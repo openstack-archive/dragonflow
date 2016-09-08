@@ -43,7 +43,6 @@ from dragonflow._i18n import _LE
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
-from dragonflow.db.neutron import versionobjects_db as version_db
 from dragonflow.neutron.common import constants as df_const
 
 
@@ -172,27 +171,20 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_floatingip(self, context, floatingip):
         try:
-            floatingip_port = None
-            with context.session.begin(subtransactions=True):
-                floatingip_dict = \
-                    super(DFL3RouterPlugin, self).create_floatingip(
-                        context,
-                        floatingip,
-                        initial_status=const.FLOATINGIP_STATUS_DOWN)
-                fip_version = version_db._create_db_version_row(
-                    context.session, floatingip_dict['id']
-                )
-
-                floatingip_port = self._get_floatingip_port(
-                    context, floatingip_dict['id'])
-                if not floatingip_port:
-                    raise n_common_exc.DeviceNotFoundError(
-                        device_name=floatingip_dict['id'])
-                subnet_id = floatingip_port['fixed_ips'][0]['subnet_id']
-                floatingip_subnet = self._get_floatingip_subnet(
-                    context, subnet_id)
-                if floatingip_subnet is None:
-                    raise n_exc.SubnetNotFound(subnet_id=subnet_id)
+            floatingip_dict = super(DFL3RouterPlugin, self).create_floatingip(
+                context, floatingip,
+                initial_status=const.FLOATINGIP_STATUS_DOWN)
+            fip_version = floatingip_dict['revision_number']
+            floatingip_port = self._get_floatingip_port(
+                context, floatingip_dict['id'])
+            if not floatingip_port:
+                raise n_common_exc.DeviceNotFoundError(
+                    device_name=floatingip_dict['id'])
+            subnet_id = floatingip_port['fixed_ips'][0]['subnet_id']
+            floatingip_subnet = self._get_floatingip_subnet(
+                context, subnet_id)
+            if floatingip_subnet is None:
+                raise n_exc.SubnetNotFound(subnet_id=subnet_id)
         except Exception:
             with excutils.save_and_reraise_exception() as ctxt:
                 ctxt.reraise = True
@@ -224,11 +216,9 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def update_floatingip(self, context, id, floatingip):
-        with context.session.begin(subtransactions=True):
-            floatingip_dict = super(DFL3RouterPlugin, self).update_floatingip(
-                context, id, floatingip)
-            fip_version = version_db._update_db_version_row(
-                context.session, id)
+        floatingip_dict = super(DFL3RouterPlugin, self).update_floatingip(
+            context, id, floatingip)
+        fip_version = floatingip_dict['revision_number']
 
         self.nb_api.update_floatingip(
             id=floatingip_dict['id'],
@@ -243,10 +233,8 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def delete_floatingip(self, context, id):
-        with context.session.begin(subtransactions=True):
-            floatingip = self.get_floatingip(context, id)
-            super(DFL3RouterPlugin, self).delete_floatingip(context, id)
-            version_db._delete_db_version_row(context.session, id)
+        floatingip = self.get_floatingip(context, id)
+        super(DFL3RouterPlugin, self).delete_floatingip(context, id)
         try:
             self.nb_api.delete_floatingip(id=id,
                                           topic=floatingip['tenant_id'])
