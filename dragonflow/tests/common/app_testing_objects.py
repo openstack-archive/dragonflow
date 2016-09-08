@@ -25,6 +25,7 @@ import pytun
 from ryu.lib.packet import arp
 from ryu.lib.packet import dhcp
 from ryu.lib.packet import icmp
+from ryu.lib.packet import icmpv6
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 
@@ -597,6 +598,27 @@ class RyuIPv6Filter(object):
     def __call__(self, buf):
         pkt = packet.Packet(buf)
         return (pkt.get_protocol(ipv6.ipv6) is not None)
+
+
+class RyuNeighbAdvertisementFilter(object):
+    """Use ryu to parse the packet and test if it's a Neighbor Advertisement"""
+    def __call__(self, buf):
+        pkt = packet.Packet(buf)
+        pkt_protocol = pkt.get_protocol(icmpv6.icmpv6)
+        if not pkt_protocol:
+            return False
+        return pkt_protocol.type_ == icmpv6.ND_NEIGHBOR_ADVERT
+
+
+class RyuIpv6MulticastFilter(object):
+    """Use ryu to parse the object and see if it is a multicast request"""
+    def __call__(self, buf):
+        pkt = packet.Packet(buf)
+        pkt_protocol = pkt.get_protocol(icmpv6.icmpv6)
+        if not pkt_protocol:
+            return False
+        # Multicast Listener Discovery
+        return pkt_protocol.type_ == icmpv6.MLDV2_LISTENER_REPORT
 
 
 class RyuARPReplyFilter(object):

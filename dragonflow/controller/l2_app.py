@@ -20,6 +20,7 @@ from neutron_lib import constants as common_const
 from neutron_lib.utils import helpers
 from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
+from ryu.lib.packet import in_proto
 from ryu.ofproto import ether
 import six
 
@@ -27,7 +28,9 @@ from dragonflow._i18n import _, _LI, _LE
 from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import nd_advertisers
 from dragonflow.controller import df_base_app
+
 
 # TODO(gsagie) currently the number set in Ryu for this
 # (OFPP_IN_PORT) is not working, use this until resolved
@@ -54,6 +57,7 @@ class L2App(df_base_app.DFlowApp):
         self.local_networks = collections.defaultdict(_LocalNetwork)
         self.integration_bridge = cfg.CONF.df.integration_bridge
         self.is_install_arp_responder = cfg.CONF.df_l2_app.l2_responder
+        self.is_install_nd_advertiser = cfg.CONF.df_l2_app.l2_responder
         self.bridge_mappings = self._parse_bridge_mappings(
             cfg.CONF.df_l2_app.bridge_mappings)
         self.int_ofports = {}
@@ -98,6 +102,10 @@ class L2App(df_base_app.DFlowApp):
                                   const.ARP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
+        self.add_flow_go_to_table(self.get_datapath(),
+                                  const.ND_TABLE,
+                                  const.PRIORITY_DEFAULT,
+                                  const.L2_LOOKUP_TABLE)
 
         # ARP traffic => send to ARP table
         match = self.get_datapath().ofproto_parser.OFPMatch(eth_type=0x0806)
@@ -105,6 +113,14 @@ class L2App(df_base_app.DFlowApp):
                                   const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_MEDIUM,
                                   const.ARP_TABLE, match=match)
+
+        match = self.get_datapath().ofproto_parser.OFPMatch()
+        match.set_dl_type(ether.ETH_TYPE_IPV6)
+        match.set_ip_proto(in_proto.IPPROTO_ICMPV6)
+        self.add_flow_go_to_table(self.get_datapath(),
+                                  const.SERVICES_CLASSIFICATION_TABLE,
+                                  const.PRIORITY_MEDIUM,
+                                  const.ND_TABLE, match=match)
 
         # Default: traffic => send to connection track table
         self.add_flow_go_to_table(self.get_datapath(),
@@ -150,6 +166,29 @@ class L2App(df_base_app.DFlowApp):
                 continue
             arp_responder.ArpResponder(self,
                                        network_id, ip).remove()
+
+    def _add_nd_advertiser(self, lport):
+        if not self.is_install_nd_advertiser:
+            return
+        ips = lport.get_ip_list()
+        for ip in ips:
+            if netaddr.IPAddress(ip).version != 6:
+                continue
+            network_id = lport.get_external_value('local_network_id')
+            mac = lport.get_mac()
+            nd_advertisers.NsAdvertiser(self,
+                                        network_id, ip, mac).add()
+
+    def _remove_nd_advertiser(self, lport):
+        if not self.is_install_nd_advertiser:
+            return
+        ips = lport.get_ip_list()
+        for ip in ips:
+            if netaddr.IPAddress(ip).version != 6:
+                continue
+            network_id = lport.get_external_value('local_network_id')
+            nd_advertisers.NsAdvertiser(self,
+                                        network_id, ip).remove()
 
     def remove_local_port(self, lport):
         lport_id = lport.get_id()
@@ -198,6 +237,7 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
         self._remove_arp_responder(lport)
+        self._remove_nd_advertiser(lport)
 
         self._remove_local_port(lport_id,
                                 mac,
@@ -358,6 +398,7 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
         self._remove_arp_responder(lport)
+        self._remove_nd_advertiser(lport)
         self._del_multicast_broadcast_handling_for_remote(
             lport_id, network_id, segmentation_id)
 
@@ -489,6 +530,7 @@ class L2App(df_base_app.DFlowApp):
                                                               network_id,
                                                               topic)
         self._add_arp_responder(lport)
+        self._add_nd_advertiser(lport)
 
     def _del_network_flows_on_last_port_down(self,
                                              local_network_id,
@@ -723,6 +765,7 @@ class L2App(df_base_app.DFlowApp):
             self._add_dst_classifier_flow_for_port(network_id, mac, port_key)
 
         self._add_arp_responder(lport)
+        self._add_nd_advertiser(lport)
 
         if network_type == 'vlan' or network_type == 'flat':
             return
