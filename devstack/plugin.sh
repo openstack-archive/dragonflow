@@ -119,7 +119,6 @@ fi
 
 # Dragonflow installation uses functions from these files
 source $TOP_DIR/lib/neutron_plugins/ovs_base
-source $TOP_DIR/lib/neutron_plugins/openvswitch_agent
 
 if [[ "$ENABLE_DPDK" == "True" ]]; then
     source $DEST/dragonflow/devstack/ovs_dpdk_setup.sh
