@@ -101,6 +101,8 @@ function install_ovs {
         fi
     done
 
+    install_package autoconf automake libtool gcc patch make
+
     pushd $DEST/ovs
     ./boot.sh
     ./configure --with-dpdk=$DPDK_BUILD
