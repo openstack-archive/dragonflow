@@ -10,8 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import argparse
 import socket
-import sys
 
 from neutron.common import config as common_config
 from oslo_config import cfg
@@ -128,10 +128,23 @@ def remove_record(db_driver, table, key):
         print('Key %s is not found in table %s.' % (key, table))
 
 
+def _check_valid_table(parser, table_name):
+    if table_name not in db_tables:
+        parser.exit(
+            status=2,
+            message="<table> must be one of the following:\n %s\n" % db_tables)
+
+
+def _exit_without_key(parser):
+    parser.exit(status=2, message="must supply a key\n" + usage_str)
+
+
 def main():
-    if len(sys.argv) < 2:
-        print usage_str
-        return
+    parser = argparse.ArgumentParser(usage=usage_str, add_help=False)
+    parser.add_argument('action')
+    parser.add_argument('table', nargs='?')
+    parser.add_argument('key', nargs='?')
+    args = parser.parse_args()
 
     common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
     db_driver = df_utils.load_driver(
@@ -141,77 +154,65 @@ def main():
                          db_port=cfg.CONF.df.remote_db_port,
                          config=cfg.CONF.df)
 
-    action = sys.argv[1]
-
-    if action == 'ls' and len(sys.argv) < 4:
-        if len(sys.argv) == 2:
+    action = args.action
+    table = args.table
+    key = args.key
+    if action == 'ls' and not key:
+        if not table:
             print_tables()
             return
-        table = sys.argv[2]
-        if table not in db_tables:
-            print "<table> must be one of the following:"
-            print db_tables
-            return
+        _check_valid_table(parser, table)
         print_table(db_driver, table)
         return
 
-    if action == 'get' and len(sys.argv) < 5:
-        if len(sys.argv) < 4:
-            print "must supply a key"
-            print usage_str
-            return
-        table = sys.argv[2]
-        if table not in db_tables:
-            print "<table> must be one of the following:"
-            print db_tables
-            return
-        key = sys.argv[3]
+    if action == 'get':
+        if not key:
+            _exit_without_key(parser)
+
+        _check_valid_table(parser, table)
         print_key(db_driver, table, key)
         return
 
-    if action == 'dump' and len(sys.argv) < 3:
+    if action == 'dump' and not table:
         for table in db_tables:
             print_whole_table(db_driver, table)
         return
 
-    if action == 'bind' and len(sys.argv) < 4:
-        if len(sys.argv) < 3:
-            print "must supply a key"
-            print usage_str
-            return
-        port_id = sys.argv[2]
+    if action == 'bind' and not key:
+        # NOTE: bind is the only cmd takes key as second parameter. Maybe
+        # using subparser is better if there is more such command.
+        port_id = table
+        if not port_id:
+            _exit_without_key(parser)
+
         bind_port_to_localhost(db_driver, port_id)
         return
 
-    if action == 'clean' and len(sys.argv) < 3:
+    if action == 'clean' and not table:
         for table in db_tables:
             clean_whole_table(db_driver, table)
         return
 
-    if action == 'init' and len(sys.argv) < 3:
+    if action == 'init' and not table:
         for table in db_tables:
             create_table(db_driver, table)
         return
 
-    if action == 'dropall' and len(sys.argv) < 3:
+    if action == 'dropall' and not table:
         for table in db_tables:
             drop_table(db_driver, table)
         return
 
-    if action == 'rm' and len(sys.argv) < 5:
-        if len(sys.argv) < 4:
-            print "must supply a key"
-            print usage_str
-            return
-        table = sys.argv[2]
-        if table not in db_tables:
-            print "<table> must be one of the following: %s" % db_tables
-            return
-        key = sys.argv[3]
+    if action == 'rm':
+        if not key:
+            _exit_without_key(parser)
+
+        _check_valid_table(parser, table)
         remove_record(db_driver, table, key)
         return
 
-    print usage_str
+    parser.error(message="unrecognized arguments: %s %s %s" %
+                 (action, (table or ""), (key or "")))
 
 
 if __name__ == "__main__":
