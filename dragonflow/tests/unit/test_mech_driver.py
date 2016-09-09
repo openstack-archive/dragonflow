@@ -107,9 +107,6 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             sg['id'], sg['tenant_id'],
             sg_rules=[rule], sg_version=new_sg['revision_number'])
 
-        self.mech_driver._get_security_group_id_from_security_group_rule = (
-            mock.Mock(return_value=sg['id']))
-
         self.driver.delete_security_group_rule(self.context, rule['id'])
         newer_sg = self.driver.get_security_group(self.context, sg['id'])
         self.assertGreater(newer_sg['revision_number'],
