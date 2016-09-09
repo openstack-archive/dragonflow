@@ -75,7 +75,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                            events.AFTER_CREATE)
         registry.subscribe(self.delete_security_group_rule,
                            resources.SECURITY_GROUP_RULE,
-                           events.BEFORE_DELETE)
+                           events.AFTER_DELETE)
 
     def _set_base_port_binding(self):
         if cfg.CONF.df.vif_type == portbindings.VIF_TYPE_VHOST_USER:
@@ -159,18 +159,13 @@ class DFMechDriver(driver_api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE)
     def delete_security_group_rule(self, resource, event, trigger, **kwargs):
         context = kwargs['context']
-        tenant_id = context.tenant_id
         sgr_id = kwargs['security_group_rule_id']
+        sg_id = kwargs['security_group_id']
 
         core_plugin = manager.NeutronManager.get_plugin()
-        sgr = core_plugin.get_security_group_rule(context, sgr_id)
-        sg_id = sgr['security_group_id']
         sg = core_plugin.get_security_group(context, sg_id)
-        # TODO(xiaohhui): This callback is called before the sg rule actually
-        # being deleted. The sg revision_number will increase after the sg
-        # rule being deleted. But it is impossible to retrieve sg rule then.
-        # Manually add the version here for now.
-        sg_version = sg['revision_number'] + 1
+        tenant_id = sg['tenant_id']
+        sg_version = sg['revision_number']
 
         self.nb_api.delete_security_group_rule(sg_id, sgr_id, tenant_id,
                                                sg_version=sg_version)
