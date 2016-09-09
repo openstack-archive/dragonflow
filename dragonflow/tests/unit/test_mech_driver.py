@@ -450,12 +450,9 @@ class TestDFMechDriverRevision(test_plugin.Ml2PluginV2TestCase):
         newer_sg = self.driver.get_security_group(self.context, sg['id'])
         self.assertGreater(newer_sg['revision_number'],
                            new_sg['revision_number'])
-        # TODO(xiaohhui): this should be changed to
-        # newer_sg['revision_number'], once neutron send security group id
-        # when deleting sg rule.
         self.nb_api.delete_security_group_rule.assert_called_with(
             sg['id'], rule['id'], mock.ANY,
-            sg_version=new_sg['revision_number'] + 1)
+            sg_version=newer_sg['revision_number'])
 
 
 class FakeNetworkContext(object):
