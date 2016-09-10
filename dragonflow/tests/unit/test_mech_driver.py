@@ -92,7 +92,8 @@ class TestDFMechDriver(base.BaseTestCase):
             device_owner='compute', device_id='d1', remote_vtep=True,
             port_security_enabled=False, security_groups=[],
             binding_profile=binding_profile, binding_vnic_type='ovs',
-            allowed_address_pairs=[], version=self.dbversion)
+            allowed_address_pairs=[], version=self.dbversion,
+            qos_policy_id=100)
 
     def test_update_port_postcommit(self):
         tenant_id = 'test'
@@ -116,7 +117,8 @@ class TestDFMechDriver(base.BaseTestCase):
             allowed_address_pairs=[], security_groups=[],
             device_owner='compute', device_id='d1',
             binding_profile=binding_profile, binding_vnic_type='ovs',
-            version=self.dbversion, remote_vtep=True)
+            version=self.dbversion, remote_vtep=True,
+            qos_policy_id=100)
 
     def test_delete_port_postcommit(self):
         tenant_id = 'test'
@@ -172,7 +174,8 @@ class TestDFMechDriver(base.BaseTestCase):
                 'network_id': net_id,
                 'binding:profile': binding_profile,
                 'binding:vnic_type': 'ovs',
-                'revision_number': self.dbversion}
+                'revision_number': self.dbversion,
+                'qos_policy_id': 100}
         return FakeContext(port)
 
     def _get_network_context(self, tenant_id, net_id, network_type, seg_id):
@@ -186,7 +189,8 @@ class TestDFMechDriver(base.BaseTestCase):
                    'provider:segmentation_id': seg_id,
                    'router:external': False,
                    'mtu': 1450,
-                   'revision_number': self.dbversion}
+                   'revision_number': self.dbversion,
+                   'qos_policy_id': 100}
         segments = [{'segmentation_id': seg_id}]
         return FakeNetworkContext(network, segments)
 
@@ -286,7 +290,8 @@ class TestDFMechDriverRevision(test_plugin.Ml2PluginV2TestCase):
                 segmentation_id=network['provider:segmentation_id'],
                 router_external=network['router:external'],
                 mtu=network['mtu'], version=network['revision_number'],
-                subnets=[])
+                subnets=[],
+                qos_policy_id=None)
             return network
 
     def test_create_network_revision(self):
@@ -356,7 +361,8 @@ class TestDFMechDriverRevision(test_plugin.Ml2PluginV2TestCase):
                 remote_vtep=False,
                 allowed_address_pairs=mock.ANY,
                 binding_profile=mock.ANY,
-                binding_vnic_type=mock.ANY)
+                binding_vnic_type=mock.ANY,
+                qos_policy_id=None)
 
             data = {'port': {'name': 'updated'}}
             req = self.new_update_request('ports', data, port['id'])
@@ -379,7 +385,8 @@ class TestDFMechDriverRevision(test_plugin.Ml2PluginV2TestCase):
                 port_security_enabled=mock.ANY,
                 allowed_address_pairs=mock.ANY,
                 binding_profile=mock.ANY,
-                binding_vnic_type=mock.ANY)
+                binding_vnic_type=mock.ANY,
+                qos_policy_id=None)
 
 
 class FakeNetworkContext(object):
