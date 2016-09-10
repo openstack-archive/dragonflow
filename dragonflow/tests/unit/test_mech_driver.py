@@ -123,7 +123,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 physical_network=network['provider:physical_network'],
                 router_external=network['router:external'],
                 mtu=network['mtu'], version=network['revision_number'],
-                subnets=[])
+                subnets=[],
+                qos_policy_id=None)
             return network
 
     def test_create_network_revision(self):
@@ -221,7 +222,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 remote_vtep=False,
                 allowed_address_pairs=mock.ANY,
                 binding_profile=mock.ANY,
-                binding_vnic_type=mock.ANY)
+                binding_vnic_type=mock.ANY,
+                qos_policy_id=None)
 
             data = {'port': {'name': 'updated'}}
             req = self.new_update_request('ports', data, port['id'])
@@ -244,7 +246,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 port_security_enabled=mock.ANY,
                 allowed_address_pairs=mock.ANY,
                 binding_profile=mock.ANY,
-                binding_vnic_type=mock.ANY)
+                binding_vnic_type=mock.ANY,
+                qos_policy_id=None)
 
     def test_delete_network(self):
         network = self._test_create_network_revision()
@@ -272,6 +275,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 device_id=port['device_id'],
                 security_groups=mock.ANY,
                 port_security_enabled=mock.ANY,
+                qos_policy_id=mock.ANY,
                 remote_vtep=True,
                 allowed_address_pairs=mock.ANY,
                 binding_profile=profile,
@@ -291,6 +295,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 version=mock.ANY,
                 device_owner=port['device_owner'],
                 device_id=port['device_id'],
+                qos_policy_id=mock.ANY,
                 remote_vtep=True,
                 security_groups=mock.ANY,
                 port_security_enabled=mock.ANY,
