@@ -146,3 +146,15 @@ class TestDFL3RouterPluginRevision(DFL3RouterPluginBase):
             notify=True, name=mock.ANY, router_id=mock.ANY,
             port_id=mock.ANY, version=new_fip['revision_number'],
             fixed_ip_address=mock.ANY)
+
+    def test_create_floatingip_with_normal_user(self):
+        normal_context = nctx.Context(is_admin=False, overwrite=False)
+        kwargs = {'arg_list': ('router:external',),
+                  'router:external': True}
+        with self.network(**kwargs) as n:
+            with self.subnet(network=n):
+                floatingip = self.l3p.create_floatingip(
+                    normal_context,
+                    {'floatingip': {'floating_network_id': n['network']['id'],
+                                    'tenant_id': n['network']['tenant_id']}})
+                self.assertTrue(floatingip)
