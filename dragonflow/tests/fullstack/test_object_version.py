@@ -13,9 +13,12 @@
 import contextlib
 
 from oslo_concurrency import lockutils
+from oslo_config import cfg
 
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
+
+DF_PLUGIN = 'dragonflow.neutron.plugin.DFPlugin'
 
 
 class TestObjectVersion(test_base.DFTestBase):
@@ -126,6 +129,25 @@ class TestObjectVersion(test_base.DFTestBase):
 
         secgroup.close()
         self.assertFalse(secgroup.exists())
+
+    def test_qospolicy_version(self):
+        if cfg.CONF.core_plugin == DF_PLUGIN:
+            return
+
+        qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
+                                                        self.nb_api))
+        policy_id = qospolicy.create()
+        self.assertTrue(qospolicy.exists())
+        version = self.nb_api.get_qos_policy(policy_id).get_version()
+
+        rule = {'max_kbps': '1000', 'max_burst_kbps': '100'}
+        qospolicy.update(policy_id, rule)
+        self.assertTrue(qospolicy.exists())
+        new_version = self.nb_api.get_qos_policy(policy_id).get_version()
+        self.assertGreater(new_version, version)
+
+        qospolicy.close()
+        self.assertFalse(qospolicy.exists())
 
     @contextlib.contextmanager
     def _prepare_ext_net(self):
