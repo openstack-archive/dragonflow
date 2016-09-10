@@ -176,6 +176,10 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 context, floatingip,
                 initial_status=const.FLOATINGIP_STATUS_DOWN)
             fip_version = floatingip_dict['revision_number']
+            # Note: Here the context is elevated, because the floatingip port
+            # will not have tenant and floatingip subnet might be in other
+            # tenant.
+            context = context.elevated()
             floatingip_port = self._get_floatingip_port(
                 context, floatingip_dict['id'])
             if not floatingip_port:
