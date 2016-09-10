@@ -30,6 +30,7 @@ class stub_wrap_db_lock(object):
 # lockedobjects_db
 mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
            stub_wrap_db_lock).start()
+from dragonflow.db import api_nb
 from dragonflow.db.neutron import versionobjects_db as version_db
 from dragonflow.neutron.ml2 import mech_driver
 from neutron.db import securitygroups_db
@@ -44,6 +45,7 @@ class TestDFMechDriver(base.BaseTestCase):
     def setUp(self):
         super(TestDFMechDriver, self).setUp()
         self.driver = mech_driver.DFMechDriver()
+        api_nb.NbApi.get_instance = mock.Mock()
         self.driver.initialize()
         self.driver.nb_api = mock.Mock()
         self.dbversion = 0
@@ -75,6 +77,41 @@ class TestDFMechDriver(base.BaseTestCase):
             subnets=[],
             mtu=1450,
             version=self.dbversion)
+
+    def test_update_network_postcommit(self):
+        tenant_id = 'test'
+        network_id = '123'
+        network_type = 'vxlan'
+        segmentation_id = 456
+        subnet = {"dhcp_ip": "1.0.0.2",
+                  "name": "sub1",
+                  "enable_dhcp": True,
+                  "lswitch": "123",
+                  "dns_nameservers": [],
+                  "gateway_ip": "1.0.0.1",
+                  "host_routes": [],
+                  "cidr": "1.0.0.0/24",
+                  "id": "456"}
+
+        self.driver._get_subnets_for_update_network = mock.Mock(
+            return_value=subnet)
+        network_context = self._get_network_context(tenant_id,
+                                                    network_id,
+                                                    network_type,
+                                                    segmentation_id)
+
+        self.driver.update_network_postcommit(network_context)
+        self.driver.nb_api.update_lswitch.assert_called_with(
+            id=network_id,
+            topic=tenant_id,
+            name='FakeNetwork',
+            network_type=network_type,
+            segmentation_id=segmentation_id,
+            router_external=False,
+            mtu=1450,
+            version=self.dbversion,
+            subnets=subnet,
+            qos_policy_id=100)
 
     def test_delete_network_postcommit(self):
         tenant_id = 'test'
@@ -183,7 +220,8 @@ class TestDFMechDriver(base.BaseTestCase):
             name='FakePort', subnets=['sub-1'],
             enabled=True, chassis=None, tunnel_key=tunnel_key,
             device_owner='compute', device_id='d1',
-            port_security_enabled=False, security_groups=[],
+            port_security_enabled=False,
+            qos_policy_id=100, security_groups=[],
             binding_profile=None, binding_vnic_type='ovs',
             allowed_address_pairs=[], version=self.dbversion)
 
@@ -208,7 +246,8 @@ class TestDFMechDriver(base.BaseTestCase):
             macs=['aabb'], ips=['10.0.0.1'],
             subnets=['sub-1'],
             enabled=True, chassis=None, port_security_enabled=False,
-            allowed_address_pairs=[], security_groups=[],
+            allowed_address_pairs=[],
+            qos_policy_id=100, security_groups=[],
             device_owner='compute', device_id='d1',
             binding_profile=None, binding_vnic_type='ovs',
             version=self.dbversion)
@@ -360,7 +399,8 @@ class TestDFMechDriver(base.BaseTestCase):
                 'network_id': net_id,
                 'binding:profile': None,
                 'binding:vnic_type': 'ovs',
-                'db_version': self.dbversion}
+                'db_version': self.dbversion,
+                'qos_policy_id': 100}
         return FakeContext(port)
 
     def _get_network_context(self, tenant_id, net_id, network_type, seg_id):
@@ -374,7 +414,8 @@ class TestDFMechDriver(base.BaseTestCase):
                    'provider:segmentation_id': seg_id,
                    'router:external': False,
                    'mtu': 1450,
-                   'db_version': self.dbversion}
+                   'db_version': self.dbversion,
+                   'qos_policy_id': 100}
         segments = [{'segmentation_id': seg_id}]
         return FakeNetworkContext(network, segments)
 
