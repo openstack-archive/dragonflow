@@ -176,14 +176,18 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 context, floatingip,
                 initial_status=const.FLOATINGIP_STATUS_DOWN)
             fip_version = floatingip_dict['revision_number']
+            # Note: Here the context is elevated, because the floatingip port
+            # will not have tenant and floatingip subnet might be in other
+            # tenant.
+            admin_context = context.elevated()
             floatingip_port = self._get_floatingip_port(
-                context, floatingip_dict['id'])
+                admin_context, floatingip_dict['id'])
             if not floatingip_port:
                 raise n_common_exc.DeviceNotFoundError(
                     device_name=floatingip_dict['id'])
             subnet_id = floatingip_port['fixed_ips'][0]['subnet_id']
             floatingip_subnet = self._get_floatingip_subnet(
-                context, subnet_id)
+                admin_context, subnet_id)
             if floatingip_subnet is None:
                 raise n_exc.SubnetNotFound(subnet_id=subnet_id)
         except Exception:
