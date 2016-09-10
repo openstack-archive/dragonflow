@@ -74,7 +74,8 @@ class TestDFMechDriver(base.BaseTestCase):
             segmentation_id=segmentation_id,
             subnets=[],
             mtu=1450,
-            version=self.dbversion)
+            version=self.dbversion,
+            qos_policy_id=100)
 
     def test_delete_network_postcommit(self):
         tenant_id = 'test'
@@ -186,7 +187,8 @@ class TestDFMechDriver(base.BaseTestCase):
             device_owner='compute', device_id='d1', remote_vtep=True,
             port_security_enabled=False, security_groups=[],
             binding_profile=binding_profile, binding_vnic_type='ovs',
-            allowed_address_pairs=[], version=self.dbversion)
+            allowed_address_pairs=[], version=self.dbversion,
+            qos_policy_id=100)
 
     def test_update_port_postcommit(self):
         tenant_id = 'test'
@@ -213,7 +215,8 @@ class TestDFMechDriver(base.BaseTestCase):
             allowed_address_pairs=[], security_groups=[],
             device_owner='compute', device_id='d1',
             binding_profile=binding_profile, binding_vnic_type='ovs',
-            version=self.dbversion, remote_vtep=True)
+            version=self.dbversion, remote_vtep=True,
+            qos_policy_id=100)
 
     def test_delete_port_postcommit(self):
         tenant_id = 'test'
@@ -364,7 +367,8 @@ class TestDFMechDriver(base.BaseTestCase):
                 'network_id': net_id,
                 'binding:profile': binding_profile,
                 'binding:vnic_type': 'ovs',
-                'db_version': self.dbversion}
+                'db_version': self.dbversion,
+                'qos_policy_id': 100}
         return FakeContext(port)
 
     def _get_network_context(self, tenant_id, net_id, network_type, seg_id):
@@ -378,7 +382,8 @@ class TestDFMechDriver(base.BaseTestCase):
                    'provider:segmentation_id': seg_id,
                    'router:external': False,
                    'mtu': 1450,
-                   'db_version': self.dbversion}
+                   'db_version': self.dbversion,
+                   'qos_policy_id': 100}
         segments = [{'segmentation_id': seg_id}]
         return FakeNetworkContext(network, segments)
 
