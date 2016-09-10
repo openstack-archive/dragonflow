@@ -171,6 +171,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_floatingip(self, context, floatingip):
         try:
+            floatingip_port = None
             floatingip_dict = super(DFL3RouterPlugin, self).create_floatingip(
                 context, floatingip,
                 initial_status=const.FLOATINGIP_STATUS_DOWN)
