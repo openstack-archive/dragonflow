@@ -75,6 +75,7 @@ class TestObjectVersion(test_base.DFTestBase):
         self.assertFalse(network.exists())
 
     def test_router_version(self):
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
@@ -85,20 +86,19 @@ class TestObjectVersion(test_base.DFTestBase):
         ))
         subnet_id = subnet.create()
         self.assertTrue(subnet.exists())
-        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         router_id = router.create()
         self.assertTrue(router.exists())
-        prev_version = self.nb_api.get_router(router_id).get_version()
+        version = self.nb_api.get_router(router_id).get_version()
+        self.assertEqual(version, 0)
 
         subnet_msg = {'subnet_id': subnet_id}
         self.neutron.add_interface_router(router_id, body=subnet_msg)
         version = self.nb_api.get_router(router_id).get_version()
-        self.assertGreater(version, prev_version)
-        prev_version = version
+        self.assertEqual(version, 1)
 
         self.neutron.remove_interface_router(router_id, body=subnet_msg)
         version = self.nb_api.get_router(router_id).get_version()
-        self.assertGreater(version, prev_version)
+        self.assertEqual(version, 2)
 
         router.close()
         self.assertFalse(router.exists())
@@ -127,6 +127,23 @@ class TestObjectVersion(test_base.DFTestBase):
 
         secgroup.close()
         self.assertFalse(secgroup.exists())
+
+    def test_qospolicy_version(self):
+        qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
+                                                        self.nb_api))
+        policy_id = qospolicy.create()
+        self.assertTrue(qospolicy.exists())
+        version = self.nb_api.get_qos_policy(policy_id).get_version()
+        self.assertEqual(version, 0)
+
+        rule = {'max_kbps': '1000', 'max_burst_kbps': '100'}
+        qospolicy.update(policy_id, rule)
+        self.assertTrue(qospolicy.exists())
+        version = self.nb_api.get_qos_policy(policy_id).get_version()
+        self.assertEqual(version, 1)
+
+        qospolicy.close()
+        self.assertFalse(qospolicy.exists())
 
     @contextlib.contextmanager
     def _prepare_ext_net(self):
@@ -163,21 +180,8 @@ class TestObjectVersion(test_base.DFTestBase):
     @lockutils.synchronized('need-external-net')
     def test_floatingip_version(self):
         with self._prepare_ext_net() as external_network_id:
-            private_network = self.store(
-                objects.NetworkTestObj(self.neutron, self.nb_api))
-            private_network_id = private_network.create(
-                network={'name': 'private'})
-            self.assertTrue(private_network.exists())
-            priv_subnet = self.store(objects.SubnetTestObj(
-                self.neutron,
-                self.nb_api,
-                private_network_id,
-            ))
             router = self.store(
                 objects.RouterTestObj(self.neutron, self.nb_api))
-            port = self.store(
-                objects.PortTestObj(self.neutron,
-                                self.nb_api, private_network_id))
             fip = self.store(
                 objects.FloatingipTestObj(self.neutron, self.nb_api))
 
@@ -186,6 +190,19 @@ class TestObjectVersion(test_base.DFTestBase):
             router.create(router=router_para)
             self.assertTrue(router.exists())
 
+            # private network
+            private_network = self.store(
+                objects.NetworkTestObj(self.neutron, self.nb_api))
+            private_network_id = private_network.create(
+                network={'name': 'private'})
+            self.assertTrue(private_network.exists())
+
+            # private subnet
+            priv_subnet = self.store(objects.SubnetTestObj(
+                self.neutron,
+                self.nb_api,
+                private_network_id,
+            ))
             private_subnet_para = {'cidr': '10.0.0.0/24',
                   'ip_version': 4, 'network_id': private_network_id}
             priv_subnet_id = priv_subnet.create(private_subnet_para)
@@ -195,6 +212,9 @@ class TestObjectVersion(test_base.DFTestBase):
                 router_interface['port_id'])
             self.assertIsNotNone(router_lport)
 
+            port = self.store(
+                objects.PortTestObj(self.neutron,
+                                self.nb_api, private_network_id))
             port_id = port.create()
             self.assertIsNotNone(port.get_logical_port())
 
@@ -203,21 +223,21 @@ class TestObjectVersion(test_base.DFTestBase):
             new_fip = fip.create(fip_para)
             self.assertTrue(fip.exists())
             fip_id = new_fip['id']
-            prev_version = self.nb_api.get_floatingip(fip_id).get_version()
+            version = self.nb_api.get_floatingip(fip_id).get_version()
+            self.assertEqual(version, 0)
 
             # associate with port
             fip.update({'port_id': port_id})
             fip_obj = fip.get_floatingip()
             self.assertEqual(fip_obj.get_lport_id(), port_id)
             version = self.nb_api.get_floatingip(fip_id).get_version()
-            self.assertGreater(version, prev_version)
-            prev_version = version
+            self.assertEqual(version, 1)
 
             fip.update({})
             fip_obj = fip.get_floatingip()
             self.assertIsNone(fip_obj.get_lport_id())
             version = self.nb_api.get_floatingip(fip_id).get_version()
-            self.assertGreater(version, prev_version)
+            self.assertEqual(version, 2)
 
             fip.close()
             self.assertFalse(fip.exists())
