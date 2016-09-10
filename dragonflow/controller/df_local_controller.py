@@ -237,6 +237,7 @@ class DfLocalController(object):
             ofport = lport_to_ofport.get(lport.get_id(), 0)
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
+                self.db_store.set_port(lport.get_id(), lport, True)
                 if original_lport is None:
                     LOG.info(_LI("Adding new local logical port = %s") %
                              str(lport))
@@ -248,7 +249,6 @@ class DfLocalController(object):
                               'original_port': str(original_lport)})
                     self.open_flow_app.notify_update_local_port(lport,
                                                                 original_lport)
-                self.db_store.set_port(lport.get_id(), lport, True)
             else:
                 LOG.info(_LI("Local logical port %s was not created yet") %
                          str(lport))
@@ -257,6 +257,7 @@ class DfLocalController(object):
             ofport = chassis_to_ofport.get(chassis, 0)
             if ofport != 0:
                 lport.set_external_value('ofport', ofport)
+                self.db_store.set_port(lport.get_id(), lport, False)
                 if original_lport is None:
                     LOG.info(_LI("Adding new remote logical port = %s") %
                              str(lport))
@@ -268,7 +269,6 @@ class DfLocalController(object):
                               'original_port': str(original_lport)})
                     self.open_flow_app.notify_update_remote_port(
                         lport, original_lport)
-                self.db_store.set_port(lport.get_id(), lport, False)
             else:
                 # TODO(gampel) add handling for this use case
                 # remote port but no tunnel to remote Host

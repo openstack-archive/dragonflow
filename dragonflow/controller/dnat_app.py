@@ -171,24 +171,18 @@ class DNATApp(df_base_app.DFlowApp):
              const.INGRESS_NAT_TABLE).remove()
 
     def _get_vm_port_info(self, floatingip):
-        lport = self.db_store.get_local_port(
-            floatingip.get_lport_id())
+        lport = self.db_store.get_local_port(floatingip.get_lport_id())
         mac = lport.get_mac()
         ip = lport.get_ip()
         tunnel_key = lport.get_tunnel_key()
-        network_id = lport.get_external_value('local_network_id')
+        local_network_id = lport.get_external_value('local_network_id')
         net_id = lport.get_lswitch_id()
-        segmentation_id = self.db_store.get_network_id(
-            net_id,
-        )
 
-        return (mac, ip, tunnel_key, network_id, segmentation_id)
+        return mac, ip, tunnel_key, local_network_id
 
     def _get_vm_gateway_info(self, floatingip):
-        lport = self.db_store.get_local_port(
-            floatingip.get_lport_id())
-        lrouter = self.db_store.get_router(
-            floatingip.get_lrouter_id())
+        lport = self.db_store.get_local_port(floatingip.get_lport_id())
+        lrouter = self.db_store.get_router(floatingip.get_lrouter_id())
         for router_port in lrouter.get_ports():
             if router_port.get_lswitch_id() == lport.get_lswitch_id():
                 return router_port.get_mac()
@@ -200,7 +194,7 @@ class DNATApp(df_base_app.DFlowApp):
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                 ipv4_dst=floatingip.get_ip_address())
 
-        vm_mac, vm_ip, vm_tunnel_key, network_id, _ = \
+        vm_mac, vm_ip, vm_tunnel_key, local_network_id = \
             self._get_vm_port_info(floatingip)
         vm_gateway_mac = self._get_vm_gateway_info(floatingip)
         if vm_gateway_mac is None:
@@ -211,7 +205,7 @@ class DNATApp(df_base_app.DFlowApp):
             parser.OFPActionDecNwTtl(),
             parser.OFPActionSetField(ipv4_dst=vm_ip),
             parser.OFPActionSetField(reg7=vm_tunnel_key),
-            parser.OFPActionSetField(metadata=network_id)
+            parser.OFPActionSetField(metadata=local_network_id)
         ]
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
@@ -239,10 +233,10 @@ class DNATApp(df_base_app.DFlowApp):
             match=match)
 
     def _get_dnat_egress_match(self, floatingip):
-        _, vm_ip, _, _, segmentation_id = self._get_vm_port_info(floatingip)
+        _, vm_ip, _, local_network_id = self._get_vm_port_info(floatingip)
         parser = self.get_datapath().ofproto_parser
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                metadata=segmentation_id,
+                                metadata=local_network_id,
                                 ipv4_src=vm_ip)
         return match
 
