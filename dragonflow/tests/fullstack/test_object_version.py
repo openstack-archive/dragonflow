@@ -75,7 +75,6 @@ class TestObjectVersion(test_base.DFTestBase):
         self.assertFalse(network.exists())
 
     def test_router_version(self):
-        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
@@ -86,19 +85,19 @@ class TestObjectVersion(test_base.DFTestBase):
         ))
         subnet_id = subnet.create()
         self.assertTrue(subnet.exists())
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         router_id = router.create()
         self.assertTrue(router.exists())
-        version = self.nb_api.get_router(router_id).get_version()
-        self.assertEqual(version, 0)
+        first_version = self.nb_api.get_router(router_id).get_version()
 
         subnet_msg = {'subnet_id': subnet_id}
         self.neutron.add_interface_router(router_id, body=subnet_msg)
         version = self.nb_api.get_router(router_id).get_version()
-        self.assertEqual(version, 1)
+        self.assertEqual(first_version + 1, version)
 
         self.neutron.remove_interface_router(router_id, body=subnet_msg)
         version = self.nb_api.get_router(router_id).get_version()
-        self.assertEqual(version, 2)
+        self.assertEqual(first_version + 2, version)
 
         router.close()
         self.assertFalse(router.exists())
