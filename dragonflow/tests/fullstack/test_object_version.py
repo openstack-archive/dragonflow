@@ -163,8 +163,21 @@ class TestObjectVersion(test_base.DFTestBase):
     @lockutils.synchronized('need-external-net')
     def test_floatingip_version(self):
         with self._prepare_ext_net() as external_network_id:
+            private_network = self.store(
+                objects.NetworkTestObj(self.neutron, self.nb_api))
+            private_network_id = private_network.create(
+                network={'name': 'private'})
+            self.assertTrue(private_network.exists())
+            priv_subnet = self.store(objects.SubnetTestObj(
+                self.neutron,
+                self.nb_api,
+                private_network_id,
+            ))
             router = self.store(
                 objects.RouterTestObj(self.neutron, self.nb_api))
+            port = self.store(
+                objects.PortTestObj(self.neutron,
+                                self.nb_api, private_network_id))
             fip = self.store(
                 objects.FloatingipTestObj(self.neutron, self.nb_api))
 
@@ -173,19 +186,6 @@ class TestObjectVersion(test_base.DFTestBase):
             router.create(router=router_para)
             self.assertTrue(router.exists())
 
-            # private network
-            private_network = self.store(
-                objects.NetworkTestObj(self.neutron, self.nb_api))
-            private_network_id = private_network.create(
-                network={'name': 'private'})
-            self.assertTrue(private_network.exists())
-
-            # private subnet
-            priv_subnet = self.store(objects.SubnetTestObj(
-                self.neutron,
-                self.nb_api,
-                private_network_id,
-            ))
             private_subnet_para = {'cidr': '10.0.0.0/24',
                   'ip_version': 4, 'network_id': private_network_id}
             priv_subnet_id = priv_subnet.create(private_subnet_para)
@@ -195,9 +195,6 @@ class TestObjectVersion(test_base.DFTestBase):
                 router_interface['port_id'])
             self.assertIsNotNone(router_lport)
 
-            port = self.store(
-                objects.PortTestObj(self.neutron,
-                                self.nb_api, private_network_id))
             port_id = port.create()
             self.assertIsNotNone(port.get_logical_port())
 
@@ -206,21 +203,20 @@ class TestObjectVersion(test_base.DFTestBase):
             new_fip = fip.create(fip_para)
             self.assertTrue(fip.exists())
             fip_id = new_fip['id']
-            version = self.nb_api.get_floatingip(fip_id).get_version()
-            self.assertEqual(version, 0)
+            first_version = self.nb_api.get_floatingip(fip_id).get_version()
 
             # associate with port
             fip.update({'port_id': port_id})
             fip_obj = fip.get_floatingip()
             self.assertEqual(fip_obj.get_lport_id(), port_id)
             version = self.nb_api.get_floatingip(fip_id).get_version()
-            self.assertEqual(version, 1)
+            self.assertEqual(first_version + 1, version)
 
             fip.update({})
             fip_obj = fip.get_floatingip()
             self.assertIsNone(fip_obj.get_lport_id())
             version = self.nb_api.get_floatingip(fip_id).get_version()
-            self.assertEqual(version, 2)
+            self.assertEqual(first_version + 2, version)
 
             fip.close()
             self.assertFalse(fip.exists())
