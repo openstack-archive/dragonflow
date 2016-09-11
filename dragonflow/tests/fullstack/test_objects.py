@@ -312,7 +312,7 @@ class SubnetTestObj(object):
     def create(self, subnet=None):
         if not subnet:
             subnet = {
-                'cidr': '192.168.199.0/24',
+                'use_default_subnetpool': true,
                 'ip_version': 4,
                 'network_id': self.network_id
             }
