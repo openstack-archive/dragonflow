@@ -225,7 +225,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         secgroup.update()
         self.assertTrue(secgroup.exists())
         version2 = self.nb_api.get_security_group(sg_id).get_version()
-        self.assertTrue(version1 != version2)
+        self.assertNotEqual(version1, version2)
         secgroup.close()
         self.assertFalse(secgroup.exists())
 

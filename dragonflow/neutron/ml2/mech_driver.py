@@ -67,6 +67,9 @@ class DFMechDriver(driver_api.MechanismDriver):
         registry.subscribe(self.create_security_group,
                            resources.SECURITY_GROUP,
                            events.AFTER_CREATE)
+        registry.subscribe(self.update_security_group,
+                           resources.SECURITY_GROUP,
+                           events.AFTER_UPDATE)
         registry.subscribe(self.delete_security_group,
                            resources.SECURITY_GROUP,
                            events.BEFORE_DELETE)
@@ -129,6 +132,31 @@ class DFMechDriver(driver_api.MechanismDriver):
                                           version=sg_version)
 
         LOG.info(_LI("DFMechDriver: create security group %s") % sg_name)
+        return sg
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
+    def update_security_group(self, resource, event, trigger, **kwargs):
+        #TODO(oanson) Once this code moves to use revisions plugin, this method
+        #             can be unified with create_security_group.
+        sg = kwargs['security_group']
+        sg_id = sg['id']
+        sg_name = sg.get('name', df_const.DF_SG_DEFAULT_NAME)
+        tenant_id = sg['tenant_id']
+        rules = sg.get('security_group_rules', [])
+        context = kwargs['context']
+
+        with context.session.begin(subtransactions=True):
+            sg_version = version_db._update_db_version_row(context.session,
+                                                           sg_id)
+
+        for rule in rules:
+            rule['topic'] = rule.get('tenant_id')
+            del rule['tenant_id']
+        self.nb_api.update_security_group(id=sg_id, topic=tenant_id,
+                                          name=sg_name, rules=rules,
+                                          version=sg_version)
+
+        LOG.info(_LI("DFMechDriver: update security group %s") % sg_name)
         return sg
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
