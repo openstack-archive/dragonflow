@@ -356,6 +356,7 @@ class TestDbTableMonitors(test_base.DFTestBase):
             return
         self.namespace = Namespace()
         self.namespace.events = []
+        self.namespace.has_values = False
         self.publisher = get_publisher()
         self.subscriber = get_subscriber(self._db_change_callback)
         self.monitor = self._create_monitor('chassis')
@@ -373,6 +374,8 @@ class TestDbTableMonitors(test_base.DFTestBase):
             'action': action,
             'value': value,
         })
+        if value:
+            self.namespace.has_values = True
 
     def _create_monitor(self, table_name):
         table_monitor = pub_sub_api.TableMonitor(
@@ -398,14 +401,17 @@ class TestDbTableMonitors(test_base.DFTestBase):
             'table': unicode('chassis'),
             'key': unicode('chassis-1'),
             'action': unicode('create'),
-            'value': unicode(jsonutils.dumps(test_chassis)),
         }
+        self.assertNotIn(expected_event, self.namespace.events)
+        expected_event['value'] = unicode(jsonutils.dumps(test_chassis))
         self.assertNotIn(expected_event, self.namespace.events)
         self.nb_api.driver.create_key(
             'chassis',
             'chassis-1',
             jsonutils.dumps(test_chassis))
         eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        if not self.namespace.has_values:
+            expected_event['value'] = None
         self.assertIn(expected_event, self.namespace.events)
 
         test_chassis["ip"] = "2.3.4.5"
@@ -413,14 +419,17 @@ class TestDbTableMonitors(test_base.DFTestBase):
             'table': unicode('chassis'),
             'key': unicode('chassis-1'),
             'action': unicode('set'),
-            'value': unicode(jsonutils.dumps(test_chassis)),
         }
+        self.assertNotIn(expected_event, self.namespace.events)
+        expected_event['value'] = unicode(jsonutils.dumps(test_chassis))
         self.assertNotIn(expected_event, self.namespace.events)
         self.nb_api.driver.set_key(
             'chassis',
             'chassis-1',
             jsonutils.dumps(test_chassis))
         eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        if not self.namespace.has_values:
+            expected_event['value'] = None
         self.assertIn(expected_event, self.namespace.events)
 
         expected_event = {
