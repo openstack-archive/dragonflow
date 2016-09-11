@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron_lib import exceptions
 from oslo_utils import excutils
 import six
 
@@ -88,3 +89,12 @@ class NoRemoteIPProxyException(DragonflowException):
 
 class LogicalPortNotFoundByTunnelKey(DragonflowException):
     message = _('Could not find logical port with tunnel key %(key)')
+
+
+class DFMultipleExceptions(exceptions.MultipleExceptions):
+
+    def __str__(self):
+        if isinstance(self.inner_exceptions, list):
+            return ','.join(str(error) for error in self.inner_exceptions)
+        else:
+            return str(self.inner_exceptions)
