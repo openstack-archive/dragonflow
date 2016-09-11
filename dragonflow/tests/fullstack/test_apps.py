@@ -611,6 +611,7 @@ class TestL3App(test_base.DFTestBase):
         )
 
         icmp.type = ryu.lib.packet.icmp.ICMP_ECHO_REPLY
+        icmp.csum = 0
         result = ryu.lib.packet.packet.Packet()
         result.add_protocol(ether)
         result.add_protocol(ip)
@@ -911,6 +912,7 @@ class TestSGApp(test_base.DFTestBase):
         )
 
         icmp.type = ryu.lib.packet.icmp.ICMP_ECHO_REPLY
+        icmp.csum = 0
         result = ryu.lib.packet.packet.Packet()
         result.add_protocol(ether)
         result.add_protocol(ip)
