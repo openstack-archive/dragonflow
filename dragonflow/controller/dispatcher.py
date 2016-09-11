@@ -14,6 +14,7 @@ from oslo_log import log
 from oslo_utils import importutils
 
 from dragonflow._i18n import _, _LE
+from dragonflow.common import exceptions
 
 LOG = log.getLogger(__name__)
 
@@ -37,7 +38,18 @@ class AppDispatcher(object):
                 raise ImportError(_("Application class not found."))
 
     def dispatch(self, method, *args, **kwargs):
+        errors = []
         for app in self.apps:
             handler = getattr(app, method, None)
             if handler is not None:
-                handler(*args, **kwargs)
+                try:
+                    handler(*args, **kwargs)
+                except Exception as e:
+                    app_name = app.__class__.__name__
+                    LOG.exception(_LE("Dragonflow application '%(name)s' "
+                                      "failed in %(method)s"),
+                                  {'name': app_name, 'method': method})
+                    errors.append(e)
+
+        if errors:
+            raise exceptions.DFMultipleExceptions(errors)
