@@ -46,6 +46,16 @@ class DFTestBase(base.BaseTestCase):
              password=creds['password'], auth_url=auth_url,
              tenant_name=tenant_name)
         self.neutron.format = 'json'
+
+        # TODO(xiaohhui): This should be removed once
+        # NEUTRON_CREATE_INITIAL_NETWORKS is set to True in fullstack.
+        default_subnetpool = {'prefixes': ['10.0.0.0/8'],
+                              'name': 'default_subnetpool_v4',
+                              'is_default': True,
+                              'default_prefixlen': 24}
+        self.neutron.create_subnetpool(
+            body={'subnetpool': default_subnetpool})
+
         common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
         self.conf = cfg.CONF.df
         self.integration_bridge = self.conf.integration_bridge
