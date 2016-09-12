@@ -449,14 +449,15 @@ class Policy(object):
         :param timeout: After this many seconds, throw an exception
         :type timeout:  Number
         """
+        exception = Exception('Timeout')
         if timeout is not None:
             entry_time = time.time()
         for thread in self.threads:
-            thread.wait(timeout)
+            thread.wait(timeout, exception)
             if timeout is not None:
                 timeout -= time.time() - entry_time
                 if timeout <= 0:
-                    raise Exception('Timeout')
+                    raise exception
 
     def stop(self):
         """Stop all threads. Prepare for a new simulation."""
@@ -858,8 +859,8 @@ class PortThread(object):
         if self.thread_id != threading.current_thread().ident:
             self.daemon.stop()
 
-    def wait(self, timeout=None):
-        self.daemon.wait(timeout)
+    def wait(self, timeout=None, exception=None):
+        self.daemon.wait(timeout, exception)
 
     def run(self):
         """Continuously read from the tap device, and send received data to the
