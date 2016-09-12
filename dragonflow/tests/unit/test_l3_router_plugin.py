@@ -16,6 +16,7 @@
 
 import mock
 import six
+import testtools
 
 from neutron import context as nctx
 from neutron import manager
@@ -33,25 +34,37 @@ class empty_wrapper(object):
         return wrapped_f
 
 
-class TestDFL3RouterPluginRevision(test_plugin.Ml2PluginV2TestCase):
+class DFL3RouterPluginBase(test_plugin.Ml2PluginV2TestCase):
 
     l3_plugin = ('dragonflow.neutron.services.l3_router_plugin.'
                  'DFL3RouterPlugin')
+
+    def setUp(self):
+        lock_db = mock.patch('dragonflow.db.neutron.lockedobjects_db').start()
+        lock_db.wrap_db_lock = empty_wrapper
+        super(DFL3RouterPluginBase, self).setUp()
+        self.l3p = (manager.NeutronManager.
+                    get_service_plugins()['L3_ROUTER_NAT'])
+        self.nb_api = self.l3p.nb_api = mock.MagicMock()
+        self.ctx = nctx.get_admin_context()
+
+
+class TestDFL3RouterPlugin(DFL3RouterPluginBase):
+
+    @mock.patch('neutron.db.l3_db.L3_NAT_db_mixin.create_floatingip')
+    def test_create_floatingip_failed_in_neutron(self, func):
+        func.side_effect = Exception("The exception")
+        with testtools.ExpectedException(Exception):
+            self.l3p.create_floatingip(self.ctx, mock.ANY)
+
+
+class TestDFL3RouterPluginRevision(DFL3RouterPluginBase):
 
     def get_additional_service_plugins(self):
         p = super(TestDFL3RouterPluginRevision,
                   self).get_additional_service_plugins()
         p.update({'revision_plugin_name': 'revisions'})
         return p
-
-    def setUp(self):
-        lock_db = mock.patch('dragonflow.db.neutron.lockedobjects_db').start()
-        lock_db.wrap_db_lock = empty_wrapper
-        super(TestDFL3RouterPluginRevision, self).setUp()
-        self.l3p = (manager.NeutronManager.
-                    get_service_plugins()['L3_ROUTER_NAT'])
-        self.nb_api = self.l3p.nb_api = mock.MagicMock()
-        self.ctx = nctx.get_admin_context()
 
     def _test_create_router_revision(self):
         r = {'router': {'name': 'router', 'tenant_id': 'tenant',
