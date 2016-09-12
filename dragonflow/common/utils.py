@@ -90,11 +90,11 @@ class DFDaemon(object):
             self.thread = None
             self.is_daemonize = False
 
-    def wait(self, timeout=None):
+    def wait(self, timeout=None, exception=None):
         if not self.is_daemonize or not self.thread:
             return False
         if timeout and timeout > 0:
-            timeout_obj = eventlet.Timeout(timeout)
+            timeout_obj = eventlet.Timeout(timeout, exception)
         try:
             self.thread.wait()
         except greenlet.GreenletExit:
