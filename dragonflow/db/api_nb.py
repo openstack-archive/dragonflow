@@ -811,6 +811,9 @@ class LogicalSwitch(DbStoreObject):
     def get_network_type(self):
         return self.lswitch.get('network_type', None)
 
+    def get_physical_network(self):
+        return self.lswitch.get('physical_network')
+
     def __str__(self):
         return self.lswitch.__str__()
 
