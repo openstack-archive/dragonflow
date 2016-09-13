@@ -223,11 +223,15 @@ class DfLocalController(object):
         if lswitch is not None:
             network_type = lswitch.get_network_type()
             segment_id = lswitch.get_segment_id()
+            physical_network = lswitch.get_physical_network()
 
             lport.set_external_value('network_type', network_type)
             if segment_id is not None:
                 lport.set_external_value('segmentation_id',
                                      int(segment_id))
+            if physical_network:
+                lport.set_external_value('physical_network', physical_network)
+
         lport.set_external_value('local_network_id', local_network_id)
 
         if chassis == self.chassis_name:

@@ -175,7 +175,8 @@ class TestDFMechDriver(base.BaseTestCase):
                 'revision_number': self.dbversion}
         return FakeContext(port)
 
-    def _get_network_context(self, tenant_id, net_id, network_type, seg_id):
+    def _get_network_context(self, tenant_id, net_id,
+                             network_type, seg_id, phy_net=None):
         # sample data for testing purpose only.
         network = {'id': net_id,
                    'tenant_id': tenant_id,
@@ -183,6 +184,7 @@ class TestDFMechDriver(base.BaseTestCase):
                    'status': 'ACTIVE',
                    'name': 'FakeNetwork',
                    'provider:network_type': network_type,
+                   'provider:physical_network': phy_net,
                    'provider:segmentation_id': seg_id,
                    'router:external': False,
                    'mtu': 1450,
@@ -284,6 +286,7 @@ class TestDFMechDriverRevision(test_plugin.Ml2PluginV2TestCase):
                 name=network['name'],
                 network_type=network['provider:network_type'],
                 segmentation_id=network['provider:segmentation_id'],
+                physical_network=network['provider:physical_network'],
                 router_external=network['router:external'],
                 mtu=network['mtu'], version=network['revision_number'],
                 subnets=[])

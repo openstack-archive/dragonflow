@@ -14,13 +14,15 @@
 #    under the License.
 
 import netaddr
+from neutron.common import utils as n_utils
 from neutron_lib import constants as common_const
 from oslo_config import cfg
 from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
 from ryu.ofproto import ether
+import six
 
-from dragonflow._i18n import _, _LI
+from dragonflow._i18n import _, _LI, _LE
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
@@ -29,8 +31,20 @@ DF_L2_APP_OPTS = [
     cfg.BoolOpt(
         'l2_responder',
         default=True,
-        help=_('Install OVS flows to respond to ARP requests.'))
+        help=_('Install OVS flows to respond to ARP requests.')),
+    cfg.ListOpt('bridge_mappings',
+                default=[],
+                help=_("Comma-separated list of <physical_network>:<bridge> "
+                       "tuples mapping physical network names to the "
+                       "dragonflow's node-specific Open vSwitch bridge names "
+                       "to be used for flat and VLAN networks. Each bridge "
+                       "must exist, and should have a physical network "
+                       "interface configured as a port. All physical "
+                       "networks configured on the server should have "
+                       "mappings to appropriate bridges on each dragonflow "
+                       "node."))
 ]
+
 
 # TODO(gsagie) currently the number set in Ryu for this
 # (OFPP_IN_PORT) is not working, use this until resolved
@@ -46,10 +60,45 @@ class L2App(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L2App, self).__init__(*args, **kwargs)
         self.local_networks = {}
+        self.integration_bridge = cfg.CONF.df.integration_bridge
         cfg.CONF.register_opts(DF_L2_APP_OPTS, group='df_l2_app')
         self.is_install_arp_responder = cfg.CONF.df_l2_app.l2_responder
+        self.bridge_mappings = self._parse_bridge_mappings(
+            cfg.CONF.df_l2_app.bridge_mappings)
+        self.int_ofports = {}
+
+    def _parse_bridge_mappings(self, bridge_mappings):
+        try:
+            return n_utils.parse_mappings(bridge_mappings)
+        except ValueError as e:
+            raise ValueError(_("Parsing bridge_mappings failed: %s.") % e)
+
+    def setup_physical_bridges(self, bridge_mappings):
+        '''Setup the physical network bridges.
+
+        Creates physical network bridges and links them to the
+        integration bridge using veths or patch ports.
+
+        :param bridge_mappings: map physical network names to bridge names.
+        '''
+        for physical_network, bridge in six.iteritems(bridge_mappings):
+            LOG.info(_LI("Mapping physical network %(physical_network)s to "
+                         "bridge %(bridge)s"),
+                     {'physical_network': physical_network,
+                      'bridge': bridge})
+
+            int_ofport = self.vswitch_api.create_patch_port(
+                self.integration_bridge,
+                'int-' + bridge,
+                'phy-' + bridge)
+            self.vswitch_api.create_patch_port(
+                bridge,
+                'phy-' + bridge,
+                'int-' + bridge)
+            self.int_ofports[physical_network] = int_ofport
 
     def switch_features_handler(self, ev):
+        self.setup_physical_bridges(self.bridge_mappings)
         self.add_flow_go_to_table(self.get_datapath(),
                                   const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_DEFAULT,
@@ -368,6 +417,7 @@ class L2App(df_base_app.DFlowApp):
         port_key = lport.get_tunnel_key()
         network_id = lport.get_external_value('local_network_id')
         network_type = lport.get_external_value('network_type')
+        physical_network = lport.get_external_value('physical_network')
         segmentation_id = lport.get_external_value('segmentation_id')
 
         if ofport is None or network_id is None:
@@ -462,6 +512,7 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
         self._install_network_flows_on_first_port_up(segmentation_id,
+                                                     physical_network,
                                                      network_type,
                                                      network_id)
         self._add_multicast_broadcast_handling_for_local_port(lport_id,
@@ -486,9 +537,9 @@ class L2App(df_base_app.DFlowApp):
             return
 
         if network_type == 'vlan':
-            self._del_network_flows_for_vlan(segmentation_id)
+            self._del_network_flows_for_vlan(segmentation_id, local_network_id)
         elif network_type == 'flat':
-            self._del_network_flows_for_flat()
+            self._del_network_flows_for_flat(local_network_id)
         else:
             self._del_network_flows_for_tunnel(segmentation_id)
 
@@ -810,6 +861,7 @@ class L2App(df_base_app.DFlowApp):
 
     def _install_network_flows_on_first_port_up(self,
                                                 segmentation_id,
+                                                physical_network,
                                                 network_type,
                                                 local_network_id):
         LOG.info(_LI('Install network flows on first port up.'))
@@ -821,9 +873,11 @@ class L2App(df_base_app.DFlowApp):
 
         if network_type == 'vlan':
             self._install_network_flows_for_vlan(segmentation_id,
+                                                 physical_network,
                                                  local_network_id)
         elif network_type == 'flat':
-            self._install_network_flows_for_flat(local_network_id)
+            self._install_network_flows_for_flat(physical_network,
+                                                 local_network_id)
         else:
             self._install_network_flows_for_tunnel(segmentation_id,
                                                    local_network_id)
@@ -865,7 +919,7 @@ class L2App(df_base_app.DFlowApp):
     Install network flows for vlan
     """
     def _install_network_flows_for_vlan(self, segmentation_id,
-                                        local_network_id):
+                                        physical_network, local_network_id):
         LOG.info(_LI("Install network flows on first vlan up"))
 
         # L2_LOOKUP for Remote ports
@@ -906,6 +960,10 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
+        # Add EGRESS port according to physical_network
+        self._install_output_to_physical_patch(physical_network,
+                                               local_network_id)
+
         # Ingress
         # Match: dl_vlan=vlan_id,
         # Actions: metadata=network_id,
@@ -929,7 +987,8 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
-    def _install_network_flows_for_flat(self, local_network_id):
+    def _install_network_flows_for_flat(self, physical_network,
+                                        local_network_id):
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
@@ -960,6 +1019,10 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
+        # Add EGRESS port according to physical_network
+        self._install_output_to_physical_patch(physical_network,
+                                               local_network_id)
+
         # Ingress
         match = parser.OFPMatch(vlan_vid=0)
         actions = [parser.OFPActionSetField(metadata=local_network_id)]
@@ -977,7 +1040,7 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
-    def _del_network_flows_for_vlan(self, segmentation_id):
+    def _del_network_flows_for_vlan(self, segmentation_id, local_network_id):
         LOG.info(_LI("Delete network flows for vlan"))
         if segmentation_id is None:
             return
@@ -996,6 +1059,14 @@ class L2App(df_base_app.DFlowApp):
             out_group=ofproto.OFPG_ANY,
             match=match)
 
+        match = parser.OFPMatch(metadata=local_network_id)
+        self.mod_flow(
+            datapath=datapath,
+            table_id=const.EGRESS_EXTERNAL_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_HIGH,
+            match=match)
+
     def _get_multicast_broadcast_match(self, network_id):
         match = self.get_datapath().\
             ofproto_parser.OFPMatch(eth_dst='01:00:00:00:00:00')
@@ -1004,7 +1075,7 @@ class L2App(df_base_app.DFlowApp):
         match.set_metadata(network_id)
         return match
 
-    def _del_network_flows_for_flat(self):
+    def _del_network_flows_for_flat(self, local_network_id):
         LOG.info(_LI("Delete network flows for flat"))
 
         datapath = self.get_datapath()
@@ -1019,3 +1090,31 @@ class L2App(df_base_app.DFlowApp):
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
+
+        match = parser.OFPMatch(metadata=local_network_id)
+        self.mod_flow(
+            datapath=datapath,
+            table_id=const.EGRESS_EXTERNAL_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_HIGH,
+            match=match)
+
+    def _install_output_to_physical_patch(self, physical_network,
+                                          local_network_id):
+        if physical_network not in self.int_ofports:
+            LOG.error(_LE("Physical network %s unkown for dragonflow"),
+                      physical_network)
+            return
+
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+        match = parser.OFPMatch(metadata=local_network_id)
+        ofport = self.int_ofports[physical_network]
+        actions = [parser.OFPActionOutput(ofport,
+                                          ofproto.OFPCML_NO_BUFFER)]
+        actions_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        inst = [actions_inst]
+        self.mod_flow(self.get_datapath(), inst=inst,
+                      table_id=const.EGRESS_EXTERNAL_TABLE,
+                      priority=const.PRIORITY_HIGH, match=match)
