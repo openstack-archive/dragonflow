@@ -22,10 +22,11 @@ from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api
 from neutron.plugins.ml2 import models
 from neutron_lib import constants as n_const
+from neutron_lib import exceptions as n_exc
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow._i18n import _LI
+from dragonflow._i18n import _, _LI
 from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
@@ -76,6 +77,12 @@ class DFMechDriver(driver_api.MechanismDriver):
         registry.subscribe(self.delete_security_group_rule,
                            resources.SECURITY_GROUP_RULE,
                            events.BEFORE_DELETE)
+
+    def _get_attribute(self, obj, attribute):
+        res = obj.get(attribute)
+        if res is n_const.ATTR_NOT_SPECIFIED:
+            res = None
+        return res
 
     def _set_base_port_binding(self):
         if cfg.CONF.df.vif_type == portbindings.VIF_TYPE_VHOST_USER:
@@ -183,6 +190,12 @@ class DFMechDriver(driver_api.MechanismDriver):
         LOG.info(_LI("DFMechDriver: delete security group rule %s"), sgr_id)
 
     def create_network_precommit(self, context):
+        # TODO(xiaohhui): Multi-provider networks are not supported yet.
+        network = context.current
+        if self._get_attribute(network, 'segments'):
+            msg = _('Multi-provider networks are not supported')
+            raise n_exc.InvalidInput(error_message=msg)
+
         nw_version = version_db._create_db_version_row(
             context._plugin_context.session, context.current['id'])
         context.current['db_version'] = nw_version
@@ -196,6 +209,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             topic=network['tenant_id'],
             name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
             network_type=network.get('provider:network_type'),
+            physical_network=network.get('provider:physical_network'),
             segmentation_id=network.get('provider:segmentation_id'),
             router_external=network['router:external'],
             mtu=network.get('mtu'),

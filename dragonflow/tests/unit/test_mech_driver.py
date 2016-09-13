@@ -56,13 +56,15 @@ class TestDFMechDriver(base.BaseTestCase):
     def test_create_network_postcommit(self):
         tenant_id = 'test'
         network_id = '123'
-        network_type = 'vxlan'
+        network_type = 'vlan'
         segmentation_id = 456
+        phy_net = 'default'
 
         network_context = self._get_network_context(tenant_id,
                                                     network_id,
                                                     network_type,
-                                                    segmentation_id)
+                                                    segmentation_id,
+                                                    phy_net)
 
         self.driver.create_network_postcommit(network_context)
         self.driver.nb_api.create_lswitch.assert_called_with(
@@ -70,6 +72,7 @@ class TestDFMechDriver(base.BaseTestCase):
             name='FakeNetwork',
             topic=tenant_id,
             network_type=network_type,
+            physical_network=phy_net,
             router_external=False,
             segmentation_id=segmentation_id,
             subnets=[],
@@ -363,7 +366,8 @@ class TestDFMechDriver(base.BaseTestCase):
                 'db_version': self.dbversion}
         return FakeContext(port)
 
-    def _get_network_context(self, tenant_id, net_id, network_type, seg_id):
+    def _get_network_context(self, tenant_id, net_id,
+                             network_type, seg_id, phy_net=None):
         # sample data for testing purpose only.
         network = {'id': net_id,
                    'tenant_id': tenant_id,
@@ -371,6 +375,7 @@ class TestDFMechDriver(base.BaseTestCase):
                    'status': 'ACTIVE',
                    'name': 'FakeNetwork',
                    'provider:network_type': network_type,
+                   'provider:physical_network': phy_net,
                    'provider:segmentation_id': seg_id,
                    'router:external': False,
                    'mtu': 1450,
