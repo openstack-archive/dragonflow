@@ -58,6 +58,8 @@ ovsdb_monitor_table_filter_default = {
     ],
     'Open_vSwitch': [
         'bridges',
+        'cur_cfg',
+        'next_cfg'
     ]
 }
 
@@ -158,10 +160,10 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         return list(self._tables['Open_vSwitch'].rows.values())[0]
 
     def transaction(self, check_error=False, log_errors=True, **kwargs):
-        return impl_idl.Transaction(self,
-                                    self.ovsdb,
-                                    self.timeout,
-                                    check_error, log_errors)
+        return impl_idl.NeutronOVSDBTransaction(self,
+                                                self.ovsdb,
+                                                self.timeout,
+                                                check_error, log_errors)
 
     def del_controller(self, bridge):
         return DelControllerCommand(self, bridge)
@@ -267,13 +269,10 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         return chassis_to_ofport, lport_to_ofport
 
     def create_patch_port(self, bridge, port, remote_name):
-        if not commands.BridgeExistsCommand(self, bridge).execute():
-            commands.AddBridgeCommand(self, bridge, True,
-                                      datapath_type='system').execute()
+        commands.AddBridgeCommand(self, bridge, True,
+                                  datapath_type='system').execute()
+        if not self.patch_port_exist(port):
             AddPatchPort(self, bridge, port, remote_name).execute()
-        else:
-            if not self.patch_port_exist(port):
-                AddPatchPort(self, bridge, port, remote_name).execute()
         return self.get_patch_port_ofport(port)
 
     def delete_patch_port(self, bridge, port):
