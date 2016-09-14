@@ -6,8 +6,6 @@ DRAGONFLOW_REPO=${DRAGONFLOW_REPO:-git://github.com/openstack/dragonflow.git}
 DRAGONFLOW_DIR=$DEST/dragonflow
 DRAGONFLOW_BRANCH=${DRAGONFLOW_BRANCH:-master}
 
-DF_L3_SERVICE_PLUGIN="dragonflow.neutron.services.l3.l3_controller_plugin.ControllerL3ServicePlugin"
-
 DF_L3_BINARY=$NEUTRON_BIN_DIR/df-l3-agent
 DF_LOCAL_CONTROLLER_BINARY=$NEUTRON_BIN_DIR/df-local-controller
 DF_PUBLISHER_SERVICE_BINARY=$NEUTRON_BIN_DIR/df-publisher-service
@@ -36,5 +34,6 @@ elif is_ubuntu && [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
 else
     OVS_INSTALL_FROM_GIT=${OVS_INSTALL_FROM_GIT:-"True"}
 fi
+
 OVS_MANAGER=${OVS_MANAGER:-"ptcp:6640:0.0.0.0"}
 OVS_INTEGRATION_BRIDGE_PROTOCOLS=${OVS_INTEGRATION_BRIDGE_PROTOCOLS:-"OpenFlow10,OpenFlow13"}
