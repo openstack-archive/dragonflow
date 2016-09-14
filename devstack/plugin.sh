@@ -337,7 +337,12 @@ function start_df {
 
     if is_service_enabled df-controller ; then
         sudo ovs-vsctl --no-wait set-controller $INTEGRATION_BRIDGE tcp:127.0.0.1:6633
-        run_process df-controller "$DF_LOCAL_CONTROLLER_BINARY --config-file $NEUTRON_CONF"
+
+        if [[ "$USE_ML2_PLUGIN" == "True" ]]; then
+            run_process df-controller "$DF_LOCAL_CONTROLLER_BINARY --config-file $NEUTRON_CONF --config-file $NEUTRON_PLUGIN_CONF"
+        else
+            run_process df-controller "$DF_LOCAL_CONTROLLER_BINARY --config-file $NEUTRON_CONF"
+        fi
         run_process df-ext-services "bash $DEST/dragonflow/devstack/df-ext-services.sh"
     fi
 }
@@ -352,7 +357,7 @@ function stop_df {
     drop_nb_db
 
     if function_exists nb_db_driver_stop_server; then
-        nb_db_driver_stop_server
+        $nb_db_driver_stop_server
     fi
 }
 
