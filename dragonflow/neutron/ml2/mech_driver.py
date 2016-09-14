@@ -51,7 +51,8 @@ class DFMechDriver(driver_api.MechanismDriver):
                                    'external-net',
                                    'port-security',
                                    'allowed-address-pairs',
-                                   'net-mtu']
+                                   'net-mtu',
+                                   'revisions']
 
     def initialize(self):
         LOG.info(_LI("Starting DFMechDriver"))
