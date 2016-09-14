@@ -291,13 +291,32 @@ function ovs_service_status
     return 1
 }
 
-function load_module_if_not_loaded() {
-    MOD=$1
-    if test lsmod | grep -q $MOD; then
-        echo "Loading module: $MOD"
-        sudo modprobe $MOD || die $LINENO "Failed to load module: $MOD"
+function is_module_loaded {
+    return $(lsmod | grep -q $1)
+}
+
+function load_module_if_not_loaded {
+    local module=$1
+    local fatal=$2
+
+    if is_module_loaded $module; then
+        echo "Module already loaded: $module"
     else
-        echo "Module already loaded: $MOD"
+        if [ "$(trueorfalse True fatal)" == "True" ]; then
+            sudo modprobe $module || (die $LINENO "FAILED TO LOAD $module")
+        else
+            sudo modprobe $module || (echo "FAILED TO LOAD $module")
+        fi
+    fi
+}
+
+function unload_module_if_loaded {
+    local module=$1
+
+    if is_module_loaded $module; then
+        sudo rmmod $module || (die $LINENO "FAILED TO UNLOAD $module")
+    else
+        echo "Module is not loaded: $module"
     fi
 }
 
