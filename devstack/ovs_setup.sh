@@ -164,10 +164,6 @@ function start_ovs {
             die "$OVS_VSWITCHD_SERVICE is not running"
         fi
         load_module_if_not_loaded openvswitch
-        # TODO This needs to be a fatal error when doing multi-node testing, but
-        # breaks testing in OpenStack CI where geneve isn't available.
-        load_module_if_not_loaded geneve False
-        load_module_if_not_loaded vport_geneve False
     fi
 
     cd $_pwd
@@ -236,7 +232,10 @@ function stop_ovs_dp {
          sudo ovs-dpctl del-dp $dp
     fi
 
-    for module in vport_geneve openvswitch; do
+    # Here we just remove vport_<tunnel_type>, because this is a minimal
+    # requirement to remove openvswitch. To do a deep clean, geneve, vxlan
+    # ip_gre, gre also need to be removed.
+    for module in vport_geneve vport_vxlan vport_gre openvswitch; do
         unload_module_if_loaded $module
     done
 }
