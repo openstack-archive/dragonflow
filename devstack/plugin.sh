@@ -156,6 +156,8 @@ function configure_df_plugin {
             Q_SERVICE_PLUGIN_CLASSES=""
         else
             DF_APPS_LIST=$ML2_APPS_LIST
+            # Set up the supported service plugins
+            Q_SERVICE_PLUGIN_CLASSES+="$ML2_L3_PLUGIN"
         fi
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
