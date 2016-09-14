@@ -156,6 +156,7 @@ function configure_df_plugin {
             Q_SERVICE_PLUGIN_CLASSES=""
         else
             DF_APPS_LIST=$ML2_APPS_LIST
+            Q_SERVICE_PLUGIN_CLASSES="tag,auto_allocate,network_ip_availability,revisions,timestamp_core"
         fi
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
