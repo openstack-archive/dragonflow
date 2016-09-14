@@ -33,7 +33,7 @@ class TestMetadataService(test_base.DFTestBase):
                                group='df_metadata')
         # Override defaults to avoid collision with existing metadata service
         cfg.CONF.df_metadata.ip = '1.1.1.1'
-        cfg.CONF.df_metadata.interface = 'tap-md-test'
+        cfg.CONF.df.metadata_interface = 'tap-md-test'
         df_metadata_service.METADATA_ROUTE_TABLE_ID = '3'
         self.metadata_ip = cfg.CONF.df_metadata.ip
         self.isTornDown = False
@@ -54,7 +54,7 @@ class TestMetadataService(test_base.DFTestBase):
     def tearDown(self):
         if not self.isTornDown:
             bridge = cfg.CONF.df.integration_bridge
-            interface = cfg.CONF.df_metadata.interface
+            interface = cfg.CONF.df.metadata_interface
             cmd = ["ovs-vsctl", "del-port", bridge, interface]
             try:
                 utils.execute(cmd, run_as_root=True, check_exit_code=[0])
