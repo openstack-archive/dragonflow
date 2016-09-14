@@ -1,5 +1,34 @@
 #!/bin/bash
 
+function is_module_loaded {
+    return $(lsmod | grep -q $1)
+}
+
+function load_module_if_not_loaded {
+    local module=$1
+    local fatal=$2
+
+    if is_module_loaded $module; then
+        echo "Module already loaded: $module"
+    else
+        if [ "$(trueorfalse True fatal)" == "True" ]; then
+            sudo modprobe $module || (die $LINENO "FAILED TO LOAD $module")
+        else
+            sudo modprobe $module || (echo "FAILED TO LOAD $module")
+        fi
+    fi
+}
+
+function unload_module_if_loaded {
+    local module=$1
+
+    if is_module_loaded $module; then
+        sudo rmmod $module || (die $LINENO "FAILED TO UNLOAD $module")
+    else
+        echo "Module is not loaded: $module"
+    fi
+}
+
 function _neutron_ovs_get_dnf {
     if is_fedora; then
         if [ $os_RELEASE -ge 22 ]; then
@@ -164,8 +193,8 @@ function start_ovs {
         load_module_if_not_loaded openvswitch
         # TODO This needs to be a fatal error when doing multi-node testing, but
         # breaks testing in OpenStack CI where geneve isn't available.
-        load_module_if_not_loaded geneve || true
-        load_module_if_not_loaded vport_geneve || true
+        load_module_if_not_loaded geneve False
+        load_module_if_not_loaded vport_geneve False
     fi
 
     cd $_pwd
@@ -235,9 +264,7 @@ function stop_ovs_dp {
     fi
 
     for module in vport_geneve openvswitch; do
-        if [[ $(lsmod | grep $module) ]]; then
-            sudo rmmod $module
-        fi
+        unload_module_if_loaded $module
     done
 }
 

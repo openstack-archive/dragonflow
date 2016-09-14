@@ -292,16 +292,6 @@ function ovs_service_status
     return 1
 }
 
-function load_module_if_not_loaded() {
-    MOD=$1
-    if test lsmod | grep -q $MOD; then
-        echo "Loading module: $MOD"
-        sudo modprobe $MOD || die $LINENO "Failed to load module: $MOD"
-    else
-        echo "Module already loaded: $MOD"
-    fi
-}
-
 # cleanup_nb_db() - Clean all the keys in the northbound database
 function cleanup_nb_db {
     # clean db only on the master node
