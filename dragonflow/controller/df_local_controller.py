@@ -18,6 +18,7 @@ import sys
 import time
 
 from neutron.agent.common import config
+from neutron.agent.common import utils
 from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_log import log
@@ -252,6 +253,12 @@ class DfLocalController(object):
             else:
                 LOG.info(_LI("Local logical port %s was not created yet") %
                          str(lport))
+                if lport.get_device_owner() == 'fakevif':
+                    b_profile = lport.get_binding_profile()
+                    if b_profile is not None:
+                        bridge = cfg.CONF.df.integration_bridge
+                        if b_profile['integration_bridge'] == bridge:
+                            self._create_fake_port(lport)
         else:
             lport.set_external_value('is_local', False)
             ofport = chassis_to_ofport.get(chassis, 0)
@@ -275,6 +282,16 @@ class DfLocalController(object):
                 # if this should never happen raise an exception
                 LOG.warning(_LW("No tunnel for remote logical port %s") %
                             str(lport))
+
+    def _create_fake_port(self, lport):
+        bridge = cfg.CONF.df.integration_bridge
+        interfacename = 'tap{}'.format(lport.get_id()[:11])
+        LOG.info(_LI("Creating fake interface: %s"), interfacename)
+        id_set_str = "external_ids:iface-id={}".format(lport.get_id())
+        utils.execute(["ovs-vsctl", "add-port", bridge, interfacename, "--",
+                      "set", "interface", interfacename, "type=internal", "--",
+                      "set", "interface", interfacename, id_set_str],
+                      run_as_root=True, process_input=None)
 
     def logical_port_created(self, lport):
         self._logical_port_process(lport)
