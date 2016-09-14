@@ -104,7 +104,8 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_router(self, context, router):
         router = super(DFL3RouterPlugin, self).create_router(context, router)
-        router_version = router['revision_number']
+        LOG.error("Nick: router is %s", router)
+        router_version = router['revision']
         router_id = router['id']
         tenant_id = router['tenant_id']
         is_distributed = router.get('distributed', False)
@@ -120,7 +121,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     def update_router(self, context, router_id, router):
         router = super(DFL3RouterPlugin, self).update_router(
                        context, router_id, router)
-        router_version = router['revision_number']
+        router_version = router['revision']
 
         try:
             gw_info = router.get('external_gateway_info', {})
@@ -175,7 +176,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             floatingip_dict = super(DFL3RouterPlugin, self).create_floatingip(
                 context, floatingip,
                 initial_status=const.FLOATINGIP_STATUS_DOWN)
-            fip_version = floatingip_dict['revision_number']
+            fip_version = floatingip_dict['revision']
             # Note: Here the context is elevated, because the floatingip port
             # will not have tenant and floatingip subnet might be in other
             # tenant.
@@ -223,7 +224,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     def update_floatingip(self, context, id, floatingip):
         floatingip_dict = super(DFL3RouterPlugin, self).update_floatingip(
             context, id, floatingip)
-        fip_version = floatingip_dict['revision_number']
+        fip_version = floatingip_dict['revision']
 
         self.nb_api.update_floatingip(
             id=floatingip_dict['id'],
@@ -263,7 +264,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         result = super(DFL3RouterPlugin, self).add_router_interface(
                        context, router_id, interface_info)
         router = self.get_router(context, router_id)
-        router_version = router['revision_number']
+        router_version = router['revision']
 
         self.core_plugin = self._get_core_plugin()
         port = self.core_plugin.get_port(context, result['port_id'])
@@ -290,7 +291,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             super(DFL3RouterPlugin, self).remove_router_interface(
                 context, router_id, interface_info))
         router = self.get_router(context, router_id)
-        router_version = router['revision_number']
+        router_version = router['revision']
 
         try:
             self.nb_api.delete_lrouter_port(router_port_info['port_id'],
