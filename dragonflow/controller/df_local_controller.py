@@ -18,6 +18,7 @@ import sys
 import time
 
 from neutron.agent.common import config
+from neutron.agent.common import utils
 from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_log import log
@@ -252,6 +253,8 @@ class DfLocalController(object):
             else:
                 LOG.info(_LI("Local logical port %s was not created yet") %
                          str(lport))
+                if self._check_fakevif_port(lport):
+                    self._create_fakevif_port(lport)
         else:
             lport.set_external_value('is_local', False)
             ofport = chassis_to_ofport.get(chassis, 0)
@@ -276,6 +279,33 @@ class DfLocalController(object):
                 LOG.warning(_LW("No tunnel for remote logical port %s") %
                             str(lport))
 
+    def _check_fakevif_port(self, lport):
+        if lport.get_device_owner() != 'fakevif':
+            return None
+        b_profile = lport.get_binding_profile()
+        if b_profile is None:
+            return None
+        if b_profile['integration_bridge'] != cfg.CONF.df.integration_bridge:
+            return None
+        return True
+
+    def _create_fakevif_port(self, lport):
+        bridge = cfg.CONF.df.integration_bridge
+        interfacename = 'tap{}'.format(lport.get_id()[:11])
+        LOG.info(_LI("Creating fake interface: %s"), interfacename)
+        id_set_str = "external_ids:iface-id={}".format(lport.get_id())
+        utils.execute(["ovs-vsctl", "add-port", bridge, interfacename, "--",
+                      "set", "interface", interfacename, "type=internal", "--",
+                      "set", "interface", interfacename, id_set_str],
+                      run_as_root=True, process_input=None)
+
+    def _delete_fakevif_port(self, lport):
+        bridge = cfg.CONF.df.integration_bridge
+        interfacename = 'tap{}'.format(lport.get_id()[:11])
+        utils.execute(["ovs-vsctl", "del-port", bridge, interfacename],
+                      run_as_root=True, process_input=None)
+        LOG.info(_LI("Fake port removed: %s"), interfacename)
+
     def logical_port_created(self, lport):
         self._logical_port_process(lport)
 
@@ -292,6 +322,8 @@ class DfLocalController(object):
                      str(lport))
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_local_port(lport)
+            if self._check_fakevif_port(lport):
+                self._delete_fakevif_port(lport)
             self.db_store.delete_port(lport.get_id(), True)
         else:
             LOG.info(_LI("Removing remote logical port = %s") %
