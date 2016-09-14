@@ -164,8 +164,8 @@ function start_ovs {
         load_module_if_not_loaded openvswitch
         # TODO This needs to be a fatal error when doing multi-node testing, but
         # breaks testing in OpenStack CI where geneve isn't available.
-        load_module_if_not_loaded geneve || true
-        load_module_if_not_loaded vport_geneve || true
+        load_module_if_not_loaded geneve False
+        load_module_if_not_loaded vport_geneve False
     fi
 
     cd $_pwd
@@ -235,9 +235,7 @@ function stop_ovs_dp {
     fi
 
     for module in vport_geneve openvswitch; do
-        if [[ $(lsmod | grep $module) ]]; then
-            sudo rmmod $module
-        fi
+        unload_module_if_loaded $module
     done
 }
 
