@@ -23,6 +23,7 @@ from oslo_config import cfg
 from ovs.db import idl
 from ovs import poller
 from ovs import vlog
+import re
 import retrying
 import six
 import threading
@@ -384,7 +385,9 @@ class AddTunnelPort(commands.BaseCommand):
     def run_idl(self, txn):
         bridge = idlutils.row_by_value(self.api.idl, 'Bridge',
                                        'name', self.integration_bridge)
-        port_name = "df-" + self.chassis.get_id()
+        short_bridge = re.sub(r'^[a-zA-Z\-]+', r'', self.integration_bridge)
+        short_chassis = re.sub(r'^[a-zA-Z\-]+', r'', self.chassis.get_id())
+        port_name = "df-" + short_bridge + "-" + short_chassis
 
         interface = txn.insert(self.api.idl.tables['Interface'])
         interface.name = port_name
