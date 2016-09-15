@@ -195,10 +195,7 @@ class DbStore(object):
 
     def get_ports_by_network_id(self, lswitch_id, topic=None):
         ports = self.values('ports', topic)
-        return filter(
-            lambda port: port.get_lswitch_id() == lswitch_id,
-            ports,
-        )
+        return [port for port in ports if port.get_lswitch_id() == lswitch_id]
 
     def get_router_by_router_interface_mac(self, interface_mac, topic=None):
         routers = self.values('routers', topic)
