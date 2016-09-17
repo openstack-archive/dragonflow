@@ -67,7 +67,7 @@ class Topology(object):
         self.ovs_ports[port_id] = ovs_port
         port_type = ovs_port.get_type()
         if port_type not in self.ovs_port_type:
-            LOG.error(_LE("Unknown port online: %s") % str(ovs_port))
+            LOG.info(_LI("Unmanaged port online: %s"), ovs_port)
             return
 
         handler_name = '_' + port_type + '_port_' + action
@@ -95,7 +95,7 @@ class Topology(object):
 
         port_type = ovs_port.get_type()
         if port_type not in self.ovs_port_type:
-            LOG.error(_LE("Unknown port offline: %s") % str(ovs_port))
+            LOG.info(_LI("Unmanaged port offline: %s"), ovs_port)
             return
 
         handler_name = '_' + port_type + '_port_deleted'
