@@ -18,7 +18,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
-from dragonflow.controller.common.utils import set_aging_cookie_bits
+from dragonflow.controller.common import utils
 from dragonflow.controller import df_db_notifier
 
 
@@ -84,7 +84,7 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         if out_group is None:
             out_group = datapath.ofproto.OFPG_ANY
 
-        cookie = set_aging_cookie_bits(cookie)
+        cookie = utils.set_aging_cookie_bits(cookie)
 
         message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
                                                      cookie_mask,
