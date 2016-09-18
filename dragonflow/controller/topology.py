@@ -105,7 +105,7 @@ class Topology(object):
             if handler is not None:
                 handler(ovs_port)
             else:
-                LOG(_LI("%s is None.") % handler_name)
+                LOG.info(_LI("%s is None.") % handler_name)
         except Exception:
             LOG.exception(_LE("Exception occurred when handling "
                           "ovs port update event"))
