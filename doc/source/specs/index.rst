@@ -52,6 +52,7 @@ Spec Template
     security_groups
     vlan_networking
     port_status_update
+    config_generation
 
 
 Indices and tables
