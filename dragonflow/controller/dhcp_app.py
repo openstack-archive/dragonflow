@@ -77,6 +77,7 @@ class DHCPApp(df_base_app.DFlowApp):
         self.local_tunnel_to_pid_map = {}
         self.api.register_table_handler(const.DHCP_TABLE,
                 self.packet_in_handler)
+        self.switch_dhcp_ip_map = {}
 
     def switch_features_handler(self, ev):
         self._install_dhcp_broadcast_match_flow()
@@ -440,11 +441,20 @@ class DHCPApp(df_base_app.DFlowApp):
         network_id = self.db_store.get_network_id(
             lswitch.get_id(),
         )
-        self._remove_dhcp_unicast_match_flow(network_id)
+        all_dhcp_ips = []
+        if network_id not in self.switch_dhcp_ip_map:
+            self.switch_dhcp_ip_map = []
         for subnet in subnets:
             if self._is_ipv4(subnet) and subnet.enable_dhcp():
-                dhcp_addr = subnet.get_dhcp_server_address()
-                self._install_dhcp_unicast_match_flow(dhcp_addr, network_id)
+                dhcp_ip = subnet.get_dhcp_server_address()
+                if dhcp_ip not in self.switch_dhcp_ip_map[network_id]:
+                    self._install_dhcp_unicast_match_flow(dhcp_ip, network_id)
+                    self.switch_dhcp_ip_map[network_id].append(dhcp_ip)
+                all_dhcp_ips.append(dhcp_ip)
+        deleted_dhcp_ips = list(set(self.switch_dhcp_ip_map[network_id]) -
+                                set(all_dhcp_ips))
+        for dhcp_ip in deleted_dhcp_ips:
+            self._remove_dhcp_unicast_match_flow(network_id, dhcp_ip)
 
     def remove_logical_switch(self, lswitch):
         network_id = self.db_store.get_network_id(
@@ -452,11 +462,18 @@ class DHCPApp(df_base_app.DFlowApp):
         )
         self._remove_dhcp_unicast_match_flow(network_id)
 
-    def _remove_dhcp_unicast_match_flow(self, network_id):
+    def _remove_dhcp_unicast_match_flow(self, network_id, ip_addr=None):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
-
-        match = parser.OFPMatch(metadata=network_id)
+        if ip_addr:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                            ipv4_dst=ip_addr,
+                            ip_proto=17,
+                            udp_src=68,
+                            udp_dst=67,
+                            metadata=network_id)
+        else:
+            match = parser.OFPMatch(metadata=network_id)
         self.mod_flow(
             datapath=self.get_datapath(),
             table_id=const.SERVICES_CLASSIFICATION_TABLE,
