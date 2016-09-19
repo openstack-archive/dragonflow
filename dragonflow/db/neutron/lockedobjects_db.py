@@ -118,8 +118,7 @@ def _get_lock_id_by_resource_type(type, *args, **kwargs):
                            retry_interval=LOCK_INIT_RETRY_INTERVAL,
                            inc_retry_interval=True,
                            max_retry_interval=LOCK_MAX_RETRY_INTERVAL,
-                           retry_on_deadlock=True,
-                           retry_on_request=True)
+                           retry_on_deadlock=True)
 def _acquire_lock(oid):
     # generate temporary session id for this API context
     sid = _generate_session_id()
@@ -140,8 +139,7 @@ def _acquire_lock(oid):
                            retry_interval=LOCK_INIT_RETRY_INTERVAL,
                            inc_retry_interval=True,
                            max_retry_interval=LOCK_MAX_RETRY_INTERVAL,
-                           retry_on_deadlock=True,
-                           retry_on_request=True)
+                           retry_on_deadlock=True)
 def _release_lock(oid, sid):
     # NOTE(nick-ma-z): we disallow subtransactions because the
     # retry logic will bust any parent transactions
@@ -162,8 +160,7 @@ def _generate_session_id():
                            retry_interval=LOCK_INIT_RETRY_INTERVAL,
                            inc_retry_interval=True,
                            max_retry_interval=LOCK_MAX_RETRY_INTERVAL,
-                           retry_on_deadlock=True,
-                           retry_on_request=True)
+                           retry_on_deadlock=True)
 def _test_and_create_object(id):
     try:
         session = db_api.get_session()
