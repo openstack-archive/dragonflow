@@ -50,7 +50,6 @@ class NbApi(object):
         self.publisher = None
         self.subscriber = None
         self.is_neutron_server = is_neutron_server
-        self.db_table_monitors = None
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
 
