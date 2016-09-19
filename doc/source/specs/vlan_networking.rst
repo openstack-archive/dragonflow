@@ -144,7 +144,7 @@ This has been done when local port updated.like this.
 Match: metadata=network_id, dl_dst=01:00:00:00:00:00/01:00:00:00:00:00,
 Actions:  resubmit(,EGRESSTABLE), load_reg7=port_unique_key,resubmit(,EGRESSTABLE)
 
-The first action 'resubmit(,EGRESSTABLE)' has included remote broadcast senario.
+The first action 'resubmit(,EGRESSTABLE)' has included remote broadcast scenario.
 
 
 Outbound-Unicast
