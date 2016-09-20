@@ -131,10 +131,10 @@ class OvsDBParser(object):
     def _parse_ovsdb_interfaces(self, interfaces):
         interfaces_list = interfaces.split("\n\n")
         interfaces_as_dicts = []
-        for inteface in interfaces_list:
-            if len(inteface) == 0:
+        for interface in interfaces_list:
+            if len(interface) == 0:
                 continue
-            fs = inteface.split("\n")
+            fs = interface.split("\n")
             res = {}
             for item in fs:
                 if item.startswith('external_ids'):
