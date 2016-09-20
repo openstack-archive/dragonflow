@@ -22,6 +22,14 @@ class TestOvsdbMonitor(test_base.DFTestBase):
     def setUp(self):
         super(TestOvsdbMonitor, self).setUp()
         self.set_wanted_vms = set()
+        ovsdb_connection = ovsdb_vswitch_impl.DFOvsdbApi.ovsdb_connection
+        if ovsdb_connection:
+            # If there is already a connection to ovd db, just use the nb_api
+            # in that connection. This is because idl will notify ovs event
+            # to that nb_api, although the data will write to the same nb db,
+            # eventually.
+            self.nb_api = ovsdb_connection.idl.nb_api
+
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.local_ip)
         self.vswitch_api.initialize(self.nb_api)
 
