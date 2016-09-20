@@ -18,6 +18,7 @@ from oslo_config import cfg
 
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
+from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.tests import base as tests_base
 
@@ -28,6 +29,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
     def setUp(self):
         cfg.CONF.set_override('apps_list', self.apps_list, group='df')
         super(DFAppTestBase, self).setUp()
+        mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
         self.controller = df_local_controller.DfLocalController('fake_host')
         self.nb_api = self.controller.nb_api = mock.MagicMock()
         self.vswitch_api = self.controller.vswitch_api = mock.MagicMock()
@@ -40,6 +42,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.open_flow_app = self.controller.open_flow_app
         self.datapath = self.open_flow_app._datapath = mock.Mock()
         self.open_flow_app.load(self.controller.open_flow_app, **kwargs)
+        self.controller.topology = topology.Topology(self.controller, False)
 
         self.vswitch_api.get_local_ports_to_ofport_mapping.return_value = (
             {}, {fake_local_port1.get_id(): 2})
