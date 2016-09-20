@@ -16,10 +16,8 @@
 import collections
 
 import netaddr
-from neutron.agent.ovsdb.native import idlutils
 from neutron_lib import constants as n_const
 from oslo_config import cfg
-from oslo_service import loopingcall
 from ryu.ofproto import ether
 import six
 
@@ -39,8 +37,6 @@ DF_DNAT_APP_OPTS = [
     cfg.StrOpt('ex_peer_patch_port', default='patch-int',
                help=_("Peer patch port in external bridge for integration "
                       "bridge.")),
-    cfg.IntOpt('send_arp_interval', default=5,
-               help=_("Polling interval for arp request in seconds"))
 ]
 
 FIP_GW_RESOLVING_STATUS = 'resolving'
@@ -55,50 +51,31 @@ class DNATApp(df_base_app.DFlowApp):
         cfg.CONF.register_opts(DF_DNAT_APP_OPTS, group='df_dnat_app')
         self.external_network_bridge = \
             cfg.CONF.df_dnat_app.external_network_bridge
+        self.external_bridge_mac = ""
         self.integration_bridge = cfg.CONF.df.integration_bridge
         self.int_peer_patch_port = cfg.CONF.df_dnat_app.int_peer_patch_port
         self.ex_peer_patch_port = cfg.CONF.df_dnat_app.ex_peer_patch_port
-        self.send_arp_interval = cfg.CONF.df_dnat_app.send_arp_interval
         self.external_networks = collections.defaultdict(int)
         self.local_floatingips = collections.defaultdict(str)
 
     def switch_features_handler(self, ev):
         self._init_external_bridge()
-        self._init_external_network_bridge_check()
         self._install_output_to_physical_patch(self.external_ofport)
 
-    def _check_for_external_network_bridge_mac(self):
-        idl = self.vswitch_api.idl
-        if not idl:
+    def ovs_port_updated(self, ovs_port):
+        if ovs_port.get_name() != self.external_network_bridge:
             return
-        interface = idlutils.row_by_value(
-            idl,
-            'Interface',
-            'name',
-            self.external_network_bridge,
-            None,
-        )
-        if not interface:
-            return
-        if not interface.mac_in_use[0]:
-            return
-        if interface.mac_in_use[0] == '00:00:00:00:00:00':
-            return
-        return interface.mac_in_use[0]
 
-    def _wait_for_external_network_bridge_mac(self):
-        mac = self._check_for_external_network_bridge_mac()
-        if not mac:
+        mac = ovs_port.get_mac_in_use()
+        if (self.external_bridge_mac == mac
+                or not mac
+                or mac == '00:00:00:00:00:00'):
             return
+
         for key, floatingip in six.iteritems(self.local_floatingips):
             self._install_dnat_egress_rules(floatingip, mac)
-        raise loopingcall.LoopingCallDone()
 
-    def _init_external_network_bridge_check(self):
-        """Spawn a thread to check that br-ex is ready."""
-        periodic = loopingcall.FixedIntervalLoopingCall(
-            self._wait_for_external_network_bridge_mac)
-        periodic.start(interval=self.send_arp_interval)
+        self.external_bridge_mac = mac
 
     def _init_external_bridge(self):
         self.external_ofport = self.vswitch_api.create_patch_port(
@@ -272,9 +249,9 @@ class DNATApp(df_base_app.DFlowApp):
             const.PRIORITY_MEDIUM,
             const.EGRESS_NAT_TABLE,
             match=match)
-        mac = self._check_for_external_network_bridge_mac()
-        if mac:
-            self._install_dnat_egress_rules(floatingip, mac)
+        if self.external_bridge_mac:
+            self._install_dnat_egress_rules(floatingip,
+                                            self.external_bridge_mac)
 
     def _remove_egress_nat_rules(self, floatingip):
         net = netaddr.IPNetwork(floatingip.get_external_cidr())
@@ -365,16 +342,6 @@ class DNATApp(df_base_app.DFlowApp):
         for floatingip in ips_to_associate:
             self._install_ingress_nat_rules(floatingip)
             self._install_egress_nat_rules(floatingip)
-
-    def update_bridge_port(self, lport):
-        port_name = lport.get_name()
-        if port_name != self.external_network_bridge:
-            return
-        mac = self._check_for_external_network_bridge_mac()
-        if not mac:
-            return
-        for key, floatingip in six.iteritems(self.local_floatingips):
-            self._install_dnat_egress_rules(floatingip, mac)
 
     def delete_floatingip(self, floatingip):
         self._remove_ingress_nat_rules(floatingip)

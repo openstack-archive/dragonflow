@@ -74,6 +74,7 @@ class LocalInterface(object):
         self.iface_id = ""
         self.peer = ""
         self.attached_mac = ""
+        self.mac_in_use = ""
         self.remote_ip = ""
         self.tunnel_type = ""
 
@@ -103,6 +104,8 @@ class LocalInterface(object):
         result.uuid = row.uuid
         if row.ofport:
             result.ofport = int(row.ofport[0])
+        if row.mac_in_use:
+            result.mac_in_use = row.mac_in_use[0]
         result.name = row.name
         if row.admin_state:
             result.admin_state = row.admin_state[0]
@@ -141,6 +144,9 @@ class LocalInterface(object):
     def get_attached_mac(self):
         return self.attached_mac
 
+    def get_mac_in_use(self):
+        return self.mac_in_use
+
     def get_remote_ip(self):
         return self.remote_ip
 
@@ -150,11 +156,11 @@ class LocalInterface(object):
     def __str__(self):
         if self.ofport is None:
             self.ofport = -1
-        return "uuid:%s, ofport:%d, name:%s, " \
-               "admin_state:%s, type:%s, " \
-               "iface_id:%s, peer:%s, " \
-               "attached_mac:%s, remote_ip:%s, " \
-               "tunnel_type:%s" % (self.uuid,
+        return ("uuid:%s, ofport:%d, name:%s, "
+                "admin_state:%s, type:%s, "
+                "iface_id:%s, peer:%s, "
+                "attached_mac:%s, mac_in_use:%s, remote_ip:%s, "
+                "tunnel_type:%s" % (self.uuid,
                     self.ofport,
                     self.name,
                     self.admin_state,
@@ -162,5 +168,6 @@ class LocalInterface(object):
                     self.iface_id,
                     self.peer,
                     self.attached_mac,
+                    self.mac_in_use,
                     self.remote_ip,
-                    self.tunnel_type)
+                    self.tunnel_type))
