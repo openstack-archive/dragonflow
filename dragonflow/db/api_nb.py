@@ -1155,6 +1155,9 @@ class OvsPort(DbStoreObject):
     def get_attached_mac(self):
         return self.ovs_port.get_attached_mac()
 
+    def get_mac_in_use(self):
+        return self.ovs_port.get_mac_in_use()
+
     def get_remote_ip(self):
         return self.ovs_port.get_remote_ip()
 
