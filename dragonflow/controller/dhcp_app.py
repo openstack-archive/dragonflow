@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import collections
+import copy
 import math
 import struct
 
@@ -289,7 +290,7 @@ class DHCPApp(df_base_app.DFlowApp):
         return dns_bin
 
     def _get_host_routes_list_bin(self, subnet, lport):
-        host_routes = subnet.get_host_routes()
+        host_routes = copy.copy(subnet.get_host_routes())
         if cfg.CONF.df_add_link_local_route:
             # Add route for metadata request.
             host_routes.append(
