@@ -25,8 +25,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import encodeutils
 
-from neutron.agent.ovsdb.native import idlutils
-
 from dragonflow._i18n import _, _LW, _LE
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
@@ -76,6 +74,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         )
         self._arp_responder = None
         self._ofport = None
+        self._interface_mac = ""
         cfg.CONF.register_opts(options, group='df_metadata')
         self._ip = cfg.CONF.df_metadata.ip
         self._port = cfg.CONF.df_metadata.port
@@ -85,7 +84,20 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         if ovs_port.get_name() != cfg.CONF.df.metadata_interface:
             return
 
-        self._add_metadata_interface_flows()
+        ofport = ovs_port.get_ofport()
+        mac = ovs_port.get_mac_in_use()
+        if not ofport or not mac:
+            return
+
+        if ofport <= 0:
+            return
+
+        if ofport == self._ofport and mac == self._interface_mac:
+            return
+
+        self._add_tap_metadata_port(ofport, mac)
+        self._ofport = ofport
+        self._interface_mac = mac
 
     def ovs_port_deleted(self, ovs_port):
         if ovs_port.get_name() != cfg.CONF.df.metadata_interface:
@@ -110,28 +122,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             match=parser.OFPMatch(in_port=self._ofport))
 
         self._ofport = None
-
-    def _add_metadata_interface_flows(self):
-        idl = self.vswitch_api.idl
-        if not idl:
-            return
-        interface = idlutils.row_by_value(
-            idl,
-            'Interface',
-            'name',
-            self._interface,
-            None,
-        )
-        if not interface:
-            return
-        ofport = interface.ofport
-        if not ofport:
-            return
-        if isinstance(ofport, list):
-            ofport = ofport[0]
-        if ofport <= 0:
-            return
-        self._add_tap_metadata_port(ofport, interface.mac_in_use[0])
+        self._interface_mac = ""
 
     def _add_tap_metadata_port(self, ofport, mac):
         """
