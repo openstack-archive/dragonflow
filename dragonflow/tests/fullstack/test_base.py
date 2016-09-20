@@ -17,7 +17,6 @@ import os_client_config
 from oslo_config import cfg
 
 from dragonflow.common import common_params
-from dragonflow.common import utils as df_utils
 from dragonflow.db import api_nb
 from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
@@ -56,12 +55,8 @@ class DFTestBase(base.BaseTestCase):
         self.conf = cfg.CONF.df
         self.integration_bridge = self.conf.integration_bridge
 
-        db_driver = df_utils.load_driver(
-            cfg.CONF.df.nb_db_class,
-            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-        self.nb_api = api_nb.NbApi(db_driver)
-        self.nb_api.initialize(db_ip=self.conf.remote_db_ip,
-            db_port=self.conf.remote_db_port)
+        self.nb_api = api_nb.NbApi.get_instance(False)
+
         self.local_ip = self.conf.local_ip
         self.__objects_to_close = []
         if cfg.CONF.df.enable_selective_topology_distribution:

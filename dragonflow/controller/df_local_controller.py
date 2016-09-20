@@ -98,13 +98,12 @@ class DfLocalController(object):
             str(cfg.CONF.df_ryu.of_listen_port))
         is_controller_set = self.vswitch_api.check_controller(targets)
         if not is_controller_set:
-            self.vswitch_api.set_controllers(self.integration_bridge,
-                                             [targets]).execute()
+            self.vswitch_api.set_controller(self.integration_bridge, [targets])
         is_fail_mode_set = self.vswitch_api.check_controller_fail_mode(
             'secure')
         if not is_fail_mode_set:
             self.vswitch_api.set_controller_fail_mode(
-                self.integration_bridge, 'secure').execute()
+                self.integration_bridge, 'secure')
         self.open_flow_app.start()
         self.db_sync_loop()
 
@@ -165,14 +164,14 @@ class DfLocalController(object):
         # Create tunnel port to this chassis
         LOG.info(_LI("Adding tunnel to remote chassis = %s") %
                  chassis.__str__())
-        self.vswitch_api.add_tunnel_port(chassis).execute()
+        self.vswitch_api.add_tunnel_port(chassis)
 
     def chassis_deleted(self, chassis_id):
         LOG.info(_LI("Deleting tunnel to remote chassis = %s") % chassis_id)
         tunnel_ports = self.vswitch_api.get_tunnel_ports()
         for port in tunnel_ports:
             if port.get_chassis_id() == chassis_id:
-                self.vswitch_api.delete_port(port).execute()
+                self.vswitch_api.delete_port(port)
                 return
 
     def read_switches(self):
@@ -413,7 +412,7 @@ class DfLocalController(object):
 
         # Iterate all tunnel ports that needs to be deleted
         for port in tunnel_ports.values():
-            self.vswitch_api.delete_port(port).execute()
+            self.vswitch_api.delete_port(port)
 
     def port_mappings(self):
         ports_to_remove = self.db_store.get_port_keys()
