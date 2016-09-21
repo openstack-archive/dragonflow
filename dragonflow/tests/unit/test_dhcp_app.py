@@ -29,7 +29,8 @@ class TestDHCPApp(tests_base.BaseTestCase):
         self.app = dhcp_app.DHCPApp(mock.Mock())
 
     def test_host_route_include_metadata_route(self):
-        cfg.CONF.set_override('df_add_link_local_route', True)
+        cfg.CONF.set_override('df_add_link_local_route', True,
+                              group='df_dhcp_app')
         mock_subnet = mock.MagicMock()
         mock_subnet.get_host_routes.return_value = []
         lport = mock.MagicMock()
