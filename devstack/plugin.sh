@@ -135,9 +135,9 @@ function configure_df_metadata_service {
         iniset $NOVA_CONF neutron service_metadata_proxy True
         iniset $NOVA_CONF neutron metadata_proxy_shared_secret $METADATA_PROXY_SHARED_SECRET
         iniset $NEUTRON_CONF DEFAULT metadata_proxy_shared_secret $METADATA_PROXY_SHARED_SECRET
-        iniset $NEUTRON_CONF df_metadata ip "$DF_METADATA_SERVICE_IP"
-        iniset $NEUTRON_CONF df_metadata port "$DF_METADATA_SERVICE_PORT"
-        iniset $NEUTRON_CONF df metadata_interface "$DF_METADATA_SERVICE_INTERFACE"
+        iniset $DRAGONFLOW_CONF df_metadata ip "$DF_METADATA_SERVICE_IP"
+        iniset $DRAGONFLOW_CONF df_metadata port "$DF_METADATA_SERVICE_PORT"
+        iniset $DRAGONFLOW_CONF df metadata_interface "$DF_METADATA_SERVICE_INTERFACE"
     fi
 }
 
@@ -158,30 +158,35 @@ function configure_df_plugin {
             DF_APPS_LIST=$ML2_APPS_LIST
         fi
 
-        NEUTRON_CONF=/etc/neutron/neutron.conf
-        iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
-        iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
-        iniset $NEUTRON_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
-        iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
-        iniset $NEUTRON_CONF df local_ip "$HOST_IP"
-        iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
-        iniset $NEUTRON_CONF df integration_bridge "$INTEGRATION_BRIDGE"
-        iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
-        iniset $NEUTRON_CONF df monitor_table_poll_time "$DF_MONITOR_TABLE_POLL_TIME"
-        iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
-        iniset $NEUTRON_CONF df enable_df_pub_sub "$DF_PUB_SUB"
-        iniset $NEUTRON_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
-        iniset $NEUTRON_CONF df publisher_rate_limit_timeout "$PUBLISHER_RATE_LIMIT_TIMEOUT"
-        iniset $NEUTRON_CONF df publisher_rate_limit_count "$PUBLISHER_RATE_LIMIT_COUNT"
-        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
-        iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
-        iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
+        # Generate configuration file
+        local _pwd=$(pwd)
+        (cd $DRAGONFLOW_DIR && exec ./tools/generate_config_file_samples.sh)
+        cd $_pwd
+        cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
+
+        iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
+        iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
+        iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
+        iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
+        iniset $DRAGONFLOW_CONF df local_ip "$HOST_IP"
+        iniset $DRAGONFLOW_CONF df tunnel_type "$TUNNEL_TYPE"
+        iniset $DRAGONFLOW_CONF df integration_bridge "$INTEGRATION_BRIDGE"
+        iniset $DRAGONFLOW_CONF df apps_list "$DF_APPS_LIST"
+        iniset $DRAGONFLOW_CONF df monitor_table_poll_time "$DF_MONITOR_TABLE_POLL_TIME"
+        iniset $DRAGONFLOW_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
+        iniset $DRAGONFLOW_CONF df enable_df_pub_sub "$DF_PUB_SUB"
+        iniset $DRAGONFLOW_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
+        iniset $DRAGONFLOW_CONF df publisher_rate_limit_timeout "$PUBLISHER_RATE_LIMIT_TIMEOUT"
+        iniset $DRAGONFLOW_CONF df publisher_rate_limit_count "$PUBLISHER_RATE_LIMIT_COUNT"
+        iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
+        iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
+        iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins "$Q_SERVICE_PLUGIN_CLASSES"
 
         if is_service_enabled q-dhcp ; then
-            iniset $NEUTRON_CONF df use_centralized_ipv6_DHCP "True"
+            iniset $DRAGONFLOW_CONF df use_centralized_ipv6_DHCP "True"
         else
             iniset $NEUTRON_CONF DEFAULT dhcp_agent_notification "False"
         fi
@@ -191,7 +196,7 @@ function configure_df_plugin {
         else
             DF_SELECTIVE_TOPO_DIST="False"
         fi
-        iniset $NEUTRON_CONF df enable_selective_topology_distribution \
+        iniset $DRAGONFLOW_CONF df enable_selective_topology_distribution \
                                 "$DF_SELECTIVE_TOPO_DIST"
 
         if [[ "$DF_RUNNING_IN_GATE" == "True" ]]; then
@@ -212,32 +217,32 @@ function configure_df_plugin {
         #       neutron-lib, but we don't call that for compute nodes here.
         # Uses oslo config generator to generate core sample configuration files
         local _pwd=$(pwd)
-        NEUTRON_CONF=/etc/neutron/neutron.conf
         (cd $NEUTRON_DIR && exec ./tools/generate_config_file_samples.sh)
+        (cd $DRAGONFLOW_DIR && exec ./tools/generate_config_file_samples.sh)
         cd $_pwd
-
         cp $NEUTRON_DIR/etc/neutron.conf.sample $NEUTRON_CONF
+        cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
 
-        iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
-        iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
-        iniset $NEUTRON_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
-        iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
-        iniset $NEUTRON_CONF df local_ip "$HOST_IP"
-        iniset $NEUTRON_CONF df tunnel_type "$TUNNEL_TYPE"
-        iniset $NEUTRON_CONF df integration_bridge "$INTEGRATION_BRIDGE"
-        iniset $NEUTRON_CONF df apps_list "$DF_APPS_LIST"
-        iniset $NEUTRON_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
-        iniset $NEUTRON_CONF df enable_df_pub_sub "$DF_PUB_SUB"
-        iniset $NEUTRON_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
-        iniset $NEUTRON_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
-        iniset $NEUTRON_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
+        iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
+        iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
+        iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
+        iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
+        iniset $DRAGONFLOW_CONF df local_ip "$HOST_IP"
+        iniset $DRAGONFLOW_CONF df tunnel_type "$TUNNEL_TYPE"
+        iniset $DRAGONFLOW_CONF df integration_bridge "$INTEGRATION_BRIDGE"
+        iniset $DRAGONFLOW_CONF df apps_list "$DF_APPS_LIST"
+        iniset $DRAGONFLOW_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
+        iniset $DRAGONFLOW_CONF df enable_df_pub_sub "$DF_PUB_SUB"
+        iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
+        iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
+        iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
 
         if [[ "$DF_PUB_SUB" == "True" ]]; then
             DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
         else
             DF_SELECTIVE_TOPO_DIST="False"
         fi
-        iniset $NEUTRON_CONF df enable_selective_topology_distribution \
+        iniset $DRAGONFLOW_CONF df enable_selective_topology_distribution \
                                 "$DF_SELECTIVE_TOPO_DIST"
         configure_df_metadata_service
     fi
@@ -356,7 +361,7 @@ function start_df {
 
     if is_service_enabled df-controller ; then
         sudo ovs-vsctl --no-wait set-controller $INTEGRATION_BRIDGE tcp:127.0.0.1:6633
-        run_process df-controller "$DF_LOCAL_CONTROLLER_BINARY --config-file $NEUTRON_CONF"
+        run_process df-controller "$DF_LOCAL_CONTROLLER_BINARY --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
         run_process df-ext-services "bash $DEST/dragonflow/devstack/df-ext-services.sh"
     fi
 }
@@ -401,7 +406,7 @@ function verify_ryu_version {
 function start_pubsub_service {
     echo "Starting Dragonflow publisher service"
     if is_service_enabled df-publisher-service ; then
-        run_process df-publisher-service "$DF_PUBLISHER_SERVICE_BINARY --config-file $NEUTRON_CONF"
+        run_process df-publisher-service "$DF_PUBLISHER_SERVICE_BINARY --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
     fi
 }
 
@@ -414,7 +419,7 @@ function stop_pubsub_service {
 function start_df_metadata_agent {
     if is_service_enabled df-metadata ; then
         echo "Starting Dragonflow metadata service"
-        run_process df-metadata "python $DF_METADATA_SERVICE --config-file $NEUTRON_CONF"
+        run_process df-metadata "python $DF_METADATA_SERVICE --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
     fi
 }
 
