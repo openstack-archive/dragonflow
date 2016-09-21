@@ -70,8 +70,8 @@ def environment_destroy():
 
 def main():
     cfg.CONF.register_opts(metadata_conf.METADATA_PROXY_HANDLER_OPTS)
-    cfg.CONF.register_opts(common_params.df_opts, 'df')
-    cfg.CONF.register_opts(metadata_service_app.options, 'df_metadata')
+    cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
+    cfg.CONF.register_opts(metadata_service_app.DF_METADATA_OPTS, 'df_metadata')
     config.init(sys.argv[1:])
     config.setup_logging()
     environment_setup()
