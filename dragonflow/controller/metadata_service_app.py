@@ -50,7 +50,7 @@ TCP_SYN = 0x002
 TCP_ACK = 0x010
 
 
-options = [
+DF_METADATA_OPTS = [
     cfg.IPOpt(
         'ip',
         default='169.254.169.254',
@@ -75,7 +75,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         self._arp_responder = None
         self._ofport = None
         self._interface_mac = ""
-        cfg.CONF.register_opts(options, group='df_metadata')
+        cfg.CONF.register_opts(DF_METADATA_OPTS, group='df_metadata')
         self._ip = cfg.CONF.df_metadata.ip
         self._port = cfg.CONF.df_metadata.port
         self._interface = cfg.CONF.df.metadata_interface
