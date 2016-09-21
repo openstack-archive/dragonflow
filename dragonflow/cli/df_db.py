@@ -21,7 +21,7 @@ from dragonflow.common import common_params
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 
-cfg.CONF.register_opts(common_params.df_opts, 'df')
+cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
              'tunnel_key', 'floatingip', 'publisher']
@@ -133,7 +133,10 @@ def main():
         print usage_str
         return
 
-    common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
+    common_config.init(['--config-file',
+                        '/etc/neutron/plugins/dragonflow.ini',
+                        '--config-file',
+                        '/etc/neutron/neutron.conf'])
     db_driver = df_utils.load_driver(
         cfg.CONF.df.nb_db_class,
         df_utils.DF_NB_DB_DRIVER_NAMESPACE)
