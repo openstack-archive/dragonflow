@@ -66,14 +66,16 @@ class DHCPApp(df_base_app.DFlowApp):
         self.idle_timeout = 30
         self.hard_timeout = 0
 
-        cfg.CONF.register_opts(DF_DHCP_OPTS)
+        cfg.CONF.register_opts(DF_DHCP_OPTS, 'df_dhcp_app')
         cfg.CONF.register_opts(common_config.core_opts)
-        self.global_dns_list = cfg.CONF.df_dns_servers
+        self.conf = cfg.CONF.df_dhcp_app
+
+        self.global_dns_list = self.conf.df_dns_servers
         self.lease_time = cfg.CONF.dhcp_lease_duration
         self.domain_name = cfg.CONF.dns_domain
         self.advertise_mtu = cfg.CONF.advertise_mtu
-        self.block_hard_timeout = cfg.CONF.df_dhcp_block_time_in_sec
-        self.default_interface_mtu = cfg.CONF.df_default_network_device_mtu
+        self.block_hard_timeout = self.conf.df_dhcp_block_time_in_sec
+        self.default_interface_mtu = self.conf.df_default_network_device_mtu
 
         self.local_tunnel_to_pid_map = {}
         self.api.register_table_handler(const.DHCP_TABLE,
@@ -290,7 +292,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def _get_host_routes_list_bin(self, subnet, lport):
         host_routes = subnet.get_host_routes()
-        if cfg.CONF.df_add_link_local_route:
+        if self.conf.df_add_link_local_route:
             # Add route for metadata request.
             host_routes.append(
                 {'destination': '%s/32' % const.METADATA_SERVICE_IP,
@@ -404,7 +406,7 @@ class DHCPApp(df_base_app.DFlowApp):
         tunnel_key = lport.get_tunnel_key()
         ofport = lport.get_external_value('ofport')
         port_rate_limiter = df_utils.RateLimiter(
-                        max_rate=cfg.CONF.df_dhcp_max_rate_per_sec,
+                        max_rate=self.conf.df_dhcp_max_rate_per_sec,
                         time_unit=1)
         self.local_tunnel_to_pid_map[tunnel_key] = (port_rate_limiter,
                                                     ofport,
