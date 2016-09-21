@@ -23,7 +23,7 @@ from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
 
 
-cfg.CONF.register_opts(common_params.df_opts, 'df')
+cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 
 def get_cloud_config(cloud='devstack-admin'):

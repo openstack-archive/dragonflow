@@ -29,7 +29,7 @@ class TestMetadataService(test_base.DFTestBase):
 
     def setUp(self):
         super(TestMetadataService, self).setUp()
-        cfg.CONF.register_opts(metadata_service_app.options,
+        cfg.CONF.register_opts(metadata_service_app.DF_METADATA_OPTS,
                                group='df_metadata')
         # Override defaults to avoid collision with existing metadata service
         cfg.CONF.df_metadata.ip = '1.1.1.1'
