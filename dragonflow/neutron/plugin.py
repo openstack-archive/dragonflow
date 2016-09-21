@@ -235,12 +235,10 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                   port.id)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
-    def create_security_group(self, context, security_group,
-                              default_sg=False):
+    def create_security_group(self, context, security_group):
         with context.session.begin(subtransactions=True):
             sg_db = super(DFPlugin,
-                          self).create_security_group(context, security_group,
-                                                      default_sg)
+                          self).create_security_group(context, security_group)
             sg_version = version_db._create_db_version_row(
                     context.session, sg_db['id'])
         sg_id = sg_db['id']
