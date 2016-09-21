@@ -150,7 +150,7 @@ def run_client(nb_api):
 
 def main():
     cfg.CONF.register_opts(df_db_test_opts, 'df_db_test')
-    cfg.CONF.register_opts(common_params.df_opts, 'df')
+    cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
     common_config.init(sys.argv[2:])
     # To enable logging, uncomment the following line:
     #common_config.setup_logging()

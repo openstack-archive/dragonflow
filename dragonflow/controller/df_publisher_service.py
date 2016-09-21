@@ -163,7 +163,7 @@ class PublisherService(object):
 
 
 def main():
-    cfg.CONF.register_opts(common_params.df_opts, 'df')
+    cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
     common_config.init(sys.argv[1:])
     config.setup_logging()
     service = PublisherService()
