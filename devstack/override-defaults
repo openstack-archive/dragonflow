@@ -19,3 +19,8 @@ if is_service_enabled df-l3-agent ; then
     AGENT_L3_BINARY=${AGENT_L3_BINARY:-"df-l3-agent"}
     enable_service q-l3
 fi
+
+DRAGONFLOW_CONF=/etc/neutron/plugins/dragonflow.ini
+Q_PLUGIN_EXTRA_CONF_PATH=/etc/neutron/plugins
+Q_PLUGIN_EXTRA_CONF_FILES=(dragonflow.ini)
+NEUTRON_CONFIG_ARG+=" --config-file $DRAGONFLOW_CONF"
