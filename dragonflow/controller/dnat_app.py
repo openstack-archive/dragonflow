@@ -20,14 +20,12 @@ from neutron.agent.ovsdb.native import idlutils
 from neutron_lib import constants as n_const
 from oslo_config import cfg
 from oslo_service import loopingcall
-from ryu.lib.packet import arp
 from ryu.ofproto import ether
 import six
 
 from dragonflow._i18n import _
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
-from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
 
 
@@ -138,17 +136,6 @@ class DNATApp(df_base_app.DFlowApp):
                     return False
             return True
         return False
-
-    def _get_match_arp_reply(self, arp_tpa, arp_spa, network_id=None):
-        parser = self.get_datapath().ofproto_parser
-        match = parser.OFPMatch()
-        match.set_dl_type(ether.ETH_TYPE_ARP)
-        match.set_arp_tpa(utils.ipv4_text_to_int(str(arp_tpa)))
-        match.set_arp_spa(utils.ipv4_text_to_int(str(arp_spa)))
-        match.set_arp_opcode(arp.ARP_REPLY)
-        if network_id is not None:
-            match.set_metadata(network_id)
-        return match
 
     def _install_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
