@@ -23,7 +23,7 @@ from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
 
 
-cfg.CONF.register_opts(common_params.df_opts, 'df')
+cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 
 def get_cloud_config(cloud='devstack-admin'):
@@ -52,7 +52,10 @@ class DFTestBase(base.BaseTestCase):
         if not self.get_default_subnetpool():
             self.create_default_subnetpool()
 
-        common_config.init(['--config-file', '/etc/neutron/neutron.conf'])
+        common_config.init(['--config-file',
+                            '/etc/neutron/plugins/dragonflow.ini',
+                            '--config-file',
+                            '/etc/neutron/neutron.conf'])
         self.conf = cfg.CONF.df
         self.integration_bridge = self.conf.integration_bridge
 

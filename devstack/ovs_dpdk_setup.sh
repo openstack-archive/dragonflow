@@ -47,8 +47,8 @@ function _configure_ovs_dpdk {
     OVS_DATAPATH_TYPE=netdev
 
     # Configure user space datapath
-    iniset $NEUTRON_CONF df vif_type vhostuser
-    iniset $NEUTRON_CONF df vhost_sock_dir ${OVS_DIR}
+    iniset $DRAGONFLOW_CONF df vif_type vhostuser
+    iniset $DRAGONFLOW_CONF df vhost_sock_dir ${OVS_DIR}
 
     # Disable kernel TCP/IP stack
     sudo iptables -A INPUT -i ${DPDK_NIC_NAME} -j DROP

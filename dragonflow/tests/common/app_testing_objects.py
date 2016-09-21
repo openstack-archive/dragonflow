@@ -32,7 +32,7 @@ from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_objects as objects
 
 
-cfg.CONF.register_opts(common_params.df_opts, 'df')
+cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 LOG = log.getLogger(__name__)
 
