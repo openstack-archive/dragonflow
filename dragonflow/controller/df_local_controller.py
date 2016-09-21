@@ -65,8 +65,7 @@ class DfLocalController(object):
         self.nb_api = api_nb.NbApi(
             nb_driver,
             use_pubsub=cfg.CONF.df.enable_df_pub_sub)
-        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(
-            self.ip, self.nb_api)
+        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
         kwargs = dict(
             nb_api=self.nb_api,
             vswitch_api=self.vswitch_api,
@@ -84,7 +83,7 @@ class DfLocalController(object):
     def run(self):
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
-        self.vswitch_api.initialize()
+        self.vswitch_api.initialize(self.nb_api)
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)
 

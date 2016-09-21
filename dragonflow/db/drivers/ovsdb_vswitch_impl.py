@@ -102,12 +102,12 @@ class DFConnection(connection.Connection):
         assert schema_helper is not None, "schema_helper parameter is None"
         self._schema_helper = schema_helper
 
-    def start(self):
+    def start(self, nb_api):
         with self.lock:
             if self.idl is not None:
                 return
 
-            self.idl = idl.Idl(self.connection, self._schema_helper)
+            self.idl = DFIdl(nb_api, self.connection, self._schema_helper)
             idlutils.wait_for_change(self.idl, self.timeout)
             self.poller = poller.Poller()
             self.thread = threading.Thread(target=self.run)
@@ -117,8 +117,7 @@ class DFConnection(connection.Connection):
 
 class OvsdbSwitchApi(api_vswitch.SwitchApi):
 
-    def __init__(self, ip, nb_api,
-                 protocol='tcp', port='6640', timeout=10):
+    def __init__(self, ip, protocol='tcp', port='6640', timeout=10):
         super(OvsdbSwitchApi, self).__init__()
         self.ip = ip
         self.protocol = protocol
@@ -126,12 +125,10 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.timeout = timeout
         self.ovsdb = None
         self.idl = None
-        self.nb_api = nb_api
-        self.ovsdb_monitor = None
         self.integration_bridge = cfg.CONF.df.integration_bridge
         vlog.Vlog.init('dragonflow')
 
-    def initialize(self):
+    def initialize(self, nb_api):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
         self.ovsdb = DFConnection(
             db_connection,
@@ -142,14 +139,12 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
             ),
         )
         table = constants.OVS_INTERFACE
-        self.nb_api.db_change_callback(table, None, 'sync_started', None)
+        nb_api.db_change_callback(table, None, 'sync_started', None)
 
-        self.ovsdb.start()
+        self.ovsdb.start(nb_api)
         self.idl = self.ovsdb.idl
 
-        self.ovsdb_monitor = OvsdbMonitor(self.nb_api, self.idl)
-        self.ovsdb_monitor.initialize()
-        self.nb_api.db_change_callback(table, None, 'sync_finished', None)
+        nb_api.db_change_callback(table, None, 'sync_finished', None)
 
     @property
     def _tables(self):
@@ -409,13 +404,12 @@ class AddTunnelPort(commands.BaseCommand):
         bridge.ports = ports
 
 
-class OvsdbMonitor(object):
-    def __init__(self, nb_api, idl):
-        super(OvsdbMonitor, self).__init__()
+class DFIdl(idl.Idl):
+    def __init__(self, nb_api, remote, schema):
+        super(DFIdl, self).__init__(remote, schema)
         self.nb_api = nb_api
-        self.idl = idl
         self.interface_type = (constants.OVS_VM_INTERFACE,
-                              constants.OVS_BRIDGE_INTERFACE)
+                               constants.OVS_BRIDGE_INTERFACE)
 
     def _is_handle_interface_update(self, interface):
         if interface.name == cfg.CONF.df.metadata_interface:
@@ -431,15 +425,6 @@ class OvsdbMonitor(object):
             table = constants.OVS_INTERFACE
             key = local_interface.uuid
             self.nb_api.db_change_callback(table, key, action, local_interface)
-
-    def _notify_existing_interfaces(self):
-        interfaces = self.idl.tables['Interface']
-        for row in six.itervalues(interfaces.rows):
-            self.notify('create', row)
-
-    def initialize(self):
-        self.idl.notify = self.notify
-        self._notify_existing_interfaces()
 
     def notify(self, event, row, updates=None):
         if not row or not hasattr(row, '_table'):
