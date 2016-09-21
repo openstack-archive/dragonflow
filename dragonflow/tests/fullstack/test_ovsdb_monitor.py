@@ -24,7 +24,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         self.set_wanted_vms = set()
         self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(
             self.local_ip, self.nb_api)
-        self.vswitch_api.initialize()
+        self.vswitch_api.initialize(self.nb_api)
 
     def tearDown(self):
         super(TestOvsdbMonitor, self).tearDown()
