@@ -15,7 +15,7 @@ from oslo_config import cfg
 from dragonflow._i18n import _
 from neutron.extensions import portbindings
 
-df_opts = [
+DF_OPTS = [
     cfg.IPOpt('remote_db_ip',
               default='127.0.0.1',
               help=_('The remote db server ip address')),
