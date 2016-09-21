@@ -21,6 +21,7 @@ Contents:
    pipeline
    containers
    gmr
+   configuration
    usage
    features
    contributing
