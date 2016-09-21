@@ -62,3 +62,6 @@ ChangeLog
 
 # Ext services
 devstack/df-ext-services.sh
+
+# Configurations
+etc/*.sample

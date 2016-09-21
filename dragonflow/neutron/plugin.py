@@ -70,7 +70,7 @@ from dragonflow.neutron.common import constants as df_const
 
 LOG = log.getLogger(__name__)
 
-cfg.CONF.register_opts(common_params.df_opts, 'df')
+cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 router_distributed_opts = [
     cfg.BoolOpt('router_distributed',
