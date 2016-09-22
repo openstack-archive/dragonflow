@@ -32,7 +32,6 @@ from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
-from dragonflow.db.neutron import versionobjects_db as version_db
 from dragonflow.neutron.common import constants as df_const
 
 LOG = log.getLogger(__name__)
@@ -458,11 +457,6 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         LOG.info(_LI("DFMechDriver: delete subnet %s"), subnet_id)
 
-    def create_port_precommit(self, context):
-        port_version = version_db._create_db_version_row(
-            context._plugin_context.session, context.current['id'])
-        context.current['db_version'] = port_version
-
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def create_port_postcommit(self, context):
         port = context.current
@@ -495,7 +489,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
             enabled=port.get('admin_state_up', False),
             chassis=chassis, tunnel_key=tunnel_key,
-            version=port['db_version'],
+            version=port['revision_number'],
             device_owner=port.get('device_owner', None),
             device_id=port.get('device_id', None),
             security_groups=port.get('security_groups', []),
@@ -527,11 +521,6 @@ class DFMechDriver(driver_api.MechanismDriver):
             return True
         else:
             return False
-
-    def update_port_precommit(self, context):
-        port_version = version_db._update_db_version_row(
-            context._plugin_context.session, context.current['id'])
-        context.current['db_version'] = port_version
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def update_port_postcommit(self, context):
@@ -589,14 +578,10 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                    []),
             binding_profile=updated_port.get(portbindings.PROFILE, None),
             binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE, None),
-            version=updated_port['db_version'], remote_vtep=remote_vtep)
+            version=updated_port['revision_number'], remote_vtep=remote_vtep)
 
         LOG.info(_LI("DFMechDriver: update port %s"), updated_port['id'])
         return updated_port
-
-    def delete_port_precommit(self, context):
-        version_db._delete_db_version_row(context._plugin_context.session,
-                                          context.current['id'])
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def delete_port_postcommit(self, context):
