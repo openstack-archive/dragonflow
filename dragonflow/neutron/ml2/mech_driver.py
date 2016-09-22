@@ -197,11 +197,6 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                sg_version=sg_version)
         LOG.info(_LI("DFMechDriver: delete security group rule %s"), sgr_id)
 
-    def create_network_precommit(self, context):
-        nw_version = version_db._create_db_version_row(
-            context._plugin_context.session, context.current['id'])
-        context.current['db_version'] = nw_version
-
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def create_network_postcommit(self, context):
         network = context.current
@@ -214,15 +209,11 @@ class DFMechDriver(driver_api.MechanismDriver):
             segmentation_id=network.get('provider:segmentation_id'),
             router_external=network['router:external'],
             mtu=network.get('mtu'),
-            version=network['db_version'],
+            version=network['revision_number'],
             subnets=[])
 
         LOG.info(_LI("DFMechDriver: create network %s"), network['id'])
         return network
-
-    def delete_network_precommit(self, context):
-        version_db._delete_db_version_row(context._plugin_context.session,
-                                          context.current['id'])
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def delete_network_postcommit(self, context):
@@ -332,14 +323,10 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         return None
 
-    def create_subnet_precommit(self, context):
-        network_version = version_db._update_db_version_row(
-            context._plugin_context.session, context.current['network_id'])
-        context.current['db_version'] = network_version
-
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def create_subnet_postcommit(self, context):
         subnet = context.current
+        network = context.network.current
         net_id = subnet['network_id']
         plugin_context = context._plugin_context
         dhcp_ip = None
@@ -358,7 +345,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             net_id,
             subnet['tenant_id'],
             name=subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
-            nw_version=subnet['db_version'],
+            nw_version=network['revision_number'],
             enable_dhcp=subnet['enable_dhcp'],
             cidr=subnet['cidr'],
             dhcp_ip=dhcp_ip,
@@ -412,15 +399,11 @@ class DFMechDriver(driver_api.MechanismDriver):
             dhcp_ip = self._get_ip_from_port(port)
         return dhcp_ip, None
 
-    def update_subnet_precommit(self, context):
-        network_version = version_db._update_db_version_row(
-            context._plugin_context.session, context.current['network_id'])
-        context.current['db_version'] = network_version
-
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def update_subnet_postcommit(self, context):
         new_subnet = context.current
         old_subnet = context.original
+        network = context.network.current
         plugin_context = context._plugin_context
         dhcp_ip = None
         dhcp_port = None
@@ -439,7 +422,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             new_subnet['network_id'],
             new_subnet['tenant_id'],
             name=new_subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
-            nw_version=new_subnet['db_version'],
+            nw_version=network['revision_number'],
             enable_dhcp=new_subnet['enable_dhcp'],
             cidr=new_subnet['cidr'],
             dhcp_ip=dhcp_ip,
@@ -450,11 +433,6 @@ class DFMechDriver(driver_api.MechanismDriver):
         LOG.info(_LI("DFMechDriver: update subnet %s"), new_subnet['id'])
         return new_subnet
 
-    def delete_subnet_precommit(self, context):
-        network_version = version_db._update_db_version_row(
-            context._plugin_context.session, context.current['network_id'])
-        context.current['db_version'] = network_version
-
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def delete_subnet_postcommit(self, context):
         """If the subnet enabled dhcp, the dhcp server port should be deleted.
@@ -463,13 +441,14 @@ class DFMechDriver(driver_api.MechanismDriver):
         deleted in update_port_postcommit.
         """
         subnet = context.current
+        network = context.network.current
         net_id = subnet['network_id']
         subnet_id = subnet['id']
 
         # update df controller with subnet delete
         try:
             self.nb_api.delete_subnet(subnet_id, net_id, subnet['tenant_id'],
-                                      nw_version=subnet['db_version'])
+                                      nw_version=network['revision_number'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("network %s is not found in DB, might have "
                       "been deleted concurrently" % net_id)
