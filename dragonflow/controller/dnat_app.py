@@ -50,8 +50,6 @@ class DNATApp(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
         super(DNATApp, self).__init__(*args, **kwargs)
-        self.vswitch_api = kwargs['vswitch_api']
-        self.nb_api = kwargs['nb_api']
         cfg.CONF.register_opts(DF_DNAT_APP_OPTS, group='df_dnat_app')
         self.external_network_bridge = \
             cfg.CONF.df_dnat_app.external_network_bridge
