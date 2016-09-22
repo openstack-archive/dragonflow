@@ -27,5 +27,6 @@ SUPPORTED_API_EXTENSIONS = [
     'port-security',
     'allowed-address-pairs',
     'net-mtu',
-    'default-subnetpools'
+    'default-subnetpools',
+    'provider'
 ]
