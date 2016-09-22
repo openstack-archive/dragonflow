@@ -53,29 +53,6 @@ class TestDFMechDriver(base.BaseTestCase):
             return_value=self.dbversion)
         version_db._delete_db_version_row = mock.Mock()
 
-    def test_create_network_postcommit(self):
-        tenant_id = 'test'
-        network_id = '123'
-        network_type = 'vxlan'
-        segmentation_id = 456
-
-        network_context = self._get_network_context(tenant_id,
-                                                    network_id,
-                                                    network_type,
-                                                    segmentation_id)
-
-        self.driver.create_network_postcommit(network_context)
-        self.driver.nb_api.create_lswitch.assert_called_with(
-            id=network_id,
-            name='FakeNetwork',
-            topic=tenant_id,
-            network_type=network_type,
-            router_external=False,
-            segmentation_id=segmentation_id,
-            subnets=[],
-            mtu=1450,
-            version=self.dbversion)
-
     def test_delete_network_postcommit(self):
         tenant_id = 'test'
         network_id = '123'
@@ -91,73 +68,6 @@ class TestDFMechDriver(base.BaseTestCase):
         self.driver.delete_network_postcommit(network_context)
         self.driver.nb_api.delete_lswitch.assert_called_with(
             id=network_id, topic=tenant_id)
-
-    def test_create_subnet_postcommit(self):
-        tenant_id = 'test'
-        network_id = '123'
-        subnet_id = '122'
-        cidr = '192.0.0.0/8'
-        gateway_ip = '192.0.0.1'
-        dhcp_ip = '1.1.1.1'
-        enable_dhcp = True
-        dns_nameservers = '2.2.2.2'
-        port = {'fixed_ips': [{'subnet_id': subnet_id, 'ip_address': dhcp_ip}]}
-
-        self.driver._handle_create_subnet_dhcp = mock.Mock(
-            return_value=[dhcp_ip, port])
-        subnet_context = self._get_subnet_context(tenant_id, network_id,
-                                                  subnet_id, cidr, gateway_ip,
-                                                  enable_dhcp, dns_nameservers)
-
-        self.driver.create_subnet_postcommit(subnet_context)
-        self.driver.nb_api.add_subnet.assert_called_with(
-            subnet_id, network_id, tenant_id, enable_dhcp=enable_dhcp,
-            cidr=cidr, dhcp_ip=dhcp_ip, gateway_ip=gateway_ip,
-            dns_nameservers=dns_nameservers, name='FakeSubnet',
-            host_routes=[],
-            nw_version=self.dbversion)
-
-    def test_update_subnet_postcommit(self):
-        tenant_id = 'test'
-        network_id = '123'
-        subnet_id = '122'
-        cidr = '192.0.0.0/8'
-        gateway_ip = '192.0.0.100'
-        dhcp_ip = '1.1.1.1'
-        enable_dhcp = True
-        dns_nameservers = '2.2.2.2'
-        port = {'fixed_ips': [{'subnet_id': subnet_id, 'ip_address': dhcp_ip}]}
-
-        self.driver._handle_update_subnet_dhcp = mock.Mock(
-            return_value=[dhcp_ip, port])
-        subnet_context = self._get_subnet_context(tenant_id, network_id,
-                                                  subnet_id, cidr, gateway_ip,
-                                                  enable_dhcp, dns_nameservers)
-
-        self.driver.update_subnet_postcommit(subnet_context)
-        self.driver.nb_api.update_subnet.assert_called_with(
-            subnet_id, network_id, tenant_id, enable_dhcp=enable_dhcp,
-            cidr=cidr, dhcp_ip=dhcp_ip, gateway_ip=gateway_ip,
-            dns_nameservers=dns_nameservers, name='FakeSubnet',
-            host_routes=[],
-            nw_version=self.dbversion)
-
-    def test_delete_subnet_postcommit(self):
-        tenant_id = 'test'
-        network_id = '123'
-        subnet_id = '122'
-        cidr = '192.0.0.0/8'
-        gateway_ip = '192.0.0.1'
-        enable_dhcp = True
-        dns_nameservers = '2.2.2.2'
-
-        subnet_context = self._get_subnet_context(tenant_id, network_id,
-                                                  subnet_id, cidr, gateway_ip,
-                                                  enable_dhcp, dns_nameservers)
-
-        self.driver.delete_subnet_postcommit(subnet_context)
-        self.driver.nb_api.delete_subnet.assert_called_with(
-            subnet_id, network_id, tenant_id, nw_version=self.dbversion)
 
     def test_create_port_postcommit(self):
         tenant_id = 'test'
@@ -250,21 +160,6 @@ class TestDFMechDriver(base.BaseTestCase):
         self.driver.nb_api.delete_security_group.assert_called_with(
             sg_id, topic=tenant_id)
 
-    def _get_subnet_context(self, tenant_id, net_id, subnet_id, cidr,
-                            gateway_ip, enable_dhcp, dns_nameservers):
-        # sample data for testing purpose only.
-        subnet = {'tenant_id': tenant_id,
-                  'network_id': net_id,
-                  'id': subnet_id,
-                  'cidr': cidr,
-                  'name': 'FakeSubnet',
-                  'ip_version': 4,
-                  'gateway_ip': gateway_ip,
-                  'enable_dhcp': enable_dhcp,
-                  'dns_nameservers': dns_nameservers,
-                  'db_version': self.dbversion}
-        return FakeContext(subnet)
-
     def _get_port_context(self, tenant_id, net_id, port_id, fixed_ips):
         # sample data for testing purpose only.
         port = {'device_id': '1234',
@@ -294,7 +189,7 @@ class TestDFMechDriver(base.BaseTestCase):
                    'provider:segmentation_id': seg_id,
                    'router:external': False,
                    'mtu': 1450,
-                   'db_version': self.dbversion}
+                   'revision_number': self.dbversion}
         segments = [{'segmentation_id': seg_id}]
         return FakeNetworkContext(network, segments)
 
@@ -380,6 +275,66 @@ class TestDFMechDriverRevision(test_plugin.Ml2PluginV2TestCase):
         self.nb_api.delete_security_group_rule.assert_called_with(
             sg['id'], rule['id'], sg['tenant_id'],
             sg_version=newer_sg['revision_number'])
+
+    def _test_create_network_revision(self):
+        with self.network() as n:
+            network = n['network']
+            self.assertGreater(network['revision_number'], 0)
+            self.nb_api.create_lswitch.assert_called_with(
+                id=network['id'], topic=network['tenant_id'],
+                name=network['name'],
+                network_type=network['provider:network_type'],
+                segmentation_id=network['provider:segmentation_id'],
+                router_external=network['router:external'],
+                mtu=network['mtu'], version=network['revision_number'],
+                subnets=[])
+            return network
+
+    def test_create_network_revision(self):
+        self._test_create_network_revision()
+
+    def test_create_update_delete_subnet_network_revision(self):
+        network = self._test_create_network_revision()
+        with self.subnet(network={'network': network}) as s:
+            subnet = s['subnet']
+            subnet_id = s['subnet']['id']
+
+        new_network = self.driver.get_network(self.context, network['id'])
+        self.assertGreater(new_network['revision_number'],
+                           network['revision_number'])
+        self.nb_api.add_subnet.assert_called_with(
+            subnet_id, network['id'], subnet['tenant_id'], name=subnet['name'],
+            nw_version=new_network['revision_number'],
+            enable_dhcp=subnet['enable_dhcp'], cidr=subnet['cidr'],
+            dhcp_ip=mock.ANY, gateway_ip=subnet['gateway_ip'],
+            dns_nameservers=subnet['dns_nameservers'],
+            host_routes=subnet['host_routes'])
+
+        data = {'subnet': {'name': 'updated'}}
+        req = self.new_update_request('subnets', data, subnet_id)
+        req.get_response(self.api)
+        network = new_network
+        new_network = self.driver.get_network(self.context, network['id'])
+        self.assertGreater(new_network['revision_number'],
+                           network['revision_number'])
+        self.nb_api.update_subnet.assert_called_with(
+            subnet_id, network['id'], subnet['tenant_id'], name='updated',
+            nw_version=new_network['revision_number'],
+            enable_dhcp=subnet['enable_dhcp'], cidr=subnet['cidr'],
+            dhcp_ip=mock.ANY, gateway_ip=subnet['gateway_ip'],
+            dns_nameservers=subnet['dns_nameservers'],
+            host_routes=subnet['host_routes'])
+
+        network = new_network
+        req = self.new_delete_request('subnets', subnet_id)
+        req.get_response(self.api)
+        network = new_network
+        new_network = self.driver.get_network(self.context, network['id'])
+        self.assertGreater(new_network['revision_number'],
+                           network['revision_number'])
+        self.nb_api.delete_subnet.assert_called_with(
+            subnet_id, network['id'], subnet['tenant_id'],
+            nw_version=new_network['revision_number'])
 
 
 class FakeNetworkContext(object):
