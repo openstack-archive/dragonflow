@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.api.v2 import attributes as attr
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
@@ -21,6 +20,7 @@ from neutron import manager
 from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api
 from neutron.plugins.ml2 import models
+from neutron_lib.api import validators
 from neutron_lib import constants as n_const
 from oslo_config import cfg
 from oslo_log import log
@@ -266,17 +266,17 @@ class DFMechDriver(driver_api.MechanismDriver):
     def _process_portbindings_create_and_update(self, context, port_data,
                                                 port):
         binding_profile = port.get(portbindings.PROFILE)
-        binding_profile_set = attr.is_attr_set(binding_profile)
+        binding_profile_set = validators.is_attr_set(binding_profile)
         if not binding_profile_set and binding_profile is not None:
             del port[portbindings.PROFILE]
 
         binding_vnic = port.get(portbindings.VNIC_TYPE)
-        binding_vnic_set = attr.is_attr_set(binding_vnic)
+        binding_vnic_set = validators.is_attr_set(binding_vnic)
         if not binding_vnic_set and binding_vnic is not None:
             del port[portbindings.VNIC_TYPE]
 
         host = port_data.get(portbindings.HOST_ID)
-        host_set = attr.is_attr_set(host)
+        host_set = validators.is_attr_set(host)
         with context.session.begin(subtransactions=True):
             bind_port = context.session.query(
                 models.PortBinding).filter_by(port_id=port['id']).first()
@@ -307,7 +307,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                              df_common_const.DRAGONFLOW_VIRTUAL_PORT),
                          'admin_state_up': True, 'device_id': '',
                          'device_owner': n_const.DEVICE_OWNER_DHCP,
-                         'mac_address': attr.ATTR_NOT_SPECIFIED,
+                         'mac_address': n_const.ATTR_NOT_SPECIFIED,
                          'fixed_ips': [{'subnet_id': subnet['id']}]}}
 
         core_plugin = manager.NeutronManager.get_plugin()
