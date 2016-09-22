@@ -59,13 +59,12 @@ class TestObjectVersion(test_base.DFTestBase):
                 self.neutron, self.nb_api, network_id))
         port_id = port.create()
         self.assertTrue(port.exists())
-        version = self.nb_api.get_logical_port(port_id).get_version()
-        self.assertEqual(version, 0)
+        prev_version = self.nb_api.get_logical_port(port_id).get_version()
 
         port.update()
         self.assertTrue(port.exists())
         version = self.nb_api.get_logical_port(port_id).get_version()
-        self.assertEqual(version, 1)
+        self.assertGreater(version, prev_version)
 
         port.close()
         self.assertFalse(port.exists())

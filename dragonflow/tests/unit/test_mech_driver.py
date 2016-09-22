@@ -32,7 +32,6 @@ mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
            stub_wrap_db_lock).start()
 from dragonflow.db.neutron import versionobjects_db as version_db
 from dragonflow.neutron.ml2 import mech_driver
-from neutron.db import securitygroups_db
 from neutron.tests import base
 from neutron.tests.unit.plugins.ml2 import test_plugin
 
@@ -167,8 +166,6 @@ class TestDFMechDriver(base.BaseTestCase):
         tunnel_key = '9999'
         binding_profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
 
-        securitygroups_db.SecurityGroupDbMixin._get_security_groups_on_port = \
-            mock.Mock(return_value=None)
         self.driver._get_allowed_mac_addresses_from_port = mock.Mock(
             return_value=allowed_macs)
         self.driver.nb_api.allocate_tunnel_key = mock.Mock(
@@ -194,9 +191,6 @@ class TestDFMechDriver(base.BaseTestCase):
         fips = [{"subnet_id": "sub-1", "ip_address": "10.0.0.1"}]
         tunnel_key = '9999'
         binding_profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
-
-        securitygroups_db.SecurityGroupDbMixin._get_security_groups_on_port = \
-            mock.Mock(return_value=None)
 
         self.driver.nb_api.allocate_tunnel_key = mock.Mock(
             return_value=tunnel_key)
@@ -283,7 +277,7 @@ class TestDFMechDriver(base.BaseTestCase):
                 'network_id': net_id,
                 'binding:profile': binding_profile,
                 'binding:vnic_type': 'ovs',
-                'db_version': self.dbversion}
+                'revision_number': self.dbversion}
         return FakeContext(port)
 
     def _get_network_context(self, tenant_id, net_id, network_type, seg_id):
@@ -385,6 +379,52 @@ class TestDFMechDriverRevision(test_plugin.Ml2PluginV2TestCase):
         self.nb_api.delete_security_group_rule.assert_called_with(
             sg['id'], rule['id'], sg['tenant_id'],
             sg_version=newer_sg['revision_number'])
+
+    def test_create_update_port_revision(self):
+        with self.port(name='port', device_owner='fake_owner',
+                       device_id='fake_id') as p:
+            port = p['port']
+            self.assertGreater(port['revision_number'], 0)
+            self.nb_api.create_lport.assert_called_with(
+                id=port['id'],
+                lswitch_id=port['network_id'],
+                topic=port['tenant_id'],
+                macs=[port['mac_address']], ips=mock.ANY,
+                subnets=mock.ANY, name=port['name'],
+                enabled=port['admin_state_up'],
+                chassis=mock.ANY, tunnel_key=mock.ANY,
+                version=port['revision_number'],
+                device_owner=port['device_owner'],
+                device_id=port['device_id'],
+                security_groups=mock.ANY,
+                port_security_enabled=mock.ANY,
+                remote_vtep=False,
+                allowed_address_pairs=mock.ANY,
+                binding_profile=mock.ANY,
+                binding_vnic_type=mock.ANY)
+
+            data = {'port': {'name': 'updated'}}
+            req = self.new_update_request('ports', data, port['id'])
+            req.get_response(self.api)
+            prev_version = port['revision_number']
+            port = self.driver.get_port(self.context, port['id'])
+            self.assertGreater(port['revision_number'], prev_version)
+            self.nb_api.update_lport.assert_called_with(
+                id=port['id'],
+                topic=port['tenant_id'],
+                macs=[port['mac_address']], ips=mock.ANY,
+                subnets=mock.ANY, name=port['name'],
+                enabled=port['admin_state_up'],
+                chassis=mock.ANY,
+                version=port['revision_number'],
+                device_owner=port['device_owner'],
+                device_id=port['device_id'],
+                remote_vtep=False,
+                security_groups=mock.ANY,
+                port_security_enabled=mock.ANY,
+                allowed_address_pairs=mock.ANY,
+                binding_profile=mock.ANY,
+                binding_vnic_type=mock.ANY)
 
 
 class FakeNetworkContext(object):
