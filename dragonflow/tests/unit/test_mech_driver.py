@@ -32,7 +32,6 @@ mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
            stub_wrap_db_lock).start()
 from dragonflow.db.neutron import versionobjects_db as version_db
 from dragonflow.neutron.ml2 import mech_driver
-from neutron.db import securitygroups_db
 from neutron.tests import base
 from neutron.tests.unit.plugins.ml2 import test_plugin
 
@@ -68,60 +67,6 @@ class TestDFMechDriver(base.BaseTestCase):
         self.driver.delete_network_postcommit(network_context)
         self.driver.nb_api.delete_lswitch.assert_called_with(
             id=network_id, topic=tenant_id)
-
-    def test_create_port_postcommit(self):
-        tenant_id = 'test'
-        network_id = '123'
-        port_id = '453'
-        fips = [{"subnet_id": "sub-1", "ip_address": "10.0.0.1"}]
-        allowed_macs = 'ff:ff:ff:ff:ff:ff'
-        tunnel_key = '9999'
-
-        securitygroups_db.SecurityGroupDbMixin._get_security_groups_on_port = \
-            mock.Mock(return_value=None)
-        self.driver._get_allowed_mac_addresses_from_port = mock.Mock(
-            return_value=allowed_macs)
-        self.driver.nb_api.allocate_tunnel_key = mock.Mock(
-            return_value=tunnel_key)
-        port_context = self._get_port_context(tenant_id, network_id, port_id,
-                                              fips)
-
-        self.driver.create_port_postcommit(port_context)
-        self.driver.nb_api.create_lport.assert_called_with(
-            id=port_id, lswitch_id=network_id, topic=tenant_id,
-            macs=['aabb'], ips=['10.0.0.1'],
-            name='FakePort', subnets=['sub-1'],
-            enabled=True, chassis=None, tunnel_key=tunnel_key,
-            device_owner='compute', device_id='d1',
-            port_security_enabled=False, security_groups=[],
-            binding_profile=None, binding_vnic_type='ovs',
-            allowed_address_pairs=[], version=self.dbversion)
-
-    def test_update_port_postcommit(self):
-        tenant_id = 'test'
-        network_id = '123'
-        port_id = '453'
-        fips = [{"subnet_id": "sub-1", "ip_address": "10.0.0.1"}]
-        tunnel_key = '9999'
-
-        securitygroups_db.SecurityGroupDbMixin._get_security_groups_on_port = \
-            mock.Mock(return_value=None)
-
-        self.driver.nb_api.allocate_tunnel_key = mock.Mock(
-            return_value=tunnel_key)
-        port_context = self._get_port_context(tenant_id, network_id, port_id,
-                                              fips)
-
-        self.driver.update_port_postcommit(port_context)
-        self.driver.nb_api.update_lport.assert_called_with(
-            id=port_id, name='FakePort', topic=tenant_id,
-            macs=['aabb'], ips=['10.0.0.1'],
-            subnets=['sub-1'],
-            enabled=True, chassis=None, port_security_enabled=False,
-            allowed_address_pairs=[], security_groups=[],
-            device_owner='compute', device_id='d1',
-            binding_profile=None, binding_vnic_type='ovs',
-            version=self.dbversion)
 
     def test_delete_port_postcommit(self):
         tenant_id = 'test'
@@ -335,6 +280,50 @@ class TestDFMechDriverRevision(test_plugin.Ml2PluginV2TestCase):
         self.nb_api.delete_subnet.assert_called_with(
             subnet_id, network['id'], subnet['tenant_id'],
             nw_version=new_network['revision_number'])
+
+    def test_create_port_revision(self):
+        with self.port(name='port', device_owner='fake_owner',
+                       device_id='fake_id') as p:
+            port = p['port']
+            self.assertGreater(port['revision_number'], 0)
+            self.nb_api.create_lport.assert_called_with(
+                id=port['id'],
+                lswitch_id=port['network_id'],
+                topic=port['tenant_id'],
+                macs=[port['mac_address']], ips=mock.ANY,
+                subnets=mock.ANY, name=port['name'],
+                enabled=port['admin_state_up'],
+                chassis=mock.ANY, tunnel_key=mock.ANY,
+                version=port['revision_number'],
+                device_owner=port['device_owner'],
+                device_id=port['device_id'],
+                security_groups=mock.ANY,
+                port_security_enabled=mock.ANY,
+                allowed_address_pairs=mock.ANY,
+                binding_profile=mock.ANY,
+                binding_vnic_type=mock.ANY)
+
+            data = {'port': {'name': 'updated'}}
+            req = self.new_update_request('ports', data, port['id'])
+            req.get_response(self.api)
+            prev_version = port['revision_number']
+            port = self.driver.get_port(self.context, port['id'])
+            self.assertGreater(port['revision_number'], prev_version)
+            self.nb_api.update_lport.assert_called_with(
+                id=port['id'],
+                topic=port['tenant_id'],
+                macs=[port['mac_address']], ips=mock.ANY,
+                subnets=mock.ANY, name=port['name'],
+                enabled=port['admin_state_up'],
+                chassis=mock.ANY,
+                version=port['revision_number'],
+                device_owner=port['device_owner'],
+                device_id=port['device_id'],
+                security_groups=mock.ANY,
+                port_security_enabled=mock.ANY,
+                allowed_address_pairs=mock.ANY,
+                binding_profile=mock.ANY,
+                binding_vnic_type=mock.ANY)
 
 
 class FakeNetworkContext(object):
