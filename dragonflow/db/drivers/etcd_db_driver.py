@@ -16,10 +16,12 @@ from contextlib import contextmanager
 import etcd
 import eventlet
 from oslo_log import log
+import six
 import urllib3
 from urllib3 import connection
 from urllib3 import exceptions
 
+from dragonflow._i18n import _LE
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
 
@@ -87,6 +89,21 @@ def _error_catcher(self):
 urllib3.HTTPResponse._error_catcher = _error_catcher
 
 
+def _check_valid_host(host_str):
+    return True if ':' in host_str and host_str[-1] != ':' else False
+
+
+def _parse_hosts(hosts):
+    host_ports = []
+    for host_str in hosts:
+        if _check_valid_host(host_str):
+            host_port = host_str.strip().split(':')
+            host_ports.append((host_port[0], int(host_port[1])))
+        else:
+            LOG.error(_LE("The host string %s is invalid."), host_str)
+    return tuple(host_ports)
+
+
 class EtcdDbDriver(db_api.DbApi):
 
     def __init__(self):
@@ -97,7 +114,11 @@ class EtcdDbDriver(db_api.DbApi):
         self.pool = eventlet.GreenPool(size=1)
 
     def initialize(self, db_ip, db_port, **args):
-        self.client = etcd.Client(host=db_ip, port=db_port)
+        hosts = _parse_hosts(args['config'].remote_db_hosts)
+        if hosts:
+            self.client = etcd.Client(host=hosts, allow_reconnect=True)
+        else:
+            self.client = etcd.Client(host=db_ip, port=db_port)
 
     def support_publish_subscribe(self):
         return True
