@@ -82,11 +82,7 @@ class DHCPApp(df_base_app.DFlowApp):
         self.switch_dhcp_ip_map = collections.defaultdict(set)
 
     def switch_features_handler(self, ev):
-        self._install_dhcp_broadcast_match_flow()
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.DHCP_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.L2_LOOKUP_TABLE)
+        self._install_flows_on_switch_up()
         # TODO(gampel) handle network changes
 
     def packet_in_handler(self, event):
@@ -497,6 +493,20 @@ class DHCPApp(df_base_app.DFlowApp):
                                   const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_MEDIUM,
                                   const.DHCP_TABLE, match=match)
+
+    def _install_flows_on_switch_up(self):
+        self._install_dhcp_broadcast_match_flow()
+        self.add_flow_go_to_table(self.get_datapath(),
+                                  const.DHCP_TABLE,
+                                  const.PRIORITY_DEFAULT,
+                                  const.L2_LOOKUP_TABLE)
+
+        for lswitch in self.db_store.get_lswitchs():
+            self.update_logical_switch(lswitch)
+
+        for port in self.db_store.get_ports():
+            if port.get_external_value('is_local'):
+                self.add_local_port(port)
 
     def _install_dhcp_unicast_match_flow(self, ip_addr, network_id):
         parser = self.get_datapath().ofproto_parser

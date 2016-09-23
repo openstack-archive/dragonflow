@@ -31,6 +31,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                                   const.L3_LOOKUP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
+        self._install_flows_on_switch_up()
 
     def add_router_port(self, router, router_port, local_network_id):
         datapath = self.get_datapath()
@@ -179,6 +180,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             match=match)
 
     def remove_router_port(self, router_port, local_network_id):
+
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
         tunnel_key = router_port.get_tunnel_key()
@@ -315,3 +317,14 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             out_port=ofproto.OFPP_ANY,
             out_group=ofproto.OFPG_ANY,
             match=match)
+
+    def _install_flows_on_switch_up(self):
+        for lrouter in self.db_store.get_routers():
+            for router_port in lrouter.get_ports():
+                local_network_id = self.db_store.get_network_id(
+                    router_port.get_lswitch_id(),
+                )
+                self.add_router_port(lrouter, router_port,
+                        local_network_id)
+        for lport in self.db_store.get_ports():
+            self._add_port(lport)
