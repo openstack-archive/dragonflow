@@ -16,6 +16,7 @@ from contextlib import contextmanager
 import etcd
 import eventlet
 from oslo_log import log
+import six
 import urllib3
 from urllib3 import connection
 from urllib3 import exceptions
@@ -87,6 +88,23 @@ def _error_catcher(self):
 urllib3.HTTPResponse._error_catcher = _error_catcher
 
 
+def _parse_hosts(hosts):
+    if isinstance(hosts, six.string_types):
+        host_port = hosts.strip().split(':')
+        return ((host_port[0], int(host_port[1])))
+    if isinstance(hosts, (dict)):
+        host_ports = []
+        for (h, p) in six.iteritems(hosts):
+            host_ports.append((h, int(p)))
+        return tuple(host_ports)
+    if isinstance(hosts, (list, set, tuple)):
+        host_ports = []
+        for host_str in hosts:
+            host_port = host_str.strip().split(':')
+            host_ports.append((host_port[0], int(host_port[1])))
+        return tuple(host_ports)
+
+
 class EtcdDbDriver(db_api.DbApi):
 
     def __init__(self):
@@ -97,7 +115,8 @@ class EtcdDbDriver(db_api.DbApi):
         self.pool = eventlet.GreenPool(size=1)
 
     def initialize(self, db_ip, db_port, **args):
-        self.client = etcd.Client(host=db_ip, port=db_port)
+        hosts = _parse_hosts(args['config'].remote_db_hosts)
+        self.client = etcd.Client(host=hosts, allow_reconnect=True)
 
     def support_publish_subscribe(self):
         return True
