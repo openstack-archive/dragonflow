@@ -55,12 +55,11 @@ binding_profile = {"port_key": "remote_port",
                    "host_ip": remote_chassis_ip}
 
 2. When the Neutron plugin finds it is a remote port by the binding_profile
-field in the create_port message, it will generate a specific chassis name
-for the remote port, store the lport in DF DB and publish the message with
-corresponding topic, if the lport belongs to some tenant, we could use
-tenant_id as the topic, the chassis name is shown below:
-
-chassis_name = "RemoteChassis:remote_chassis_ip"
+field in the create_port message, it will assign the remote_chassis_ip as
+the chassis name of the remote port, because the remote_chassis_ip should be
+unique in DC network. Then it will store the lport in DF DB and publish the
+message with corresponding topic, if the lport belongs to some tenant, we
+could use tenant_id as the topic.
 
 DF Local Controller
 -------------------
