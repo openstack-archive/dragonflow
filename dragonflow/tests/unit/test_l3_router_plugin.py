@@ -42,10 +42,12 @@ class DFL3RouterPluginBase(test_plugin.Ml2PluginV2TestCase):
     def setUp(self):
         lock_db = mock.patch('dragonflow.db.neutron.lockedobjects_db').start()
         lock_db.wrap_db_lock = empty_wrapper
+        nbapi_instance = mock.patch('dragonflow.db.api_nb.NbApi').start()
+        nbapi_instance.get_instance.return_value = mock.MagicMock()
         super(DFL3RouterPluginBase, self).setUp()
         self.l3p = (manager.NeutronManager.
                     get_service_plugins()['L3_ROUTER_NAT'])
-        self.nb_api = self.l3p.nb_api = mock.MagicMock()
+        self.nb_api = self.l3p.nb_api
         self.ctx = nctx.get_admin_context()
 
 
