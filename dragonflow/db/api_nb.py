@@ -64,13 +64,12 @@ class NbApi(object):
                 nb_driver,
                 use_pubsub=cfg.CONF.df.enable_df_pub_sub,
                 is_neutron_server=is_neutron_server)
-            nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                              db_port=cfg.CONF.df.remote_db_port)
+            nb_api.initialize()
             _nb_api = nb_api
         return _nb_api
 
-    def initialize(self, db_ip='127.0.0.1', db_port=4001):
-        self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
+    def initialize(self):
+        self.driver.initialize(config=cfg.CONF.df)
         if self.use_pubsub:
             self.publisher = self._get_publisher()
             self.subscriber = self._get_subscriber()

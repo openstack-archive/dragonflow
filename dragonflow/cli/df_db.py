@@ -137,9 +137,7 @@ def main():
     db_driver = df_utils.load_driver(
         cfg.CONF.df.nb_db_class,
         df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-    db_driver.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                         db_port=cfg.CONF.df.remote_db_port,
-                         config=cfg.CONF.df)
+    db_driver.initialize(config=cfg.CONF.df)
 
     action = sys.argv[1]
 

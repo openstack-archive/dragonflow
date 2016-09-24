@@ -78,11 +78,7 @@ class PublisherService(object):
     def run(self):
         if self.multiproc_subscriber:
             self.multiproc_subscriber.daemonize()
-        self.db.initialize(
-            db_ip=cfg.CONF.df.remote_db_ip,
-            db_port=cfg.CONF.df.remote_db_port,
-            config=cfg.CONF.df
-        )
+        self.db.initialize(config=cfg.CONF.df)
         self._register_as_publisher()
         self._start_db_table_monitors()
         while True:

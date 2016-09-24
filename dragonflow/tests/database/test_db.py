@@ -166,10 +166,7 @@ def main():
         use_pubsub=cfg.CONF.df.enable_df_pub_sub,
         is_neutron_server=is_server,
     )
-    nb_api.initialize(
-        db_ip=cfg.CONF.df.remote_db_ip,
-        db_port=cfg.CONF.df.remote_db_port,
-    )
+    nb_api.initialize()
     if is_server:
         run_server(nb_api)
     else:

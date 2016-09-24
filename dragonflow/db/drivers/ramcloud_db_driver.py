@@ -24,10 +24,12 @@ class RamCloudDbDriver(db_api.DbApi):
         self.service_locator = None
         self.db_name = 'dragonflow'
 
-    def initialize(self, db_ip, db_port, **args):
+    def initialize(self, **args):
         self.client = ramcloud.RAMCloud()
-        self.service_locator = 'fast+udp:host=' + db_ip \
-                               + ',port=' + str(db_port) + ''
+        #todo:hujie temper code here
+        hosts = args['config'].remote_db_hosts.split(":")
+        self.service_locator = 'fast+udp:host=' + hosts[0] \
+                               + ',port=' + str(hosts[1]) + ''
         self.client.connect(self.service_locator, self.db_name)
 
     def support_publish_subscribe(self):

@@ -54,9 +54,10 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
     def initialize(self):
         # find a publisher server node
         super(RedisPublisherAgent, self).initialize()
+        #todo:hujie temper code here
+        hosts = cfg.CONF.df.remote_db_hosts.split(":")
         self.redis_mgt = redis_mgt.RedisMgt.get_instance(
-            cfg.CONF.df.remote_db_ip,
-            cfg.CONF.df.remote_db_port)
+            hosts[0], hosts[1])
         self._update_client()
 
     def _update_client(self):
@@ -123,9 +124,10 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
     def initialize(self, callback):
         # find a subscriber server node and run daemon
         super(RedisSubscriberAgent, self).initialize(callback)
+        #todo:hujie temper code here
+        hosts = cfg.CONF.df.remote_db_hosts.split(":")
         self.redis_mgt = redis_mgt.RedisMgt.get_instance(
-            cfg.CONF.df.remote_db_ip,
-            cfg.CONF.df.remote_db_port)
+            hosts[0], hosts[1])
         self._update_client()
 
     def process_ha(self):
