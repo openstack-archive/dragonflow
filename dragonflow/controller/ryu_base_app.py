@@ -15,6 +15,7 @@
 
 import time
 
+from ofpstr import ofp4
 from oslo_config import cfg
 from oslo_log import log
 from ryu.controller.handler import CONFIG_DISPATCHER
@@ -23,7 +24,6 @@ from ryu.controller.handler import set_ev_handler
 from ryu.controller import ofp_event
 from ryu.controller.ofp_handler import OFPHandler
 from ryu.ofproto import ofproto_v1_3
-from ryu import utils
 
 from dragonflow._i18n import _LE, _LI
 from dragonflow.controller.dispatcher import AppDispatcher
@@ -176,6 +176,6 @@ class RyuDFAdapter(OFPHandler):
     def OF_error_msg_handler(self, event):
         msg = event.msg
         LOG.error(_LE('OFPErrorMsg received: type=0x%(type)02x '
-                      'code=0x%(code)02x message=%(msg)s'),
+                      'code=0x%(code)02x message="%(msg)s"'),
                   {'type': msg.type, 'code': msg.code,
-                   'msg': utils.hex_array(msg.data)})
+                   'msg': ofp4.mod2str(msg.data)})
