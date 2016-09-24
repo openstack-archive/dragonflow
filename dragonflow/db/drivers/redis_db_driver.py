@@ -13,11 +13,8 @@
 import re
 
 from oslo_log import log
-import redis
-from redis.exceptions import (
-    ConnectionError,
-    ResponseError,
-)
+from redis import client as redis_client
+from redis import exceptions
 import six
 
 from dragonflow._i18n import _LE, _LW
@@ -50,7 +47,7 @@ class RedisDbDriver(db_api.DbApi):
                 remote_ip_port = remote['ip_port']
                 ip_port = remote_ip_port.split(':')
                 self.clients[remote_ip_port] = \
-                    redis.client.StrictRedis(host=ip_port[0], port=ip_port[1])
+                    redis_client.StrictRedis(host=ip_port[0], port=ip_port[1])
 
     def support_publish_subscribe(self):
         return True
@@ -116,12 +113,12 @@ class RedisDbDriver(db_api.DbApi):
                     asking = False
 
                 return client.execute_command(oper, *arg)
-            except ConnectionError as e:
+            except exceptions.ConnectionError as e:
                 self._handle_db_conn_error(ip_port, local_key)
                 LOG.exception(_LE("connection error while sending "
                                   "request to db: %(e)s") % {'e': e})
                 raise e
-            except ResponseError as e:
+            except exceptions.ResponseError as e:
                 resp = str(e).split(' ')
                 if 'ASK' in resp[0]:
                     # one-time flag to force a node to serve a query about an
@@ -309,8 +306,8 @@ class RedisDbDriver(db_api.DbApi):
             if self.clients[ip_port] is None:
                 return False
             self.clients[ip_port].get(None)
-        except (redis.exceptions.ConnectionError,
-                redis.exceptions.BusyLoadingError):
+        except (exceptions.ConnectionError,
+                exceptions.BusyLoadingError):
             return False
         return True
 
