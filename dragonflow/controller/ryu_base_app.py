@@ -15,6 +15,7 @@
 
 import time
 
+from ofpstr import ofp4
 from oslo_config import cfg
 from oslo_log import log
 from ryu.controller.handler import CONFIG_DISPATCHER
@@ -176,6 +177,6 @@ class RyuDFAdapter(OFPHandler):
     def OF_error_msg_handler(self, event):
         msg = event.msg
         LOG.error(_LE('OFPErrorMsg received: type=0x%(type)02x '
-                      'code=0x%(code)02x message=%(msg)s'),
+                      'code=0x%(code)02x message="%(msg)s"'),
                   {'type': msg.type, 'code': msg.code,
-                   'msg': utils.hex_array(msg.data)})
+                   'msg': ofp4.mod2str(msg.data)})

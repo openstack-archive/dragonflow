@@ -125,6 +125,8 @@ function _neutron_ovs_install_ovs {
         echo "Installing OVS and dependent packages via package manager"
         install_package $(get_packages "openvswitch")
     fi
+    # Install Openflow message parser
+    sudo pip install ofpstr
 }
 
 function install_ovs {
