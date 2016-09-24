@@ -96,8 +96,11 @@ class EtcdDbDriver(db_api.DbApi):
         self.notify_callback = None
         self.pool = eventlet.GreenPool(size=1)
 
-    def initialize(self, db_ip, db_port, **args):
-        self.client = etcd.Client(host=db_ip, port=db_port)
+    def initialize(self, **args):
+        #todo:hujie wait for this patch be merged:
+        # https://review.openstack.org/#/c/375328/
+        hosts = args['config'].remote_db_hosts.split(":")
+        self.client = etcd.Client(host=hosts[0], port=hosts[1])
 
     def support_publish_subscribe(self):
         return True

@@ -37,8 +37,6 @@ ML2_APPS_LIST=${ML2_APPS_LIST:-$ML2_APPS_LIST_DEFAULT}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 
 # How to connect to the database storing the virtual topology.
-REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
-REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
 REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
 
 # OVS bridge definition
@@ -159,8 +157,6 @@ function configure_df_plugin {
         fi
 
         NEUTRON_CONF=/etc/neutron/neutron.conf
-        iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
-        iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
         iniset $NEUTRON_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"
@@ -218,8 +214,6 @@ function configure_df_plugin {
 
         cp $NEUTRON_DIR/etc/neutron.conf.sample $NEUTRON_CONF
 
-        iniset $NEUTRON_CONF df remote_db_ip "$REMOTE_DB_IP"
-        iniset $NEUTRON_CONF df remote_db_port $REMOTE_DB_PORT
         iniset $NEUTRON_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
         iniset $NEUTRON_CONF df nb_db_class "$NB_DRIVER_CLASS"
         iniset $NEUTRON_CONF df local_ip "$HOST_IP"

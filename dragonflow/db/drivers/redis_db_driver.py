@@ -37,9 +37,11 @@ class RedisDbDriver(db_api.DbApi):
         self.remote_server_lists = []
         self.redis_mgt = None
 
-    def initialize(self, db_ip, db_port, **args):
+    def initialize(self, **args):
         # get remote ip port list
-        self.redis_mgt = redis_mgt.RedisMgt.get_instance(db_ip, db_port)
+        #todo:hujie temper code here
+        hosts = args['config'].remote_db_hosts.split(":")
+        self.redis_mgt = redis_mgt.RedisMgt.get_instance(hosts[0], hosts[1])
         self._update_server_list()
 
     def _update_server_list(self):

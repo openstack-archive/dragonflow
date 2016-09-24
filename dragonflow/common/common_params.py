@@ -16,12 +16,6 @@ from dragonflow._i18n import _
 from neutron.extensions import portbindings
 
 df_opts = [
-    cfg.IPOpt('remote_db_ip',
-              default='127.0.0.1',
-              help=_('The remote db server ip address')),
-    cfg.PortOpt('remote_db_port',
-                default=4001,
-                help=_('The remote db server port')),
     cfg.ListOpt('remote_db_hosts',
                 default=['$remote_db_ip:$remote_db_port'],
                 help=_('Remote DB cluster host:port pairs.')),

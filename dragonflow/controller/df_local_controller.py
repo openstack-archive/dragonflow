@@ -81,8 +81,7 @@ class DfLocalController(object):
         self.integration_bridge = cfg.CONF.df.integration_bridge
 
     def run(self):
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                               db_port=cfg.CONF.df.remote_db_port)
+        self.nb_api.initialize()
         self.vswitch_api.initialize(self.nb_api)
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)

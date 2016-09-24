@@ -45,13 +45,9 @@ class ZookeeperDbDriver(db_api.DbApi):
     def __init__(self):
         super(ZookeeperDbDriver, self).__init__()
         self.client = None
-        self.db_ip = None
-        self.db_port = None
         self.config = None
 
-    def initialize(self, db_ip, db_port, **args):
-        self.db_ip = db_ip
-        self.db_port = db_port
+    def initialize(self, **args):
         self.config = args['config']
 
     def _lazy_initialize(self):

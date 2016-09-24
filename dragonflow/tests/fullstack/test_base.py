@@ -60,8 +60,7 @@ class DFTestBase(base.BaseTestCase):
             cfg.CONF.df.nb_db_class,
             df_utils.DF_NB_DB_DRIVER_NAMESPACE)
         self.nb_api = api_nb.NbApi(db_driver)
-        self.nb_api.initialize(db_ip=self.conf.remote_db_ip,
-            db_port=self.conf.remote_db_port)
+        self.nb_api.initialize()
         self.local_ip = self.conf.local_ip
         self.__objects_to_close = []
         if cfg.CONF.df.enable_selective_topology_distribution:

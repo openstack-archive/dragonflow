@@ -141,8 +141,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 nb_driver,
                 use_pubsub=cfg.CONF.df.enable_df_pub_sub,
                 is_neutron_server=True)
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                               db_port=cfg.CONF.df.remote_db_port)
+        self.nb_api.initialize()
 
         self._set_base_port_binding()
 
