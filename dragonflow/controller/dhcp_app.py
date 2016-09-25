@@ -403,6 +403,11 @@ class DHCPApp(df_base_app.DFlowApp):
         if self.get_datapath() is None:
             return
 
+        if netaddr.valid_ipv4(lport.get_ip()) is False:
+            LOG.info(_LE("No support for non IpV4 protocol"))
+            return
+
+
         lport_id = lport.get_id()
         tunnel_key = lport.get_tunnel_key()
         ofport = lport.get_external_value('ofport')
