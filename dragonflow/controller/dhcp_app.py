@@ -100,7 +100,7 @@ class DHCPApp(df_base_app.DFlowApp):
         if is_pkt_ipv4:
             pkt_ip = pkt.get_protocol(ipv4.ipv4)
         else:
-            LOG.error(_LE("No support for non IpV4 protocol"))
+            LOG.warning(_LE("No support for non IPv4 protocol"))
             return
 
         if pkt_ip is None:
@@ -373,6 +373,9 @@ class DHCPApp(df_base_app.DFlowApp):
         return self.default_interface_mtu
 
     def remove_local_port(self, lport):
+        if not netaddr.valid_ipv4(lport.get_ip()):
+            LOG.warning(_LE("No support for non IPv4 protocol"))
+            return
 
         tunnel_key = lport.get_tunnel_key()
         if tunnel_key in self.local_tunnel_to_pid_map:
@@ -401,6 +404,10 @@ class DHCPApp(df_base_app.DFlowApp):
     def add_local_port(self, lport):
         network_id = lport.get_external_value('local_network_id')
         if self.get_datapath() is None:
+            return
+
+        if not netaddr.valid_ipv4(lport.get_ip()):
+            LOG.warning(_LE("No support for non IPv4 protocol"))
             return
 
         lport_id = lport.get_id()
