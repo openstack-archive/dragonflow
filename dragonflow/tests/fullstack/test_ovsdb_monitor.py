@@ -12,7 +12,8 @@
 
 from neutron.agent.linux.utils import wait_until_true
 
-from dragonflow.db.drivers import ovsdb_vswitch_impl
+from dragonflow.ovsdb import impl_idl
+from dragonflow.ovsdb import vswitch_impl
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -24,8 +25,8 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         self.set_wanted_vms = set()
         # Reset the ovsdb connection, as we want a new idl connection to
         # notify event to the nb_api of current test case.
-        ovsdb_vswitch_impl.DFOvsdbApi.ovsdb_connection = None
-        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.local_ip)
+        impl_idl.DFOvsdbApi.ovsdb_connection = None
+        self.vswitch_api = vswitch_impl.OvsApi(self.local_ip)
         self.vswitch_api.initialize(self.nb_api)
 
     def tearDown(self):
