@@ -1,7 +1,3 @@
-# Copyright (c) 2015 OpenStack Foundation.
-#
-# All Rights Reserved.
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -15,51 +11,6 @@
 #    under the License.
 
 from dragonflow.common import constants
-
-
-class SwitchApi(object):
-
-    def sync(self):
-        pass
-
-    def set_controllers(self, bridge, targets):
-        pass
-
-    def del_controller(self, bridge):
-        pass
-
-    def get_tunnel_ports(self):
-        pass
-
-    def add_tunnel_port(self, chassis):
-        pass
-
-    def delete_port(self, switch_port):
-        pass
-
-    def get_logical_ports_to_ofport(self):
-        pass
-
-    def get_chassis_ids_to_ofport(self):
-        pass
-
-    def get_local_port_ids(self):
-        pass
-
-
-class SwitchPort(object):
-
-    def get_name(self):
-        pass
-
-    def get_id(self):
-        pass
-
-
-class TunnelPort(SwitchPort):
-
-    def get_chassis_id(self):
-        pass
 
 
 class LocalInterface(object):
@@ -171,3 +122,17 @@ class LocalInterface(object):
                     self.mac_in_use,
                     self.remote_ip,
                     self.tunnel_type))
+
+
+class OvsdbTunnelPort(object):
+
+    def __init__(self, name, chassis_id):
+        super(OvsdbTunnelPort, self).__init__()
+        self.name = name
+        self.chassis_id = chassis_id
+
+    def get_chassis_id(self):
+        return self.chassis_id
+
+    def get_name(self):
+        return self.name
