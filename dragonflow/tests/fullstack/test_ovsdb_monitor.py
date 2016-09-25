@@ -12,7 +12,7 @@
 
 from neutron.agent.linux.utils import wait_until_true
 
-from dragonflow.db.drivers import ovsdb_vswitch_impl
+from dragonflow.ovsdb import vswitch_impl
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -22,7 +22,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
     def setUp(self):
         super(TestOvsdbMonitor, self).setUp()
         self.set_wanted_vms = set()
-        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.local_ip)
+        self.vswitch_api = vswitch_impl.OvsApi(self.local_ip)
         self.vswitch_api.initialize(self.nb_api)
 
     def tearDown(self):
