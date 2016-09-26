@@ -139,6 +139,8 @@ class OvsDBParser(object):
             for item in fs:
                 if item.startswith('external_ids'):
                     res['external_ids'] = self._parse_one_item(item)
+                elif item.startswith('options'):
+                    res['options'] = self._parse_one_item(item)
                 elif item.startswith('ofport '):
                     res['ofport'] = self._parse_one_item(item)
                 elif item.startswith('name'):
@@ -149,6 +151,16 @@ class OvsDBParser(object):
     def list_interfaces(self, specify_interface=None):
         interfaces = self._ovsdb_list_intefaces(specify_interface)
         return self._parse_ovsdb_interfaces(interfaces)
+
+    def get_tunnel_ofport(self, chassis_ip):
+        interfaces = self.list_interfaces()
+        for item in interfaces:
+            options = item.get('options', None)
+            if options:
+                remote_ip = options.get('remote_ip', None)
+                if remote_ip == chassis_ip:
+                    return item.get('ofport', None)
+        return None
 
     def get_ofport(self, port_id):
         interfaces = self.list_interfaces()
