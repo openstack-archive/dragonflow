@@ -15,7 +15,7 @@ import os
 import sys
 import time
 
-from collections import deque
+import collections
 import eventlet
 import greenlet
 from neutron_lib import constants as n_const
@@ -184,7 +184,7 @@ class wrap_func_retry(object):
 class RateLimiter(object):
     def __init__(self, max_rate=3, time_unit=1, **kwargs):
         self.time_unit = time_unit
-        self.deque = deque(maxlen=max_rate)
+        self.deque = collections.deque(maxlen=max_rate)
 
     def __call__(self):
         if self.deque.maxlen == len(self.deque):

@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from collections import defaultdict
+import collections
 import copy
 import threading
 
@@ -73,7 +73,7 @@ class TenantDbStore(object):
 class DbStore(object):
 
     def __init__(self):
-        self.tenant_dbs = defaultdict(TenantDbStore)
+        self.tenant_dbs = collections.defaultdict(TenantDbStore)
         self.networks = {}
 
     def get(self, table_name, key, topic):
