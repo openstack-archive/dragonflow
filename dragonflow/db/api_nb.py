@@ -947,6 +947,15 @@ class LogicalRouter(DbStoreObject):
     def get_version(self):
         return self.lrouter['version']
 
+    def is_distributed(self):
+        return self.lrouter.get('distributed', True)
+
+    def get_routes(self):
+        return self.lrouter.get('routes', [])
+
+    def get_external_gateway(self):
+        return self.lrouter.get('gateway', {})
+
     def __str__(self):
         return self.lrouter.__str__()
 
