@@ -360,6 +360,7 @@ class DfLocalController(object):
             self._add_new_lrouter(lrouter)
             return
         self._update_router_interfaces(old_lrouter, lrouter)
+        self._update_router_attributes(old_lrouter, lrouter)
         self.db_store.update_router(lrouter.get_id(), lrouter)
 
     def router_deleted(self, lrouter_id):
@@ -447,6 +448,27 @@ class DfLocalController(object):
         for router_to_remove in routers_to_remove:
             self.router_deleted(router_to_remove)
 
+    def _update_router_attributes(self, old_router, new_router):
+        old_routes = old_router.get_routes()
+        new_routes = new_router.get_routes()
+        for new_route in new_routes:
+            if new_route not in old_routes:
+                self._add_router_route(new_router, new_route)
+            else:
+                old_routes.remove(new_route)
+        for old_route in old_routes:
+            self._delete_router_route(new_router, old_route)
+
+    def _add_router_route(self, router, route):
+        LOG.info(_LI("Adding new logical router route = %s"), route)
+        self.open_flow_app.notify_add_router_route(
+            router, route)
+
+    def _delete_router_route(self, router, route):
+        LOG.info(_LI("Removing logical router route = %s"), route)
+        self.open_flow_app.notify_remove_router_route(
+            router, route)
+
     def _update_router_interfaces(self, old_router, new_router):
         new_router_ports = new_router.get_ports()
         old_router_ports = old_router.get_ports()
@@ -480,6 +502,9 @@ class DfLocalController(object):
     def _add_new_lrouter(self, lrouter):
         for new_port in lrouter.get_ports():
             self._add_new_router_port(lrouter, new_port)
+        routes = lrouter.get_routes()
+        for route in routes:
+            self._add_router_route(lrouter, route)
         self.db_store.update_router(lrouter.get_id(), lrouter)
 
     def read_security_groups(self):
