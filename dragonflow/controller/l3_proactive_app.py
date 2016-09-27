@@ -39,7 +39,58 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
 
-    def add_router_port(self, router, router_port, local_network_id):
+    def router_created(self, router):
+        self._add_new_lrouter(router)
+
+    def router_updated(self, router, original_router):
+        if original_router is None:
+            LOG.info(_LI("Logical Router created = %s"), router)
+            self._add_new_lrouter(router)
+            return
+        LOG.info(_LI("Logical router updated = %s"), router)
+        self._update_router_interfaces(original_router, router)
+        self._update_router_attributes(original_router, router)
+
+    def router_deleted(self, router):
+        for port in router.get_ports():
+            self._delete_router_port(port)
+
+    def _update_router_attributes(self, old_router, new_router):
+        old_routes = old_router.get_routes()
+        new_routes = new_router.get_routes()
+        for new_route in new_routes:
+            if new_route not in old_routes:
+                self._add_router_route(new_router, new_route)
+            else:
+                old_routes.remove(new_route)
+        for old_route in old_routes:
+            self._delete_router_route(new_router, old_route)
+
+    def _update_router_interfaces(self, old_router, new_router):
+        new_router_ports = new_router.get_ports()
+        old_router_ports = old_router.get_ports()
+        for new_port in new_router_ports:
+            if new_port not in old_router_ports:
+                self._add_new_router_port(new_router, new_port)
+            else:
+                old_router_ports.remove(new_port)
+
+        for old_port in old_router_ports:
+            self._delete_router_port(old_port)
+
+    def _add_new_lrouter(self, lrouter):
+        for new_port in lrouter.get_ports():
+            self._add_new_router_port(lrouter, new_port)
+
+        for route in lrouter.get_routes():
+            self._add_router_route(lrouter, route)
+
+    def _add_new_router_port(self, router, router_port):
+        LOG.info(_LI("Adding new logical router interface = %s"),
+                 router_port)
+        local_network_id = self.db_store.get_network_id(
+            router_port.get_lswitch_id()
+        )
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
@@ -191,8 +242,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                 self._del_from_route_cache(ROUTE_ADDED, router_id, route_dict)
                 self._add_to_route_cache(ROUTE_TO_ADD, router_id, route_dict)
 
-    def _add_router_route(self, router, route):
-
+    def _add_route_process(self, router, route):
         datapath = self.get_datapath()
         ofproto = self.get_datapath().ofproto
         parser = datapath.ofproto_parser
@@ -262,17 +312,17 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                                     ipv6_dst=(dst_network, dst_netmask))
         return match
 
-    def add_router_route(self, router, route):
-        LOG.info(_LI('Add extra route %(route)s for router %(router)s') %
+    def _add_router_route(self, router, route):
+        LOG.info(_LI('Add extra route %(route)s for router %(router)s'),
                  {'route': route, 'router': str(router)})
 
-        added = self._add_router_route(router, route)
+        added = self._add_route_process(router, route)
         if added:
             self._add_to_route_cache(ROUTE_ADDED, router, route)
         else:
             self._add_to_route_cache(ROUTE_TO_ADD, router, route)
 
-    def _remove_router_route(self, router, route):
+    def _delete_route_process(self, router, route):
         datapath = self.get_datapath()
         ofproto = self.get_datapath().ofproto
         parser = datapath.ofproto_parser
@@ -306,11 +356,11 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         return
 
-    def remove_router_route(self, router, route):
+    def _delete_router_route(self, router, route):
         LOG.debug('Delete extra route %(route)s from router %(router)s' %
                  {'route': route, 'router': str(router)})
 
-        self._remove_router_route(router, route)
+        self._delete_route_process(router, route)
         self._del_from_route_cache(ROUTE_ADDED, router.get_id(), route)
         self._del_from_route_cache(ROUTE_TO_ADD, router.get_id(), route)
 
@@ -376,7 +426,13 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def remove_router_port(self, router_port, local_network_id):
+    def _delete_router_port(self, router_port):
+        LOG.info(_LI("Removing logical router interface = %s"),
+                 router_port)
+        local_network_id = self.db_store.get_network_id(
+            router_port.get_lswitch_id()
+        )
+
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
         tunnel_key = router_port.get_tunnel_key()
