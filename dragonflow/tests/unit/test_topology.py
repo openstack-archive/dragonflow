@@ -127,3 +127,26 @@ class TestTopology(test_app_base.DFAppTestBase):
             calls, any_order=True)
         self.assertEqual(2, self.controller.logical_port_updated.call_count)
         self.assertEqual(1, self.nb_api.subscriber.register_topic.call_count)
+
+    def test_db_sync(self):
+        self.nb_api.get_all_logical_switches.return_value = [
+            test_app_base.fake_logic_switch1]
+        self.nb_api.get_all_logical_ports.return_value = [
+            test_app_base.fake_local_port1]
+
+        self.controller.logical_port_updated = mock.Mock()
+        self.controller.logical_switch_updated = mock.Mock()
+        self.controller.security_group_updated = mock.Mock()
+        self.controller.router_updated = mock.Mock()
+        self.controller.floatingip_updated = mock.Mock()
+        df_db_objects_refresh.initialize_object_refreshers(self.controller)
+
+        # Verify the db sync will work for topology
+        self.controller.run_sync()
+        self.controller.logical_port_updated.assert_called_once_with(
+            test_app_base.fake_local_port1)
+        self.controller.logical_switch_updated.assert_called_once_with(
+            test_app_base.fake_logic_switch1)
+        self.assertFalse(self.controller.security_group_updated.called)
+        self.assertFalse(self.controller.router_updated.called)
+        self.assertFalse(self.controller.floatingip_updated.called)
