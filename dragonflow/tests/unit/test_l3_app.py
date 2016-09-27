@@ -21,7 +21,7 @@ from oslo_serialization import jsonutils
 import ryu.ofproto.ofproto_v1_3_parser as parser
 
 from dragonflow.controller.common import constants as const
-from dragonflow.controller.l3_proactive_app import L3ProactiveApp
+from dragonflow.controller.l3_app import L3App
 from dragonflow.db.api_nb import LogicalRouter, LogicalPort, LogicalSwitch
 from dragonflow.db.db_store import DbStore
 from dragonflow.tests import base as tests_base
@@ -32,10 +32,10 @@ stream_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stream_handler)
 
 
-class TestL3ProactiveApp(tests_base.BaseTestCase):
+class TestL3App(tests_base.BaseTestCase):
 
     def setUp(self):
-        super(TestL3ProactiveApp, self).setUp()
+        super(TestL3App, self).setUp()
         self.db_store = DbStore()
         self.mock_api = Mock(name="api")
         self.mock_nb_api = Mock(name="nb_api")
@@ -46,7 +46,7 @@ class TestL3ProactiveApp(tests_base.BaseTestCase):
         self.mock_mod_flow = Mock(name='mod_flow')
         mock_api.get_datapatch.return_value = mock_datapath
 
-        self.app = L3ProactiveApp(self.mock_api, self.db_store,
+        self.app = L3App(self.mock_api, self.db_store,
                                   self.mock_vswitch_api,
                                   self.mock_nb_api)
         self.app.mod_flow = self.mock_mod_flow
@@ -146,22 +146,14 @@ class TestL3ProactiveApp(tests_base.BaseTestCase):
 
     def test_add_router(self):
         self.app.router_updated(self.router1)
-        assert self.mock_mod_flow.call_count == 3
+        print self.mock_mod_flow.mock_calls
+        assert self.mock_mod_flow.call_count == 2
         args, kwargs = self.mock_mod_flow.call_args
         assert kwargs['table_id'] == const.L2_LOOKUP_TABLE
-
-    def test_update_router_add_route(self):
-        self.db_store.update_router("router1", self.router1, topic='tenant1')
-        self.app.router_updated(self.router1_with_routes)
-        assert self.mock_mod_flow.call_count == 1
-
-    def test_update_router_del_route(self):
-        self.db_store.update_router("router1", self.router1_with_routes, topic='tenant1')
-        self.app.router_updated(self.router1)
-        assert self.mock_mod_flow.call_count == 1
 
     def test_delete_router(self):
         self.db_store.update_router("router1", self.router1_with_routes,
                                     topic='tenant1')
         self.app.router_deleted('router1')
-        assert self.mock_mod_flow.call_count == 4
+        print self.mock_mod_flow.mock_calls
+        assert self.mock_mod_flow.call_count == 3
