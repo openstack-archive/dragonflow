@@ -221,28 +221,62 @@ class Topology(object):
             self.nb_api.subscriber.unregister_topic(topic)
             self._clear_tenant_topology(topic)
 
-    def _pull_tenant_topology_from_db(self, tenant_id, lport_id):
+    def _pull_tenant_topology_from_db(self, tenant_id=None, lport_id=None):
+        """Pull resources from nb db and apply to local
+
+        :param tenant_id: The id of tenant, which will be pulled from nb db.
+                          If not speicified, all tenants will be pulled from
+                          nb db.
+        :param lport_id:  The id of logical port, which will not be applied to
+                          local. If not specified, all ports will be applied
+                          to local.
+        """
+        switches_to_remove = self.db_store.get_lswitch_keys(tenant_id)
         switches = self.nb_api.get_all_logical_switches(tenant_id)
         for switch in switches:
             self.controller.logical_switch_updated(switch)
+            if switch.get_id() in switches_to_remove:
+                switches_to_remove.remove(switch.get_id())
+        for switch_to_remove in switches_to_remove:
+            self.controller.logical_switch_deleted(switch_to_remove)
 
-        sg_groups = self.nb_api.get_security_groups(tenant_id)
-        for sg_group in sg_groups:
-            self.controller.security_group_updated(sg_group)
+        sgs_to_remove = self.db_store.get_security_group_keys(tenant_id)
+        sgs = self.nb_api.get_security_groups(tenant_id)
+        for sg in sgs:
+            self.controller.security_group_updated(sg)
+            if sg.get_id() in sgs_to_remove:
+                sgs_to_remove.remove(sg.get_id())
+        for sg_to_remove in sgs_to_remove:
+            self.controller.security_group_deleted(sg_to_remove)
 
+        ports_to_remove = self.db_store.get_port_keys(tenant_id)
         ports = self.nb_api.get_all_logical_ports(tenant_id)
         for port in ports:
-            if port.get_id() == lport_id:
+            if port.get_id() in ports_to_remove:
+                ports_to_remove.remove(port.get_id())
+            if lport_id and port.get_id() == lport_id:
                 continue
             self.controller.logical_port_updated(port)
+        for port_to_remove in ports_to_remove:
+            self.controller.logical_port_deleted(port_to_remove)
 
+        routers_to_remove = self.db_store.get_router_keys(tenant_id)
         routers = self.nb_api.get_routers(tenant_id)
         for router in routers:
             self.controller.router_updated(router)
+            if router.get_id() in routers_to_remove:
+                routers_to_remove.remove(router.get_id())
+        for router_to_remove in routers_to_remove:
+            self.controller.router_deleted(router_to_remove)
 
+        fips_to_remove = self.db_store.get_floatingip_keys(tenant_id)
         floating_ips = self.nb_api.get_floatingips(tenant_id)
         for floating_ip in floating_ips:
             self.controller.floatingip_updated(floating_ip)
+            if floating_ip.get_id() in fips_to_remove:
+                fips_to_remove.remove(floating_ip.get_id())
+        for fip_to_remove in fips_to_remove:
+            self.controller.floatingip_deleted(fip_to_remove)
 
     def _clear_tenant_topology(self, tenant_id):
         switches = self.db_store.get_lswitchs()
@@ -276,3 +310,11 @@ class Topology(object):
             lport = self.nb_api.get_logical_port(port_id, topic)
 
         return lport
+
+    def sync_topology_with_db(self):
+        if self.enable_selective_topo_dist:
+            for topic in self.topic_subscribed:
+                self._pull_tenant_topology_from_db(topic)
+        else:
+            # All tenants are in one topology.
+            self._pull_tenant_topology_from_db()
