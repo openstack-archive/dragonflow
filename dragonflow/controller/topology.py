@@ -229,6 +229,12 @@ class Topology(object):
             self.nb_api.subscriber.unregister_topic(topic)
             self._clear_tenant_topology(topic)
 
+    def get_subscribed_topics(self):
+        if not self.enable_selective_topo_dist:
+            return set()
+
+        return set(self.topic_subscribed)
+
     def _pull_tenant_topology_from_db(self, tenant_id):
         df_db_objects_refresh.sync_local_cache_from_nb_db({tenant_id})
 
