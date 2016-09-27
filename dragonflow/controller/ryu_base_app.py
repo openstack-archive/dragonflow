@@ -80,6 +80,15 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def notify_remove_logical_switch(self, lswitch=None):
         self.dispatcher.dispatch('remove_logical_switch', lswitch=lswitch)
 
+    def notify_create_router(self, router=None):
+        self.dispatcher.dispatch('router_created', router=router)
+
+    def notify_update_router(self, router=None):
+        self.dispatcher.dispatch('router_updated', router=router)
+
+    def notify_delete_router(self, router=None):
+        self.dispatcher.dispatch('router_deleted', router=router)
+
     def notify_add_local_port(self, lport=None):
         self.dispatcher.dispatch('add_local_port', lport=lport)
 
@@ -102,28 +111,6 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
 
     def notify_update_bridge_port(self, lport=None):
         self.dispatcher.dispatch('update_bridge_port', lport=lport)
-
-    def notify_add_router_port(self, router=None, router_port=None,
-                               local_network_id=None):
-        self.dispatcher.dispatch('add_router_port', router=router,
-                                 router_port=router_port,
-                                 local_network_id=local_network_id)
-
-    def notify_remove_router_port(self,
-                                  router_port=None, local_network_id=None):
-        self.dispatcher.dispatch('remove_router_port',
-                                 router_port=router_port,
-                                 local_network_id=local_network_id)
-
-    def notify_add_router_route(self, router=None, route=None):
-        self.dispatcher.dispatch('add_router_route',
-                                 router=router,
-                                 route=route)
-
-    def notify_remove_router_route(self, router=None, route=None):
-        self.dispatcher.dispatch('remove_router_route',
-                                 router=router,
-                                 route=route)
 
     def notify_add_security_group_rule(self, secgroup, secgroup_rule):
         self.dispatcher.dispatch('add_security_group_rule',

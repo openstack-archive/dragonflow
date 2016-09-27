@@ -22,7 +22,7 @@ from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LE
+from dragonflow._i18n import _LE, _LI
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import icmp_responder
@@ -44,6 +44,38 @@ class L3App(df_base_app.DFlowApp):
                                   const.L3_LOOKUP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
+
+    def router_created(self, router):
+        self.router_updated(router)
+
+    def router_updated(self, router):
+        old_lrouter = self.db_store.get_router(router.get_id())
+        if old_lrouter is None:
+            LOG.info(_LI("Logical Router created = %s"), router)
+            self._add_new_lrouter(router)
+            return
+
+        self._update_router_interfaces(old_lrouter, router)
+
+    def router_deleted(self, router):
+        for port in router.get_ports():
+            self._delete_router_port(port)
+
+    def _update_router_interfaces(self, old_router, new_router):
+        new_router_ports = new_router.get_ports()
+        old_router_ports = old_router.get_ports()
+        for new_port in new_router_ports:
+            if new_port not in old_router_ports:
+                self._add_new_router_port(new_router, new_port)
+            else:
+                old_router_ports.remove(new_port)
+
+        for old_port in old_router_ports:
+            self._delete_router_port(old_port)
+
+    def _add_new_lrouter(self, lrouter):
+        for new_port in lrouter.get_ports():
+            self._add_new_router_port(lrouter, new_port)
 
     def packet_in_handler(self, event):
         msg = event.msg
@@ -135,7 +167,12 @@ class L3App(df_base_app.DFlowApp):
                 data=data)
         self.get_datapath().send_msg(out)
 
-    def add_router_port(self, router, router_port, local_network_id):
+    def _add_new_router_port(self, router, router_port):
+        LOG.info(_LI("Adding new logical router interface = %s"),
+                 router_port)
+        local_network_id = self.db_store.get_network_id(
+            router_port.get_lswitch_id()
+        )
         datapath = self.get_datapath()
         if datapath is None:
             return
@@ -266,7 +303,12 @@ class L3App(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def remove_router_port(self, router_port, local_network_id):
+    def _delete_router_port(self, router_port):
+        LOG.info(_LI("Removing logical router interface = %s"),
+                 router_port)
+        local_network_id = self.db_store.get_network_id(
+            router_port.get_lswitch_id()
+        )
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
         tunnel_key = router_port.get_tunnel_key()
