@@ -106,18 +106,27 @@ class DfLocalController(object):
             self.vswitch_api.set_controller_fail_mode(
                 self.integration_bridge, 'secure').execute()
         self.open_flow_app.start()
+
+        self.register_chassis()
+        self.create_tunnels()
+
         self.db_sync_loop()
 
     def db_sync_loop(self):
         while True:
             time.sleep(1)
-            self.run_db_poll()
+            # enable_selective_topo_dist will pull topology from ovs port
+            # online event
+            if not self.enable_selective_topo_dist:
+                self.run_db_poll()
+            else:
+                self.sync_finished = True
+
             if self.sync_finished and (
                     self.nb_api.support_publish_subscribe()):
                 self.nb_api.register_notification_callback(self)
 
     def run_sync(self):
-        self.sync_finished = True
         while True:
             time.sleep(1)
             self.run_db_poll()
@@ -126,26 +135,8 @@ class DfLocalController(object):
 
     def run_db_poll(self):
         try:
-            self.nb_api.sync()
-
-            self.register_chassis()
-
-            self.create_tunnels()
-
-            if not self.enable_selective_topo_dist:
-
-                self.read_switches()
-
-                self.read_security_groups()
-
-                self.port_mappings()
-
-                self.read_routers()
-
-                self.read_floatingip()
-
+            self.topology.sync_topology_with_db()
             self.sync_finished = True
-
         except Exception as e:
             self.sync_finished = False
             LOG.warning(_LW("run_db_poll - suppressing exception"))
@@ -174,16 +165,6 @@ class DfLocalController(object):
             if port.get_chassis_id() == chassis_id:
                 self.vswitch_api.delete_port(port).execute()
                 return
-
-    def read_switches(self):
-        lswitches_to_remove = self.db_store.get_lswitch_keys()
-        for lswitch in self.nb_api.get_all_logical_switches():
-            self.logical_switch_updated(lswitch)
-            if lswitch.get_id() in lswitches_to_remove:
-                lswitches_to_remove.remove(lswitch.get_id())
-
-        for lswitch_to_remove in lswitches_to_remove:
-            self.logical_switch_deleted(lswitch_to_remove)
 
     def logical_switch_updated(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
@@ -415,16 +396,6 @@ class DfLocalController(object):
         for port in tunnel_ports.values():
             self.vswitch_api.delete_port(port).execute()
 
-    def port_mappings(self):
-        ports_to_remove = self.db_store.get_port_keys()
-        for lport in self.nb_api.get_all_logical_ports():
-            self.logical_port_updated(lport)
-            if lport.get_id() in ports_to_remove:
-                ports_to_remove.remove(lport.get_id())
-
-        for port_to_remove in ports_to_remove:
-            self.logical_port_deleted(port_to_remove)
-
     def get_network_id(self, logical_dp_id):
         network_id = self.db_store.get_network_id(logical_dp_id)
         if network_id is not None:
@@ -437,16 +408,6 @@ class DfLocalController(object):
                 self.next_network_id,
             )
             return self.next_network_id
-
-    def read_routers(self):
-        routers_to_remove = self.db_store.get_router_keys()
-        for lrouter in self.nb_api.get_routers():
-            self.router_updated(lrouter)
-            if lrouter.get_id() in routers_to_remove:
-                routers_to_remove.remove(lrouter.get_id())
-
-        for router_to_remove in routers_to_remove:
-            self.router_deleted(router_to_remove)
 
     def _update_router_attributes(self, old_router, new_router):
         old_routes = old_router.get_routes()
@@ -507,17 +468,6 @@ class DfLocalController(object):
             self._add_router_route(lrouter, route)
         self.db_store.update_router(lrouter.get_id(), lrouter)
 
-    def read_security_groups(self):
-        secgroups_to_remove = self.db_store.get_security_group_keys()
-
-        for secgroup in self.nb_api.get_security_groups():
-            self.security_group_updated(secgroup)
-            if secgroup.get_id() in secgroups_to_remove:
-                secgroups_to_remove.remove(secgroup.get_id())
-
-        for secgroup_to_remove in secgroups_to_remove:
-            self.security_group_deleted(secgroup_to_remove)
-
     def _update_security_group_rules(self, old_secgroup, new_secgroup):
         new_secgroup_rules = new_secgroup.get_rules()
         old_secgroup_rules = old_secgroup.get_rules()
@@ -551,16 +501,6 @@ class DfLocalController(object):
                  secgroup_rule)
         self.open_flow_app.notify_remove_security_group_rule(
                  secgroup, secgroup_rule)
-
-    def read_floatingip(self):
-        fips_to_remove = self.db_store.get_floatingip_keys()
-        for floatingip in self.nb_api.get_floatingips():
-            self.floatingip_updated(floatingip)
-            if floatingip.get_id() in fips_to_remove:
-                fips_to_remove.remove(floatingip.get_id())
-
-        for fip_to_remove in fips_to_remove:
-            self.floatingip_deleted(fip_to_remove)
 
     def floatingip_updated(self, floatingip):
         # check whether this floatingip is associated with a lport or not
