@@ -65,37 +65,6 @@ class DBNotifyInterface(object):
                        compute node, and is removed from db
         """
 
-    def add_new_router_port(self, router, router_port, local_network_id):
-        """add  new port to router hook callback
-
-
-        param router:      the router that owns the new port
-        param router_port: the new port
-        param local_network_id: the id of the local network that the added port
-        belongs to
-        """
-
-    def remove_router_port(self, router_port, local_network_id):
-        """delete a  router port hook callback
-
-
-        param router_port: the port to be deleted
-        param local_network_id: the id of the local network that the port
-        belongs to
-        """
-
-    def add_router_route(self, router, route):
-        """add  new route to router callback
-        param router: the router that the route to be added to
-        param route:  the new route to be added
-        """
-
-    def remove_router_route(self, router, route):
-        """delete route from a router callback
-        param router: the router that the route to be deleted from
-        param route:  the route to be deleted
-        """
-
     def logical_switch_deleted(self, lswitch):
         """logical switch deleted hook callback
 
@@ -108,4 +77,26 @@ class DBNotifyInterface(object):
 
 
         :param lswitch: logical switch that is updated
+        """
+
+    def router_created(self, router):
+        """router created hook callback
+
+
+        :param router: logical router that is created
+        """
+
+    def router_updated(self, router, original_router):
+        """router updated hook callback
+
+
+        :param router: logical router that is updated
+        :param original_router: logical router before update
+        """
+
+    def router_deleted(self, router):
+        """router updated hook callback
+
+
+        :param router: router that is deleted
         """
