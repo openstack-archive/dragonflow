@@ -351,24 +351,22 @@ class DfLocalController(object):
     def bridge_port_updated(self, lport):
         self.open_flow_app.notify_update_bridge_port(lport)
 
+    def router_created(self, lrouter):
+        self.open_flow_app.notify_create_router(lrouter)
+        self.db_store.update_router(lrouter.get_id(), lrouter)
+
     def router_updated(self, lrouter):
-        old_lrouter = self.db_store.get_router(lrouter.get_id())
-        if old_lrouter is None:
-            LOG.info(_LI("Logical Router created = %s") %
-                     lrouter.__str__())
-            self._add_new_lrouter(lrouter)
-            return
-        self._update_router_interfaces(old_lrouter, lrouter)
-        self._update_router_attributes(old_lrouter, lrouter)
+        self.open_flow_app.notify_update_router(lrouter)
         self.db_store.update_router(lrouter.get_id(), lrouter)
 
     def router_deleted(self, lrouter_id):
-        old_lrouter = self.db_store.get_router(lrouter_id)
-        if old_lrouter is None:
+        router = self.db_store.get_router(lrouter_id)
+        if router is None:
+            LOG.warning(_LW("Try to delete a nonexistent router(%s)"),
+                        lrouter_id)
             return
-        old_router_ports = old_lrouter.get_ports()
-        for old_port in old_router_ports:
-            self._delete_router_port(old_port)
+        LOG.info(_LI("Removing router = %s"), lrouter_id)
+        self.open_flow_app.notify_delete_router(router)
         self.db_store.delete_router(lrouter_id)
 
     def security_group_updated(self, secgroup):
@@ -446,65 +444,6 @@ class DfLocalController(object):
 
         for router_to_remove in routers_to_remove:
             self.router_deleted(router_to_remove)
-
-    def _update_router_attributes(self, old_router, new_router):
-        old_routes = old_router.get_routes()
-        new_routes = new_router.get_routes()
-        for new_route in new_routes:
-            if new_route not in old_routes:
-                self._add_router_route(new_router, new_route)
-            else:
-                old_routes.remove(new_route)
-        for old_route in old_routes:
-            self._delete_router_route(new_router, old_route)
-
-    def _add_router_route(self, router, route):
-        LOG.info(_LI("Adding new logical router route = %s"), route)
-        self.open_flow_app.notify_add_router_route(
-            router, route)
-
-    def _delete_router_route(self, router, route):
-        LOG.info(_LI("Removing logical router route = %s"), route)
-        self.open_flow_app.notify_remove_router_route(
-            router, route)
-
-    def _update_router_interfaces(self, old_router, new_router):
-        new_router_ports = new_router.get_ports()
-        old_router_ports = old_router.get_ports()
-        for new_port in new_router_ports:
-            if new_port not in old_router_ports:
-                self._add_new_router_port(new_router, new_port)
-            else:
-                old_router_ports.remove(new_port)
-
-        for old_port in old_router_ports:
-            self._delete_router_port(old_port)
-
-    def _add_new_router_port(self, router, router_port):
-        LOG.info(_LI("Adding new logical router interface = %s") %
-                 router_port.__str__())
-        local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id()
-        )
-        self.open_flow_app.notify_add_router_port(
-                router, router_port, local_network_id)
-
-    def _delete_router_port(self, router_port):
-        LOG.info(_LI("Removing logical router interface = %s") %
-                 router_port.__str__())
-        local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id()
-        )
-        self.open_flow_app.notify_remove_router_port(
-                router_port, local_network_id)
-
-    def _add_new_lrouter(self, lrouter):
-        for new_port in lrouter.get_ports():
-            self._add_new_router_port(lrouter, new_port)
-        routes = lrouter.get_routes()
-        for route in routes:
-            self._add_router_route(lrouter, route)
-        self.db_store.update_router(lrouter.get_id(), lrouter)
 
     def read_security_groups(self):
         secgroups_to_remove = self.db_store.get_security_group_keys()

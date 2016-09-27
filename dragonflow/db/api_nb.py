@@ -216,7 +216,10 @@ class NbApi(object):
                 lport_id = key
                 self.controller.logical_port_deleted(lport_id)
         elif 'lrouter' == table:
-            if action == 'set' or action == 'create':
+            if action == 'create':
+                lrouter = LogicalRouter(value)
+                self.controller.router_created(lrouter)
+            elif action == 'set':
                 lrouter = LogicalRouter(value)
                 self.controller.router_updated(lrouter)
             elif action == 'delete':
