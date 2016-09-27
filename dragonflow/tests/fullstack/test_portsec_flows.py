@@ -127,7 +127,7 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
                 # for knowing which flow didn't be installed when the test
                 # case failed, asserting expected_flow equals to None to print
                 # expected_flow
-                self.assertEqual(expected_flow, None)
+                self.assertIsNone(expected_flow)
 
     def _check_not_flow_existed(self, flow_list):
         ovs = utils.OvsFlowsParser()
@@ -139,7 +139,7 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
                     # for knowing which flow didn't be removed when the
                     # test case failed, asserting expected_flow equals to
                     # None to print expected_flow
-                    self.assertEqual(expected_flow, None)
+                    self.assertIsNone(expected_flow)
 
     def test_default_flows(self):
         expected_flow_list = []
