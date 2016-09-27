@@ -146,7 +146,7 @@ class RedisMgt(object):
             yield v
 
         return {k: v for k, v in
-                [_split(line) for line in raw.split('\r\n') if line]}
+                [_split(line) for line in raw.split('\n') if line]}
 
     def _get_cluster_nodes(self, node):
         raw = node.execute_command('cluster nodes')
