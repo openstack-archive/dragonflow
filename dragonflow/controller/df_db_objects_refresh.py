@@ -119,7 +119,7 @@ def sync_local_cache_from_nb_db(topics=None):
         for item in reversed(items):
             item.delete()
 
-    if topics:
+    if topics is not None:
         for topic in topics:
             _refresh_items(topic)
     else:

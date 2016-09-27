@@ -260,6 +260,15 @@ class Topology(object):
             self.nb_api.subscriber.unregister_topic(topic)
             self._clear_tenant_topology(topic)
 
+    def get_subscribed_topics(self):
+        if not self.enable_selective_topo_dist:
+            # Just return None when enable_selective_topo_dist is False
+            return
+
+        # Return the actual topics that are subscribed. It could be empty
+        # set, which represents no topic is subscribed now.
+        return set(self.topic_subscribed)
+
     def _pull_tenant_topology_from_db(self, tenant_id):
         df_db_objects_refresh.sync_local_cache_from_nb_db({tenant_id})
 
