@@ -40,8 +40,9 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
                 'remove_local_port',
                 'add_remote_port',
                 'remove_remote_port',
-                'add_router_port',
-                'remove_router_port',
+                'router_created',
+                'router_updated',
+                'router_deleted',
                 'add_security_group_rule',
                 'remove_security_group_rule',
                 'switch_features_handler',
@@ -62,10 +63,9 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         self.ryu_df_adapter.notify_remove_local_port(lport=4)
         self.ryu_df_adapter.notify_add_remote_port(lport=5)
         self.ryu_df_adapter.notify_remove_remote_port(lport=6)
-        self.ryu_df_adapter.notify_add_router_port(
-                router=7, router_port=8, local_network_id=9)
-        self.ryu_df_adapter.notify_remove_router_port(
-                router_port=10, local_network_id=11)
+        self.ryu_df_adapter.notify_create_router(router=9)
+        self.ryu_df_adapter.notify_update_router(router=7, original_router=0)
+        self.ryu_df_adapter.notify_delete_router(router=8)
         self.ryu_df_adapter.notify_add_security_group_rule(
                 secgroup=12, secgroup_rule=13)
         self.ryu_df_adapter.notify_remove_security_group_rule(
@@ -77,10 +77,9 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
                 mock.call.remove_local_port(lport=4),
                 mock.call.add_remote_port(lport=5),
                 mock.call.remove_remote_port(lport=6),
-                mock.call.add_router_port(
-                        local_network_id=9, router=7, router_port=8),
-                mock.call.remove_router_port(
-                        local_network_id=11, router_port=10),
+                mock.call.router_created(router=9),
+                mock.call.router_updated(router=7, original_router=0),
+                mock.call.router_deleted(router=8),
                 mock.call.add_security_group_rule(
                         secgroup=12, secgroup_rule=13),
                 mock.call.remove_security_group_rule(
