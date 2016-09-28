@@ -75,6 +75,14 @@ class TenantDbStore(object):
         with self.lock:
             return table.values()
 
+    def clear(self):
+        with self.lock:
+            for table_name in self._table_name_mapping:
+                if table_name == models.Publisher.table_name:
+                    continue
+
+                self._table_name_mapping[table_name].clear()
+
 
 class DbStore(object):
 
@@ -365,3 +373,10 @@ class DbStore(object):
             models.AllowedAddressPairsActivePort.table_name, topic)
         return [activeport for activeport in activeports
                 if activeport.get_network_id() == network_id]
+
+    def clear(self, topic=None):
+        if not topic:
+            for tenant_db in six.itervalues(self.tenant_dbs):
+                tenant_db.clear()
+        else:
+            self.tenant_dbs[topic].clear()

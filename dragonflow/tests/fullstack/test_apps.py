@@ -10,15 +10,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import random
-import string
 import sys
 import time
 
+from neutron.agent.common import utils
 from oslo_log import log
 import ryu.lib.packet
 
 from dragonflow._i18n import _LI
+from dragonflow import conf as cfg
 from dragonflow.controller.common import constants
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import constants as const
@@ -512,17 +512,21 @@ class TestL3App(test_base.DFTestBase):
                 self.topology.close()
             raise
 
-    def _create_port_policies(self):
+    def _create_port_policies(self, connected=True):
         ignore_action = app_testing_objects.IgnoreAction()
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
         key1 = (self.subnet1.subnet_id, self.port1.port_id)
+        if connected:
+            actions = [app_testing_objects.DisableRuleAction(),
+                       app_testing_objects.StopSimulationAction()]
+        else:
+            actions = [raise_action]
+
         rules1 = [
             app_testing_objects.PortPolicyRule(
                 # Detect pong, end simulation
                 app_testing_objects.RyuICMPPongFilter(self._get_ping),
-                actions=[
-                    app_testing_objects.DisableRuleAction(),
-                    app_testing_objects.StopSimulationAction(),
-                ]
+                actions=actions
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
@@ -540,18 +544,20 @@ class TestL3App(test_base.DFTestBase):
             ),
         ]
         key2 = (self.subnet2.subnet_id, self.port2.port_id)
+        if connected:
+            actions = [app_testing_objects.SendAction(self.subnet2.subnet_id,
+                                                      self.port2.port_id,
+                                                      self._create_pong_packet
+                                                      ),
+                       app_testing_objects.DisableRuleAction()]
+        else:
+            actions = [raise_action]
+
         rules2 = [
             app_testing_objects.PortPolicyRule(
                 # Detect ping, reply with pong
                 app_testing_objects.RyuICMPPingFilter(),
-                actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet2.subnet_id,
-                        self.port2.port_id,
-                        self._create_pong_packet
-                    ),
-                    app_testing_objects.DisableRuleAction(),
-                ]
+                actions=actions
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
@@ -568,7 +574,6 @@ class TestL3App(test_base.DFTestBase):
                 ]
             ),
         ]
-        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
         policy1 = app_testing_objects.PortPolicy(
             rules=rules1,
             default_action=raise_action
@@ -613,10 +618,6 @@ class TestL3App(test_base.DFTestBase):
 
     def _get_ping(self):
         return self._ping
-
-    def _create_random_string(self, length=16):
-        alphabet = string.printable
-        return ''.join([random.choice(alphabet) for _ in range(length)])
 
     def _create_pong_packet(self, buf):
         pkt = ryu.lib.packet.packet.Packet(buf)
@@ -695,6 +696,47 @@ class TestL3App(test_base.DFTestBase):
 
     def test_icmp_other_router_interface(self):
         self._test_icmp_address('192.168.13.1')
+
+    def test_reconnect_of_controller(self):
+        cmd = ["ovs-vsctl", "get-controller", cfg.CONF.df.integration_bridge]
+        controller = utils.execute(cmd, run_as_root=True).strip()
+
+        cmd[1] = "del-controller"
+        utils.execute(cmd, run_as_root=True)
+
+        dst_ip = self.port2.port.get_logical_port().get_ip()
+        port_policies = self._create_port_policies(connected=False)
+        initial_packet = self._create_ping_packet(dst_ip)
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    app_testing_objects.SendAction(
+                        self.subnet1.subnet_id,
+                        self.port1.port_id,
+                        str(initial_packet)
+                    ),
+                ],
+                port_policies=port_policies,
+                unknown_port_action=app_testing_objects.IgnoreAction()
+            )
+        )
+        policy.start(self.topology)
+        try:
+            policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        except Exception:
+            # Since there is no OpenFlow in vswitch, we are expecting timeout
+            # exception here.
+            pass
+        finally:
+            policy.stop()
+            if len(policy.exceptions) > 0:
+                raise policy.exceptions[0]
+
+        cmd[1] = "set-controller"
+        cmd.append(controller)
+        utils.execute(cmd, run_as_root=True)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+        self._test_icmp_address(dst_ip)
 
 
 class TestSGApp(test_base.DFTestBase):
@@ -1039,10 +1081,6 @@ class TestSGApp(test_base.DFTestBase):
         result.serialize()
         return result, icmp
 
-    def _create_random_string(self, length=16):
-        alphabet = string.printable
-        return ''.join([random.choice(alphabet) for _ in range(length)])
-
     def _create_pong_packet(self, buf):
         pkt = ryu.lib.packet.packet.Packet(buf)
         ether = pkt.get_protocol(ryu.lib.packet.ethernet.ethernet)
@@ -1366,10 +1404,6 @@ class TestPortSecApp(test_base.DFTestBase):
 
     def _get_ping_using_fake_mac(self):
         return self._ping_using_fake_mac
-
-    def _create_random_string(self, length=16):
-        alphabet = string.printable
-        return ''.join([random.choice(alphabet) for _ in range(length)])
 
     def test_icmp_ping_using_different_ip_mac(self):
         self.policy.start(self.topology)

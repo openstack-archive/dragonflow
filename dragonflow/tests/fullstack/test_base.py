@@ -11,6 +11,8 @@
 #    under the License.
 
 import os
+import random
+import string
 
 from keystoneauth1 import identity
 from keystoneauth1 import session
@@ -149,3 +151,7 @@ class DFTestBase(base.BaseTestCase):
     def stop_subscribing(self):
         if hasattr(self, '_topology'):
             self._topology.close()
+
+    def _create_random_string(self, length=16):
+        alphabet = string.printable
+        return ''.join([random.choice(alphabet) for _ in range(length)])
