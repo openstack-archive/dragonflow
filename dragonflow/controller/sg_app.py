@@ -75,7 +75,6 @@ class SGApp(df_base_app.DFlowApp):
         # the value of zero, and allocate conj_ids begin with one.
         self.next_secgroup_id = 1
         self.next_secgroup_rule_id = 0
-        self.secgroup_refcount = {}
         self.remote_secgroup_ref = {}
         self.secgroup_associate_local_ports = {}
         self.secgroup_aggregate_addresses = collections.defaultdict(
@@ -652,6 +651,9 @@ class SGApp(df_base_app.DFlowApp):
 
         self._install_env_init_flow_by_direction('ingress')
         self._install_env_init_flow_by_direction('egress')
+        self.secgroup_associate_local_ports.clear()
+        self.remote_secgroup_ref.clear()
+        self.secgroup_aggregate_addresses.clear()
 
     def _get_security_rule_mapping(self, lrule_id):
         rule_id = self.secgroup_rule_mappings.get(lrule_id)
@@ -664,6 +666,10 @@ class SGApp(df_base_app.DFlowApp):
             return self.next_secgroup_rule_id
 
     def _allocate_security_group_id(self, lgroup_id):
+        if self.secgroup_mappings.get(lgroup_id):
+            # No need to re-allocate
+            return
+
         # allocate a number
         security_id = self.next_secgroup_id
         LOG.info(_LI("allocate a number %(security_id)s to the security group "
