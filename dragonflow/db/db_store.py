@@ -73,6 +73,14 @@ class TenantDbStore(object):
         with self.lock:
             return table.values()
 
+    def clear(self):
+        with self.lock:
+            for table_name in self._table_name_mapping:
+                if table_name == models.Publisher.table_name:
+                    continue
+
+                self._table_name_mapping[table_name].clear()
+
 
 class DbStore(object):
 
@@ -337,3 +345,10 @@ class DbStore(object):
 
     def delete_chassis(self, chassis_id):
         self.chassis.pop(chassis_id, None)
+
+    def clear(self, topic=None):
+        if not topic:
+            for tenant_db in six.itervalues(self.tenant_dbs):
+                tenant_db.clear()
+        else:
+            self.tenant_dbs[topic].clear()
