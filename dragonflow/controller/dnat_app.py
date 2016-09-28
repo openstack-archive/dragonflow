@@ -59,6 +59,8 @@ class DNATApp(df_base_app.DFlowApp):
     def switch_features_handler(self, ev):
         self._init_external_bridge()
         self._install_output_to_physical_patch(self.external_ofport)
+        self.external_networks.clear()
+        self.local_floatingips.clear()
 
     def ovs_port_updated(self, ovs_port):
         if ovs_port.get_name() != self.external_network_bridge:

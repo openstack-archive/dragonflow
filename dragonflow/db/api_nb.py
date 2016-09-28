@@ -192,7 +192,7 @@ class NbApi(object):
             return
 
         if action == 'sync':
-            self.controller.run_sync()
+            self.controller.run_sync(value)
             return
         elif action == 'dbrestart':
             self.db_recover_callback()

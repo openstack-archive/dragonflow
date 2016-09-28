@@ -126,7 +126,12 @@ class DfLocalController(object):
                     self.nb_api.support_publish_subscribe()):
                 self.nb_api.register_notification_callback(self)
 
-    def run_sync(self):
+    def run_sync(self, mode=None):
+        if mode == 'full_sync':
+            # For a full sync, df needs to clean the local cache, so that
+            # all resources will be treated as new resource, and thus be
+            # applied to local.
+            self.db_store.clear()
         while True:
             time.sleep(1)
             self.run_db_poll()
