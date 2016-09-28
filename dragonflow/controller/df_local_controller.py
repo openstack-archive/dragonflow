@@ -216,8 +216,6 @@ class DfLocalController(object):
 
     def _logical_port_process(self, lport, original_lport=None):
         chassis = lport.get_chassis()
-        chassis_to_ofport, lport_to_ofport = (
-            self.vswitch_api.get_local_ports_to_ofport_mapping())
         local_network_id = self.get_network_id(
             lport.get_lswitch_id(),
         )
@@ -234,8 +232,8 @@ class DfLocalController(object):
 
         if chassis == self.chassis_name:
             lport.set_external_value('is_local', True)
-            ofport = lport_to_ofport.get(lport.get_id(), 0)
-            if ofport != 0:
+            ofport = self.vswitch_api.get_port_ofport_by_id(lport.get_id())
+            if ofport:
                 lport.set_external_value('ofport', ofport)
                 self.db_store.set_port(lport.get_id(), lport, True)
                 if original_lport is None:
@@ -254,8 +252,8 @@ class DfLocalController(object):
                          str(lport))
         else:
             lport.set_external_value('is_local', False)
-            ofport = chassis_to_ofport.get(chassis, 0)
-            if ofport != 0:
+            ofport = self.vswitch_api.get_chassis_ofport(chassis)
+            if ofport:
                 lport.set_external_value('ofport', ofport)
                 self.db_store.set_port(lport.get_id(), lport, False)
                 if original_lport is None:
