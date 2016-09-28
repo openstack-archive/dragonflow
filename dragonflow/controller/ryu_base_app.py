@@ -47,6 +47,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         self.nb_api = nb_api
         self._datapath = None
         self.table_handlers = {}
+        self.first_connect = True
 
     @property
     def datapath(self):
@@ -157,6 +158,12 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
             # Otherwise, this is done automatically by OFPHandler
             self._send_port_desc_stats_request(self.datapath)
         self.dispatcher.dispatch('switch_features_handler', ev)
+        if not self.first_connect:
+            # For reconnecting to the ryu controller, df needs a full sync
+            # in case any resource added during the disconnection.
+            self.nb_api.db_change_callback(None, None, 'sync', 'full_sync')
+
+        self.first_connect = False
 
     def _send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser

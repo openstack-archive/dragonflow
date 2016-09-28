@@ -69,6 +69,14 @@ class TenantDbStore(object):
         with self.lock:
             return table.values()
 
+    def clear(self):
+        with self.lock:
+            for table_name in self._table_name_mapping:
+                if table_name == "publishers":
+                    continue
+
+                self._table_name_mapping[table_name].clear()
+
 
 class DbStore(object):
 
@@ -300,3 +308,10 @@ class DbStore(object):
 
     def delete_publisher(self, uuid, topic=None):
         self.delete('publishers', uuid, topic)
+
+    def clear(self, topic=None):
+        if not topic:
+            for tenant_db in six.itervalues(self.tenant_dbs):
+                tenant_db.clear()
+        else:
+            self.tenant_dbs[topic].clear()

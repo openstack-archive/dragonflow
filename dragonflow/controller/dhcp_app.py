@@ -89,6 +89,8 @@ class DHCPApp(df_base_app.DFlowApp):
                                   const.DHCP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
+        self.local_tunnel_to_pid_map.clear()
+        self.switch_dhcp_ip_map.clear()
         # TODO(gampel) handle network changes
 
     def packet_in_handler(self, event):
