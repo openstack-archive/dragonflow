@@ -20,6 +20,7 @@ from neutron.agent.ovsdb.native import connection
 from neutron.agent.ovsdb.native import helpers
 from neutron.agent.ovsdb.native import idlutils
 from oslo_config import cfg
+from oslo_log import log
 from ovs.db import idl
 from ovs import poller
 from ovs import vlog
@@ -27,8 +28,11 @@ import retrying
 import six
 import threading
 
+from dragonflow._i18n import _LW
 from dragonflow.common import constants
 from dragonflow.db import api_vswitch
+
+LOG = log.getLogger(__name__)
 
 
 ovsdb_monitor_table_filter_default = {
@@ -217,28 +221,35 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.ovsdb.del_port(switch_port.get_name(),
                             self.integration_bridge).execute()
 
-    def get_local_ports_to_ofport_mapping(self):
-        lport_to_ofport = {}
-        chassis_to_ofport = {}
-        ports = self.ovsdb.get_bridge_ports(self.integration_bridge).execute()
-        for port in ports:
-            chassis_id = port.external_ids.get('df-chassis-id')
-            for interface in port.interfaces:
-                if interface.ofport is None:
-                    # TODO(gsagie) log error
-                    continue
-                ofport = interface.ofport[0]
-                if ofport < 1 or ofport > 65533:
-                    # TODO(gsagie) log error
-                    continue
-                if chassis_id is not None:
-                    chassis_to_ofport[chassis_id] = ofport
-                else:
-                    ifaceid = interface.external_ids.get('iface-id')
-                    if ifaceid is not None:
-                        lport_to_ofport[ifaceid] = ofport
+    @staticmethod
+    def _check_ofport(port_name, ofport):
+        if ofport is None:
+           LOG.warning(_LW("Can't find ofport for port %s."), port_name)
+           return False
+        if ofport < 1 or ofport > 65533:
+           LOG.warning(_LW("ofport %(ofport)s for port %(port)s is invalid."),
+                       {'ofport': ofport, 'port': port_name})
+           return False
 
-        return chassis_to_ofport, lport_to_ofport
+        return True
+
+    def get_chassis_ofport(self, chassis_id):
+        # TODO(xiaohhui): Can we just call get_port_ofport('df-'+chassis_id)?
+        ports = self.ovsdb.db_find(
+            'Port', ('external_ids', '=', {'df-chassis-id': chassis_id}),
+            columns=['external_ids', 'name']).execute()
+        for port in ports:
+            ofport = self.get_port_ofport(port['name'])
+            if self._check_ofport(port['name'], ofport):
+               return ofport
+
+    def get_port_ofport_by_id(self, port_id):
+        ports = self.ovsdb.db_find(
+            'Interface', ('external_ids', '=', {'iface-id': port_id}),
+            columns=['external_ids', 'name', 'ofport']).execute()
+        for port in ports:
+            if self._check_ofport(port['name'], port['ofport']):
+                return port['ofport']
 
     def create_patch_port(self, bridge, port, remote_name):
         self.ovsdb.add_br(bridge, datapath_type='system').execute()
