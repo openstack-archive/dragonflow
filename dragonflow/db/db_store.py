@@ -281,3 +281,9 @@ class DbStore(object):
 
     def delete_publisher(self, uuid, topic=None):
         self.delete('publishers', uuid, topic)
+
+    def clear(self):
+        for topic in self.tenant_dbs:
+            new_tenant_db = TenantDbStore()
+            new_tenant_db.publishers = self.tenant_dbs[topic].publishers
+            self.tenant_dbs[topic] = new_tenant_db
