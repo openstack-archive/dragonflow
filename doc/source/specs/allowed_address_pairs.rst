@@ -4,9 +4,9 @@
 
  http://creativecommons.org/licenses/by/3.0/legalcode
 
-==============================
+=====================
 Allowed address pairs
-===============================
+=====================
 
 https://blueprints.launchpad.net/dragonflow/+spec/allowed-address-pairs
 
@@ -28,7 +28,7 @@ IP address prefixes) in the same subnet of the port's fixed IP.
 In current implementation, security modules like port security and security
 group will require that packets sent/received from a VM port must have the
 fixed IP/MAC address of this VM port. Besides, L2 and L3 transmission will
-forward packets only according those fixed addresses. Those modules should
+forward packets only according to those fixed addresses. Those modules should
 make some changes to support allowed address pairs.
 
 Proposed Change
@@ -47,7 +47,7 @@ of a port. That is already done in the blueprint of mac-spoofing-protection.
 Security Group
 ----------------------
 The security group module transforms the remote group field in a rule to
-flows according IP addresses of VM ports associated with the remote group.
+flows according to IP addresses of VM ports associated with the remote group.
 To support allowed address pairs, those IP addresses should include both
 fixed IP address and the IP addresses in allowed address pairs.
 
