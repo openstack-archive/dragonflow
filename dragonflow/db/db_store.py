@@ -62,12 +62,12 @@ class TenantDbStore(object):
     def keys(self, table_name):
         table = self._get_table_by_name(table_name)
         with self.lock:
-            return table.keys()
+            return list(table.keys())
 
     def values(self, table_name):
         table = self._get_table_by_name(table_name)
         with self.lock:
-            return table.values()
+            return list(table.values())
 
 
 class DbStore(object):

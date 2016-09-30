@@ -208,3 +208,14 @@ class TestDbStore(tests_base.BaseTestCase):
         self.assertEqual(pub3, self.db_store.get_publisher('id3'))
         self.db_store.delete_publisher('id3')
         self.assertIsNone(self.db_store.get_publisher('id3'))
+
+    def test_py3_support(self):
+        self.db_store.set_lswitch('id1', 'value1', 'topic1')
+        self.db_store.set_lswitch('id2', 'value2', 'topic2')
+        self.db_store.set_lswitch('id3', 'value3', 'topic2')
+        lswitchs = self.db_store.get_lswitchs()
+        lswitchs.append('value4')
+        self.assertEqual(4, len(lswitchs))
+        keys = self.db_store.get_lswitch_keys()
+        keys.remove('id1')
+        self.assertEqual(2, len(keys))
