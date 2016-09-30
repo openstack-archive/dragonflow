@@ -953,6 +953,12 @@ class LogicalRouter(DbStoreObject):
     def get_routes(self):
         return self.lrouter.get('routes', [])
 
+    def is_distributed(self):
+        return self.lrouter.get('distributed', False)
+
+    def get_external_gateway(self):
+        return self.lrouter.get('gateway', {})
+
     def __str__(self):
         return self.lrouter.__str__()
 
