@@ -190,3 +190,10 @@ class DbApi(object):
 
         :returns:     Unique id
         """
+
+    @abc.abstractmethod
+    def process_ha(self):
+        """ Process HA function from db backend
+
+        :returns:    None
+        """

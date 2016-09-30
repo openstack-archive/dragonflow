@@ -205,3 +205,7 @@ class ZookeeperDbDriver(db_api.DbApi):
     def unregister_topic_for_notification(self, topic):
         # Not needed until register notification callback is implemented
         pass
+
+    def process_ha(self):
+        # Not needed in zookeeper
+        pass
