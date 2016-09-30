@@ -245,16 +245,6 @@ class Topology(object):
             self.controller.floatingip_updated(floating_ip)
 
     def _clear_tenant_topology(self, tenant_id):
-        switches = self.db_store.get_lswitchs()
-        for switch in switches:
-            if tenant_id == switch.get_topic():
-                self.controller.logical_switch_deleted(switch.get_id())
-
-        ports = self.db_store.get_ports()
-        for port in ports:
-            if tenant_id == port.get_topic():
-                self.controller.logical_port_deleted(port.get_id())
-
         floating_ips = self.db_store.get_floatingips()
         for floating_ip in floating_ips:
             if tenant_id == floating_ip.get_topic():
@@ -265,10 +255,20 @@ class Topology(object):
             if tenant_id == router.get_topic():
                 self.controller.router_deleted(router.get_id())
 
+        ports = self.db_store.get_ports()
+        for port in ports:
+            if tenant_id == port.get_topic():
+                self.controller.logical_port_deleted(port.get_id())
+
         sg_groups = self.db_store.get_security_groups()
         for sg_group in sg_groups:
             if tenant_id == sg_group.get_topic():
                 self.controller.security_group_deleted(sg_group.get_id())
+
+        switches = self.db_store.get_lswitchs()
+        for switch in switches:
+            if tenant_id == switch.get_topic():
+                self.controller.logical_switch_deleted(switch.get_id())
 
     def _get_lport(self, port_id, topic=None):
         lport = self.db_store.get_port(port_id)
