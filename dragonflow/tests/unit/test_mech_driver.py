@@ -44,7 +44,6 @@ class TestDFMechDriver(base.BaseTestCase):
     def setUp(self):
         super(TestDFMechDriver, self).setUp()
         self.driver = mech_driver.DFMechDriver()
-        self.driver.initialize()
         self.driver.nb_api = mock.Mock()
         self.dbversion = 0
         version_db._create_db_version_row = mock.Mock(
@@ -325,10 +324,12 @@ class TestDFMechDriverRevision(test_plugin.Ml2PluginV2TestCase):
         return p
 
     def setUp(self):
+        nbapi_instance = mock.patch('dragonflow.db.api_nb.NbApi').start()
+        nbapi_instance.get_instance.return_value = mock.MagicMock()
         super(TestDFMechDriverRevision, self).setUp()
         mm = self.driver.mechanism_manager
         self.mech_driver = mm.mech_drivers['df'].obj
-        self.nb_api = self.mech_driver.nb_api = mock.MagicMock()
+        self.nb_api = self.mech_driver.nb_api
 
     def _test_create_security_group_revision(self):
         s = {'security_group': {'tenant_id': 'some_tenant', 'name': '',
