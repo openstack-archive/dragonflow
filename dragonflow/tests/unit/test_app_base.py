@@ -44,8 +44,6 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.open_flow_app.load(self.controller.open_flow_app, **kwargs)
         self.controller.topology = topology.Topology(self.controller, False)
 
-        self.vswitch_api.get_local_ports_to_ofport_mapping.return_value = (
-            {}, {fake_local_port1.get_id(): 2})
         # Add basic network topology
         self.controller.logical_switch_updated(fake_logic_switch1)
         self.controller.logical_switch_updated(fake_external_switch1)
