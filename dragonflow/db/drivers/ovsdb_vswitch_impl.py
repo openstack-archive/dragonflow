@@ -174,7 +174,7 @@ class OvsdbSwitchApi(api_vswitch.SwitchApi):
         self.vsctl_timeout = timeout
         self.ovsdb = None
         self.integration_bridge = cfg.CONF.df.integration_bridge
-        vlog.Vlog.init('dragonflow')
+        vlog.Vlog.init()
 
     def initialize(self, nb_api):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
