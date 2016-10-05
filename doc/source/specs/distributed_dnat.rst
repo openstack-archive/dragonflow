@@ -118,7 +118,7 @@ to the floating IP address coming from the external network.
    after the NAT conversion (IP and MAC) send the packet to the correct
    patch-port.
 
-4) On br-int, add a a matching flow on in_port (for the patch port),
+4) On br-int, add a matching flow on in_port (for the patch port),
    classify it with the same network as the destination VM (the VM
    that this floating IP belongs too) and continue the same regular
    pipeline.
