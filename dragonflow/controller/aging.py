@@ -46,11 +46,12 @@ class Aging(df_base_app.DFlowApp, ofswitch.OpenFlowSwitchMixin):
     def ovs_sync_started(self):
         LOG.info(_LI("start aging"))
         canary_flow = self.get_canary_flow()
-        if canary_flow is None:
+        if not canary_flow:
             self.do_aging = False
             cookie.set_aging_cookie(const.GLOBAL_INIT_AGING_COOKIE)
             LOG.info(_LI("no canary table, don't do aging"))
         else:
+            self.do_aging = True
             self._renew_aging_cookie(canary_flow.cookie)
         self.add_canary_flow(cookie.get_aging_cookie())
 
@@ -59,7 +60,7 @@ class Aging(df_base_app.DFlowApp, ofswitch.OpenFlowSwitchMixin):
     delete flows with old cookie
     """
     def ovs_sync_finished(self):
-        if self.do_aging is True:
+        if self.do_aging:
             self._start_aging()
             LOG.info(_LI("do aging"))
 
