@@ -186,7 +186,7 @@ class DfLocalController(object):
 
     def logical_switch_updated(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
-        if old_lswitch == lswitch:
+        if old_lswitch and not self._compare_version(old_lswitch, lswitch):
             return
         #Make sure we have a local network_id mapped before we dispatch
         network_id = self.get_network_id(
@@ -214,7 +214,15 @@ class DfLocalController(object):
             return False
         return True
 
+    def _compare_version(self, old_obj, new_obj):
+        if new_obj.get_version() > old_obj.get_version():
+            return True
+        LOG.debug("The object to be updated has an old version:%s", new_obj)
+        return False
+
     def _logical_port_process(self, lport, original_lport=None):
+        if original_lport and not self._compare_version(original_lport, lport):
+            return
         chassis = lport.get_chassis()
         local_network_id = self.get_network_id(
             lport.get_lswitch_id(),
@@ -356,6 +364,8 @@ class DfLocalController(object):
                      lrouter.__str__())
             self._add_new_lrouter(lrouter)
             return
+        if not self._compare_version(old_lrouter, lrouter):
+            return
         self._update_router_interfaces(old_lrouter, lrouter)
         self._update_router_attributes(old_lrouter, lrouter)
         self.db_store.update_router(lrouter.get_id(), lrouter)
@@ -375,6 +385,8 @@ class DfLocalController(object):
             LOG.info(_LI("Security Group created = %s") %
                      secgroup)
             self._add_new_security_group(secgroup)
+            return
+        if not self._compare_version(old_secgroup, secgroup):
             return
         self._update_security_group_rules(old_secgroup, secgroup)
         self.db_store.update_security_group(secgroup.get_id(), secgroup)
@@ -571,6 +583,8 @@ class DfLocalController(object):
             if not floatingip.get_lport_id():
                 return
             self._associate_floatingip(floatingip)
+            return
+        if not self._compare_version(old_floatingip, floatingip):
             return
         self._update_floatingip(old_floatingip, floatingip)
 
