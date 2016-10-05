@@ -52,20 +52,6 @@ class DBKeyNotFound(DragonflowException):
     message = _('DB Key not found, key=%(key)s')
 
 
-class SocketReadException(DragonflowException):
-    """
-    An exception for cases when read data from socket.
-    """
-    message = _('Exception happened when read data from socket')
-
-
-class SocketWriteException(DragonflowException):
-    """
-    An exception for cases when send data by socket.
-    """
-    message = _('Exception happened when write data to socket')
-
-
 class UnsupportedTransportException(DragonflowException):
     """
     An exception for cases when the given transport protocol (e.g. UDP, TCP) is
@@ -77,10 +63,6 @@ class UnsupportedTransportException(DragonflowException):
 class DBLockFailed(DragonflowException):
     message = _("The DB Lock cannot be acquired for object=%(oid)s in"
                 "the session=%(sid)s.")
-
-
-class DBClientNotFound(DragonflowException):
-    message = _('DB client not found, ip=%(ip)s')
 
 
 class DBStoreRecordNotFound(DragonflowException):
