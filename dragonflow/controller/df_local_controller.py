@@ -186,7 +186,7 @@ class DfLocalController(object):
 
     def logical_switch_updated(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
-        if old_lswitch == lswitch:
+        if old_lswitch and lswitch.get_version() <= old_lswitch.get_version():
             return
         #Make sure we have a local network_id mapped before we dispatch
         network_id = self.get_network_id(
@@ -241,6 +241,8 @@ class DfLocalController(object):
                              str(lport))
                     self.open_flow_app.notify_add_local_port(lport)
                 else:
+                    if lport.get_version() <= original_lport.get_version():
+                        return
                     LOG.info(_LI("Updating local logical port = %(port)s, "
                                  "original port = %(original_port)s") %
                              {'port': str(lport),
@@ -261,6 +263,8 @@ class DfLocalController(object):
                              str(lport))
                     self.open_flow_app.notify_add_remote_port(lport)
                 else:
+                    if lport.get_version() <= original_lport.get_version():
+                        return
                     LOG.info(_LI("Updating remote logical port = %(port)s, "
                                  "original port = %(original_port)s") %
                              {'port': str(lport),
@@ -356,6 +360,8 @@ class DfLocalController(object):
                      lrouter.__str__())
             self._add_new_lrouter(lrouter)
             return
+        if lrouter.get_version() <= old_lrouter.get_version():
+            return
         self._update_router_interfaces(old_lrouter, lrouter)
         self._update_router_attributes(old_lrouter, lrouter)
         self.db_store.update_router(lrouter.get_id(), lrouter)
@@ -375,6 +381,8 @@ class DfLocalController(object):
             LOG.info(_LI("Security Group created = %s") %
                      secgroup)
             self._add_new_security_group(secgroup)
+            return
+        if secgroup.get_version() <= old_secgroup.get_version():
             return
         self._update_security_group_rules(old_secgroup, secgroup)
         self.db_store.update_security_group(secgroup.get_id(), secgroup)
@@ -571,6 +579,8 @@ class DfLocalController(object):
             if not floatingip.get_lport_id():
                 return
             self._associate_floatingip(floatingip)
+            return
+        if floatingip.get_version() <= old_floatingip.get_version():
             return
         self._update_floatingip(old_floatingip, floatingip)
 
