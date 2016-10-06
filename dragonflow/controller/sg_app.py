@@ -1073,6 +1073,10 @@ class SGApp(df_base_app.DFlowApp):
         if not secgroups:
             return
 
+        if not netaddr.valid_ipv4(lport.get_ip()):
+            LOG.error(_LE("No support for non IpV4 protocol"))
+            return
+
         for secgroup_id in secgroups:
             self._add_local_port_associating(lport, secgroup_id)
 
