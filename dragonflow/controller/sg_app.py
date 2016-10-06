@@ -12,13 +12,16 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import collections
 import netaddr
 from neutron.agent.common import config
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
+import six
 
-from dragonflow._i18n import _LI, _LE
+from dragonflow._i18n import _LI, _LW, _LE
+from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 
@@ -30,6 +33,11 @@ SG_CT_STATE_MASK = const.CT_STATE_NEW | const.CT_STATE_EST | \
                    const.CT_STATE_REL | const.CT_STATE_INV | const.CT_STATE_TRK
 COOKIE_FULLMASK = 0xffffffffffffffff
 SG_PRIORITY_OFFSET = 2
+
+DEST_FIELD_NAME_BY_PROTOCOL_NUMBER = {
+    n_const.PROTO_NUM_TCP: 'tcp_dst',
+    n_const.PROTO_NUM_UDP: 'udp_dst',
+}
 
 
 class SGApp(df_base_app.DFlowApp):
@@ -46,249 +54,87 @@ class SGApp(df_base_app.DFlowApp):
         self.secgroup_refcount = {}
         self.remote_secgroup_ref = {}
         self.secgroup_associate_local_ports = {}
-        self.secgroup_aggregate_addresses = {}
-
-    @staticmethod
-    def _split_range(range_start, range_end, full_mask):
-        bit_flag = 1
-        last_temp_start = range_start
-        last_temp_end = last_temp_start
-        result_list = []
-
-        while True:
-            if ((last_temp_start & bit_flag) == 0) and \
-                    ((last_temp_end | bit_flag) <= range_end):
-                last_temp_end |= bit_flag
-                bit_flag <<= 1
-            else:
-                mask = full_mask - (bit_flag - 1)
-                result_list.append({"prefix": last_temp_start, "mask": mask})
-                if last_temp_end >= range_end:
-                    break
-                bit_flag = 1
-                last_temp_start = last_temp_end + 1
-                last_temp_end = last_temp_start
-
-        return result_list
-
-    @staticmethod
-    def _try_merge_cidr(current_prefix, current_mask, last_item, full_mask):
-        prefix_mask = full_mask & (current_mask << 1)
-        bit_check_flag = prefix_mask ^ current_mask
-        if (last_item["mask"] == current_mask) and \
-                ((last_item["prefix"] & prefix_mask) ==
-                 (current_prefix & prefix_mask)) and \
-                ((last_item["prefix"] & bit_check_flag) !=
-                 (current_prefix & bit_check_flag)):
-            return prefix_mask
-        return None
+        self.secgroup_aggregate_addresses = collections.defaultdict(
+            netaddr.IPSet
+        )
 
     @staticmethod
     def _remove_one_address(cidr_array, address):
-        full_mask = 0xffffffff
-
-        added_cidr = []
-        removed_cidr = []
-        new_cidr_array = cidr_array
-
-        for index in range(len(cidr_array)):
-            cidr_item = cidr_array[index]
-            temp_min = cidr_item["prefix"]
-            temp_max = temp_min + (full_mask - cidr_item["mask"])
-            if temp_min <= address <= temp_max:
-                removed_cidr.append(cidr_item)
-                if temp_min < address:
-                    added_cidr.extend(
-                        SGApp._split_range(temp_min, address - 1, full_mask)
-                    )
-                if temp_max > address:
-                    added_cidr.extend(
-                        SGApp._split_range(address + 1, temp_max, full_mask)
-                    )
-                new_cidr_array = cidr_array[:index]
-                new_cidr_array.extend(added_cidr)
-                new_cidr_array.extend(cidr_array[(index + 1):])
-                break
-
+        """cidr_array - IPSet
+           address - IPAddress or string
+        """
+        new_cidr_array = cidr_array - netaddr.IPSet((address,))
+        added_cidr = new_cidr_array - cidr_array
+        removed_cidr = cidr_array - new_cidr_array
         return new_cidr_array, added_cidr, removed_cidr
 
     @staticmethod
     def _add_one_address(cidr_array, address):
-        full_mask = 0xffffffff
-        position = None
-
-        for index in range(len(cidr_array)):
-            cidr_item = cidr_array[index]
-            temp_min = cidr_item["prefix"]
-            temp_max = temp_min + (full_mask - cidr_item["mask"])
-            if temp_max >= address:
-                if temp_min <= address:
-                    return cidr_array, [], []
-                position = index
-                break
-
-        if position is None:
-            left_array = list(cidr_array)
-            right_array = []
-        else:
-            left_array = cidr_array[:position]
-            right_array = cidr_array[position:]
-
-        added_cidr = []
-        removed_cidr = []
-        new_cidr_array = []
-
-        current_prefix = address
-        current_mask = full_mask
-        continue_flag = True
-        while continue_flag:
-            continue_flag = False
-
-            if len(left_array) != 0:
-                left_item = left_array.pop(-1)
-                new_mask = SGApp._try_merge_cidr(current_prefix, current_mask,
-                                                 left_item, full_mask)
-                if new_mask:
-                    current_prefix &= new_mask
-                    current_mask = new_mask
-                    removed_cidr.append(left_item)
-                    continue_flag = True
-                    continue
-                else:
-                    left_array.append(left_item)
-            if len(right_array) != 0:
-                right_item = right_array.pop(0)
-                new_mask = SGApp._try_merge_cidr(current_prefix, current_mask,
-                                                 right_item, full_mask)
-                if new_mask:
-                    current_prefix &= new_mask
-                    current_mask = new_mask
-                    removed_cidr.append(right_item)
-                    continue_flag = True
-                    continue
-                else:
-                    right_array.insert(0, right_item)
-
-        added_cidr.append({"prefix": current_prefix, "mask": current_mask})
-        new_cidr_array.extend(left_array)
-        new_cidr_array.extend(added_cidr)
-        new_cidr_array.extend(right_array)
-
+        """cidr_array - IPSet
+           address - IPAddress or string
+        """
+        new_cidr_array = cidr_array | (netaddr.IPAddress(address),)
+        added_cidr = new_cidr_array - cidr_array
+        removed_cidr = cidr_array - new_cidr_array
         return new_cidr_array, added_cidr, removed_cidr
-
-    @staticmethod
-    def _get_cidr_match(item):
-        cidr = ""
-        for loop in range(4):
-            if loop != 0:
-                cidr += "."
-            cidr += str(0xff & (item["prefix"] >> (24 - (loop * 8))))
-
-        mask = item["mask"]
-        mask_length = 32
-        for loop in range(32):
-            if (mask & 1) == 0:
-                mask_length -= 1
-                mask >>= 1
-            else:
-                break
-        cidr += "/" + str(mask_length)
-
-        return cidr
 
     @staticmethod
     def _get_network_and_mask(cidr):
         result = netaddr.IPNetwork(cidr)
-        return result.network, result.netmask
+        return (int(result.network), int(result.netmask))
 
-    @staticmethod
-    def _get_port_range_match(port_item):
-        if port_item["mask"] != 0xffff:
-            return port_item["prefix"], port_item["mask"]
-        return port_item["prefix"]
-
-    @staticmethod
-    def _get_port_match_name(protocol):
-        if protocol == 1:
-            port_match_name = 'icmpv4_type'
-        elif protocol == 6:
-            port_match_name = 'tcp_dst'
-        elif protocol == 17:
-            port_match_name = 'udp_dst'
+    def _protocol_number_by_name(self, name):
+        if name == n_const.PROTO_NAME_ICMP:
+            return n_const.PROTO_NUM_ICMP
+        elif name == n_const.PROTO_NAME_TCP:
+            return n_const.PROTO_NUM_TCP
+        elif name == n_const.PROTO_NAME_UDP:
+            return n_const.PROTO_NUM_UDP
         else:
-            port_match_name = None
+            raise exceptions.UnsupportedTransportException(name)
 
-        return port_match_name
-
-    @staticmethod
-    def _get_integer_value_from_address(address):
-        split_list = address.split('.')
-        value = 0
-        for item in split_list:
-            value = (value << 8) + int(item)
-
-        return value
-
-    @staticmethod
-    def _get_rule_flows_match_except_net_addresses(secgroup_rule):
-        protocol = secgroup_rule.get_protocol()
-        port_range_max = secgroup_rule.get_port_range_max()
-        port_range_min = secgroup_rule.get_port_range_min()
+    def _get_rule_flows_match_except_net_addresses(self, secgroup_rule):
+        """
+        Create the match object for the security group rule given in
+        secgroup_rule (type SecurityGroupRule).
+        """
+        result_base = {}
         ethertype = secgroup_rule.get_ethertype()
-
-        match_list = []
-        dl_type_match = {}
-        protocol_match = {}
-        port_match_list = [{}]
         if ethertype == n_const.IPv4:
-            dl_type_match["eth_type"] = ether.ETH_TYPE_IP
-            if protocol is not None:
-                if protocol == n_const.PROTO_NAME_ICMP:
-                    protocol = n_const.PROTO_NUM_ICMP
-                elif protocol == n_const.PROTO_NAME_TCP:
-                    protocol = n_const.PROTO_NUM_TCP
-                elif protocol == n_const.PROTO_NAME_UDP:
-                    protocol = n_const.PROTO_NUM_UDP
-                else:
-                    protocol = int(protocol)
-
-                protocol_match["ip_proto"] = protocol
-                port_match_name = SGApp._get_port_match_name(protocol)
-                if (port_range_min is not None) and \
-                        (port_match_name is not None):
-                    port_match_list = []
-                    if protocol == 1:
-                        icmpv4_match = {port_match_name: int(port_range_min)}
-                        if port_range_max is not None:
-                            icmpv4_match["icmpv4_code"] = int(port_range_max)
-                        port_match_list.append(icmpv4_match)
-                    elif (int(port_range_min) == 1 and
-                            int(port_range_max) == 65535):
-                        port_match_list.append(protocol_match)
-                    else:
-                        split_port_range = SGApp._split_range(
-                            int(port_range_min),
-                            int(port_range_max),
-                            0xffff
-                        )
-                        for port_item in split_port_range:
-                            port_match_list.append(
-                                {port_match_name:
-                                 SGApp._get_port_range_match(port_item)}
-                            )
+            result_base['eth_type'] = ether.ETH_TYPE_IP
         elif ethertype == n_const.IPv6:
-            # not support yet
-            dl_type_match["eth_type"] = ether.ETH_TYPE_IPV6
+            LOG.warning(
+                _LW("IPv6 in security group rules is not yet supported")
+            )
+            result_base['eth_type'] = ether.ETH_TYPE_IPV6
+            return [result_base]
+        protocol_name = secgroup_rule.get_protocol()
+        if not protocol_name:
+            return [result_base]
+        protocol = self._protocol_number_by_name(protocol_name)
+        result_base["ip_proto"] = protocol
+        port_range_min = secgroup_rule.get_port_range_min()
+        port_range_max = secgroup_rule.get_port_range_max()
+        if protocol == n_const.PROTO_NUM_ICMP:
+            if port_range_min:
+                result_base['icmpv4_type'] = int(port_range_min)
+            if port_range_max:
+                result_base['icmpv4_code'] = int(port_range_max)
+            results = [result_base]
+        elif (int(port_range_min) == const.MIN_PORT and
+              int(port_range_max) == const.MAX_PORT):
+            results = [result_base]
         else:
-            LOG.error(_LE("wrong Ethernet type"))
-
-        for port_match in port_match_list:
-            parameters_merge = dl_type_match.copy()
-            parameters_merge.update(protocol_match)
-            parameters_merge.update(port_match)
-            match_list.append(parameters_merge)
-
-        return match_list
+            port_range = netaddr.IPRange(port_range_min, port_range_max)
+            key = DEST_FIELD_NAME_BY_PROTOCOL_NUMBER[protocol]
+            results = []
+            for cidr in port_range.cidrs():
+                result = result_base.copy()
+                port_num = int(cidr.network) & 0xffff
+                mask = int(cidr.netmask) & 0xffff
+                result[key] = (port_num, mask)
+                results.append(result)
+        return results
 
     @staticmethod
     def _get_rule_cookie(rule_id):
@@ -553,7 +399,7 @@ class SGApp(df_base_app.DFlowApp):
         rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
 
         match_list = \
-            SGApp._get_rule_flows_match_except_net_addresses(secgroup_rule)
+            self._get_rule_flows_match_except_net_addresses(secgroup_rule)
 
         if secgroup_rule.get_ethertype() == n_const.IPv4:
             if secgroup_rule.get_direction() == 'ingress':
@@ -582,8 +428,7 @@ class SGApp(df_base_app.DFlowApp):
             for match_item in match_list:
                 parameters_merge = match_item.copy()
                 parameters_merge[ipv4_match_item] = \
-                    SGApp._get_network_and_mask(
-                        SGApp._get_cidr_match(added_cidr_item))
+                    SGApp._get_network_and_mask(added_cidr_item)
                 match = parser.OFPMatch(**parameters_merge)
                 self.mod_flow(
                     self.get_datapath(),
@@ -598,8 +443,7 @@ class SGApp(df_base_app.DFlowApp):
             for match_item in match_list:
                 parameters_merge = match_item.copy()
                 parameters_merge[ipv4_match_item] = \
-                    SGApp._get_network_and_mask(
-                        SGApp._get_cidr_match(removed_cidr_item))
+                    SGApp._get_network_and_mask(removed_cidr_item)
                 match = parser.OFPMatch(**parameters_merge)
                 self.mod_flow(
                     datapath=self.get_datapath(),
@@ -632,7 +476,7 @@ class SGApp(df_base_app.DFlowApp):
             ipv4_match_item = "ipv4_dst"
 
         match_list = \
-            SGApp._get_rule_flows_match_except_net_addresses(secgroup_rule)
+            self._get_rule_flows_match_except_net_addresses(secgroup_rule)
 
         actions = [parser.NXActionConjunction(clause=1,
                                               n_clauses=2,
@@ -652,7 +496,7 @@ class SGApp(df_base_app.DFlowApp):
                     for aggregate_address in aggregate_addresses_range:
                         addresses_list.append({
                             ipv4_match_item: SGApp._get_network_and_mask(
-                                SGApp._get_cidr_match(aggregate_address)
+                                aggregate_address
                             )
                         })
             elif remote_ip_prefix is not None:
@@ -838,16 +682,13 @@ class SGApp(df_base_app.DFlowApp):
             return security_id, (SG_PRIORITY_OFFSET + security_id)
         return None, None
 
-    def _add_local_port_associating(self, lport, secgroup_id):
+    def _associate_secgroup_ip(self, secgroup_id, ip):
         # update the record of aggregate addresses of ports associated
         # with this security group.
-        aggregate_addresses_range = \
-            self.secgroup_aggregate_addresses.get(secgroup_id)
-        if aggregate_addresses_range is None:
-            aggregate_addresses_range = []
+        addresses = self.secgroup_aggregate_addresses[secgroup_id]
         new_cidr_array, added_cidr, removed_cidr = SGApp._add_one_address(
-            aggregate_addresses_range,
-            SGApp._get_integer_value_from_address(lport.get_ip())
+            addresses,
+            ip,
         )
         self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_array
 
@@ -855,13 +696,45 @@ class SGApp(df_base_app.DFlowApp):
         #  this security group as its parameter
         # of remote group.
         secrules = self.remote_secgroup_ref.get(secgroup_id)
-        if secrules is not None:
-            for rule_info in secrules.values():
+        if secrules:
+            for rule_info in six.itervalues(secrules):
                 self._update_security_group_rule_flows_by_addresses(
                     rule_info.get_security_group_id(),
                     rule_info,
                     added_cidr,
                     removed_cidr)
+
+    def _disassociate_secgroup_ip(self, secgroup_id, ip):
+        # update the record of aggregate addresses of ports associated
+        # with this security group.
+        aggregate_addresses_range = \
+            self.secgroup_aggregate_addresses[secgroup_id]
+        if aggregate_addresses_range:
+            new_cidr_array, added_cidr, removed_cidr = \
+                SGApp._remove_one_address(
+                    aggregate_addresses_range,
+                    ip,
+                )
+            if not new_cidr_array:
+                del self.secgroup_aggregate_addresses[secgroup_id]
+            else:
+                self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_array
+
+            # update the flows representing those rules each of which
+            # specifies this security group as its
+            # parameter of remote group.
+            secrules = self.remote_secgroup_ref.get(secgroup_id)
+            if secrules:
+                for rule_info in six.itervalues(secrules):
+                    self._update_security_group_rule_flows_by_addresses(
+                        rule_info.get_security_group_id(),
+                        rule_info,
+                        added_cidr,
+                        removed_cidr
+                    )
+
+    def _add_local_port_associating(self, lport, secgroup_id):
+        self._associate_secgroup_ip(secgroup_id, lport.get_ip())
 
         # update the record of ports associated with this security group.
         associate_ports = \
@@ -881,34 +754,7 @@ class SGApp(df_base_app.DFlowApp):
         # uninstall associating flow
         self._uninstall_associating_flows(secgroup_id, lport)
 
-        # update the record of aggregate addresses of ports associated
-        # with this security group.
-        aggregate_addresses_range = \
-            self.secgroup_aggregate_addresses.get(secgroup_id)
-        if aggregate_addresses_range is not None:
-            new_cidr_array, added_cidr, removed_cidr = \
-                SGApp._remove_one_address(
-                    aggregate_addresses_range,
-                    SGApp._get_integer_value_from_address(lport.get_ip())
-                )
-            if len(new_cidr_array) == 0:
-                del self.secgroup_aggregate_addresses[secgroup_id]
-            else:
-                self.secgroup_aggregate_addresses[secgroup_id] = \
-                    new_cidr_array
-
-            # update the flows representing those rules each of which
-            # specifies this security group as its
-            # parameter of remote group.
-            secrules = self.remote_secgroup_ref.get(secgroup_id)
-            if secrules is not None:
-                for rule_info in secrules.values():
-                    self._update_security_group_rule_flows_by_addresses(
-                        rule_info.get_security_group_id(),
-                        rule_info,
-                        added_cidr,
-                        removed_cidr
-                    )
+        self._disassociate_secgroup_ip(secgroup_id, lport.get_ip())
 
         # update the record of ports associated with this security group.
         associate_ports = \
@@ -922,60 +768,10 @@ class SGApp(df_base_app.DFlowApp):
                     del self.secgroup_associate_local_ports[secgroup_id]
 
     def _add_remote_port_associating(self, lport, secgroup_id):
-        # update the record of aggregate addresses of ports associated
-        # with this security group.
-        aggregate_addresses_range = \
-            self.secgroup_aggregate_addresses.get(secgroup_id)
-        if aggregate_addresses_range is None:
-            aggregate_addresses_range = []
-        new_cidr_array, added_cidr, removed_cidr =\
-            SGApp._add_one_address(
-                aggregate_addresses_range,
-                SGApp._get_integer_value_from_address(lport.get_ip())
-            )
-        self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_array
-
-        # update the flows representing those rules each of which specifies
-        #  this security group as its parameter of remote group.
-        secrules = self.remote_secgroup_ref.get(secgroup_id)
-        if secrules is not None:
-            for rule_info in secrules.values():
-                self._update_security_group_rule_flows_by_addresses(
-                    rule_info.get_security_group_id(),
-                    rule_info,
-                    added_cidr,
-                    removed_cidr
-                )
+        self._associate_secgroup_ip(secgroup_id, lport.get_ip())
 
     def _remove_remote_port_associating(self, lport, secgroup_id):
-        # update the record of aggregate addresses of ports associated
-        # with this security group.
-        aggregate_addresses_range = \
-            self.secgroup_aggregate_addresses.get(secgroup_id)
-        if aggregate_addresses_range is not None:
-            new_cidr_array, added_cidr, removed_cidr = \
-                SGApp._remove_one_address(
-                    aggregate_addresses_range,
-                    SGApp._get_integer_value_from_address(lport.get_ip())
-                )
-            if len(new_cidr_array) == 0:
-                del self.secgroup_aggregate_addresses[secgroup_id]
-            else:
-                self.secgroup_aggregate_addresses[secgroup_id] =\
-                    new_cidr_array
-
-            # update the flows representing those rules each of which
-            # specifies this security group as its
-            # parameter of remote group.
-            secrules = self.remote_secgroup_ref.get(secgroup_id)
-            if secrules is not None:
-                for rule_info in secrules.values():
-                    self._update_security_group_rule_flows_by_addresses(
-                        rule_info.get_security_group_id(),
-                        rule_info,
-                        added_cidr,
-                        removed_cidr
-                    )
+        self._disassociate_secgroup_ip(secgroup_id, lport.get_ip())
 
     def _get_added_and_removed_secgroups(self, secgroups, original_secgroups):
         added_secgroups = []
