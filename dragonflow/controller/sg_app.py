@@ -812,6 +812,10 @@ class SGApp(df_base_app.DFlowApp):
             LOG.error(_LE("datapath is none"))
             return
 
+        if not netaddr.valid_ipv4(lport.get_ip()):
+            LOG.warning(_LW("No support for non IPv4 protocol"))
+            return
+
         secgroups = lport.get_security_groups()
         if not secgroups:
             return
@@ -885,6 +889,10 @@ class SGApp(df_base_app.DFlowApp):
 
         secgroups = lport.get_security_groups()
         if not secgroups:
+            return
+
+        if not netaddr.valid_ipv4(lport.get_ip()):
+            LOG.warning(_LW("No support for non IPv4 protocol"))
             return
 
         for secgroup_id in secgroups:
