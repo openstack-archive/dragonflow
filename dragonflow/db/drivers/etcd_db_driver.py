@@ -202,6 +202,10 @@ class EtcdDbDriver(db_api.DbApi):
         # TODO(gsagie) implement this
         pass
 
+    def process_ha(self):
+        # Not needed in etcd
+        pass
+
     def _db_changes_updater(self):
         while True:
             try:

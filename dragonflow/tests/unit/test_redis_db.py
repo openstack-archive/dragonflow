@@ -107,12 +107,3 @@ class TestRedisDB(tests_base.BaseTestCase):
         redis_mgt.get_ip_by_key.return_value = '0.0.0.0:1000'
         result = self.RedisDbDriver.allocate_unique_key()
         self.assertEqual(result, 1)
-
-    def test_check_connection(self):
-        client = mock.Mock()
-        self.RedisDbDriver._get_client = mock.Mock(return_value=client)
-        self.RedisDbDriver.clients[0] = client
-        client.get.return_value = 1
-        client.execute_command.return_value = 1
-        result = self.RedisDbDriver.check_connection(0)
-        self.assertEqual(result, 1)
