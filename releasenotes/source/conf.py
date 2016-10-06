@@ -265,3 +265,6 @@ man_pages = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+# -- Options for Internationalization output ------------------------------
+locale_dirs = ['locale/']
