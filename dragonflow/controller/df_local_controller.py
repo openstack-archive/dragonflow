@@ -283,8 +283,13 @@ class DfLocalController(object):
             chassis_inst = api_nb.Chassis(jsonutils.dumps(chassis_value))
             self.chassis_created(chassis_inst)
             self.remote_chassis_lport_map[chassis] = {lport.get_id()}
+            self.nb_api.db_change_callback(
+                    'lport', lport.get_id(), 'create',
+                    jsonutils.dumps(lport.lport), lport.get_topic())
+            return True
         else:
             chassis_lports.add(lport.get_id())
+            return False
 
     def _delete_remote_port_from_chassis(self, lport):
         chassis = lport.get_chassis()
@@ -302,8 +307,8 @@ class DfLocalController(object):
             LOG.debug(("Port %s has not been bound or it is a vPort") %
                       lport.get_id())
             return
-        if lport.get_remote_vtep():
-            self._add_remote_port_on_chassis(lport)
+        if lport.get_remote_vtep() and self._add_remote_port_on_chassis(lport):
+            return
         self._logical_port_process(lport)
 
     def logical_port_updated(self, lport):
@@ -314,16 +319,18 @@ class DfLocalController(object):
             return
         original_lport = self.db_store.get_port(lport.get_id())
         if not original_lport:
-            if lport.get_remote_vtep():
-                self._add_remote_port_on_chassis(lport)
+            if lport.get_remote_vtep() and self._add_remote_port_on_chassis(
+                    lport):
+                return
         else:
             original_chassis = original_lport.get_chassis()
             if original_chassis != chassis:
                 if original_lport.get_remote_vtep():
                     self._delete_remote_port_from_chassis(original_lport)
 
-                if lport.get_remote_vtep():
-                    self._add_remote_port_on_chassis(lport)
+                if lport.get_remote_vtep() and\
+                        self._add_remote_port_on_chassis(lport):
+                    return
         self._logical_port_process(lport, original_lport)
 
     def logical_port_deleted(self, lport_id):
