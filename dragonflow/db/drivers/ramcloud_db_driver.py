@@ -111,3 +111,7 @@ class RamCloudDbDriver(db_api.DbApi):
     def process_ha(self):
         # Not needed in rmc
         pass
+
+    def set_neutron_server(self):
+        # Not needed in rmc
+        pass
