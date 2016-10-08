@@ -206,6 +206,10 @@ class EtcdDbDriver(db_api.DbApi):
         # Not needed in etcd
         pass
 
+    def set_neutron_server(self):
+        # Not needed in etcd
+        pass
+
     def _db_changes_updater(self):
         while True:
             try:
