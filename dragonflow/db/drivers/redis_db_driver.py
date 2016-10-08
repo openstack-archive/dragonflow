@@ -323,3 +323,6 @@ class RedisDbDriver(db_api.DbApi):
 
     def unregister_topic_for_notification(self, topic):
         pass
+
+    def set_neutron_server(self, is_neutron_server):
+        self.is_neutron_server = is_neutron_server
