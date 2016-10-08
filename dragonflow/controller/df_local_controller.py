@@ -75,11 +75,9 @@ class DfLocalController(object):
         app_mgr = app_manager.AppManager.get_instance()
         self.open_flow_app = app_mgr.instantiate(ryu_base_app.RyuDFAdapter,
                                                  **kwargs)
-
         self.topology = None
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
-        self.remote_chassis_lport_map = {}
         self.integration_bridge = cfg.CONF.df.integration_bridge
 
     def run(self):
@@ -276,25 +274,21 @@ class DfLocalController(object):
 
     def _add_remote_port_on_chassis(self, lport):
         chassis = lport.get_chassis()
-        chassis_lports = self.remote_chassis_lport_map.get(chassis)
+        chassis_lports = self.db_store.get_lports_by_remote_chassis(chassis)
         if not chassis_lports:
             chassis_value = {'id': chassis, 'ip': chassis,
                              'tunnel_type': self.tunnel_type}
             chassis_inst = api_nb.Chassis(jsonutils.dumps(chassis_value))
             self.chassis_created(chassis_inst)
-            self.remote_chassis_lport_map[chassis] = {lport.get_id()}
-        else:
-            chassis_lports.add(lport.get_id())
+        self.db_store.add_remote_chassis_lport(chassis, lport.get_id())
 
     def _delete_remote_port_from_chassis(self, lport):
         chassis = lport.get_chassis()
-        chassis_lports = self.remote_chassis_lport_map.get(chassis)
-        if chassis_lports is None:
-            return
-        chassis_lports.remove(lport.get_id())
-        if len(chassis_lports) == 0:
+        self.db_store.del_remote_chassis_lport(chassis, lport.get_id())
+        chassis_lports = self.db_store.get_lports_by_remote_chassis(chassis)
+        if not chassis_lports:
             self.chassis_deleted(chassis)
-            del self.remote_chassis_lport_map[chassis]
+            self.db_store.del_remote_chassis(chassis)
 
     def logical_port_created(self, lport):
         chassis = lport.get_chassis()
