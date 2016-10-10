@@ -36,7 +36,7 @@ from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
 
 LOG = log.getLogger(__name__)
-cfg.CONF.register_opts(common_params.df_opts, 'df')
+cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 
 class DFMechDriver(driver_api.MechanismDriver):

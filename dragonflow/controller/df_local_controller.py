@@ -37,7 +37,7 @@ from dragonflow.db import db_store
 from dragonflow.ovsdb import vswitch_impl
 
 
-df_ryu_opts = [
+DF_RYU_OPTS = [
     cfg.IPOpt('of_listen_address', default='127.0.0.1',
               help=_("Address to listen on for OpenFlow connections.")),
     cfg.PortOpt('of_listen_port', default=ofproto_common.OFP_TCP_PORT,
@@ -47,8 +47,8 @@ df_ryu_opts = [
 config.setup_logging()
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
 
-cfg.CONF.register_opts(common_params.df_opts, 'df')
-cfg.CONF.register_opts(df_ryu_opts, 'df_ryu')
+cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
+cfg.CONF.register_opts(DF_RYU_OPTS, 'df_ryu')
 
 
 class DfLocalController(object):
