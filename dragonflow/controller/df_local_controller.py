@@ -34,7 +34,7 @@ from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
-from dragonflow.db.drivers import ovsdb_vswitch_impl
+from dragonflow.ovsdb import vswitch_impl
 
 
 df_ryu_opts = [
@@ -66,7 +66,7 @@ class DfLocalController(object):
         self.nb_api = api_nb.NbApi(
             nb_driver,
             use_pubsub=cfg.CONF.df.enable_df_pub_sub)
-        self.vswitch_api = ovsdb_vswitch_impl.OvsdbSwitchApi(self.ip)
+        self.vswitch_api = vswitch_impl.OvsApi(self.ip)
         kwargs = dict(
             nb_api=self.nb_api,
             vswitch_api=self.vswitch_api,
@@ -89,7 +89,6 @@ class DfLocalController(object):
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)
 
-        self.vswitch_api.sync()
         # both set_controller and del_controller will delete flows.
         # for reliability, here we should check if controller is set for OVS,
         # if yes, don't set controller and don't delete controller.
