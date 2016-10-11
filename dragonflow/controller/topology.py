@@ -178,17 +178,21 @@ class Topology(object):
             return
         self._add_to_topic_subscribed(topic, lport_id)
 
-        # update lport, notify apps
         ovs_port_id = ovs_port.get_id()
         self.ovs_to_lport_mapping[ovs_port_id] = {'lport_id': lport_id,
                                                   'topic': topic}
-        LOG.info(_LI("A local logical port(%s) is online") % str(lport))
 
-        try:
-            self.controller.logical_port_updated(lport)
-        except Exception:
-            LOG.exception(_LE('Failed to process logical port online '
-                              'event: %s') % str(lport))
+        cached_lport = self.db_store.get_port(lport_id)
+        if not cached_lport or not cached_lport.get_external_value("ofport"):
+            # If the logical port is not in db store or its ofport is not
+            # valid. It has not been applied to dragonflow apps. We need to
+            # update it in dragonflow controller.
+            LOG.info(_LI("A local logical port(%s) is online"), lport)
+            try:
+                self.controller.logical_port_updated(lport)
+            except Exception:
+                LOG.exception(_LE('Failed to process logical port online '
+                                  'event: %s'), lport)
 
     def _bridge_port_added(self, ovs_port):
         self._bridge_port_updated(ovs_port)
@@ -238,7 +242,7 @@ class Topology(object):
             LOG.info(_LI("Subscribe topic: %(topic)s by lport: %(id)s") %
                      {"topic": topic, "id": lport_id})
             self.nb_api.subscriber.register_topic(topic)
-            self._pull_tenant_topology_from_db(topic, lport_id)
+            self._pull_tenant_topology_from_db(topic)
             self.topic_subscribed[topic] = set([lport_id])
         else:
             self.topic_subscribed[topic].add(lport_id)
@@ -255,7 +259,7 @@ class Topology(object):
             self.nb_api.subscriber.unregister_topic(topic)
             self._clear_tenant_topology(topic)
 
-    def _pull_tenant_topology_from_db(self, tenant_id, lport_id):
+    def _pull_tenant_topology_from_db(self, tenant_id):
         switches = self.nb_api.get_all_logical_switches(tenant_id)
         for switch in switches:
             self.controller.logical_switch_updated(switch)
@@ -266,8 +270,6 @@ class Topology(object):
 
         ports = self.nb_api.get_all_logical_ports(tenant_id)
         for port in ports:
-            if port.get_id() == lport_id:
-                continue
             self.controller.logical_port_updated(port)
 
         routers = self.nb_api.get_routers(tenant_id)
