@@ -27,6 +27,7 @@ class LocalInterface(object):
         self.attached_mac = ""
         self.mac_in_use = ""
         self.remote_ip = ""
+        self.remote_chassis_id = ""
         self.tunnel_type = ""
 
     @classmethod
@@ -68,6 +69,7 @@ class LocalInterface(object):
             result.peer = row.options['peer']
         if result.type == "tunnel":
             result.remote_ip = row.options['remote_ip']
+            result.remote_chassis_id = external_ids.get("df-chassis-id", "")
             result.tunnel_type = row.type
         return result
 
@@ -101,6 +103,9 @@ class LocalInterface(object):
     def get_remote_ip(self):
         return self.remote_ip
 
+    def get_remote_chassis(self):
+        return self.remote_chassis_id
+
     def get_tunnel_type(self):
         return self.tunnel_type
 
@@ -111,7 +116,7 @@ class LocalInterface(object):
                 "admin_state:%s, type:%s, "
                 "iface_id:%s, peer:%s, "
                 "attached_mac:%s, mac_in_use:%s, remote_ip:%s, "
-                "tunnel_type:%s" % (self.uuid,
+                "tunnel_type:%s, remote_chassis_id:%s" % (self.uuid,
                     self.ofport,
                     self.name,
                     self.admin_state,
@@ -121,7 +126,8 @@ class LocalInterface(object):
                     self.attached_mac,
                     self.mac_in_use,
                     self.remote_ip,
-                    self.tunnel_type))
+                    self.tunnel_type,
+                    self.remote_chassis_id))
 
 
 class OvsdbTunnelPort(object):
