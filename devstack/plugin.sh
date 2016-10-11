@@ -56,6 +56,9 @@ OVS_DB_PID=$OVS_DIR"/"$OVS_DB_SERVICE".pid"
 OVS_VSWITCHD_PID=$OVS_DIR"/"$OVS_VSWITCHD_SERVICE".pid"
 OVS_VSWITCH_OCSSCHEMA_FILE=${OVS_VSWITCH_OCSSCHEMA_FILE:-"/usr/share/openvswitch/vswitch.ovsschema"}
 
+# Port status notifier
+ENABLE_PORT_STATUS_NOTIFIER=${ENABLE_PORT_STATUS_NOTIFIER:-"True"}
+
 ACTION=$1
 STAGE=$2
 
@@ -114,6 +117,7 @@ fi
 if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
     DF_PUB_SUB="True"
     DF_PUB_SUB_USE_MULTIPROC="False"
+    PORT_STATUS_NOTIFIER="redis_port_status_notifier_driver"
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
 
@@ -164,10 +168,13 @@ function configure_df_plugin {
         cd $_pwd
         cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
 
+
         iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
         iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
         iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
         iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
+        iniset $DRAGONFLOW_CONF df port_status_notifier "$PORT_STATUS_NOTIFIER"
+        iniset $DRAGONFLOW_CONF df enable_port_status_notifier "$ENABLE_PORT_STATUS_NOTIFIER"
         iniset $DRAGONFLOW_CONF df local_ip "$HOST_IP"
         iniset $DRAGONFLOW_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $DRAGONFLOW_CONF df integration_bridge "$INTEGRATION_BRIDGE"
@@ -184,6 +191,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins "$Q_SERVICE_PLUGIN_CLASSES"
+
 
         if is_service_enabled q-dhcp ; then
             iniset $DRAGONFLOW_CONF df use_centralized_ipv6_DHCP "True"
@@ -223,10 +231,13 @@ function configure_df_plugin {
         cp $NEUTRON_DIR/etc/neutron.conf.sample $NEUTRON_CONF
         cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
 
+
         iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
         iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
         iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
         iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
+        iniset $DRAGONFLOW_CONF df port_status_notifier "$PORT_STATUS_NOTIFIER"
+        iniset $DRAGONFLOW_CONF df enable_port_status_notifier "$ENABLE_PORT_STATUS_NOTIFIER"
         iniset $DRAGONFLOW_CONF df local_ip "$HOST_IP"
         iniset $DRAGONFLOW_CONF df tunnel_type "$TUNNEL_TYPE"
         iniset $DRAGONFLOW_CONF df integration_bridge "$INTEGRATION_BRIDGE"
@@ -236,6 +247,7 @@ function configure_df_plugin {
         iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
         iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
         iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
+
 
         if [[ "$DF_PUB_SUB" == "True" ]]; then
             DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
