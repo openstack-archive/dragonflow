@@ -89,6 +89,7 @@ class DFIdl(idl.Idl):
         super(DFIdl, self).__init__(remote, schema)
         self.nb_api = nb_api
         self.interface_type = (constants.OVS_VM_INTERFACE,
+                               constants.OVS_TUNNEL_INTERFACE,
                                constants.OVS_BRIDGE_INTERFACE)
 
     def _is_handle_interface_update(self, interface):
