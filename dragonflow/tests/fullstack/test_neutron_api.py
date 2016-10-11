@@ -12,6 +12,7 @@
 
 import contextlib
 
+from neutron.tests import tools
 from neutronclient.common import exceptions as n_exc
 from oslo_concurrency import lockutils
 
@@ -502,7 +503,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
         real_pairs = lport.get_allow_address_pairs()
-        self.assertEqual(expected_pairs, real_pairs)
+        self.assertEqual(tools.UnorderedList(expected_pairs), real_pairs)
 
         expected_pairs = [
                 {"ip_address": "192.168.127.211",
@@ -514,4 +515,4 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
         real_pairs = lport.get_allow_address_pairs()
-        self.assertEqual(expected_pairs, real_pairs)
+        self.assertEqual(tools.UnorderedList(expected_pairs), real_pairs)
