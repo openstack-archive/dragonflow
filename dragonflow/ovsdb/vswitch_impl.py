@@ -98,8 +98,26 @@ class OvsApi(object):
                 res.append(objects.OvsdbTunnelPort(port.name, chassis_id))
         return res
 
+    def get_virtual_tunnel_ports(self):
+        ifaces = self.ovsdb.db_find(
+            'Interface', ('options', '=', {'remote_ip': 'flow'}),
+            columns=['name', 'type']).execute()
+        tunnel_ports = []
+        for iface in ifaces:
+            if (self.integration_bridge !=
+                    self._get_bridge_for_iface(iface['name'])):
+                continue
+
+            tunnel_ports.append(objects.OvsdbVirtuaTunnelPort(iface['name'],
+                                                              iface['type']))
+
+        return tunnel_ports
+
     def add_tunnel_port(self, chassis):
         self.ovsdb.add_tunnel_port(chassis).execute()
+
+    def add_virtual_tunnel_port(self, tunnel_type):
+        self.ovsdb.add_virtual_tunnel_port(tunnel_type).execute()
 
     def delete_port(self, switch_port):
         self.ovsdb.del_port(switch_port.get_name(),
