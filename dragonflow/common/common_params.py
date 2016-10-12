@@ -34,6 +34,12 @@ DF_OPTS = [
     cfg.StrOpt('tunnel_type',
                default='geneve',
                help=_('The encapsulation type for the tunnel')),
+    cfg.BoolOpt('enable_virtual_tunnel_port',
+                default=False,
+                help=_("Enable virtual tunnel port")),
+    cfg.ListOpt('tunnel_types',
+                default=['geneve', 'vxlan', 'gre'],
+                help=_("The encapsulation types for the tunnels")),
     cfg.StrOpt('apps_list',
                default='l2_app.L2App,'
                        'l3_proactive_app.L3ProactiveApp,'
