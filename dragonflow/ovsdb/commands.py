@@ -86,3 +86,40 @@ class AddTunnelPort(commands.BaseCommand):
         ports = getattr(bridge, 'ports', [])
         ports.append(port)
         bridge.ports = ports
+
+
+class AddVirtualTunnelPort(commands.BaseCommand):
+    def __init__(self, api, tunnel_type):
+        super(AddVirtualTunnelPort, self).__init__(api)
+        self.tunnel_type = tunnel_type
+        self.integration_bridge = cfg.CONF.df.integration_bridge
+        self.port = tunnel_type + "-tunnel-port"
+
+    def run_idl(self, txn):
+        bridge = idlutils.row_by_value(self.api.idl, 'Bridge',
+                                       'name', self.integration_bridge)
+        port = idlutils.row_by_value(self.api.idl, 'Port', 'name',
+                                     self.port, None)
+        if port:
+            return
+
+        port = txn.insert(self.api._tables['Port'])
+        port.name = self.port
+        bridge.verify('ports')
+        ports = getattr(bridge, 'ports', [])
+        ports.append(port)
+        bridge.ports = ports
+
+        iface = txn.insert(self.api._tables['Interface'])
+        txn.expected_ifaces.add(iface.uuid)
+        iface.name = self.port
+        iface.type = self.tunnel_type
+        options_dict = getattr(iface, 'options', {})
+        options_dict['remote_ip'] = 'flow'
+        options_dict['key'] = 'flow'
+        options_dict['local_ip'] = cfg.CONF.df.local_ip
+        iface.options = options_dict
+        port.verify('interfaces')
+        ifaces = getattr(port, 'interfaces', [])
+        ifaces.append(iface)
+        port.interfaces = ifaces
