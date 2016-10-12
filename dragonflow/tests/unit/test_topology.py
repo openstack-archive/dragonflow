@@ -16,6 +16,7 @@
 import mock
 from oslo_config import cfg
 
+from dragonflow.controller import df_db_objects_refresh
 from dragonflow.tests.unit import test_app_base
 
 
@@ -45,13 +46,16 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.nb_api.get_logical_port.return_value = (
             test_app_base.fake_local_port1)
 
-        # Verify port online
         original_update = self.controller.logical_port_updated
         self.controller.logical_port_updated = mock.Mock()
         self.controller.logical_port_updated.side_effect = original_update
+        original_delete = self.controller.logical_port_deleted
+        self.controller.logical_port_deleted = mock.Mock()
+        self.controller.logical_port_deleted.side_effect = original_delete
+        df_db_objects_refresh.initialize_object_refreshers(self.controller)
 
+        # Verify port online
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
-
         self.controller.logical_port_updated.assert_called_once_with(
             test_app_base.fake_local_port1)
         self.nb_api.subscriber.register_topic.assert_called_once_with(
@@ -59,12 +63,7 @@ class TestTopology(test_app_base.DFAppTestBase):
 
         # Verify port offline
         self.nb_api.get_all_logical_ports.return_value = []
-        original_delete = self.controller.logical_port_deleted
-        self.controller.logical_port_deleted = mock.Mock()
-        self.controller.logical_port_deleted.side_effect = original_delete
-
         self.topology.ovs_port_deleted(test_app_base.fake_ovs_port1.get_id())
-
         self.controller.logical_port_deleted.assert_called_once_with(
             test_app_base.fake_local_port1.get_id())
         self.nb_api.subscriber.unregister_topic.assert_called_once_with(
@@ -85,6 +84,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.nb_api.get_logical_port.side_effect = _get_logical_port
 
         # Pull topology by first ovs port online
+        df_db_objects_refresh.initialize_object_refreshers(self.controller)
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
 
         # Another port online
@@ -114,6 +114,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         original_update = self.controller.logical_port_updated
         self.controller.logical_port_updated = mock.Mock()
         self.controller.logical_port_updated.side_effect = original_update
+        df_db_objects_refresh.initialize_object_refreshers(self.controller)
 
         # The vm ports are online one by one
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
