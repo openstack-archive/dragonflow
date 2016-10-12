@@ -34,11 +34,11 @@ class DfObjectRefresher(object):
         self.cache_delete_id_callback = cache_delete_id_callback
         self.object_ids_to_remove = set()
 
-    def read(self):
+    def read(self, topic=None):
         """Reads the objects IDs from the cache."""
-        self.object_ids_to_remove = set(self.cache_read_ids_callback())
+        self.object_ids_to_remove = set(self.cache_read_ids_callback(topic))
 
-    def update(self):
+    def update(self, topic=None):
         """Updates existing objects and marks obsolete ones for removal.
 
         This is done by reading all the current objects from the database
@@ -46,9 +46,9 @@ class DfObjectRefresher(object):
         For every object that exists in both, we update it, and for each
         object that was removed from the DB we mark it for removal.
         """
-        for my_object in self.db_read_objects_callback():
-            self.cache_update_object_callback(my_object)
-            obj_id = my_object.get_id()
+        for obj in self.db_read_objects_callback(topic):
+            self.cache_update_object_callback(obj)
+            obj_id = obj.get_id()
             self.object_ids_to_remove.discard(obj_id)
 
     def delete(self):
@@ -60,3 +60,81 @@ class DfObjectRefresher(object):
         for curr_id in self.object_ids_to_remove:
             self.cache_delete_id_callback(curr_id)
         self.object_ids_to_remove.clear()
+
+
+# List of DfObjectRefresher.
+items = []
+
+
+def initialize_object_refreshers(df_controller):
+    db_store = df_controller.get_db_store()
+    nb_api = df_controller.get_nb_api()
+
+    items.append(DfObjectRefresher('Switches',
+                                   db_store.get_lswitch_keys,
+                                   nb_api.get_all_logical_switches,
+                                   df_controller.logical_switch_updated,
+                                   df_controller.logical_switch_deleted))
+    items.append(DfObjectRefresher('Security Groups',
+                                   db_store.get_security_group_keys,
+                                   nb_api.get_security_groups,
+                                   df_controller.security_group_updated,
+                                   df_controller.security_group_deleted))
+    items.append(DfObjectRefresher('Ports',
+                                   db_store.get_port_keys,
+                                   nb_api.get_all_logical_ports,
+                                   df_controller.logical_port_updated,
+                                   df_controller.logical_port_deleted))
+    items.append(DfObjectRefresher('Routers',
+                                   db_store.get_router_keys,
+                                   nb_api.get_routers,
+                                   df_controller.router_updated,
+                                   df_controller.router_deleted))
+    items.append(DfObjectRefresher('Floating IPs',
+                                   db_store.get_floatingip_keys,
+                                   nb_api.get_floatingips,
+                                   df_controller.floatingip_updated,
+                                   df_controller.floatingip_deleted))
+
+
+def sync_local_cache_from_nb_db(topics=None):
+    """Sync local db store from nb db and apply to local OpenFlow
+
+    @param topics: The topics that the sync will be performed. If empty or
+                   None, all topics will be synced.
+    @return : None
+    """
+    def _refresh_items(topic=None):
+        # Refresh all the objects and find which ones should be removed
+        for item in items:
+            item.read(topic)
+            item.update(topic)
+
+        # Remove obsolete objects in reverse order
+        for item in reversed(items):
+            item.delete()
+
+    if topics:
+        for topic in topics:
+            _refresh_items(topic)
+    else:
+        _refresh_items()
+
+
+def clear_local_cache(topics=None):
+    """Clear local db store and clear local OpenFlow
+
+    @param topics: The topics that the clear will be performed. If empty or
+                   None, all topics will be cleared.
+    @return : None
+    """
+    def _delete_items(topic=None):
+        for item in reversed(items):
+            item.read(topic)
+            item.delete()
+
+    if topics:
+        for topic in topics:
+            _delete_items(topic)
+    else:
+        _delete_items()
