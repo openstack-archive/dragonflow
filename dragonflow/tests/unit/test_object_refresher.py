@@ -33,7 +33,7 @@ class TestDbObjectsRefresh(tests_base.BaseTestCase):
             item = mock.Mock()
             self.test_objs[item.get_id()] = item
 
-    def _db_read_objects(self):
+    def _db_read_objects(self, topic=None):
         # Return only half of the objects
         objects = list(self.test_objs.values())
         for _idx in range(self.ITEMS_TO_DELETE):
@@ -50,7 +50,7 @@ class TestDbObjectsRefresh(tests_base.BaseTestCase):
     def test_db_store(self):
         refresher = df_db_objects_refresh.DfObjectRefresher(
             'Mock',
-            lambda: self.test_objs.keys(),
+            lambda t: self.test_objs.keys(),
             self._db_read_objects,
             self._cache_update_object,
             self._cache_delete_id)
@@ -74,7 +74,7 @@ class TestDbObjectsRefresh(tests_base.BaseTestCase):
         fake_delete_method = mock.Mock()
         refresher = df_db_objects_refresh.DfObjectRefresher(
             'Mock',
-            set,
+            lambda t: set(),
             self._db_read_objects,
             self._cache_update_object,
             fake_delete_method)
