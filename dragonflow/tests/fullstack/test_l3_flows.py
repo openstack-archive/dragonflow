@@ -10,11 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.agent.linux.utils import wait_until_true
 from random import randint
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import app_testing_objects
+from dragonflow.tests.common import constants as test_const
+from dragonflow.tests.common import utils
 from dragonflow.tests.common.utils import OvsFlowsParser
 from dragonflow.tests.fullstack import test_base
 
@@ -56,20 +57,20 @@ class TestL3Flows(test_base.DFTestBase):
         # table = 20, priority = 100, ip, nw_src = 192.168.10.0/24,
         # nw_dst = 10.110.10.0/24
         # actions = dec_ttl, load:0x18->NXM_NX_REG7[], resubmit(, 64)
-        wait_until_true(
+        utils.wait_until_true(
             lambda: any(self._get_route_flows('192.168.10.0/24',
                                               dest)),
-            timeout=30,
+            timeout=test_const.DEFAULT_RESOURCE_READY_TIMEOUT,
             exception=Exception('route flow entry is not installed')
         )
         body['routes'] = []
         self.neutron.update_router(self.router.router.router_id,
                                    body={'router': body})
 
-        wait_until_true(
+        utils.wait_until_true(
             lambda: not any(self._get_route_flows('192.168.10.0/24',
                                                   dest)),
-            timeout=30,
+            timeout=test_const.DEFAULT_RESOURCE_READY_TIMEOUT,
             exception=Exception('route flow entry is not deleted')
         )
 

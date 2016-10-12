@@ -10,12 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
 import re
-
-from neutron.agent.linux import utils
+import time
 
 from dragonflow.controller.common import constants as const
+from dragonflow.tests.common import constants as test_const
 from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -80,7 +79,7 @@ class ArpResponderTest(test_base.DFTestBase):
         flows_middle = self._get_arp_table_flows()
 
         vm.close()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
         flows_delta = [flow for flow in flows_middle
                 if flow not in flows_before]
         self.assertIsNotNone(
@@ -89,8 +88,9 @@ class ArpResponderTest(test_base.DFTestBase):
 
         condition = lambda: self._check_arp_flow_removal(ip)
         try:
-            utils.wait_until_true(
-                condition, timeout=40, sleep=1,
+            test_utils.wait_until_true(
+                condition, timeout=test_const.DEFAULT_RESOURCE_READY_TIMEOUT,
+                sleep=1,
                 exception=RuntimeError(
                     "Timed out waiting for arp responder flow from %(ip)s"
                     " to be removed" % {'ip': ip}))
@@ -174,7 +174,7 @@ class ICMPResponderTest(test_base.DFTestBase):
 
         vm.close()
         router.close()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         flows_delta = [flow for flow in flows_middle
                 if flow not in flows_before]
@@ -184,8 +184,9 @@ class ICMPResponderTest(test_base.DFTestBase):
         )
         condition = lambda: self._check_icmp_flow_removal(router_ip)
         try:
-            utils.wait_until_true(
-                condition, timeout=40, sleep=1,
+            test_utils.wait_until_true(
+                condition, timeout=test_const.DEFAULT_RESOURCE_READY_TIMEOUT,
+                sleep=1,
                 exception=RuntimeError(
                     "Timed out waiting for icmp responder flow from %(ip)s"
                     " to be removed" % {'ip': router_ip}))

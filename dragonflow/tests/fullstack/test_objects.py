@@ -13,14 +13,14 @@
 import six
 import time
 
-from neutron.agent.linux.utils import wait_until_true
 from neutronclient.common import exceptions
 from novaclient import client as novaclient
 import os_client_config
 from oslo_log import log
 
 from dragonflow._i18n import _LW
-from dragonflow.tests.common.utils import wait_until_none
+from dragonflow.tests.common import constants as const
+from dragonflow.tests.common import utils
 
 
 LOG = log.getLogger(__name__)
@@ -229,11 +229,12 @@ class VMTestObj(object):
             name='test', image=image.id, flavor=flavor.id, nics=nics,
             user_data=script, security_groups=security_groups)
         self.parent.assertIsNotNone(self.server)
-        server_is_ready = self._wait_for_server_ready(30)
+        server_is_ready = self._wait_for_server_ready()
         self.parent.assertTrue(server_is_ready)
         return self.server.id
 
-    def _wait_for_server_ready(self, timeout):
+    def _wait_for_server_ready(self,
+                               timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT):
         if self.server is None:
             return False
         while timeout > 0:
@@ -244,10 +245,11 @@ class VMTestObj(object):
             timeout = timeout - 1
         return False
 
-    def _wait_for_server_delete(self, timeout=60):
+    def _wait_for_server_delete(self,
+                                timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT):
         if self.server is None:
             return
-        wait_until_none(
+        utils.wait_until_none(
             self._get_VM_port,
             timeout,
             exception=Exception('VM is not deleted')
@@ -426,10 +428,11 @@ class FloatingipTestObj(object):
             return True
         return False
 
-    def wait_until_fip_active(self, timeout=5, sleep=1, exception=None):
+    def wait_until_fip_active(self, timeout=const.DEFAULT_CMD_TIMEOUT,
+                              sleep=1, exception=None):
         def internal_predicate():
             fip = self.get_floatingip()
             if fip and fip.get_status() == 'ACTIVE':
                 return True
             return False
-        wait_until_true(internal_predicate, timeout, sleep, exception)
+        utils.wait_until_true(internal_predicate, timeout, sleep, exception)
