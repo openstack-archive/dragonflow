@@ -130,15 +130,31 @@ class LocalInterface(object):
                     self.remote_chassis_id))
 
 
-class OvsdbTunnelPort(object):
+class OvsdbPort(object):
+
+    def __init__(self, name):
+        super(OvsdbPort, self).__init__()
+        self.name = name
+
+    def get_name(self):
+        return self.name
+
+
+class OvsdbTunnelPort(OvsdbPort):
 
     def __init__(self, name, chassis_id):
-        super(OvsdbTunnelPort, self).__init__()
-        self.name = name
+        super(OvsdbTunnelPort, self).__init__(name)
         self.chassis_id = chassis_id
 
     def get_chassis_id(self):
         return self.chassis_id
 
-    def get_name(self):
-        return self.name
+
+class OvsdbVirtuaTunnelPort(OvsdbPort):
+
+    def __init__(self, name, tunnel_type):
+        super(OvsdbVirtuaTunnelPort, self).__init__(name)
+        self.tunnel_type = tunnel_type
+
+    def get_tunnel_type(self):
+        return self.tunnel_type
