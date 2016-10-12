@@ -15,12 +15,12 @@ import string
 import sys
 import time
 
-from neutron.agent.linux.utils import wait_until_true
 from oslo_log import log
 import ryu.lib.packet
 
 from dragonflow._i18n import _LI
 from dragonflow.tests.common import app_testing_objects
+from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -77,7 +77,7 @@ class TestArpResponder(test_base.DFTestBase):
             subnet1 = self.topology.create_subnet(cidr='192.168.10.0/24')
             port1 = subnet1.create_port()
             port2 = subnet1.create_port()
-            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
             # Create policy
             arp_packet = self._create_arp_request(
                 src_port=port1.port.get_logical_port(),
@@ -181,7 +181,7 @@ class TestDHCPApp(test_base.DFTestBase):
             self.subnet1 = self.topology.create_subnet(cidr='192.168.11.0/24')
             self.port1 = self.subnet1.create_port()
             self.port2 = self.subnet1.create_port()
-            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
             # Create policy
             dhcp_packet = self._create_dhcp_discover()
             send_dhcp_offer = app_testing_objects.SendAction(
@@ -420,7 +420,9 @@ class TestDHCPApp(test_base.DFTestBase):
         )
 
         policy.start(self.topology)
-        wait_until_true(internal_predicate, 30, 1, None)
+        test_utils.wait_until_true(internal_predicate,
+                                   const.DEFAULT_RESOURCE_READY_TIMEOUT,
+                                   1, None)
 
 
 class TestL3App(test_base.DFTestBase):
@@ -444,7 +446,7 @@ class TestL3App(test_base.DFTestBase):
                 self.subnet1.subnet_id,
                 self.subnet2.subnet_id,
             ])
-            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
             port_policies = self._create_port_policies()
             self.policy = self.store(
@@ -697,7 +699,7 @@ class TestSGApp(test_base.DFTestBase):
             self.permit_icmp_request = self._get_icmp_request1
             self.no_permit_icmp_request = self._get_icmp_request2
 
-            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
             self._update_policy()
         except Exception:
@@ -932,7 +934,7 @@ class TestSGApp(test_base.DFTestBase):
             self.port3.update(
                 {"security_groups": [self.active_security_group_id]})
 
-            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
             self._update_policy()
 
@@ -951,7 +953,7 @@ class TestSGApp(test_base.DFTestBase):
         # group, and rules of this security group only let icmp echo requests
         # from port2 pass.
         self._switch_to_another_security_group()
-        time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         self.policy.start(self.topology)
         self.policy.wait(30)
@@ -959,7 +961,7 @@ class TestSGApp(test_base.DFTestBase):
         # switch the associated security group with port3 to the initial
         # security group
         self._switch_to_another_security_group()
-        time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         self.policy.start(self.topology)
         self.policy.wait(30)
@@ -1019,7 +1021,7 @@ class TestPortSecApp(test_base.DFTestBase):
             })
             self.port2 = self.subnet.create_port([security_group_id])
 
-            time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
             port_policies = self._create_port_policies()
             self.policy = self.store(
