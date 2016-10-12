@@ -13,6 +13,7 @@
 import time
 
 from dragonflow.controller.common import constants as const
+from dragonflow.tests.common import constants as test_const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -218,7 +219,7 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
 
         vm.close()
 
-        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         # Check if the associating flows were removed.
         expected_flow_list = self._get_anti_spoof_expected_flows(

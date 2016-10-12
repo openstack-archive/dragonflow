@@ -10,11 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
-from neutron.agent.linux.utils import wait_until_true
 from oslo_config import cfg
 
 DF_PLUGIN = 'dragonflow.neutron.plugin.DFPlugin'
@@ -57,9 +57,9 @@ class TestRemotePort(test_base.DFTestBase):
         self.assertTrue(port.exists())
 
         ovsdb = utils.OvsDBParser()
-        wait_until_true(
+        utils.wait_until_true(
             lambda: self._get_wanted_tunnel_port(ovsdb, '10.10.10.10'),
-            timeout=30, sleep=2,
+            timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT, sleep=2,
             exception=Exception('Could not get wanted tunnel port')
         )
 
@@ -68,7 +68,7 @@ class TestRemotePort(test_base.DFTestBase):
 
         utils.wait_until_none(
             lambda: ovsdb.get_tunnel_ofport('10.10.10.10'),
-            timeout=30, sleep=2,
+            timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT, sleep=2,
             exception=Exception('Could not delete wanted tunnel port')
         )
 
