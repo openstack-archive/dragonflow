@@ -12,8 +12,7 @@
 
 import time
 
-from neutron.agent.linux.utils import wait_until_true
-
+from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -73,7 +72,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
             exception=Exception('DHCP IP was not generated')
         )
         self.assertFalse(self.check_dhcp_rule(flows_before_change, dhcp_ip))
-        wait_until_true(
+        utils.wait_until_true(
             lambda: self.check_dhcp_rule(ovs.dump(self.integration_bridge),
                                          dhcp_ip),
             exception=Exception('DHCP ip was not found in OpenFlow rules'),
@@ -82,7 +81,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         # change dhcp
         updated_subnet = {'enable_dhcp': False}
         self.neutron.update_subnet(subnet_id, {'subnet': updated_subnet})
-        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         flows_after_update = ovs.dump(self.integration_bridge)
         self.assertFalse(self.check_dhcp_rule(flows_after_update, dhcp_ip))
         network.close()
@@ -100,7 +99,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
             'enable_dhcp': False}
         subnet = self.neutron.create_subnet({'subnet': subnet})
         subnet_id = subnet['subnet']['id']
-        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
         flows_after_change = ovs.dump(self.integration_bridge)
         # change dhcp
         updated_subnet = {'enable_dhcp': True}
@@ -111,7 +110,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         )
         self.assertFalse(self.check_dhcp_rule(flows_before_change, dhcp_ip))
         self.assertFalse(self.check_dhcp_rule(flows_after_change, dhcp_ip))
-        wait_until_true(
+        utils.wait_until_true(
             lambda: self.check_dhcp_rule(ovs.dump(self.integration_bridge),
                                          dhcp_ip),
             exception=Exception('DHCP ip was not found in OpenFlow rules'),
@@ -142,7 +141,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         router_id = router.create()
         self.assertTrue(router.exists())
         subnet_msg = {'subnet_id': subnet_id}
-        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         self.neutron.add_interface_router(router_id, body=subnet_msg)
         dhcp_ip = utils.wait_until_is_and_return(
             lambda: self.get_dhcp_ip(network_id, subnet_id),
