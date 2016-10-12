@@ -16,6 +16,7 @@ import six
 
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import constants
+from dragonflow.controller import df_db_objects_refresh
 from dragonflow.db import models as db_models
 
 LOG = log.getLogger(__name__)
@@ -260,51 +261,10 @@ class Topology(object):
             self._clear_tenant_topology(topic)
 
     def _pull_tenant_topology_from_db(self, tenant_id):
-        switches = self.nb_api.get_all_logical_switches(tenant_id)
-        for switch in switches:
-            self.controller.logical_switch_updated(switch)
-
-        sg_groups = self.nb_api.get_security_groups(tenant_id)
-        for sg_group in sg_groups:
-            self.controller.security_group_updated(sg_group)
-
-        ports = self.nb_api.get_all_logical_ports(tenant_id)
-        for port in ports:
-            self.controller.logical_port_updated(port)
-
-        routers = self.nb_api.get_routers(tenant_id)
-        for router in routers:
-            self.controller.router_updated(router)
-
-        floating_ips = self.nb_api.get_floatingips(tenant_id)
-        for floating_ip in floating_ips:
-            self.controller.floatingip_updated(floating_ip)
+        df_db_objects_refresh.sync_local_cache_from_nb_db({tenant_id})
 
     def _clear_tenant_topology(self, tenant_id):
-        switches = self.db_store.get_lswitchs()
-        for switch in switches:
-            if tenant_id == switch.get_topic():
-                self.controller.logical_switch_deleted(switch.get_id())
-
-        ports = self.db_store.get_ports()
-        for port in ports:
-            if tenant_id == port.get_topic():
-                self.controller.logical_port_deleted(port.get_id())
-
-        floating_ips = self.db_store.get_floatingips()
-        for floating_ip in floating_ips:
-            if tenant_id == floating_ip.get_topic():
-                self.controller.floatingip_deleted(floating_ip.get_id())
-
-        routers = self.db_store.get_routers()
-        for router in routers:
-            if tenant_id == router.get_topic():
-                self.controller.router_deleted(router.get_id())
-
-        sg_groups = self.db_store.get_security_groups()
-        for sg_group in sg_groups:
-            if tenant_id == sg_group.get_topic():
-                self.controller.security_group_deleted(sg_group.get_id())
+        df_db_objects_refresh.clear_local_cache({tenant_id})
 
     def _get_lport(self, port_id, topic=None):
         lport = self.db_store.get_port(port_id)
