@@ -10,8 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.agent.common import utils
-from neutron.agent.linux.utils import wait_until_true
+from neutron.agent.common import utils as agent_utils
+from neutron.common import utils as n_utils
 import re
 
 
@@ -28,7 +28,7 @@ def wait_until_is_and_return(predicate, timeout=5, sleep=1, exception=None):
         container['value'] = predicate()
         return container['value']
 
-    wait_until_true(internal_predicate, timeout, sleep, exception)
+    n_utils.wait_until_true(internal_predicate, timeout, sleep, exception)
     return container.get('value')
 
 
@@ -38,11 +38,11 @@ def wait_until_none(predicate, timeout=5, sleep=1, exception=None):
         if ret:
             return False
         return True
-    wait_until_true(internal_predicate, timeout, sleep, exception)
+    n_utils.wait_until_true(internal_predicate, timeout, sleep, exception)
 
 
 def print_command(full_args, run_as_root=False):
-    print '{}'.format(utils.execute(
+    print '{}'.format(agent_utils.execute(
         full_args,
         run_as_root=run_as_root,
         process_input=None,
@@ -54,7 +54,7 @@ class OvsFlowsParser(object):
     def get_ovs_flows(self, integration_bridge):
         full_args = ["ovs-ofctl", "dump-flows", integration_bridge,
                      "-O Openflow13"]
-        flows = utils.execute(full_args, run_as_root=True,
+        flows = agent_utils.execute(full_args, run_as_root=True,
                               process_input=None)
         return flows
 
@@ -94,8 +94,8 @@ class OvsDBParser(object):
         full_args = ["ovs-vsctl", "list", 'interface']
         if specify_interface:
             full_args.append(specify_interface)
-        interfaces_info = utils.execute(full_args, run_as_root=True,
-                                        process_input=None)
+        interfaces_info = agent_utils.execute(full_args, run_as_root=True,
+                                              process_input=None)
         return interfaces_info
 
     def _trim_double_quotation(self, value):
