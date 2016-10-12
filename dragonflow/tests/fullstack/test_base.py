@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.agent.linux.utils import wait_until_true
 from neutron.common import config as common_config
 from neutronclient.neutron import client
 import os_client_config
@@ -20,6 +19,7 @@ from dragonflow.common import common_params
 from dragonflow.db import api_nb
 from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
+from dragonflow.tests.common import utils
 
 
 cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
@@ -94,7 +94,7 @@ class DFTestBase(base.BaseTestCase):
             test_objects.Topology(self.neutron, self.nb_api))
         subnet = self._topology.create_subnet(cidr="192.168.200.0/24")
         port = subnet.create_port()
-        wait_until_true(
+        utils.wait_until_true(
             lambda: port.name is not None, timeout=30,
             exception=Exception('Port was not created')
         )

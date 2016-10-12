@@ -13,14 +13,13 @@
 import six
 import time
 
-from neutron.agent.linux.utils import wait_until_true
 from neutronclient.common import exceptions
 from novaclient import client as novaclient
 import os_client_config
 from oslo_log import log
 
 from dragonflow._i18n import _LW
-from dragonflow.tests.common.utils import wait_until_none
+from dragonflow.tests.common import utils
 
 
 LOG = log.getLogger(__name__)
@@ -247,7 +246,7 @@ class VMTestObj(object):
     def _wait_for_server_delete(self, timeout=60):
         if self.server is None:
             return
-        wait_until_none(
+        utils.wait_until_none(
             self._get_VM_port,
             timeout,
             exception=Exception('VM is not deleted')
@@ -432,4 +431,4 @@ class FloatingipTestObj(object):
             if fip and fip.get_status() == 'ACTIVE':
                 return True
             return False
-        wait_until_true(internal_predicate, timeout, sleep, exception)
+        utils.wait_until_true(internal_predicate, timeout, sleep, exception)

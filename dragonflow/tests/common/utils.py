@@ -14,14 +14,11 @@ from neutron.agent.common import utils as agent_utils
 from neutron.common import utils as n_utils
 import re
 
-
-#: It takes some time from the moment the command is sent to Neutron, until it
-#: propagates down to the DF controller and DF DB. It shouldn't be more than,
-#: say, 2 seconds.
-DEFAULT_CMD_TIMEOUT = 30
+from dragonflow.tests.common import constants as const
 
 
-def wait_until_is_and_return(predicate, timeout=5, sleep=1, exception=None):
+def wait_until_is_and_return(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
+                             sleep=1, exception=None):
     container = {}
 
     def internal_predicate():
@@ -32,13 +29,17 @@ def wait_until_is_and_return(predicate, timeout=5, sleep=1, exception=None):
     return container.get('value')
 
 
-def wait_until_none(predicate, timeout=5, sleep=1, exception=None):
+def wait_until_none(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
+                    sleep=1, exception=None):
     def internal_predicate():
         ret = predicate()
         if ret:
             return False
         return True
     n_utils.wait_until_true(internal_predicate, timeout, sleep, exception)
+
+
+wait_until_true = n_utils.wait_until_true
 
 
 def print_command(full_args, run_as_root=False):

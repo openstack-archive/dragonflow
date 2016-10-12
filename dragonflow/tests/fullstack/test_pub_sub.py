@@ -10,17 +10,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
 import random
 import six
+import time
 
-from neutron.agent.linux.utils import wait_until_true
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import pub_sub_api
+from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -99,7 +99,7 @@ class TestPubSub(test_base.DFTestBase):
             topic = network.get_topic()
             subscriber.register_topic(topic)
         else:
-            eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            time.sleep(const.DEFAULT_CMD_TIMEOUT)
             self.assertNotEqual(local_event_num, events_num)
             local_event_num = events_num
         port = self.store(objects.PortTestObj(
@@ -108,16 +108,16 @@ class TestPubSub(test_base.DFTestBase):
             network_id
         ))
         port.create()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
 
         self.assertNotEqual(local_event_num, events_num)
         local_event_num = events_num
         port.close()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
         local_event_num = events_num
         network.close()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
         if cfg.CONF.df.enable_selective_topology_distribution:
             subscriber.unregister_topic(topic)
@@ -142,7 +142,7 @@ class TestPubSub(test_base.DFTestBase):
             topic = network.get_topic()
             subscriber.register_topic(topic)
         else:
-            eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+            time.sleep(const.DEFAULT_CMD_TIMEOUT)
             self.assertNotEqual(local_event_num, ns.events_num)
         port = self.store(objects.PortTestObj(
             self.neutron,
@@ -151,7 +151,7 @@ class TestPubSub(test_base.DFTestBase):
         ))
         local_event_num = ns.events_num
         port_id = port.create()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, ns.events_num)
         local_event_num = ns.events_num
         update = {'port': {'name': 'test'}}
@@ -159,16 +159,16 @@ class TestPubSub(test_base.DFTestBase):
             name = "test %d" % i
             update['port']['name'] = name
             self.neutron.update_port(port_id, update)
-            eventlet.sleep(0)
-        eventlet.sleep(1)
+            time.sleep(0)
+        time.sleep(1)
         self.assertGreaterEqual(ns.events_num, local_event_num + 100)
         local_event_num = ns.events_num
         port.close()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, ns.events_num)
         local_event_num = ns.events_num
         network.close()
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertNotEqual(local_event_num, events_num)
         if cfg.CONF.df.enable_selective_topology_distribution:
             subscriber.unregister_topic(topic)
@@ -191,21 +191,21 @@ class TestPubSub(test_base.DFTestBase):
         publisher = get_publisher()
         subscriber = get_subscriber(_db_change_callback)
 
-        eventlet.sleep(2)
+        time.sleep(2)
         local_events_num = ns.events_num
         action = "log"
         update = db_common.DbUpdate(
             'info', 'log', action, "test ev no diff ports value")
         publisher.send_event(update)
-        eventlet.sleep(1)
+        time.sleep(1)
 
         self.assertEqual(local_events_num + 1, ns.events_num)
         self.assertEqual(ns.events_action, action)
         local_events_num = ns.events_num
         for i in six.moves.range(100):
             publisher.send_event(update)
-            eventlet.sleep(0.01)
-        eventlet.sleep(1)
+            time.sleep(0.01)
+        time.sleep(1)
 
         self.assertEqual(local_events_num + 100, ns.events_num)
         subscriber.stop()
@@ -224,10 +224,10 @@ class TestPubSub(test_base.DFTestBase):
 
         publisher = get_publisher()
         subscriber = get_subscriber(_db_change_callback_topic)
-        eventlet.sleep(2)
+        time.sleep(2)
         topic = "topic"
         subscriber.register_topic(topic)
-        eventlet.sleep(0.5)
+        time.sleep(0.5)
         local_events_num = self.events_num_t
         action = "log"
         update = db_common.DbUpdate(
@@ -237,7 +237,7 @@ class TestPubSub(test_base.DFTestBase):
             "test_pub_sub_add_topic value"
         )
         publisher.send_event(update, topic)
-        eventlet.sleep(1)
+        time.sleep(1)
         self.assertEqual(self.events_action_t, action)
         self.assertEqual(local_events_num + 1, self.events_num_t)
         no_topic_action = 'log'
@@ -246,7 +246,7 @@ class TestPubSub(test_base.DFTestBase):
         update = db_common.DbUpdate(
             'info', None, no_topic_action, "No topic value")
         publisher.send_event(update, other_topic)
-        eventlet.sleep(1)
+        time.sleep(1)
 
         self.assertIsNone(self.events_action_t)
         self.assertNotEqual(local_events_num + 2, self.events_num_t)
@@ -269,7 +269,7 @@ class TestPubSub(test_base.DFTestBase):
 
         publisher = get_publisher()
         subscriber = get_subscriber(_db_change_callback)
-        eventlet.sleep(2)
+        time.sleep(2)
         action = "log"
         update = db_common.DbUpdate(
             'info',
@@ -280,7 +280,7 @@ class TestPubSub(test_base.DFTestBase):
         update.action = action
         update.topic = db_common.SEND_ALL_TOPIC
         publisher.send_event(update)
-        eventlet.sleep(1)
+        time.sleep(1)
         self.assertEqual(ns.events_action, action)
 
         publisher2 = get_server_publisher()
@@ -289,12 +289,12 @@ class TestPubSub(test_base.DFTestBase):
                 '127.0.0.1',
                 cfg.CONF.df.publisher_port)
         subscriber.register_listen_address(uri)
-        eventlet.sleep(2)
+        time.sleep(2)
         update.action = action
         update.topic = db_common.SEND_ALL_TOPIC
         ns.events_action = None
         publisher2.send_event(update)
-        eventlet.sleep(1)
+        time.sleep(1)
         self.assertEqual(ns.events_action, action)
 
 
@@ -341,7 +341,7 @@ class TestMultiprocPubSub(test_base.DFTestBase):
         self.subscriber.initialize(self._verify_event)
         self.subscriber.daemonize()
         publisher.send_event(self.event)
-        wait_until_true(lambda: self.event_received)
+        test_utils.wait_until_true(lambda: self.event_received)
         self.subscriber.stop()
         self.subscriber = None
 
@@ -410,7 +410,7 @@ class TestDbTableMonitors(test_base.DFTestBase):
             'chassis',
             'chassis-1',
             jsonutils.dumps(test_chassis))
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
         if not self.namespace.has_values:
             expected_event['value'] = None
         self.assertIn(expected_event, self.namespace.events)
@@ -429,7 +429,7 @@ class TestDbTableMonitors(test_base.DFTestBase):
             'chassis',
             'chassis-1',
             jsonutils.dumps(test_chassis))
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
         if not self.namespace.has_values:
             expected_event['value'] = None
         self.assertIn(expected_event, self.namespace.events)
@@ -442,5 +442,5 @@ class TestDbTableMonitors(test_base.DFTestBase):
         }
         self.assertNotIn(expected_event, self.namespace.events)
         self.nb_api.driver.delete_key('chassis', 'chassis-1')
-        eventlet.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertIn(expected_event, self.namespace.events)
