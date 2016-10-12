@@ -28,6 +28,8 @@ LOG = log.getLogger(__name__)
 OFPORT_RANGE_MIN = 1
 OFPORT_RANGE_MAX = 65533
 
+OVS_LOG_FILE_NAME = 'df-ovs.log'
+
 
 class OvsApi(object):
     """The interface of openvswitch
@@ -46,7 +48,10 @@ class OvsApi(object):
         self.vsctl_timeout = timeout
         self.ovsdb = None
         self.integration_bridge = cfg.CONF.df.integration_bridge
-        vlog.Vlog.init('dragonflow')
+        if cfg.CONF.log_dir:
+            vlog.Vlog.init(cfg.CONF.log_dir + '/' + OVS_LOG_FILE_NAME)
+        else:
+            vlog.Vlog.init()
 
     def initialize(self, nb_api):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
