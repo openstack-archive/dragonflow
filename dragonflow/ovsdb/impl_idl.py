@@ -174,3 +174,6 @@ class DFOvsdbApi(impl_idl.OvsdbIdl):
 
     def add_patch_port(self, bridge, port, remote_name):
         return commands.AddPatchPort(self, bridge, port, remote_name)
+
+    def add_virtual_tunnel_port(self, tunnel_type):
+        return commands.AddVirtualTunnelPort(self, tunnel_type)
