@@ -39,10 +39,10 @@ class TestDbObjectsRefresh(tests_base.BaseTestCase):
             item = mock.Mock()
             self.test_objs[item.get_id()] = item
 
-    def _cache_read_ids(self):
+    def _cache_read_ids(self, topic=None):
         return self.test_objs.keys()
 
-    def _db_read_objects(self):
+    def _db_read_objects(self, topic=None):
         # Return only half of the objects
         objects = list(self.test_objs.values())
         for _idx in range(self.ITEMS_TO_DELETE):
