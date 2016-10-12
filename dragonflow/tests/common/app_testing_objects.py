@@ -18,7 +18,6 @@ import socket
 import threading
 import time
 
-import eventlet
 from neutron.agent.common import utils
 from oslo_config import cfg
 from oslo_log import log
@@ -832,7 +831,7 @@ class WaitAction(Action):
         self.wait_time = wait_time
 
     def __call__(self, policy, rule, port_thread, buf):
-        eventlet.sleep(self.wait_time)
+        time.sleep(self.wait_time)
 
 
 class PortThread(object):
