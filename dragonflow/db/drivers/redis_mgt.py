@@ -10,6 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ctypes
+import msgpack
+import multiprocessing
 import random
 import string
 
@@ -35,10 +38,14 @@ RET_CODE = enum(
     NODES_CHANGE=1,
     SLOTS_CHANGE=2)
 
+MEM_SIZE = 1024
+INTERVAL_TIME = 3
+
 
 class RedisMgt(object):
 
     redisMgt = {}
+    global_sharedlist = multiprocessing.Array(ctypes.c_char, MEM_SIZE)
 
     def __init__(self):
         super(RedisMgt, self).__init__()
@@ -125,7 +132,7 @@ class RedisMgt(object):
                 if info['cluster_state'] != 'ok':
                     LOG.warning(_LW("redis cluster state failed"))
                 else:
-                    new_nodes = self._get_cluster_nodes(node)
+                    new_nodes.update(self._get_cluster_nodes(node))
 
                 self._release_node(node)
                 break
@@ -278,6 +285,7 @@ class RedisMgt(object):
             if master_cnt != slave_cnt:
                 # this means a tmp status
                 # one master one slave
+                changed = RET_CODE.NODES_CHANGE
                 LOG.info(_LI("master nodes not equals to slave nodes"))
             else:
                 if cnt != len(old_nodes):
@@ -302,16 +310,19 @@ class RedisMgt(object):
         changed = self._check_nodes_change(self.cluster_nodes, new_nodes)
 
         if changed == RET_CODE.SLOTS_CHANGE:
+            LOG.info(_LI("redis_failover_callback:SLOTS_CHANGE"))
             # update local nodes
             # don't need re-sync
             self.cluster_nodes = new_nodes
             self.master_list = self._parse_to_masterlist()
+            self.redis_set_master_list_to_syncstring(self.master_list)
 
         elif changed == RET_CODE.NODES_CHANGE:
+            LOG.info(_LI("redis_failover_callback:NODES_CHANGE"))
             # update local nodes
             self.cluster_nodes = new_nodes
             self.master_list = self._parse_to_masterlist()
-
+            self.redis_set_master_list_to_syncstring(self.master_list)
             # send restart message
             if self._check_master_nodes_connection():
                 if self.db_callback is not None:
@@ -349,8 +360,8 @@ class RedisMgt(object):
 
     def run(self):
         while True:
-            # fetch cluster topology info every 10 sec
-            eventlet.sleep(10)
+            # fetch cluster topology info every 3 sec
+            eventlet.sleep(INTERVAL_TIME)
             try:
                 nodes = self.get_cluster_topology_by_all_nodes()
                 if len(nodes) > 0:
@@ -364,7 +375,32 @@ class RedisMgt(object):
                     # process new nodes got
                     self.redis_failover_callback(nodes)
 
-            except Exception as e:
+            except Exception:
                 LOG.exception(_LE("exception happened "
-                                  "when receive messages from plugin, "
-                                  "%(e)s") % {'e': e})
+                                  "when receive messages from plugin"
+                                  ))
+
+    def redis_get_master_list_from_syncstring(self, syncstring):
+        try:
+            if syncstring:
+                local_list = msgpack.Unpacker(six.BytesIO(syncstring)).unpack()
+                if local_list:
+                    self.master_list = local_list
+                    LOG.info(_LI("get new master from syncstring master=%s")
+                             % self.master_list)
+                    return True
+
+            return False
+
+        except Exception:
+            LOG.exception(_LE("exception happened "
+                              "when get new master from syncstring"
+                              ))
+
+    def redis_set_master_list_to_syncstring(self, master_list):
+        try:
+            RedisMgt.global_sharedlist.raw = msgpack.packb(master_list)
+        except Exception:
+            LOG.exception(_LE("exception happened "
+                              "when set new master to syncstring"
+                              ))

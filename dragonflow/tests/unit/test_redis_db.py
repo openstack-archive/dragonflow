@@ -28,6 +28,8 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_set_success(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
+        self.RedisDbDriver.set_neutron_server = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.set.return_value = 1
         client.execute_command.return_value = 1
@@ -41,6 +43,8 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_set_failed(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
+        self.RedisDbDriver.set_neutron_server = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.set.return_value = 0
         client.execute_command.return_value = 0
@@ -55,6 +59,8 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_get_success(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
+        self.RedisDbDriver.set_neutron_server = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         redis_mgt = mock.Mock()
         self.RedisDbDriver.redis_mgt = redis_mgt
@@ -70,6 +76,8 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_get_all_entries(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
+        self.RedisDbDriver.set_neutron_server = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.keys.return_value = 'a'
         client.mget.return_value = 'value'
@@ -87,6 +95,8 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_delete_key(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
+        self.RedisDbDriver.set_neutron_server = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.delete.return_value = 1
         client.execute_command.return_value = 1
@@ -100,6 +110,8 @@ class TestRedisDB(tests_base.BaseTestCase):
     def test_allocate_unique_key(self):
         client = mock.Mock()
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
+        self.RedisDbDriver._sync_master_list = mock.Mock()
+        self.RedisDbDriver.set_neutron_server = mock.Mock()
         self.RedisDbDriver.clients[0] = client
         client.incr.return_value = 1
         redis_mgt = mock.Mock()
