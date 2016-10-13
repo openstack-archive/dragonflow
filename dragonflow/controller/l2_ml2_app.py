@@ -14,8 +14,8 @@
 #    under the License.
 
 import netaddr
-from neutron.common import utils as n_utils
 from neutron_lib import constants as common_const
+from neutron_lib.utils import helpers
 from oslo_config import cfg
 from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
@@ -69,7 +69,7 @@ class L2App(df_base_app.DFlowApp):
 
     def _parse_bridge_mappings(self, bridge_mappings):
         try:
-            return n_utils.parse_mappings(bridge_mappings)
+            return helpers.parse_mappings(bridge_mappings)
         except ValueError as e:
             raise ValueError(_("Parsing bridge_mappings failed: %s.") % e)
 
