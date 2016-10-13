@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
 import six
 import time
 
@@ -214,7 +215,8 @@ class VMTestObj(object):
         self.nova = novaclient.Client('2', creds['username'],
                         creds['password'], tenant_name, auth_url)
 
-    def create(self, network=None, script=None, security_groups=None):
+    def create(self, network=None, script=None, security_groups=None,
+               net_address=None):
         image = self.nova.images.find(name="cirros-0.3.4-x86_64-uec")
         self.parent.assertIsNotNone(image)
         flavor = self.nova.flavors.find(name="m1.tiny")
@@ -224,7 +226,13 @@ class VMTestObj(object):
         else:
             net_id = find_first_network(self.neutron, name='private')['id']
         self.parent.assertIsNotNone(net_id)
-        nics = [{'net-id': net_id}]
+        nic = {'net-id': net_id}
+        if net_address:
+            if netaddr.IPAddress(net_address).version == 4:
+                nic['v4-fixed-ip'] = net_address
+            elif netaddr.IPAddress(net_address).version == 6:
+                nic['v6-fixed-ip'] = net_address
+        nics = [nic]
         self.server = self.nova.servers.create(
             name='test', image=image.id, flavor=flavor.id, nics=nics,
             user_data=script, security_groups=security_groups)
