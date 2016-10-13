@@ -18,8 +18,7 @@ OVS_REPO=${OVS_REPO:-http://github.com/openvswitch/ovs.git}
 OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
 
 # The branch to use from $OVS_REPO
-# TODO(gsagie) Currently take branch-2.5 branch as master is not stable
-OVS_BRANCH=${OVS_BRANCH:-branch-2.5}
+OVS_BRANCH=${OVS_BRANCH:-branch-2.6}
 
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
