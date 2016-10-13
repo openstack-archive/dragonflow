@@ -20,6 +20,8 @@ from oslo_log import log
 from ryu.controller import handler
 from ryu.controller import ofp_event
 from ryu.controller import ofp_handler
+from ryu.ofproto import ofproto_common
+from ryu.ofproto import ofproto_parser
 from ryu.ofproto import ofproto_v1_3
 from ryu import utils
 
@@ -181,7 +183,15 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
                             handler.MAIN_DISPATCHER)
     def OF_error_msg_handler(self, event):
         msg = event.msg
-        LOG.error(_LE('OFPErrorMsg received: type=0x%(type)02x '
-                      'code=0x%(code)02x message=%(msg)s'),
-                  {'type': msg.type, 'code': msg.code,
-                   'msg': utils.hex_array(msg.data)})
+        try:
+            (version, msg_type, msg_len, xid) = ofproto_parser.header(msg.data)
+            ryu_msg = ofproto_parser.msg(
+                self._datapath, version, msg_type,
+                msg_len - ofproto_common.OFP_HEADER_SIZE, xid, msg.data)
+            LOG.error(_LE('OFPErrorMsg received: %s'), ryu_msg)
+        except Exception:
+            LOG.error(_LE('Unrecognized OFPErrorMsg received: '
+                          'type=0x%(type)02x code=0x%(code)02x '
+                          'message=%(msg)s'),
+                      {'type': msg.type, 'code': msg.code,
+                       'msg': utils.hex_array(msg.data)})
