@@ -161,16 +161,19 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
             return True
         return False
 
-    def _check_rule_flows(self, flows, expect):
+    def _check_rule_flows(self, flows, expected_ingress_rule_match,
+                          expected_egress_rule_match, expect):
         ingress_rule_flow_check = not expect
         egress_rule_flow_check = not expect
         ingress_permit_flow_check = not expect
         egress_permit_flow_check = not expect
 
         for flow in flows:
-            if self._is_rule_flow(flow, 'ingress'):
+            if self._is_rule_flow(flow, 'ingress') and \
+                    (expected_ingress_rule_match in flow['match']):
                 ingress_rule_flow_check = expect
-            elif self._is_rule_flow(flow, 'egress'):
+            elif self._is_rule_flow(flow, 'egress') and \
+                    (expected_egress_rule_match in flow['match']):
                 egress_rule_flow_check = expect
             elif self._is_permit_flow(flow, 'ingress'):
                 ingress_permit_flow_check = expect
@@ -357,8 +360,8 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         ingress_rule_info = {'ethertype': 'IPv4',
                              'direction': 'ingress',
                              'protocol': 'tcp',
-                             'port_range_min': '8000',
-                             'port_range_max': '8100',
+                             'port_range_min': '80',
+                             'port_range_max': '81',
                              'remote_ip_prefix': '192.168.124.0/24'}
         ingress_rule_id = security_group.rule_create(secrule=ingress_rule_info)
         self.assertTrue(security_group.rule_exists(ingress_rule_id))
@@ -372,21 +375,31 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         egress_rule_id = security_group.rule_create(secrule=egress_rule_info)
         self.assertTrue(security_group.rule_exists(egress_rule_id))
 
-        vm = self.store(objects.VMTestObj(self, self.neutron))
-        vm.create(network=network, security_groups=[security_group_id])
+        vm1 = self.store(objects.VMTestObj(self, self.neutron))
+        vm1.create(network=network, security_groups=[security_group_id],
+                   net_address='192.168.124.8')
+        vm2 = self.store(objects.VMTestObj(self, self.neutron))
+        vm2.create(network=network, security_groups=[security_group_id],
+                   net_address='192.168.124.9')
 
         time.sleep(utils.DEFAULT_CMD_TIMEOUT)
 
         ovs = utils.OvsFlowsParser()
-        flows_after_change = ovs.dump(self.integration_bridge)
+        flows = ovs.dump(self.integration_bridge)
 
         LOG.info(_LI("flows after adding rules are: %s"),
                  ovs.get_ovs_flows(self.integration_bridge))
 
         # Check if the rule flows were installed.
-        self._check_rule_flows(flows_after_change, True)
+        expected_ingress_rule_match = \
+            "tcp,nw_src=192.168.124.0/24,tp_dst=0x50/0xfffe"
+        expected_egress_rule_match = \
+            "udp,nw_dst=192.168.124.8/31,tp_dst=53"
+        self._check_rule_flows(flows, expected_ingress_rule_match,
+                               expected_egress_rule_match, True)
 
-        vm.close()
+        vm1.close()
+        vm2.close()
 
         # We can't guarantee that all rule flows have been deleted because
         # those rule flows may be installed in other test cases for all
@@ -394,4 +407,6 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
         # time.sleep(utils.DEFAULT_CMD_TIMEOUT)
         # flows_after_update = ovs.dump(self.integration_bridge)
-        # self._check_rule_flows(flows_after_update, False)
+        # self._check_rule_flows(flows_after_update,
+        #                        expected_ingress_rule_match,
+        #                        expected_egress_rule_match, False)
