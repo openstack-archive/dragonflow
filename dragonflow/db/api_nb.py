@@ -87,7 +87,7 @@ class NbApi(object):
             else:
                 # NOTE(gampel) we want to start queuing event as soon
                 # as possible
-                self._start_subsciber()
+                self._start_subscriber()
                 # Register for DB Failover detection in NB Plugin
                 self.subscriber.set_subscriber_for_failover(
                     self.subscriber,
@@ -116,7 +116,7 @@ class NbApi(object):
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_subscriber()
 
-    def _start_subsciber(self):
+    def _start_subscriber(self):
         self.subscriber.initialize(self.db_change_callback)
         self.subscriber.register_topic(db_common.SEND_ALL_TOPIC)
         publishers_ips = cfg.CONF.df.publishers_ips
