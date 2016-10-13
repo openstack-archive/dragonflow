@@ -50,5 +50,4 @@ else
 fi
 
 $install_cmd -U $*
-pip install python-etcd
 exit $?
