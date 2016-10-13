@@ -75,6 +75,7 @@ class DbStore(object):
     def __init__(self):
         self.tenant_dbs = collections.defaultdict(TenantDbStore)
         self.networks = {}
+        self.remote_chassis_lport_map = {}
 
     def get(self, table_name, key, topic):
         if topic:
@@ -123,6 +124,24 @@ class DbStore(object):
 
     def del_network_id(self, ldp):
         self.networks.pop(ldp, None)
+
+    def get_lports_by_remote_chassis(self, chassis):
+        return self.remote_chassis_lport_map.get(chassis)
+
+    def add_remote_chassis_lport(self, chassis, lport_id):
+        lport_ids = self.remote_chassis_lport_map.get(chassis)
+        if not lport_ids:
+            self.remote_chassis_lport_map[chassis] = {lport_id}
+        else:
+            lport_ids.add(lport_id)
+
+    def del_remote_chassis_lport(self, chassis, lport_id):
+        lport_ids = self.remote_chassis_lport_map.get(chassis)
+        if lport_ids:
+            lport_ids.remove(lport_id)
+
+    def del_remote_chassis(self, chassis):
+        del self.remote_chassis_lport_map[chassis]
 
     def set_lswitch(self, id, lswitch, topic=None):
         self.set('lswitchs', id, lswitch, topic)

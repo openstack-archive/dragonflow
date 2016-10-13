@@ -619,7 +619,8 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                    []),
             binding_profile=updated_port.get(portbindings.PROFILE, None),
             binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE, None),
-            version=updated_port['revision_number'], remote_vtep=remote_vtep)
+            version=updated_port['revision_number'],
+            remote_vtep=remote_vtep)
 
         LOG.info(_LI("DFMechDriver: update port %s"), updated_port['id'])
         return updated_port
