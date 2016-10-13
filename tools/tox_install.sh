@@ -40,5 +40,4 @@ else
 fi
 
 pip install -U $*
-pip install python-etcd
 exit $?

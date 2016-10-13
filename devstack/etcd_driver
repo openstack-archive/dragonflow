@@ -91,7 +91,8 @@ function nb_db_driver_install_server {
 }
 
 function nb_db_driver_install_client {
-    sudo pip install python-etcd
+    # No need to install python-etcd driver.
+    # It is included in the requirement file.
 }
 
 function nb_db_driver_status_server
