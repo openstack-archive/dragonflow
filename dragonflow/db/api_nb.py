@@ -148,8 +148,10 @@ class NbApi(object):
 
     def get_all_port_status_keys(self):
         topics = self.driver.get_all_entries('portstats')
-        topic = random.choice(topics)
-        return topic
+        if topics:
+            return random.choice(topics)
+        else:
+            return db_common.SEND_ALL_TOPIC
 
     def create_port_status(self, server_ip):
         self.driver.create_key('portstats', server_ip,
