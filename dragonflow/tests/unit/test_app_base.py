@@ -150,6 +150,32 @@ fake_local_port1.external_dict = {'is_local': True,
                                   'network_type': 'vxlan',
                                   'local_network_id': 1}
 
+fake_remote_port1 = api_nb.LogicalPort("{}")
+fake_remote_port1.lport = {
+    'subnets': ['fake_subnet1'],
+    'binding_profile': {},
+    'macs': ['fa:16:3e:8c:2e:af'],
+    'name': '',
+    'allowed_address_pairs': [],
+    'lswitch': 'fake_switch1',
+    'enabled': True,
+    'topic': 'fake_tenant1',
+    'ips': ['10.0.0.8'],
+    'device_owner': 'compute:None',
+    'chassis': 'fake_host2',
+    'version': 2,
+    'tunnel_key': 5,
+    'port_security_enabled': True,
+    'binding_vnic_type': 'normal',
+    'id': 'fake_port2',
+    'security_groups': ['fake_security_group_id1'],
+    'device_id': 'fake_device_id'}
+fake_remote_port1.external_dict = {'is_local': False,
+                                  'segmentation_id': 41,
+                                  'ofport': 1,
+                                  'network_type': 'vxlan',
+                                  'local_network_id': 1}
+
 
 fake_floatingip1 = api_nb.Floatingip("{}")
 fake_floatingip1.floatingip = {
@@ -167,3 +193,32 @@ fake_floatingip1.floatingip = {
     'port_id': 'fake_port1',
     'id': 'fake_floatingip_id1',
     'external_gateway_ip': u'172.24.4.1'}
+
+
+fake_security_group = api_nb.SecurityGroup("{}")
+fake_security_group.secgroup = {
+    "description": "",
+    "name": "fake_security_group",
+    "topic": "fake_tenant1",
+    "version": 5,
+    "id": "fake_security_group_id1",
+    "rules": [{"direction": "egress",
+               "security_group_id": "fake_security_group_id1",
+               "ethertype": "IPv4",
+               "topic": "fake_tenant1",
+               "port_range_max": 53,
+               "port_range_min": 53,
+               "protocol": "udp",
+               "remote_group_id": None,
+               "remote_ip_prefix": "192.168.180.0/28",
+               "id": "fake_security_group_rule_1"},
+              {"direction": "ingress",
+               "security_group_id": "fake_security_group_id1",
+               "ethertype": "IPv4",
+               "topic": "fake_tenant1",
+               "port_range_max": None,
+               "port_range_min": None,
+               "protocol": None,
+               "remote_group_id": "fake_security_group_id1",
+               "remote_ip_prefix": None,
+               "id": "fake_security_group_rule_2"}]}
