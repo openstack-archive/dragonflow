@@ -170,6 +170,34 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             subnet_id, network['id'], subnet['tenant_id'],
             nw_version=new_network['revision_number'])
 
+    def test_create_update_port_allowed_address_pairs(self):
+        kwargs = {'allowed_address_pairs':
+                  [{"ip_address": "10.1.1.10"},
+                   {"ip_address": "20.1.1.20",
+                    "mac_address": "aa:bb:cc:dd:ee:ff"}]}
+        with self.subnet(enable_dhcp=False) as subnet:
+            with self.port(subnet=subnet,
+                           arg_list=('allowed_address_pairs',),
+                           **kwargs) as p:
+                port = p['port']
+                self.assertTrue(self.nb_api.create_lport.called)
+                called_args = self.nb_api.create_lport.call_args_list[0][1]
+                expected_aap = [{"ip_address": "10.1.1.10",
+                                 "mac_address": port['mac_address']},
+                                {"ip_address": "20.1.1.20",
+                                 "mac_address": "aa:bb:cc:dd:ee:ff"}]
+                self.assertItemsEqual(expected_aap,
+                                      called_args.get("allowed_address_pairs"))
+
+                data = {'port': {'allowed_address_pairs': []}}
+                req = self.new_update_request(
+                        'ports',
+                        data, port['id'])
+                req.get_response(self.api)
+                self.assertTrue(self.nb_api.update_lport.called)
+                called_args = self.nb_api.update_lport.call_args_list[0][1]
+                self.assertEqual([], called_args.get("allowed_address_pairs"))
+
     def test_create_update_port_revision(self):
         with self.port(name='port', device_owner='fake_owner',
                        device_id='fake_id') as p:
@@ -282,3 +310,9 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.driver.delete_security_group(self.context, sg['id'])
         self.nb_api.delete_security_group.assert_called_with(
             sg['id'], topic=sg['tenant_id'])
+
+
+class TestDFMechansimDriverAllowedAddressPairs(
+        test_plugin.TestMl2AllowedAddressPairs,
+        DFMechanismDriverTestCase):
+    pass
