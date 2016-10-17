@@ -48,6 +48,7 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
                  "nexthop": "10.0.0.6"}
         router_with_route = copy.deepcopy(self.router)
         router_with_route.lrouter['routes'] = [route]
+        router_with_route.lrouter['version'] += 1
         self.controller.logical_port_created(test_app_base.fake_local_port1)
         self.controller.router_updated(router_with_route)
         self.assertEqual(2, self.mock_mod_flow.call_count)
@@ -55,5 +56,6 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         # delete route
         self.mock_mod_flow.reset_mock()
         self.router.lrouter['routes'] = []
+        self.router.lrouter['version'] += 2
         self.controller.router_updated(self.router)
         self.assertEqual(1, self.mock_mod_flow.call_count)
