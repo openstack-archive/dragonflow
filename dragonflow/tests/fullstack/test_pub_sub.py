@@ -14,7 +14,7 @@ import eventlet
 import random
 import six
 
-from neutron.agent.linux.utils import wait_until_true
+from neutron.common import utils as n_utils
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
@@ -341,7 +341,7 @@ class TestMultiprocPubSub(test_base.DFTestBase):
         self.subscriber.initialize(self._verify_event)
         self.subscriber.daemonize()
         publisher.send_event(self.event)
-        wait_until_true(lambda: self.event_received)
+        n_utils.wait_until_true(lambda: self.event_received)
         self.subscriber.stop()
         self.subscriber = None
 

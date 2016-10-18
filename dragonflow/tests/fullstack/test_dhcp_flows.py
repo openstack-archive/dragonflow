@@ -12,7 +12,7 @@
 
 import time
 
-from neutron.agent.linux.utils import wait_until_true
+from neutron.common import utils as n_utils
 
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
@@ -73,7 +73,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
             exception=Exception('DHCP IP was not generated')
         )
         self.assertFalse(self.check_dhcp_rule(flows_before_change, dhcp_ip))
-        wait_until_true(
+        n_utils.wait_until_true(
             lambda: self.check_dhcp_rule(ovs.dump(self.integration_bridge),
                                          dhcp_ip),
             exception=Exception('DHCP ip was not found in OpenFlow rules'),
@@ -111,7 +111,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         )
         self.assertFalse(self.check_dhcp_rule(flows_before_change, dhcp_ip))
         self.assertFalse(self.check_dhcp_rule(flows_after_change, dhcp_ip))
-        wait_until_true(
+        n_utils.wait_until_true(
             lambda: self.check_dhcp_rule(ovs.dump(self.integration_bridge),
                                          dhcp_ip),
             exception=Exception('DHCP ip was not found in OpenFlow rules'),

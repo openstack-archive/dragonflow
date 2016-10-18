@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.agent.linux.utils import wait_until_true
+from neutron.common import utils as n_utils
 
 from dragonflow.ovsdb import vswitch_impl
 from dragonflow.tests.common import utils
@@ -123,14 +123,14 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         mac = vm.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
         #wait util get the message we want
-        wait_until_true(
+        n_utils.wait_until_true(
             lambda: self._get_wanted_vm_online(mac), timeout=30, sleep=1,
             exception=Exception('Could not get wanted online vm')
         )
 
         #wait util get the message we want
         vm.close()
-        wait_until_true(
+        n_utils.wait_until_true(
             lambda: self._get_wanted_vm_offline(mac), timeout=30, sleep=1,
             exception=Exception('Could not get wanted offline vm')
         )
@@ -168,7 +168,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
 
         #wait util get the message we want
         self.set_wanted_vms.clear()
-        wait_until_true(
+        n_utils.wait_until_true(
             lambda: self._get_all_wanted_vms_online(mac1, mac2),
             timeout=30, sleep=1,
             exception=Exception('Could not get wanted online vm')

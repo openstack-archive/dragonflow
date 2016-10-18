@@ -13,7 +13,7 @@
 import eventlet
 import re
 
-from neutron.agent.linux import utils
+from neutron.common import utils as n_utils
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import utils as test_utils
@@ -89,7 +89,7 @@ class ArpResponderTest(test_base.DFTestBase):
 
         condition = lambda: self._check_arp_flow_removal(ip)
         try:
-            utils.wait_until_true(
+            n_utils.wait_until_true(
                 condition, timeout=40, sleep=1,
                 exception=RuntimeError(
                     "Timed out waiting for arp responder flow from %(ip)s"
@@ -184,7 +184,7 @@ class ICMPResponderTest(test_base.DFTestBase):
         )
         condition = lambda: self._check_icmp_flow_removal(router_ip)
         try:
-            utils.wait_until_true(
+            n_utils.wait_until_true(
                 condition, timeout=40, sleep=1,
                 exception=RuntimeError(
                     "Timed out waiting for icmp responder flow from %(ip)s"
