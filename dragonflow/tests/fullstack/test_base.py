@@ -57,6 +57,7 @@ class DFTestBase(base.BaseTestCase):
                             '/etc/neutron/neutron.conf'])
         self.conf = cfg.CONF.df
         self.integration_bridge = self.conf.integration_bridge
+        self.db_sync_time = self.conf.db_sync_time
 
         self.nb_api = api_nb.NbApi.get_instance(False)
 
