@@ -353,6 +353,7 @@ class PortTestObj(object):
         self.nb_api = nb_api
         self.network_id = network_id
         self.port_id = None
+        self.mac = None
         self.closed = False
 
     def create(self, port=None):
@@ -364,6 +365,7 @@ class PortTestObj(object):
             }
         port = self.neutron.create_port(body={'port': port})
         self.port_id = port['port']['id']
+        self.mac = port['port']['mac_address']
         return self.port_id
 
     def update(self, port=None):
