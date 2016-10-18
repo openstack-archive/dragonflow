@@ -78,7 +78,7 @@ function nb_db_driver_install_server {
         if [ ! -f "/usr/local/bin/etcd" ]; then
             sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
         fi
-	if is_ubuntu; then
+    if is_ubuntu; then
             if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
                 configure_etcd_systemd_service
             else
