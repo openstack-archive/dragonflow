@@ -15,7 +15,7 @@ import string
 import sys
 import time
 
-from neutron.agent.linux.utils import wait_until_true
+from neutron.common import utils as n_utils
 from oslo_log import log
 import ryu.lib.packet
 
@@ -420,7 +420,7 @@ class TestDHCPApp(test_base.DFTestBase):
         )
 
         policy.start(self.topology)
-        wait_until_true(internal_predicate, 30, 1, None)
+        n_utils.wait_until_true(internal_predicate, 30, 1, None)
 
 
 class TestL3App(test_base.DFTestBase):

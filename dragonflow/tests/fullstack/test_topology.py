@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron.common import utils as n_utils
 from oslo_config import cfg
 
 from dragonflow.controller.common import constants as const
@@ -63,7 +64,7 @@ class TestTopology(test_base.DFTestBase):
         core_plugin = cfg.CONF.core_plugin
         if core_plugin == 'ml2':
             # test port status update
-            utils.wait_until_true(
+            n_utils.wait_until_true(
                 lambda: self._is_VM_port_status(vm, 'ACTIVE'),
                 timeout=60,
                 exception=Exception('Port status not change to ACTIVE')
@@ -76,7 +77,7 @@ class TestTopology(test_base.DFTestBase):
         if core_plugin == 'ml2':
             # test port status update
             vm.server.stop()
-            utils.wait_until_true(
+            n_utils.wait_until_true(
                 lambda: self._is_VM_port_status(vm, 'DOWN'),
                 timeout=60,
                 exception=Exception('Port status not change to DOWN')

@@ -13,7 +13,7 @@
 import six
 import time
 
-from neutron.agent.linux.utils import wait_until_true
+from neutron.common import utils as n_utils
 from neutronclient.common import exceptions
 from novaclient import client as novaclient
 import os_client_config
@@ -432,4 +432,4 @@ class FloatingipTestObj(object):
             if fip and fip.get_status() == 'ACTIVE':
                 return True
             return False
-        wait_until_true(internal_predicate, timeout, sleep, exception)
+        n_utils.wait_until_true(internal_predicate, timeout, sleep, exception)

@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.agent.linux.utils import wait_until_true
+from neutron.common import utils as n_utils
 from neutron.common import config as common_config
 from neutronclient.neutron import client
 import os_client_config
@@ -94,7 +94,7 @@ class DFTestBase(base.BaseTestCase):
             test_objects.Topology(self.neutron, self.nb_api))
         subnet = self._topology.create_subnet(cidr="192.168.200.0/24")
         port = subnet.create_port()
-        wait_until_true(
+        n_utils.wait_until_true(
             lambda: port.name is not None, timeout=30,
             exception=Exception('Port was not created')
         )
