@@ -165,12 +165,11 @@ class ZookeeperDbDriver(db_api.DbApi):
         except kazoo.exceptions.NoNodeError:
             raise df_exceptions.DBKeyNotFound(key=table)
 
-    def _allocate_unique_key(self):
-        path = self._generate_path('tunnel_key', 'key')
+    def _allocate_unique_key(self, table):
+        path = self._generate_path('unique_key', table)
 
         prev_value = 0
-        version_exception = True
-        while version_exception:
+        while True:
             try:
                 prev_value, stat = self.client.get(path)
                 prev_value = int(prev_value)
@@ -178,14 +177,14 @@ class ZookeeperDbDriver(db_api.DbApi):
                 self.client.set(path, str(prev_value + 1), prev_version)
                 return prev_value + 1
             except kazoo.exceptions.BadVersionError:
-                version_exception = True
+                pass
             except kazoo.exceptions.NoNodeError:
                 self.client.create(path, "1", makepath=True)
                 return 1
 
-    def allocate_unique_key(self):
+    def allocate_unique_key(self, table):
         self._lazy_initialize()
-        return self._allocate_unique_key()
+        return self._allocate_unique_key(table)
 
     def register_notification_callback(self, callback):
         #NOTE(nick-ma-z): The pub-sub mechanism is not initially supported.

@@ -184,10 +184,10 @@ class DbApi(object):
         """
 
     @abc.abstractmethod
-    def allocate_unique_key(self):
-        """Allocate a unique id in the system
-           Used to allocate ports unique numbers
+    def allocate_unique_key(self, table):
+        """Allocate a unique id in the controller
 
+        :table:       The name of resource table
         :returns:     Unique id
         """
 

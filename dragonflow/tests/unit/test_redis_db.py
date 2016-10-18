@@ -109,13 +109,7 @@ class TestRedisDB(tests_base.BaseTestCase):
 
     def test_allocate_unique_key(self):
         client = mock.Mock()
-        self.RedisDbDriver._get_client = mock.Mock(return_value=client)
-        self.RedisDbDriver._sync_master_list = mock.Mock()
-        self.RedisDbDriver.set_neutron_server = mock.Mock()
-        self.RedisDbDriver.clients[0] = client
+        self.RedisDbDriver._update_client = mock.Mock(return_value=client)
         client.incr.return_value = 1
-        redis_mgt = mock.Mock()
-        self.RedisDbDriver.redis_mgt = redis_mgt
-        redis_mgt.get_ip_by_key.return_value = '0.0.0.0:1000'
-        result = self.RedisDbDriver.allocate_unique_key()
+        result = self.RedisDbDriver.allocate_unique_key('fake_table')
         self.assertEqual(result, 1)

@@ -144,7 +144,7 @@ class NbApi(object):
             eventlet.sleep(0)
 
     def allocate_tunnel_key(self):
-        return self.driver.allocate_unique_key()
+        return self.driver.allocate_unique_key('lport')
 
     def get_all_port_status_keys(self):
         topics = self.driver.get_all_entries('portstats')
