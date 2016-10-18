@@ -11,6 +11,7 @@
 #    under the License.
 
 import contextlib
+import time
 
 from neutronclient.common import exceptions as n_exc
 from oslo_concurrency import lockutils
@@ -148,6 +149,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertTrue(router.exists())
         subnet_msg = {'subnet_id': subnet_id}
         port = self.neutron.add_interface_router(router_id, body=subnet_msg)
+        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
         port2 = self.nb_api.get_logical_port(port['port_id'])
         self.assertIsNotNone(port2)
         router.close()

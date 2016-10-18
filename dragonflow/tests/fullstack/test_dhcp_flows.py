@@ -144,6 +144,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         subnet_msg = {'subnet_id': subnet_id}
         time.sleep(utils.DEFAULT_CMD_TIMEOUT)
         self.neutron.add_interface_router(router_id, body=subnet_msg)
+        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
         dhcp_ip = utils.wait_until_is_and_return(
             lambda: self.get_dhcp_ip(network_id, subnet_id),
             exception=Exception('DHCP IP was not generated')
