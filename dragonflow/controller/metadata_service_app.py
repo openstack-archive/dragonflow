@@ -19,6 +19,7 @@ import httplib2
 import netaddr
 import six
 import six.moves.urllib.parse as urlparse
+import socket
 import webob
 
 from oslo_config import cfg
@@ -548,8 +549,10 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
 
     def _get_logical_port_by_tunnel_key(self, tunnel_key):
         lports = self.nb_api.get_all_logical_ports()
+        local_hostname = socket.gethostname()
         for lport in lports:
-            if lport.get_tunnel_key() == tunnel_key:
+            if (lport.get_tunnel_key() == tunnel_key
+                    and lport.get_chassis() == local_hostname):
                 return lport
         raise exceptions.LogicalPortNotFoundByTunnelKey(key=tunnel_key)
 
