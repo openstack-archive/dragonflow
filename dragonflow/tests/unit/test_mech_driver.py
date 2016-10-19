@@ -52,6 +52,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         super(TestDFMechDriver, self).setUp()
         mm = self.driver.mechanism_manager
         self.mech_driver = mm.mech_drivers['df'].obj
+        self.mech_driver.post_fork_initialize(None, None, None)
         self.nb_api = self.mech_driver.nb_api
 
     def _test_create_security_group_revision(self):
