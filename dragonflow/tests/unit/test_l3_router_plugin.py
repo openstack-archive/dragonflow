@@ -29,6 +29,9 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
 
     def setUp(self):
         super(TestDFL3RouterPlugin, self).setUp()
+        mm = self.driver.mechanism_manager
+        self.mech_driver = mm.mech_drivers['df'].obj
+        self.mech_driver.post_fork_initialize(None, None, None)
         self.l3p = (manager.NeutronManager.
                     get_service_plugins()['L3_ROUTER_NAT'])
         self.nb_api = self.l3p.nb_api
