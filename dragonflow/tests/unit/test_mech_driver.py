@@ -45,13 +45,15 @@ class DFMechanismDriverTestCase(test_plugin.Ml2PluginV2TestCase):
         nbapi_instance.get_instance.return_value = mock.MagicMock()
         super(DFMechanismDriverTestCase, self).setUp()
 
+        mm = self.driver.mechanism_manager
+        self.mech_driver = mm.mech_drivers['df'].obj
+        self.mech_driver.post_fork_initialize(None, None, None)
+
 
 class TestDFMechDriver(DFMechanismDriverTestCase):
 
     def setUp(self):
         super(TestDFMechDriver, self).setUp()
-        mm = self.driver.mechanism_manager
-        self.mech_driver = mm.mech_drivers['df'].obj
         self.nb_api = self.mech_driver.nb_api
 
     def _test_create_security_group_revision(self):
