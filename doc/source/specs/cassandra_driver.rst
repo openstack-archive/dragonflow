@@ -1,0 +1,82 @@
+..
+ This work is licensed under a Creative Commons Attribution 3.0 Unported
+ License.
+
+ http://creativecommons.org/licenses/by/3.0/legalcode
+
+=====================
+Cassandra Driver Spec
+=====================
+
+Include the URL of the launchpad RFE:
+https://blueprints.launchpad.net/dragonflow/+spec/cassandra-support
+
+Problem Description
+===================
+
+Apache Cassandra [#]_ is widely used in large-scale real-time internet
+applications, such as Netflix, Reddit, The Weather Channel, etc.
+
+.. [#] http://cassandra.apache.org/
+
+The performance is amazing and generally dominates others according
+to universities' research reports [#]_.
+
+.. [#] http://www.planetcassandra.org/nosql-performance-benchmarks/
+
+Besides performance, it also has many noticeable advantages such as
+
+#. Fault-tolerant: Data is automatically replicated to multiple nodes
+for fault-tolerance. Replication across multiple data centers is supported.
+Failed nodes can be replaced with no downtime.
+#. Decentralized: There are no single points of failure. There are no network
+bottlenecks. Every node in the cluster is identical.
+#. Horizontally Scalable: Read and write throughput both increase linearly
+as new machines are added, with no downtime or interruption to applications.
+#. Durable: It is suitable for applications that can't afford to lose data,
+even when an entire data center goes down.
+#. In Control: Choose between synchronous or asynchronous replication for each
+update. Highly available asynchronous operations are optimized with features
+like Hinted Handoff and Read Repair.
+#. Easy to Maintain: The control plane of the whole geographically-distributed
+data cluster is fully implemented without support of external applications.
+It also provides an operation portal for daily maintainance.
+
+Currenly, we implements control plane of clustering for Redis inside dragonflow,
+which is actually beyond the scope of dragonflow project. The reason why we
+implement db-api layer is that we do not want to maintain the details of data
+backend as it is not the responsibility of dragonflow project.
+
+The disadvantage of Cassandra is that it needs external mechanism for PUB/SUB,
+for example, Zookeeper or ZeroMQ. The latter has been implemented in dragonflow,
+so it is usable for now.
+
+It is noted that Cassandra is run over JVM.
+
+Highlights
+----------
+
+In this section I will highlight some internal mechanisms of Cassandra that will
+greatly help dragonflow scale out and put into production.
+
+#. You can adjust ReplicationFactor to have multiple replications across data centers.
+#. You can adjust ConsistencyLevel to use different algorithms, like Quorum.
+#. Every node in the cluster is identical. No Master or Slave roles.
+#. The data written to Cassandra node is going to append-only CommitLog first and
+fsync to disk next. You also can adjust the policy of fsync. It guarantees the durability.
+
+Proposed Change
+===============
+
+#. Implement devstack script for Cassandra all-in-one node.
+#. Implement Cassandra driver
+#. Implement some unit tests
+
+Implementation
+==============
+
+Assignee(s)
+-----------
+
+Primary assignee:
+  `nick-ma-z <https://launchpad.net/~nick-ma-z>`_
