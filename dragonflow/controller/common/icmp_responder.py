@@ -18,6 +18,7 @@ from ryu.lib.packet import in_proto
 from ryu.ofproto import ether
 
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import utils
 
 
 class ICMPResponder(object):
@@ -67,7 +68,7 @@ class ICMPResponder(object):
         ofproto = self.datapath.ofproto
         parser = self.datapath.ofproto_parser
         msg = parser.OFPFlowMod(datapath=self.datapath,
-                                cookie=0,
+                                cookie=utils.set_aging_cookie_bits(0),
                                 cookie_mask=0,
                                 table_id=self.table_id,
                                 command=ofproto.OFPFC_ADD,
@@ -82,7 +83,7 @@ class ICMPResponder(object):
         parser = self.datapath.ofproto_parser
         match = self._get_match()
         msg = parser.OFPFlowMod(datapath=self.datapath,
-                                cookie=0,
+                                cookie=utils.set_aging_cookie_bits(0),
                                 cookie_mask=0,
                                 table_id=self.table_id,
                                 command=ofproto.OFPFC_DELETE,
