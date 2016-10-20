@@ -940,7 +940,8 @@ class LogicalPort(DbStoreObject):
         return self.lport.get('remote_vtep', False)
 
     def __str__(self):
-        return self.lport.__str__() + self.external_dict.__str__()
+        return (self.lport.__str__() +
+                ", external_dict: " + self.external_dict.__str__())
 
 
 class LogicalRouter(DbStoreObject):
