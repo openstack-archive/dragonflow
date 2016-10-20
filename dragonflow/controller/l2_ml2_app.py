@@ -407,6 +407,26 @@ class L2App(df_base_app.DFlowApp):
         self._del_multicast_broadcast_handling_for_remote(
             lport_id, network_id, segmentation_id)
 
+    def _add_dst_classifier_flow_for_port(self, network_id, mac, port_key):
+        datapath = self.get_datapath()
+        parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
+
+        match = parser.OFPMatch()
+        match.set_metadata(network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        actions = [parser.OFPActionSetField(reg7=port_key)]
+        action_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
+        inst = [action_inst, goto_inst]
+        self.mod_flow(
+            datapath=datapath,
+            inst=inst,
+            table_id=const.L2_LOOKUP_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match)
+
     def add_local_port(self, lport):
         if self.get_datapath() is None:
             return
@@ -461,29 +481,11 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-        # Destination classifier for port
-        priority = const.PRIORITY_MEDIUM
-        goto_table = const.EGRESS_TABLE
-
-        # Router MAC's go to L3 table and have higher priority
-        if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
-            priority = const.PRIORITY_HIGH
-            goto_table = const.L3_LOOKUP_TABLE
-
-        match = parser.OFPMatch()
-        match.set_metadata(network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        actions = [parser.OFPActionSetField(reg7=port_key)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(goto_table)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
-            priority=priority,
-            match=match)
+        # Router MAC's go to L3 table will be taken care by l3 app
+        # REVISIT(xiaohhui): This check might be removed when l3-agent is
+        # obsoleted.
+        if lport.get_device_owner() != common_const.DEVICE_OWNER_ROUTER_INTF:
+            self._add_dst_classifier_flow_for_port(network_id, mac, port_key)
 
         # Go to dispatch table according to unique metadata & mac
         match = parser.OFPMatch()
@@ -812,29 +814,11 @@ class L2App(df_base_app.DFlowApp):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
 
-        # Destination classifier for port
-        priority = const.PRIORITY_MEDIUM
-        goto_table = const.EGRESS_TABLE
-
-        # Router MAC's go to L3 table and have higher priority
-        if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
-            priority = const.PRIORITY_HIGH
-            goto_table = const.L3_LOOKUP_TABLE
-
-        match = parser.OFPMatch()
-        match.set_metadata(network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        actions = [parser.OFPActionSetField(reg7=port_key)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(goto_table)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
-            priority=priority,
-            match=match)
+        # Router MAC's go to L3 table will be taken care by l3 app
+        # REVISIT(xiaohhui): This check might be removed when l3-agent is
+        # obsoleted.
+        if lport.get_device_owner() != common_const.DEVICE_OWNER_ROUTER_INTF:
+            self._add_dst_classifier_flow_for_port(network_id, mac, port_key)
 
         self._add_arp_responder(lport)
 
