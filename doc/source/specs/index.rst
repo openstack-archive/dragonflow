@@ -54,6 +54,7 @@ Spec Template
     vlan_networking
     port_status_update
     config_generation
+    cassandra_driver
 
 
 Indices and tables
