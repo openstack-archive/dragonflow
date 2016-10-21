@@ -53,7 +53,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
     def router_deleted(self, router):
         for port in router.get_ports():
-            self._delete_router_port(port)
+            self._delete_router_port(router, port)
 
     def _update_router_attributes(self, old_router, new_router):
         old_routes = old_router.get_routes()
@@ -76,7 +76,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                 old_router_ports.remove(new_port)
 
         for old_port in old_router_ports:
-            self._delete_router_port(old_port)
+            self._delete_router_port(new_router, old_port)
 
     def _add_new_lrouter(self, lrouter):
         for new_port in lrouter.get_ports():
@@ -105,7 +105,25 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             arp_responder.ArpResponder(datapath,
                                        local_network_id,
                                        dst_ip, mac).add()
-            icmp_responder.ICMPResponder(datapath, dst_ip, mac).add()
+            icmp_responder.ICMPResponder(datapath, dst_ip, mac,
+                                         table_id=const.L2_LOOKUP_TABLE).add()
+            for port in router.get_ports():
+                if netaddr.IPAddress(port.get_ip()).version != 4:
+                    continue
+
+                if port.get_id() == router_port.get_id():
+                    continue
+
+                # Add ICMP responder from every other router port to the
+                # new router port.
+                icmp_responder.ICMPResponder(
+                    datapath, dst_ip, port.get_mac(),
+                    table_id=const.L3_LOOKUP_TABLE).add()
+                # Add ICMP responder from new router port to other
+                # router port.
+                icmp_responder.ICMPResponder(
+                    datapath, port.get_ip(), mac,
+                    table_id=const.L3_LOOKUP_TABLE).add()
 
         # If router interface IP, send to output table
         if is_ipv4:
@@ -426,23 +444,42 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def _delete_router_port(self, router_port):
+    def _delete_router_port(self, router, router_port):
         LOG.info(_LI("Removing logical router interface = %s"),
                  router_port)
         local_network_id = self.db_store.get_network_id(
             router_port.get_lswitch_id()
         )
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        datapath = self.get_datapath()
+        parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
         tunnel_key = router_port.get_tunnel_key()
         ip = router_port.get_ip()
         mac = router_port.get_mac()
 
         if netaddr.IPAddress(ip).version == 4:
-            arp_responder.ArpResponder(self.get_datapath(),
-                                       local_network_id, ip).remove()
-            icmp_responder.ICMPResponder(self.get_datapath(), ip, mac).remove()
+            arp_responder.ArpResponder(datapath, local_network_id, ip).remove()
+            icmp_responder.ICMPResponder(
+                datapath, ip, mac,
+                table_id=const.L2_LOOKUP_TABLE).remove()
+            for port in router.get_ports():
+                if netaddr.IPAddress(port.get_ip()).version != 4:
+                    continue
+
+                if port.get_id() == router_port.get_id():
+                    continue
+
+                # Remove ICMP responder from every other router port to the
+                # new router port.
+                icmp_responder.ICMPResponder(
+                    datapath, ip, port.get_mac(),
+                    table_id=const.L3_LOOKUP_TABLE).remove()
+                # Remove ICMP responder from new router port to other
+                # router port.
+                icmp_responder.ICMPResponder(
+                    datapath, port.get_ip(), mac,
+                    table_id=const.L3_LOOKUP_TABLE).remove()
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
