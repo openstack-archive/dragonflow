@@ -26,18 +26,20 @@ class ICMPResponder(object):
     A class for creating and removing ICMP responders.
     @param interface_ip The port's IPv4 address
     @param interface_mac The port's MAC address
+    @param dst_mac The destination MAC address of packet
     """
     def __init__(self, datapath, interface_ip, interface_mac,
-                 table_id=const.L2_LOOKUP_TABLE):
+                 dst_mac=None, table_id=const.L2_LOOKUP_TABLE):
         self.datapath = datapath
         self.interface_ip = interface_ip
         self.interface_mac = interface_mac
+        self.dst_mac = dst_mac or interface_mac
         self.table_id = table_id
 
     def _get_match(self):
         parser = self.datapath.ofproto_parser
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                eth_dst=self.interface_mac,
+                                eth_dst=self.dst_mac,
                                 ip_proto=in_proto.IPPROTO_ICMP,
                                 ipv4_dst=self.interface_ip,
                                 icmpv4_type=icmp.ICMP_ECHO_REQUEST)
@@ -72,22 +74,50 @@ class ICMPResponder(object):
                                 cookie_mask=0,
                                 table_id=self.table_id,
                                 command=ofproto.OFPFC_ADD,
-                                priority=const.PRIORITY_MEDIUM,
+                                priority=const.PRIORITY_VERY_HIGH,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match, instructions=instructions)
         self.datapath.send_msg(msg)
 
+    def _get_dst_mac_match(self):
+        parser = self.datapath.ofproto_parser
+        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                eth_dst=self.dst_mac,
+                                ip_proto=in_proto.IPPROTO_ICMP,
+                                icmpv4_type=icmp.ICMP_ECHO_REQUEST)
+        return match
+
+    def _get_dst_ip_match(self):
+        parser = self.datapath.ofproto_parser
+        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                ip_proto=in_proto.IPPROTO_ICMP,
+                                ipv4_dst=self.interface_ip,
+                                icmpv4_type=icmp.ICMP_ECHO_REQUEST)
+        return match
+
     def remove(self):
         ofproto = self.datapath.ofproto
         parser = self.datapath.ofproto_parser
-        match = self._get_match()
+        match = self._get_dst_mac_match()
         msg = parser.OFPFlowMod(datapath=self.datapath,
                                 cookie=utils.set_aging_cookie_bits(0),
                                 cookie_mask=0,
                                 table_id=self.table_id,
                                 command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_MEDIUM,
+                                priority=const.PRIORITY_VERY_HIGH,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY,
+                                match=match)
+        self.datapath.send_msg(msg)
+
+        match = self._get_dst_ip_match()
+        msg = parser.OFPFlowMod(datapath=self.datapath,
+                                cookie=utils.set_aging_cookie_bits(0),
+                                cookie_mask=0,
+                                table_id=self.table_id,
+                                command=ofproto.OFPFC_DELETE,
+                                priority=const.PRIORITY_VERY_HIGH,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
