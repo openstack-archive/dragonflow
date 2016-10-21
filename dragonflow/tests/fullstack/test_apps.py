@@ -507,21 +507,6 @@ class TestL3App(test_base.DFTestBase):
                 self.subnet2.subnet_id,
             ])
             time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-
-            port_policies = self._create_port_policies()
-            self.policy = self.store(
-                app_testing_objects.Policy(
-                    initial_actions=[
-                        app_testing_objects.SendAction(
-                            self.subnet1.subnet_id,
-                            self.port1.port_id,
-                            self._create_ping_packet
-                        ),
-                    ],
-                    port_policies=port_policies,
-                    unknown_port_action=app_testing_objects.IgnoreAction()
-                )
-            )
         except Exception:
             if self.topology:
                 self.topology.close()
@@ -597,7 +582,7 @@ class TestL3App(test_base.DFTestBase):
             key2: policy2,
         }
 
-    def _create_ping_packet(self, buf):
+    def _create_ping_packet(self, dst_ip):
         router_interface = self.router.router_interfaces[
             self.subnet1.subnet_id
         ]
@@ -611,7 +596,7 @@ class TestL3App(test_base.DFTestBase):
         )
         ip = ryu.lib.packet.ipv4.ipv4(
             src=self.port1.port.get_logical_port().get_ip(),
-            dst=self.port2.port.get_logical_port().get_ip(),
+            dst=dst_ip,
             proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
         )
         icmp = ryu.lib.packet.icmp.icmp(
@@ -681,11 +666,35 @@ class TestL3App(test_base.DFTestBase):
         result.serialize()
         return result.data
 
+    def _test_icmp_address(self, dst_ip):
+        port_policies = self._create_port_policies()
+        initial_packet = self._create_ping_packet(dst_ip)
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    app_testing_objects.SendAction(
+                        self.subnet1.subnet_id,
+                        self.port1.port_id,
+                        str(initial_packet)
+                    ),
+                ],
+                port_policies=port_policies,
+                unknown_port_action=app_testing_objects.IgnoreAction()
+            )
+        )
+        policy.start(self.topology)
+        policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
+
     def test_icmp_ping_pong(self):
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        self._test_icmp_address(self.port2.port.get_logical_port().get_ip())
+
+    def test_icmp_router_interfaces(self):
+        self._test_icmp_address('192.168.12.1')
+
+    def test_icmp_other_router_interface(self):
+        self._test_icmp_address('192.168.13.1')
 
 
 class TestSGApp(test_base.DFTestBase):

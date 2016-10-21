@@ -24,20 +24,20 @@ class ICMPResponder(object):
     """
     A class for creating and removing ICMP responders.
     @param interface_ip The port's IPv4 address
-    @param interface_mac The port's MAC address
+    @param dst_mac The destination MAC address of packet
     """
-    def __init__(self, app, interface_ip, interface_mac,
+    def __init__(self, app, interface_ip, dst_mac,
                  table_id=const.L2_LOOKUP_TABLE):
         self.app = app
         self.datapath = app.get_datapath()
         self.interface_ip = interface_ip
-        self.interface_mac = interface_mac
+        self.dst_mac = dst_mac
         self.table_id = table_id
 
     def _get_match(self):
         parser = self.datapath.ofproto_parser
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                eth_dst=self.interface_mac,
+                                eth_dst=self.dst_mac,
                                 ip_proto=in_proto.IPPROTO_ICMP,
                                 ipv4_dst=self.interface_ip,
                                 icmpv4_type=icmp.ICMP_ECHO_REQUEST)
@@ -55,14 +55,14 @@ class ICMPResponder(object):
                    parser.OFPActionSetField(icmpv4_type=icmp.ICMP_ECHO_REPLY),
                    parser.OFPActionSetField(
                        icmpv4_code=icmp.ICMP_ECHO_REPLY_CODE),
-                   parser.OFPActionSetField(eth_src=self.interface_mac),
+                   parser.OFPActionSetField(eth_src=self.dst_mac),
                    parser.OFPActionSetField(ipv4_src=self.interface_ip),
                    parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
         instructions = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         return instructions
 
-    def add(self):
+    def add(self, **kwargs):
         match = self._get_match()
         instructions = self._get_instructions()
         ofproto = self.datapath.ofproto
@@ -70,9 +70,10 @@ class ICMPResponder(object):
             datapath=self.datapath,
             table_id=self.table_id,
             command=ofproto.OFPFC_ADD,
-            priority=const.PRIORITY_MEDIUM,
+            priority=const.PRIORITY_VERY_HIGH,
             match=match,
-            inst=instructions)
+            inst=instructions,
+            **kwargs)
 
     def remove(self):
         ofproto = self.datapath.ofproto
@@ -81,5 +82,5 @@ class ICMPResponder(object):
             datapath=self.datapath,
             table_id=self.table_id,
             command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
+            priority=const.PRIORITY_VERY_HIGH,
             match=match)
