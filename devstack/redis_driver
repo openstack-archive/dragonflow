@@ -8,6 +8,7 @@
 # - nb_db_driver_start_server
 # - nb_db_driver_stop_server
 # - nb_db_driver_clean
+# - nb_db_driver_configure
 
 REDIS_VERSION=3.0.6
 RUBY_VERSION=2.3
@@ -164,4 +165,8 @@ function nb_db_driver_clean {
            uninstall_package -y redis
         fi
     fi
+}
+
+function nb_db_driver_configure {
+    :
 }
