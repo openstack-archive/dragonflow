@@ -12,6 +12,7 @@
 
 from oslo_config import cfg
 
+from dragonflow.conf import df_cassandra
 from dragonflow.conf import df_dhcp
 from dragonflow.conf import df_metadata_service
 from dragonflow.conf import l2_ml2
@@ -20,6 +21,7 @@ from dragonflow.conf import l2_ml2
 CONF = cfg.CONF
 
 
+df_cassandra.register_opts()
 df_dhcp.register_opts()
 df_metadata_service.register_opts()
 l2_ml2.register_opts()
