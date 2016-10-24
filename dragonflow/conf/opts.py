@@ -10,6 +10,7 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
+from dragonflow.conf import df_cassandra
 from dragonflow.conf import df_common_params
 from dragonflow.conf import df_dhcp
 from dragonflow.conf import df_dnat
@@ -25,4 +26,5 @@ def list_opts():
         ('df_dhcp_app', df_dhcp.df_dhcp_opts),
         ('df_dnat_app', df_dnat.df_dnat_app_opts),
         ('df_l2_app', l2_ml2.df_l2_app_opts),
-        ('df_metadata', df_metadata_service.df_metadata_opts)]
+        ('df_metadata', df_metadata_service.df_metadata_opts),
+        ('df_cassandra', df_cassandra.df_cassandra_opts)]
