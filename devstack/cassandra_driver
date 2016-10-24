@@ -1,0 +1,95 @@
+#!/bin/bash
+#
+#
+# ``plugin.sh`` calls the following methods in the sourced driver:
+#
+# - nb_db_driver_install_server
+# - nb_db_driver_install_client
+# - nb_db_driver_start_server
+# - nb_db_driver_stop_server
+# - nb_db_driver_clean
+
+HOSTNAME=`hostname -f`
+
+if is_ubuntu ; then
+    UBUNTU_RELEASE_BASE_NUM=`lsb_release -r | awk '{print $2}' | cut -d '.' -f 1`
+fi
+
+CASSANDRA_IP=${REMOTE_DB_IP:-${HOST_IP}}
+CASSANDRA_PORT=${REMOTE_DB_PORT:-9042}
+CASSANDRA_HOME="/etc/cassandra"
+CASSANDRA_CONF_DIR="$CASSANDRA_HOME/conf"
+CASSANDRA_CONF_FILE="${CASSANDRA_CONF_DIR}/cassandra.yaml"
+CASSANDRA_DEB_SOURCE_FILE="/etc/apt/sources.list.d/cassandra.list"
+CASSANDRA_RPM_SOURCE_FILE="/etc/yum.repos.d/cassandra.repo"
+
+function nb_db_driver_install_server {
+    if is_service_enabled df-cassandra-server ; then
+        echo "Installing Cassandra server"
+        if is_ubuntu; then
+sudo tee -a $CASSANDRA_DEB_SOURCE_FILE >/dev/null <<'EOF'
+deb http://debian.datastax.com/datastax-ddc 3.9 main
+EOF
+            curl -L https://debian.datastax.com/debian/repo_key | sudo apt-key add -
+            sudo apt-get update -y
+            install_package -y openjdk-8-jre-headless
+            install_package -y datastax-ddc
+        elif is_fedora; then
+sudo tee -a $CASSANDRA_RPM_SOURCE_FILE >/dev/null <<'EOF'
+[datastax-ddc]
+name = DataStax Repo for Apache Cassandra
+baseurl = http://rpm.datastax.com/datastax-ddc/3.9
+enabled = 1
+gpgcheck = 0
+EOF
+            sudo yum update -y
+            install_package -y java-1.8.0-openjdk-headless
+            install_package -y datastax-ddc
+        else
+            die $LINENO "Other distributions are not supported"
+        fi
+
+        echo "Configuring Cassandra"
+        sudo sed -i "/^listen_address:/c listen_address: ${CASSANDRA_IP}" $CASSANDRA_CONF_FILE
+        sudo sed -i "/^rpc_address:/c rpc_address:" $CASSANDRA_CONF_FILE
+        sudo sed -i "/^broadcast_address:/c broadcast_address:" $CASSANDRA_CONF_FILE
+    fi
+}
+
+function nb_db_driver_install_client {
+    echo 'Cassandra client sdk is in the requirements file.'
+}
+
+function nb_db_driver_status_server
+{
+    if is_service_enabled df-cassandra-server ; then
+        TEMP_PIDS=`pgrep -f "cassandra"`
+        if [ -z "$TEMP_PIDS" ]; then
+            return 1
+        fi
+    fi
+    return 0
+}
+
+function nb_db_driver_start_server {
+    if is_service_enabled df-cassandra-server ; then
+        if is_ubuntu || is_fedora; then
+            restart_service cassandra
+        fi
+    fi
+}
+
+function nb_db_driver_stop_server {
+    if is_service_enabled df-cassandra-server ; then
+        if is_ubuntu || is_fedora; then
+            stop_service cassandra
+        fi
+    fi
+}
+
+function nb_db_driver_clean {
+    if is_ubuntu || is_fedora; then
+       uninstall_package -y datastax-ddc
+    fi
+    sudo rm -rf ${CASSANDRA_HOME}
+}
