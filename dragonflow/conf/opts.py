@@ -11,6 +11,7 @@
 #  under the License.
 
 from dragonflow.common import common_params
+from dragonflow.conf import df_cassandra
 from dragonflow.conf import df_metadata_service
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import dhcp_app
@@ -25,4 +26,5 @@ def list_opts():
         ('df_dhcp_app', dhcp_app.DF_DHCP_OPTS),
         ('df_dnat_app', dnat_app.DF_DNAT_APP_OPTS),
         ('df_l2_app', l2_ml2_app.DF_L2_APP_OPTS),
-        ('df_metadata', df_metadata_service.df_metadata_opts)]
+        ('df_metadata', df_metadata_service.df_metadata_opts),
+        ('df_cassandra', df_cassandra.df_cassandra_opts)]
