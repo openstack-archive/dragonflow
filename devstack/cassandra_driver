@@ -1,0 +1,143 @@
+#!/bin/bash
+#
+#
+# ``plugin.sh`` calls the following methods in the sourced driver:
+#
+# - nb_db_driver_install_server
+# - nb_db_driver_install_client
+# - nb_db_driver_start_server
+# - nb_db_driver_stop_server
+# - nb_db_driver_clean
+
+HOSTNAME=`hostname -f`
+
+if is_ubuntu ; then
+    UBUNTU_RELEASE_BASE_NUM=`lsb_release -r | awk '{print $2}' | cut -d '.' -f 1`
+fi
+
+CASSANDRA_IP=${REMOTE_DB_IP:-${HOST_IP}}
+CASSANDRA_PORT=${REMOTE_DB_PORT:-9042}
+CASSANDRA_HOME="/etc/cassandra"
+CASSANDRA_DATA_HOME="/var/lib/cassandra"
+CASSANDRA_DEB_SOURCE_FILE="/etc/apt/sources.list.d/cassandra.list"
+CASSANDRA_RPM_SOURCE_FILE="/etc/yum.repos.d/cassandra.repo"
+
+CASSANDRA_DEFAULT_KEYSPACE="openstack"
+# By default, the cassandra uses one replication for the all-in-one deployment
+CASSANDRA_DEFAULT_REPLICATION=1
+CASSANDRA_DEFAULT_CONSISTENCY_LEVEL="one"
+
+function _cassandra_create_keyspace {
+    keyspace="CREATE KEYSPACE IF NOT EXISTS $CASSANDRA_DEFAULT_KEYSPACE "
+    replica="WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : $CASSANDRA_DEFAULT_REPLICATION } "
+    durable="AND DURABLE_WRITES = true;"
+    cqlsh $CASSANDRA_IP -e "$keyspace$replica$durable"
+}
+
+function _cassandra_drop_keyspace {
+    cqlsh $CASSANDRA_IP -e "DROP KEYSPACE IF EXISTS $CASSANDRA_DEFAULT_KEYSPACE;"
+}
+
+function nb_db_driver_install_server {
+    if is_service_enabled df-cassandra-server ; then
+        echo "Installing Cassandra server"
+        if is_ubuntu; then
+sudo tee -a $CASSANDRA_DEB_SOURCE_FILE >/dev/null <<'EOF'
+deb http://debian.datastax.com/datastax-ddc 3.9 main
+EOF
+            curl -L https://debian.datastax.com/debian/repo_key | sudo apt-key add -
+            sudo apt-get update -y
+            install_package -y openjdk-8-jre-headless
+            install_package -y datastax-ddc
+            echo "Configuring Cassandra"
+            CASSANDRA_CONF_DIR="$CASSANDRA_HOME"
+            CASSANDRA_CONF_FILE="${CASSANDRA_CONF_DIR}/cassandra.yaml"
+            sudo sed -i "s/127.0.0.1/${CASSANDRA_IP}/g" $CASSANDRA_CONF_FILE
+            sudo sed -i "/^listen_address:/c listen_address: ${CASSANDRA_IP}" $CASSANDRA_CONF_FILE
+            sudo sed -i "/^rpc_address:/c rpc_address:" $CASSANDRA_CONF_FILE
+            sudo sed -i "/^broadcast_address:/c broadcast_address:" $CASSANDRA_CONF_FILE
+        elif is_fedora; then
+sudo tee -a $CASSANDRA_RPM_SOURCE_FILE >/dev/null <<'EOF'
+[datastax-ddc]
+name = DataStax Repo for Apache Cassandra
+baseurl = http://rpm.datastax.com/datastax-ddc/3.9
+enabled = 1
+gpgcheck = 0
+EOF
+            sudo yum update -y
+            install_package -y java-1.8.0-openjdk-headless
+            install_package -y datastax-ddc
+            cho "Configuring Cassandra"
+            CASSANDRA_CONF_DIR="$CASSANDRA_HOME/conf"
+            CASSANDRA_DEFAULT_CONF_DIR="$CASSANDRA_HOME/default.conf"
+            if [ ! -d $CASSANDRA_CONF_DIR ]; then
+                sudo cp $CASSANDRA_DEFAULT_CONF_DIR $CASSANDRA_CONF_DIR -rf
+            fi
+            sudo sed -i "s/127.0.0.1/${CASSANDRA_IP}/g" $CASSANDRA_CONF_FILE
+            sudo sed -i "/^listen_address:/c listen_address: ${CASSANDRA_IP}" $CASSANDRA_CONF_FILE
+            sudo sed -i "/^rpc_address:/c rpc_address:" $CASSANDRA_CONF_FILE
+            sudo sed -i "/^broadcast_address:/c broadcast_address:" $CASSANDRA_CONF_FILE
+        else
+            die $LINENO "Other distributions are not supported"
+        fi
+
+        # change ownership for data directory
+        sudo chown -R cassandra:cassandra $CASSANDRA_DATA_HOME
+        # set consistency level
+        iniset $DRAGONFLOW_CONF df-cassandra consistency_level "$CASSANDRA_DEFAULT_CONSISTENCY_LEVEL"
+        # start cassandra service
+        nb_db_driver_start_server
+        # initialize keyspace
+        _cassandra_create_keyspace
+    fi
+}
+
+function nb_db_driver_install_client {
+    echo 'Cassandra client sdk is in the requirements file.'
+}
+
+function nb_db_driver_status_server
+{
+    if is_service_enabled df-cassandra-server ; then
+        TEMP_PIDS=`pgrep -f "cassandra"`
+        if [ -z "$TEMP_PIDS" ]; then
+            return 1
+        fi
+    fi
+    return 0
+}
+
+function nb_db_driver_start_server {
+    if is_service_enabled df-cassandra-server ; then
+        if is_fedora; then
+            restart_service cassandra
+        elif is_ubuntu; then
+            sudo /etc/init.d/cassandra restart
+        fi
+        # cassandra needs long duration for connections.
+        sleep 30
+    fi
+}
+
+function nb_db_driver_stop_server {
+    if is_service_enabled df-cassandra-server ; then
+        if is_fedora; then
+            stop_service cassandra
+        elif is_ubuntu; then
+            sudo /etc/init.d/cassandra stop
+        fi
+        # cassandra needs long duration for clean-up.
+        sleep 30
+    fi
+}
+
+function nb_db_driver_clean {
+    nb_db_driver_start_server
+    _cassandra_drop_keyspace
+    nb_db_driver_stop_server
+
+    if is_ubuntu || is_fedora; then
+       uninstall_package -y datastax-ddc
+    fi
+    sudo rm -rf ${CASSANDRA_HOME}
+}
