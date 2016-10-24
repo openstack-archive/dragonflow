@@ -18,6 +18,7 @@ from dragonflow.controller import dhcp_app
 from dragonflow.controller import dnat_app
 from dragonflow.controller import l2_ml2_app
 from dragonflow.controller import metadata_service_app
+from dragonflow.db.drivers import cassandra_db_driver
 
 
 CONF = cfg.CONF
@@ -30,4 +31,5 @@ def list_opts():
         ('df_dhcp_app', dhcp_app.DF_DHCP_OPTS),
         ('df_dnat_app', dnat_app.DF_DNAT_APP_OPTS),
         ('df_l2_app', l2_ml2_app.DF_L2_APP_OPTS),
-        ('df_metadata', metadata_service_app.DF_METADATA_OPTS)]
+        ('df_metadata', metadata_service_app.DF_METADATA_OPTS),
+        ('df_cassandra', cassandra_db_driver.DF_CASSANDRA_OPTS)]
