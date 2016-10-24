@@ -93,3 +93,7 @@ class DFMultipleExceptions(exceptions.MultipleExceptions):
 
 class UnknownResourceException(DragonflowException):
     message = _('Could not find lock id for resource type %(resource_type)')
+
+
+class InvalidDBHostConfiguration(DragonflowException):
+    message = _('The DB host string %(host)s is invalid.')
