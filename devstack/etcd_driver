@@ -8,6 +8,7 @@
 # - nb_db_driver_start_server
 # - nb_db_driver_stop_server
 # - nb_db_driver_clean
+# - nb_db_driver_configure
 
 ETCD_VERSION=${ETCD_VERSION:-v3.0.15}
 OVERRIDE_FILE=$DEST/dragonflow/devstack/etcd.override
@@ -104,4 +105,8 @@ function nb_db_driver_clean {
     sudo rm -f $OVERRIDE_FILE
     sudo rm /lib/systemd/system/etcd.service
     sudo rm /usr/local/bin/etcd
+}
+
+function nb_db_driver_configure {
+    :
 }

@@ -8,6 +8,7 @@
 # - nb_db_driver_start_server
 # - nb_db_driver_stop_server
 # - nb_db_driver_clean
+# - nb_db_driver_configure
 
 RAMCLOUD=$DEST/ramcloud
 RAMCLOUD_LIB=$RAMCLOUD/lib
@@ -77,4 +78,8 @@ function nb_db_driver_stop_server {
 
 function nb_db_driver_clean {
     sudo rm -rf $RAMCLOUD
+}
+
+function nb_db_driver_configure {
+    :
 }
