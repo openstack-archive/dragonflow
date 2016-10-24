@@ -8,6 +8,7 @@
 # - nb_db_driver_start_server
 # - nb_db_driver_stop_server
 # - nb_db_driver_clean
+# - nb_db_driver_configure
 
 HOSTNAME=`hostname -f`
 
@@ -98,4 +99,8 @@ function nb_db_driver_stop_server {
     if is_service_enabled df-zookeeper-server ; then
         stop_service zookeeper
     fi
+}
+
+function nb_db_driver_configure {
+    :
 }

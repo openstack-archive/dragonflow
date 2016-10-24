@@ -11,6 +11,7 @@
 #  under the License.
 
 from dragonflow.conf import df_active_port_detection
+from dragonflow.conf import df_cassandra
 from dragonflow.conf import df_common_params
 from dragonflow.conf import df_dhcp
 from dragonflow.conf import df_dnat
@@ -28,4 +29,5 @@ def list_opts():
         ('df_l2_app', l2_ml2.df_l2_app_opts),
         ('df_metadata', df_metadata_service.df_metadata_opts),
         ('df_active_port_detection',
-         df_active_port_detection.df_active_port_detection_opts)]
+         df_active_port_detection.df_active_port_detection_opts),
+        ('df_cassandra', df_cassandra.df_cassandra_opts)]
