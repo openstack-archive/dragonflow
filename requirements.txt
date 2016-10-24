@@ -5,6 +5,7 @@
 pbr>=1.8 # Apache-2.0
 Babel>=2.3.4 # BSD
 python-etcd>=0.4.3 # MIT License
+cassandra-driver===3.7.0 # Apache-2.0
 kazoo>=2.2 # Apache-2.0
 ovs>=2.6.1 # Apache-2.0
 pyzmq>=14.3.1 # LGPL+BSD
