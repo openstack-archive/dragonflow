@@ -12,6 +12,7 @@
 
 from oslo_config import cfg
 from oslo_log import log
+import six
 
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import constants
@@ -142,13 +143,13 @@ class Topology(object):
 
     def _vm_port_updated(self, ovs_port):
         lport_id = ovs_port.get_iface_id()
-        lport = self._get_lport(lport_id)
+        lport = self.get_lport(lport_id)
         if lport is None:
             LOG.warning(_LW("No logical port found for ovs port: %s")
                         % str(ovs_port))
             return
         topic = lport.get_topic()
-        self._add_to_topic_subscribed(topic, lport_id)
+        self.add_to_topic_subscribed(topic, lport_id)
 
         # update lport, notify apps
         ovs_port_id = ovs_port.get_id()
@@ -182,7 +183,7 @@ class Topology(object):
                 return
             topic = lport.get('topic')
             del self.ovs_to_lport_mapping[ovs_port_id]
-            self._del_from_topic_subscribed(topic, lport_id)
+            self.del_from_topic_subscribed(topic, lport_id)
             return
 
         topic = lport.get_topic()
@@ -200,9 +201,9 @@ class Topology(object):
                     ovs_port, constants.PORT_STATUS_DOWN)
 
             del self.ovs_to_lport_mapping[ovs_port_id]
-            self._del_from_topic_subscribed(topic, lport_id)
+            self.del_from_topic_subscribed(topic, lport_id)
 
-    def _add_to_topic_subscribed(self, topic, lport_id):
+    def add_to_topic_subscribed(self, topic, lport_id):
         if not self.enable_selective_topo_dist:
             return
 
@@ -215,7 +216,7 @@ class Topology(object):
         else:
             self.topic_subscribed[topic].add(lport_id)
 
-    def _del_from_topic_subscribed(self, topic, lport_id):
+    def del_from_topic_subscribed(self, topic, lport_id):
         if not self.enable_selective_topo_dist:
             return
         port_ids = self.topic_subscribed[topic]
@@ -276,9 +277,38 @@ class Topology(object):
             if tenant_id == sg_group.get_topic():
                 self.controller.security_group_deleted(sg_group.get_id())
 
-    def _get_lport(self, port_id, topic=None):
+    def get_lport(self, port_id, topic=None):
         lport = self.db_store.get_port(port_id)
         if lport is None:
             lport = self.nb_api.get_logical_port(port_id, topic)
 
         return lport
+
+    def check_topology_info(self):
+        new_ovs_to_lport_mapping = {}
+        add_ovs_to_lport_mapping = {}
+        delete_ovs_to_lport_mapping = self.ovs_to_lport_mapping
+        for key, ovs_port in six.iteritems(self.ovs_ports):
+            if ovs_port.get_type() == api_nb.OvsPort.TYPE_VM:
+                lport_id = ovs_port.get_iface_id()
+                lport = self.get_lport(lport_id)
+                if lport is None:
+                    LOG.warning(_LW("No logical port found for ovs port: %s"),
+                                str(ovs_port))
+                    continue
+                topic = lport.get_topic()
+                new_ovs_to_lport_mapping[key] = {
+                    'lport_id': lport_id, 'topic': topic}
+                if not delete_ovs_to_lport_mapping.pop(key, None):
+                    add_ovs_to_lport_mapping[key] = {
+                        'lport_id': lport_id, 'topic': topic}
+        self.ovs_to_lport_mapping = new_ovs_to_lport_mapping
+        for value in add_ovs_to_lport_mapping.values():
+            lport_id = value['lport_id']
+            topic = value['topic']
+            self.add_to_topic_subscribed(topic, lport_id)
+
+        for value in delete_ovs_to_lport_mapping.values():
+            lport_id = value['lport_id']
+            topic = value['topic']
+            self.del_from_topic_subscribed(topic, lport_id)
