@@ -71,7 +71,7 @@ class ICMPResponder(object):
                                 cookie_mask=0,
                                 table_id=self.table_id,
                                 command=ofproto.OFPFC_ADD,
-                                priority=const.PRIORITY_MEDIUM,
+                                priority=const.PRIORITY_VERY_HIGH,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match, instructions=instructions)
@@ -86,7 +86,7 @@ class ICMPResponder(object):
                                 cookie_mask=0,
                                 table_id=self.table_id,
                                 command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_MEDIUM,
+                                priority=const.PRIORITY_VERY_HIGH,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
