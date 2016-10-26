@@ -176,9 +176,9 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         sg_rule['topic'] = tenant_id
         del sg_rule['tenant_id']
-        self.nb_api.add_security_group_rules(sg_id, tenant_id,
-                                             sg_rules=[sg_rule],
-                                             sg_version=sg_version)
+        self.nb_api.create_security_group_rules(sg_id, tenant_id,
+                                                sg_rules=[sg_rule],
+                                                sg_version=sg_version)
         LOG.info(_LI("DFMechDriver: create security group rule in group %s"),
                  sg_id)
         return sg_rule
@@ -260,7 +260,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         filters = {'fixed_ips': {'subnet_id': [subnet_id]},
                    'device_owner': [n_const.DEVICE_OWNER_DHCP]}
         core_plugin = manager.NeutronManager.get_plugin()
-        ports = core_plugin.get_ports(context, filters=filters)
+        ports = core_plugin.get_lports(context, filters=filters)
         if 0 != len(ports):
             return ports[0]
         else:
@@ -364,7 +364,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             LOG.exception(e)
             return None
 
-        self.nb_api.add_subnet(
+        self.nb_api.create_subnet(
             subnet['id'],
             net_id,
             subnet['tenant_id'],
@@ -395,7 +395,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
     def _delete_subnet_dhcp_port(self, context, port):
         core_plugin = manager.NeutronManager.get_plugin()
-        core_plugin.delete_port(context, port['id'])
+        core_plugin.delete_lport(context, port['id'])
 
     def _handle_update_subnet_dhcp(self, context, old_subnet, new_subnet):
         """Update the dhcp configuration for.
@@ -550,8 +550,8 @@ class DFMechDriver(driver_api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def update_port_postcommit(self, context):
         updated_port = context.current
-        if not self.nb_api.get_logical_port(updated_port['id'],
-                                            updated_port['tenant_id']):
+        if not self.nb_api.get_lport(updated_port['id'],
+                                     updated_port['tenant_id']):
             # REVISIT(xiaohhui): Should we unify the check before update nb db?
             LOG.debug("The port %s has been deleted from dragonflow NB DB, "
                       "by concurrent operation.", updated_port['id'])

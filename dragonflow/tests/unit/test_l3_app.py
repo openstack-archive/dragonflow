@@ -29,10 +29,10 @@ class TestL3App(test_app_base.DFAppTestBase):
         self.router = test_app_base.fake_logic_router1
 
     def test_add_del_router(self):
-        self.controller.router_deleted(self.router.get_id())
+        self.controller.delete_lrouter(self.router.get_id())
         self.assertEqual(3, self.mock_mod_flow.call_count)
         self.mock_mod_flow.reset_mock()
-        self.controller.router_created(self.router)
+        self.controller.create_lrouter(self.router)
         self.assertEqual(2, self.mock_mod_flow.call_count)
         args, kwargs = self.mock_mod_flow.call_args
         self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])

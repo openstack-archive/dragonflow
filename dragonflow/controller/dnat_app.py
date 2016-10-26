@@ -143,8 +143,8 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _get_vm_gateway_info(self, floatingip):
         lport = self.db_store.get_local_port(floatingip.get_lport_id())
-        lrouter = self.db_store.get_router(floatingip.get_lrouter_id())
-        for router_port in lrouter.get_ports():
+        lrouter = self.db_store.get_lrouter(floatingip.get_lrouter_id())
+        for router_port in lrouter.get_lports():
             if router_port.get_lswitch_id() == lport.get_lswitch_id():
                 return router_port.get_mac()
         return None

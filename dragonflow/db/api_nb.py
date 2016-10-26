@@ -146,7 +146,7 @@ class NbApi(object):
     def allocate_tunnel_key(self):
         return self.driver.allocate_unique_key()
 
-    def get_all_port_status_keys(self):
+    def get_port_status_keys(self):
         topics = self.driver.get_all_entries('portstats')
         topic = random.choice(topics)
         return topic
@@ -212,68 +212,68 @@ class NbApi(object):
         if 'secgroup' == table:
             if action == 'set' or action == 'create':
                 secgroup = SecurityGroup(value)
-                self.controller.security_group_updated(secgroup)
+                self.controller.update_security_group(secgroup)
             elif action == 'delete':
                 secgroup_id = key
-                self.controller.security_group_deleted(secgroup_id)
+                self.controller.delete_security_group(secgroup_id)
         elif 'lport' == table:
             if action == 'create':
                 lport = LogicalPort(value)
-                self.controller.logical_port_created(lport)
+                self.controller.create_lport(lport)
             elif action == 'set':
                 lport = LogicalPort(value)
-                self.controller.logical_port_updated(lport)
+                self.controller.update_lport(lport)
             elif action == 'delete':
                 lport_id = key
-                self.controller.logical_port_deleted(lport_id)
+                self.controller.delete_lport(lport_id)
         elif 'lrouter' == table:
             if action == 'create':
                 lrouter = LogicalRouter(value)
-                self.controller.router_created(lrouter)
+                self.controller.create_lrouter(lrouter)
             elif action == 'set':
                 lrouter = LogicalRouter(value)
-                self.controller.router_updated(lrouter)
+                self.controller.update_lrouter(lrouter)
             elif action == 'delete':
                 lrouter_id = key
-                self.controller.router_deleted(lrouter_id)
+                self.controller.delete_lrouter(lrouter_id)
         elif 'chassis' == table:
             if action == 'set' or action == 'create':
                 chassis = Chassis(value)
-                self.controller.chassis_created(chassis)
+                self.controller.create_chassis(chassis)
             elif action == 'delete':
                 chassis_id = key
-                self.controller.chassis_deleted(chassis_id)
+                self.controller.delete_chassis(chassis_id)
         elif 'lswitch' == table:
             if action == 'set' or action == 'create':
                 lswitch = LogicalSwitch(value)
-                self.controller.logical_switch_updated(lswitch)
+                self.controller.update_lswitch(lswitch)
             elif action == 'delete':
                 lswitch_id = key
-                self.controller.logical_switch_deleted(lswitch_id)
+                self.controller.delete_lswitch(lswitch_id)
         elif 'floatingip' == table:
             if action == 'set' or action == 'create':
                 floatingip = Floatingip(value)
-                self.controller.floatingip_updated(floatingip)
+                self.controller.update_floatingip(floatingip)
             elif action == 'delete':
                 floatingip_id = key
-                self.controller.floatingip_deleted(floatingip_id)
+                self.controller.delete_floatingip(floatingip_id)
         elif pub_sub_api.PUBLISHER_TABLE == table:
             if action == 'set' or action == 'create':
                 publisher = Publisher(value)
-                self.controller.publisher_updated(publisher)
+                self.controller.update_publisher(publisher)
             elif action == 'delete':
-                self.controller.publisher_deleted(key)
+                self.controller.delete_publisher(key)
         elif 'ovsinterface' == table:
             if action == 'set' or action == 'create':
                 ovs_port = OvsPort(value)
-                self.controller.ovs_port_updated(ovs_port)
+                self.controller.update_ovs_port(ovs_port)
             elif action == 'sync_finished':
                 self.controller.ovs_sync_finished()
             elif action == 'sync_started':
                 self.controller.ovs_sync_started()
             elif action == 'delete':
                 ovs_port = OvsPort(value)
-                self.controller.ovs_port_deleted(ovs_port)
+                self.controller.delete_ovs_port(ovs_port)
         elif 'log' == action:
             message = _LI(
                 'Log event (Info): '
@@ -320,7 +320,7 @@ class NbApi(object):
         self._send_db_change_event('secgroup', id, 'delete', id,
                                    topic)
 
-    def add_security_group_rules(
+    def create_security_group_rules(
             self, sg_id, topic, **columns):
         secgroup_json = self.driver.get_key('secgroup', sg_id, topic)
         new_rules = columns.get('sg_rules')
@@ -361,13 +361,13 @@ class NbApi(object):
         except Exception:
             return None
 
-    def get_all_chassis(self):
+    def get_chassises(self):
         res = []
         for entry_value in self.driver.get_all_entries('chassis', None):
             res.append(Chassis(entry_value))
         return res
 
-    def add_chassis(self, id, ip, tunnel_type):
+    def create_chassis(self, id, ip, tunnel_type):
         chassis = {'id': id, 'ip': ip,
                    'tunnel_type': tunnel_type}
         chassis_json = jsonutils.dumps(chassis)
@@ -380,7 +380,7 @@ class NbApi(object):
         except Exception:
             return None
 
-    def add_subnet(self, id, lswitch_id, topic, **columns):
+    def create_subnet(self, id, lswitch_id, topic, **columns):
         lswitch_json = self.driver.get_key('lswitch', lswitch_id, topic)
         lswitch = jsonutils.loads(lswitch_json)
         network_version = None
@@ -446,14 +446,14 @@ class NbApi(object):
         self._send_db_change_event('lswitch', lswitch_id, 'set',
                                    lswitch_json, lswitch['topic'])
 
-    def get_logical_port(self, port_id, topic=None):
+    def get_lport(self, port_id, topic=None):
         try:
             port_value = self.driver.get_key('lport', port_id, topic)
             return LogicalPort(port_value)
         except Exception:
             return None
 
-    def get_all_logical_ports(self, topic=None):
+    def get_lports(self, topic=None):
         res = []
         for lport_value in self.driver.get_all_entries('lport', topic):
             lport = LogicalPort(lport_value)
@@ -541,8 +541,8 @@ class NbApi(object):
         self._send_db_change_event('lrouter', id, 'delete', id,
                                    topic)
 
-    def add_lrouter_port(self, id, lrouter_id, lswitch_id,
-                         topic, **columns):
+    def create_lrouter_port(self, id, lrouter_id, lswitch_id,
+                            topic, **columns):
         lrouter_json = self.driver.get_key('lrouter', lrouter_id, topic)
         lrouter = jsonutils.loads(lrouter_json)
         router_version = None
@@ -587,14 +587,14 @@ class NbApi(object):
         self._send_db_change_event('lrouter', lrouter_id, 'set',
                                    lrouter_json, lrouter['topic'])
 
-    def get_router(self, router_id, topic=None):
+    def get_lrouter(self, router_id, topic=None):
         try:
             lrouter_value = self.driver.get_key('lrouter', router_id, topic)
             return LogicalRouter(lrouter_value)
         except Exception:
             return None
 
-    def get_routers(self, topic=None):
+    def get_lrouters(self, topic=None):
         res = []
         for lrouter_value in self.driver.get_all_entries('lrouter', topic):
             res.append(LogicalRouter(lrouter_value))
@@ -613,7 +613,7 @@ class NbApi(object):
             res.append(SecurityGroup(secgroup_value))
         return res
 
-    def get_all_logical_switches(self, topic=None):
+    def get_lswitches(self, topic=None):
         res = []
         for lswitch_value in self.driver.get_all_entries('lswitch', topic):
             res.append(LogicalSwitch(lswitch_value))
@@ -664,7 +664,7 @@ class NbApi(object):
             res.append(Floatingip(floatingip))
         return res
 
-    def get_floatingip_by_logical_port(self, port_id):
+    def get_floatingip_by_lport(self, port_id):
         for floatingip in self.get_floatingips():
             if port_id == floatingip['port_id']:
                 return Floatingip(floatingip)

@@ -57,12 +57,12 @@ class RouterTestObj(object):
         self.closed = False
 
     def create(self, router={'name': 'myrouter1', 'admin_state_up': True}):
-        new_router = self.neutron.create_router({'router': router})
+        new_router = self.neutron.create_lrouter({'router': router})
         self.router_id = new_router['router']['id']
         return self.router_id
 
     def update(self, router={'name': 'myrouter2'}):
-        router = self.neutron.update_router(
+        router = self.neutron.update_lrouter(
                 self.router_id, {'router': router})
         return router['router']
 
@@ -80,12 +80,12 @@ class RouterTestObj(object):
             elif port['device_owner'] == 'network:router_gateway':
                 pass
             else:
-                self.neutron.delete_port(port['id'])
-        self.neutron.delete_router(self.router_id)
+                self.neutron.delete_lport(port['id'])
+        self.neutron.delete_lrouter(self.router_id)
         self.closed = True
 
     def exists(self):
-        router = self.nb_api.get_router(self.router_id)
+        router = self.nb_api.get_lrouter(self.router_id)
         if router:
             return True
         return False
@@ -183,7 +183,7 @@ class NetworkTestObj(object):
                 pass
             else:
                 try:
-                    self.neutron.delete_port(port['id'])
+                    self.neutron.delete_lport(port['id'])
                 except exceptions.PortNotFoundClient:
                     pass
         self.neutron.delete_network(self.network_id)
@@ -376,7 +376,7 @@ class PortTestObj(object):
         return port['port']
 
     def get_logical_port(self):
-        return self.nb_api.get_logical_port(self.port_id)
+        return self.nb_api.get_lport(self.port_id)
 
     def exists(self):
         port = self.get_logical_port()
@@ -387,7 +387,7 @@ class PortTestObj(object):
     def close(self):
         if self.closed or self.port_id is None:
             return
-        self.neutron.delete_port(self.port_id)
+        self.neutron.delete_lport(self.port_id)
         self.closed = True
 
 

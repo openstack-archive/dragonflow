@@ -147,33 +147,33 @@ class DfLocalController(object):
                     df_db_objects_refresh.DfObjectRefresher(
                         'Switches',
                         self.db_store.get_lswitch_keys,
-                        self.nb_api.get_all_logical_switches,
-                        self.logical_switch_updated,
-                        self.logical_switch_deleted),
+                        self.nb_api.get_lswitches,
+                        self.update_lswitch,
+                        self.delete_lswitch),
                     df_db_objects_refresh.DfObjectRefresher(
                         'Security Groups',
                         self.db_store.get_security_group_keys,
                         self.nb_api.get_security_groups,
-                        self.security_group_updated,
-                        self.security_group_deleted),
+                        self.update_security_group,
+                        self.delete_security_group),
                     df_db_objects_refresh.DfObjectRefresher(
                         'Ports',
-                        self.db_store.get_port_keys,
-                        self.nb_api.get_all_logical_ports,
-                        self.logical_port_updated,
-                        self.logical_port_deleted),
+                        self.db_store.get_lport_keys,
+                        self.nb_api.get_lports,
+                        self.update_lport,
+                        self.delete_lport),
                     df_db_objects_refresh.DfObjectRefresher(
                         'Routers',
-                        self.db_store.get_router_keys,
-                        self.nb_api.get_routers,
-                        self.router_updated,
-                        self.router_deleted),
+                        self.db_store.get_lrouter_keys,
+                        self.nb_api.get_lrouters,
+                        self.update_lrouter,
+                        self.delete_lrouter),
                     df_db_objects_refresh.DfObjectRefresher(
                         'Floating IPs',
                         self.db_store.get_floatingip_keys,
                         self.nb_api.get_floatingips,
-                        self.floatingip_updated,
-                        self.floatingip_deleted),
+                        self.update_floatingip,
+                        self.delete_floatingip),
                          ]
 
                 # Refresh all the objects and find which ones should be removed
@@ -192,7 +192,7 @@ class DfLocalController(object):
             LOG.warning(_LW("run_db_poll - suppressing exception"))
             LOG.exception(e)
 
-    def chassis_created(self, chassis):
+    def create_chassis(self, chassis):
         # Check if tunnel already exists to this chassis
         t_ports = self.vswitch_api.get_tunnel_ports()
         remote_chassis_name = chassis.get_id()
@@ -208,7 +208,7 @@ class DfLocalController(object):
                  chassis.__str__())
         self.vswitch_api.add_tunnel_port(chassis)
 
-    def chassis_deleted(self, chassis_id):
+    def delete_chassis(self, chassis_id):
         LOG.info(_LI("Deleting tunnel to remote chassis = %s") % chassis_id)
         tunnel_ports = self.vswitch_api.get_tunnel_ports()
         for port in tunnel_ports:
@@ -216,7 +216,7 @@ class DfLocalController(object):
                 self.vswitch_api.delete_port(port)
                 return
 
-    def logical_switch_updated(self, lswitch):
+    def update_lswitch(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
         if not self._is_valid_version(old_lswitch, lswitch):
             return
@@ -227,10 +227,10 @@ class DfLocalController(object):
         lswitch_conf = {'network_id': network_id, 'lswitch':
             lswitch.__str__()}
         LOG.info(_LI("Adding/Updating Logical Switch = %s") % lswitch_conf)
-        self.db_store.set_lswitch(lswitch.get_id(), lswitch)
+        self.db_store.create_lswitch(lswitch.get_id(), lswitch)
         self.open_flow_app.notify_update_logical_switch(lswitch)
 
-    def logical_switch_deleted(self, lswitch_id):
+    def delete_lswitch(self, lswitch_id):
         lswitch = self.db_store.get_lswitch(lswitch_id)
         LOG.info(_LI("Removing Logical Switch = %s") % lswitch_id)
         if lswitch is None:
@@ -238,7 +238,7 @@ class DfLocalController(object):
                         lswitch_id)
             return
         self.open_flow_app.notify_remove_logical_switch(lswitch)
-        self.db_store.del_lswitch(lswitch_id)
+        self.db_store.delete_lswitch(lswitch_id)
         self.db_store.del_network_id(lswitch_id)
 
     def _is_physical_chassis(self, chassis):
@@ -280,7 +280,7 @@ class DfLocalController(object):
             ofport = self.vswitch_api.get_port_ofport_by_id(lport.get_id())
             if ofport:
                 lport.set_external_value('ofport', ofport)
-                self.db_store.set_port(lport.get_id(), lport, True)
+                self.db_store.create_lport(lport.get_id(), lport, True)
                 if original_lport is None:
                     LOG.info(_LI("Adding new local logical port = %s") %
                              str(lport))
@@ -300,7 +300,7 @@ class DfLocalController(object):
             ofport = self.vswitch_api.get_chassis_ofport(chassis)
             if ofport:
                 lport.set_external_value('ofport', ofport)
-                self.db_store.set_port(lport.get_id(), lport, False)
+                self.db_store.create_lport(lport.get_id(), lport, False)
                 if original_lport is None:
                     LOG.info(_LI("Adding new remote logical port = %s") %
                              str(lport))
@@ -326,7 +326,7 @@ class DfLocalController(object):
             chassis_value = {'id': chassis, 'ip': chassis,
                              'tunnel_type': self.tunnel_type}
             chassis_inst = api_nb.Chassis(jsonutils.dumps(chassis_value))
-            self.chassis_created(chassis_inst)
+            self.create_chassis(chassis_inst)
         self.db_store.add_remote_chassis_lport(chassis, lport.get_id())
 
     def _delete_remote_port_from_chassis(self, lport):
@@ -334,10 +334,10 @@ class DfLocalController(object):
         self.db_store.del_remote_chassis_lport(chassis, lport.get_id())
         chassis_lports = self.db_store.get_lports_by_remote_chassis(chassis)
         if not chassis_lports:
-            self.chassis_deleted(chassis)
+            self.delete_chassis(chassis)
             self.db_store.del_remote_chassis(chassis)
 
-    def logical_port_created(self, lport):
+    def create_lport(self, lport):
         chassis = lport.get_chassis()
         if not self._is_physical_chassis(chassis):
             LOG.debug(("Port %s has not been bound or it is a vPort") %
@@ -347,13 +347,13 @@ class DfLocalController(object):
             self._add_remote_port_on_chassis(lport)
         self._logical_port_process(lport)
 
-    def logical_port_updated(self, lport):
+    def update_lport(self, lport):
         chassis = lport.get_chassis()
         if not self._is_physical_chassis(chassis):
             LOG.debug(("Port %s has not been bound or it is a vPort") %
                       lport.get_id())
             return
-        original_lport = self.db_store.get_port(lport.get_id())
+        original_lport = self.db_store.get_lport(lport.get_id())
         if not original_lport:
             if lport.get_remote_vtep():
                 self._add_remote_port_on_chassis(lport)
@@ -369,8 +369,8 @@ class DfLocalController(object):
             return
         self._logical_port_process(lport, original_lport)
 
-    def logical_port_deleted(self, lport_id):
-        lport = self.db_store.get_port(lport_id)
+    def delete_lport(self, lport_id):
+        lport = self.db_store.get_lport(lport_id)
         if lport is None:
             return
         if lport.get_external_value('is_local'):
@@ -378,42 +378,42 @@ class DfLocalController(object):
                      str(lport))
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_local_port(lport)
-            self.db_store.delete_port(lport.get_id(), True)
+            self.db_store.delete_lport(lport.get_id(), True)
         else:
             LOG.info(_LI("Removing remote logical port = %s") %
                      str(lport))
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_remote_port(lport)
-            self.db_store.delete_port(lport.get_id(), False)
+            self.db_store.delete_lport(lport.get_id(), False)
 
         if lport.get_remote_vtep():
             self._delete_remote_port_from_chassis(lport)
 
-    def bridge_port_updated(self, lport):
+    def update_bridge_port(self, lport):
         self.open_flow_app.notify_update_bridge_port(lport)
 
-    def router_created(self, lrouter):
+    def create_lrouter(self, lrouter):
         self.open_flow_app.notify_create_router(lrouter)
-        self.db_store.update_router(lrouter.get_id(), lrouter)
+        self.db_store.update_lrouter(lrouter.get_id(), lrouter)
 
-    def router_updated(self, lrouter):
-        old_lrouter = self.db_store.get_router(lrouter.get_id())
+    def update_lrouter(self, lrouter):
+        old_lrouter = self.db_store.get_lrouter(lrouter.get_id())
         if not self._is_valid_version(old_lrouter, lrouter):
             return
         self.open_flow_app.notify_update_router(lrouter, old_lrouter)
-        self.db_store.update_router(lrouter.get_id(), lrouter)
+        self.db_store.update_lrouter(lrouter.get_id(), lrouter)
 
-    def router_deleted(self, lrouter_id):
-        router = self.db_store.get_router(lrouter_id)
+    def delete_lrouter(self, lrouter_id):
+        router = self.db_store.get_lrouter(lrouter_id)
         if router is None:
             LOG.warning(_LW("Try to delete a nonexistent router(%s)"),
                         lrouter_id)
             return
         LOG.info(_LI("Removing router = %s"), lrouter_id)
         self.open_flow_app.notify_delete_router(router)
-        self.db_store.delete_router(lrouter_id)
+        self.db_store.delete_lrouter(lrouter_id)
 
-    def security_group_updated(self, secgroup):
+    def update_security_group(self, secgroup):
         old_secgroup = self.db_store.get_security_group(secgroup.get_id())
         if old_secgroup is None:
             LOG.info(_LI("Security Group created = %s") %
@@ -425,7 +425,7 @@ class DfLocalController(object):
         self._update_security_group_rules(old_secgroup, secgroup)
         self.db_store.update_security_group(secgroup.get_id(), secgroup)
 
-    def security_group_deleted(self, secgroup_id):
+    def delete_security_group(self, secgroup_id):
         old_secgroup = self.db_store.get_security_group(secgroup_id)
         if old_secgroup is None:
             return
@@ -436,9 +436,9 @@ class DfLocalController(object):
         # TODO(gsagie) Support tunnel type change here ?
 
         if chassis is None:
-            self.nb_api.add_chassis(self.chassis_name,
-                                    self.ip,
-                                    self.tunnel_type)
+            self.nb_api.create_chassis(self.chassis_name,
+                                       self.ip,
+                                       self.tunnel_type)
 
     def create_tunnels(self):
         tunnel_ports = {}
@@ -446,13 +446,13 @@ class DfLocalController(object):
         for t_port in t_ports:
             tunnel_ports[t_port.get_chassis_id()] = t_port
 
-        for chassis in self.nb_api.get_all_chassis():
+        for chassis in self.nb_api.get_chassises():
             if chassis.get_id() in tunnel_ports:
                 del tunnel_ports[chassis.get_id()]
             elif chassis.get_id() == self.chassis_name:
                 pass
             else:
-                self.chassis_created(chassis)
+                self.create_chassis(chassis)
 
         # Iterate all tunnel ports that needs to be deleted
         for port in tunnel_ports.values():
@@ -505,7 +505,7 @@ class DfLocalController(object):
         self.open_flow_app.notify_remove_security_group_rule(
                  secgroup, secgroup_rule)
 
-    def floatingip_updated(self, floatingip):
+    def update_floatingip(self, floatingip):
         # check whether this floatingip is associated with a lport or not
         if floatingip.get_lport_id():
             if self.db_store.get_local_port(floatingip.get_lport_id()) is None:
@@ -522,7 +522,7 @@ class DfLocalController(object):
             return
         self._update_floatingip(old_floatingip, floatingip)
 
-    def floatingip_deleted(self, floatingip_id):
+    def delete_floatingip(self, floatingip_id):
         floatingip = self.db_store.get_floatingip(floatingip_id)
         if not floatingip:
             return
@@ -530,12 +530,12 @@ class DfLocalController(object):
         LOG.info(_LI("Floatingip is deleted. Floatingip = %s") %
                  str(floatingip))
 
-    def publisher_updated(self, publisher):
+    def update_publisher(self, publisher):
         self.db_store.update_publisher(publisher.get_id(), publisher)
         LOG.info(_LI('Registering to new publisher: %s'), str(publisher))
         self.nb_api.subscriber.register_listen_address(publisher.get_uri())
 
-    def publisher_deleted(self, uuid):
+    def delete_publisher(self, uuid):
         publisher = self.db_store.get_publisher(uuid)
         if publisher:
             LOG.info(_LI('Deleting publisher: %s'), str(publisher))
@@ -562,13 +562,13 @@ class DfLocalController(object):
             if new_floatingip.get_lport_id():
                 self._associate_floatingip(new_floatingip)
 
-    def ovs_port_updated(self, ovs_port):
+    def update_ovs_port(self, ovs_port):
         self.open_flow_app.notify_ovs_port_updated(ovs_port)
-        self.topology.ovs_port_updated(ovs_port)
+        self.topology.update_ovs_port(ovs_port)
 
-    def ovs_port_deleted(self, ovs_port):
+    def delete_ovs_port(self, ovs_port):
         self.open_flow_app.notify_ovs_port_deleted(ovs_port)
-        self.topology.ovs_port_deleted(ovs_port.get_id())
+        self.topology.delete_ovs_port(ovs_port.get_id())
 
     def ovs_sync_finished(self):
         self.open_flow_app.notify_ovs_sync_finished()

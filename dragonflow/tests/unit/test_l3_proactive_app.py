@@ -32,12 +32,12 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
 
     def test_add_del_route(self):
         # delete router
-        self.controller.router_deleted(self.router.get_id())
+        self.controller.delete_lrouter(self.router.get_id())
         self.assertEqual(4, self.mock_mod_flow.call_count)
 
         # add router
         self.mock_mod_flow.reset_mock()
-        self.controller.router_created(self.router)
+        self.controller.create_lrouter(self.router)
         self.assertEqual(3, self.mock_mod_flow.call_count)
         args, kwargs = self.mock_mod_flow.call_args
         self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])
@@ -49,13 +49,13 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         router_with_route = copy.deepcopy(self.router)
         router_with_route.lrouter['routes'] = [route]
         router_with_route.lrouter['version'] += 1
-        self.controller.logical_port_created(test_app_base.fake_local_port1)
-        self.controller.router_updated(router_with_route)
+        self.controller.create_lport(test_app_base.fake_local_port1)
+        self.controller.update_lrouter(router_with_route)
         self.assertEqual(2, self.mock_mod_flow.call_count)
 
         # delete route
         self.mock_mod_flow.reset_mock()
         self.router.lrouter['routes'] = []
         self.router.lrouter['version'] += 2
-        self.controller.router_updated(self.router)
+        self.controller.update_lrouter(self.router)
         self.assertEqual(1, self.mock_mod_flow.call_count)

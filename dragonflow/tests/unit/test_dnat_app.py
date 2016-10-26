@@ -31,7 +31,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
         self.dnat_app.local_floatingips[
             test_app_base.fake_floatingip1.get_id()] = (
                 test_app_base.fake_floatingip1)
-        self.controller.logical_port_created(test_app_base.fake_local_port1)
+        self.controller.create_lport(test_app_base.fake_local_port1)
 
         # Assert calls have been placed
         self.arp_responder.assert_called_once_with(
@@ -67,7 +67,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
                 return_value=self.dnat_app.external_network_bridge)
             # Device without mac will not trigger update flow
             fake_ovs_port.get_mac_in_use = mock.Mock(return_value="")
-            self.controller.ovs_port_updated(fake_ovs_port)
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_not_called()
             mock_func.reset_mock()
 
@@ -75,18 +75,18 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             fake_ovs_port.get_mac_in_use = mock.Mock(
                 return_value="aa:bb:cc:dd:ee:ff")
             fake_ovs_port.get_name = mock.Mock(return_value="no-bridge")
-            self.controller.ovs_port_updated(fake_ovs_port)
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_not_called()
             mock_func.reset_mock()
 
             # Device with mac will trigger update flow
             fake_ovs_port.get_name = mock.Mock(
                 return_value=self.dnat_app.external_network_bridge)
-            self.controller.ovs_port_updated(fake_ovs_port)
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_called_once_with(test_app_base.fake_floatingip1,
                                               "aa:bb:cc:dd:ee:ff")
             mock_func.reset_mock()
 
             # Duplicated updated will not trigger update flow
-            self.controller.ovs_port_updated(fake_ovs_port)
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_not_called()

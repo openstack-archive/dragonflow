@@ -52,7 +52,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         self._update_router_attributes(original_router, router)
 
     def router_deleted(self, router):
-        for port in router.get_ports():
+        for port in router.get_lports():
             self._delete_router_port(port)
 
     def _update_router_attributes(self, old_router, new_router):
@@ -67,8 +67,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             self._delete_router_route(new_router, old_route)
 
     def _update_router_interfaces(self, old_router, new_router):
-        new_router_ports = new_router.get_ports()
-        old_router_ports = old_router.get_ports()
+        new_router_ports = new_router.get_lports()
+        old_router_ports = old_router.get_lports()
         for new_port in new_router_ports:
             if new_port not in old_router_ports:
                 self._add_new_router_port(new_router, new_port)
@@ -79,7 +79,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             self._delete_router_port(old_port)
 
     def _add_new_lrouter(self, lrouter):
-        for new_port in lrouter.get_ports():
+        for new_port in lrouter.get_lports():
             self._add_new_router_port(lrouter, new_port)
 
         for route in lrouter.get_routes():
@@ -149,7 +149,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             match=match)
 
         # Match all possible routeable traffic and send to proactive routing
-        for port in router.get_ports():
+        for port in router.get_lports():
             if port.get_id() != router_port.get_id():
 
                 port_net_id = self.db_store.get_network_id(
@@ -175,13 +175,13 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                     router_port.get_mac())
 
     def _get_port(self, ip, lswitch_id, topic):
-        ports = self.db_store.get_ports(topic)
+        ports = self.db_store.get_lports(topic)
         for port in ports:
             if port.get_ip() == ip and port.get_lswitch_id() == lswitch_id:
                 return port
 
     def _get_gateway_port_by_ip(self, router, ip):
-        for port in router.get_ports():
+        for port in router.get_lports():
             network = netaddr.IPNetwork(port.get_network())
             if netaddr.IPAddress(ip) in network:
                 return port
@@ -209,7 +209,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
     def _reprocess_to_add_route(self, topic, port_ip):
         LOG.debug('reprocess to add routes again')
-        for router in self.db_store.get_routers(topic):
+        for router in self.db_store.get_lrouters(topic):
             router_id = router.get_id()
             cached_routes = self.route_cache.get(router_id)
             if cached_routes is None:
@@ -228,7 +228,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
     def _reprocess_to_del_route(self, topic, port_ip):
         LOG.debug('reprocess to del routes again')
-        for router in self.db_store.get_routers(topic):
+        for router in self.db_store.get_lrouters(topic):
             router_id = router.get_id()
             cached_routes = self.route_cache.get(router_id, None)
             if cached_routes is None:
