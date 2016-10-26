@@ -700,7 +700,7 @@ class L2App(df_base_app.DFlowApp):
 
         # aggregate  remote tunnel
         for port_id_in_network in remote_ports:
-            lport = self.db_store.get_port(self, port_id_in_network)
+            lport = self.db_store.get_port(port_id_in_network)
             if lport is None:
                 continue
             tunnel_port = lport.get_external_value('ofport')
@@ -757,7 +757,7 @@ class L2App(df_base_app.DFlowApp):
         # todo
         # aggregate  remote tunnel
         for port_id_in_network in remote_ports:
-            lport = self.db_store.get_port(self, port_id_in_network)
+            lport = self.db_store.get_port(port_id_in_network)
             if lport is None:
                 continue
             tunnel_port = lport.get_external_value('ofport')
