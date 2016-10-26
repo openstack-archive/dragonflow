@@ -39,7 +39,7 @@ class TestL3Flows(test_base.DFTestBase):
         self.store(self.topology)
 
     def test_router_add_route(self):
-        lport = self.port1.port.get_logical_port()
+        lport = self.port1.port.get_lport()
         ip1 = lport.get_ip()
         dest = "10.{}.{}.0/24".format(randint(0, 254), randint(0, 254))
         body = {
@@ -50,8 +50,8 @@ class TestL3Flows(test_base.DFTestBase):
                         }
                     ]
                 }
-        self.neutron.update_router(self.router.router.router_id,
-                                   body={'router': body})
+        self.neutron.update_lrouter(self.router.router.router_id,
+                                    body={'router': body})
 
         # table = 20, priority = 100, ip, nw_src = 192.168.10.0/24,
         # nw_dst = 10.110.10.0/24
@@ -63,8 +63,8 @@ class TestL3Flows(test_base.DFTestBase):
             exception=Exception('route flow entry is not installed')
         )
         body['routes'] = []
-        self.neutron.update_router(self.router.router.router_id,
-                                   body={'router': body})
+        self.neutron.update_lrouter(self.router.router.router_id,
+                                    body={'router': body})
 
         wait_until_true(
             lambda: not any(self._get_route_flows('192.168.10.0/24',

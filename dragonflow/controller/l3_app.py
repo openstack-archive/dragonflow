@@ -57,12 +57,12 @@ class L3App(df_base_app.DFlowApp):
         self._update_router_interfaces(original_router, router)
 
     def router_deleted(self, router):
-        for port in router.get_ports():
+        for port in router.get_lports():
             self._delete_router_port(port)
 
     def _update_router_interfaces(self, old_router, new_router):
-        new_router_ports = new_router.get_ports()
-        old_router_ports = old_router.get_ports()
+        new_router_ports = new_router.get_lports()
+        old_router_ports = old_router.get_lports()
         for new_port in new_router_ports:
             if new_port not in old_router_ports:
                 self._add_new_router_port(new_router, new_port)
@@ -73,7 +73,7 @@ class L3App(df_base_app.DFlowApp):
             self._delete_router_port(old_port)
 
     def _add_new_lrouter(self, lrouter):
-        for new_port in lrouter.get_ports():
+        for new_port in lrouter.get_lports():
             self._add_new_router_port(lrouter, new_port)
 
     def packet_in_handler(self, event):
@@ -98,16 +98,16 @@ class L3App(df_base_app.DFlowApp):
 
     def _get_route(self, pkt_ip, pkt_ethernet, network_id, msg):
         ip_addr = netaddr.IPAddress(pkt_ip.dst)
-        router = self.db_store.get_router_by_router_interface_mac(
+        router = self.db_store.get_lrouter_by_router_interface_mac(
             pkt_ethernet.dst)
-        for router_port in router.get_ports():
+        for router_port in router.get_lports():
             if ip_addr in netaddr.IPNetwork(router_port.get_network()):
                 if str(ip_addr) == router_port.get_ip():
                     self._install_flow_send_to_output_table(
                         network_id,
                         router_port)
                     return
-                dst_ports = self.db_store.get_ports_by_network_id(
+                dst_ports = self.db_store.get_lports_by_network_id(
                     router_port.get_lswitch_id())
                 for out_port in dst_ports:
                     if out_port.get_ip() == pkt_ip.dst:
@@ -227,7 +227,7 @@ class L3App(df_base_app.DFlowApp):
             match=match)
 
         # Match all possible routeable traffic and send to controller
-        for port in router.get_ports():
+        for port in router.get_lports():
             if port.get_id() != router_port.get_id():
                 # From this router interface to all other interfaces
                 self._add_subnet_send_to_controller(local_network_id,

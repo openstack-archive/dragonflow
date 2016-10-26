@@ -94,7 +94,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         rule = self.driver.create_security_group_rule(self.context, r)
         new_sg = self.driver.get_security_group(self.context, sg['id'])
         self.assertGreater(new_sg['revision_number'], sg['revision_number'])
-        self.nb_api.add_security_group_rules.assert_called_with(
+        self.nb_api.create_security_group_rules.assert_called_with(
             sg['id'], sg['tenant_id'],
             sg_rules=[rule], sg_version=new_sg['revision_number'])
 
@@ -136,7 +136,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         new_network = self.driver.get_network(self.context, network['id'])
         self.assertGreater(new_network['revision_number'],
                            network['revision_number'])
-        self.nb_api.add_subnet.assert_called_with(
+        self.nb_api.create_subnet.assert_called_with(
             subnet_id, network['id'], subnet['tenant_id'], name=subnet['name'],
             nw_version=new_network['revision_number'],
             enable_dhcp=subnet['enable_dhcp'], cidr=subnet['cidr'],
@@ -197,7 +197,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             req = self.new_update_request('ports', data, port['id'])
             req.get_response(self.api)
             prev_version = port['revision_number']
-            port = self.driver.get_port(self.context, port['id'])
+            port = self.driver.get_lport(self.context, port['id'])
             self.assertGreater(port['revision_number'], prev_version)
             self.nb_api.update_lport.assert_called_with(
                 id=port['id'],

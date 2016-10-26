@@ -100,7 +100,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
 
     # local controller code
     def _send_port_status_event(self, table, key, action, value):
-        topic = self.nb_api.get_all_port_status_keys()
+        topic = self.nb_api.get_port_status_keys()
         update = db_common.DbUpdate(table, key, action, value, topic=topic)
         self.pub.send_event(update)
 

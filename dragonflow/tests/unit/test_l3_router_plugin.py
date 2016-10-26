@@ -42,7 +42,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
     def _test_create_router_revision(self):
         r = {'router': {'name': 'router', 'tenant_id': 'tenant',
                         'admin_state_up': True}}
-        router = self.l3p.create_router(self.context, r)
+        router = self.l3p.create_lrouter(self.context, r)
         self.assertGreater(router['revision_number'], 0)
         self.nb_api.create_lrouter.assert_called_once_with(
             router['id'], topic='tenant', name='router', distributed=False,
@@ -53,7 +53,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
         router = self._test_create_router_revision()
         old_version = router['revision_number']
         router['name'] = 'another_router'
-        new_router = self.l3p.update_router(
+        new_router = self.l3p.update_lrouter(
             self.context, router['id'], {'router': router})
         self.assertGreater(new_router['revision_number'], old_version)
 
@@ -64,10 +64,10 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
             data = {'subnet_id': s['subnet']['id']}
             router_port_info = self.l3p.add_router_interface(
                 self.context, router['id'], data)
-            router_with_int = self.l3p.get_router(self.context, router['id'])
+            router_with_int = self.l3p.get_lrouter(self.context, router['id'])
             self.assertGreater(router_with_int['revision_number'],
                                old_version)
-            self.nb_api.add_lrouter_port.assert_called_once_with(
+            self.nb_api.create_lrouter_port.assert_called_once_with(
                 router_port_info['port_id'], router_port_info['id'],
                 router_port_info['network_id'],
                 router_port_info['tenant_id'],
@@ -76,8 +76,8 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
 
             router_port_info = self.l3p.remove_router_interface(
                  self.context, router['id'], data)
-            router_without_int = self.l3p.get_router(self.context,
-                                                     router['id'])
+            router_without_int = self.l3p.get_lrouter(self.context,
+                                                      router['id'])
             self.assertGreater(router_without_int['revision_number'],
                                router_with_int['revision_number'])
             self.nb_api.delete_lrouter_port.assert_called_once_with(

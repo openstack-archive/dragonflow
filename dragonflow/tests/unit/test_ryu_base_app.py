@@ -74,9 +74,9 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
                 mock.call.remove_local_port(lport=4),
                 mock.call.add_remote_port(lport=5),
                 mock.call.remove_remote_port(lport=6),
-                mock.call.router_created(router=9),
-                mock.call.router_updated(router=7, original_router=0),
-                mock.call.router_deleted(router=8),
+                mock.call.create_lrouter(router=9),
+                mock.call.update_lrouter(router=7, original_router=0),
+                mock.call.delete_lrouter(router=8),
                 mock.call.add_security_group_rule(
                         secgroup=12, secgroup_rule=13),
                 mock.call.remove_security_group_rule(

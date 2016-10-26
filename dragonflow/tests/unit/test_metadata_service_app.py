@@ -34,7 +34,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
                 return_value=self.meta_app._interface)
             # Device without mac will not trigger update flow
             fake_ovs_port.get_mac_in_use = mock.Mock(return_value="")
-            self.controller.ovs_port_updated(fake_ovs_port)
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_not_called()
             mock_func.reset_mock()
 
@@ -42,18 +42,18 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
             fake_ovs_port.get_mac_in_use = mock.Mock(
                 return_value="aa:bb:cc:dd:ee:ff")
             fake_ovs_port.get_name = mock.Mock(return_value="no-interface")
-            self.controller.ovs_port_updated(fake_ovs_port)
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_not_called()
             mock_func.reset_mock()
 
             # Device with mac will trigger update flow
             fake_ovs_port.get_name = mock.Mock(
                 return_value=self.meta_app._interface)
-            self.controller.ovs_port_updated(fake_ovs_port)
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_called_once_with(1,
                                               "aa:bb:cc:dd:ee:ff")
             mock_func.reset_mock()
 
             # Duplicated updated will not trigger update flow
-            self.controller.ovs_port_updated(fake_ovs_port)
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_not_called()
