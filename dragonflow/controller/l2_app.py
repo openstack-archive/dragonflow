@@ -323,7 +323,7 @@ class L2App(df_base_app.DFlowApp):
 
         self._add_arp_responder(lport)
 
-    def remove_logical_switch(self, lswitch):
+    def delete_lswitch(self, lswitch):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
 

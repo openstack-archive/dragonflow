@@ -45,10 +45,10 @@ class L3App(df_base_app.DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
 
-    def router_created(self, router):
+    def create_lrouter(self, router):
         self._add_new_lrouter(router)
 
-    def router_updated(self, router, original_router):
+    def update_lrouter(self, router, original_router):
         if original_router is None:
             LOG.info(_LI("Logical Router created = %s"), router)
             self._add_new_lrouter(router)
@@ -56,7 +56,7 @@ class L3App(df_base_app.DFlowApp):
 
         self._update_router_interfaces(original_router, router)
 
-    def router_deleted(self, router):
+    def delete_lrouter(self, router):
         for port in router.get_ports():
             self._delete_router_port(port)
 
@@ -98,7 +98,7 @@ class L3App(df_base_app.DFlowApp):
 
     def _get_route(self, pkt_ip, pkt_ethernet, network_id, msg):
         ip_addr = netaddr.IPAddress(pkt_ip.dst)
-        router = self.db_store.get_router_by_router_interface_mac(
+        router = self.db_store.get_lrouter_by_router_interface_mac(
             pkt_ethernet.dst)
         for router_port in router.get_ports():
             if ip_addr in netaddr.IPNetwork(router_port.get_network()):
@@ -107,7 +107,7 @@ class L3App(df_base_app.DFlowApp):
                         network_id,
                         router_port)
                     return
-                dst_ports = self.db_store.get_ports_by_network_id(
+                dst_ports = self.db_store.get_lports_by_network_id(
                     router_port.get_lswitch_id())
                 for out_port in dst_ports:
                     if out_port.get_ip() == pkt_ip.dst:

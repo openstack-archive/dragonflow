@@ -143,28 +143,28 @@ class DbStore(object):
     def del_remote_chassis(self, chassis):
         del self.remote_chassis_lport_map[chassis]
 
-    def set_lswitch(self, id, lswitch, topic=None):
+    def create_lswitch(self, id, lswitch, topic=None):
         self.set('lswitchs', id, lswitch, topic)
 
     def get_lswitch(self, id, topic=None):
         return self.get('lswitchs', id, topic)
 
-    def del_lswitch(self, id, topic=None):
+    def delete_lswitch(self, id, topic=None):
         self.delete('lswitchs', id, topic)
 
-    def get_port_keys(self, topic=None):
+    def get_lport_keys(self, topic=None):
         return self.keys('ports', topic)
 
     def get_lswitch_keys(self, topic=None):
         return self.keys('lswitchs', topic)
 
-    def get_router_keys(self, topic=None):
+    def get_lrouter_keys(self, topic=None):
         return self.keys('routers', topic)
 
     def get_floatingip_keys(self, topic=None):
         return self.keys('floatingips', topic)
 
-    def set_port(self, port_id, port, is_local, topic=None):
+    def create_lport(self, port_id, port, is_local, topic=None):
         if not topic:
             topic = port.get_topic()
         if is_local:
@@ -175,16 +175,16 @@ class DbStore(object):
         else:
             self.set('ports', port_id, port, topic)
 
-    def get_port(self, port_id, topic=None):
+    def get_lport(self, port_id, topic=None):
         return self.get('ports', port_id, topic)
 
-    def get_ports(self, topic=None):
+    def get_lports(self, topic=None):
         return self.values('ports', topic)
 
-    def delete_port(self, port_id, is_local, topic=None):
+    def delete_lport(self, port_id, is_local, topic=None):
         if is_local:
             if not topic:
-                topic = self.get_port(port_id).get_topic()
+                topic = self.get_lport(port_id).get_topic()
             tenant_db = self.tenant_dbs[topic]
             with tenant_db.lock:
                 del tenant_db.ports[port_id]
@@ -203,27 +203,27 @@ class DbStore(object):
             if lport.get_id().startswith(port_id_prefix):
                 return lport
 
-    def update_router(self, router_id, router, topic=None):
+    def update_lrouter(self, router_id, router, topic=None):
         self.set('routers', router_id, router, topic)
 
-    def delete_router(self, id, topic=None):
+    def delete_lrouter(self, id, topic=None):
         self.delete('routers', id, topic)
 
-    def get_router(self, router_id, topic=None):
+    def get_lrouter(self, router_id, topic=None):
         return self.get('routers', router_id, topic)
 
-    def get_ports_by_network_id(self, lswitch_id, topic=None):
+    def get_lports_by_network_id(self, lswitch_id, topic=None):
         ports = self.values('ports', topic)
         return [port for port in ports if port.get_lswitch_id() == lswitch_id]
 
-    def get_router_by_router_interface_mac(self, interface_mac, topic=None):
+    def get_lrouter_by_router_interface_mac(self, interface_mac, topic=None):
         routers = self.values('routers', topic)
         for router in routers:
             for port in router.get_ports():
                 if port.get_mac() == interface_mac:
                     return router
 
-    def get_routers(self, topic=None):
+    def get_lrouters(self, topic=None):
         return self.values('routers', topic)
 
     def update_security_group(self, secgroup_id, secgroup, topic=None):

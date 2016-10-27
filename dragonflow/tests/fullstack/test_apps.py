@@ -80,8 +80,8 @@ class TestArpResponder(test_base.DFTestBase):
             time.sleep(test_utils.DEFAULT_CMD_TIMEOUT)
             # Create policy
             arp_packet = self._create_arp_request(
-                src_port=port1.port.get_logical_port(),
-                dst_port=port2.port.get_logical_port(),
+                src_port=port1.port.get_lport(),
+                dst_port=port2.port.get_lport(),
             )
             send_arp_request = app_testing_objects.SendAction(
                 subnet1.subnet_id,
@@ -207,7 +207,7 @@ class TestDHCPApp(test_base.DFTestBase):
             src_ip='0.0.0.0',
             dst_ip='255.255.255.255'):
         ethernet = ryu.lib.packet.ethernet.ethernet(
-            src=self.port1.port.get_logical_port().get_mac(),
+            src=self.port1.port.get_lport().get_mac(),
             dst=dst_mac,
             ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
         )
@@ -240,7 +240,7 @@ class TestDHCPApp(test_base.DFTestBase):
         ]
         dhcp = ryu.lib.packet.dhcp.dhcp(
             op=1,
-            chaddr=self.port1.port.get_logical_port().get_mac(),
+            chaddr=self.port1.port.get_lport().get_mac(),
             options=ryu.lib.packet.dhcp.options(option_list=options),
         )
         result.add_protocol(dhcp)
@@ -257,7 +257,7 @@ class TestDHCPApp(test_base.DFTestBase):
         pkt = ryu.lib.packet.packet.Packet(offer_buf)
         offer = pkt.get_protocol(ryu.lib.packet.dhcp.dhcp)
         self.assertEqual(
-            self.port1.port.get_logical_port().get_ip(),
+            self.port1.port.get_lport().get_ip(),
             offer.yiaddr
         )
         self.assertTrue(is_121_exist(offer))
@@ -266,7 +266,7 @@ class TestDHCPApp(test_base.DFTestBase):
             ip = pkt.get_protocol(ryu.lib.packet.ipv4.ipv4)
             dst_mac = ether.src
             dst_ip = ip.src
-            src_ip = self.port1.port.get_logical_port().get_ip()
+            src_ip = self.port1.port.get_lport().get_ip()
             result = self._create_udp_packet_for_dhcp(
                 dst_mac=dst_mac,
                 src_ip=src_ip,
@@ -290,7 +290,7 @@ class TestDHCPApp(test_base.DFTestBase):
         ]
         dhcp = ryu.lib.packet.dhcp.dhcp(
             op=1,
-            chaddr=self.port1.port.get_logical_port().get_mac(),
+            chaddr=self.port1.port.get_lport().get_mac(),
             xid=offer.xid,
             options=ryu.lib.packet.dhcp.options(option_list=options),
         )
@@ -440,7 +440,7 @@ class TestL3App(test_base.DFTestBase):
             self.subnet2 = self.topology.create_subnet(cidr='192.168.13.0/24')
             self.port1 = self.subnet1.create_port()
             self.port2 = self.subnet2.create_port()
-            self.router = self.topology.create_router([
+            self.router = self.topology.create_lrouter([
                 self.subnet1.subnet_id,
                 self.subnet2.subnet_id,
             ])
@@ -543,13 +543,13 @@ class TestL3App(test_base.DFTestBase):
             router_interface['port_id']
         )
         ethernet = ryu.lib.packet.ethernet.ethernet(
-            src=self.port1.port.get_logical_port().get_mac(),
+            src=self.port1.port.get_lport().get_mac(),
             dst=router_interface_port['port']['mac_address'],
             ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
         )
         ip = ryu.lib.packet.ipv4.ipv4(
-            src=self.port1.port.get_logical_port().get_ip(),
-            dst=self.port2.port.get_logical_port().get_ip(),
+            src=self.port1.port.get_lport().get_ip(),
+            dst=self.port2.port.get_lport().get_ip(),
             proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
         )
         icmp = ryu.lib.packet.icmp.icmp(
@@ -583,7 +583,7 @@ class TestL3App(test_base.DFTestBase):
         ether.dst = dst_mac
         self.assertEqual(
             src_mac,
-            self.port2.port.get_logical_port().get_mac()
+            self.port2.port.get_lport().get_mac()
         )
         router_interface = self.router.router_interfaces[
             self.subnet2.subnet_id
@@ -603,11 +603,11 @@ class TestL3App(test_base.DFTestBase):
         ip.dst = dst_ip
         self.assertEqual(
             src_ip,
-            self.port2.port.get_logical_port().get_ip()
+            self.port2.port.get_lport().get_ip()
         )
         self.assertEqual(
             dst_ip,
-            self.port1.port.get_logical_port().get_ip()
+            self.port1.port.get_lport().get_ip()
         )
 
         icmp.type = ryu.lib.packet.icmp.ICMP_ECHO_REPLY
@@ -656,11 +656,11 @@ class TestSGApp(test_base.DFTestBase):
             self.port2 = self.subnet.create_port()
             self.port3 = self.subnet.create_port([security_group_id])
 
-            port1_lport = self.port1.port.get_logical_port()
+            port1_lport = self.port1.port.get_lport()
             self.assertIsNotNone(port1_lport)
             port1_fixed_ip = port1_lport.get_ip()
 
-            port2_lport = self.port2.port.get_logical_port()
+            port2_lport = self.port2.port.get_lport()
             self.assertIsNotNone(port2_lport)
             port2_fixed_ip = port2_lport.get_ip()
 
@@ -851,13 +851,13 @@ class TestSGApp(test_base.DFTestBase):
 
     def _create_ping_packet(self, src_port, dst_port):
         ethernet = ryu.lib.packet.ethernet.ethernet(
-            src=src_port.port.get_logical_port().get_mac(),
-            dst=dst_port.port.get_logical_port().get_mac(),
+            src=src_port.port.get_lport().get_mac(),
+            dst=dst_port.port.get_lport().get_mac(),
             ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
         )
         ip = ryu.lib.packet.ipv4.ipv4(
-            src=src_port.port.get_logical_port().get_ip(),
-            dst=dst_port.port.get_logical_port().get_ip(),
+            src=src_port.port.get_lport().get_ip(),
+            dst=dst_port.port.get_lport().get_ip(),
             proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
         )
         icmp_id = int(time.mktime(time.gmtime())) & 0xffff
@@ -891,11 +891,11 @@ class TestSGApp(test_base.DFTestBase):
         ether.dst = dst_mac
         self.assertEqual(
             dst_mac,
-            self.port1.port.get_logical_port().get_mac()
+            self.port1.port.get_lport().get_mac()
         )
         self.assertEqual(
             src_mac,
-            self.port3.port.get_logical_port().get_mac()
+            self.port3.port.get_lport().get_mac()
         )
 
         src_ip = ip.dst
@@ -904,11 +904,11 @@ class TestSGApp(test_base.DFTestBase):
         ip.dst = dst_ip
         self.assertEqual(
             src_ip,
-            self.port3.port.get_logical_port().get_ip()
+            self.port3.port.get_lport().get_ip()
         )
         self.assertEqual(
             dst_ip,
-            self.port1.port.get_logical_port().get_ip()
+            self.port1.port.get_lport().get_ip()
         )
 
         icmp.type = ryu.lib.packet.icmp.ICMP_ECHO_REPLY
@@ -1058,12 +1058,12 @@ class TestPortSecApp(test_base.DFTestBase):
     def _create_ping_request(self, src_ip, src_mac, dst_port):
         ethernet = ryu.lib.packet.ethernet.ethernet(
             src=src_mac,
-            dst=dst_port.port.get_logical_port().get_mac(),
+            dst=dst_port.port.get_lport().get_mac(),
             ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
         )
         ip = ryu.lib.packet.ipv4.ipv4(
             src=src_ip,
-            dst=dst_port.port.get_logical_port().get_ip(),
+            dst=dst_port.port.get_lport().get_ip(),
             proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
         )
         icmp_id = self.icmp_id_cursor & 0xffff
@@ -1150,15 +1150,15 @@ class TestPortSecApp(test_base.DFTestBase):
         }
 
     def _create_ping_using_vm_ip_mac(self, buf):
-        ip = self.port1.port.get_logical_port().get_ip()
-        mac = self.port1.port.get_logical_port().get_mac()
+        ip = self.port1.port.get_lport().get_ip()
+        mac = self.port1.port.get_lport().get_mac()
 
         result, icmp = self._create_ping_request(ip, mac, self.port2)
         self._ping_using_vm_ip_mac = icmp
         return result.data
 
     def _create_ping_using_allowed_address_pair(self, buf):
-        pairs = self.port1.port.get_logical_port().get_allow_address_pairs()
+        pairs = self.port1.port.get_lport().get_allow_address_pairs()
         ip = pairs[0]["ip_address"]
         mac = pairs[0]["mac_address"]
 
@@ -1168,14 +1168,14 @@ class TestPortSecApp(test_base.DFTestBase):
 
     def _create_ping_using_fake_ip(self, buf):
         fake_ip = "1.2.3.4"
-        mac = self.port1.port.get_logical_port().get_mac()
+        mac = self.port1.port.get_lport().get_mac()
 
         result, icmp = self._create_ping_request(fake_ip, mac, self.port2)
         self._ping_using_fake_ip = icmp
         return result.data
 
     def _create_ping_using_fake_mac(self, buf):
-        ip = self.port1.port.get_logical_port().get_ip()
+        ip = self.port1.port.get_lport().get_ip()
         fake_mac = "00:11:22:33:44:55"
 
         result, icmp = self._create_ping_request(ip, fake_mac, self.port2)

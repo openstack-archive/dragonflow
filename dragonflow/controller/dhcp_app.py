@@ -126,7 +126,7 @@ class DHCPApp(df_base_app.DFlowApp):
                     {'port_id': lport_id,
                     'time': self.block_hard_timeout})
             return
-        lport = self.db_store.get_port(lport_id)
+        lport = self.db_store.get_lport(lport_id)
         if lport is None:
             LOG.error(
                 _LE("No lport found for tunnel_id %s for dhcp req"),
@@ -447,7 +447,7 @@ class DHCPApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def update_logical_switch(self, lswitch):
+    def update_lswitch(self, lswitch):
         subnets = lswitch.get_subnets()
         network_id = self.db_store.get_network_id(
             lswitch.get_id(),
@@ -466,7 +466,7 @@ class DHCPApp(df_base_app.DFlowApp):
             self._remove_dhcp_unicast_match_flow(network_id, dhcp_ip)
             self.switch_dhcp_ip_map[network_id].remove(dhcp_ip)
 
-    def remove_logical_switch(self, lswitch):
+    def delete_lswitch(self, lswitch):
         network_id = self.db_store.get_network_id(
             lswitch.get_id(),
         )

@@ -242,7 +242,7 @@ class Port(object):
         """Return the name of this port, i.e. the name of the underlying tap
         device.
         """
-        return self.port.get_logical_port().get_id()
+        return self.port.get_lport().get_id()
 
 
 class LogicalPortTap(object):
@@ -254,7 +254,7 @@ class LogicalPortTap(object):
         """
         self.port = port
         self.integration_bridge = cfg.CONF.df.integration_bridge
-        self.lport = self.port.get_logical_port()
+        self.lport = self.port.get_lport()
         self.tap = self._create_tap_device()
         self.is_blocking = True
 

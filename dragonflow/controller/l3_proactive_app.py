@@ -39,10 +39,10 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
 
-    def router_created(self, router):
+    def create_lrouter(self, router):
         self._add_new_lrouter(router)
 
-    def router_updated(self, router, original_router):
+    def update_lrouter(self, router, original_router):
         if original_router is None:
             LOG.info(_LI("Logical Router created = %s"), router)
             self._add_new_lrouter(router)
@@ -51,7 +51,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         self._update_router_interfaces(original_router, router)
         self._update_router_attributes(original_router, router)
 
-    def router_deleted(self, router):
+    def delete_lrouter(self, router):
         for port in router.get_ports():
             self._delete_router_port(port)
 
@@ -175,7 +175,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                     router_port.get_mac())
 
     def _get_port(self, ip, lswitch_id, topic):
-        ports = self.db_store.get_ports(topic)
+        ports = self.db_store.get_lports(topic)
         for port in ports:
             if port.get_ip() == ip and port.get_lswitch_id() == lswitch_id:
                 return port
@@ -209,7 +209,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
     def _reprocess_to_add_route(self, topic, port_ip):
         LOG.debug('reprocess to add routes again')
-        for router in self.db_store.get_routers(topic):
+        for router in self.db_store.get_lrouters(topic):
             router_id = router.get_id()
             cached_routes = self.route_cache.get(router_id)
             if cached_routes is None:
@@ -228,7 +228,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
     def _reprocess_to_del_route(self, topic, port_ip):
         LOG.debug('reprocess to del routes again')
-        for router in self.db_store.get_routers(topic):
+        for router in self.db_store.get_lrouters(topic):
             router_id = router.get_id()
             cached_routes = self.route_cache.get(router_id, None)
             if cached_routes is None:

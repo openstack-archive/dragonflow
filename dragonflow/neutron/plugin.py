@@ -285,9 +285,9 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             sg_group = self.get_security_group(context, sg_id)
         sg_rule['topic'] = sg_rule.get('tenant_id')
         del sg_rule['tenant_id']
-        self.nb_api.add_security_group_rules(sg_id, sg_group['tenant_id'],
-                                             sg_rules=[sg_rule],
-                                             sg_version=sg_version_id)
+        self.nb_api.create_security_group_rules(sg_id, sg_group['tenant_id'],
+                                                sg_rules=[sg_rule],
+                                                sg_version=sg_version_id)
         return sg_rule
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
@@ -342,7 +342,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                     pass
 
         if new_subnet:
-            self.nb_api.add_subnet(
+            self.nb_api.create_subnet(
                 new_subnet['id'],
                 net_id,
                 new_subnet['tenant_id'],
@@ -836,7 +836,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         router = self.get_router(context, router_id)
         with context.session.begin(subtransactions=True):
             ret_val = super(DFPlugin, self).delete_router(context,
-                                                          router_id)
+                                                           router_id)
             version_db._delete_db_version_row(context.session, router_id)
         try:
             self.nb_api.delete_lrouter(id=router_id,
@@ -871,8 +871,8 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
 
-        logical_port = self.nb_api.get_logical_port(port['id'],
-                                                    port['tenant_id'])
+        logical_port = self.nb_api.get_lport(port['id'],
+                                             port['tenant_id'])
 
         interface_info['port_id'] = port['id']
         if 'subnet_id' in interface_info:
@@ -884,13 +884,14 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             router_version = version_db._update_db_version_row(
                     context.session, router_id)
 
-        self.nb_api.add_lrouter_port(port['id'],
-                                     router_id, lswitch_id,
-                                     port['tenant_id'],
-                                     router_version=router_version,
-                                     mac=port['mac_address'],
-                                     network=network,
-                                     tunnel_key=logical_port.get_tunnel_key())
+        self.nb_api.create_lrouter_port(
+                port['id'],
+                router_id, lswitch_id,
+                port['tenant_id'],
+                router_version=router_version,
+                mac=port['mac_address'],
+                network=network,
+                tunnel_key=logical_port.get_tunnel_key())
         return result
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)

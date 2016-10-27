@@ -147,7 +147,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     def delete_router(self, context, router_id):
         router = self.get_router(context, router_id)
         ret_val = super(DFL3RouterPlugin, self).delete_router(context,
-                                                              router_id)
+                                                               router_id)
         try:
             self.nb_api.delete_lrouter(id=router_id,
                                        topic=router['tenant_id'])
@@ -271,17 +271,18 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         cidr = netaddr.IPNetwork(subnet['cidr'])
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
-        logical_port = self.nb_api.get_logical_port(port['id'],
-                                                    port['tenant_id'])
+        logical_port = self.nb_api.get_lport(port['id'],
+                                             port['tenant_id'])
 
-        self.nb_api.add_lrouter_port(result['port_id'],
-                                     result['id'],
-                                     result['network_id'],
-                                     result['tenant_id'],
-                                     router_version=router_version,
-                                     mac=port['mac_address'],
-                                     network=network,
-                                     tunnel_key=logical_port.get_tunnel_key())
+        self.nb_api.create_lrouter_port(
+                result['port_id'],
+                result['id'],
+                result['network_id'],
+                result['tenant_id'],
+                router_version=router_version,
+                mac=port['mac_address'],
+                network=network,
+                tunnel_key=logical_port.get_tunnel_key())
         return result
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)

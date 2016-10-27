@@ -43,7 +43,7 @@ class Topology(object):
         self.openflow_app = controller.get_openflow_app()
         self.chassis_name = controller.get_chassis_name()
 
-    def ovs_port_updated(self, ovs_port):
+    def update_ovs_port(self, ovs_port):
         """
         Changes in ovs port status will be monitored by ovsdb monitor thread
         and notified to topology. This method is the entry port to process
@@ -83,7 +83,7 @@ class Topology(object):
             LOG.exception(_LE(
                 "Exception occurred when handling port online event"))
 
-    def ovs_port_deleted(self, ovs_port_id):
+    def delete_ovs_port(self, ovs_port_id):
         """
         Changes in ovs port status will be monitored by ovsdb monitor thread
         and notified to topology. This method is the entrance port to process
@@ -157,7 +157,7 @@ class Topology(object):
         LOG.info(_LI("A local logical port(%s) is online") % str(lport))
 
         try:
-            self.controller.logical_port_updated(lport)
+            self.controller.update_lport(lport)
         except Exception:
             LOG.exception(_LE('Failed to process logical port online '
                               'event: %s') % str(lport))
@@ -167,7 +167,7 @@ class Topology(object):
 
     def _bridge_port_updated(self, ovs_port):
         try:
-            self.controller.bridge_port_updated(ovs_port)
+            self.controller.update_bridge_port(ovs_port)
         except Exception:
             LOG.exception(_LE('Failed to process bridge port online '
                               'event: %s') % str(ovs_port))
@@ -175,7 +175,7 @@ class Topology(object):
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.get_id()
         lport_id = ovs_port.get_iface_id()
-        lport = self.db_store.get_port(lport_id)
+        lport = self.db_store.get_lport(lport_id)
         if lport is None:
             lport = self.ovs_to_lport_mapping.get(ovs_port_id)
             if lport is None:
@@ -189,7 +189,7 @@ class Topology(object):
 
         LOG.info(_LI("The logical port(%s) is offline") % str(lport))
         try:
-            self.controller.logical_port_deleted(lport_id)
+            self.controller.delete_lport(lport_id)
         except Exception:
             LOG.exception(_LE(
                 'Failed to process logical port offline event %s') % lport_id)
@@ -228,57 +228,57 @@ class Topology(object):
             self._clear_tenant_topology(topic)
 
     def _pull_tenant_topology_from_db(self, tenant_id, lport_id):
-        switches = self.nb_api.get_all_logical_switches(tenant_id)
+        switches = self.nb_api.get_lswitches(tenant_id)
         for switch in switches:
-            self.controller.logical_switch_updated(switch)
+            self.controller.update_lswitch(switch)
 
         sg_groups = self.nb_api.get_security_groups(tenant_id)
         for sg_group in sg_groups:
-            self.controller.security_group_updated(sg_group)
+            self.controller.update_security_group(sg_group)
 
-        ports = self.nb_api.get_all_logical_ports(tenant_id)
+        ports = self.nb_api.get_lports(tenant_id)
         for port in ports:
             if port.get_id() == lport_id:
                 continue
-            self.controller.logical_port_updated(port)
+            self.controller.update_lport(port)
 
-        routers = self.nb_api.get_routers(tenant_id)
+        routers = self.nb_api.get_lrouters(tenant_id)
         for router in routers:
-            self.controller.router_updated(router)
+            self.controller.update_lrouter(router)
 
         floating_ips = self.nb_api.get_floatingips(tenant_id)
         for floating_ip in floating_ips:
-            self.controller.floatingip_updated(floating_ip)
+            self.controller.update_floatingip(floating_ip)
 
     def _clear_tenant_topology(self, tenant_id):
         switches = self.db_store.get_lswitchs()
         for switch in switches:
             if tenant_id == switch.get_topic():
-                self.controller.logical_switch_deleted(switch.get_id())
+                self.controller.delete_lswitch(switch.get_id())
 
-        ports = self.db_store.get_ports()
+        ports = self.db_store.get_lports()
         for port in ports:
             if tenant_id == port.get_topic():
-                self.controller.logical_port_deleted(port.get_id())
+                self.controller.delete_lport(port.get_id())
 
         floating_ips = self.db_store.get_floatingips()
         for floating_ip in floating_ips:
             if tenant_id == floating_ip.get_topic():
-                self.controller.floatingip_deleted(floating_ip.get_id())
+                self.controller.delete_floatingip(floating_ip.get_id())
 
-        routers = self.db_store.get_routers()
+        routers = self.db_store.get_lrouters()
         for router in routers:
             if tenant_id == router.get_topic():
-                self.controller.router_deleted(router.get_id())
+                self.controller.delete_lrouter(router.get_id())
 
         sg_groups = self.db_store.get_security_groups()
         for sg_group in sg_groups:
             if tenant_id == sg_group.get_topic():
-                self.controller.security_group_deleted(sg_group.get_id())
+                self.controller.delete_security_group(sg_group.get_id())
 
     def _get_lport(self, port_id, topic=None):
-        lport = self.db_store.get_port(port_id)
+        lport = self.db_store.get_lport(port_id)
         if lport is None:
-            lport = self.nb_api.get_logical_port(port_id, topic)
+            lport = self.nb_api.get_lport(port_id, topic)
 
         return lport

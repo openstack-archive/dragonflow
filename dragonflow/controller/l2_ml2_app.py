@@ -328,7 +328,7 @@ class L2App(df_base_app.DFlowApp):
         egress = []
 
         for port_id_in_network in local_ports:
-            lport = self.db_store.get_port(port_id_in_network, topic)
+            lport = self.db_store.get_lport(port_id_in_network, topic)
             if lport is None:
                 continue
             port_key_in_network = local_ports[port_id_in_network]
@@ -601,7 +601,7 @@ class L2App(df_base_app.DFlowApp):
                                                    const.EGRESS_TABLE))
 
         for port_id_in_network in local_ports:
-            lport = self.db_store.get_port(port_id_in_network, topic)
+            lport = self.db_store.get_lport(port_id_in_network, topic)
             if lport is None or lport_id == lport.get_id():
                 continue
             port_key_in_network = local_ports[port_id_in_network]
@@ -700,7 +700,7 @@ class L2App(df_base_app.DFlowApp):
 
         # aggregate  remote tunnel
         for port_id_in_network in remote_ports:
-            lport = self.db_store.get_port(self, port_id_in_network)
+            lport = self.db_store.get_lport(self, port_id_in_network)
             if lport is None:
                 continue
             tunnel_port = lport.get_external_value('ofport')
@@ -757,7 +757,7 @@ class L2App(df_base_app.DFlowApp):
         # todo
         # aggregate  remote tunnel
         for port_id_in_network in remote_ports:
-            lport = self.db_store.get_port(self, port_id_in_network)
+            lport = self.db_store.get_lport(self, port_id_in_network)
             if lport is None:
                 continue
             tunnel_port = lport.get_external_value('ofport')
@@ -778,7 +778,7 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
-    def remove_logical_switch(self, lswitch):
+    def delete_lswitch(self, lswitch):
         datapath = self.get_datapath()
         ofproto = datapath.ofproto
 

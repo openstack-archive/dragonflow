@@ -143,7 +143,7 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _get_vm_gateway_info(self, floatingip):
         lport = self.db_store.get_local_port(floatingip.get_lport_id())
-        lrouter = self.db_store.get_router(floatingip.get_lrouter_id())
+        lrouter = self.db_store.get_lrouter(floatingip.get_lrouter_id())
         for router_port in lrouter.get_ports():
             if router_port.get_lswitch_id() == lport.get_lswitch_id():
                 return router_port.get_mac()
@@ -345,7 +345,7 @@ class DNATApp(df_base_app.DFlowApp):
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)
 
-    def update_logical_switch(self, lswitch):
+    def update_lswitch(self, lswitch):
         fip_groups = self.db_store.check_and_update_floatingips(
             lswitch)
         if not fip_groups:
