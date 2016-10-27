@@ -85,7 +85,7 @@ class RouterTestObj(object):
         self.closed = True
 
     def exists(self):
-        router = self.nb_api.get_router(self.router_id)
+        router = self.nb_api.get_lrouter(self.router_id)
         if router:
             return True
         return False
@@ -375,11 +375,11 @@ class PortTestObj(object):
         port = self.neutron.update_port(self.port_id, body={'port': port})
         return port['port']
 
-    def get_logical_port(self):
-        return self.nb_api.get_logical_port(self.port_id)
+    def get_lport(self):
+        return self.nb_api.get_lport(self.port_id)
 
     def exists(self):
-        port = self.get_logical_port()
+        port = self.get_lport()
         if port:
             return True
         return False

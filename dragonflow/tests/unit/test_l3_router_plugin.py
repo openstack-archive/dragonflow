@@ -67,7 +67,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
             router_with_int = self.l3p.get_router(self.context, router['id'])
             self.assertGreater(router_with_int['revision_number'],
                                old_version)
-            self.nb_api.add_lrouter_port.assert_called_once_with(
+            self.nb_api.create_lrouter_port.assert_called_once_with(
                 router_port_info['port_id'], router_port_info['id'],
                 router_port_info['network_id'],
                 router_port_info['tenant_id'],
@@ -76,8 +76,8 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
 
             router_port_info = self.l3p.remove_router_interface(
                  self.context, router['id'], data)
-            router_without_int = self.l3p.get_router(self.context,
-                                                     router['id'])
+            router_without_int = self.l3p.get_router(
+                    self.context, router['id'])
             self.assertGreater(router_without_int['revision_number'],
                                router_with_int['revision_number'])
             self.nb_api.delete_lrouter_port.assert_called_once_with(

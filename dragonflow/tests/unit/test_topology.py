@@ -78,41 +78,41 @@ class TestTopology(tests_base.BaseTestCase):
 
     def test_vm_port_online(self):
         self.mock_controller.reset_mock()
-        self.mock_nb_api.get_logical_port.return_value = self.lport1
-        self.mock_nb_api.get_all_logical_switches.return_value = \
+        self.mock_nb_api.get_lport.return_value = self.lport1
+        self.mock_nb_api.get_lswitches.return_value = \
             [self.lswitch1]
-        self.mock_nb_api.get_all_logical_ports.return_value = [self.lport1]
-        self.mock_nb_api.get_routers.return_value = []
+        self.mock_nb_api.get_lports.return_value = [self.lport1]
+        self.mock_nb_api.get_lrouters.return_value = []
         self.mock_nb_api.get_security_groups.return_value = []
         self.mock_nb_api.get_floatingips.return_value = []
 
-        self.topology.ovs_port_updated(self.ovs_port1)
+        self.topology.update_ovs_port(self.ovs_port1)
 
-        self.mock_controller.logical_port_updated.assert_called_with(
+        self.mock_controller.update_lport.assert_called_with(
             self.lport1)
         self.mock_nb_api.subscriber.register_topic.assert_called_with(
             self.lport1.get_topic())
 
     def test_vm_port_offline(self):
         self.mock_controller.reset_mock()
-        self.db_store.set_port(
+        self.db_store.create_lport(
             self.lport1.get_id(),
             self.lport1,
             self.lport1.get_topic()
         )
-        self.mock_nb_api.get_logical_port.return_value = self.lport1
-        self.mock_nb_api.get_all_logical_switches.return_value = \
+        self.mock_nb_api.get_lport.return_value = self.lport1
+        self.mock_nb_api.get_lswitches.return_value = \
             [self.lswitch1]
-        self.mock_nb_api.get_all_logical_ports.return_value = [self.lport1]
-        self.mock_nb_api.get_routers.return_value = []
+        self.mock_nb_api.get_lports.return_value = [self.lport1]
+        self.mock_nb_api.get_lrouters.return_value = []
         self.mock_nb_api.get_security_groups.return_value = []
         self.mock_nb_api.get_floatingips.return_value = []
 
-        self.topology.ovs_port_updated(self.ovs_port1)
+        self.topology.update_ovs_port(self.ovs_port1)
 
-        self.topology.ovs_port_deleted(self.ovs_port1.get_id())
+        self.topology.delete_ovs_port(self.ovs_port1.get_id())
 
-        self.mock_controller.logical_port_deleted.assert_called_with(
+        self.mock_controller.delete_lport.assert_called_with(
             self.lport1.get_id())
         self.mock_nb_api.subscriber.unregister_topic.assert_called_with(
             self.lport1.get_topic())

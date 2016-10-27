@@ -77,20 +77,20 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         self.table_handlers.pop(table_id, None)
 
     def notify_update_logical_switch(self, lswitch=None):
-        self.dispatcher.dispatch('update_logical_switch', lswitch=lswitch)
+        self.dispatcher.dispatch('update_lswitch', lswitch=lswitch)
 
     def notify_remove_logical_switch(self, lswitch=None):
-        self.dispatcher.dispatch('remove_logical_switch', lswitch=lswitch)
+        self.dispatcher.dispatch('delete_lswitch', lswitch=lswitch)
 
     def notify_create_router(self, router=None):
-        self.dispatcher.dispatch('router_created', router=router)
+        self.dispatcher.dispatch('create_lrouter', router=router)
 
     def notify_update_router(self, router=None, original_router=None):
-        self.dispatcher.dispatch('router_updated', router=router,
+        self.dispatcher.dispatch('update_lrouter', router=router,
                                  original_router=original_router)
 
     def notify_delete_router(self, router=None):
-        self.dispatcher.dispatch('router_deleted', router=router)
+        self.dispatcher.dispatch('delete_lrouter', router=router)
 
     def notify_add_local_port(self, lport=None):
         self.dispatcher.dispatch('add_local_port', lport=lport)

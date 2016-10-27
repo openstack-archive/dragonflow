@@ -39,7 +39,7 @@ class TestL3Flows(test_base.DFTestBase):
         self.store(self.topology)
 
     def test_router_add_route(self):
-        lport = self.port1.port.get_logical_port()
+        lport = self.port1.port.get_lport()
         ip1 = lport.get_ip()
         dest = "10.{}.{}.0/24".format(randint(0, 254), randint(0, 254))
         body = {

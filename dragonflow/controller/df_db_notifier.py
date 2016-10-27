@@ -65,28 +65,28 @@ class DBNotifyInterface(object):
                        compute node, and is removed from db
         """
 
-    def logical_switch_deleted(self, lswitch):
+    def delete_lswitch(self, lswitch):
         """logical switch deleted hook callback
 
 
         :param lswitch_id: logical switch id of the deleted switch
         """
 
-    def logical_switch_updated(self, lswitch):
+    def update_lswitch(self, lswitch):
         """logical switch updated hook callback
 
 
         :param lswitch: logical switch that is updated
         """
 
-    def router_created(self, router):
+    def create_lrouter(self, router):
         """router created hook callback
 
 
         :param router: logical router that is created
         """
 
-    def router_updated(self, router, original_router):
+    def update_lrouter(self, router, original_router):
         """router updated hook callback
 
 
@@ -94,7 +94,7 @@ class DBNotifyInterface(object):
         :param original_router: logical router before update
         """
 
-    def router_deleted(self, router):
+    def delete_lrouter(self, router):
         """router updated hook callback
 
 

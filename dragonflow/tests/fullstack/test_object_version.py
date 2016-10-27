@@ -59,11 +59,11 @@ class TestObjectVersion(test_base.DFTestBase):
                 self.neutron, self.nb_api, network_id))
         port_id = port.create()
         self.assertTrue(port.exists())
-        prev_version = self.nb_api.get_logical_port(port_id).get_version()
+        prev_version = self.nb_api.get_lport(port_id).get_version()
 
         port.update()
         self.assertTrue(port.exists())
-        version = self.nb_api.get_logical_port(port_id).get_version()
+        version = self.nb_api.get_lport(port_id).get_version()
         self.assertGreater(version, prev_version)
 
         port.close()
@@ -87,16 +87,16 @@ class TestObjectVersion(test_base.DFTestBase):
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         router_id = router.create()
         self.assertTrue(router.exists())
-        prev_version = self.nb_api.get_router(router_id).get_version()
+        prev_version = self.nb_api.get_lrouter(router_id).get_version()
 
         subnet_msg = {'subnet_id': subnet_id}
         self.neutron.add_interface_router(router_id, body=subnet_msg)
-        version = self.nb_api.get_router(router_id).get_version()
+        version = self.nb_api.get_lrouter(router_id).get_version()
         self.assertGreater(version, prev_version)
         prev_version = version
 
         self.neutron.remove_interface_router(router_id, body=subnet_msg)
-        version = self.nb_api.get_router(router_id).get_version()
+        version = self.nb_api.get_lrouter(router_id).get_version()
         self.assertGreater(version, prev_version)
 
         router.close()
@@ -190,12 +190,12 @@ class TestObjectVersion(test_base.DFTestBase):
             priv_subnet_id = priv_subnet.create(private_subnet_para)
             self.assertTrue(priv_subnet.exists())
             router_interface = router.add_interface(subnet_id=priv_subnet_id)
-            router_lport = self.nb_api.get_logical_port(
+            router_lport = self.nb_api.get_lport(
                 router_interface['port_id'])
             self.assertIsNotNone(router_lport)
 
             port_id = port.create()
-            self.assertIsNotNone(port.get_logical_port())
+            self.assertIsNotNone(port.get_lport())
 
             fip_para = {'floating_network_id': external_network_id}
             # create
