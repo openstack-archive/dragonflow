@@ -14,6 +14,7 @@
 from ryu.lib import addrconv
 import struct
 
+from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as const
 
 UINT32_MAX = 0xffffffff
@@ -21,8 +22,8 @@ _aging_cookie = 0
 
 
 def ipv4_text_to_int(ip_text):
-    if ip_text == 0:
-        return ip_text
+    if not ip_text:
+        raise exceptions.InvalidIPAddressException()
     assert isinstance(ip_text, str)
     return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
 

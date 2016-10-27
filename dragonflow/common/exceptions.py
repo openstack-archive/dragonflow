@@ -73,6 +73,10 @@ class NoRemoteIPProxyException(DragonflowException):
     message = _('The metadata request has no remote IP')
 
 
+class InvalidIPAddressException(DragonflowException):
+    message = _('The IP address is invalid')
+
+
 class LogicalPortNotFoundByTunnelKey(DragonflowException):
     message = _('Could not find logical port with tunnel key %(key)')
 
