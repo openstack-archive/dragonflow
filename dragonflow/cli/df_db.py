@@ -70,10 +70,14 @@ def print_whole_table(db_driver, table):
     print('------------------------------------------------------------')
     print('Table = ' + table)
     print('------------------------------------------------------------')
+
     for key in keys:
-        value = db_driver.get_key(table, key)
-        if value:
-            print('Key = ' + key + ' , Value = ' + value)
+        try:
+            value = db_driver.get_key(table, key)
+            if value:
+                print('Key = ' + key + ' , Value = ' + value)
+        except df_exceptions.DBKeyNotFound:
+            print('Key not found: ' + key)
     print(' ')
 
 
@@ -102,11 +106,11 @@ def bind_port_to_localhost(db_driver, port_id):
 def clean_whole_table(db_driver, table):
     try:
         keys = db_driver.get_all_keys(table)
-    except df_exceptions.DBKeyNotFound:
-        print('Table not found: ' + table)
+        for key in keys:
+            db_driver.delete_key(table, key)
+    except df_exceptions.DBKeyNotFound as e:
+        print('Table or key not found: ' + str(e))
         return
-    for key in keys:
-        db_driver.delete_key(table, key)
 
 
 def drop_table(db_driver, table):
