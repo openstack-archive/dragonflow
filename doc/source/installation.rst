@@ -17,7 +17,7 @@ Copy one of the following as your local.conf to your devstack folder
  Automated setup using Vagrant + Virtualbox
 ============================================
 
-This will create a 2 nodes devstack (controller + compute), where Dragonflow is used as
+This will create a 3 node devstack (controller + two computes), where Dragonflow is used as
 the Open vSwitch backend.
 
 Vagrant allows to configure the provider on which the virtual machines are
@@ -29,7 +29,7 @@ Quick Start
 -----------
 
 1. Install Virtualbox (https://www.virtualbox.org/wiki/Downloads) and Vagrant
-   (http://downloads.vagrantup.com).
+   (https://www.vagrantup.com/downloads.html).
 
 2. Configure
 
@@ -40,15 +40,15 @@ Quick Start
     vagrant plugin install vagrant-cachier
     vagrant plugin install vagrant-vbguest
 
-3. Adjust the settings in `devstack/vagrant.conf.yml` if needed (5GB RAM is the
+3. Adjust the settings in `vagrant/provisioning/virtualbox.conf.yml` if needed (5GB RAM is the
    minimum to get 1 VM running on the controller node)
 
 4. Launch the VM's: `vagrant up`
 
 ... This may take a while, once it is finished:
 
-* you can ssh into the virtual machines: `vagrant ssh devstack_controller` or
-  `vagrant ssh devstack_compute`
+* you can ssh into the virtual machines: `vagrant ssh devstack_controller`,
+  `vagrant ssh devstack_compute1` or `vagrant ssh devstack_compute2`
 
 * you can access the horizon dashboard at http://controller.devstack.dev
 
