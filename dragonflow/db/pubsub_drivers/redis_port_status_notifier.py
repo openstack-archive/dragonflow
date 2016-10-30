@@ -52,7 +52,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         if is_neutron_server:
             # for pub/sub use case,code in server node,
             # keeping topic alive default in use.
-            self.start_subsciber()
+            self.start_subscriber()
             self.server_status_monitors()
         else:
             # for pub/sub design, local controller will send
@@ -105,7 +105,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         self.pub.send_event(update)
 
     # server code
-    def start_subsciber(self):
+    def start_subscriber(self):
         self.sub.initialize(self.port_status_callback)
         server_ip = cfg.CONF.df.local_ip
         self.sub.register_topic(server_ip)
