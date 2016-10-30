@@ -84,7 +84,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         return table_monitor
 
     def _stop_db_table_monitor(self):
-        if not self.db_table_monitors:
+        if not self.db_table_monitor:
             return
         self.db_table_monitor.stop()
         self.db_table_monitor = None
