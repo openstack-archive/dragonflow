@@ -60,17 +60,6 @@ function nb_db_driver_install_client {
     echo 'Zookeeper client sdk is in the requirements file.'
 }
 
-function nb_db_driver_status_server
-{
-    if is_service_enabled df-zookeeper-server ; then
-        TEMP_PIDS=`pgrep -f "zookeeper"`
-        if [ -z "$TEMP_PIDS" ]; then
-            return 1
-        fi
-    fi
-    return 0
-}
-
 function nb_db_driver_start_server {
     if is_service_enabled df-zookeeper-server ; then
         if is_ubuntu; then
