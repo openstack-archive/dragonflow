@@ -230,9 +230,7 @@ class SGApp(df_base_app.DFlowApp):
             datapath=self.get_datapath(),
             table_id=table_id,
             match=match,
-            command=ofproto.OFPFC_DELETE,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY)
+            command=ofproto.OFPFC_DELETE)
 
     def _uninstall_security_group_flow(self, security_group_id):
         self._uninstall_security_group_permit_flow_by_direction(
@@ -316,9 +314,7 @@ class SGApp(df_base_app.DFlowApp):
             table_id=table_id,
             priority=priority,
             match=match,
-            command=ofproto.OFPFC_DELETE_STRICT,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY)
+            command=ofproto.OFPFC_DELETE_STRICT)
 
     def _install_associating_flows(self, security_group_id, lport):
         self._install_associating_flow_by_direction(security_group_id,
@@ -389,9 +385,7 @@ class SGApp(df_base_app.DFlowApp):
             datapath=self.get_datapath(),
             table_id=pre_table_id,
             match=match,
-            command=ofproto.OFPFC_DELETE,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY)
+            command=ofproto.OFPFC_DELETE)
 
     def _install_connection_track_flows(self, lport):
         self._install_connection_track_flow_by_direction(lport, 'ingress')
@@ -468,9 +462,7 @@ class SGApp(df_base_app.DFlowApp):
                     table_id=table_id,
                     priority=priority,
                     match=match,
-                    command=ofproto.OFPFC_DELETE_STRICT,
-                    out_port=ofproto.OFPP_ANY,
-                    out_group=ofproto.OFPG_ANY)
+                    command=ofproto.OFPFC_DELETE_STRICT)
 
     def _install_security_group_rule_flows(self, secgroup, secgroup_rule):
         conj_id, priority = self._get_secgroup_conj_id_and_priority(secgroup)
@@ -564,9 +556,7 @@ class SGApp(df_base_app.DFlowApp):
             cookie=SGApp._get_rule_cookie(rule_id),
             cookie_mask=const.SECURITY_GROUP_RULE_COOKIE_MASK,
             table_id=table_id,
-            command=ofproto.OFPFC_DELETE,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY)
+            command=ofproto.OFPFC_DELETE)
 
     def _install_env_init_flow_by_direction(self, direction):
         if direction == 'ingress':

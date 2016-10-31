@@ -391,8 +391,6 @@ class DHCPApp(df_base_app.DFlowApp):
             table_id=const.DHCP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
     def _is_port_a_vm(self, lport):
@@ -489,8 +487,6 @@ class DHCPApp(df_base_app.DFlowApp):
             table_id=const.SERVICES_CLASSIFICATION_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
     def _install_dhcp_broadcast_match_flow(self):
