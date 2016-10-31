@@ -702,7 +702,7 @@ class L2App(df_base_app.DFlowApp):
 
         # aggregate  remote tunnel
         for port_id_in_network in remote_ports:
-            lport = self.db_store.get_port(self, port_id_in_network)
+            lport = self.db_store.get_port(port_id_in_network)
             if lport is None:
                 continue
             tunnel_port = lport.get_external_value('ofport')
@@ -710,7 +710,7 @@ class L2App(df_base_app.DFlowApp):
             if tunnels.get(tunnel_port) is None:
                 tunnels[tunnel_port] = tunnel_port
                 actions.append(parser.OFPActionSetField(
-                    tunel_id_nxm=segmentation_id))
+                    tunnel_id_nxm=segmentation_id))
                 actions.append(parser.OFPActionOutput(port=tunnel_port))
 
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
@@ -759,7 +759,7 @@ class L2App(df_base_app.DFlowApp):
         # todo
         # aggregate  remote tunnel
         for port_id_in_network in remote_ports:
-            lport = self.db_store.get_port(self, port_id_in_network)
+            lport = self.db_store.get_port(port_id_in_network)
             if lport is None:
                 continue
             tunnel_port = lport.get_external_value('ofport')
@@ -767,7 +767,7 @@ class L2App(df_base_app.DFlowApp):
             if tunnel_port not in tunnels:
                 tunnels.add(tunnel_port)
                 actions.append(parser.OFPActionSetField(
-                    tunel_id_nxm=segmentation_id))
+                    tunnel_id_nxm=segmentation_id))
                 actions.append(parser.OFPActionOutput(port=tunnel_port))
 
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
