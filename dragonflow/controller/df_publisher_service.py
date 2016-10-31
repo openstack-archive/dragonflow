@@ -16,8 +16,8 @@ import sys
 import time
 import traceback
 
-from neutron.agent.common import config
 from neutron.common import config as common_config
+from neutron.conf.agent import common as config
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
