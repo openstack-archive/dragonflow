@@ -14,7 +14,7 @@
 #    under the License.
 
 import netaddr
-from neutron.agent.common import config
+from neutron.conf.agent import common as config
 from oslo_log import log
 from ryu.ofproto import ether
 
