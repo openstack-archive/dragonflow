@@ -14,6 +14,7 @@
 #    under the License.
 import collections
 import netaddr
+
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether

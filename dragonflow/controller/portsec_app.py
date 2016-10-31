@@ -14,6 +14,7 @@
 #    under the License.
 
 import netaddr
+
 from oslo_log import log
 from ryu.ofproto import ether
 

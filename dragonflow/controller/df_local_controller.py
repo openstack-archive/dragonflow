@@ -17,8 +17,8 @@ import socket
 import sys
 import time
 
-from neutron.agent.common import config
 from neutron.common import config as common_config
+from neutron.conf.agent import common as config
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
