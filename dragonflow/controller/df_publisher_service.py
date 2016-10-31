@@ -16,7 +16,6 @@ import sys
 import time
 import traceback
 
-from neutron.agent.common import config
 from neutron.common import config as common_config
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
@@ -164,7 +163,7 @@ class PublisherService(object):
 
 def main():
     common_config.init(sys.argv[1:])
-    config.setup_logging()
+    common_config.setup_logging()
     service = PublisherService()
     service.initialize()
     service.run()
