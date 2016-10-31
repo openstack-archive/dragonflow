@@ -228,6 +228,7 @@ function configure_df_plugin {
         (cd $DRAGONFLOW_DIR && exec ./tools/generate_config_file_samples.sh)
         cd $_pwd
         cp $NEUTRON_DIR/etc/neutron.conf.sample $NEUTRON_CONF
+        mkdir -p $Q_PLUGIN_EXTRA_CONF_PATH
         cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
 
 
