@@ -117,8 +117,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=parser.OFPMatch(in_port=self._ofport))
 
         self._ofport = None
@@ -406,7 +404,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
 
     def _create_arp_responder(self, mac):
         self._arp_responder = arp_responder.ArpResponder(
-            self.get_datapath(),
+            self,
             None,
             const.METADATA_SERVICE_IP,
             mac

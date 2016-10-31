@@ -187,8 +187,8 @@ class L3App(df_base_app.DFlowApp):
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
         if is_ipv4:
             arp_responder.ArpResponder(
-                datapath, local_network_id, dst_ip, mac).add()
-            icmp_responder.ICMPResponder(datapath, dst_ip, mac).add()
+                self, local_network_id, dst_ip, mac).add()
+            icmp_responder.ICMPResponder(self, dst_ip, mac).add()
 
         # If router interface IP, send to output table
         if is_ipv4:
@@ -316,8 +316,8 @@ class L3App(df_base_app.DFlowApp):
 
         if netaddr.IPAddress(ip).version == 4:
             arp_responder.ArpResponder(
-                self.get_datapath(), local_network_id, ip).remove()
-            icmp_responder.ICMPResponder(self.get_datapath(), ip, mac).remove()
+                self, local_network_id, ip).remove()
+            icmp_responder.ICMPResponder(self, ip, mac).remove()
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
@@ -326,8 +326,6 @@ class L3App(df_base_app.DFlowApp):
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         match = parser.OFPMatch()
@@ -338,8 +336,6 @@ class L3App(df_base_app.DFlowApp):
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         match = parser.OFPMatch()
@@ -351,6 +347,4 @@ class L3App(df_base_app.DFlowApp):
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
