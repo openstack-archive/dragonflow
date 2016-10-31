@@ -27,16 +27,6 @@ def ipv4_text_to_int(ip_text):
     return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
 
 
-def mask_ntob(mask, err_msg=None):
-    try:
-        return (UINT32_MAX << (32 - mask)) & UINT32_MAX
-    except ValueError:
-        msg = 'illegal netmask'
-        if err_msg is not None:
-            msg = '%s %s' % (err_msg, msg)
-            raise ValueError(msg)
-
-
 def set_aging_cookie(c):
     global _aging_cookie
     _aging_cookie = c
