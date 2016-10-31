@@ -138,5 +138,5 @@ class PortStatusMonitor(pub_sub_api.TableMonitor):
     def _poll_once(self, old_cache):
         # update server port status timestamp in DB, leave
         # timeout process to DB sync tool
-        self._driver.update_key(self.table_name, self._server_ip,
-                                time.time(), None)
+        self._driver.set_key(self.table_name, self._server_ip,
+                             time.time(), None)
