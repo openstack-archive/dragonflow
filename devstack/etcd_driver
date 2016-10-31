@@ -94,15 +94,6 @@ function nb_db_driver_install_client {
     sudo pip install python-etcd
 }
 
-function nb_db_driver_status_server
-{
-    TEMP_PIDS=`ps cax | grep etcd`
-    if [ -z "$TEMP_PIDS" ]; then
-        return 1
-    fi
-    return 0
-}
-
 function nb_db_driver_start_server {
     if is_service_enabled df-etcd-server ; then
         if is_ubuntu; then

@@ -274,9 +274,6 @@ function install_zeromq {
 
 function install_df {
 
-    # Obtain devstack directory for df-ext-services.sh
-    sed -i "/^TOP_DIR=/cTOP_DIR=$TOP_DIR" $DEST/dragonflow/devstack/df-ext-services.sh
-
     install_zeromq
 
     if function_exists nb_db_driver_install_server; then
@@ -373,7 +370,6 @@ function start_df {
     if is_service_enabled df-controller ; then
         sudo ovs-vsctl --no-wait set-controller $INTEGRATION_BRIDGE tcp:127.0.0.1:6633
         run_process df-controller "$DF_LOCAL_CONTROLLER_BINARY --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
-        run_process df-ext-services "bash $DEST/dragonflow/devstack/df-ext-services.sh"
     fi
 }
 

@@ -27,8 +27,6 @@ Quick Installation
 
    enable_service df-controller
 
-   enable_service df-ext-services
-
    enable_service df-l3-agent
 
    enable_service q-svc
