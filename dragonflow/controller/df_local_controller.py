@@ -249,11 +249,15 @@ class DfLocalController(object):
     def _is_valid_version(self, old_obj, new_obj):
         if not old_obj:
             return True
+
         if new_obj.get_version() > old_obj.get_version():
             return True
-        LOG.debug("new_obj has an old version, new_obj: %s, old_obj: %s",
-                  new_obj, old_obj)
-        return False
+        elif new_obj.get_version() == old_obj.get_version():
+            return False
+        else:
+            LOG.debug("new_obj has an old version, new_obj: %s, old_obj: %s",
+                      new_obj, old_obj)
+            return False
 
     def _logical_port_process(self, lport, original_lport=None):
         chassis = lport.get_chassis()
