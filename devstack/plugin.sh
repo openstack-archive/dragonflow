@@ -56,7 +56,7 @@ OVS_VSWITCHD_PID=$OVS_DIR"/"$OVS_VSWITCHD_SERVICE".pid"
 OVS_VSWITCH_OCSSCHEMA_FILE=${OVS_VSWITCH_OCSSCHEMA_FILE:-"/usr/share/openvswitch/vswitch.ovsschema"}
 
 # Port status notifier
-ENABLE_PORT_STATUS_NOTIFIER=${ENABLE_PORT_STATUS_NOTIFIER:-"True"}
+ENABLE_PORT_STATUS_NOTIFIER=${ENABLE_PORT_STATUS_NOTIFIER:-"False"}
 
 ACTION=$1
 STAGE=$2
@@ -90,6 +90,7 @@ if is_service_enabled df-redis ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/redis_driver
     NB_DRIVER_CLASS="redis_nb_db_driver"
+    ENABLE_PORT_STATUS_NOTIFIER="True"
     DF_REDIS_PUBSUB=${DF_REDIS_PUBSUB:-"True"}
 else
     DF_REDIS_PUBSUB="False"

@@ -60,7 +60,7 @@ DF_OPTS = [
                default='zmq_pubsub_multiproc_driver',
                help=_('Drivers to use for the Dragonflow pub/sub')),
     cfg.BoolOpt('enable_port_status_notifier',
-                default=True,
+                default=False,
                 help=_('Enable notifier for the Dragonflow port status')),
     cfg.StrOpt('port_status_notifier',
                default='redis_port_status_notifier_driver',
