@@ -16,6 +16,7 @@ from oslo_log import log
 
 from dragonflow._i18n import _LI
 from dragonflow.controller.common import constants as const
+from dragonflow.tests.common import constants as test_const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -323,7 +324,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
         vm.close()
 
-        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
         flows_after_update = ovs.dump(self.integration_bridge)
 
         # Check if the associating flows were removed.
@@ -382,7 +383,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         vm2.create(network=network, security_groups=[security_group_id],
                    net_address='192.168.124.9')
 
-        time.sleep(utils.DEFAULT_CMD_TIMEOUT)
+        time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         ovs = utils.OvsFlowsParser()
         flows = ovs.dump(self.integration_bridge)
@@ -405,7 +406,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         # those rule flows may be installed in other test cases for all
         # test cases are running synchronously.
 
-        # time.sleep(utils.DEFAULT_CMD_TIMEOUT)
+        # time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
         # flows_after_update = ovs.dump(self.integration_bridge)
         # self._check_rule_flows(flows_after_update,
         #                        expected_ingress_rule_match,
