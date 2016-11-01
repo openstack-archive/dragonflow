@@ -15,6 +15,8 @@
 import mock
 import six
 
+from neutron.plugins.ml2 import config
+from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_plugin
 
 
@@ -31,6 +33,7 @@ class empty_wrapper(object):
 
 class DFMechanismDriverTestCase(test_plugin.Ml2PluginV2TestCase):
     _mechanism_drivers = ['logger', 'df']
+    _extension_drivers = ['port_security']
 
     def get_additional_service_plugins(self):
         p = super(DFMechanismDriverTestCase,
@@ -39,6 +42,9 @@ class DFMechanismDriverTestCase(test_plugin.Ml2PluginV2TestCase):
         return p
 
     def setUp(self):
+        config.cfg.CONF.set_override('extension_drivers',
+                                     self._extension_drivers,
+                                     group='ml2')
         mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
                    side_effect=empty_wrapper).start()
         nbapi_instance = mock.patch('dragonflow.db.api_nb.NbApi').start()
@@ -200,6 +206,34 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 called_args = self.nb_api.update_lport.call_args_list[0][1]
                 self.assertEqual([], called_args.get("allowed_address_pairs"))
 
+    def _test_create_update_port_security(self, enabled):
+        kwargs = {'port_security_enabled': enabled}
+        with self.subnet(enable_dhcp=False) as subnet:
+            with self.port(subnet=subnet,
+                           arg_list=('port_security_enabled',),
+                           **kwargs) as port:
+                self.assertTrue(self.nb_api.create_lport.called)
+                called_args_dict = (
+                    self.nb_api.create_lport.call_args_list[0][1])
+                self.assertEqual(enabled,
+                                 called_args_dict.get('port_security_enabled'))
+
+                data = {'port': {'mac_address': '00:00:00:00:00:01'}}
+                req = self.new_update_request('ports',
+                                              data, port['port']['id'])
+                req.get_response(self.api)
+                self.assertTrue(self.nb_api.update_lport.called)
+                called_args_dict = (
+                    self.nb_api.update_lport.call_args_list[0][1])
+                self.assertEqual(enabled,
+                                 called_args_dict.get('port_security_enabled'))
+
+    def test_create_update_port_with_disabled_security(self):
+        self._test_create_update_port_security(False)
+
+    def test_create_update_port_with_enabled_security(self):
+        self._test_create_update_port_security(True)
+
     def test_create_update_port_revision(self):
         with self.port(name='port', device_owner='fake_owner',
                        device_id='fake_id') as p:
@@ -316,5 +350,11 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
 class TestDFMechansimDriverAllowedAddressPairs(
         test_plugin.TestMl2AllowedAddressPairs,
+        DFMechanismDriverTestCase):
+    pass
+
+
+class TestDFMechansimDriverPortSecurity(
+        test_ext_portsecurity.PSExtDriverTestCase,
         DFMechanismDriverTestCase):
     pass
