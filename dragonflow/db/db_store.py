@@ -119,6 +119,10 @@ class DbStore(object):
     def get_network_id(self, ldp):
         return self.networks.get(ldp, None)
 
+    def get_network_global_id(self, local_id):
+        inverse_mapping = {v: k for k, v in six.iteritems(self.networks)}
+        return inverse_mapping.get(local_id)
+
     def set_network_id(self, ldp, net_id):
         self.networks[ldp] = net_id
 
