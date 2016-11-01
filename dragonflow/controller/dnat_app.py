@@ -91,33 +91,19 @@ class DNATApp(df_base_app.DFlowApp):
     def _decrease_external_network_count(self, network_id):
         self.external_networks[network_id] -= 1
 
-    def _get_external_network_count(self, network_id):
-        return self.external_networks[network_id]
+    def _is_first_port_in_network(self, network_id):
+        return self.external_networks[network_id] == 0
 
-    def _is_first_external_network(self, network_id):
-        if self._get_external_network_count(network_id) == 0:
-            # check whether there are other networks
-            for key, val in six.iteritems(self.external_networks):
-                if key != network_id and val > 0:
-                    return False
-            return True
-        return False
-
-    def _is_last_external_network(self, network_id):
-        if self._get_external_network_count(network_id) == 1:
-            # check whether there are other networks
-            for key, val in six.iteritems(self.external_networks):
-                if key != network_id and val > 0:
-                    return False
-            return True
-        return False
+    def _is_last_port_in_network(self, network_id):
+        return self.external_networks[network_id] == 1
 
     def _install_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
+        floating_net_id = floatingip.get_floating_network_id()
         arp_responder.ArpResponder(self.get_datapath(),
-             None,
+             self.db_store.get_network_id(floating_net_id),
              floatingip.get_ip_address(),
              floatingip.get_mac_address(),
              const.INGRESS_NAT_TABLE).add()
@@ -126,8 +112,9 @@ class DNATApp(df_base_app.DFlowApp):
         # install floatingip arp responder flow rules
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
+        floating_net_id = floatingip.get_floating_network_id()
         arp_responder.ArpResponder(self.get_datapath(),
-             None,
+             self.db_store.get_network_id(floating_net_id),
              floatingip.get_ip_address(),
              floatingip.get_mac_address(),
              const.INGRESS_NAT_TABLE).remove()
@@ -152,8 +139,11 @@ class DNATApp(df_base_app.DFlowApp):
     def _install_dnat_ingress_rules(self, floatingip):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
+        local_floating_net_id = self.db_store.get_network_id(
+            floatingip.get_floating_network_id())
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=floatingip.get_ip_address())
+                                ipv4_dst=floatingip.get_ip_address(),
+                                metadata=local_floating_net_id)
 
         vm_mac, vm_ip, vm_tunnel_key, local_network_id = \
             self._get_vm_port_info(floatingip)
@@ -184,8 +174,11 @@ class DNATApp(df_base_app.DFlowApp):
     def _remove_dnat_ingress_rules(self, floatingip):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
+        local_floating_net_id = self.db_store.get_network_id(
+            floatingip.get_floating_network_id())
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=floatingip.get_ip_address())
+                                ipv4_dst=floatingip.get_ip_address(),
+                                metadata=local_floating_net_id)
         self.mod_flow(
             self.get_datapath(),
             command=ofproto.OFPFC_DELETE,
@@ -268,16 +261,16 @@ class DNATApp(df_base_app.DFlowApp):
         self._remove_dnat_egress_rules(floatingip)
 
     def _install_ingress_nat_rules(self, floatingip):
-        network_id = floatingip.get_floating_network_id()
+        network_id = self.db_store.get_network_id(
+            floatingip.get_floating_network_id())
         # TODO(Fei Rao) check the network type
-        if self._is_first_external_network(network_id):
+        if self._is_first_port_in_network(network_id):
             # if it is the first floating ip on this node, then
             # install the common goto flow rule.
             parser = self.get_datapath().ofproto_parser
-            match = parser.OFPMatch()
-            match.set_in_port(self.external_ofport)
+            match = parser.OFPMatch(metadata=network_id)
             self.add_flow_go_to_table(self.get_datapath(),
-                const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
                 const.PRIORITY_DEFAULT,
                 const.INGRESS_NAT_TABLE,
                 match=match)
@@ -286,18 +279,18 @@ class DNATApp(df_base_app.DFlowApp):
         self._increase_external_network_count(network_id)
 
     def _remove_ingress_nat_rules(self, floatingip):
-        network_id = floatingip.get_floating_network_id()
-        if self._is_last_external_network(network_id):
+        network_id = self.db_store.get_network_id(
+            floatingip.get_floating_network_id())
+        if self._is_last_port_in_network(network_id):
             # if it is the last floating ip on this node, then
             # remove the common goto flow rule.
             parser = self.get_datapath().ofproto_parser
             ofproto = self.get_datapath().ofproto
-            match = parser.OFPMatch()
-            match.set_in_port(self.external_ofport)
+            match = parser.OFPMatch(metadata=network_id)
             self.mod_flow(
                 self.get_datapath(),
-                command=ofproto.OFPFC_DELETE,
-                table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                command=ofproto.OFPFC_DELETE_STRICT,
+                table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
                 priority=const.PRIORITY_DEFAULT,
                 match=match)
         self._remove_floatingip_arp_responder(floatingip)
