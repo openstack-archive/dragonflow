@@ -12,6 +12,7 @@
 
 from oslo_config import cfg
 from oslo_log import log
+import six
 
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import constants
@@ -282,3 +283,32 @@ class Topology(object):
             lport = self.nb_api.get_logical_port(port_id, topic)
 
         return lport
+
+    def check_topology_info(self):
+        new_ovs_to_lport_mapping = {}
+        add_ovs_to_lport_mapping = {}
+        delete_ovs_to_lport_mapping = self.ovs_to_lport_mapping
+        for key, ovs_port in six.iteritems(self.ovs_ports):
+            if ovs_port.get_type() == api_nb.OvsPort.TYPE_VM:
+                lport_id = ovs_port.get_iface_id()
+                lport = self._get_lport(lport_id)
+                if lport is None:
+                    LOG.warning(_LW("No logical port found for ovs port: %s"),
+                                str(ovs_port))
+                    continue
+                topic = lport.get_topic()
+                new_ovs_to_lport_mapping[key] = {
+                    'lport_id': lport_id, 'topic': topic}
+                if not delete_ovs_to_lport_mapping.pop(key, None):
+                    add_ovs_to_lport_mapping[key] = {
+                        'lport_id': lport_id, 'topic': topic}
+        self.ovs_to_lport_mapping = new_ovs_to_lport_mapping
+        for value in add_ovs_to_lport_mapping.values():
+            lport_id = value['lport_id']
+            topic = value['topic']
+            self._add_to_topic_subscribed(topic, lport_id)
+
+        for value in delete_ovs_to_lport_mapping.values():
+            lport_id = value['lport_id']
+            topic = value['topic']
+            self._del_from_topic_subscribed(topic, lport_id)
