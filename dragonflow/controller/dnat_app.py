@@ -274,13 +274,16 @@ class DNATApp(df_base_app.DFlowApp):
             # if it is the first floating ip on this node, then
             # install the common goto flow rule.
             parser = self.get_datapath().ofproto_parser
-            match = parser.OFPMatch()
-            match.set_in_port(self.external_ofport)
-            self.add_flow_go_to_table(self.get_datapath(),
-                const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                const.PRIORITY_DEFAULT,
-                const.INGRESS_NAT_TABLE,
-                match=match)
+
+            for table_id in (const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                             const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE):
+                match = parser.OFPMatch()
+                match.set_in_port(self.external_ofport)
+                self.add_flow_go_to_table(self.get_datapath(),
+                                          table_id,
+                                          const.PRIORITY_DEFAULT,
+                                          const.INGRESS_NAT_TABLE,
+                                          match=match)
         self._install_floatingip_arp_responder(floatingip)
         self._install_dnat_ingress_rules(floatingip)
         self._increase_external_network_count(network_id)
@@ -292,14 +295,16 @@ class DNATApp(df_base_app.DFlowApp):
             # remove the common goto flow rule.
             parser = self.get_datapath().ofproto_parser
             ofproto = self.get_datapath().ofproto
-            match = parser.OFPMatch()
-            match.set_in_port(self.external_ofport)
-            self.mod_flow(
-                self.get_datapath(),
-                command=ofproto.OFPFC_DELETE,
-                table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                priority=const.PRIORITY_DEFAULT,
-                match=match)
+            for table_id in (const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                             const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE):
+                match = parser.OFPMatch()
+                match.set_in_port(self.external_ofport)
+                self.mod_flow(
+                    self.get_datapath(),
+                    command=ofproto.OFPFC_DELETE,
+                    table_id=table_id,
+                    priority=const.PRIORITY_DEFAULT,
+                    match=match)
         self._remove_floatingip_arp_responder(floatingip)
         self._remove_dnat_ingress_rules(floatingip)
         self._decrease_external_network_count(network_id)

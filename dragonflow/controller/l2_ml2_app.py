@@ -358,6 +358,9 @@ class L2App(df_base_app.DFlowApp):
 
         # Ingress broadcast
         match = self._get_multicast_broadcast_match(local_network_id)
+        goto_dnat = parser.NXActionResubmitTable(OF_IN_PORT,
+                                                 const.INGRESS_NAT_TABLE)
+        ingress.insert(0, goto_dnat)
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
         self.mod_flow(
@@ -633,6 +636,9 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
         # Ingress broadcast
+        goto_dnat = parser.NXActionResubmitTable(OF_IN_PORT,
+                                                 const.INGRESS_NAT_TABLE)
+        ingress.insert(0, goto_dnat)
         match = self._get_multicast_broadcast_match(network_id)
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
