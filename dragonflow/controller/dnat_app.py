@@ -116,7 +116,7 @@ class DNATApp(df_base_app.DFlowApp):
         # install floatingip arp responder flow rules
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
-        arp_responder.ArpResponder(self.get_datapath(),
+        arp_responder.ArpResponder(self,
              None,
              floatingip.get_ip_address(),
              floatingip.get_mac_address(),
@@ -126,7 +126,7 @@ class DNATApp(df_base_app.DFlowApp):
         # install floatingip arp responder flow rules
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
-        arp_responder.ArpResponder(self.get_datapath(),
+        arp_responder.ArpResponder(self,
              None,
              floatingip.get_ip_address(),
              floatingip.get_mac_address(),
