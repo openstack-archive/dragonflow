@@ -12,7 +12,6 @@
 import mock
 
 from dragonflow.db.drivers import etcd_db_driver
-from dragonflow.db.drivers.etcd_db_driver import _parse_hosts
 from dragonflow.tests import base as tests_base
 
 
@@ -21,32 +20,32 @@ class TestEtcdDB(tests_base.BaseTestCase):
     def test_parse_none(self):
         fake_host = []
         expected = ()
-        output = _parse_hosts(fake_host)
+        output = etcd_db_driver._parse_hosts(fake_host)
         self.assertEqual(expected, output)
 
     def test_parse_empty(self):
         fake_host = [""]
         expected = ()
-        output = _parse_hosts(fake_host)
+        output = etcd_db_driver._parse_hosts(fake_host)
         self.assertEqual(expected, output)
 
     def test_parse_one_host(self):
         fake_host = ['127.0.0.1:80']
         expected = (('127.0.0.1', 80),)
-        output = _parse_hosts(fake_host)
+        output = etcd_db_driver._parse_hosts(fake_host)
         self.assertEqual(expected, output)
 
     def test_parse_multiple_hosts(self):
         fake_host = ['127.0.0.1:80', '192.168.0.1:8080']
         expected = (('127.0.0.1', 80), ('192.168.0.1', 8080))
-        output = _parse_hosts(fake_host)
+        output = etcd_db_driver._parse_hosts(fake_host)
         self.assertEqual(expected, output)
 
     def test_parse_multiple_hosts_invalid(self):
         fake_host = ['127.0.0.1:80', '192.168.0.1']
         expected = (('127.0.0.1', 80),)
         with mock.patch.object(etcd_db_driver.LOG, 'error') as log_err:
-            output = _parse_hosts(fake_host)
+            output = etcd_db_driver._parse_hosts(fake_host)
             self.assertEqual(expected, output)
             log_err.assert_called_once_with(
                 u'The host string %s is invalid.', '192.168.0.1')

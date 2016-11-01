@@ -10,13 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from random import randint
+import random
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import constants as test_const
 from dragonflow.tests.common import utils
-from dragonflow.tests.common.utils import OvsFlowsParser
 from dragonflow.tests.fullstack import test_base
 
 
@@ -42,7 +41,8 @@ class TestL3Flows(test_base.DFTestBase):
     def test_router_add_route(self):
         lport = self.port1.port.get_logical_port()
         ip1 = lport.get_ip()
-        dest = "10.{}.{}.0/24".format(randint(0, 254), randint(0, 254))
+        dest = "10.{}.{}.0/24".format(
+            random.randint(0, 254), random.randint(0, 254))
         body = {
                     "routes": [
                         {
@@ -76,7 +76,7 @@ class TestL3Flows(test_base.DFTestBase):
 
     def _get_route_flows(self, nw_src, nw_dst):
         match = 'nw_src=' + nw_src + ',nw_dst=' + nw_dst
-        ovs_flows_parser = OvsFlowsParser()
+        ovs_flows_parser = utils.OvsFlowsParser()
         flows = ovs_flows_parser.dump(self.integration_bridge)
         flows = [flow for flow in flows
                  if flow['table'] == str(const.L3_LOOKUP_TABLE) and
