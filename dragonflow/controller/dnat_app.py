@@ -116,8 +116,9 @@ class DNATApp(df_base_app.DFlowApp):
         # install floatingip arp responder flow rules
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
+        floating_net_id = floatingip.get_floating_network_id()
         arp_responder.ArpResponder(self.get_datapath(),
-             None,
+             self.db_store.get_network_id(floating_net_id),
              floatingip.get_ip_address(),
              floatingip.get_mac_address(),
              const.INGRESS_NAT_TABLE).add()
@@ -126,8 +127,9 @@ class DNATApp(df_base_app.DFlowApp):
         # install floatingip arp responder flow rules
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
+        floating_net_id = floatingip.get_floating_network_id()
         arp_responder.ArpResponder(self.get_datapath(),
-             None,
+             self.db_store.get_network_id(floating_net_id),
              floatingip.get_ip_address(),
              floatingip.get_mac_address(),
              const.INGRESS_NAT_TABLE).remove()
@@ -152,8 +154,11 @@ class DNATApp(df_base_app.DFlowApp):
     def _install_dnat_ingress_rules(self, floatingip):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
+        local_floating_net_id = self.db_store.get_network_id(
+            floatingip.get_floating_network_id())
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=floatingip.get_ip_address())
+                                ipv4_dst=floatingip.get_ip_address(),
+                                metadata=local_floating_net_id)
 
         vm_mac, vm_ip, vm_tunnel_key, local_network_id = \
             self._get_vm_port_info(floatingip)
@@ -184,8 +189,11 @@ class DNATApp(df_base_app.DFlowApp):
     def _remove_dnat_ingress_rules(self, floatingip):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
+        local_floating_net_id = self.db_store.get_network_id(
+            floatingip.get_floating_network_id())
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=floatingip.get_ip_address())
+                                ipv4_dst=floatingip.get_ip_address(),
+                                metadata=local_floating_net_id)
         self.mod_flow(
             self.get_datapath(),
             command=ofproto.OFPFC_DELETE,
@@ -275,9 +283,8 @@ class DNATApp(df_base_app.DFlowApp):
             # install the common goto flow rule.
             parser = self.get_datapath().ofproto_parser
             match = parser.OFPMatch()
-            match.set_in_port(self.external_ofport)
             self.add_flow_go_to_table(self.get_datapath(),
-                const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
                 const.PRIORITY_DEFAULT,
                 const.INGRESS_NAT_TABLE,
                 match=match)
@@ -293,11 +300,10 @@ class DNATApp(df_base_app.DFlowApp):
             parser = self.get_datapath().ofproto_parser
             ofproto = self.get_datapath().ofproto
             match = parser.OFPMatch()
-            match.set_in_port(self.external_ofport)
             self.mod_flow(
                 self.get_datapath(),
                 command=ofproto.OFPFC_DELETE,
-                table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
                 priority=const.PRIORITY_DEFAULT,
                 match=match)
         self._remove_floatingip_arp_responder(floatingip)

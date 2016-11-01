@@ -45,6 +45,8 @@ DF_L2_APP_OPTS = [
                        "node."))
 ]
 
+FIP_PORT = object()
+
 
 # TODO(gsagie) currently the number set in Ryu for this
 # (OFPP_IN_PORT) is not working, use this until resolved
@@ -333,6 +335,9 @@ class L2App(df_base_app.DFlowApp):
                 continue
             port_key_in_network = local_ports[port_id_in_network]
 
+            if port_key_in_network == FIP_PORT:
+                continue
+
             egress.append(parser.OFPActionSetField(reg7=port_key_in_network))
             egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
                                                        const.EGRESS_TABLE))
@@ -358,6 +363,15 @@ class L2App(df_base_app.DFlowApp):
 
         # Ingress broadcast
         match = self._get_multicast_broadcast_match(local_network_id)
+
+        network = self.db_store.get_lswitch(
+            self.db_store.get_network_global_id(local_network_id))
+
+        # Send copy to DNAT if the network is public
+        if network.is_external():
+            goto_dnat = parser.NXActionResubmitTable(OF_IN_PORT,
+                                                    const.INGRESS_NAT_TABLE)
+            ingress.insert(0, goto_dnat)
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
         self.mod_flow(
@@ -608,6 +622,9 @@ class L2App(df_base_app.DFlowApp):
                 continue
             port_key_in_network = local_ports[port_id_in_network]
 
+            if port_key_in_network == FIP_PORT:
+                continue
+
             egress.append(parser.OFPActionSetField(reg7=port_key_in_network))
             egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
                                                        const.EGRESS_TABLE))
@@ -633,6 +650,14 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
         # Ingress broadcast
+        network = self.db_store.get_lswitch(
+            self.db_store.get_network_global_id(network_id))
+
+        # Send copy to DNAT if the network is public
+        if network.is_external():
+            goto_dnat = parser.NXActionResubmitTable(OF_IN_PORT,
+                                                    const.INGRESS_NAT_TABLE)
+            ingress.insert(0, goto_dnat)
         match = self._get_multicast_broadcast_match(network_id)
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
@@ -842,6 +867,43 @@ class L2App(df_base_app.DFlowApp):
                                                                network_id,
                                                                segmentation_id,
                                                                ofport)
+
+    def associate_floatingip(self, floatingip):
+        ''' TODO '''
+        lswitch = self.db_store.get_lswitch(
+            floatingip.get_floating_network_id())
+        local_network_id = self.db_store.get_network_id(lswitch.get_id())
+
+        self._install_network_flows_on_first_port_up(
+            lswitch.get_segment_id(),
+            lswitch.get_physical_network(),
+            lswitch.get_network_type(),
+            local_network_id)
+
+        # lport = self.db_store.get_port(floatingip.get_floating_port_id())
+        network = self.local_networks.setdefault(local_network_id, {})
+        local_ports = network.setdefault('local', {})
+        local_ports[floatingip.get_floating_port_id()] = FIP_PORT
+
+    def disassociate_floatingip(self, floatingip):
+        lswitch = self.db_store.get_lswitch(
+            floatingip.get_floating_network_id())
+        local_network_id = self.db_store.get_network_id(lswitch.get_id())
+
+        if local_network_id not in self.local_networks:
+            return
+
+        local_network = self.local_networks[local_network_id]
+        local_ports = local_network.get('local')
+        local_ports.pop(floatingip.get_floating_port_id(), 0)
+
+        remote_ports = local_network.get('remote')
+        if not local_ports and not remote_ports:
+            self.local_networks.pop(local_network_id)
+
+        self._del_network_flows_on_last_port_down(local_network_id,
+                                                  lswitch.get_segment_id(),
+                                                  lswitch.get_network_type())
 
     def _install_network_flows_on_first_port_up(self,
                                                 segmentation_id,
