@@ -1,0 +1,13 @@
+[Unit]
+Description=Zookeeper Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+SyslogIdentifier=zookeeper
+ExecStart=/usr/bin/java -Dzookeeper.log.dir=/var/log/zookeeper -Dzookeeper.root.logger=INFO,ROLLINGFILE -cp /etc/zookeeper:/usr/share/java/slf4j/api.jar:/usr/share/java/slf4j/simple.jar:/usr/share/java/log4j.jar:/usr/share/java/log4j-1.jar:/usr/share/java/log4j/log4j-slf4j-impl.jar:/usr/share/java/log4j/log4j-api.jar:/usr/share/java/log4j/log4j-core.jar:/usr/share/java/zookeeper/zookeeper.jar:/usr/share/java/zookeeper/zookeeper-ZooInspector.jar:/usr/share/java/zookeeper/zookeeper-tests.jar -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=false org.apache.zookeeper.server.quorum.QuorumPeerMain /etc/zookeeper/zoo.cfg
+
+[Install]
+WantedBy=multi-user.target
