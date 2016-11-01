@@ -75,9 +75,6 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
                 inst = [datapath.ofproto_parser.OFPInstructionActions(
                     inst_type, actions)]
 
-                if match is None:
-                    match = datapath.ofproto_parser.OFPMatch()
-
         if out_port is None:
             out_port = datapath.ofproto.OFPP_ANY
 
@@ -100,10 +97,6 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
                                                      inst)
 
         datapath.send_msg(message)
-
-    def send_packet(self, *args, **kwargs):
-        datapath = self.get_datapath()
-        self._send_packet(datapath, *args, **kwargs)
 
     def _send_packet(self, datapath, port, pkt):
         ofproto = datapath.ofproto
