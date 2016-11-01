@@ -299,13 +299,11 @@ class RedisDbDriver(db_api.DbApi):
         m = re.match(regex, key)
         return m.group(1)
 
-    def _allocate_unique_key(self):
-        local_key = self._uuid_to_key('tunnel_key', 'key', None)
+    def _allocate_unique_key(self, table):
+        local_key = self._uuid_to_key('unique_key', table, None)
         ip_port = None
         try:
-            self._sync_master_list()
-            ip_port = self.redis_mgt.get_ip_by_key(local_key)
-            client = self._get_client(local_key, ip_port)
+            client = self._update_client(local_key)
             if client is None:
                 return None
             return client.incr(local_key)
@@ -314,9 +312,9 @@ class RedisDbDriver(db_api.DbApi):
             LOG.exception(_LE("exception when incr: %(key)s, %(e)s")
                           % {'key': local_key, 'e': e})
 
-    def allocate_unique_key(self):
+    def allocate_unique_key(self, table):
         try:
-            return self._allocate_unique_key()
+            return self._allocate_unique_key(table)
         except Exception as e:
             LOG.error(_LE("allocate_unique_key exception: %(e)s")
                       % {'e': e})
