@@ -24,7 +24,8 @@ from dragonflow.common import utils as df_utils
 cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
-             'tunnel_key', 'floatingip', 'publisher', 'qospolicy']
+             'tunnel_key', 'floatingip', 'publisher', 'qospolicy',
+             'portstats']
 
 usage_str = "The following commands are supported:\n" \
             "1) df-db ls - print all the db tables \n" \
