@@ -60,9 +60,10 @@ class _LocalNetwork(object):
     def __init__(self):
         self.local_ports = {}
         self.remote_ports = {}
+        self.fips = set()
 
     def is_empty(self):
-        return not self.local_ports and not self.remote_ports
+        return not self.local_ports and not self.remote_ports and not self.fips
 
 
 class L2App(df_base_app.DFlowApp):
@@ -359,6 +360,16 @@ class L2App(df_base_app.DFlowApp):
 
         # Ingress broadcast
         match = self._get_multicast_broadcast_match(local_network_id)
+
+        network = self.db_store.get_lswitch(
+            self.db_store.get_network_global_id(local_network_id))
+
+        # Send copy to DNAT if the network is public
+        # FIXME do this only if there are fips on the network
+        if network.is_external():
+            goto_dnat = parser.NXActionResubmitTable(OF_IN_PORT,
+                                                    const.INGRESS_NAT_TABLE)
+            ingress.insert(0, goto_dnat)
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
         self.mod_flow(
@@ -535,7 +546,7 @@ class L2App(df_base_app.DFlowApp):
                   'local_network_id': str(local_network_id)})
 
         network = self.local_networks.get(local_network_id)
-        if network and network.local_ports:
+        if network and (network.local_ports or network.fips):
             return
 
         if network_type == 'vlan':
@@ -624,6 +635,15 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
         # Ingress broadcast
+        network = self.db_store.get_lswitch(
+            self.db_store.get_network_global_id(network_id))
+
+        # Send copy to DNAT if the network is public
+        # FIXME do this only if there are fips on the network
+        if network.is_external():
+            goto_dnat = parser.NXActionResubmitTable(OF_IN_PORT,
+                                                    const.INGRESS_NAT_TABLE)
+            ingress.insert(0, goto_dnat)
         match = self._get_multicast_broadcast_match(network_id)
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
@@ -822,6 +842,44 @@ class L2App(df_base_app.DFlowApp):
                                                                segmentation_id,
                                                                ofport)
 
+    def _get_initialized_local_network(self, network_id):
+        return self.local_networks.setdefault(network_id, _LocalNetwork())
+
+    def associate_floatingip(self, floatingip):
+        '''We add the floating port and install tun flow to table 0 if there
+        are no local ports on the network yet'''
+        lswitch = self.db_store.get_lswitch(
+            floatingip.get_floating_network_id())
+        local_network_id = self.db_store.get_network_id(lswitch.get_id())
+
+        self._install_network_flows_on_first_port_up(
+            lswitch.get_segment_id(),
+            lswitch.get_physical_network(),
+            lswitch.get_network_type(),
+            local_network_id)
+
+        self._get_initialized_local_network(local_network_id).fips.add(
+            floatingip.get_floating_port_id())
+
+    def disassociate_floatingip(self, floatingip):
+        '''Clean up the tun flow in table 0 in case there are not more ports or
+        floating ips on th network'''
+        lswitch = self.db_store.get_lswitch(
+            floatingip.get_floating_network_id())
+        local_network_id = self.db_store.get_network_id(lswitch.get_id())
+
+        if local_network_id not in self.local_networks:
+            return
+
+        network = self.local_networks[local_network_id]
+        network.fips.remove(floatingip.get_floating_port_id())
+        if network.is_empty():
+            del self.local_networks[local_network_id]
+
+        self._del_network_flows_on_last_port_down(local_network_id,
+                                                  lswitch.get_segment_id(),
+                                                  lswitch.get_network_type())
+
     def _install_network_flows_on_first_port_up(self,
                                                 segmentation_id,
                                                 physical_network,
@@ -829,7 +887,7 @@ class L2App(df_base_app.DFlowApp):
                                                 local_network_id):
         LOG.info(_LI('Install network flows on first port up.'))
         network = self.local_networks.get(local_network_id)
-        if network and network.local_ports:
+        if network and (network.local_ports or network.fips):
             return
 
         if network_type == 'vlan':
