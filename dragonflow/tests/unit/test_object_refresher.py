@@ -26,21 +26,12 @@ class TestDbObjectsRefresh(tests_base.BaseTestCase):
 
     def setUp(self):
         super(TestDbObjectsRefresh, self).setUp()
-        self.refresher = df_db_objects_refresh.DfObjectRefresher(
-            'Mock',
-            self._cache_read_ids,
-            self._db_read_objects,
-            self._cache_update_object,
-            self._cache_delete_id)
 
         self.test_objs = {}
         self.deleted_objs = set()
         for _i in range(self.TEST_ITEMS):
             item = mock.Mock()
             self.test_objs[item.get_id()] = item
-
-    def _cache_read_ids(self):
-        return self.test_objs.keys()
 
     def _db_read_objects(self):
         # Return only half of the objects
@@ -57,9 +48,16 @@ class TestDbObjectsRefresh(tests_base.BaseTestCase):
         self.deleted_objs.add(item_id)
 
     def test_db_store(self):
-        self.refresher.read()
-        self.refresher.update()
-        self.refresher.delete()
+        refresher = df_db_objects_refresh.DfObjectRefresher(
+            'Mock',
+            lambda: self.test_objs.keys(),
+            self._db_read_objects,
+            self._cache_update_object,
+            self._cache_delete_id)
+
+        refresher.read()
+        refresher.update()
+        refresher.delete()
         # Make sure the number of elements is correct
         self.assertEqual(len(self.test_objs),
                          self.TEST_ITEMS - self.ITEMS_TO_DELETE,
@@ -69,3 +67,20 @@ class TestDbObjectsRefresh(tests_base.BaseTestCase):
             self.assertNotIn(item_id,
                              self.test_objs,
                              'Deleted object is still in the cache')
+
+    def test_restart_df_controller(self):
+        # Simulate restart df controller, in which case the local cache
+        # will be empty and nothing will be deleted.
+        fake_delete_method = mock.Mock()
+        refresher = df_db_objects_refresh.DfObjectRefresher(
+            'Mock',
+            set,
+            self._db_read_objects,
+            self._cache_update_object,
+            fake_delete_method)
+
+        refresher.read()
+        refresher.update()
+        refresher.delete()
+
+        self.assertFalse(fake_delete_method.called)
