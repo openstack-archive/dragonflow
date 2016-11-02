@@ -664,12 +664,6 @@ class NbApi(object):
             res.append(Floatingip(floatingip))
         return res
 
-    def get_floatingip_by_logical_port(self, port_id):
-        for floatingip in self.get_floatingips():
-            if port_id == floatingip['port_id']:
-                return Floatingip(floatingip)
-        return None
-
     def create_publisher(self, uuid, topic, **columns):
         publisher = {
             'id': uuid,
