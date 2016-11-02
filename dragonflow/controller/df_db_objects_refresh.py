@@ -49,7 +49,7 @@ class DfObjectRefresher(object):
         for my_object in self.db_read_objects_callback():
             self.cache_update_object_callback(my_object)
             obj_id = my_object.get_id()
-            self.object_ids_to_remove.remove(obj_id)
+            self.object_ids_to_remove.discard(obj_id)
 
     def delete(self):
         """Does the actual removal of the objects marked for removal.
