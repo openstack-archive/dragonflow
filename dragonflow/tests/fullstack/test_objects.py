@@ -57,14 +57,19 @@ class RouterTestObj(object):
         self.nb_api = nb_api
         self.closed = False
 
+    def _update_ext_gw(self, router):
+        self.has_ext_gw = 'external_gateway_info' in router
+
     def create(self, router={'name': 'myrouter1', 'admin_state_up': True}):
         new_router = self.neutron.create_router({'router': router})
         self.router_id = new_router['router']['id']
+        self._update_ext_gw(new_router['router'])
         return self.router_id
 
     def update(self, router={'name': 'myrouter2'}):
         router = self.neutron.update_router(
                 self.router_id, {'router': router})
+        self._update_ext_gw(router['router'])
         return router['router']
 
     def close(self):
@@ -82,6 +87,10 @@ class RouterTestObj(object):
                 pass
             else:
                 self.neutron.delete_port(port['id'])
+
+        if self.has_ext_gw:
+            self.neutron.remove_gateway_router(self.router_id)
+
         self.neutron.delete_router(self.router_id)
         self.closed = True
 

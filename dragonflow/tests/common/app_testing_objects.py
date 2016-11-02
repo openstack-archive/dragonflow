@@ -144,13 +144,14 @@ class Topology(object):
         self.subnets.append(subnet)
         return subnet
 
-    def create_router(self, subnet_ids):
+    def create_router(self, subnet_ids, gw_network_id=None):
         """Create a router in this topology, connected to the given subnets.
         :param subnet_ids: List of subnet ids to which the router is connected
         :type subnet_ids:  List
         """
         router_id = len(self.routers)
-        router = Router(self, router_id, subnet_ids)
+        router = Router(self, router_id, subnet_ids,
+                        gw_network_id=gw_network_id)
         self.routers.append(router)
         return router
 
@@ -370,7 +371,7 @@ class LogicalPortTap(object):
 
 class Router(object):
     """Represent a router in the topology."""
-    def __init__(self, topology, router_id, subnet_ids):
+    def __init__(self, topology, router_id, subnet_ids, gw_network_id=None):
         """Create a router in the topology. Add router interfaces for each
         subnet.
         :param topology:   The topology to which the router belongs
@@ -387,9 +388,17 @@ class Router(object):
             self.topology.neutron,
             self.topology.nb_api,
         )
-        self.router.create(router={
+        router_params = {
+            'name': 'testrouter',
             'admin_state_up': True
-        })
+        }
+
+        if gw_network_id:
+            router_params['external_gateway_info'] = {
+                'network_id': gw_network_id
+            }
+
+        self.router.create(router=router_params)
         self.router_interfaces = {}
         for subnet_id in self.subnet_ids:
             subnet = self.topology.subnets[subnet_id]
