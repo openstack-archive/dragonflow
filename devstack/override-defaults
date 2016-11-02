@@ -19,6 +19,10 @@ if is_service_enabled df-l3-agent ; then
     enable_service q-l3
 fi
 
+if is_service_enabled df-metadata ; then
+    disable_service q-meta
+fi
+
 DRAGONFLOW_CONF=/etc/neutron/plugins/dragonflow.ini
 Q_PLUGIN_EXTRA_CONF_PATH=/etc/neutron/plugins
 Q_PLUGIN_EXTRA_CONF_FILES=(dragonflow.ini)
