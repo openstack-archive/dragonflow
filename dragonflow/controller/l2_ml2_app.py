@@ -1086,7 +1086,7 @@ class L2App(df_base_app.DFlowApp):
     def _install_output_to_physical_patch(self, physical_network,
                                           local_network_id):
         if physical_network not in self.int_ofports:
-            LOG.error(_LE("Physical network %s unkown for dragonflow"),
+            LOG.error(_LE("Physical network %s unknown for dragonflow"),
                       physical_network)
             return
 
