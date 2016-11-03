@@ -330,6 +330,11 @@ class SubnetTestObj(object):
         self.subnet_id = subnet['subnet']['id']
         return self.subnet_id
 
+    def update(self, subnet):
+        subnet = self.neutron.update_subnet(self.subnet_id,
+                                            body={'subnet': subnet})
+        return subnet['subnet']
+
     def get_subnet(self):
         network = self.nb_api.get_lswitch(self.network_id)
         if not network:
