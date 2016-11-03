@@ -160,17 +160,14 @@ class TestArpResponder(test_base.DFTestBase):
                 Do nothing
         """
         self.policy.start(self.topology)
-        self.policy.wait(30)
+        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
 
 
 class TestDHCPApp(test_base.DFTestBase):
 
-    def setUp(self):
-        super(TestDHCPApp, self).setUp()
-        self.topology = None
-        self.policy = None
+    def _create_topology(self, enable_dhcp=True, cidr='192.168.11.0/24'):
         try:
             self.topology = self.store(
                 app_testing_objects.Topology(
@@ -178,25 +175,11 @@ class TestDHCPApp(test_base.DFTestBase):
                     self.nb_api
                 )
             )
-            self.subnet1 = self.topology.create_subnet(cidr='192.168.11.0/24')
+            self.subnet1 = self.topology.create_subnet(
+                cidr=cidr, enable_dhcp=enable_dhcp)
             self.port1 = self.subnet1.create_port()
             self.port2 = self.subnet1.create_port()
             time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-            # Create policy
-            dhcp_packet = self._create_dhcp_discover()
-            send_dhcp_offer = app_testing_objects.SendAction(
-                self.subnet1.subnet_id,
-                self.port1.port_id,
-                str(dhcp_packet)
-            )
-            port_policies = self._create_port_policies()
-            self.policy = self.store(
-                app_testing_objects.Policy(
-                    initial_actions=[send_dhcp_offer],
-                    port_policies=port_policies,
-                    unknown_port_action=app_testing_objects.IgnoreAction()
-                )
-            )
         except Exception:
             if self.topology:
                 self.topology.close()
@@ -382,10 +365,8 @@ class TestDHCPApp(test_base.DFTestBase):
         }
 
     def test_dhcp_app(self):
-        self.policy.start(self.topology)
-        self.policy.wait(30)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        self._create_topology()
+        self._test_enable_dhcp()
 
     def _check_dhcp_block_rule(self, flows, ofport=None):
         for flow in flows:
@@ -400,6 +381,7 @@ class TestDHCPApp(test_base.DFTestBase):
             return (self._check_dhcp_block_rule(
                 ovs.dump(self.integration_bridge)))
 
+        self._create_topology()
         dhcp_packet = self._create_dhcp_discover()
         send_dhcp_offer = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
@@ -423,6 +405,83 @@ class TestDHCPApp(test_base.DFTestBase):
         test_utils.wait_until_true(internal_predicate,
                                    const.DEFAULT_RESOURCE_READY_TIMEOUT,
                                    1, None)
+
+    def _test_disable_dhcp(self):
+        dhcp_packet = self._create_dhcp_discover()
+        send_dhcp_offer = app_testing_objects.SendAction(
+            self.subnet1.subnet_id,
+            self.port1.port_id,
+            str(dhcp_packet)
+        )
+        key = (self.subnet1.subnet_id, self.port1.port_id)
+        rules = [
+            app_testing_objects.PortPolicyRule(
+                # Detect arp replies
+                app_testing_objects.RyuDHCPFilter(),
+                actions=[
+                    app_testing_objects.RaiseAction(
+                        "Received DHCP packet"
+                    )
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 packets
+                app_testing_objects.RyuIPv6Filter(),
+                actions=[
+                    app_testing_objects.IgnoreAction()
+                ]
+            ),
+        ]
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
+        port_policy = app_testing_objects.PortPolicy(
+            rules=rules,
+            default_action=raise_action
+        )
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[send_dhcp_offer],
+                port_policies={key: port_policy},
+                unknown_port_action=app_testing_objects.IgnoreAction()
+            )
+        )
+        policy.start(self.topology)
+        try:
+            policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        except Exception:
+            # Since there is no dhcp response, we are expecting timeout
+            # exception here.
+            pass
+        finally:
+            policy.stop()
+            if len(policy.exceptions) > 0:
+                raise policy.exceptions[0]
+
+    def _test_enable_dhcp(self):
+        # Create policy
+        dhcp_packet = self._create_dhcp_discover()
+        send_dhcp_offer = app_testing_objects.SendAction(
+            self.subnet1.subnet_id,
+            self.port1.port_id,
+            str(dhcp_packet)
+        )
+        port_policies = self._create_port_policies()
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[send_dhcp_offer],
+                port_policies=port_policies,
+                unknown_port_action=app_testing_objects.IgnoreAction()
+            )
+        )
+        policy.start(self.topology)
+        policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
+
+    def test_disable_enable_dhcp(self):
+        self._create_topology(enable_dhcp=False)
+        self._test_disable_dhcp()
+        self.subnet1.update({'enable_dhcp': True})
+        self._test_enable_dhcp()
 
 
 class TestL3App(test_base.DFTestBase):
@@ -623,7 +682,7 @@ class TestL3App(test_base.DFTestBase):
 
     def test_icmp_ping_pong(self):
         self.policy.start(self.topology)
-        self.policy.wait(30)
+        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
 
@@ -947,7 +1006,7 @@ class TestSGApp(test_base.DFTestBase):
         # the rules of the initial security group associated with port3
         # only let icmp echo requests from port1 pass.
         self.policy.start(self.topology)
-        self.policy.wait(30)
+        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         # switch the associated security group with port3 to a new security
         # group, and rules of this security group only let icmp echo requests
@@ -956,7 +1015,7 @@ class TestSGApp(test_base.DFTestBase):
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         self.policy.start(self.topology)
-        self.policy.wait(30)
+        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         # switch the associated security group with port3 to the initial
         # security group
@@ -964,7 +1023,7 @@ class TestSGApp(test_base.DFTestBase):
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         self.policy.start(self.topology)
-        self.policy.wait(30)
+        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         ovs = test_utils.OvsFlowsParser()
         LOG.info(_LI("flows are: %s"),
@@ -1202,6 +1261,6 @@ class TestPortSecApp(test_base.DFTestBase):
 
     def test_icmp_ping_using_different_ip_mac(self):
         self.policy.start(self.topology)
-        self.policy.wait(30)
+        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
