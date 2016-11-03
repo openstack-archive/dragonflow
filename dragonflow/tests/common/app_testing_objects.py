@@ -136,14 +136,14 @@ class Topology(object):
             self._is_closed = True
             self.delete()
 
-    def create_subnet(self, cidr='192.168.0.0/24'):
+    def create_subnet(self, cidr='192.168.0.0/24', **kwargs):
         """Create a subnet in this topology, with the given subnet address
         range.
         :param cidr: The subnet's address range, in form <IP>/<mask len>
         :type cidr:  String
         """
         subnet_id = len(self.subnets)
-        subnet = Subnet(self, subnet_id, cidr)
+        subnet = Subnet(self, subnet_id, cidr, **kwargs)
         self.subnets.append(subnet)
         return subnet
 
@@ -160,7 +160,7 @@ class Topology(object):
 
 class Subnet(object):
     """Represent a single subnet."""
-    def __init__(self, topology, subnet_id, cidr):
+    def __init__(self, topology, subnet_id, cidr, **kwargs):
         """Create the subnet under the given topology, with the given ID, and
         the given address range.
         :param topology:  The topology to which the subnet belongs
@@ -178,8 +178,10 @@ class Subnet(object):
             self.topology.nb_api,
             self.topology.network.network_id
         )
+        enable_dhcp = kwargs.get('enable_dhcp', True)
         self.subnet.create(subnet={
             'cidr': cidr,
+            'enable_dhcp': enable_dhcp,
             'ip_version': 4,
             'network_id': topology.network.network_id,
             'host_routes': [
@@ -193,6 +195,9 @@ class Subnet(object):
                 },
             ]
         })
+
+    def update(self, updated_parameters):
+        self.subnet.update(updated_parameters)
 
     def delete(self):
         """Delete this subnet, and all attached ports."""
