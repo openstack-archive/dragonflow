@@ -60,8 +60,5 @@ ChangeLog
 # etcd Configuration
 /devstack/etcd.override
 
-# Ext services
-devstack/df-ext-services.sh
-
 # Configurations
 etc/*.sample
