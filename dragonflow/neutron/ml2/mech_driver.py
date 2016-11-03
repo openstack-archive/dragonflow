@@ -56,7 +56,6 @@ class DFMechDriver(driver_api.MechanismDriver):
 
     def initialize(self):
         LOG.info(_LI("Starting DFMechDriver"))
-        self.nb_api = None
 
         # When set to True, Nova plugs the VIF directly into the ovs bridge
         # instead of using the hybrid mode.
@@ -64,11 +63,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         self.vif_type = portbindings.VIF_TYPE_OVS
         self._set_base_port_binding()
         self.port_status = n_const.PORT_STATUS_ACTIVE
-        self.subscribe_registries()
 
-    def post_fork_initialize(self, resource, event, trigger, **kwargs):
-        # NOTE(nick-ma-z): This will initialize all workers (API, RPC,
-        # plugin service, etc) and threads with network connections.
         self.nb_api = api_nb.NbApi.get_instance(True)
         if cfg.CONF.df.enable_port_status_notifier:
             port_status_notifier = df_utils.load_driver(
@@ -80,11 +75,6 @@ class DFMechDriver(driver_api.MechanismDriver):
                                             sub=self.nb_api.subscriber,
                                             is_neutron_server=True)
             self.port_status = None
-
-    def subscribe_registries(self):
-        registry.subscribe(self.post_fork_initialize,
-                           resources.PROCESS,
-                           events.AFTER_INIT)
 
         registry.subscribe(self.update_security_group,
                            resources.SECURITY_GROUP,
