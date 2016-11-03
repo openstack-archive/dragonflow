@@ -418,20 +418,21 @@ class DFMechDriver(driver_api.MechanismDriver):
             dhcp_ip = self._update_subnet_dhcp_centralized(context, new_subnet)
             return dhcp_ip, None
 
-        if old_subnet['enable_dhcp']:
-            port = self._get_dhcp_port_for_subnet(context, old_subnet['id'])
+        if new_subnet['enable_dhcp']:
+            if not old_subnet['enable_dhcp']:
+                port = self._create_dhcp_server_port(context, new_subnet)
+            else:
+                port = self._get_dhcp_port_for_subnet(context,
+                                                      old_subnet['id'])
 
-        if not new_subnet['enable_dhcp'] and old_subnet['enable_dhcp']:
-            if port:
+            return self._get_ip_from_port(port), port
+        else:
+            if old_subnet['enable_dhcp']:
+                port = self._get_dhcp_port_for_subnet(context,
+                                                      old_subnet['id'])
                 self._delete_subnet_dhcp_port(context, port)
+
             return None, None
-        if new_subnet['enable_dhcp'] and not old_subnet['enable_dhcp']:
-            port = self._create_dhcp_server_port(context, new_subnet)
-            dhcp_ip = self._get_ip_from_port(port)
-            return dhcp_ip, port
-        if port:
-            dhcp_ip = self._get_ip_from_port(port)
-        return dhcp_ip, None
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def update_subnet_postcommit(self, context):

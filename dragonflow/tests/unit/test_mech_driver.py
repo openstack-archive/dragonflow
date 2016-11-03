@@ -313,6 +313,18 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.nb_api.delete_security_group.assert_called_with(
             sg['id'], topic=sg['tenant_id'])
 
+    def test_update_subnet_with_disabled_dhcp(self):
+        with self.subnet(enable_dhcp=False) as s:
+            self.nb_api.update_subnet.reset_mock()
+            subnet = s['subnet']
+            data = {'subnet': {'name': 'updated'}}
+            req = self.new_update_request('subnets', data, subnet['id'])
+            req.get_response(self.api)
+            self.assertTrue(self.nb_api.update_subnet.called)
+            called_args = self.nb_api.update_subnet.call_args_list[0][1]
+            self.assertEqual('updated', called_args.get('name'))
+            self.assertIsNone(called_args.get('dhcp_ip'))
+
 
 class TestDFMechansimDriverAllowedAddressPairs(
         test_plugin.TestMl2AllowedAddressPairs,
