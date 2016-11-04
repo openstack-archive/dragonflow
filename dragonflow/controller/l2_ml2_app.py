@@ -168,6 +168,7 @@ class L2App(df_base_app.DFlowApp):
         ofport = lport.get_external_value('ofport')
         port_key = lport.get_tunnel_key()
         topic = lport.get_topic()
+        device_owner = lport.get_device_owner()
 
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
@@ -196,17 +197,8 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
         # Remove destination classifier for port
-        match = parser.OFPMatch()
-        match.set_metadata(network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        self.mod_flow(
-            datapath=datapath,
-            table_id=const.L2_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
-            match=match)
+        if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
+            self._delete_dst_classifier_flow_for_port(network_id, mac)
 
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=port_key)
@@ -374,23 +366,15 @@ class L2App(df_base_app.DFlowApp):
         network_id = lport.get_external_value('local_network_id')
         tunnel_key = lport.get_tunnel_key()
         segmentation_id = lport.get_external_value('segmentation_id')
+        device_owner = lport.get_device_owner()
 
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
 
         # Remove destination classifier for port
-        match = parser.OFPMatch()
-        match.set_metadata(network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        self.mod_flow(
-            datapath=datapath,
-            table_id=const.L2_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
-            match=match)
+        if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
+            self._delete_dst_classifier_flow_for_port(network_id, mac)
 
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
@@ -424,6 +408,19 @@ class L2App(df_base_app.DFlowApp):
             datapath=datapath,
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match)
+
+    def _delete_dst_classifier_flow_for_port(self, network_id, mac):
+        parser = self.get_datapath().ofproto_parser
+        ofproto = self.get_datapath().ofproto
+        match = parser.OFPMatch()
+        match.set_metadata(network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        self.mod_flow(
+            datapath=self.get_datapath(),
+            table_id=const.L2_LOOKUP_TABLE,
+            command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
