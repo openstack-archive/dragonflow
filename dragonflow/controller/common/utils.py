@@ -11,11 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from neutron.agent.linux import utils as linux_utils
+from oslo_log import log
 from ryu.lib import addrconv
 import struct
 
+from dragonflow._i18n import _LE
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as const
+
+LOG = log.getLogger(__name__)
 
 UINT32_MAX = 0xffffffff
 _aging_cookie = 0
@@ -46,3 +51,27 @@ def set_aging_cookie_bits(cookie):
 
 def get_xor_cookie(cookie):
     return cookie ^ const.GLOBAL_INIT_AGING_COOKIE
+
+
+def delete_conntrack_entries_by_filter(filter):
+    cmd = ['conntrack', '-D']
+    protocol = filter.get('protocol')
+    if protocol:
+        cmd.extend(['-p', str(protocol)])
+    cmd.extend(['-f', filter.get('ethertype').lower()])
+    nw_src = filter.get('nw_src')
+    if nw_src:
+        cmd.extend(['-s', nw_src])
+    nw_dst = filter.get('nw_dst')
+    if nw_dst:
+        cmd.extend(['-d', nw_dst])
+    zone = filter.get('zone_id')
+    if zone:
+        cmd.extend(['-w', str(zone)])
+
+    try:
+        linux_utils.execute(cmd, run_as_root=True, check_exit_code=True,
+                            extra_ok_codes=[1])
+        LOG.debug("Successfully executed conntrack command %s", cmd)
+    except RuntimeError:
+        LOG.exception(_LE("Failed execute conntrack command %s"), cmd)

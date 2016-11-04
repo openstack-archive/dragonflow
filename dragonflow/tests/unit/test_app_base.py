@@ -56,6 +56,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
             'dragonflow.controller.df_base_app.DFlowApp.mod_flow').start()
         mock.patch('dragonflow.controller.df_base_app.DFlowApp.'
                    'add_flow_go_to_table').start()
+        mock.patch('neutron.agent.linux.utils.execute').start()
 
 fake_logic_router1 = db_models.LogicalRouter("{}")
 fake_logic_router1.inner_obj = {
@@ -96,6 +97,7 @@ fake_logic_switch1.inner_obj = {
                  "id": "fake_subnet1"}],
     "name": "private",
     "router_external": False,
+    'unique_key': 1,
     "segmentation_id": 41,
     "mtu": 1450,
     "topic": "fake_tenant1",
@@ -118,6 +120,7 @@ fake_external_switch1.inner_obj = {
                  "id": "fake_external_subnet1"}],
     "name": "public",
     "router_external": True,
+    'unique_key': 2,
     "segmentation_id": 69,
     "mtu": 1450,
     "topic": "fake_tenant1",

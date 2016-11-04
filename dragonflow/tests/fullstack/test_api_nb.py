@@ -12,6 +12,7 @@
 
 import copy
 
+from dragonflow.db import db_models
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.unit import test_app_base
 
@@ -22,7 +23,6 @@ class Test_API_NB(test_base.DFTestBase):
         fake_lswitch = copy.deepcopy(
             test_app_base.fake_logic_switch1.inner_obj)
         del fake_lswitch['unique_key']
-
         self.nb_api.create_lswitch(**fake_lswitch)
         self.addCleanup(self.nb_api.delete_lswitch,
                         fake_lswitch['id'], fake_lswitch['topic'])
