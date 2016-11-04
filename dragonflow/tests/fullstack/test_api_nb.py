@@ -12,6 +12,7 @@
 
 import copy
 
+from dragonflow.db import db_models
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.unit import test_app_base
 
@@ -24,7 +25,11 @@ class Test_API_NB(test_base.DFTestBase):
         self.assertNotEqual(key1, key2)
 
     def test_create_lswitch(self):
-        fake_lswitch = test_app_base.fake_logic_switch1.inner_obj
+        fake_lswitch_base = test_app_base.fake_logic_switch1.inner_obj
+        fake_lswitch = copy.deepcopy(fake_lswitch_base)
+        # Delete unique_key option in fake_lswitch_base to obtain a new unique
+        # key for fake_lswitch
+        del fake_lswitch[db_models.UNIQUE_KEY]
         self.nb_api.create_lswitch(**fake_lswitch)
         self.addCleanup(self.nb_api.delete_lswitch,
                         fake_lswitch['id'], fake_lswitch['topic'])
