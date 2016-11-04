@@ -17,8 +17,7 @@ NODE_COUNT_END=5
 REMOTE_PORT_END=`expr $REMOTE_PORT_START + $NODE_COUNT_END`
 REDIS_PORT=`seq $REMOTE_PORT_START $REMOTE_PORT_END`
 
-function configure_redis {
-
+function _configure_redis {
     pushd /opt/redis3/conf
     sudo sh -c "grep -q ulimit /etc/profile ||
                 echo ulimit -SHn 40960 >> /etc/profile"
@@ -44,9 +43,8 @@ function configure_redis {
 }
 
 function nb_db_driver_install_server {
-
     if [ "$DF_REDIS_INSTALL_FROM_RUBY" == "True" ]; then
-        echo "Installing rediscluster"
+        echo "Installing Redis cluster"
         if [ ! -f "$DEST/redis/redis-$REDIS_VERSION/redis" ]; then
             mkdir -p $DEST/redis
             if [ ! -f "$DEST/redis/redis-$REDIS_VERSION.tar.gz" ]; then
@@ -66,7 +64,7 @@ function nb_db_driver_install_server {
 
             sudo chown -hR $STACK_USER /opt/redis3/
             if is_ubuntu || is_fedora; then
-                configure_redis
+                _configure_redis
             fi
 
             mkdir -p $DEST/ruby
@@ -104,13 +102,13 @@ function nb_db_driver_start_server {
     create=
     if is_service_enabled df-redis-server ; then
         if is_ubuntu || is_fedora; then
-            #to acquire if should recreate cluster
+            # to acquire if should recreate cluster
             for redisserver in $REDIS_SERVER_LIST; do
                 for port in $REDIS_PORT; do
                     test -f /opt/redis3/conf/nodes-$port.conf || { create=true; break 2 ; }
                 done
             done
-             #start redis
+             # start redis
              for redisserver in $REDIS_SERVER_LIST; do
                  for port in $REDIS_PORT; do
                      echo $redisserver:$port
@@ -125,9 +123,9 @@ function nb_db_driver_start_server {
                      popd
                  done
              done
-             #create cluster
+             # create cluster
              [ "$create" ] && {
-                 echo "create the cluster: "$redis_cluster
+                 echo "Create the Redis cluster: "$redis_cluster
                  pushd /opt/redis3/bin/
                  echo "yes" |sudo ./redis-trib.rb create --replicas 1 $redis_cluster
                  popd
@@ -142,7 +140,7 @@ function nb_db_driver_stop_server {
         if is_ubuntu || is_fedora; then
             for redisserver in $REDIS_SERVER_LIST; do
                 for port in $REDIS_PORT; do
-                    echo "shutshow redis: "$redisserver:$port
+                    echo "Shutshow Redis: "$redisserver:$port
                     sudo /opt/redis3/bin/redis-cli -p $port shutdown
                     pushd /opt/redis3/
                     sudo rm -rf nodes*.conf
@@ -151,6 +149,19 @@ function nb_db_driver_stop_server {
                     popd
                 done
             done
+        fi
+    fi
+}
+
+function nb_db_driver_clean {
+    sudo rm -rf /opt/redis3
+    if [ "$DF_REDIS_INSTALL_FROM_RUBY" == "True" ]; then
+        sudo gem uninstall redis
+    else
+        if is_ubuntu; then
+           uninstall_package -y redis-server
+        elif is_fedora; then
+           uninstall_package -y redis
         fi
     fi
 }

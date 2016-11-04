@@ -10,20 +10,17 @@
 # - nb_db_driver_clean
 
 ETCD_VERSION=v2.2.2
+OVERRIDE_FILE=$DEST/dragonflow/devstack/etcd.override
 
 if is_ubuntu ; then
     UBUNTU_RELEASE_BASE_NUM=`lsb_release -r | awk '{print $2}' | cut -d '.' -f 1`
 fi
 
-function configure_etcd_systemd_service {
+function _configure_etcd_systemd_service {
     ETCD_CONF_DIR=/etc/etcd
     ETCD_CONF=$ETCD_CONF_DIR/etcd.conf
     ETCD_DATA_DIR="/var/lib/etcd"
-    # Delete any existing etcd database:
-    sudo rm -rf $ETCD_DATA_DIR
     sudo mkdir -p $ETCD_DATA_DIR
-
-    sudo rm -rf $ETCD_CONF_DIR
     sudo install -d -o $STACK_USER $ETCD_CONF_DIR
     cp $DEST/dragonflow/devstack/etcd.service.conf $ETCD_CONF
 
@@ -41,14 +38,8 @@ function configure_etcd_systemd_service {
     sudo systemctl enable etcd
 }
 
-function configure_etcd {
-
+function _configure_etcd {
     sudo cp $DEST/dragonflow/devstack/etcd.conf /etc/init/etcd.conf
-    # Delete any existing etcd database:
-    sudo rm -rf /var/etcd
-
-    OVERRIDE_FILE=$DEST/dragonflow/devstack/etcd.override
-    sudo rm -f $OVERRIDE_FILE
 
 cat <<EOF > $OVERRIDE_FILE
 # Override file for etcd Upstart script providing some environment variables
@@ -80,12 +71,12 @@ function nb_db_driver_install_server {
         fi
         if is_ubuntu; then
             if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
-                configure_etcd_systemd_service
+                _configure_etcd_systemd_service
             else
-                configure_etcd
+                _configure_etcd
             fi
         elif is_fedora; then
-            configure_etcd_systemd_service
+            _configure_etcd_systemd_service
         fi
     fi
 }
@@ -114,3 +105,11 @@ function nb_db_driver_stop_server {
     fi
 }
 
+function nb_db_driver_clean {
+    sudo rm -rf $ETCD_DATA_DIR
+    sudo rm -rf $ETCD_CONF_DIR
+    sudo rm -rf /var/etcd
+    sudo rm -f $OVERRIDE_FILE
+    sudo rm /lib/systemd/system/etcd.service
+    sudo rm /usr/local/bin/etcd
+}

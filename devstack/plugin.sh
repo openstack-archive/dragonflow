@@ -490,6 +490,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "unstack" ]]; then
         stop_df_metadata_agent
         stop_df
+        nb_db_driver_clean
         cleanup_ovs
         stop_ovs
         uninstall_ovs
