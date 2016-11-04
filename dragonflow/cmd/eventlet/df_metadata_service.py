@@ -15,8 +15,8 @@ from oslo_log import log
 
 from neutron.agent.common import utils
 from neutron.agent.linux import ip_lib
-from neutron.agent.metadata import config as metadata_conf
 from neutron.common import config
+from neutron.conf.agent.metadata import config as metadata_conf
 from neutron import wsgi
 
 from dragonflow._i18n import _LI
@@ -69,7 +69,8 @@ def environment_destroy():
 
 
 def main():
-    cfg.CONF.register_opts(metadata_conf.METADATA_PROXY_HANDLER_OPTS)
+    metadata_conf.register_meta_conf_opts(
+        metadata_conf.METADATA_PROXY_HANDLER_OPTS)
     cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
     cfg.CONF.register_opts(metadata_service_app.DF_METADATA_OPTS,
                            'df_metadata')
