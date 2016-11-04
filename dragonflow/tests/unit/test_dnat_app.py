@@ -35,7 +35,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
         # Assert calls have been placed
         self.arp_responder.assert_called_once_with(
-            self.datapath, None,
+            self.dnat_app, None,
             test_app_base.fake_floatingip1.get_ip_address(),
             test_app_base.fake_floatingip1.get_mac_address(),
             constants.INGRESS_NAT_TABLE)

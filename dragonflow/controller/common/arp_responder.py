@@ -28,9 +28,10 @@ class ArpResponder(object):
     @param interface_mac The port's physical address. Optional only in case
             of remove.
     """
-    def __init__(self, datapath, network_id, interface_ip,
+    def __init__(self, app, network_id, interface_ip,
                  interface_mac=None, table_id=const.ARP_TABLE):
-        self.datapath = datapath
+        self.app = app
+        self.datapath = app.get_datapath()
         self.network_id = network_id
         self.interface_ip = interface_ip
         self.mac_address = interface_mac
@@ -68,28 +69,21 @@ class ArpResponder(object):
         match = self._get_match()
         instructions = self._get_instructions()
         ofproto = self.datapath.ofproto
-        parser = self.datapath.ofproto_parser
-        msg = parser.OFPFlowMod(datapath=self.datapath,
-                                table_id=self.table_id,
-                                cookie=utils.set_aging_cookie_bits(0),
-                                command=ofproto.OFPFC_ADD,
-                                priority=const.PRIORITY_MEDIUM,
-                                match=match, instructions=instructions,
-                                flags=ofproto.OFPFF_SEND_FLOW_REM)
-        self.datapath.send_msg(msg)
+        self.app.mod_flow(
+                datapath=self.datapath,
+                table_id=self.table_id,
+                command=ofproto.OFPFC_ADD,
+                priority=const.PRIORITY_MEDIUM,
+                match=match,
+                flags=ofproto.OFPFF_SEND_FLOW_REM,
+                inst=instructions)
 
     def remove(self):
         ofproto = self.datapath.ofproto
-        parser = self.datapath.ofproto_parser
         match = self._get_match()
-
-        msg = parser.OFPFlowMod(datapath=self.datapath,
-                                cookie=utils.set_aging_cookie_bits(0),
-                                cookie_mask=0,
-                                table_id=self.table_id,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_MEDIUM,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
-        self.datapath.send_msg(msg)
+        self.app.mod_flow(
+                datapath=self.datapath,
+                table_id=self.table_id,
+                command=ofproto.OFPFC_DELETE,
+                priority=const.PRIORITY_MEDIUM,
+                match=match)

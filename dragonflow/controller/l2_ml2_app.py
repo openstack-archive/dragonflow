@@ -145,7 +145,7 @@ class L2App(df_base_app.DFlowApp):
             return
         network_id = lport.get_external_value('local_network_id')
         mac = lport.get_mac()
-        arp_responder.ArpResponder(self.get_datapath(),
+        arp_responder.ArpResponder(self,
                                    network_id, ip, mac).add()
 
     def _remove_arp_responder(self, lport):
@@ -155,7 +155,7 @@ class L2App(df_base_app.DFlowApp):
         if netaddr.IPAddress(ip).version != 4:
             return
         network_id = lport.get_external_value('local_network_id')
-        arp_responder.ArpResponder(self.get_datapath(),
+        arp_responder.ArpResponder(self,
                                    network_id, ip).remove()
 
     def remove_local_port(self, lport):
@@ -182,8 +182,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         match = parser.OFPMatch(reg7=port_key)
@@ -192,8 +190,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.INGRESS_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         # Remove destination classifier for port
@@ -207,8 +203,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.EGRESS_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         self._remove_arp_responder(lport)
@@ -236,8 +230,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         # Update multicast and broadcast
@@ -292,8 +284,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         # Egress for broadcast and multicast
@@ -304,8 +294,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
     def _update_multicast_broadcast_flows_for_local(self, local_ports, topic,
@@ -383,8 +371,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.EGRESS_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         self._remove_arp_responder(lport)
@@ -558,8 +544,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
     def _add_multicast_broadcast_handling_for_local_port(self,
@@ -678,8 +662,6 @@ class L2App(df_base_app.DFlowApp):
             command=ofproto.OFPFC_DELETE,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_HIGH,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
     def _update_multicast_broadcast_flows_for_remote(self, network_id,
@@ -791,8 +773,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
     def add_remote_port(self, lport):
@@ -1036,8 +1016,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         match = parser.OFPMatch(metadata=local_network_id)
@@ -1068,8 +1046,6 @@ class L2App(df_base_app.DFlowApp):
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         match = parser.OFPMatch(metadata=local_network_id)

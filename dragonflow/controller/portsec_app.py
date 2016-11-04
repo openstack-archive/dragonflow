@@ -273,9 +273,7 @@ class PortSecApp(df_base_app.DFlowApp):
                       table_id=const.EGRESS_PORT_SECURITY_TABLE,
                       priority=priority,
                       match=match,
-                      command=ofproto.OFPFC_DELETE_STRICT,
-                      out_port=ofproto.OFPP_ANY,
-                      out_group=ofproto.OFPG_ANY)
+                      command=ofproto.OFPFC_DELETE_STRICT)
 
     def _uninstall_port_security_flows(self, datapath, lport):
         ofport = lport.get_external_value('ofport')
