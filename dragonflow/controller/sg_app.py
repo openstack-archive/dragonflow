@@ -21,6 +21,7 @@ import six
 
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
 from dragonflow.db import models
 
@@ -847,6 +848,9 @@ class SGApp(df_base_app.DFlowApp):
                         added_cidr,
                         removed_cidr
                     )
+                    # delete conntrack entities by rule and remote address
+                    self._delete_conntrack_entries_by_remote_address(
+                        removed_ips, rule_info)
 
     def _add_local_port_associating(self, lport, secgroup_id):
         self._associate_secgroup_lport_addresses(secgroup_id, lport)
@@ -876,6 +880,9 @@ class SGApp(df_base_app.DFlowApp):
         if associate_ports is not None:
             if lport.get_id() in associate_ports:
                 associate_ports.remove(lport.get_id())
+                # delete conntrack entities by port
+                self._delete_conntrack_entries_by_local_port_info(
+                    lport, None, secgroup_id)
                 if len(associate_ports) == 0:
                     self._uninstall_security_group_flow(secgroup_id)
                     del self.secgroup_associate_local_ports[secgroup_id]
@@ -923,6 +930,9 @@ class SGApp(df_base_app.DFlowApp):
                     added_cidr,
                     removed_cidr
                 )
+                # delete conntrack entities by rule and remote address
+                self._delete_conntrack_entries_by_remote_address(
+                    removed_ips, rule_info)
 
     def _get_added_and_removed_and_unchanged_secgroups(self, secgroups,
                                                        original_secgroups):
@@ -999,6 +1009,9 @@ class SGApp(df_base_app.DFlowApp):
         for secgroup_id in unchanged_secgroups:
             self._update_port_addresses_process(lport, original_lport,
                                                 secgroup_id)
+            # delete conntrack entities by port addresses changed
+            self._delete_conntrack_entries_by_local_port_info(
+                lport, original_lport, secgroup_id)
 
         if secgroups and not original_secgroups:
             # install ct table
@@ -1115,3 +1128,107 @@ class SGApp(df_base_app.DFlowApp):
                     del self.remote_secgroup_ref[remote_group_id]
 
         self._uninstall_security_group_rule_flows(secgroup_rule)
+
+        # delete conntrack entities by rule
+        self._delete_conntrack_entries_by_rule(secgroup_rule)
+
+    def _delete_conntrack_entries_process(self, port_info, rule,
+                                          remote_address_list=None):
+        ethertype = rule.get_ethertype()
+        if 'ingress' == rule.get_direction():
+            nw_match_mark = 'nw_dst'
+            remote_match_mark = 'nw_src'
+        else:
+            nw_match_mark = 'nw_src'
+            remote_match_mark = 'nw_dst'
+        for port_ip in port_info['removed_ips']:
+            entries_filter = {
+                'ethertype': ethertype,
+                nw_match_mark: port_ip,
+                'zone': port_info['zone_id']
+            }
+            protocol = rule.get_protocol()
+            if protocol:
+                entries_filter['protocol'] = protocol
+            if remote_address_list:
+                for remote_address in remote_address_list:
+                    entries_filter_tmp = entries_filter.copy()
+                    entries_filter_tmp[remote_match_mark] = remote_address
+                    utils.delete_conntrack_entries_by_filter(
+                        **entries_filter_tmp)
+            else:
+                utils.delete_conntrack_entries_by_filter(**entries_filter)
+
+    def _delete_conntrack_entries_by_rule(self, rule, filter_port_info=None,
+                                          filter_remote_addresses=None):
+        """Delete connection track entries filtered by a security group rule
+        and other filtering parameters.
+
+        :param rule:    a security group rule
+        :type rule:     security group rule object
+        :param filter_port_info:    local port information
+        :type filter_port_info:     a tuple of 'removed_ips' and 'zone_id'
+        :param filter_remote_addresses: IP addresses in a lport associated
+                                         with the remote group of the rule
+        :type filter_remote_addresses:  a list of IP addresses
+        """
+        if rule.get_ethertype() == n_const.IPv6:
+            # Not support IPv6 yet. Because the controller has already printed
+            # logs in other methods, there is no need to print extra logs here.
+            return
+
+        if filter_remote_addresses:
+            remote_address_list = filter_remote_addresses
+        else:
+            remote_address_list = None
+            # Conntrack command only support to delete entries by specifying a
+            # net address than a cidr, but the number of addresses transformed
+            # from a remote group or a remote ip prefix could be quite huge,
+            # DF won't delete conntrack entries filtered by remote group or
+            # remote ip prefix.
+
+        if filter_port_info:
+            associating_ports_info = [filter_port_info]
+        else:
+            associating_ports_info = []
+            associating_port_ids = self.secgroup_associate_local_ports.get(
+                rule.get_security_group_id())
+            for port_id in associating_port_ids:
+                lport = self.db_store.get_port(port_id)
+                removed_ips = self._get_ips_in_logical_port(lport)
+                zone_id = lport.get_external_value('local_network_id')
+                associating_ports_info.append({'removed_ips': removed_ips,
+                                               'zone_id': zone_id})
+
+        for port_info in associating_ports_info:
+            self._delete_conntrack_entries_process(
+                port_info, rule, remote_address_list)
+
+    def _delete_conntrack_entries_by_local_port_info(
+            self, lport, original_lport, secgroup_id):
+        """Delete connection track entries filtered by the local lport and the
+        associated security group of the lport.
+        """
+        ips = self._get_ips_in_logical_port(lport)
+        if original_lport:
+            original_ips = self._get_ips_in_logical_port(original_lport)
+            removed_ips = original_ips - ips
+        else:
+            removed_ips = ips
+        zone_id = lport.get_external_value('local_network_id')
+
+        local_port_info = {'removed_ips': removed_ips, 'zone_id': zone_id}
+        secgroup = self.db_store.get_security_group(secgroup_id)
+        if secgroup is not None:
+            for rule in secgroup.get_rules():
+                self._delete_conntrack_entries_by_rule(
+                    rule, filter_port_info=local_port_info)
+
+    def _delete_conntrack_entries_by_remote_address(self, remote_addresses,
+                                                    rule):
+        """Delete connection track entries filtered by the security group rule
+        and the IP addresses in a lport associated with the remote group of the
+        rule.
+        """
+        self._delete_conntrack_entries_by_rule(
+            rule, filter_remote_addresses=remote_addresses)

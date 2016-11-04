@@ -13,7 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
 import netaddr
+
+from neutron.agent.common import utils
 
 from dragonflow.db import models as db_models
 from dragonflow.tests.unit import test_app_base
@@ -32,6 +35,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.security_group = test_app_base.fake_security_group
         self.fake_local_lport = test_app_base.fake_local_port1
         self.fake_remote_lport = test_app_base.fake_remote_port1
+        self.mock_execute = utils.execute
 
         self.datapath.ofproto.OFPFC_ADD = COMMAND_ADD
         self.datapath.ofproto.OFPFC_MODIFY = COMMAND_ADD
@@ -112,6 +116,22 @@ class TestSGApp(test_app_base.DFAppTestBase):
         count_of_del_flow = self._get_call_count_of_del_flow()
         return call_counts - count_of_del_flow
 
+    def _get_expected_conntrack_cmd(self, ethertype, protocol, nw_src, nw_dst,
+                                    zone):
+        cmd = ['conntrack', '-D']
+        if protocol:
+            cmd.extend(['-p', str(protocol)])
+        cmd.extend(['-f', ethertype.lower()])
+        if nw_src:
+            cmd.extend(['-s', nw_src])
+        if nw_dst:
+            cmd.extend(['-d', nw_dst])
+        if zone:
+            cmd.extend(['-w', str(zone)])
+
+        return mock.call(cmd, run_as_root=True, check_exit_code=True,
+                         extra_ok_codes=[1])
+
     def test_add_delete_lport(self):
         # create fake security group
         self.controller.update_secgroup(self.security_group)
@@ -163,6 +183,20 @@ class TestSGApp(test_app_base.DFAppTestBase):
         #    remote_group_id changed) in ingress secgroup table
         self.assertEqual(5, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
+        expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol='udp', nw_src='10.0.0.10',
+            nw_dst=None, zone=1)
+        expected_conntrack_cmd2 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol=None, nw_src=None,
+            nw_dst='10.0.0.10', zone=1)
+        expected_conntrack_cmd3 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol=None, nw_src='10.0.0.10',
+            nw_dst='10.0.0.6', zone=1)
+        self.mock_execute.assert_has_calls([expected_conntrack_cmd1,
+                                            expected_conntrack_cmd2,
+                                            expected_conntrack_cmd3],
+                                           any_order=True)
+        self.mock_execute.reset_mock()
 
         # add remote port after adding a local port
         self.controller.update_lport(self.fake_remote_lport)
@@ -179,6 +213,12 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # remote_group_id changed) in ingress secgroup table
         self.assertEqual(1, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
+        expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol=None, nw_src='10.0.0.8',
+            nw_dst='10.0.0.6', zone=1)
+        self.mock_execute.assert_has_calls([expected_conntrack_cmd1],
+                                           any_order=True)
+        self.mock_execute.reset_mock()
 
         # remove local port one
         self.controller.delete_lport(self.fake_local_lport.get_id())
@@ -195,6 +235,16 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # 9. the permit flow in egress secgroup table
         self.assertEqual(9, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
+        expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol='udp', nw_src='10.0.0.6',
+            nw_dst=None, zone=1)
+        expected_conntrack_cmd2 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol=None, nw_src=None,
+            nw_dst='10.0.0.6', zone=1)
+        self.mock_execute.assert_has_calls([expected_conntrack_cmd1,
+                                            expected_conntrack_cmd2],
+                                           any_order=True)
+        self.mock_execute.reset_mock()
 
         # delete fake security group
         self.controller.delete_secgroup(self.security_group.get_id())
@@ -240,6 +290,16 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.assertEqual(6, self._get_call_count_of_add_flow())
         self.assertEqual(7, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
+        expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol='udp', nw_src='10.0.0.10',
+            nw_dst=None, zone=1)
+        expected_conntrack_cmd2 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol=None, nw_src=None,
+            nw_dst='10.0.0.10', zone=1)
+        self.mock_execute.assert_has_calls([expected_conntrack_cmd1,
+                                            expected_conntrack_cmd2],
+                                           any_order=True)
+        self.mock_execute.reset_mock()
 
         # update the association of the lport to no security group
         fake_local_lport = self._get_another_local_lport()
@@ -260,6 +320,16 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # 9. the permit flow in egress secgroup table
         self.assertEqual(9, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
+        expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol='tcp', nw_src='10.0.0.10',
+            nw_dst=None, zone=1)
+        expected_conntrack_cmd2 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol=None, nw_src=None,
+            nw_dst='10.0.0.10', zone=1)
+        self.mock_execute.assert_has_calls([expected_conntrack_cmd1,
+                                            expected_conntrack_cmd2],
+                                           any_order=True)
+        self.mock_execute.reset_mock()
 
         # remove local port
         self.controller.delete_lport(fake_local_lport.get_id())
@@ -280,6 +350,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
             ['fake_security_group_id2']
         self.controller.update_lport(fake_local_lport)
         self.mock_mod_flow.reset_mock()
+        self.mock_execute.reset_mock()
 
         # add a security group rule
         security_group = self._get_another_security_group()
@@ -311,6 +382,12 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # 1. a egress rule flow in egress secgroup table
         self.assertEqual(1, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
+        expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
+            ethertype='IPv4', protocol='udp', nw_src='10.0.0.10',
+            nw_dst=None, zone=1)
+        self.mock_execute.assert_has_calls([expected_conntrack_cmd1],
+                                           any_order=True)
+        self.mock_execute.reset_mock()
 
         # remove local ports
         self.controller.delete_lport(fake_local_lport.get_id())
