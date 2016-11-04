@@ -233,55 +233,40 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
     def test_create_update_port_with_enabled_security(self):
         self._test_create_update_port_security(True)
 
-    def test_create_update_port_revision(self):
-        with self.port(name='port', device_owner='fake_owner',
-                       device_id='fake_id') as p:
-            port = p['port']
-            self.assertGreater(port['revision_number'], 0)
-            self.nb_api.create_lport.assert_called_with(
-                id=port['id'],
-                lswitch_id=port['network_id'],
-                topic=port['tenant_id'],
-                macs=[port['mac_address']], ips=mock.ANY,
-                subnets=mock.ANY, name=port['name'],
-                enabled=port['admin_state_up'],
-                chassis=mock.ANY,
-                version=port['revision_number'],
-                device_owner=port['device_owner'],
-                device_id=port['device_id'],
-                security_groups=mock.ANY,
-                port_security_enabled=mock.ANY,
-                remote_vtep=False,
-                allowed_address_pairs=mock.ANY,
-                binding_profile=mock.ANY,
-                binding_vnic_type=mock.ANY,
-                qos_policy_id=None,
-                extra_dhcp_opts=[])
+    def test_create_port_with_device_option(self):
+        with self.subnet(enable_dhcp=False) as subnet:
+            with self.port(subnet=subnet, device_owner='fake_owner',
+                           device_id='fake_id'):
+                self.assertTrue(self.nb_api.create_lport.called)
+                called_args_dict = (
+                    self.nb_api.create_lport.call_args_list[0][1])
+                self.assertEqual('fake_owner',
+                                 called_args_dict.get('device_owner'))
+                self.assertEqual('fake_id',
+                                 called_args_dict.get('device_id'))
 
-            data = {'port': {'name': 'updated'}}
-            req = self.new_update_request('ports', data, port['id'])
-            req.get_response(self.api)
-            prev_version = port['revision_number']
-            port = self.driver.get_port(self.context, port['id'])
-            self.assertGreater(port['revision_number'], prev_version)
-            self.nb_api.update_lport.assert_called_with(
-                id=port['id'],
-                topic=port['tenant_id'],
-                macs=[port['mac_address']], ips=mock.ANY,
-                subnets=mock.ANY, name=port['name'],
-                enabled=port['admin_state_up'],
-                chassis=mock.ANY,
-                version=port['revision_number'],
-                device_owner=port['device_owner'],
-                device_id=port['device_id'],
-                remote_vtep=False,
-                security_groups=mock.ANY,
-                port_security_enabled=mock.ANY,
-                allowed_address_pairs=mock.ANY,
-                binding_profile=mock.ANY,
-                binding_vnic_type=mock.ANY,
-                qos_policy_id=None,
-                extra_dhcp_opts=[])
+    def test_create_update_port_revision(self):
+        with self.subnet(enable_dhcp=False) as subnet:
+            with self.port(subnet=subnet) as p:
+                port = p['port']
+                self.assertGreater(port['revision_number'], 0)
+                self.assertTrue(self.nb_api.create_lport.called)
+                called_args_dict = (
+                    self.nb_api.create_lport.call_args_list[0][1])
+                self.assertEqual(port['revision_number'],
+                                 called_args_dict.get('version'))
+
+                data = {'port': {'name': 'updated'}}
+                req = self.new_update_request('ports', data, port['id'])
+                req.get_response(self.api)
+                prev_version = port['revision_number']
+                port = self.driver.get_port(self.context, port['id'])
+                self.assertGreater(port['revision_number'], prev_version)
+                self.assertTrue(self.nb_api.update_lport.called)
+                called_args_dict = (
+                    self.nb_api.update_lport.call_args_list[0][1])
+                self.assertEqual(port['revision_number'],
+                                 called_args_dict.get('version'))
 
     def test_delete_network(self):
         network = self._test_create_network_revision()
