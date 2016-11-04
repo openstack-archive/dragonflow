@@ -11,12 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from oslo_config import cfg
-from ryu.lib import addrconv
 import struct
 
+from neutron.agent.common import utils
+from oslo_config import cfg
+from oslo_log import log
+from ryu.lib import addrconv
+
+from dragonflow._i18n import _LE
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as const
+
+LOG = log.getLogger(__name__)
 
 UINT32_MAX = 0xffffffff
 _aging_cookie = 0
@@ -56,3 +62,24 @@ def check_active_port_detection_app():
     if ACTIVE_PORT_DETECTION_APP in apps_list:
         return True
     return False
+
+
+def delete_conntrack_entries_by_filter(ethertype='IPv4', protocol=None,
+                                       nw_src=None, nw_dst=None, zone=None):
+    cmd = ['conntrack', '-D']
+    if protocol:
+        cmd.extend(['-p', str(protocol)])
+    cmd.extend(['-f', ethertype.lower()])
+    if nw_src:
+        cmd.extend(['-s', nw_src])
+    if nw_dst:
+        cmd.extend(['-d', nw_dst])
+    if zone:
+        cmd.extend(['-w', str(zone)])
+
+    try:
+        utils.execute(cmd, run_as_root=True, check_exit_code=True,
+                      extra_ok_codes=[1])
+        LOG.debug("Successfully executed conntrack command %s", cmd)
+    except RuntimeError:
+        LOG.exception(_LE("Failed execute conntrack command %s"), cmd)
