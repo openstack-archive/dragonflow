@@ -17,6 +17,7 @@ from neutron.common import config as common_config
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
+from dragonflow.cli import utils as cli_utils
 from dragonflow.common import common_params
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
@@ -29,12 +30,16 @@ db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
 
 
 def print_tables():
-    print(' ')
-    print('DB Tables')
-    print('----------')
+    tables = []
+    columns = ['table']
     for table in db_tables:
-        print table
-    print(' ')
+        tables.append({'table': table})
+
+    labels, formatters = \
+        cli_utils.get_list_table_columns_and_formatters(columns, tables)
+    labels[0] = 'DB Tables'
+    cli_utils.print_list(tables, columns, formatters=formatters,
+                         field_labels=labels)
 
 
 def print_table(db_driver, table):
@@ -42,12 +47,15 @@ def print_table(db_driver, table):
         keys = db_driver.get_all_keys(table)
     except df_exceptions.DBKeyNotFound:
         keys = []
-    print(' ')
-    print('Keys for table ' + table)
-    print('------------------------------------------------------------')
-    for key in keys:
-        print key
-    print(' ')
+
+    for count, key in enumerate(keys):
+        keys[count] = {'key': key}
+
+    labels, formatters = \
+        cli_utils.get_list_table_columns_and_formatters(['key'], keys)
+    labels[0] = 'Keys for table'
+    cli_utils.print_list(keys, ['key'], formatters=formatters,
+                         field_labels=labels)
 
 
 def print_whole_table(db_driver, table):
@@ -56,19 +64,24 @@ def print_whole_table(db_driver, table):
     except df_exceptions.DBKeyNotFound:
         print('Table not found: ' + table)
         return
-    print(' ')
-    print('------------------------------------------------------------')
-    print('Table = ' + table)
-    print('------------------------------------------------------------')
 
-    for key in keys:
-        try:
-            value = db_driver.get_key(table, key)
-            if value:
-                print('Key = ' + key + ' , Value = ' + value)
-        except df_exceptions.DBKeyNotFound:
-            print('Key not found: ' + key)
-    print(' ')
+    values = [jsonutils.loads(db_driver.get_key(table, key)) for key in keys]
+    if isinstance(values[0], dict):
+        columns = values[0].keys()
+        labels, formatters = \
+            cli_utils.get_list_table_columns_and_formatters(columns, values)
+        cli_utils.print_list(values, columns, formatters=formatters,
+                             field_labels=labels)
+    elif isinstance(values[0], int):
+        l = 0
+        for value in values:
+            values[l] = {table: value}
+            l += 1
+        columns = [table]
+        labels, formatters = \
+            cli_utils.get_list_table_columns_and_formatters(columns, values)
+        cli_utils.print_list(values, columns, formatters=formatters,
+                             field_labels=columns)
 
 
 def print_key(db_driver, table, key):
@@ -77,11 +90,8 @@ def print_key(db_driver, table, key):
     except df_exceptions.DBKeyNotFound:
         print('Key not found: ' + table)
         return
-    print(' ')
-    print('Table = ' + table + ' , Key = ' + key)
-    print('------------------------------------------------------------')
-    print value
-    print(' ')
+
+    cli_utils.print_dict(jsonutils.loads(value))
 
 
 def bind_port_to_localhost(db_driver, port_id):
@@ -237,8 +247,8 @@ def main():
                                        description='valid subcommands')
     add_table_command(subparsers)
     add_ls_command(subparsers)
-    add_get_command(subparsers)
     add_dump_command(subparsers)
+    add_get_command(subparsers)
     add_bind_command(subparsers)
     add_clean_command(subparsers)
     add_rm_command(subparsers)
