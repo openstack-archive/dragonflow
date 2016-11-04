@@ -55,6 +55,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
             'dragonflow.controller.df_base_app.DFlowApp.mod_flow').start()
         mock.patch('dragonflow.controller.df_base_app.DFlowApp.'
                    'add_flow_go_to_table').start()
+        mock.patch('neutron.agent.linux.utils.execute').start()
 
 fake_logic_router1 = api_nb.LogicalRouter("{}")
 fake_logic_router1.lrouter = {

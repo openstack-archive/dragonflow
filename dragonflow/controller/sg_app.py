@@ -22,6 +22,7 @@ import six
 
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
 
 
@@ -742,6 +743,10 @@ class SGApp(df_base_app.DFlowApp):
                     added_cidr,
                     removed_cidr)
 
+                # delete conntrack entities by rule and remote address
+                self._delete_conntrack_entries_by_rule(
+                    rule_info, filter_remote_address=ip)
+
     def _disassociate_secgroup_ip(self, secgroup_id, ip):
         # update the record of aggregate addresses of ports associated
         # with this security group.
@@ -771,6 +776,10 @@ class SGApp(df_base_app.DFlowApp):
                         removed_cidr
                     )
 
+                    # delete conntrack entities by rule and remote address
+                    self._delete_conntrack_entries_by_rule(
+                        rule_info, filter_remote_address=ip)
+
     def _add_local_port_associating(self, lport, secgroup_id):
         self._associate_secgroup_ip(secgroup_id, lport.get_ip())
 
@@ -784,6 +793,8 @@ class SGApp(df_base_app.DFlowApp):
             self._install_security_group_flows(secgroup_id)
         elif lport.get_id() not in associate_ports:
             associate_ports.append(lport.get_id())
+            # delete conntrack entities by port
+            self._delete_conntrack_entries_by_port(lport, secgroup_id)
 
         # install associating flow
         self._install_associating_flows(secgroup_id, lport)
@@ -800,6 +811,8 @@ class SGApp(df_base_app.DFlowApp):
         if associate_ports is not None:
             if lport.get_id() in associate_ports:
                 associate_ports.remove(lport.get_id())
+                # delete conntrack entities by port
+                self._delete_conntrack_entries_by_port(lport, secgroup_id)
                 if len(associate_ports) == 0:
                     self._uninstall_security_group_flow(secgroup_id)
                     self._release_security_group_id(secgroup_id)
@@ -962,6 +975,9 @@ class SGApp(df_base_app.DFlowApp):
         self._install_security_group_rule_flows(
                 secgroup.get_id(), secgroup_rule)
 
+        # delete conntrack entities by rule
+        self._delete_conntrack_entries_by_rule(secgroup_rule)
+
     def remove_security_group_rule(self, secgroup, secgroup_rule):
         LOG.info(_LI("remove a rule %(rule)s to security group %(secgroup)s")
                  % {'rule': secgroup_rule, 'secgroup': secgroup.get_id()})
@@ -988,3 +1004,79 @@ class SGApp(df_base_app.DFlowApp):
                     del self.remote_secgroup_ref[remote_group_id]
 
         self._uninstall_security_group_rule_flows(secgroup_rule)
+
+        # delete conntrack entities by rule
+        self._delete_conntrack_entries_by_rule(secgroup_rule)
+
+    def _get_delete_conntrack_entries_filter(self, port, rule,
+                                             remote_addresses=None):
+        ethertype = rule.get_ethertype()
+        if 'ingress' == rule.get_direction():
+            nw_match_mark = 'nw_dst'
+            remote_match_mark = 'nw_src'
+        else:
+            nw_match_mark = 'nw_src'
+            remote_match_mark = 'nw_dst'
+        zone_id = port.get_external_value('local_network_id')
+        port_ip = port.get_ip()
+        entries_filter = {
+            'ethertype': ethertype,
+            nw_match_mark: port_ip,
+            'zone_id': zone_id
+        }
+        protocol = rule.get_protocol()
+        if protocol:
+            entries_filter['protocol'] = protocol
+        if remote_addresses:
+            entries_filter[remote_match_mark] = remote_addresses
+        return entries_filter
+
+    def _delete_conntrack_entries_by_rule(self, rule, filter_port=None,
+                                          filter_remote_address=None):
+        if rule.get_ethertype() == n_const.IPv6:
+            # Not support IPv6 yet. Because the controller has already printed
+            # logs in other methods, there is no need to print extra logs here.
+            return
+
+        if filter_remote_address:
+            remote_address_list = [filter_remote_address]
+        else:
+            remote_address_list = None
+            # Conntrack command only support to delete entries by specifying a
+            # net address than a cidr, but the number of addresses transformed
+            # from a remote group or a remote ip prefix could be quiet huge,
+            # DF won't delete conntrack entries filtered by remote group or
+            # remote ip prefix.
+
+        if filter_port:
+            associating_ports = [filter_port]
+        else:
+            associating_port_ids = self.secgroup_associate_local_ports.get(
+                rule.get_security_group_id())
+            associating_ports = [self.db_store.get_port(port_id)
+                                 for port_id in associating_port_ids]
+
+        for port in associating_ports:
+            if remote_address_list:
+                for remote_address in remote_address_list:
+                    entries_filter = \
+                        self._get_delete_conntrack_entries_filter(
+                            port, rule, remote_address)
+                    utils.delete_conntrack_entries_by_filter(
+                        entries_filter)
+            else:
+                entries_filter = \
+                    self._get_delete_conntrack_entries_filter(
+                        port, rule)
+                utils.delete_conntrack_entries_by_filter(entries_filter)
+
+    def _delete_conntrack_entries_by_port(self, lport, secgroup_id):
+        secgroup = self.db_store.get_security_group(secgroup_id)
+        if secgroup is not None:
+            for rule in secgroup.get_rules():
+                self._delete_conntrack_entries_by_rule(rule, filter_port=lport)
+
+    def _delete_conntrack_entries_by_remote_address(self, remote_address,
+                                                    rule):
+        self._delete_conntrack_entries_by_rule(
+            rule, filter_remote_address=remote_address)
