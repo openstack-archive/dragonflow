@@ -23,8 +23,6 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
 
     """Test case of df qos notification drvier"""
 
-    _extension_drivers = ['qos']
-
     def get_additional_service_plugins(self):
         p = super(TestDFQosNotificationDriver,
                   self).get_additional_service_plugins()
@@ -32,9 +30,7 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         return p
 
     def setUp(self):
-        ml2_config.cfg.CONF.set_override('extension_drivers',
-                                        self._extension_drivers,
-                                        group='ml2')
+        self._extension_drivers.append('qos')
         driver_mgr_config.register_qos_plugin_opts(ml2_config.cfg.CONF)
         ml2_config.cfg.CONF.set_override('notification_drivers',
                                          ['df_notification_driver'], 'qos')
@@ -96,3 +92,41 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         self.plugin.delete_policy(self.context, qos_obj['id'])
         self.driver.nb_api.delete_qos_policy.assert_called_with(
             qos_obj['id'], 'tenant1')
+
+    def test_create_update_network_qos_policy(self):
+        nb_api = self.driver.nb_api
+        qos_obj = self._test_create_policy()
+        kwargs = {'qos_policy_id': qos_obj['id']}
+        with self.network(arg_list=('qos_policy_id',), **kwargs) as n:
+            network_id = n['network']['id']
+            self.assertTrue(nb_api.create_lswitch.called)
+            called_args = nb_api.create_lswitch.call_args_list[0][1]
+            self.assertEqual(qos_obj['id'], called_args.get('qos_policy_id'))
+
+            data = {'network': {'qos_policy_id': None}}
+            req = self.new_update_request('networks', data, network_id)
+            req.get_response(self.api)
+            self.assertTrue(nb_api.update_lswitch.called)
+            called_args = nb_api.update_lswitch.call_args_list[0][1]
+            self.assertIsNone(called_args.get('qos_policy_id'))
+
+    def test_create_update_port_qos_policy(self):
+        nb_api = self.driver.nb_api
+        qos_obj = self._test_create_policy()
+        kwargs = {'qos_policy_id': qos_obj['id']}
+        with self.subnet(enable_dhcp=False) as subnet:
+            with self.port(subnet=subnet,
+                           arg_list=('qos_policy_id',),
+                           **kwargs) as p:
+                port_id = p['port']['id']
+                self.assertTrue(nb_api.create_lport.called)
+                called_args = nb_api.create_lport.call_args_list[0][1]
+                self.assertEqual(qos_obj['id'],
+                                 called_args.get('qos_policy_id'))
+
+                data = {'port': {'qos_policy_id': None}}
+                req = self.new_update_request('ports', data, port_id)
+                req.get_response(self.api)
+                self.assertTrue(nb_api.update_lport.called)
+                called_args = nb_api.update_lport.call_args_list[0][1]
+                self.assertIsNone(called_args.get('qos_policy_id'))
