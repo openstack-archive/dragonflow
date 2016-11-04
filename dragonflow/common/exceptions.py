@@ -52,6 +52,10 @@ class DBKeyNotFound(DragonflowException):
     message = _('DB Key not found, key=%(key)s')
 
 
+class CommandError(DragonflowException):
+    message = _("Non-existent fields are specified: %(non_existent_fields)s")
+
+
 class UnsupportedTransportException(DragonflowException):
     """
     An exception for cases when the given transport protocol (e.g. UDP, TCP) is
