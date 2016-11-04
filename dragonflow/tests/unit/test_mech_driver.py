@@ -142,19 +142,14 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
     def test_create_update_delete_subnet_network_revision(self):
         network = self._test_create_network_revision()
         with self.subnet(network={'network': network}) as s:
-            subnet = s['subnet']
             subnet_id = s['subnet']['id']
-
         new_network = self.driver.get_network(self.context, network['id'])
         self.assertGreater(new_network['revision_number'],
                            network['revision_number'])
-        self.nb_api.add_subnet.assert_called_with(
-            subnet_id, network['id'], subnet['tenant_id'], name=subnet['name'],
-            nw_version=new_network['revision_number'],
-            enable_dhcp=subnet['enable_dhcp'], cidr=subnet['cidr'],
-            dhcp_ip=mock.ANY, gateway_ip=subnet['gateway_ip'],
-            dns_nameservers=subnet['dns_nameservers'],
-            host_routes=subnet['host_routes'])
+        self.assertTrue(self.nb_api.add_subnet.called)
+        called_args = self.nb_api.add_subnet.call_args_list[0][1]
+        self.assertEqual(new_network['revision_number'],
+                         called_args.get('nw_version'))
 
         data = {'subnet': {'name': 'updated'}}
         req = self.new_update_request('subnets', data, subnet_id)
@@ -163,13 +158,10 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         new_network = self.driver.get_network(self.context, network['id'])
         self.assertGreater(new_network['revision_number'],
                            network['revision_number'])
-        self.nb_api.update_subnet.assert_called_with(
-            subnet_id, network['id'], subnet['tenant_id'], name='updated',
-            nw_version=new_network['revision_number'],
-            enable_dhcp=subnet['enable_dhcp'], cidr=subnet['cidr'],
-            dhcp_ip=mock.ANY, gateway_ip=subnet['gateway_ip'],
-            dns_nameservers=subnet['dns_nameservers'],
-            host_routes=subnet['host_routes'])
+        self.assertTrue(self.nb_api.update_subnet.called)
+        called_args = self.nb_api.update_subnet.call_args_list[0][1]
+        self.assertEqual(new_network['revision_number'],
+                         called_args.get('nw_version'))
 
         network = new_network
         req = self.new_delete_request('subnets', subnet_id)
@@ -178,9 +170,10 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         new_network = self.driver.get_network(self.context, network['id'])
         self.assertGreater(new_network['revision_number'],
                            network['revision_number'])
-        self.nb_api.delete_subnet.assert_called_with(
-            subnet_id, network['id'], subnet['tenant_id'],
-            nw_version=new_network['revision_number'])
+        self.assertTrue(self.nb_api.delete_subnet.called)
+        called_args = self.nb_api.delete_subnet.call_args_list[0][1]
+        self.assertEqual(new_network['revision_number'],
+                         called_args.get('nw_version'))
 
     def test_create_update_port_allowed_address_pairs(self):
         kwargs = {'allowed_address_pairs':
@@ -362,3 +355,16 @@ class TestDFMechansimDriverPortsV2(test_plugin.TestMl2PortsV2,
             arg_list=(portbindings.HOST_ID,),
             expected_status=exc.HTTPConflict.code,
             expected_error='PortBound')
+
+
+class TestDFMechansimDriverSubnetsV2(test_plugin.TestMl2SubnetsV2,
+                                     DFMechanismDriverTestCase):
+    def setUp(self):
+        super(TestDFMechansimDriverSubnetsV2, self).setUp()
+        # NOTE(xiaohhui): DF mech driver will create dhcp port when subnet
+        # is created. This will cause extra port create in neutron, which might
+        # conflict with ml2 test case. Not create dhcp port here to avoid the
+        # conflict.
+        self.mech_driver._create_dhcp_server_port = mock.Mock()
+        self.mech_driver._handle_create_subnet_dhcp = mock.Mock(
+            return_value=(None, None))
