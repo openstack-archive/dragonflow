@@ -120,6 +120,12 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             sg['id'], rule['id'], sg['tenant_id'],
             sg_version=newer_sg['revision_number'])
 
+    def test_delete_security_group(self):
+        sg = self._test_create_security_group_revision()
+        self.driver.delete_security_group(self.context, sg['id'])
+        self.nb_api.delete_security_group.assert_called_with(
+            sg['id'], topic=sg['tenant_id'])
+
     def _test_create_network_revision(self):
         with self.network() as n:
             network = n['network']
@@ -174,6 +180,13 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         called_args = self.nb_api.delete_subnet.call_args_list[0][1]
         self.assertEqual(new_network['revision_number'],
                          called_args.get('nw_version'))
+
+    def test_delete_network(self):
+        network = self._test_create_network_revision()
+        req = self.new_delete_request('networks', network['id'])
+        req.get_response(self.api)
+        self.nb_api.delete_lswitch.assert_called_with(
+            id=network['id'], topic=network['tenant_id'])
 
     def test_create_update_port_allowed_address_pairs(self):
         kwargs = {'allowed_address_pairs':
@@ -266,13 +279,6 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 self.assertEqual(port['revision_number'],
                                  called_args_dict.get('version'))
 
-    def test_delete_network(self):
-        network = self._test_create_network_revision()
-        req = self.new_delete_request('networks', network['id'])
-        req.get_response(self.api)
-        self.nb_api.delete_lswitch.assert_called_with(
-            id=network['id'], topic=network['tenant_id'])
-
     def test_create_update_remote_port(self):
         profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
         profile_arg = {'binding:profile': profile}
@@ -307,12 +313,6 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         req.get_response(self.api)
         self.nb_api.delete_lport.assert_called_with(
             id=port['id'], topic=port['tenant_id'])
-
-    def test_delete_security_group(self):
-        sg = self._test_create_security_group_revision()
-        self.driver.delete_security_group(self.context, sg['id'])
-        self.nb_api.delete_security_group.assert_called_with(
-            sg['id'], topic=sg['tenant_id'])
 
 
 class TestDFMechansimDriverAllowedAddressPairs(
@@ -368,3 +368,20 @@ class TestDFMechansimDriverSubnetsV2(test_plugin.TestMl2SubnetsV2,
         self.mech_driver._create_dhcp_server_port = mock.Mock()
         self.mech_driver._handle_create_subnet_dhcp = mock.Mock(
             return_value=(None, None))
+
+
+class TestDFMechansimDriverNetworksV2(test_plugin.TestMl2NetworksV2,
+                                      DFMechanismDriverTestCase):
+    def test_list_mpnetworks_with_segmentation_id(self):
+        # Revive it when multi-segment is supported.
+        pass
+
+
+class TestDFMechansimDriverBasicGet(test_plugin.TestMl2BasicGet,
+                                    DFMechanismDriverTestCase):
+    pass
+
+
+class TestDFMechansimDriverV2HTTPResponse(test_plugin.TestMl2V2HTTPResponse,
+                                          DFMechanismDriverTestCase):
+    pass
