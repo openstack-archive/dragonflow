@@ -15,7 +15,7 @@
 
 import netaddr
 
-from dragonflow.db import api_nb
+from dragonflow.db import db_models
 from dragonflow.tests.unit import test_app_base
 
 COMMAND_ADD = 1
@@ -39,8 +39,8 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.datapath.ofproto.OFPFC_DELETE = COMMAND_DELETE
 
     def _get_another_local_lport(self):
-        fake_local_port = api_nb.LogicalPort("{}")
-        fake_local_port.lport = {
+        fake_local_port = db_models.LogicalPort("{}")
+        fake_local_port.inner_obj = {
             'subnets': ['fake_subnet1'],
             'binding_profile': {},
             'macs': ['fa:16:3e:8c:2e:12'],
@@ -67,8 +67,8 @@ class TestSGApp(test_app_base.DFAppTestBase):
         return fake_local_port
 
     def _get_another_security_group(self):
-        fake_security_group = api_nb.SecurityGroup("{}")
-        fake_security_group.secgroup = {
+        fake_security_group = db_models.SecurityGroup("{}")
+        fake_security_group.inner_obj = {
             "description": "",
             "name": "fake_security_group",
             "topic": "fake_tenant1",
@@ -205,7 +205,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # add local port
         fake_local_lport = self._get_another_local_lport()
-        fake_local_lport_version = fake_local_lport.lport['version']
+        fake_local_lport_version = fake_local_lport.inner_obj['version']
         self.controller.logical_port_created(fake_local_lport)
         self.mock_mod_flow.reset_mock()
 
@@ -215,10 +215,10 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # update the association of the lport to a new security group
         fake_local_lport = self._get_another_local_lport()
-        fake_local_lport.lport['security_groups'] = \
+        fake_local_lport.inner_obj['security_groups'] = \
             ['fake_security_group_id2']
         fake_local_lport_version += 1
-        fake_local_lport.lport['version'] = fake_local_lport_version
+        fake_local_lport.inner_obj['version'] = fake_local_lport_version
         self.controller.logical_port_updated(fake_local_lport)
         # add flows:
         # 1. a associating flow in ingress secgroup table
@@ -242,9 +242,9 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # update the association of the lport to no security group
         fake_local_lport = self._get_another_local_lport()
-        fake_local_lport.lport['security_groups'] = []
+        fake_local_lport.inner_obj['security_groups'] = []
         fake_local_lport_version += 1
-        fake_local_lport.lport['version'] = fake_local_lport_version
+        fake_local_lport.inner_obj['version'] = fake_local_lport_version
         self.controller.logical_port_updated(fake_local_lport)
         # remove flows:
         # 1. a flow in ingress conntrack table
@@ -270,19 +270,19 @@ class TestSGApp(test_app_base.DFAppTestBase):
     def test_add_del_security_group_rule(self):
         # create another fake security group
         security_group = self._get_another_security_group()
-        security_group_version = security_group.secgroup['version']
+        security_group_version = security_group.inner_obj['version']
         self.controller.security_group_updated(security_group)
 
         # add local port
         fake_local_lport = self._get_another_local_lport()
-        fake_local_lport.lport['security_groups'] = \
+        fake_local_lport.inner_obj['security_groups'] = \
             ['fake_security_group_id2']
         self.controller.logical_port_created(fake_local_lport)
         self.mock_mod_flow.reset_mock()
 
         # add a security group rule
         security_group = self._get_another_security_group()
-        security_group.secgroup['rules'].append({
+        security_group.inner_obj['rules'].append({
             "direction": "egress",
             "security_group_id": "fake_security_group_id2",
             "ethertype": "IPv4",
@@ -294,7 +294,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
             "remote_ip_prefix": None,
             "id": "fake_security_group_rule_5"})
         security_group_version += 1
-        security_group.secgroup['version'] = security_group_version
+        security_group.inner_obj['version'] = security_group_version
         self.controller.security_group_updated(security_group)
         # add flows:
         # 1. a egress rule flow in egress secgroup table
@@ -304,7 +304,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # remove a security group rule
         security_group = self._get_another_security_group()
         security_group_version += 1
-        security_group.secgroup['version'] = security_group_version
+        security_group.inner_obj['version'] = security_group_version
         self.controller.security_group_updated(security_group)
         # remove flows:
         # 1. a egress rule flow in egress secgroup table

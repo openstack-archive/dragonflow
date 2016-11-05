@@ -19,7 +19,7 @@ from oslo_config import cfg
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
-from dragonflow.db import api_nb
+from dragonflow.db import db_models
 from dragonflow.tests import base as tests_base
 
 
@@ -56,8 +56,8 @@ class DFAppTestBase(tests_base.BaseTestCase):
         mock.patch('dragonflow.controller.df_base_app.DFlowApp.'
                    'add_flow_go_to_table').start()
 
-fake_logic_router1 = api_nb.LogicalRouter("{}")
-fake_logic_router1.lrouter = {
+fake_logic_router1 = db_models.LogicalRouter("{}")
+fake_logic_router1.inner_obj = {
     "description": "",
     "name": "router1",
     "admin_state_up": True,
@@ -81,8 +81,8 @@ fake_logic_router1.lrouter = {
                "id": "fake_router_port1"}]}
 
 
-fake_logic_switch1 = api_nb.LogicalSwitch("{}")
-fake_logic_switch1.lswitch = {
+fake_logic_switch1 = db_models.LogicalSwitch("{}")
+fake_logic_switch1.inner_obj = {
     "subnets": [{"dhcp_ip": "10.0.0.2",
                  "name": "private-subnet",
                  "enable_dhcp": True,
@@ -103,8 +103,8 @@ fake_logic_switch1.lswitch = {
     "id": "fake_switch1"}
 
 
-fake_external_switch1 = api_nb.LogicalSwitch("{}")
-fake_external_switch1.lswitch = {
+fake_external_switch1 = db_models.LogicalSwitch("{}")
+fake_external_switch1.inner_obj = {
     "subnets": [{"name": "public-subnet",
                  "enable_dhcp": False,
                  "lswitch": "fake_external_switch1",
@@ -124,8 +124,8 @@ fake_external_switch1.lswitch = {
     "id": "fake_external_switch1"}
 
 
-fake_local_port1 = api_nb.LogicalPort("{}")
-fake_local_port1.lport = {
+fake_local_port1 = db_models.LogicalPort("{}")
+fake_local_port1.inner_obj = {
     'subnets': ['fake_subnet1'],
     'binding_profile': {},
     'macs': ['fa:16:3e:8c:2e:b3'],
@@ -151,8 +151,8 @@ fake_local_port1.external_dict = {'is_local': True,
                                   'local_network_id': 1}
 
 
-fake_remote_port1 = api_nb.LogicalPort("{}")
-fake_remote_port1.lport = {
+fake_remote_port1 = db_models.LogicalPort("{}")
+fake_remote_port1.inner_obj = {
     'subnets': ['fake_subnet1'],
     'binding_profile': {},
     'macs': ['fa:16:3e:8c:2e:af'],
@@ -178,8 +178,8 @@ fake_remote_port1.external_dict = {'is_local': False,
                                   'local_network_id': 1}
 
 
-fake_floatingip1 = api_nb.Floatingip("{}")
-fake_floatingip1.floatingip = {
+fake_floatingip1 = db_models.Floatingip("{}")
+fake_floatingip1.inner_obj = {
     'router_id': 'fake_router_id',
     'status': 'DOWN',
     'name': 'no_fip_name',
@@ -196,8 +196,8 @@ fake_floatingip1.floatingip = {
     'external_gateway_ip': u'172.24.4.1'}
 
 
-fake_security_group = api_nb.SecurityGroup("{}")
-fake_security_group.secgroup = {
+fake_security_group = db_models.SecurityGroup("{}")
+fake_security_group.inner_obj = {
     "description": "",
     "name": "fake_security_group",
     "topic": "fake_tenant1",

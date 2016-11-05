@@ -16,7 +16,8 @@
 from mock import Mock
 
 from dragonflow.controller.topology import Topology
-from dragonflow.db.api_nb import OvsPort, LogicalPort, LogicalSwitch
+# This will eventually be removed at https://review.openstack.org/#/c/385349/
+from dragonflow.db.db_models import OvsPort, LogicalPort, LogicalSwitch
 from dragonflow.db.db_store import DbStore
 from dragonflow.tests import base as tests_base
 
