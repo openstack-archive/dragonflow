@@ -56,7 +56,6 @@ cfg.CONF.register_opts(DF_RYU_OPTS, 'df_ryu')
 class DfLocalController(object):
 
     def __init__(self, chassis_name):
-        self.next_network_id = 0
         self.db_store = db_store.DbStore()
         self.chassis_name = chassis_name
         self.ip = cfg.CONF.df.local_ip
@@ -221,13 +220,8 @@ class DfLocalController(object):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
         if not self._is_valid_version(old_lswitch, lswitch):
             return
-        #Make sure we have a local network_id mapped before we dispatch
-        network_id = self.get_network_id(
-            lswitch.get_id(),
-        )
-        lswitch_conf = {'network_id': network_id, 'lswitch':
-            lswitch.__str__()}
-        LOG.info(_LI("Adding/Updating Logical Switch = %s") % lswitch_conf)
+
+        LOG.info(_LI("Adding/Updating Logical Switch = %s"), lswitch)
         self.db_store.set_lswitch(lswitch.get_id(), lswitch)
         self.open_flow_app.notify_update_logical_switch(lswitch)
 
@@ -262,11 +256,10 @@ class DfLocalController(object):
 
     def _logical_port_process(self, lport, original_lport=None):
         chassis = lport.get_chassis()
-        local_network_id = self.get_network_id(
-            lport.get_lswitch_id(),
-        )
         lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
         if lswitch is not None:
+            lport.set_external_value('local_network_id',
+                                     lswitch.get_unique_key())
             network_type = lswitch.get_network_type()
             segment_id = lswitch.get_segment_id()
             physical_network = lswitch.get_physical_network()
@@ -277,8 +270,6 @@ class DfLocalController(object):
                                      int(segment_id))
             if physical_network:
                 lport.set_external_value('physical_network', physical_network)
-
-        lport.set_external_value('local_network_id', local_network_id)
 
         if chassis == self.chassis_name:
             lport.set_external_value('is_local', True)
@@ -464,19 +455,6 @@ class DfLocalController(object):
         # Iterate all tunnel ports that needs to be deleted
         for port in tunnel_ports.values():
             self.vswitch_api.delete_port(port)
-
-    def get_network_id(self, logical_dp_id):
-        network_id = self.db_store.get_network_id(logical_dp_id)
-        if network_id is not None:
-            return network_id
-        else:
-            self.next_network_id += 1
-            # TODO(gsagie) verify self.next_network_id didnt wrap
-            self.db_store.set_network_id(
-                logical_dp_id,
-                self.next_network_id,
-            )
-            return self.next_network_id
 
     def _update_security_group_rules(self, old_secgroup, new_secgroup):
         new_secgroup_rules = new_secgroup.get_rules()
