@@ -14,21 +14,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import abc
 import random
 import time
 
 import eventlet
-import netaddr
 from neutron_lib import constants as const
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
-import six
 
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
+from dragonflow.db import db_models
 from dragonflow.db import pub_sub_api
 
 LOG = log.getLogger(__name__)
@@ -211,68 +209,68 @@ class NbApi(object):
 
         if 'secgroup' == table:
             if action == 'set' or action == 'create':
-                secgroup = SecurityGroup(value)
+                secgroup = db_models.SecurityGroup(value)
                 self.controller.security_group_updated(secgroup)
             elif action == 'delete':
                 secgroup_id = key
                 self.controller.security_group_deleted(secgroup_id)
         elif 'lport' == table:
             if action == 'create':
-                lport = LogicalPort(value)
+                lport = db_models.LogicalPort(value)
                 self.controller.logical_port_created(lport)
             elif action == 'set':
-                lport = LogicalPort(value)
+                lport = db_models.LogicalPort(value)
                 self.controller.logical_port_updated(lport)
             elif action == 'delete':
                 lport_id = key
                 self.controller.logical_port_deleted(lport_id)
         elif 'lrouter' == table:
             if action == 'create':
-                lrouter = LogicalRouter(value)
+                lrouter = db_models.LogicalRouter(value)
                 self.controller.router_created(lrouter)
             elif action == 'set':
-                lrouter = LogicalRouter(value)
+                lrouter = db_models.LogicalRouter(value)
                 self.controller.router_updated(lrouter)
             elif action == 'delete':
                 lrouter_id = key
                 self.controller.router_deleted(lrouter_id)
         elif 'chassis' == table:
             if action == 'set' or action == 'create':
-                chassis = Chassis(value)
+                chassis = db_models.Chassis(value)
                 self.controller.chassis_created(chassis)
             elif action == 'delete':
                 chassis_id = key
                 self.controller.chassis_deleted(chassis_id)
         elif 'lswitch' == table:
             if action == 'set' or action == 'create':
-                lswitch = LogicalSwitch(value)
+                lswitch = db_models.LogicalSwitch(value)
                 self.controller.logical_switch_updated(lswitch)
             elif action == 'delete':
                 lswitch_id = key
                 self.controller.logical_switch_deleted(lswitch_id)
         elif 'floatingip' == table:
             if action == 'set' or action == 'create':
-                floatingip = Floatingip(value)
+                floatingip = db_models.Floatingip(value)
                 self.controller.floatingip_updated(floatingip)
             elif action == 'delete':
                 floatingip_id = key
                 self.controller.floatingip_deleted(floatingip_id)
         elif pub_sub_api.PUBLISHER_TABLE == table:
             if action == 'set' or action == 'create':
-                publisher = Publisher(value)
+                publisher = db_models.Publisher(value)
                 self.controller.publisher_updated(publisher)
             elif action == 'delete':
                 self.controller.publisher_deleted(key)
         elif 'ovsinterface' == table:
             if action == 'set' or action == 'create':
-                ovs_port = OvsPort(value)
+                ovs_port = db_models.OvsPort(value)
                 self.controller.ovs_port_updated(ovs_port)
             elif action == 'sync_finished':
                 self.controller.ovs_sync_finished()
             elif action == 'sync_started':
                 self.controller.ovs_sync_started()
             elif action == 'delete':
-                ovs_port = OvsPort(value)
+                ovs_port = db_models.OvsPort(value)
                 self.controller.ovs_port_deleted(ovs_port)
         elif 'log' == action:
             message = _LI(
@@ -357,14 +355,14 @@ class NbApi(object):
     def get_chassis(self, id):
         try:
             chassis_value = self.driver.get_key('chassis', id, None)
-            return Chassis(chassis_value)
+            return db_models.Chassis(chassis_value)
         except Exception:
             return None
 
     def get_all_chassis(self):
         res = []
         for entry_value in self.driver.get_all_entries('chassis', None):
-            res.append(Chassis(entry_value))
+            res.append(db_models.Chassis(entry_value))
         return res
 
     def add_chassis(self, id, ip, tunnel_type):
@@ -376,7 +374,7 @@ class NbApi(object):
     def get_lswitch(self, id, topic=None):
         try:
             lswitch_value = self.driver.get_key('lswitch', id, topic)
-            return LogicalSwitch(lswitch_value)
+            return db_models.LogicalSwitch(lswitch_value)
         except Exception:
             return None
 
@@ -449,14 +447,14 @@ class NbApi(object):
     def get_logical_port(self, port_id, topic=None):
         try:
             port_value = self.driver.get_key('lport', port_id, topic)
-            return LogicalPort(port_value)
+            return db_models.LogicalPort(port_value)
         except Exception:
             return None
 
     def get_all_logical_ports(self, topic=None):
         res = []
         for lport_value in self.driver.get_all_entries('lport', topic):
-            lport = LogicalPort(lport_value)
+            lport = db_models.LogicalPort(lport_value)
             if lport.get_chassis() is None:
                 continue
             res.append(lport)
@@ -590,33 +588,33 @@ class NbApi(object):
     def get_router(self, router_id, topic=None):
         try:
             lrouter_value = self.driver.get_key('lrouter', router_id, topic)
-            return LogicalRouter(lrouter_value)
+            return db_models.LogicalRouter(lrouter_value)
         except Exception:
             return None
 
     def get_routers(self, topic=None):
         res = []
         for lrouter_value in self.driver.get_all_entries('lrouter', topic):
-            res.append(LogicalRouter(lrouter_value))
+            res.append(db_models.LogicalRouter(lrouter_value))
         return res
 
     def get_security_group(self, sg_id, topic=None):
         try:
             secgroup_value = self.driver.get_key('secgroup', sg_id, topic)
-            return SecurityGroup(secgroup_value)
+            return db_models.SecurityGroup(secgroup_value)
         except Exception:
             return None
 
     def get_security_groups(self, topic=None):
         res = []
         for secgroup_value in self.driver.get_all_entries('secgroup', topic):
-            res.append(SecurityGroup(secgroup_value))
+            res.append(db_models.SecurityGroup(secgroup_value))
         return res
 
     def get_all_logical_switches(self, topic=None):
         res = []
         for lswitch_value in self.driver.get_all_entries('lswitch', topic):
-            res.append(LogicalSwitch(lswitch_value))
+            res.append(db_models.LogicalSwitch(lswitch_value))
         return res
 
     def create_floatingip(self, id, topic, **columns):
@@ -654,14 +652,14 @@ class NbApi(object):
     def get_floatingip(self, id, topic=None):
         try:
             floatingip_value = self.driver.get_key('floatingip', id, topic)
-            return Floatingip(floatingip_value)
+            return db_models.Floatingip(floatingip_value)
         except Exception:
             return None
 
     def get_floatingips(self, topic=None):
         res = []
         for floatingip in self.driver.get_all_entries('floatingip', topic):
-            res.append(Floatingip(floatingip))
+            res.append(db_models.Floatingip(floatingip))
         return res
 
     def create_publisher(self, uuid, topic, **columns):
@@ -701,7 +699,7 @@ class NbApi(object):
                 uuid,
                 topic,
             )
-            return Publisher(publisher_value)
+            return db_models.Publisher(publisher_value)
         except Exception:
             LOG.exception(_LE('Could not get publisher %s'), uuid)
             return None
@@ -711,7 +709,8 @@ class NbApi(object):
             pub_sub_api.PUBLISHER_TABLE,
             topic,
         )
-        publishers = [Publisher(value) for value in publishers_values]
+        publishers = [db_models.Publisher(value)
+                      for value in publishers_values]
         timeout = cfg.CONF.df.publisher_timeout
 
         def _publisher_not_too_old(publisher):
@@ -772,537 +771,7 @@ class NbApi(object):
         try:
             qospolicy_value = self.driver.get_key('qospolicy',
                                                   policy_id, topic)
-            return QosPolicy(qospolicy_value)
+            return db_models.QosPolicy(qospolicy_value)
         except Exception:
             LOG.exception(_LE('Could not get qos policy %s'), policy_id)
             return None
-
-
-@six.add_metaclass(abc.ABCMeta)
-class DbStoreObject(object):
-
-    @abc.abstractmethod
-    def get_id(self):
-        """Return the ID of this object."""
-
-    @abc.abstractmethod
-    def get_topic(self):
-        """
-        Return the topic, i.e. ID of the tenant to which this object belongs.
-        """
-
-
-class Chassis(DbStoreObject):
-
-    def __init__(self, value):
-        self.chassis = jsonutils.loads(value)
-
-    def get_id(self):
-        return self.chassis['id']
-
-    def get_name(self):
-        return self.chassis['name']
-
-    def get_ip(self):
-        return self.chassis['ip']
-
-    def get_encap_type(self):
-        return self.chassis['tunnel_type']
-
-    def get_topic(self):
-        return None
-
-    def __str__(self):
-        return self.chassis.__str__()
-
-
-class LogicalSwitch(DbStoreObject):
-
-    def __init__(self, value):
-        self.lswitch = jsonutils.loads(value)
-
-    def get_id(self):
-        return self.lswitch['id']
-
-    def get_name(self):
-        return self.lswitch['name']
-
-    def is_external(self):
-        return self.lswitch.get('router_external', None)
-
-    def get_mtu(self):
-        return self.lswitch.get('mtu', None)
-
-    def get_subnets(self):
-        subnets = self.lswitch.get('subnets')
-        if subnets:
-            return [Subnet(subnet) for subnet in subnets]
-        else:
-            return []
-
-    def get_topic(self):
-        return self.lswitch['topic']
-
-    def get_version(self):
-        return self.lswitch['version']
-
-    def get_segment_id(self):
-        return self.lswitch.get('segmentation_id', None)
-
-    def get_network_type(self):
-        return self.lswitch.get('network_type', None)
-
-    def get_physical_network(self):
-        return self.lswitch.get('physical_network')
-
-    def __str__(self):
-        return self.lswitch.__str__()
-
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self.lswitch == other.lswitch
-        else:
-            return False
-
-
-class Subnet(DbStoreObject):
-
-    def __init__(self, value):
-        self.subnet = value
-
-    def enable_dhcp(self):
-        return self.subnet['enable_dhcp']
-
-    def get_id(self):
-        return self.subnet['id']
-
-    def get_name(self):
-        return self.subnet['name']
-
-    def get_dhcp_server_address(self):
-        return self.subnet['dhcp_ip']
-
-    def get_cidr(self):
-        return self.subnet['cidr']
-
-    def get_gateway_ip(self):
-        return self.subnet['gateway_ip']
-
-    def get_dns_name_servers(self):
-        return self.subnet['dns_nameservers']
-
-    def get_topic(self):
-        return self.subnet['topic']
-
-    def get_host_routes(self):
-        return self.subnet.get('host_routes', [])
-
-
-class LogicalPort(DbStoreObject):
-
-    def __init__(self, value):
-        self.external_dict = {}
-        self.lport = jsonutils.loads(value)
-
-    def get_id(self):
-        return self.lport.get('id')
-
-    def get_name(self):
-        return self.lport.get('name')
-
-    def get_ip(self):
-        return self.lport['ips'][0]
-
-    def get_ip_list(self):
-        return self.lport['ips']
-
-    def get_subnets(self):
-        return self.lport['subnets']
-
-    def get_mac(self):
-        return self.lport['macs'][0]
-
-    def get_chassis(self):
-        return self.lport.get('chassis')
-
-    def get_lswitch_id(self):
-        return self.lport.get('lswitch')
-
-    def get_tunnel_key(self):
-        return int(self.lport['tunnel_key'])
-
-    def get_security_groups(self):
-        return self.lport.get('security_groups', [])
-
-    def get_allow_address_pairs(self):
-        return self.lport.get('allowed_address_pairs', [])
-
-    def get_port_security_enable(self):
-        return self.lport.get('port_security_enabled', False)
-
-    def set_external_value(self, key, value):
-        self.external_dict[key] = value
-
-    def get_external_value(self, key):
-        return self.external_dict.get(key)
-
-    def get_device_owner(self):
-        return self.lport.get('device_owner')
-
-    def get_device_id(self):
-        return self.lport.get('device_id')
-
-    def get_topic(self):
-        return self.lport.get('topic')
-
-    def get_binding_profile(self):
-        return self.lport.get('binding_profile')
-
-    def get_binding_vnic_type(self):
-        return self.lport.get('binding_vnic_type')
-
-    def get_qos_policy_id(self):
-        return self.lport.get('qos_policy_id')
-
-    def get_version(self):
-        return self.lport['version']
-
-    def get_remote_vtep(self):
-        return self.lport.get('remote_vtep', False)
-
-    def __str__(self):
-        lport_with_exteral_dict = dict(self.lport)
-        lport_with_exteral_dict['external_dict'] = self.external_dict
-        return str(lport_with_exteral_dict)
-
-
-class LogicalRouter(DbStoreObject):
-
-    def __init__(self, value):
-        self.lrouter = jsonutils.loads(value)
-
-    def get_id(self):
-        return self.lrouter.get('id')
-
-    def get_name(self):
-        return self.lrouter.get('name')
-
-    def get_ports(self):
-        ports = self.lrouter.get('ports')
-        if ports:
-            return [LogicalRouterPort(port) for port in ports]
-        else:
-            return []
-
-    def get_topic(self):
-        return self.lrouter.get('topic')
-
-    def get_version(self):
-        return self.lrouter['version']
-
-    def get_routes(self):
-        return self.lrouter.get('routes', [])
-
-    def is_distributed(self):
-        return self.lrouter.get('distributed', False)
-
-    def get_external_gateway(self):
-        return self.lrouter.get('gateway', {})
-
-    def __str__(self):
-        return self.lrouter.__str__()
-
-
-class LogicalRouterPort(DbStoreObject):
-
-    def __init__(self, value):
-        self.router_port = value
-        self.cidr = netaddr.IPNetwork(self.router_port['network'])
-
-    def get_id(self):
-        return self.router_port.get('id')
-
-    def get_ip(self):
-        return str(self.cidr.ip)
-
-    def get_cidr_network(self):
-        return str(self.cidr.network)
-
-    def get_cidr_netmask(self):
-        return str(self.cidr.netmask)
-
-    def get_mac(self):
-        return self.router_port.get('mac')
-
-    def get_lswitch_id(self):
-        return self.router_port['lswitch']
-
-    def get_network(self):
-        return self.router_port['network']
-
-    def get_tunnel_key(self):
-        return self.router_port['tunnel_key']
-
-    def get_topic(self):
-        return self.router_port['topic']
-
-    def __eq__(self, other):
-        return self.get_id() == other.get_id()
-
-    def __str__(self):
-        return self.router_port.__str__()
-
-
-class SecurityGroup(DbStoreObject):
-
-    def __init__(self, value):
-        self.secgroup = jsonutils.loads(value)
-
-    def get_id(self):
-        return self.secgroup.get('id')
-
-    def get_name(self):
-        return self.secgroup.get('name')
-
-    def get_topic(self):
-        return self.secgroup.get('topic')
-
-    def get_version(self):
-        return self.secgroup.get('version')
-
-    def get_rules(self):
-        rules = self.secgroup.get('rules')
-        if rules:
-            return [SecurityGroupRule(rule) for rule in rules]
-        else:
-            return []
-
-    def __str__(self):
-        return self.secgroup.__str__()
-
-
-class SecurityGroupRule(DbStoreObject):
-
-    def __init__(self, value):
-        self.secrule = value
-
-    def get_id(self):
-        return self.secrule.get('id')
-
-    def get_topic(self):
-        return self.secrule.get('topic')
-
-    def get_direction(self):
-        return self.secrule['direction']
-
-    def get_ethertype(self):
-        return self.secrule['ethertype']
-
-    def get_port_range_max(self):
-        return self.secrule['port_range_max']
-
-    def get_port_range_min(self):
-        return self.secrule['port_range_min']
-
-    def get_protocol(self):
-        return self.secrule['protocol']
-
-    def get_remote_group_id(self):
-        return self.secrule['remote_group_id']
-
-    def get_remote_ip_prefix(self):
-        return self.secrule['remote_ip_prefix']
-
-    def get_security_group_id(self):
-        return self.secrule['security_group_id']
-
-    def __eq__(self, other):
-        return self.get_id() == other.get_id()
-
-    def __str__(self):
-        return self.secrule.__str__()
-
-
-class Floatingip(DbStoreObject):
-
-    def __init__(self, value):
-        self.floatingip = jsonutils.loads(value)
-
-    def get_id(self):
-        return self.floatingip['id']
-
-    def get_version(self):
-        return self.floatingip.get('version')
-
-    def get_name(self):
-        return self.floatingip['name']
-
-    def get_status(self):
-        return self.floatingip['status']
-
-    def update_fip_status(self, status):
-        self.floatingip['status'] = status
-
-    def get_ip_address(self):
-        return self.floatingip['floating_ip_address']
-
-    def get_mac_address(self):
-        return self.floatingip['floating_mac_address']
-
-    def get_lport_id(self):
-        return self.floatingip['port_id']
-
-    def get_fixed_ip_address(self):
-        return self.floatingip['fixed_ip_address']
-
-    def get_lrouter_id(self):
-        return self.floatingip['router_id']
-
-    def get_topic(self):
-        return self.floatingip['topic']
-
-    def get_external_gateway_ip(self):
-        return self.floatingip['external_gateway_ip']
-
-    def set_external_gateway_ip(self, gw_ip):
-        self.floatingip['external_gateway_ip'] = gw_ip
-
-    def get_floating_network_id(self):
-        return self.floatingip['floating_network_id']
-
-    def get_external_cidr(self):
-        return self.floatingip['external_cidr']
-
-    def get_floating_port_id(self):
-        return self.floatingip['floating_port_id']
-
-    def __str__(self):
-        return self.floatingip.__str__()
-
-
-class OvsPort(DbStoreObject):
-
-    TYPE_VM = 'vm'
-    TYPE_TUNNEL = 'tunnel'
-    TYPE_BRIDGE = 'bridge'
-    TYPE_PATCH = 'patch'
-
-    def __init__(self, value):
-        self.ovs_port = value
-
-    def get_id(self):
-        return self.ovs_port.get_id()
-
-    def get_topic(self):
-        return None
-
-    def get_ofport(self):
-        return self.ovs_port.get_ofport()
-
-    def get_name(self):
-        return self.ovs_port.get_name()
-
-    def get_admin_state(self):
-        return self.ovs_port.get_admin_state()
-
-    def get_type(self):
-        return self.ovs_port.get_type()
-
-    def get_iface_id(self):
-        return self.ovs_port.get_iface_id()
-
-    def get_peer(self):
-        return self.ovs_port.get_peer()
-
-    def get_attached_mac(self):
-        return self.ovs_port.get_attached_mac()
-
-    def get_mac_in_use(self):
-        return self.ovs_port.get_mac_in_use()
-
-    def get_remote_ip(self):
-        return self.ovs_port.get_remote_ip()
-
-    def get_remote_chassis(self):
-        return self.ovs_port.get_remote_chassis()
-
-    def get_tunnel_type(self):
-        return self.ovs_port.get_tunnel_type()
-
-    def __str__(self):
-        return str(self.ovs_port)
-
-
-class Publisher(DbStoreObject):
-
-    def __init__(self, value):
-        self.publisher = jsonutils.loads(value)
-
-    def get_id(self):
-        return self.publisher['id']
-
-    def get_topic(self):
-        return self.publisher.get('topic', None)
-
-    def get_uri(self):
-        return self.publisher.get('uri', None)
-
-    def get_last_activity_timestamp(self):
-        return self.publisher.get('last_activity_timestamp', None)
-
-    def __str__(self):
-        return str(self.publisher)
-
-
-class QosPolicy(DbStoreObject):
-
-    def __init__(self, value):
-        self.qospolicy = jsonutils.loads(value)
-
-    def get_id(self):
-        return self.qospolicy.get('id')
-
-    def get_name(self):
-        return self.qospolicy.get('name')
-
-    def get_topic(self):
-        return self.qospolicy.get('topic')
-
-    def get_type(self):
-        return self.qospolicy.get('type')
-
-    def get_version(self):
-        return self.qospolicy.get('version')
-
-    def get_max_burst_kbps(self):
-        rules = self.qospolicy.get('rules')
-        max_burst_kbps = None
-        for rule in rules:
-            if rule['type'] == 'bandwidth_limit':
-                max_burst_kbps = rule.get('max_burst_kbps')
-                break
-
-        return max_burst_kbps
-
-    def get_max_kbps(self):
-        rules = self.qospolicy.get('rules')
-        max_kbps = None
-        for rule in rules:
-            if rule['type'] == 'bandwidth_limit':
-                max_kbps = rule.get('max_kbps')
-                break
-
-        return max_kbps
-
-    def get_dscp_marking(self):
-        rules = self.qospolicy.get('rules')
-        dscp_marking = None
-        for rule in rules:
-            if rule['type'] == 'dscp_marking':
-                dscp_marking = rule.get('dscp_mark')
-                break
-
-        return dscp_marking
-
-    def __str__(self):
-        return str(self.qospolicy)
