@@ -88,9 +88,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
     def _add_new_router_port(self, router, router_port):
         LOG.info(_LI("Adding new logical router interface = %s"),
                  router_port)
-        local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id()
-        )
+        lswitch = self.db_store.get_lswitch(router_port.get_lswitch_id())
+        local_network_id = lswitch.get_unique_key()
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
@@ -152,9 +151,9 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         for port in router.get_ports():
             if port.get_id() != router_port.get_id():
 
-                port_net_id = self.db_store.get_network_id(
-                    port.get_lswitch_id(),
-                )
+                router_port_lswitch = self.db_store.get_lswitch(
+                    port.get_lswitch_id())
+                port_net_id = router_port_lswitch.get_unique_key()
 
                 # From this router interface to all other interfaces
                 self._add_subnet_send_to_proactive_routing(
@@ -431,9 +430,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
     def _delete_router_port(self, router_port):
         LOG.info(_LI("Removing logical router interface = %s"),
                  router_port)
-        local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id()
-        )
+        lswitch = self.db_store.get_lswitch(router_port.get_lswitch_id())
+        local_network_id = lswitch.get_unique_key()
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto

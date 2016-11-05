@@ -169,9 +169,8 @@ class L3App(df_base_app.DFlowApp):
     def _add_new_router_port(self, router, router_port):
         LOG.info(_LI("Adding new logical router interface = %s"),
                  router_port)
-        local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id()
-        )
+        lswitch = self.db_store.get_lswitch(router_port.get_lswitch_id())
+        local_network_id = lswitch.get_unique_key()
         datapath = self.get_datapath()
         if datapath is None:
             return
@@ -236,9 +235,9 @@ class L3App(df_base_app.DFlowApp):
                                                     port.get_tunnel_key())
 
                 # From all the other interfaces to this new interface
-                router_port_net_id = self.db_store.get_network_id(
-                    port.get_lswitch_id(),
-                )
+                router_port_lswitch = self.db_store.get_lswitch(
+                    port.get_lswitch_id())
+                router_port_net_id = router_port_lswitch.get_unique_key()
                 self._add_subnet_send_to_controller(
                     router_port_net_id,
                     router_port.get_cidr_network(),
@@ -305,9 +304,8 @@ class L3App(df_base_app.DFlowApp):
     def _delete_router_port(self, router_port):
         LOG.info(_LI("Removing logical router interface = %s"),
                  router_port)
-        local_network_id = self.db_store.get_network_id(
-            router_port.get_lswitch_id()
-        )
+        lswitch = self.db_store.get_lswitch(router_port.get_lswitch_id())
+        local_network_id = lswitch.get_unique_key()
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
         tunnel_key = router_port.get_tunnel_key()

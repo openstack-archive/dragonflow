@@ -464,6 +464,8 @@ class NbApi(object):
         lswitch = {}
         lswitch['id'] = id
         lswitch['topic'] = topic
+        lswitch[db_models.UNIQUE_KEY] = self.driver.allocate_unique_key(
+            'lswitch')
         for col, val in columns.items():
             lswitch[col] = val
         lswitch_json = jsonutils.dumps(lswitch)
