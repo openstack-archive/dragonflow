@@ -315,9 +315,7 @@ class L2App(df_base_app.DFlowApp):
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
 
-        network_id = self.db_store.get_network_id(
-            lswitch.get_id(),
-        )
+        network_id = lswitch.get_unique_key()
         match = parser.OFPMatch(eth_dst='01:00:00:00:00:00')
         addint = haddr_to_bin('01:00:00:00:00:00')
         match.set_dl_dst_masked(addint, addint)
