@@ -14,6 +14,9 @@ import netaddr
 from oslo_serialization import jsonutils
 
 
+UNIQUE_KEY = 'unique_key'
+
+
 class NbObject(object):
 
     def __init__(self, inner_obj):
@@ -59,7 +62,7 @@ class NbDbObject(NbObject):
 class NbDbObjectWithUniqueKey(NbDbObject):
 
     def get_unique_key(self):
-        return self.inner_obj.get('unique_key')
+        return self.inner_obj.get(UNIQUE_KEY)
 
 
 class Chassis(NbDbObject):
