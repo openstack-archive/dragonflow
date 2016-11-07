@@ -252,7 +252,6 @@ class TableMonitor(object):
         self._polling_time = polling_time
         self._daemon = df_utils.DFDaemon()
         self._table_name = table_name
-        pass
 
     def daemonize(self):
         return self._daemon.daemonize(self.run)
