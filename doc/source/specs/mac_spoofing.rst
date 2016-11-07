@@ -6,7 +6,7 @@
 
 ==============================
 Port Security and MAC Spoofing
-===============================
+==============================
 
 https://blueprints.launchpad.net/dragonflow/+spec/mac-spoofing-protection
 
@@ -36,11 +36,13 @@ It will also have rules allowing DST broadcast/multicast MAC traffic
 to pass.
 
 Additional drop rules:
-1) Packets with SRC MAC broadcast/multicast bit set.
+
+1. Packets with SRC MAC broadcast/multicast bit set.
    (This option might be needed in some environments, we can leave this as a configurable
-    option in case it is -
-    http://www.cisco.com/c/en/us/support/docs/switches/catalyst-6500-series-switches/107995-config-catalyst-00.html#mm)
-2) VLAN tagged frames where the TCI "Drop eligible indicator" (TEI) bit is set (congestion)
+   option in case it is -
+   http://www.cisco.com/c/en/us/support/docs/switches/catalyst-6500-series-switches/107995-config-catalyst-00.html#mm)
+
+2. VLAN tagged frames where the TCI "Drop eligible indicator" (TEI) bit is set (congestion)
 
 Following are examples for the flows configured in that table::
 
@@ -54,27 +56,28 @@ This table also blocks any ARP responses with IPs that don't belong
 to this VM port.
 (Same for ND responses for IPv6)
 
+::
 
-                +-------------------------------------------------------------------------------------+
-                |                                                                                     |
-                |   OVS Dragonflow Pipeline                                                           |
-                |                                                                                     |
-                |   +----------------+       +-------------+        +-----------+     +------------+  |
-                |   |                |       |             |        |           |     |            |  |
-+------+        |   |                |       |  MAC        |        | Security  |     |  Dispatch  |  |
-|      |        |   | Port           |       |  Spoofing   |        | Groups    |     |  To        |  |
-|  VM  +----------->+ Classification +-----> |  Protection +------->+ Ingress   +---->+  Local     |  |
-|      |        |   | (Table 0)      |       |  Table      |        |           |     |  Ports     |  |
-+------+        |   |                |       |             |        |           |     |            |  |
-                |   |                |       |             |        |           |     |            |  |
-                |   +----------------+       +-------------+        +-----------+     +------------+  |
-                |                                                                                     |
-                |                                                                                     |
-                +-------------------------------------------------------------------------------------+
+    +------+        +-------------------------------------------------------------------------------------+
+    |      |        |                                                                                     |
+    |  VM  |        |   OVS Dragonflow Pipeline                                                           |
+    |      |        |                                                                                     |
+    +---+--+        |   +----------------+       +-------------+        +-----------+     +------------+  |
+        |           |   |                |       |             |        |           |     |            |  |
+        |           |   |                |       |  MAC        |        | Security  |     |  Dispatch  |  |
+        |           |   | Port           |       |  Spoofing   |        | Groups    |     |  To        |  |
+        +-------------->+ Classification +-----> |  Protection +------->+ Ingress   +---->+  Local     |  |
+           |        |   | (Table 0)      |       |  Table      |        |           |     |  Ports     |  |
+                    |   |                |       |             |        |           |     |            |  |
+                    |   |                |       |             |        |           |     |            |  |
+                    |   +----------------+       +-------------+        +-----------+     +------------+  |
+                    |                                                                                     |
+                    |                                                                                     |
+                    +-------------------------------------------------------------------------------------+
 
 
 Allowed Address Pairs
------------------------
+---------------------
 In Neutron there is a feature called allowed address pairs [1], this allow you
 to define <mac, ip> pairs that are allowed for a specific port regardless of
 his configured MAC address/IP address.
@@ -83,20 +86,20 @@ Dragonflow needs to add specific rules to allow all the allowed address
 pairs.
 
 Port Security Disable
-----------------------
+---------------------
 Neutron has a feature to disable port security for ML2 plugins [3], even
 that Dragonflow is currently not a ML2 plugin, we still would like a way
 to disable/enable port security for a certain port.
 
 L2 ARP Supression
-------------------
+-----------------
 It is also important to note that with full ARP L2 suppression [2], some of
 the features described here are not needed as OVS flows are used
 to respond to ARP requests and no ARP traffic should actually reach a VM.
 We still need to verify that this also block gratitude ARPs.
 
 Blocking invalid broadcast/multicast traffic
----------------------------------------------
+--------------------------------------------
 As part of the port security feature we should also prevent traffic loops.
 We drop traffic that has the same src and dst ports classified (the src port register
 and the dst port register are same).
@@ -112,5 +115,7 @@ on a different spec that will address controller reliability concerns.
 References
 ==========
 [1] http://specs.openstack.org/openstack/neutron-specs/specs/api/allowed_address_pairs.html
+
 [2] https://blueprints.launchpad.net/dragonflow/+spec/l2-arp-supression
+
 [3] https://github.com/openstack/neutron-specs/blob/master/specs/kilo/ml2-ovs-portsecurity.rst

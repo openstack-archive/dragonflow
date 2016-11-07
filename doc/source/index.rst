@@ -13,7 +13,6 @@ Contents:
 
    readme
    installation
-   centralized_dragonflow
    distributed_dragonflow
    distributed_dhcp
    pluggable_db

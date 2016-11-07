@@ -4,9 +4,9 @@
 
  http://creativecommons.org/licenses/by/3.0/legalcode
 
-==================
+================
 Distributed DNAT
-==================
+================
 
 https://blueprints.launchpad.net/dragonflow/+spec/fip-distribution
 
@@ -49,7 +49,7 @@ A performance penalty is not expected as patch-ports are not really installed
 in the kernel cache.
 
 Setup
-------
+-----
 Dragonflow controller creates br-ex bridge at every compute node and register
 it self as the controller for this bridge.
 The Dragonflow controller needs to distinguish between the two bridges and
@@ -63,7 +63,7 @@ potentially more then one external network can be configured.
 Dragonflow controller must have the correct mappings internally)
 
 Configuration - Floating IP Added
-----------------------------------
+---------------------------------
 Floating IP is configured in the Neutron DB and Dragonflow plugin map this
 configuration to Dragonflow's DB model and populate floating ip table.
 
@@ -99,8 +99,11 @@ to the floating IP address coming from the external network.
    Match only on traffic coming from external network.
 
    Before this point FWaaS must be applied, we can either:
+
    - Add this logic in flows in Dragonflow pipeline
+
    - Direct traffic to a local FW entity port.
+
    - Receive FW services from external appliance, in that case the FWaaS
      should have already been applied before the pakcet arrived at the
      compute node.
@@ -114,9 +117,10 @@ to the floating IP address coming from the external network.
    A different detailed spec must be introduce to define this, this spec
    however has no conflicts with such possible design.
 
-3) For every floating IP a patch port is added between br-ex and br-int.
+3) For every floating IP a patch port is added between br-ex and br-int
    after the NAT conversion (IP and MAC) send the packet to the correct
    patch-port.
+
 
 4) On br-int, add a matching flow on in_port (for the patch port),
    classify it with the same network as the destination VM (the VM
@@ -154,8 +158,8 @@ external network.
 4) At the egress table (after egress security rules) add flow to send the
    packet to br-ex using the correct patch port.
    (** We can avoid the extra steps and send the packet to the patch
-    port in step 3, however doing it this way also includes egress security
-    and introduce better modeling)
+   port in step 3, however doing it this way also includes egress security
+   and introduce better modeling)
 
 5) At br-ex match flow according to patch-port in_port and apply the NAT
    rule.

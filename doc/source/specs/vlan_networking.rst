@@ -13,7 +13,7 @@ https://blueprints.launchpad.net/dragonflow/+spec/vlan-network
 This blueprint describes how to implement vlan L2 networking in Dragonflow.
 
 Problem Description
-==================
+===================
 Currently, Dragonflow only supports overlay network.
 When admin creates network,no network type can be chosen.
 The network type is always set to overlay network (VxLan, GRE...).
@@ -26,7 +26,7 @@ This spec just discusses how to support vlan L2 networking.
 
 
 Proposed Change
-==============
+===============
 First, Dragonflow plugin does not support to create vlan network.
 In future, ML2 Mechanism Driver will replace Dragonflow Plugin to support
 vlan network.
@@ -58,13 +58,13 @@ Here we call from vms is outbound direction, from outside is inbound direction.
 These two directions will be discussed separately.
 
 Two bridges per host
--------------------
+--------------------
 VMs are connected to br-int,
 overlay tunnels connected to br-int, physical nic connected to br-1,
 Vlan Packets are transmited to/from br-1.
 
 Port updated
------------
+------------
 When controller receives port updated messages, it will install flows.
 With this, outbound and inbound will be discussed as follows.
 
@@ -75,7 +75,7 @@ arp,dhcp, broadcast/multicast.
 These three types will be handled differently by the dragonflow controller.
 
 Outbound-Arp
-""""""""""
+""""""""""""
 
 local port
 ~~~~~~~~~~
@@ -89,7 +89,7 @@ Openflow items like this:
 Table=ARP, Match: Arp Request, Actions: Arp Responders.
 
 remote port
-~~~~~~~~~~
+~~~~~~~~~~~
 When controller receives remote port updated message,
 it will install flows as what local scenario does.
 If destination is unknown, arp request will be handled as common broadcast,
@@ -97,7 +97,7 @@ which will be discussed as follows.
 
 
 Outbound-DHCP
-""""""""""""
+"""""""""""""
 If 'dhcp enable' option is chosen with vlan network,
 controller acts as dhcp server to respond for dhcp request.
 If 'dhcp enable' option is off, dhcp broadcast is treated as common broadcast.
@@ -105,7 +105,7 @@ Actually it's same as what is done for vxlan network.
 
 
 Outbound-Common Broadcast/Multicast
-""""""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""""
 Broadcast excepts to arp and dhcp, it's similar to multicast processing.
 We just take broadcast for example.
 When broadcast happens, thus packet should be forwarded to local ports,
@@ -120,7 +120,7 @@ Outside forwarding behaviors depends on physical networks,
 which will be not discussed here.
 
 local port
-~~~~~~~~~~~~
+~~~~~~~~~~
 When controller receives local port updated messages,
 if this port is the first port of the network on the host,
 controller will install broadcast flows on ovs like this:
@@ -135,7 +135,7 @@ Actions:mod_vlan=vlan_id,output:path_br_1
 If this port is not the first one, controller only update the first flow above.
 
 remote port
-~~~~~~~~~~~~
+~~~~~~~~~~~
 When controller receives remote port updated message, it will not update
 broadcast flows. Because with broadcast, ovs just needs to forward it to br-1.
 This has been done when local port updated.like this.
@@ -147,11 +147,11 @@ The first action 'resubmit(,EGRESSTABLE)' has included remote broadcast scenario
 
 
 Outbound-Unicast
-"""""""""""""""""
+""""""""""""""""
 For unicast, controller treats them differently according to destination port.
 
 local port
-~~~~~~~~~~~
+~~~~~~~~~~
 When controller receives local ports updated message,
 it will install flows for unicast forwarding.
 
@@ -173,7 +173,7 @@ Because this has been done when first port updated.
 
 
 Inbound
-^^^^^^^^^^^
+^^^^^^^
 With inbound, a flow item will be installed to table 0, which will strip vlan
 and set metadata for next table. Flow item like this:
 Table=0,
@@ -184,12 +184,12 @@ For simplicity, I will omit some flow tables that are not so directly related
 with vlan networking.
 
 Inbound-Arp
-"""""""""""""""
+"""""""""""
 Inbound arp broadcast will be handled as common broadcast,
 which will be discussed as follows .
 
 Inbound-DHCP
-"""""""""""""""
+""""""""""""
 DHCP Request will be handled by controller that acts as DHCP server,
 so if inbound dhcp packets are received,, nothing needs to be done.
 
@@ -206,7 +206,7 @@ Match: reg7=port_key, Actions: output:ofport
 
 
 Inbound-Broadcast/Multicast
-""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""
 When controller receives local port updated message,
 it will install or update flow like this.
 
@@ -219,7 +219,7 @@ Match: reg7=port_unique_key, Actions: output:ofport
 
 
 Port delete
----------------------------
+-----------
 When controller receive port deleted messages, it will delete corresponding
 flow items as above.
 What's more, there's some special scenario if the deleted port is the last
