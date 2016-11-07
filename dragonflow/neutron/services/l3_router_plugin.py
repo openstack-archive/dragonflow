@@ -34,6 +34,7 @@ from neutron.db import l3_agentschedulers_db
 from neutron.db import l3_gwmode_db
 from neutron.db.models import l3 as l3_db
 from neutron.plugins.common import constants
+from neutron.plugins.ml2 import plugin as ml2_plugin
 from neutron.quota import resource_registry
 from neutron.services import service_base
 from neutron_lib import constants as const
@@ -41,7 +42,6 @@ from neutron_lib import exceptions as n_exc
 
 from dragonflow._i18n import _LE
 from dragonflow.common import exceptions as df_exceptions
-from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
 
@@ -73,9 +73,21 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         self.router_scheduler = importutils.import_object(
             cfg.CONF.router_scheduler_driver)
         super(DFL3RouterPlugin, self).__init__()
-        self.nb_api = api_nb.NbApi.get_instance(True)
+        self._nb_api = None
         self.core_plugin = None
         self._start_rpc_notifiers()
+
+    @property
+    def nb_api(self):
+        if self._nb_api is None:
+            plugin = manager.NeutronManager.get_plugin()
+            if isinstance(plugin, ml2_plugin.Ml2Plugin):
+                mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
+                self._nb_api = mech_driver.nb_api
+            else:
+                # DF neutron plugin
+                self._nb_api = plugin.nb_api
+        return self._nb_api
 
     def _start_rpc_notifiers(self):
         """Initialization RPC notifiers for agents"""
