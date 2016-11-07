@@ -18,7 +18,7 @@ from neutron.agent.linux import ip_lib
 
 from dragonflow._i18n import _LE
 from dragonflow.cmd.eventlet import df_metadata_service
-from dragonflow.controller import metadata_service_app
+from dragonflow.conf import df_metadata_service as df_metadata_service_conf
 from dragonflow.tests.fullstack import test_base
 
 
@@ -29,8 +29,7 @@ class TestMetadataService(test_base.DFTestBase):
 
     def setUp(self):
         super(TestMetadataService, self).setUp()
-        cfg.CONF.register_opts(metadata_service_app.DF_METADATA_OPTS,
-                               group='df_metadata')
+        df_metadata_service_conf.register_opts()
         # Override defaults to avoid collision with existing metadata service
         cfg.CONF.df_metadata.ip = '1.1.1.1'
         cfg.CONF.df.metadata_interface = 'tap-md-test'
