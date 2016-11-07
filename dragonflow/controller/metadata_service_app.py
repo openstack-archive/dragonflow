@@ -21,13 +21,13 @@ import six
 import six.moves.urllib.parse as urlparse
 import webob
 
-from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import encodeutils
 
 from dragonflow._i18n import _, _LW, _LE
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
+from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
@@ -50,20 +50,6 @@ TCP_SYN = 0x002
 TCP_ACK = 0x010
 
 
-DF_METADATA_OPTS = [
-    cfg.IPOpt(
-        'ip',
-        default='169.254.169.254',
-        help=_('The IP to which the DF metadata service proxy is bound'),
-    ),
-    cfg.PortOpt(
-        'port',
-        default='18080',
-        help=_('The port to which the DF metadata service proxy is bound'),
-    ),
-]
-
-
 class MetadataServiceApp(df_base_app.DFlowApp):
     def __init__(self, api, db_store=None, vswitch_api=None, nb_api=None):
         super(MetadataServiceApp, self).__init__(
@@ -75,7 +61,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         self._arp_responder = None
         self._ofport = None
         self._interface_mac = ""
-        cfg.CONF.register_opts(DF_METADATA_OPTS, group='df_metadata')
         self._ip = cfg.CONF.df_metadata.ip
         self._port = cfg.CONF.df_metadata.port
         self._interface = cfg.CONF.df.metadata_interface

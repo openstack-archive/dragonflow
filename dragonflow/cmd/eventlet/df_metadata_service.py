@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_config import cfg
 from oslo_log import log
 
 from neutron.agent.common import utils
@@ -21,6 +20,7 @@ from neutron import wsgi
 
 from dragonflow._i18n import _LI
 from dragonflow.common import common_params
+from dragonflow import conf as cfg
 from dragonflow.controller import metadata_service_app
 
 import sys
@@ -72,8 +72,6 @@ def main():
     metadata_conf.register_meta_conf_opts(
         metadata_conf.METADATA_PROXY_HANDLER_OPTS)
     cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
-    cfg.CONF.register_opts(metadata_service_app.DF_METADATA_OPTS,
-                           'df_metadata')
     config.init(sys.argv[1:])
     config.setup_logging()
     environment_setup()
