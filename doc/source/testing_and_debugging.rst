@@ -26,6 +26,17 @@ To run the tests:
 
     > tox -e fullstack
 
+It is possible to have the fullstack tests take authentication information
+from the environment variable, using e.g. an openrc file, such as provided
+by devstack or openstack-ansible.
+
+To do so, set the environment variable `DF_FULLSTACK_USE_ENV`
+
+::
+
+    > export DF_FULLSTACK_USE_ENV=1
+
+
 Debugging
 =========
 
