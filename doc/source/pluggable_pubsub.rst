@@ -17,7 +17,7 @@ publisher.
 
 This can be seen in the following diagram:
 
-.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/pubsub_topology.png
+.. image:: ../images/pubsub_topology.png
 
 
 
@@ -28,7 +28,7 @@ Since some publishers need to bind to a TCP socket, and we will want to run
 monitoring services that need to run only once per server, and not once per
 core, we provide a *publisher service*.
 
-.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/pubsub_neutron_API_server.png
+.. image:: ../images/pubsub_neutron_API_server.png
 
 Therefore the communications between the Neutron service and the publisher
 service requires an inter-process communications (IPC) solution.
