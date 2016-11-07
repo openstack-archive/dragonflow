@@ -102,10 +102,10 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         # Add router ARP & ICMP responder for IPv4 Addresses
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
         if is_ipv4:
-            arp_responder.ArpResponder(datapath,
+            arp_responder.ArpResponder(self,
                                        local_network_id,
                                        dst_ip, mac).add()
-            icmp_responder.ICMPResponder(datapath, dst_ip, mac).add()
+            icmp_responder.ICMPResponder(self, dst_ip, mac).add()
 
         # If router interface IP, send to output table
         if is_ipv4:
@@ -350,8 +350,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             command=ofproto.OFPFC_DELETE_STRICT,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_VERY_HIGH,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         return
@@ -440,9 +438,9 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         mac = router_port.get_mac()
 
         if netaddr.IPAddress(ip).version == 4:
-            arp_responder.ArpResponder(self.get_datapath(),
+            arp_responder.ArpResponder(self,
                                        local_network_id, ip).remove()
-            icmp_responder.ICMPResponder(self.get_datapath(), ip, mac).remove()
+            icmp_responder.ICMPResponder(self, ip, mac).remove()
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
@@ -451,8 +449,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         match = parser.OFPMatch()
@@ -463,8 +459,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         match = parser.OFPMatch()
@@ -476,8 +470,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
         # Remove router port ip proactive flow
@@ -494,8 +486,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)
 
     def add_local_port(self, lport):
@@ -583,6 +573,4 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
             match=match)

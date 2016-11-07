@@ -33,12 +33,12 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
     def test_add_del_route(self):
         # delete router
         self.controller.router_deleted(self.router.get_id())
-        self.assertEqual(4, self.mock_mod_flow.call_count)
+        self.assertEqual(5, self.mock_mod_flow.call_count)
 
         # add router
         self.mock_mod_flow.reset_mock()
         self.controller.router_created(self.router)
-        self.assertEqual(3, self.mock_mod_flow.call_count)
+        self.assertEqual(4, self.mock_mod_flow.call_count)
         args, kwargs = self.mock_mod_flow.call_args
         self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])
         self.mock_mod_flow.reset_mock()

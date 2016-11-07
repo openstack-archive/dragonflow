@@ -18,7 +18,6 @@ from ryu.lib.packet import in_proto
 from ryu.ofproto import ether
 
 from dragonflow.controller.common import constants as const
-from dragonflow.controller.common import utils
 
 
 class ICMPResponder(object):
@@ -27,9 +26,10 @@ class ICMPResponder(object):
     @param interface_ip The port's IPv4 address
     @param interface_mac The port's MAC address
     """
-    def __init__(self, datapath, interface_ip, interface_mac,
+    def __init__(self, app, interface_ip, interface_mac,
                  table_id=const.L2_LOOKUP_TABLE):
-        self.datapath = datapath
+        self.app = app
+        self.datapath = app.get_datapath()
         self.interface_ip = interface_ip
         self.interface_mac = interface_mac
         self.table_id = table_id
@@ -66,29 +66,20 @@ class ICMPResponder(object):
         match = self._get_match()
         instructions = self._get_instructions()
         ofproto = self.datapath.ofproto
-        parser = self.datapath.ofproto_parser
-        msg = parser.OFPFlowMod(datapath=self.datapath,
-                                cookie=utils.set_aging_cookie_bits(0),
-                                cookie_mask=0,
-                                table_id=self.table_id,
-                                command=ofproto.OFPFC_ADD,
-                                priority=const.PRIORITY_MEDIUM,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match, instructions=instructions)
-        self.datapath.send_msg(msg)
+        self.app.mod_flow(
+            datapath=self.datapath,
+            table_id=self.table_id,
+            command=ofproto.OFPFC_ADD,
+            priority=const.PRIORITY_MEDIUM,
+            match=match,
+            inst=instructions)
 
     def remove(self):
         ofproto = self.datapath.ofproto
-        parser = self.datapath.ofproto_parser
         match = self._get_match()
-        msg = parser.OFPFlowMod(datapath=self.datapath,
-                                cookie=utils.set_aging_cookie_bits(0),
-                                cookie_mask=0,
-                                table_id=self.table_id,
-                                command=ofproto.OFPFC_DELETE,
-                                priority=const.PRIORITY_MEDIUM,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
-        self.datapath.send_msg(msg)
+        self.app.mod_flow(
+            datapath=self.datapath,
+            table_id=self.table_id,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match)
