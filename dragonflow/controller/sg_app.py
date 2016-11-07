@@ -14,7 +14,6 @@
 #    under the License.
 import collections
 import netaddr
-from neutron.agent.common import config
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
@@ -25,7 +24,6 @@ from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 
 
-config.setup_logging()
 LOG = log.getLogger(__name__)
 
 SG_CT_STATE_MASK = const.CT_STATE_NEW | const.CT_STATE_EST | \

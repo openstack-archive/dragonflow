@@ -14,7 +14,6 @@
 #    under the License.
 
 import netaddr
-from neutron.agent.common import config
 from oslo_log import log
 from ryu.ofproto import ether
 
@@ -23,7 +22,6 @@ from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 
 
-config.setup_logging()
 LOG = log.getLogger(__name__)
 
 ARP_OP_TYPE_REQUEST = 1
