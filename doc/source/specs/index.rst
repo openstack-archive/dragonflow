@@ -21,26 +21,25 @@
 
 
 Dragonflow Specs
-=================
+================
 
 This section contains detailed specification documents for
 different features inside Dragonflow.
 
 
-Spec Template
---------------
+Specs
+-----
+
 .. toctree::
     :maxdepth: 3
 
-    skeleton
-    template
     distributed_dnat
     mac_spoofing
     selective_topo_dist
     performance_testing
     ovsdb_monitor
     igmp_application_and_multicast_support
-    redis_db_driver
+    redis_driver
     keep_db_consistency
     publish_subscribe_abstraction
     local_controller_reliability
@@ -54,7 +53,17 @@ Spec Template
     vlan_networking
     port_status_update
     config_generation
+    virtual_tunnel_port
 
+
+Templates
+---------
+
+.. toctree::
+    :maxdepth: 3
+
+    skeleton
+    template
 
 Indices and tables
 ------------------

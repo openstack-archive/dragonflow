@@ -1,6 +1,6 @@
-=======================
+======================
 Distributed Dragonflow
-=======================
+======================
 
 Dragonflow is a distributed SDN controller for OpenStack® Neutron™
 supporting distributed Switching, Routing, DHCP and more.
@@ -39,8 +39,7 @@ Key Design Guidelines
 High Level Architecture
 -----------------------
 
-.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/
-    dragonflow_distributed_architecture.png
+.. image:: ../images/dragonflow_distributed_architecture.png
     :alt: Solution Overview
     :width: 600
     :height: 455
@@ -119,7 +118,7 @@ How to Install
   <https://github.com/openstack/dragonflow/tree/master/doc/source/multi-node-conf>`_
 
 Dragonflow Talks
------------------
+----------------
 - `Dragonflow - Neutron done the SDN Way - OpenStack Austin Summit
    <https://www.openstack.org/videos/video/dragonflow-neutron-done-the-sdn-way>`_
 - `Dragonflow Introduction Video - OpenStack Tokyo Summit

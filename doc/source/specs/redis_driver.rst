@@ -31,8 +31,8 @@ Populating a Database API
 -------------------------
 Basic operation for Redis DB,including add/delete/get/modify and so on.
 Realization is based on Grokzen lib.
-The following diagram shows which components will populate Redis DB Cluster with driver[4].
-
+The following diagram shows which components will populate Redis DB Cluster with
+driver[4].::
 
     +------------------+            +----------------+
     |Neutron server    |            |   Redis Driver |
@@ -53,33 +53,36 @@ The following diagram shows which components will populate Redis DB Cluster with
     +------------------+            +----------------+
 
 
-
-
 Publish API
 -----------
 The new API realizes publish function with channel, based on andymccurdy lib
 The following diagram shows how Neutron config changes are published to all local controllers.
-It is only a example.
+It is only a example.::
 
-+---------------+
-|               |                                          +-----------------+
-|  DF Neutron   |                                          | Redis DB        |
-|  Plugin       |                                          |                 |
-|               |                                          |                 |
-|  Configuration|                                          |                 |
-|  Change       |                                          |                 |
-|               |           call Publish API               |                 |
-|               +----------------------------------------> |                 |
-|               |                                          |                 |
-|               |                                          |                 |
-|               |                                          +-----------------+
-|               |
-+---------------+
-Main process of realization;
-r = redis.StrictRedis(...)
-p = r.pubsub()
-r.publish('my-first-channel', 'some data')/* my-first-channel is channel name,
-                                          some data is what you want to publish */
+    +---------------+
+    |               |                                          +-----------------+
+    |  DF Neutron   |                                          | Redis DB        |
+    |  Plugin       |                                          |                 |
+    |               |                                          |                 |
+    |  Configuration|                                          |                 |
+    |  Change       |                                          |                 |
+    |               |           call Publish API               |                 |
+    |               +----------------------------------------> |                 |
+    |               |                                          |                 |
+    |               |                                          |                 |
+    |               |                                          +-----------------+
+    |               |
+    +---------------+
+
+Main process of realization:
+
+.. code-block::python
+
+    r = redis.StrictRedis(*args)
+    p = r.pubsub()
+    r.publish('my-first-channel', 'some data')
+    # my-first-channel is channel name,
+    # some data is what you want to publish
 
 Special Notice:
 'Some data' will be coded into json pattern.
@@ -95,19 +98,25 @@ Realization is based on andymccurdy lib.
 
 Here is a example of subscription process:
 
-r = redis.StrictRedis(...)
-p = r.pubsub()
-p.subscribe('my-first-channel', 'my-second-channel', ...) /* my-first-channel is channel name*/
-p.unsubscribe('my-first-channel') /*here unsubscribe the channel */
+.. code-block::python
+
+    r = redis.StrictRedis(*args)
+    p = r.pubsub()
+    p.subscribe('my-first-channel', 'my-second-channel', ...) # my-first-channel is channel name
+    p.unsubscribe('my-first-channel') # here unsubscribe the channel
 
 
 Here is an example of message driver may received:
 
-{'channel': 'my-first-channel', 'data': 'some data', 'pattern': None, 'type': 'message'}
+.. code-block::python
+
+    {'channel': 'my-first-channel', 'data': 'some data', 'pattern': None, 'type': 'message'}
 
 type: One of the following: 'subscribe', 'unsubscribe', 'psubscribe', 'punsubscribe',
-                           'message', 'pmessage'
-channel: The channel [un]subscribed to or the channel a message was published to
+                            'message', 'pmessage'.
+
+channel: The channel [un]subscribed to or the channel a message was published to.
+
 pattern: The pattern that matched a published message's channel.
          Will be None in all cases except for 'pmessage' types.
 data:
@@ -125,35 +134,38 @@ Subscribe Thread For Reading Messages
 The subscribe thread is in charge of receiving the notifications and sending
 them back to the controller. Realization is based on andymccurdy lib.
 
-The subscribe thread loop is depicted in the following diagram:
+The subscribe thread loop is depicted in the following diagram::
 
 
-                                                                           +---------------+
-                                                                           |               |
-                                                                           |   Process     |
-      +-----------------+                       +-----------------+fun call|   Function1   |
-      |                 |                       |                 +-------->               |
-      | Subscribe Thread|                       | Message Dispatch|        +---------------+
+      +-----------------+                                                   +---------------+
+      |                 |                                                   |               |
+      |                 |                                                   |   Process     |
+      |                 |                       +-----------------+fun call |   Function1   |
+      |                 |                       |                 +-------->|               |
+      |Subscribe Thread |                       | Message Dispatch|         +---------------+
       |                 |                       |                 |
-      |Wait For Message |                       |                 |
-      |                 |                       | Read Message    |         +----------------+
-      |                 | Send into Queue       | From Queue      |fun call |   Process      |
-      | New Message     +----------------------->                 +-------->|   Function2    |
-      |                 |                       | Dispatch Message|         |                |
-      |                 |                       |                 |         +----------------+
+      | Wait For Message|                       |                 |
+      |                 |                       | Read Message    |         +---------------+
+      |                 | Send into Queue       | From Queue      |fun call |   Process     |
+      | New Message     +----------------------->                 +-------->|   Function2   |
+      |                 |                       | Dispatch Message|         |               |
+      |                 |                       |                 |         +---------------+
       |                 |                       |                 |
       |                 |                       |                 |
       |                 |                       |                 |         +---------------+
-      |                 |                       |                 | fun call|  Process      |
+      |                 |                       |                 |fun call |  Process      |
       |                 |                       |                 +--------->  Function3    |
       |                 |                       |                 |         |               |
       +-----------------+                       +-----------------+         |               |
                                                                             +---------------+
 
 Realization Example:
-while True:
-  for message in p.listen():
-  # classify the message channel content, send to different message queue for channel
+
+.. code-block::python
+
+    while True:
+        for message in p.listen():
+            # classify the message channel content, send to different message queue for channel
 
 Special Notice:
 Not only three Process Functions.
@@ -169,7 +181,7 @@ driver only does connection fix,throw exception when connection is recovered,
 driver will clear all subscription and user of Subscription do resubscribe.
 
 Connection Setup
------------------
+----------------
 When driver is initialized,it will connect to all db nodes for read/write/get/modify operation.
 But for pub/sub, driver will connect to one db node for one pub or one sub.
 Driver guarantee connections for pub/sub will be scattered among db nodes.
@@ -208,7 +220,11 @@ subscriber should subscribe again.
 
 References
 ==========
-[1]https://github.com/andymccurdy/redis-py
-[2]http://redis.io/commands
-[3]https://github.com/Grokzen/redis-py-cluster
-[4]http://redis.io/topics/cluster-tutorial
+
+[1] https://github.com/andymccurdy/redis-py
+
+[2] http://redis.io/commands
+
+[3] https://github.com/Grokzen/redis-py-cluster
+
+[4] http://redis.io/topics/cluster-tutorial

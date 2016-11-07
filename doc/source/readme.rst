@@ -2,12 +2,12 @@ Installation guide for Dragonflow
 Keep in mind that Dragonflow is still in beta.
 
 Prerequisites
-------------
+-------------
 
 1) Open vSwitch 2.5.0
 
 Quick Installation
--------------------
+------------------
 
 1) Clone Devstack
 
@@ -121,11 +121,11 @@ Important parameters that needs to be set in ``local.conf`` :
 You can find example configuration files in the multi-node-conf or the single-node-conf directories.
 
 
-============================================
- Automated setup using Vagrant + Virtualbox
-============================================
+==========================================
+Automated setup using Vagrant + Virtualbox
+==========================================
 
 `Vagrant Installation Guide <http://docs.openstack.org/developer/dragonflow/installation.html>`_
 
 Troubleshooting
-----------------
+---------------

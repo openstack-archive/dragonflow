@@ -1,6 +1,6 @@
-==============
+============
 Pluggable DB
-==============
+============
 
 Instead of implementing a proprietary DB solution for Dragonflow or picking
 one open source framework over the other, we designed the DB layer in
@@ -24,20 +24,20 @@ the DB driver API class and add an installation script for the DB framework serv
 The following diagram depicts the pluggable DB architecture in Dragonflow and the
 currently supported DB frameworks:
 
-.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/db1.jpg
+.. image:: ../images/db1.jpg
     :alt: Pluggable DB architecture
     :width: 600
     :height: 525
     :align: center
 
 Classes in the DB Layer
-========================
+=======================
 
 The following sections describe the two main classes that are part of the
 DB layer.
 
 Applicative N/B DB Adapter Layer
-----------------------------------
+--------------------------------
 This component is the translator layer between the data model elements
 to the DB driver which is generic.
 
@@ -66,7 +66,7 @@ and using them if possible.
 
 
 DB Driver API
---------------
+-------------
 DB Driver is an interface class that list the methods needed to be implemented
 in order to connect a certain DB framework to work with Dragonflow as a backend.
 
@@ -90,7 +90,7 @@ DB framework looking for changes.
 
 
 Modes of DB
-============
+===========
 There are three different modes for the interaction between Dragonflow and the DB.
 
 Full Proactive
@@ -102,7 +102,7 @@ DB in order to do fast lookups.
 
 Selective Proactive
 -------------------
-.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/db2.jpg
+.. image:: ../images/db2.jpg
     :alt: Pluggable DB architecture
     :width: 600
     :height: 525
@@ -116,7 +116,7 @@ This mode is called selective proactive.
 
 The following diagram depicts why this is needed:
 
-.. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/db3.jpg
+.. image:: ../images/db3.jpg
     :alt: Pluggable DB architecture
     :width: 600
     :height: 525
@@ -133,7 +133,7 @@ longer correct, but we kept it simple in order to demonstrate that in setups tod
 are many isolated topologies)
 
 Reactive
----------
+--------
 
 
 

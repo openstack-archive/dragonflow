@@ -151,12 +151,12 @@ We will do the following tests:
 7. 200 objects created/updated
 8. 300 objects created/updated
 9. 400 objects created/updated
-8. 500 objects created/updated
-9. 600 objects created/updated
-10. 700 objects created/updated
-10. 800 objects created/updated
-10. 900 objects created/updated
-10. 1000 objects created/updated
+10. 500 objects created/updated
+11. 600 objects created/updated
+12. 700 objects created/updated
+13. 800 objects created/updated
+14. 900 objects created/updated
+15. 1000 objects created/updated
 
 
 Multiple tenants
@@ -216,5 +216,7 @@ References
 ==========
 
 [1] http://docs-draft.openstack.org/04/270204/4/check/gate-performance-docs-docs/9264b70/doc/build/html/test_plans/db/plan.html
+
 [2] http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Appendix_Limits.html
+
 [3] https://aws.amazon.com/vpc/faqs/
