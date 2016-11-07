@@ -21,6 +21,7 @@ from neutron import wsgi
 
 from dragonflow._i18n import _LI
 from dragonflow.common import common_params
+from dragonflow.conf import CONF
 from dragonflow.controller import metadata_service_app
 
 import sys
@@ -42,7 +43,7 @@ def environment_setup():
         "--", "set", "Interface", interface, "type=internal"]
     utils.execute(cmd, run_as_root=True)
 
-    ip = cfg.CONF.df_metadata.ip
+    ip = CONF.df_metadata.ip
     cmd = ["ip", "addr", "add", "dev", interface, "{}/0".format(ip)]
     utils.execute(cmd, run_as_root=True)
 
@@ -63,7 +64,7 @@ def environment_destroy():
     cmd = ["ovs-vsctl", "del-port", bridge, interface]
     utils.execute(cmd, run_as_root=True, check_exit_code=[0])
 
-    ip = cfg.CONF.df_metadata.ip
+    ip = CONF.df_metadata.ip
     cmd = ["ip", "rule", "del", "from", ip, "table", METADATA_ROUTE_TABLE_ID]
     utils.execute(cmd, run_as_root=True)
 
@@ -79,8 +80,8 @@ def main():
     service = wsgi.Server('dragonflow-metadata-service', disable_ssl=True)
     service.start(
         metadata_service_app.DFMetadataProxyHandler(cfg.CONF),
-        host=cfg.CONF.df_metadata.ip,
-        port=cfg.CONF.df_metadata.port,
+        host=CONF.df_metadata.ip,
+        port=CONF.df_metadata.port,
     )
     service.wait()
     environment_destroy()

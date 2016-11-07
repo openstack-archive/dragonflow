@@ -13,17 +13,18 @@
 from oslo_config import cfg
 
 from dragonflow.common import common_params
+from dragonflow.conf import metadata_service_app
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import dhcp_app
 from dragonflow.controller import dnat_app
 from dragonflow.controller import l2_ml2_app
-from dragonflow.controller import metadata_service_app
 
 
 CONF = cfg.CONF
 
 
 def list_opts():
+    metadata_service_app.register_opts()
     return [
         ('df', common_params.DF_OPTS),
         ('df_ryu', df_local_controller.DF_RYU_OPTS),
