@@ -14,7 +14,6 @@ Contents:
    readme
    installation
    testing_and_debugging
-   centralized_dragonflow
    distributed_dragonflow
    distributed_dhcp
    pluggable_db

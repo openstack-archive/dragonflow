@@ -4,16 +4,15 @@
 
 http://creativecommons.org/licenses/by/3.0/legalcode
 
-===============
+=============
 OVSDB Monitor
-===============
+=============
 
 This blueprint describe the addition of OVSDB monitor support for
 Dragonflow. It implements the lightweight OVSDB driver which based
 on the OVSDB monitor\notification mechanism, it solves the performance
 problem for Dragonflow to fetch vm ports/interfaces info from OVSDB.
 
-===================
 Problem Description
 ===================
 
@@ -37,7 +36,6 @@ resources further;
 For each session between Dragonflow and OVSDB for a new logical port,
 it will fetch many unnecessary data from many OVSDB tables;
 
-====================
 Solution Description
 ====================
 
@@ -89,7 +87,6 @@ notification it will do the same work as step 4.
 If we restart Dragonflow process or restart the OVSDB, Dragonflow OVSDB
 driver will reconnect to OVSDB server, so step1 to 6 will be executed again.
 
-====================
 Event Classification
 ====================
 
@@ -119,9 +116,8 @@ Patch port online\offline:
 type     patch
 options  Peer=<peer port name>
 
-=========
 Conclusion
-=========
+==========
 Our solution provides a lightweight OVSDB driver functionality which
 implements the OVSDB data monitor and synchronize, remove the Dragonflow
 loop process, maintain only one socket channel and transfer less data.

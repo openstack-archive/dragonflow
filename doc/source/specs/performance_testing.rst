@@ -1,9 +1,10 @@
 ..
- This work is licensed under a Creative Commons Attribution 3.0 Unported
- License.
+    This work is licensed under a Creative Commons Attribution 3.0 Unported
+    License.
 
- http://creativecommons.org/licenses/by/3.0/legalcode
+    http://creativecommons.org/licenses/by/3.0/legalcode
 
+==============================================
 DragonFlow Data Plane Performance Testing Spec
 ==============================================
 
@@ -82,7 +83,7 @@ Environment setup
 Test description & scenarios
 ----------------------------
 * Generate 10 consequence tests with 5 seconds sleep between each test towards
-the server.
+  the server.
 
 Tests types
 -----------
@@ -107,7 +108,7 @@ Environment setup
 Test description & scenarios
 ----------------------------
 * From each of the iPerf clients, generate 10 consequence tests with 5
-seconds sleep between each test towards the server.
+  seconds sleep between each test towards the server.
 
 Tests types
 -----------
@@ -120,9 +121,9 @@ Total number of tests
 Testing methodology
 ===================
 - For measuring DragonFlow networking improvement/overhead, all tests have to
-be executed with & without DF (with DVR. OVN as well?).
+  be executed with & without DF (with DVR. OVN as well?).
 - The created VMs should report when there are up, so it will be possible to
-count the successfully created VMs in the automation.
+  count the successfully created VMs in the automation.
 
 
 Network link quality definition
@@ -131,7 +132,7 @@ The quality of a link can be tested as follows:
 
 * Bandwidth - measured through iPerf TCP test
 * Datagram loss - measured through iPerf UDP test. A good link quality: the
-packet loss should not go over 1%.
+  packet loss should not go over 1%.
 * Jitter (latency variation) - measured through iPerf UDP test
 * Latency (response time or RTT) - measured using the Ping command
 
