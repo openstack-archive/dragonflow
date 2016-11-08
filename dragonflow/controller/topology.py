@@ -13,9 +13,10 @@
 from oslo_log import log
 
 from dragonflow._i18n import _LI, _LE, _LW
-from dragonflow.common import constants
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.db import models as db_models
+
+from neutron_lib import constants as const
 
 LOG = log.getLogger(__name__)
 
@@ -168,7 +169,7 @@ class Topology(object):
     def _vm_port_added(self, ovs_port):
         self._vm_port_updated(ovs_port)
         self.controller.notify_port_status(
-            ovs_port, constants.PORT_STATUS_UP)
+            ovs_port, const.PORT_STATUS_UP)
 
     def _vm_port_updated(self, ovs_port):
         lport_id = ovs_port.get_iface_id()
@@ -185,6 +186,17 @@ class Topology(object):
         ovs_port_id = ovs_port.get_id()
         self.ovs_to_lport_mapping[ovs_port_id] = {'lport_id': lport_id,
                                                   'topic': topic}
+
+        chassis = lport.get_chassis()
+        # check if migration occurs
+        if chassis != self.chassis_name:
+            device_owner = lport.get_device_owner()
+            if device_owner != const.DEVICE_OWNER_ROUTER_INTF and
+                    device_owner != const.DEVICE_OWNER_ROUTER_DHCP:
+                LOG.info(_LI("Prepare migrate lport %(lport)s to %(chassis)s"),
+                         {"lport": lport_id, "chassis": chassis})
+                self.nb_api.set_lport_migration(lport_id, self.chassis_name)
+            return
 
         cached_lport = self.db_store.get_port(lport_id)
         if not cached_lport or not cached_lport.get_external_value("ofport"):
@@ -231,7 +243,12 @@ class Topology(object):
                 'Failed to process logical port offline event %s'), lport_id)
         finally:
             self.controller.notify_port_status(
-                ovs_port, constants.PORT_STATUS_DOWN)
+                ovs_port, const.PORT_STATUS_DOWN)
+
+            migration = self.nb_api.get_lport_migration(lport_id)
+            if migration and migration.get('migration'):
+                LOG.info(_LI("Sending migrating event for %s"), lport_id)
+                self.nb_api.notify_migration_event(lport_id, lport)
 
             del self.ovs_to_lport_mapping[ovs_port_id]
             self._del_from_topic_subscribed(topic, lport_id)
