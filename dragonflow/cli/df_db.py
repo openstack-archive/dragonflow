@@ -71,10 +71,14 @@ def print_whole_table(db_driver, table):
     print('------------------------------------------------------------')
     print('Table = ' + table)
     print('------------------------------------------------------------')
+
     for key in keys:
-        value = db_driver.get_key(table, key)
-        if value:
-            print('Key = ' + key + ' , Value = ' + value)
+        try:
+            value = db_driver.get_key(table, key)
+            if value:
+                print('Key = ' + key + ' , Value = ' + value)
+        except df_exceptions.DBKeyNotFound:
+            print('Key not found: ' + key)
     print(' ')
 
 
@@ -106,8 +110,12 @@ def clean_whole_table(db_driver, table):
     except df_exceptions.DBKeyNotFound:
         print('Table not found: ' + table)
         return
+
     for key in keys:
-        db_driver.delete_key(table, key)
+        try:
+            db_driver.delete_key(table, key)
+        except df_exceptions.DBKeyNotFound:
+            print('Key not found: ' + key)
 
 
 def drop_table(db_driver, table):
