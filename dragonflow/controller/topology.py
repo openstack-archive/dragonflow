@@ -181,6 +181,12 @@ class Topology(object):
                                                   'topic': topic}
         LOG.info(_LI("A local logical port(%s) is online") % str(lport))
 
+        chassis = lport.get_chassis()
+        # check if migration occurs
+        if chassis != self.chassis_name:
+            self.nb_api.set_lport_state(lport_id, self.chassis_name)
+            return
+
         try:
             self.controller.logical_port_updated(lport)
         except Exception:
@@ -219,6 +225,10 @@ class Topology(object):
             LOG.exception(_LE(
                 'Failed to process logical port offline event %s') % lport_id)
         finally:
+            state = self.nb_api.get_lport_state(lport_id)
+            if state and len(state['state']) > 0:
+                self.nb_api.notify_migration_event(lport_id, lport)
+
             # publish vm port down event.
             if cfg.CONF.df.enable_port_status_notifier:
                 self.port_status_reporter.notify_port_status(
