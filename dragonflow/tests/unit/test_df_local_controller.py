@@ -239,3 +239,30 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.controller.delete_chassis(chassis_id)
         mock_delete_lport.assert_called_once_with(lport_id)
         mock_delete_chassis.assert_called_once_with(chassis_id)
+
+    @mock.patch.object(ryu_base_app.RyuDFAdapter,
+                       'notify_remove_remote_port')
+    @mock.patch.object(ryu_base_app.RyuDFAdapter,
+                       'notify_add_local_port')
+    @mock.patch.object(db_store.DbStore, 'set_port')
+    def test_update_migration_flows(self, mock_notify_remove,
+                                    mock_notify_add, mock_set_port):
+        self.controller.nb_api.get_lport_migration.return_value = {}
+        self.controller.nb_api.get_lport_migration.return_value = \
+            {'migration': 'fake_host'}
+        lport = test_app_base.fake_local_port1
+        fake_lswitch = test_app_base.fake_logic_switch1
+        l_switch_id = lport.get_lswitch_id()
+
+        self.controller.db_store.set_lswitch(l_switch_id, fake_lswitch)
+        self.controller.vswitch_api.get_chassis_ofport.return_value = 3
+        self.controller.vswitch_api.get_port_ofport_by_id.retrun_value = 2
+        self.controller.db_store.set_port(lport.get_id(), lport, True,
+                                          'fake_tenant1')
+
+        self.controller.update_migration_flows(lport)
+        mock_set_port.assert_called_with(lport.get_id(), lport, True)
+        mock_notify_remove.assert_not_called()
+        mock_notify_add.assert_called_with(lport)
+        self.controller.nb_api.delete_lport_migration.assert_called_with(
+            lport.get_id())
