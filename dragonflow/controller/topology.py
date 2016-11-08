@@ -187,6 +187,14 @@ class Topology(object):
         self.ovs_to_lport_mapping[ovs_port_id] = {'lport_id': lport_id,
                                                   'topic': topic}
 
+        chassis = lport.get_chassis()
+        # check if migration occurs
+        if chassis != self.chassis_name:
+            LOG.info(_LI("Ready to migrate lport %(lport)s to %(chassis)s"),
+                     {"lport": lport_id, "chassis": chassis})
+            self.nb_api.set_lport_migration(lport_id, self.chassis_name)
+            return
+
         cached_lport = self.db_store.get_port(lport_id)
         if not cached_lport or not cached_lport.get_external_value("ofport"):
             # If the logical port is not in db store or its ofport is not
@@ -233,6 +241,11 @@ class Topology(object):
         finally:
             self.controller.notify_port_status(
                 ovs_port, constants.PORT_STATUS_DOWN)
+
+            migration = self.nb_api.get_lport_migration(lport_id)
+            if migration and migration.get('migration'):
+                LOG.info(_LI("Sending migrating event for %s"), lport_id)
+                self.nb_api.notify_migration_event(lport_id, lport)
 
             del self.ovs_to_lport_mapping[ovs_port_id]
             self._del_from_topic_subscribed(topic, lport_id)
