@@ -259,18 +259,17 @@ class L2App(df_base_app.DFlowApp):
         del local_ports[lport_id]
 
         if len(local_ports) == 0:
-
             self._del_multicast_broadcast_flows_for_local(local_network_id)
-
-            # delete local_networks
-            remote_ports = network.get('remote')
-            if not remote_ports:
-                del self.local_networks[local_network_id]
-
         else:
             self._update_multicast_broadcast_flows_for_local(local_ports,
                                                              topic,
                                                              local_network_id)
+
+        remote_ports = network.get('remote')
+        if remote_ports is None:
+            return
+        if len(local_ports) == 0 and len(remote_ports) == 0:
+            del self.local_networks[local_network_id]
 
     def _del_multicast_broadcast_flows_for_local(self, local_network_id):
         datapath = self.get_datapath()
@@ -283,7 +282,9 @@ class L2App(df_base_app.DFlowApp):
             datapath=datapath,
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_HIGH,
+            priority=const.PRIORITY_MEDIUM,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
             match=match)
 
         # Egress for broadcast and multicast
@@ -301,7 +302,7 @@ class L2App(df_base_app.DFlowApp):
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        command = ofproto.OFPFC_MODIFY
+        command = ofproto.OFPFC_ADD
 
         # Ingress broadcast
         ingress = []
@@ -554,20 +555,18 @@ class L2App(df_base_app.DFlowApp):
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        command = ofproto.OFPFC_MODIFY
+        command = ofproto.OFPFC_ADD
         network = self.local_networks.get(network_id)
         if network is None:
             network = {
                 'local': {}
             }
             self.local_networks[network_id] = network
-            command = ofproto.OFPFC_ADD
 
         local_ports = network.get('local')
         if local_ports is None:
             local_ports = {}
             network['local'] = local_ports
-            command = ofproto.OFPFC_ADD
 
         local_ports[lport_id] = port_key
 
@@ -642,15 +641,16 @@ class L2App(df_base_app.DFlowApp):
         if len(remote_ports) == 0:
 
             self._del_multicast_broadcast_flows_for_remote(network_id)
-
-            # delete local_networks
-            local_ports = network.get('local')
-            if not local_ports:
-                del self.local_networks[network_id]
         else:
             self._update_multicast_broadcast_flows_for_remote(network_id,
                                                               segmentation_id,
                                                               remote_ports)
+        local_ports = network.get('local')
+        if local_ports is None:
+            return
+
+        if len(local_ports) == 0 and len(remote_ports) == 0:
+            del self.local_networks[network_id]
 
     def _del_multicast_broadcast_flows_for_remote(self, network_id):
         datapath = self.get_datapath()
@@ -661,7 +661,9 @@ class L2App(df_base_app.DFlowApp):
             datapath=datapath,
             command=ofproto.OFPFC_DELETE,
             table_id=const.EGRESS_TABLE,
-            priority=const.PRIORITY_HIGH,
+            priority=const.PRIORITY_MEDIUM,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
             match=match)
 
     def _update_multicast_broadcast_flows_for_remote(self, network_id,
@@ -698,8 +700,8 @@ class L2App(df_base_app.DFlowApp):
             datapath=datapath,
             inst=inst,
             table_id=const.EGRESS_TABLE,
-            command=ofproto.OFPFC_MODIFY,
-            priority=const.PRIORITY_HIGH,
+            command=ofproto.OFPFC_ADD,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
     def _add_multicast_broadcast_handling_for_remote_port(self,
@@ -712,7 +714,7 @@ class L2App(df_base_app.DFlowApp):
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        command = ofproto.OFPFC_MODIFY
+        command = ofproto.OFPFC_ADD
 
         network = self.local_networks.get(network_id)
         if network is None:
@@ -720,13 +722,11 @@ class L2App(df_base_app.DFlowApp):
                 'remote': {}
             }
             self.local_networks[network_id] = network
-            command = ofproto.OFPFC_ADD
 
         remote_ports = network.get('remote')
         if remote_ports is None:
             remote_ports = {}
             network['remote'] = remote_ports
-            command = ofproto.OFPFC_ADD
         remote_ports[lport_id] = port_key
 
         match = self._get_multicast_broadcast_match(network_id)
@@ -756,7 +756,7 @@ class L2App(df_base_app.DFlowApp):
             inst=inst,
             table_id=const.EGRESS_TABLE,
             command=command,
-            priority=const.PRIORITY_LOW,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
     def remove_logical_switch(self, lswitch):
@@ -827,10 +827,8 @@ class L2App(df_base_app.DFlowApp):
                                                 local_network_id):
         LOG.info(_LI('Install network flows on first port up.'))
         network = self.local_networks.get(local_network_id)
-        if network:
-            local_ports = network.get('local')
-            if local_ports:
-                return
+        if network and network.get('local'):
+            return
 
         if network_type == 'vlan':
             self._install_network_flows_for_vlan(segmentation_id,
