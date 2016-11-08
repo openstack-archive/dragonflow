@@ -330,9 +330,9 @@ class DHCPApp(df_base_app.DFlowApp):
         l_switch_id = lport.get_lswitch_id()
         l_switch = self.db_store.get_lswitch(l_switch_id)
         subnets = l_switch.get_subnets()
-        ip = netaddr.IPAddress(lport.get_ip())
+        subnet_id = lport.get_subnets()[0]
         for subnet in subnets:
-            if ip in netaddr.IPNetwork(subnet.get_cidr()):
+            if subnet_id == subnet.get_id():
                 return subnet
         return None
 
@@ -350,13 +350,12 @@ class DHCPApp(df_base_app.DFlowApp):
     def _get_port_netmask(self, subnet):
         return netaddr.IPNetwork(subnet.get_cidr()).netmask
 
-    def _is_dhcp_enabled_on_network(self, lport, net_id):
+    def _is_dhcp_enabled_for_port(self, lport):
         subnet = self._get_subnet_by_port(lport)
         if subnet:
             return subnet.enable_dhcp()
-        LOG.warning(_LW("No subnet found for port <%s>") %
-                lport.get_id())
-        return True
+        LOG.warning(_LW("No subnet found for port %s"), lport.get_id())
+        return False
 
     def _get_port_mtu(self, lport):
         # get network mtu from lswitch
@@ -400,7 +399,6 @@ class DHCPApp(df_base_app.DFlowApp):
         return False
 
     def add_local_port(self, lport):
-        network_id = lport.get_external_value('local_network_id')
         if self.get_datapath() is None:
             return
 
@@ -418,7 +416,7 @@ class DHCPApp(df_base_app.DFlowApp):
                                                     ofport,
                                                     lport_id)
 
-        if not self._is_dhcp_enabled_on_network(lport, network_id):
+        if not self._is_dhcp_enabled_for_port(lport):
             return
 
         if not self._is_port_a_vm(lport):
