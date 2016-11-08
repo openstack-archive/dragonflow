@@ -23,28 +23,10 @@ from ryu.ofproto import ether
 import six
 
 from dragonflow._i18n import _, _LI, _LE
+from dragonflow.conf import CONF
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
-
-DF_L2_APP_OPTS = [
-    cfg.BoolOpt(
-        'l2_responder',
-        default=True,
-        help=_('Install OVS flows to respond to ARP requests.')),
-    cfg.ListOpt('bridge_mappings',
-                default=[],
-                help=_("Comma-separated list of <physical_network>:<bridge> "
-                       "tuples mapping physical network names to the "
-                       "dragonflow's node-specific Open vSwitch bridge names "
-                       "to be used for flat and VLAN networks. Each bridge "
-                       "must exist, and should have a physical network "
-                       "interface configured as a port. All physical "
-                       "networks configured on the server should have "
-                       "mappings to appropriate bridges on each dragonflow "
-                       "node."))
-]
-
 
 # TODO(gsagie) currently the number set in Ryu for this
 # (OFPP_IN_PORT) is not working, use this until resolved
@@ -61,10 +43,9 @@ class L2App(df_base_app.DFlowApp):
         super(L2App, self).__init__(*args, **kwargs)
         self.local_networks = {}
         self.integration_bridge = cfg.CONF.df.integration_bridge
-        cfg.CONF.register_opts(DF_L2_APP_OPTS, group='df_l2_app')
-        self.is_install_arp_responder = cfg.CONF.df_l2_app.l2_responder
+        self.is_install_arp_responder = CONF.df_l2_app.l2_responder
         self.bridge_mappings = self._parse_bridge_mappings(
-            cfg.CONF.df_l2_app.bridge_mappings)
+            CONF.df_l2_app.bridge_mappings)
         self.int_ofports = {}
 
     def _parse_bridge_mappings(self, bridge_mappings):
