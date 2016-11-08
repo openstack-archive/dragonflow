@@ -75,9 +75,8 @@ class NbApi(object):
         if self.use_pubsub:
             self.publisher = self._get_publisher()
             self.subscriber = self._get_subscriber()
+            self.publisher.initialize()
             if self.is_neutron_server:
-                # Publisher is part of the neutron server Plugin
-                self.publisher.initialize()
                 # Start a thread to detect DB failover in Plugin
                 self.publisher.set_publisher_for_failover(
                     self.publisher,
@@ -274,6 +273,11 @@ class NbApi(object):
             elif action == 'delete':
                 ovs_port = OvsPort(value)
                 self.controller.ovs_port_deleted(ovs_port)
+        # Added lport migration for VM migration flag
+        elif 'lport_migration' == table:
+            if action == 'create':
+                lport = LogicalPort(value)
+                self.controller.update_migrating_flows(lport)
         elif 'log' == action:
             message = _LI(
                 'Log event (Info): '
@@ -486,6 +490,27 @@ class NbApi(object):
     def delete_lswitch(self, id, topic):
         self.driver.delete_key('lswitch', id, topic)
         self._send_db_change_event('lswitch', id, 'delete', id, topic)
+
+    # lport process for VM migration
+    def set_lport_migration(self, port_id, chassis):
+        port_migration = {'migration': chassis}
+        migration_json = jsonutils.dumps(port_migration)
+        self.driver.create_key('lport_migration', port_id, migration_json)
+
+    def get_lport_migration(self, port_id):
+        migration_json = {}
+        migration_json = self.driver.get_key('lport_migration', port_id)
+	if migration_json:
+            port_migration = jsonutils.loads(migration_json)
+        return port_migration
+
+    def clear_lport_migration(self, port_id):
+        self.driver.delete_key('lport_migration', port_id)
+
+    def notify_migration_event(self, port_id, lport):
+        lport_json = jsonutils.dumps(lport.lport)
+        self._send_db_change_event('lport_migration', port_id, 'create',
+                                   lport_json, topic=lport.lport['topic'])
 
     def create_lport(self, id, lswitch_id, topic, **columns):
         lport = {}
