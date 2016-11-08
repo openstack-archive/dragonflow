@@ -222,8 +222,9 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                 route_dict = dict(zip(['destination', 'nexthop'], route))
                 added = self._add_route_route(router, route_dict)
                 if added:
-                    self._add_to_route_cache(ROUTE_ADDED, router, route_dict)
-                    self._del_from_route_cache(ROUTE_TO_ADD, router,
+                    self._add_to_route_cache(ROUTE_ADDED, router_id,
+                                             route_dict)
+                    self._del_from_route_cache(ROUTE_TO_ADD, router_id,
                                                route_dict)
 
     def _reprocess_to_del_route(self, topic, port_ip):
@@ -316,11 +317,12 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         LOG.info(_LI('Add extra route %(route)s for router %(router)s'),
                  {'route': route, 'router': str(router)})
 
+        router_id = router.get_id()
         added = self._add_route_process(router, route)
         if added:
-            self._add_to_route_cache(ROUTE_ADDED, router, route)
+            self._add_to_route_cache(ROUTE_ADDED, router_id, route)
         else:
-            self._add_to_route_cache(ROUTE_TO_ADD, router, route)
+            self._add_to_route_cache(ROUTE_TO_ADD, router_id, route)
 
     def _delete_route_process(self, router, route):
         datapath = self.get_datapath()
