@@ -239,3 +239,27 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.controller.delete_chassis(chassis_id)
         mock_delete_lport.assert_called_once_with(lport_id)
         mock_delete_chassis.assert_called_once_with(chassis_id)
+
+    @mock.patch.object(ryu_base_app.RyuDFAdapter,
+                       'notify_add_local_port')
+    def test_update_migration_flows(self, mock_app_notify):
+        self.controller.nb_api = mock.Mock()
+        self.controller.db_store = mock.Mock()
+        self.controller.vswitch_api = mock.Mock()
+        self.controller.nb_api.get_lport_migration.return_value = {}
+
+        self.controller.nb_api.get_lport_migration.return_value = \
+            {'migration': 'fake_host'}
+        self.controller.db_store.get_lswitch.return_value = \
+            test_app_base.fake_logic_switch1
+        self.controller.vswitch_api.get_chassis_ofport.return_value = 3
+        self.controller.vswitch_api.get_port_ofport_by_id.retrun_value = 2
+
+        self.db_store.set_port(test_app_base.fake_local_port1.get_id(),
+                              test_app_base.fake_local_port1,
+                              True)
+
+        self.controller.update_migration_flows(test_app_base.fake_local_port1)
+        mock_app_notify.assert_called_once_with(test_app_base.fake_local_port1)
+        self.controller.nb_api.delete_lport_migration.assert_called_with(
+            test_app_base.fake_local_port1.get_id())
