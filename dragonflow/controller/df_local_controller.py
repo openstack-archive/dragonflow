@@ -301,25 +301,75 @@ class DfLocalController(object):
             return False
         return True
 
-    def _logical_port_process(self, lport, original_lport=None):
-        lswitch = self.db_store2.get_one(
-            l2.LogicalSwitch(id=lport.get_lswitch_id()))
-        if not lswitch:
-            LOG.warning("Could not find lswitch for lport: %s",
-                        lport.get_id())
-            return
-        lport.set_external_value('local_network_id',
-                                 lswitch.unique_key)
-        network_type = lswitch.network_type
-        segment_id = lswitch.segmentation_id
-        physical_network = lswitch.physical_network
+    # update migration flows for VM migration
+    def update_migration_flows(self, lport):
+        # This method processes the migration event sent from source node.
+        # There are three parts for event process, source node, destination
+        # node, other nodes which related to topic of migrating VM, according
+        # to the chassis ID in lport, and local chassis..
+        port_id = lport.get_id()
+        migration = self.nb_api.get_lport_migration(port_id)
+        original_lport = self.db_store.get_port(port_id)
 
-        lport.set_external_value('network_type', network_type)
-        if segment_id is not None:
-            lport.set_external_value('segmentation_id',
-                                     int(segment_id))
-        if physical_network:
-            lport.set_external_value('physical_network', physical_network)
+        if migration:
+            dest_chassis = migration['migration']
+        else:
+            LOG.warning("last lport deleted of this topic, do nothing %s",
+                        lport)
+            return
+
+        if not self._set_lport_external_values(lport):
+            return
+
+        chassis_name = self.get_chassis_name()
+        if dest_chassis == chassis_name:
+            # destination node
+            ofport = self.vswitch_api.get_port_ofport_by_id(lport.get_id())
+            lport.set_external_value('ofport', ofport)
+            lport.set_external_value('is_local', True)
+            self.db_store.set_port(port_id, lport, True)
+
+            LOG.info("dest process migration event port = %(port)s"
+                     "original_port = %(original_port)s"
+                     "chassis = %(chassis)s"
+                     "self_chassis = %(self_chassis)s",
+                     {'port': str(lport),
+                      'original_port': str(original_lport),
+                      'chassis': dest_chassis,
+                      'self_chassis': chassis_name})
+            if original_lport:
+                self.open_flow_app.notify_remove_remote_port(original_lport)
+            self.open_flow_app.notify_add_local_port(lport)
+            return
+
+        # Here It could be either source node or other nodes, so
+        # get ofport from chassis.
+        ofport = self.vswitch_api.get_vtp_ofport(
+            lport.get_external_value('network_type'))
+        lport.set_external_value('ofport', ofport)
+        remote_chassis = self.db_store.get_chassis(dest_chassis)
+        if not remote_chassis:
+            # chassis has not been online yet.
+            return
+        lport.set_external_value('peer_vtep_address',
+                                 remote_chassis.get_ip())
+
+        LOG.info("src process migration event port = %(port)s"
+                 "original_port = %(original_port)s"
+                 "chassis = %(chassis)s",
+                 {'port': str(lport),
+                  'original_port': str(original_lport),
+                  'chassis': dest_chassis})
+
+        # source node and other related nodes
+        if original_lport and lport.get_chassis() != chassis_name:
+            self.open_flow_app.notify_remove_remote_port(original_lport)
+
+        self.open_flow_app.notify_add_remote_port(lport)
+
+    def _logical_port_process(self, lport, original_lport=None):
+        if not self._set_lport_external_values(lport):
+          return
 
         chassis = lport.get_chassis()
         if chassis == self.chassis_name:
@@ -336,6 +386,14 @@ class DfLocalController(object):
                              "original port = %(original_port)s",
                              {'port': lport,
                               'original_port': original_lport})
+                    if lport.get_chassis() != original_lport.get_chassis():
+                        LOG.info("migrating original chassis %(original)s"
+                                 "current chassis %(current)s",
+                                 {'original':
+                                  original_lport.get_chassis(),
+                                  'current': str(lport.get_chassis())})
+                        self.nb_api.delete_lport_migration(lport.get_id())
+                        return
                     self.open_flow_app.notify_update_local_port(lport,
                                                                 original_lport)
             else:
@@ -370,6 +428,9 @@ class DfLocalController(object):
                              "original port = %(original_port)s",
                              {'port': lport,
                               'original_port': original_lport})
+                    # update chssis
+                    if lport.get_chassis() != original_lport.get_chassis():
+                        return
                     self.open_flow_app.notify_update_remote_port(
                         lport, original_lport)
             else:
@@ -380,6 +441,28 @@ class DfLocalController(object):
 
         if original_lport is None:
             self._notify_active_ports_updated_when_lport_created(lport)
+
+    def _set_lport_external_values(self, lport):
+        lswitch = self.db_store2.get_one(
+            l2.LogicalSwitch(id=lport.get_lswitch_id()))
+        if not lswitch:
+            LOG.warning("Could not find lswitch for lport: %s",
+                        lport.get_id())
+            return False
+        lport.set_external_value('local_network_id',
+                                 lswitch.unique_key)
+        network_type = lswitch.network_type
+        segment_id = lswitch.segmentation_id
+        physical_network = lswitch.physical_network
+
+        lport.set_external_value('network_type', network_type)
+        if segment_id is not None:
+            lport.set_external_value('segmentation_id',
+                                     int(segment_id))
+        if physical_network:
+            lport.set_external_value('physical_network', physical_network)
+
+        return True
 
     def update_lport(self, lport):
         chassis = lport.get_chassis()
