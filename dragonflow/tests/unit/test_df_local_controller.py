@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import mock
 
 from dragonflow.common import utils
@@ -223,3 +224,25 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         lport.get_remote_vtep.return_value = False
         self.controller.update_lport(lport)
         lport.set_external_value.assert_not_called()
+
+    def test_update_migration_flows(self):
+        self.controller.nb_api = mock.Mock()
+        self.controller.db_store = mock.Mock()
+        self.controller.vswitch_api = mock.Mock()
+        self.controller.nb_api.get_lport_migration.return_value = {}
+
+        fake_lport = copy.deepcopy(
+            test_app_base.fake_local_port1.inner_obj)
+        del fake_lport['unique_key']
+        fake_lport['chassis'] = 'chassis1'
+
+        self.controller.nb_api.get_lport_migration.return_value = \
+            {'migration': 'chassis1'}
+        self.controller.db_store.get_lswitch.return_value = \
+            test_app_base.fake_logic_switch1
+        self.controller.vswitch_api.get_chassis_ofport.return_value = 3
+        self.controller.vswitch_api.get_port_ofport_by_id.retrun_value = 2
+
+        self.controller.update_migration_flows(fake_lport)
+        self.controller.nb_api.delete_lport_migration.assert_called_with(
+            fake_lport.get_id())
