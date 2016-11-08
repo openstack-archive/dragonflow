@@ -12,10 +12,10 @@
 
 from dragonflow.common import common_params
 from dragonflow.conf import df_metadata_service
+from dragonflow.conf import l2_ml2
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import dhcp_app
 from dragonflow.controller import dnat_app
-from dragonflow.controller import l2_ml2_app
 
 
 def list_opts():
@@ -24,5 +24,5 @@ def list_opts():
         ('df_ryu', df_local_controller.DF_RYU_OPTS),
         ('df_dhcp_app', dhcp_app.DF_DHCP_OPTS),
         ('df_dnat_app', dnat_app.DF_DNAT_APP_OPTS),
-        ('df_l2_app', l2_ml2_app.DF_L2_APP_OPTS),
+        ('df_l2_app', l2_ml2.df_l2_app_opts),
         ('df_metadata', df_metadata_service.df_metadata_opts)]
