@@ -281,10 +281,10 @@ class DfLocalController(object):
 
         if chassis == self.chassis_name:
             lport.set_external_value('is_local', True)
+            self.db_store.set_port(lport.get_id(), lport, True)
             ofport = self.vswitch_api.get_port_ofport_by_id(lport.get_id())
             if ofport:
                 lport.set_external_value('ofport', ofport)
-                self.db_store.set_port(lport.get_id(), lport, True)
                 if original_lport is None:
                     LOG.info(_LI("Adding new local logical port = %s") %
                              str(lport))
@@ -301,10 +301,10 @@ class DfLocalController(object):
                          str(lport))
         else:
             lport.set_external_value('is_local', False)
+            self.db_store.set_port(lport.get_id(), lport, False)
             ofport = self.vswitch_api.get_chassis_ofport(chassis)
             if ofport:
                 lport.set_external_value('ofport', ofport)
-                self.db_store.set_port(lport.get_id(), lport, False)
                 if original_lport is None:
                     LOG.info(_LI("Adding new remote logical port = %s") %
                              str(lport))
@@ -358,6 +358,8 @@ class DfLocalController(object):
                       lport.get_id())
             return
         original_lport = self.db_store.get_port(lport.get_id())
+        if original_lport and not original_lport.get_external_value("ofport"):
+            original_lport = None
         if not original_lport:
             if lport.get_remote_vtep():
                 self._add_remote_port_on_chassis(lport)

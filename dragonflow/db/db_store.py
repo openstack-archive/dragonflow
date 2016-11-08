@@ -181,6 +181,14 @@ class DbStore(object):
     def get_ports(self, topic=None):
         return self.values('ports', topic)
 
+    def get_ports_by_chassis(self, chassis_id, topic=None):
+        lports = self.get_ports(topic)
+        ret_lports = []
+        for lport in lports:
+            if lport.get_chassis() == chassis_id:
+                ret_lports.append(lport)
+        return ret_lports
+
     def delete_port(self, port_id, is_local, topic=None):
         if is_local:
             if not topic:

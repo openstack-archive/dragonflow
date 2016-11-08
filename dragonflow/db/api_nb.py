@@ -1223,6 +1223,9 @@ class OvsPort(DbStoreObject):
     def get_remote_ip(self):
         return self.ovs_port.get_remote_ip()
 
+    def get_remote_chassis(self):
+        return self.ovs_port.get_remote_chassis()
+
     def get_tunnel_type(self):
         return self.ovs_port.get_tunnel_type()
 

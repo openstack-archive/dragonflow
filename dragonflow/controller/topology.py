@@ -133,6 +133,31 @@ class Topology(object):
 
         return True
 
+    def _tunnel_port_added(self, ovs_port):
+        self._tunnel_port_updated(ovs_port)
+
+    def _process_ovs_tunnel_port(self, ovs_port, action):
+        remote_chassis = ovs_port.get_remote_chassis()
+        if not remote_chassis:
+            return
+        lports = self.db_store.get_ports_by_chassis(remote_chassis)
+        for lport in lports:
+            try:
+                if action == "set":
+                    self.controller.logical_port_updated(lport)
+                else:
+                    self.controller.logical_port_deleted(lport.get_id())
+            except Exception:
+                LOG.exception(_LE("Failed to process logical port"
+                                  "when %(action)s tunnel %(lport)s")
+                              % {'action': action, 'lport': lport})
+
+    def _tunnel_port_updated(self, ovs_port):
+        self._process_ovs_tunnel_port(ovs_port, "set")
+
+    def _tunnel_port_deleted(self, ovs_port):
+        self._process_ovs_tunnel_port(ovs_port, "delete")
+
     def _vm_port_added(self, ovs_port):
         self._vm_port_updated(ovs_port)
         # publish vm port up event
