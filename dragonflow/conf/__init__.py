@@ -12,6 +12,7 @@
 
 from oslo_config import cfg
 
+from dragonflow.conf import l2_ml2
 from dragonflow.conf import metadata_service_app
 
 
@@ -19,3 +20,4 @@ CONF = cfg.CONF
 
 
 metadata_service_app.register_opts()
+l2_ml2.register_opts()

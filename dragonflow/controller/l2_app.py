@@ -15,20 +15,13 @@
 
 import netaddr
 from neutron_lib import constants as common_const
-from oslo_config import cfg
 from ryu.lib.mac import haddr_to_bin
 
-from dragonflow._i18n import _
+from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 
-DF_L2_APP_OPTS = [
-    cfg.BoolOpt(
-        'l2_responder',
-        default=True,
-        help=_('Install OVS flows to respond to ARP requests.'))
-]
 
 # TODO(gsagie) currently the number set in Ryu for this
 # (OFPP_IN_PORT) is not working, use this until resolved
@@ -43,7 +36,6 @@ class L2App(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L2App, self).__init__(*args, **kwargs)
         self.local_networks = {}
-        cfg.CONF.register_opts(DF_L2_APP_OPTS, group='df_l2_app')
         self.is_install_arp_responder = cfg.CONF.df_l2_app.l2_responder
 
     def switch_features_handler(self, ev):
