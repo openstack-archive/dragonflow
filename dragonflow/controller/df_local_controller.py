@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import socket
 import sys
 import time
@@ -259,6 +260,72 @@ class DfLocalController(object):
                       new_obj, old_obj)
             return False
 
+    # update migration flows for VM migration
+    def update_migration_flows(self, lport):
+        port_id = lport.get_id()
+        state = self.nb_api.get_lport_state(port_id)
+        original_lport = copy.deepcopy(lport)
+        dest_chassis = state['state']
+
+        local_network_id = self.get_network_id(
+            lport.get_lswitch_id()
+        )
+
+        lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
+        if lswitch is not None:
+            network_type = lswitch.get_network_type()
+            segment_id = lswitch.get_segment_id()
+            physical_network = lswitch.get_physical_network()
+
+            lport.set_external_value('network_type', network_type)
+            if segment_id is not None:
+                lport.set_external_value('segmentation_id',
+                                     int(segment_id))
+            if physical_network:
+                lport.set_external_value('physical_network', physical_network)
+
+        lport.set_external_value('local_network_id', local_network_id)
+        chassis_name = self.get_chassis_name()
+
+        if dest_chassis == chassis_name:
+            # destination node
+            ofport = self.vswitch_api.get_port_ofport_by_id(lport.get_id())
+            lport.set_external_value('ofport', ofport)
+            lport.set_external_value('is_local', True)
+            self.db_store.set_port(lport.get_id, lport, True)
+
+            LOG.info(_LI("dest process migration event port = %(port)s"
+                         "\n original_port = %(original_port)s"
+                         "\n chassis = %(chassis)s"
+                         "\n self_chassis = %(self_chassis)s") %
+                     {'port': str(lport),
+                      'original_port': str(original_lport),
+                      'chassis': dest_chassis,
+                      'self_chassis': chassis_name})
+
+            self.open_flow_app.notify_remove_remote_port(original_lport)
+            self.open_flow_app.notify_add_local_port(lport)
+            self.nb_api.clear_lport_state(port_id)
+            return
+
+        ofport = self.vswitch_api.get_chassis_ofport(dest_chassis)
+        lport.set_external_value('ofport', ofport)
+
+        LOG.info(_LI("src process migration event port = %(port)s"
+                     "\n original_port = %(original_port)s"
+                     "\n chassis = %(chassis)s") %
+                 {'port': str(lport),
+                  'original_port': str(original_lport),
+                  'chassis': dest_chassis})
+
+        if lport.get_chassis() == chassis_name:
+            # source node
+            self.open_flow_app.notify_add_remote_port(lport)
+        else:
+            # other node
+            self.open_flow_app.notify_remove_remote_port(original_lport)
+            self.open_flow_app.notify_add_remote_port(lport)
+
     def _logical_port_process(self, lport, original_lport=None):
         chassis = lport.get_chassis()
         local_network_id = self.get_network_id(
@@ -290,6 +357,14 @@ class DfLocalController(object):
                              str(lport))
                     self.open_flow_app.notify_add_local_port(lport)
                 else:
+                    if lport.get_chassis() != original_lport.get_chassis():
+                        LOG.info(_LI("migrating original chassis %(original)s"
+                                     "\n current chassis %(current)s") %
+                                 {'original':
+                                  str(original_lport.get_chassis()),
+                                  'current': str(lport.get_chassis())})
+                        # Here should update flow if necessary for dest node
+                        return
                     LOG.info(_LI("Updating local logical port = %(port)s, "
                                  "original port = %(original_port)s") %
                              {'port': str(lport),
@@ -310,6 +385,9 @@ class DfLocalController(object):
                              str(lport))
                     self.open_flow_app.notify_add_remote_port(lport)
                 else:
+                    if lport.get_chassis() != original_lport.get_chassis():
+                        # Here should update flow if necessary for other node
+                        return
                     LOG.info(_LI("Updating remote logical port = %(port)s, "
                                  "original port = %(original_port)s") %
                              {'port': str(lport),
