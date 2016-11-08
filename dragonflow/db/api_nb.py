@@ -35,7 +35,7 @@ LOG = log.getLogger(__name__)
 
 DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
                   'sync', 'sync_started', 'sync_finished', 'dbrestart',
-                  'db_sync']
+                  'db_sync', 'migrate']
 
 _nb_api = None
 
@@ -297,6 +297,11 @@ class NbApi(object):
             elif action == 'delete':
                 ovs_port = db_models.OvsPort(value)
                 self.controller.ovs_port_deleted(ovs_port)
+        # Added lport migration for VM migration flag
+        elif 'lport_migration' == table:
+            if action == 'migrate':
+                lport = db_models.LogicalPort(value)
+                self.controller.update_migrating_flows(lport)
         elif 'log' == action:
             message = ('Log event (Info): table: %(table)s key: %(key)s '
                        'action: %(action)s value: %(value)s')
@@ -327,6 +332,27 @@ class NbApi(object):
                 continue
             res.append(lport)
         return res
+
+    # lport process for VM migration
+    def set_lport_migration(self, port_id, chassis):
+        port_migration = {'migration': chassis}
+        migration_json = jsonutils.dumps(port_migration)
+        self.driver.create_key('lport_migration', port_id, migration_json)
+
+    def get_lport_migration(self, port_id):
+        migration_json = self.driver.get_key('lport_migration', port_id)
+
+        if migration_json:
+            port_migration = jsonutils.loads(migration_json)
+            return port_migration
+
+    def delete_lport_migration(self, port_id):
+        self.driver.delete_key('lport_migration', port_id)
+
+    def notify_migration_event(self, port_id, lport):
+        lport_json = jsonutils.dumps(lport.lport)
+        self._send_db_change_event('lport_migration', port_id, 'migrate',
+                                   lport_json, topic=lport.lport['topic'])
 
     def create_lport(self, id, lswitch_id, topic, **columns):
         lport = {}
