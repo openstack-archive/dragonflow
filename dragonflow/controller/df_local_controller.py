@@ -265,17 +265,20 @@ class DfLocalController(object):
             lport.get_lswitch_id(),
         )
         lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
-        if lswitch is not None:
-            network_type = lswitch.get_network_type()
-            segment_id = lswitch.get_segment_id()
-            physical_network = lswitch.get_physical_network()
+        if not lswitch:
+            LOG.debug(("Could not find lswitch for lport: %s"), lport.get_id())
+            return
 
-            lport.set_external_value('network_type', network_type)
-            if segment_id is not None:
-                lport.set_external_value('segmentation_id',
-                                     int(segment_id))
-            if physical_network:
-                lport.set_external_value('physical_network', physical_network)
+        network_type = lswitch.get_network_type()
+        segment_id = lswitch.get_segment_id()
+        physical_network = lswitch.get_physical_network()
+
+        lport.set_external_value('network_type', network_type)
+        if segment_id is not None:
+            lport.set_external_value('segmentation_id',
+                                 int(segment_id))
+        if physical_network:
+            lport.set_external_value('physical_network', physical_network)
 
         lport.set_external_value('local_network_id', local_network_id)
 
