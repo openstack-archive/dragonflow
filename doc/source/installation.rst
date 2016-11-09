@@ -13,6 +13,10 @@ Copy one of the following as your local.conf to your devstack folder
 
   Run ./stack.sh
 
+  Once the script has finished successfully, Dragonflow is
+  ready to move packets.  You can see `Testing and Debugging
+  <testing_and_debugging.rst>`_ to test and troubleshoot the deployment.
+
 ============================================
  Automated setup using Vagrant + Virtualbox
 ============================================
