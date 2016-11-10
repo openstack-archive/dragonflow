@@ -127,7 +127,7 @@ function nb_db_driver_start_server {
              [ "$create" ] && {
                  echo "Create the Redis cluster: "$redis_cluster
                  pushd /opt/redis3/bin/
-                 echo "yes" |sudo ./redis-trib.rb create --replicas 1 $redis_cluster
+                 echo "yes" | sudo ./redis-trib.rb create --replicas 1 $redis_cluster
                  popd
              }
 
