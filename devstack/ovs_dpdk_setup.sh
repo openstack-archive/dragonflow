@@ -16,10 +16,9 @@ source $DEST/dragonflow/devstack/ovs_setup.sh
 
 function _neutron_ovs_configure_dependencies {
     if is_fedora; then
-        DNF=${1:-`_neutron_ovs_get_dnf`}
-        sudo $DNF install -y kernel-devel
+        install_package -y kernel-devel
     elif is_ubuntu; then
-        sudo apt-get install -y build-essential
+        install_package -y build-essential
     fi
 
     # Configure TUN

@@ -1,25 +1,12 @@
 #!/bin/bash
 
-function _neutron_ovs_get_dnf {
-    if is_fedora; then
-        if [ $os_RELEASE -ge 22 ]; then
-            echo "dnf"
-        else
-            echo "yum"
-        fi
-    else
-        die "This function is only supported on fedora"
-    fi
-}
-
 function _neutron_ovs_install_ovs_deps_fedora {
-    DNF=${1:-`_neutron_ovs_get_dnf`}
-    sudo $DNF install -y rpm-build rpmrebuild
+    install_package -y rpm-build rpmrebuild
     # So apparently we need to compile to learn the requirements...
     set `rpmspec -q --buildrequires rhel/openvswitch-fedora.spec`
     set "$@" `rpmspec -q --buildrequires rhel/openvswitch-kmod-fedora.spec`
     if [ $# > 0 ]; then
-        sudo $DNF install -y $@
+        install_package -y $@
     fi
 }
 
@@ -62,31 +49,27 @@ function _neutron_ovs_install_ovs_fedora {
 
     make dist
     VERSION=`awk '/^Version:/ { print $2 }' ../rhel/openvswitch-fedora.spec | head -1`
-    DNF=`_neutron_ovs_get_dnf`
-    sudo bash << EOF
-source $DEST/dragonflow/devstack/ovs_setup.sh
-cd $PWD
 
-mkdir -p \$HOME/rpmbuild/SOURCES
-cp openvswitch-${VERSION}.tar.gz \$HOME/rpmbuild/SOURCES/
-tar -xzf openvswitch-${VERSION}.tar.gz -C \$HOME/rpmbuild/SOURCES
-pushd \$HOME/rpmbuild/SOURCES/openvswitch-${VERSION}
-_neutron_ovs_install_ovs_deps_fedora $DNF
-rpmbuild -bb --without check rhel/openvswitch-fedora.spec
-rpmbuild -bb -D "kversion `uname -r`" rhel/openvswitch-kmod-fedora.spec
-OVS_RPM_BASENAME=\$(_neutron_ovs_get_rpm_file openvswitch)
-rpmrebuild --change-spec-requires="awk '\\\$1 == \\\"Requires:\\\" && \\\$2 == \\\"/bin/python\\\" {\\\$2 = \\\"/usr/bin/python\\\"} {print \\\$0}'" -p \$OVS_RPM_BASENAME
-OVS_PY_RPM_BASENAME=""
-OVS_KMOD_RPM_BASENAME=\$(_neutron_ovs_get_rpm_file openvswitch-kmod rhel/openvswitch-kmod-fedora.spec)
-$DNF install -y \$OVS_RPM_BASENAME \$OVS_PY_RPM_BASENAME \$OVS_KMOD_RPM_BASENAME
-pip install ./python
-popd
-EOF
+    mkdir -p $HOME/rpmbuild/SOURCES
+    cp openvswitch-${VERSION}.tar.gz $HOME/rpmbuild/SOURCES/
+    tar -xzf openvswitch-${VERSION}.tar.gz -C $HOME/rpmbuild/SOURCES
+    pushd $HOME/rpmbuild/SOURCES/openvswitch-${VERSION}
+    _neutron_ovs_install_ovs_deps_fedora
+    rpmbuild -bb --without check rhel/openvswitch-fedora.spec
+    rpmbuild -bb -D "kversion `uname -r`" rhel/openvswitch-kmod-fedora.spec
+    OVS_RPM_BASENAME=$(_neutron_ovs_get_rpm_file openvswitch)
+    rpmrebuild --change-spec-requires="awk '\$1 == \"Requires:\" && \$2 == \"/bin/python\" {\$2 = \"/usr/bin/python\"} {print \$0}'" -p $OVS_RPM_BASENAME
+    OVS_PY_RPM_BASENAME=""
+    OVS_KMOD_RPM_BASENAME=$(_neutron_ovs_get_rpm_file openvswitch-kmod rhel/openvswitch-kmod-fedora.spec)
+    install_package -y $OVS_RPM_BASENAME $OVS_PY_RPM_BASENAME $OVS_KMOD_RPM_BASENAME
+    sudo pip install ./python
+    popd
+
     popd
 }
 
 function _neutron_ovs_install_ovs_deps_ubuntu {
-    sudo apt-get install -y build-essential fakeroot devscripts equivs dkms
+    install_package -y build-essential fakeroot devscripts equivs dkms
     sudo mk-build-deps -i -t "/usr/bin/apt-get --no-install-recommends -y"
 }
 
@@ -98,7 +81,7 @@ function _neutron_ovs_install_ovs_ubuntu {
     DEB_BUILD_OPTIONS='nocheck' fakeroot debian/rules binary
     sudo dpkg -i ../openvswitch-datapath-dkms*.deb
     sudo dpkg -i ../openvswitch-common*.deb ../openvswitch-switch*.deb
-    sudo pip install python
+    sudo pip install ./python
     popd
 }
 
@@ -121,7 +104,7 @@ function _neutron_ovs_install_ovs {
             uninstall_ovs
         fi
 
-        install_package autoconf automake libtool gcc patch make
+        install_package -y autoconf automake libtool gcc patch make
 
         if is_ubuntu; then
             _neutron_ovs_install_ovs_ubuntu
@@ -139,6 +122,9 @@ function _neutron_ovs_install_ovs {
 
 function install_ovs {
     _neutron_ovs_install_ovs
+
+    # reload module
+    load_module_if_not_loaded openvswitch
 }
 
 function start_ovs {
@@ -151,6 +137,7 @@ function start_ovs {
     fi
 
     restart_service $SERVICE_NAME
+    sleep 5
 
     local _pwd=$(pwd)
     cd $DATA_DIR/ovs
@@ -163,7 +150,6 @@ function start_ovs {
         if ! ovs_service_status $OVS_VSWITCHD_SERVICE; then
             die "$OVS_VSWITCHD_SERVICE is not running"
         fi
-        load_module_if_not_loaded openvswitch
     fi
 
     cd $_pwd
