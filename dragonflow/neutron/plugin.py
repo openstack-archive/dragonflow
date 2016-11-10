@@ -17,7 +17,6 @@ from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import dhcp_rpc
 from neutron.api.rpc.handlers import l3_rpc
 from neutron.api.rpc.handlers import metadata_rpc
-from neutron.api.v2 import attributes as attr
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
@@ -48,6 +47,7 @@ from neutron.extensions import portbindings
 from neutron.extensions import portsecurity as psec
 from neutron.extensions import providernet as pnet
 from neutron.quota import resource_registry
+from neutron_lib.api import validators
 from neutron_lib import constants as const
 from neutron_lib import exceptions as n_exc
 from oslo_config import cfg
@@ -605,7 +605,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     def _get_data_from_binding_profile(self, context, port):
         if (df_const.DF_PORT_BINDING_PROFILE not in port or
-                not attr.is_attr_set(
+                not validators.is_attr_set(
                     port[df_const.DF_PORT_BINDING_PROFILE])):
             return None, None
         parent_name = (
@@ -646,7 +646,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if port.get('device_owner') and utils.is_port_trusted(port):
             return False
 
-        if attr.is_attr_set(port.get(psec.PORTSECURITY)):
+        if validators.is_attr_set(port.get(psec.PORTSECURITY)):
             port_security_enabled = port[psec.PORTSECURITY]
         else:
             port_security_enabled = self._get_network_security_binding(
@@ -680,7 +680,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
             self._update_port_binding(db_port)
             if (df_const.DF_PORT_BINDING_PROFILE in port['port'] and
-                    attr.is_attr_set(
+                    validators.is_attr_set(
                         port['port'][df_const.DF_PORT_BINDING_PROFILE])):
                 db_port[df_const.DF_PORT_BINDING_PROFILE] = (
                     port['port'][df_const.DF_PORT_BINDING_PROFILE])
@@ -856,7 +856,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                              'network_id': subnet['network_id'], 'name': '',
                              'admin_state_up': True, 'device_id': '',
                              'device_owner': l3_db.DEVICE_OWNER_ROUTER_INTF,
-                             'mac_address': attr.ATTR_NOT_SPECIFIED,
+                             'mac_address': const.ATTR_NOT_SPECIFIED,
                              'fixed_ips': [{'subnet_id': subnet['id'],
                                             'ip_address':
                                                 subnet['gateway_ip']}]}}
@@ -924,7 +924,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                              df_common_const.DRAGONFLOW_VIRTUAL_PORT),
                          'admin_state_up': True, 'device_id': '',
                          'device_owner': const.DEVICE_OWNER_DHCP,
-                         'mac_address': attr.ATTR_NOT_SPECIFIED,
+                         'mac_address': const.ATTR_NOT_SPECIFIED,
                          'fixed_ips': [{'subnet_id': subnet['id']}]}}
         port = self.create_port(context, port)
 
@@ -1126,6 +1126,6 @@ def is_distributed_router(router):
     except AttributeError:
         # if not, try to see if it is a request body
         requested_router_type = router.get('distributed')
-    if attr.is_attr_set(requested_router_type):
+    if validators.is_attr_set(requested_router_type):
         return requested_router_type
     return cfg.CONF.router_distributed
