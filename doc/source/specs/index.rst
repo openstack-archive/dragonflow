@@ -55,7 +55,7 @@ Specs
     config_generation
     cassandra_driver
     virtual_tunnel_port
-
+    ipv6
 
 Templates
 ---------
