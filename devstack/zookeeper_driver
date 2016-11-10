@@ -75,6 +75,11 @@ function nb_db_driver_install_server {
 }
 
 function nb_db_driver_clean {
+    if is_ubuntu; then
+        uninstall_package -y zookeeperd
+    elif is_fedora; then
+        uninstall_package -y zookeeper
+    fi
     if [ -f "/etc/systemd/system/zookeeper.service" ] ; then
         sudo rm /etc/systemd/system/zookeeper.service
         sudo systemctl daemon-reload
