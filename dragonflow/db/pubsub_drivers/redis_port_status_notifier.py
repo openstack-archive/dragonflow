@@ -37,7 +37,6 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
     def __init__(self):
         self.mech_driver = None
         self.nb_api = None
-        self.status_callback = None
         self.db_table_monitor = None
         self.pub = None
         self.sub = None
