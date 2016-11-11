@@ -10,8 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import argparse
 import socket
-import sys
 
 from neutron.common import config as common_config
 from oslo_config import cfg
@@ -26,17 +26,6 @@ cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
              'tunnel_key', 'floatingip', 'publisher', 'qospolicy',
              'portstats']
-
-usage_str = "The following commands are supported:\n" \
-            "1) df-db ls - print all the db tables \n" \
-            "2) df-db ls <table_name> - print all the keys for specific table \n" \
-            "3) df-db get <table_name> <key> - print value for specific key\n" \
-            "4) df-db dump - dump all tables\n" \
-            "5) df-db bind <port id> - bind a port to localhost\n" \
-            "6) df-db clean - clean up all keys\n" \
-            "7) df-db rm <table name> <key> - remove the specified db record\n" \
-            "8) df-db init - initialize all tables\n" \
-            "9) df-db dropall - drop all tables\n"
 
 
 def print_tables():
@@ -137,10 +126,125 @@ def remove_record(db_driver, table, key):
         print('Key %s is not found in table %s.' % (key, table))
 
 
+def _check_valid_table(parser, table_name):
+    if table_name not in db_tables:
+        parser.exit(
+            status=2,
+            message="<table> must be one of the following:\n %s\n" % db_tables)
+
+
+def add_table_command(subparsers):
+    def handle(db_driver, args):
+        print_tables()
+
+    sub_parser = subparsers.add_parser('tables', help="Print all the db "
+                                                      "tables.")
+    sub_parser.set_defaults(handle=handle)
+
+
+def add_ls_command(subparsers):
+    def handle(db_driver, args):
+        table = args.table
+        _check_valid_table(sub_parser, table)
+        print_table(db_driver, table)
+
+    sub_parser = subparsers.add_parser('ls', help="Print all the keys for "
+                                                  "specific table.")
+    sub_parser.add_argument('table', help='The name of the table.')
+    sub_parser.set_defaults(handle=handle)
+
+
+def add_get_command(subparsers):
+    def handle(db_driver, args):
+        table = args.table
+        key = args.key
+        _check_valid_table(sub_parser, table)
+        print_key(db_driver, table, key)
+
+    sub_parser = subparsers.add_parser('get', help="Print value for specific "
+                                                   "key.")
+    sub_parser.add_argument('table', help='The name of the table.')
+    sub_parser.add_argument('key', help='The key of the resource.')
+    sub_parser.set_defaults(handle=handle)
+
+
+def add_dump_command(subparsers):
+    def handle(db_driver, args):
+        for table in db_tables:
+            print_whole_table(db_driver, table)
+
+    sub_parser = subparsers.add_parser('dump', help="Dump content of all "
+                                                    "tables.")
+    sub_parser.set_defaults(handle=handle)
+
+
+def add_bind_command(subparsers):
+    def handle(db_driver, args):
+        port_id = args.port_id
+        bind_port_to_localhost(db_driver, port_id)
+
+    sub_parser = subparsers.add_parser('bind', help="Bind a port to "
+                                                    "localhost.")
+    sub_parser.add_argument('port_id', help='The ID of the port.')
+    sub_parser.set_defaults(handle=handle)
+
+
+def add_clean_command(subparsers):
+    def handle(db_driver, args):
+        for table in db_tables:
+            clean_whole_table(db_driver, table)
+
+    sub_parser = subparsers.add_parser('clean', help="Clean up all keys.")
+    sub_parser.set_defaults(handle=handle)
+
+
+def add_rm_command(subparsers):
+    def handle(db_driver, args):
+        table = args.table
+        key = args.key
+        _check_valid_table(sub_parser, table)
+        remove_record(db_driver, table, key)
+
+    sub_parser = subparsers.add_parser('rm', help="Remove the specified DB "
+                                                  "record.")
+    sub_parser.add_argument('table', help='The name of the table.')
+    sub_parser.add_argument('key', help='The key of the resource.')
+    sub_parser.set_defaults(handle=handle)
+
+
+def add_init_command(subparsers):
+    def handle(db_driver, args):
+        for table in db_tables:
+            create_table(db_driver, table)
+
+    sub_parser = subparsers.add_parser('init', help="Initialize all tables.")
+    sub_parser.set_defaults(handle=handle)
+
+
+def add_dropall_command(subparsers):
+    def handle(db_driver, args):
+        for table in db_tables:
+            drop_table(db_driver, table)
+
+    sub_parser = subparsers.add_parser('dropall', help="Drop all tables.")
+    sub_parser.set_defaults(handle=handle)
+
+
 def main():
-    if len(sys.argv) < 2:
-        print usage_str
-        return
+    parser = argparse.ArgumentParser(usage="missing command name "
+                                           "(use --help for help)")
+    subparsers = parser.add_subparsers(title='subcommands',
+                                       description='valid subcommands')
+    add_table_command(subparsers)
+    add_ls_command(subparsers)
+    add_get_command(subparsers)
+    add_dump_command(subparsers)
+    add_bind_command(subparsers)
+    add_clean_command(subparsers)
+    add_rm_command(subparsers)
+    add_init_command(subparsers)
+    add_dropall_command(subparsers)
+    args = parser.parse_args()
 
     common_config.init(['--config-file',
                         '/etc/neutron/plugins/dragonflow.ini',
@@ -153,77 +257,7 @@ def main():
                          db_port=cfg.CONF.df.remote_db_port,
                          config=cfg.CONF.df)
 
-    action = sys.argv[1]
-
-    if action == 'ls' and len(sys.argv) < 4:
-        if len(sys.argv) == 2:
-            print_tables()
-            return
-        table = sys.argv[2]
-        if table not in db_tables:
-            print "<table> must be one of the following:"
-            print db_tables
-            return
-        print_table(db_driver, table)
-        return
-
-    if action == 'get' and len(sys.argv) < 5:
-        if len(sys.argv) < 4:
-            print "must supply a key"
-            print usage_str
-            return
-        table = sys.argv[2]
-        if table not in db_tables:
-            print "<table> must be one of the following:"
-            print db_tables
-            return
-        key = sys.argv[3]
-        print_key(db_driver, table, key)
-        return
-
-    if action == 'dump' and len(sys.argv) < 3:
-        for table in db_tables:
-            print_whole_table(db_driver, table)
-        return
-
-    if action == 'bind' and len(sys.argv) < 4:
-        if len(sys.argv) < 3:
-            print "must supply a key"
-            print usage_str
-            return
-        port_id = sys.argv[2]
-        bind_port_to_localhost(db_driver, port_id)
-        return
-
-    if action == 'clean' and len(sys.argv) < 3:
-        for table in db_tables:
-            clean_whole_table(db_driver, table)
-        return
-
-    if action == 'init' and len(sys.argv) < 3:
-        for table in db_tables:
-            create_table(db_driver, table)
-        return
-
-    if action == 'dropall' and len(sys.argv) < 3:
-        for table in db_tables:
-            drop_table(db_driver, table)
-        return
-
-    if action == 'rm' and len(sys.argv) < 5:
-        if len(sys.argv) < 4:
-            print "must supply a key"
-            print usage_str
-            return
-        table = sys.argv[2]
-        if table not in db_tables:
-            print "<table> must be one of the following: %s" % db_tables
-            return
-        key = sys.argv[3]
-        remove_record(db_driver, table, key)
-        return
-
-    print usage_str
+    args.handle(db_driver, args)
 
 
 if __name__ == "__main__":
