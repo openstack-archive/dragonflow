@@ -294,49 +294,28 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
     def test_create_update_remote_port(self):
         profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
         profile_arg = {'binding:profile': profile}
-        with self.port(arg_list=('binding:profile',),
-                       **profile_arg) as port:
-            port = port['port']
-            self.nb_api.create_lport.assert_called_with(
-                id=port['id'],
-                lswitch_id=port['network_id'],
-                topic=port['tenant_id'],
-                macs=[port['mac_address']], ips=mock.ANY,
-                subnets=mock.ANY, name=mock.ANY,
-                enabled=port['admin_state_up'],
-                chassis="20.0.0.2", tunnel_key=mock.ANY,
-                version=port['revision_number'],
-                device_owner=port['device_owner'],
-                device_id=port['device_id'],
-                security_groups=mock.ANY,
-                port_security_enabled=mock.ANY,
-                qos_policy_id=mock.ANY,
-                remote_vtep=True,
-                allowed_address_pairs=mock.ANY,
-                binding_profile=profile,
-                binding_vnic_type=mock.ANY)
+        with self.subnet(enable_dhcp=False) as subnet:
+            with self.port(subnet=subnet,
+                           arg_list=('binding:profile',),
+                           **profile_arg) as port:
+                port = port['port']
+                self.assertTrue(self.nb_api.create_lport.called)
+                called_args_dict = (
+                    self.nb_api.create_lport.call_args_list[0][1])
+                self.assertTrue(called_args_dict.get('remote_vtep'))
+                self.assertEqual("20.0.0.2",
+                                 called_args_dict.get('chassis'))
 
-            profile['host_ip'] = "20.0.0.20"
-            data = {'port': {'binding:profile': profile}}
-            req = self.new_update_request('ports', data, port['id'])
-            req.get_response(self.api)
-            self.nb_api.update_lport.assert_called_with(
-                id=port['id'],
-                topic=port['tenant_id'],
-                macs=[port['mac_address']], ips=mock.ANY,
-                subnets=mock.ANY, name=mock.ANY,
-                enabled=port['admin_state_up'],
-                chassis="20.0.0.20",
-                version=mock.ANY,
-                device_owner=port['device_owner'],
-                device_id=port['device_id'],
-                qos_policy_id=mock.ANY,
-                remote_vtep=True,
-                security_groups=mock.ANY,
-                port_security_enabled=mock.ANY,
-                allowed_address_pairs=mock.ANY,
-                binding_profile=profile,
-                binding_vnic_type=mock.ANY)
+                profile['host_ip'] = "20.0.0.20"
+                data = {'port': {'binding:profile': profile}}
+                req = self.new_update_request('ports', data, port['id'])
+                req.get_response(self.api)
+                self.assertTrue(self.nb_api.update_lport.called)
+                called_args_dict = (
+                    self.nb_api.update_lport.call_args_list[0][1])
+                self.assertTrue(called_args_dict.get('remote_vtep'))
+                self.assertEqual("20.0.0.20",
+                                 called_args_dict.get('chassis'))
 
     def test_delete_port(self):
         with self.port() as p:
