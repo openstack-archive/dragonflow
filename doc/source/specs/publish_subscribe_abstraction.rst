@@ -341,7 +341,8 @@ implement an enhancement to
 enable multi-publisher-multi-subscriber mechanism, using something like ZMQ EPGM.
 
 Configuration Options
-======================
+=====================
+
 'enable_df_pub_sub', default=False, help=_("Enable use of Dragonflow built-in pub/sub")),
 
 'pub_sub_driver', default='zmq_pubsub_driver', help=_('Drivers to use for the Dragonflow pub/sub')),
