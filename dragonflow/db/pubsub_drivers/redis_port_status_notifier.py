@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import random
 import time
 
 from oslo_config import cfg
@@ -70,7 +71,8 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
 
     # local controller code
     def _send_port_status_event(self, table, key, action, value):
-        topic = self.nb_api.get_all_port_status_keys()
+        listeners = self.nb_api.get_all_neutron_listeners()
+        topic = random.choice(listeners)
         update = db_common.DbUpdate(table, key, action, value, topic=topic)
         self.pub.send_event(update)
 
@@ -79,9 +81,13 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         self.sub.initialize(self.port_status_callback)
         server_ip = cfg.CONF.df.local_ip
         self.sub.register_topic(server_ip)
-        # In portstats table, there are key value pairs like this:
-        # port_status_192.168.1.10 : 192.168.1.10
-        self.nb_api.create_port_status(server_ip)
+        # In n_listerner table, there are key value pairs like this:
+        # port_status_192.168.1.10 : {'ip':192.168.1.10, timestamp: 100}
+        # where timestamp is seconds since the epoch.
+        # TODO(wangjian): df-controllers can sort neutron-listeners by
+        # timestamp, so that it can avoid to choose a dead neutron-listerner
+        # as far as possible
+        self.nb_api.create_neutron_listener(server_ip, int(time.time()))
         self.sub.daemonize()
 
     def start_publisher(self):
