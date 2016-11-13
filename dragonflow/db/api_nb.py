@@ -15,7 +15,6 @@
 #    under the License.
 
 import abc
-import random
 import time
 
 import eventlet
@@ -146,14 +145,27 @@ class NbApi(object):
     def allocate_tunnel_key(self):
         return self.driver.allocate_unique_key('lport')
 
-    def get_all_port_status_keys(self):
-        topics = self.driver.get_all_entries('portstats')
-        topic = random.choice(topics)
-        return topic
+    def get_all_neutron_listeners(self):
+        listeners = self.driver.get_all_entries('n_listener')
+        return [Listener(l) for l in listeners]
 
-    def create_port_status(self, server_ip):
-        self.driver.create_key('portstats', server_ip,
-                               server_ip, None)
+    def create_neutron_listener(self, server_ip, **columns):
+        listener = {
+            'ip': server_ip
+        }
+        listener.update(columns)
+        listener_json = jsonutils.dumps(listener)
+        self.driver.create_key('n_listener', server_ip,
+                               listener_json, None)
+
+    def update_neutron_listener(self, server_ip, **columns):
+        listener = {
+            'ip': server_ip
+        }
+        listener.update(columns)
+        listener_json = jsonutils.dumps(listener)
+        self.driver.set_key('n_listener', server_ip,
+                            listener_json, None)
 
     def register_notification_callback(self, controller):
         self.controller = controller
@@ -1306,3 +1318,27 @@ class QosPolicy(DbStoreObject):
 
     def __str__(self):
         return str(self.qospolicy)
+
+
+class Listener(DbStoreObject):
+    def __init__(self, value):
+        self.listener = jsonutils.loads(value)
+
+    def get_id(self):
+        return self.listener['id']
+
+    def get_topic(self):
+        return None
+
+    def get_timestamp(self):
+        return self.listener['timestamp']
+
+    def get_ip(self):
+        return self.listener['ip']
+
+    def __cmp__(self, other):
+        if self.listener['timestamp'] > other.get_timestamp():
+            return 1
+        if self.listener['timestamp'] < other.get_timestamp():
+            return -1
+        return 0

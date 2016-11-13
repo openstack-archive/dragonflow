@@ -10,6 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import random
+import time
+
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
@@ -71,15 +74,23 @@ class DFMechDriver(driver_api.MechanismDriver):
         # plugin service, etc) and threads with network connections.
         self.nb_api = api_nb.NbApi.get_instance(True)
         if cfg.CONF.df.enable_port_status_notifier:
-            port_status_notifier = df_utils.load_driver(
-                cfg.CONF.df.port_status_notifier,
-                df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
-            self.port_status_notifier = port_status_notifier
-            self.port_status_notifier.initialize(self, self.nb_api,
-                                            pub=None,
-                                            sub=self.nb_api.subscriber,
-                                            is_neutron_server=True)
+            self.nb_api.subscriber.initialize(self._nb_callback)
+
+            self.heart_beat_reporter = HearBeatReporter.get_instance(
+                                                        self.nb_api)
+            self.heart_beat_reporter.daemonize()
+
             self.port_status = None
+
+    def _nb_callback(self, table, key, action, value, topic=None):
+        # TODO(wangjian): make it a class and allow other plugins
+        # (e.g l3 plugin, or qos plugin) to register callbacks
+        if 'lport' == table and 'update' == action:
+            LOG.info(_LI("Process port %s status update event"), str(key))
+            if constants.PORT_STATUS_UP == value:
+                self.set_port_status_up(key)
+            if constants.PORT_STATUS_DOWN == value:
+                self.set_port_status_down(key)
 
     def subscribe_registries(self):
         registry.subscribe(self.post_fork_initialize,
@@ -723,3 +734,45 @@ class DFMechDriver(driver_api.MechanismDriver):
         core_plugin.update_port_status(n_context.get_admin_context(),
                                        port_id,
                                        n_const.PORT_STATUS_DOWN)
+
+
+class HearBeatReporter(object):
+    _reporter = None
+    def __init__(self, api_nb):
+        self.api_nb = api_nb
+        self._daemon = df_utils.DFDaemon()
+
+    @staticmethod
+    def get_instance(api_nb):
+        if HearBeatReporter._reporter is None:
+            HearBeatReporter._reporter = HearBeatReporter(api_nb)
+        return HearBeatReporter._reporter
+
+    def daemonize(self):
+        return self._daemon.daemonize(self.run)
+
+    def stop(self):
+        return self._daemon.stop()
+
+    def run(self):
+        # TODO(wangjian): Use df-publisher to remove the stale table?
+        ip = cfg.CONF.df.local_ip
+        cfg_interval = cfg.CONF.df.publisher_timeout
+
+        offset_min = cfg_interval/5
+        offset_max = offset_min + cfg_interval
+
+        # to avoid boot storm and allow df-controllers do load balancing
+        interval = random(offset_min, offset_max)
+        time.sleep(interval)
+        self.api_nb.create_neutron_listener(ip, int(time.time()))
+        while True:
+            try:
+                # sleep a random time to allow df-controllers do
+                # load balancing
+                interval = random(offset_min, offset_max)
+                time.sleep(interval)
+                self.api_nb.update_neutron_listener(ip, int(time.time()))
+            except Exception:
+                LOG.exception(_LE("Failed to report heart beat for %s at %s"),
+                              ip, int(time.time()))
