@@ -11,6 +11,7 @@
 #    under the License.
 
 import argparse
+import json
 import socket
 
 from neutron.common import config as common_config
@@ -26,6 +27,23 @@ cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
              'tunnel_key', 'floatingip', 'publisher', 'qospolicy',
              'portstats']
+
+
+def pretty_formatter(value):
+    try:
+        return json.dumps(
+            json.loads(value),
+            indent=4,
+            sort_keys=True,
+            separators=(',', ';'),
+        )
+
+    except ValueError:
+        return value
+
+
+def plain_formatter(value):
+    return value
 
 
 def print_tables():
@@ -50,7 +68,7 @@ def print_table(db_driver, table):
     print(' ')
 
 
-def print_whole_table(db_driver, table):
+def print_whole_table(db_driver, table, formatter):
     try:
         keys = db_driver.get_all_keys(table)
     except df_exceptions.DBKeyNotFound:
@@ -65,18 +83,20 @@ def print_whole_table(db_driver, table):
         try:
             value = db_driver.get_key(table, key)
             if value:
+                value = formatter(value)
                 print('Key = ' + key + ' , Value = ' + value)
         except df_exceptions.DBKeyNotFound:
             print('Key not found: ' + key)
     print(' ')
 
 
-def print_key(db_driver, table, key):
+def print_key(db_driver, table, key, formatter):
     try:
         value = db_driver.get_key(table, key)
     except df_exceptions.DBKeyNotFound:
         print('Key not found: ' + table)
         return
+    value = formatter(value)
     print(' ')
     print('Table = ' + table + ' , Key = ' + key)
     print('------------------------------------------------------------')
@@ -156,13 +176,20 @@ def add_ls_command(subparsers):
 
 def add_get_command(subparsers):
     def handle(db_driver, args):
+        if args.prettify:
+            formatter = pretty_formatter
+        else:
+            formatter = plain_formatter
         table = args.table
         key = args.key
         _check_valid_table(sub_parser, table)
-        print_key(db_driver, table, key)
+        print_key(db_driver, table, key, formatter)
 
     sub_parser = subparsers.add_parser('get', help="Print value for specific "
                                                    "key.")
+    sub_parser.add_argument('-p', '--prettify',
+                            help='Pretty print JSON values',
+                            action='store_true')
     sub_parser.add_argument('table', help='The name of the table.')
     sub_parser.add_argument('key', help='The key of the resource.')
     sub_parser.set_defaults(handle=handle)
@@ -170,11 +197,19 @@ def add_get_command(subparsers):
 
 def add_dump_command(subparsers):
     def handle(db_driver, args):
+        if args.prettify:
+            formatter = pretty_formatter
+        else:
+            formatter = plain_formatter
+
         for table in db_tables:
-            print_whole_table(db_driver, table)
+            print_whole_table(db_driver, table, formatter)
 
     sub_parser = subparsers.add_parser('dump', help="Dump content of all "
                                                     "tables.")
+    sub_parser.add_argument('-p', '--prettify',
+                            help='Pretty print JSON values',
+                            action='store_true')
     sub_parser.set_defaults(handle=handle)
 
 
