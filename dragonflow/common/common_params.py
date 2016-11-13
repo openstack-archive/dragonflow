@@ -156,6 +156,15 @@ DF_OPTS = [
     cfg.StrOpt(
         'metadata_interface',
         default='tap-metadata',
-        help=_('The name of the interface to bind the metadata service proxy'),
-    )
+        help=_('The name of the interface to bind the metadata'
+               'service proxy')),
+    cfg.IntOpt('neutron_listener_report_interval',
+        default=10,
+        help=_('Neutron report heart beat to df-db every this number in'
+               'seconds plus a random delay, which is no more than'
+               'neutron_listener_report_delay')),
+    cfg.IntOpt('neutron_listener_report_delay',
+        default=3,
+        help=_('The max delay in seconds for Neutron to report heart'
+               'beat to df-db'))
 ]
