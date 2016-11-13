@@ -59,12 +59,10 @@ DF_OPTS = [
     cfg.StrOpt('pub_sub_multiproc_driver',
                default='zmq_pubsub_multiproc_driver',
                help=_('Drivers to use for the Dragonflow pub/sub')),
-    cfg.BoolOpt('enable_port_status_notifier',
+    cfg.BoolOpt('enable_neutron_listener',
                 default=False,
-                help=_('Enable notifier for the Dragonflow port status')),
-    cfg.StrOpt('port_status_notifier',
-               default='redis_port_status_notifier_driver',
-               help=_('Notifier for the Dragonflow port status')),
+                help=_('Enable Dragonflow controllers send notifications'
+                       'e.g port status, to neutron-server')),
     cfg.ListOpt('publishers_ips',
                 default=['$local_ip'],
                 help=_('List of the Neutron Server Publisher IPs.')),
@@ -142,6 +140,13 @@ DF_OPTS = [
     cfg.StrOpt(
         'metadata_interface',
         default='tap-metadata',
-        help=_('The name of the interface to bind the metadata service proxy'),
-    )
+        help=_('The name of the interface to bind the metadata service proxy')),
+    cfg.IntOpt('neutron_listener_report_interval',
+        default=10,
+        help=_('Neutron report heart beat to df-db every this number in'
+               'seconds plus a random delay, which is no more than'
+               'neutron_listener_report_delay')),
+    cfg.IntOpt('neutron_listener_report_delay',
+        default=3,
+        help=_('The max delay for Neutron to reort heart beat to df-db'))
 ]
