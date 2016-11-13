@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_config import cfg
 from oslo_log import log
 
 from dragonflow._i18n import _LI, _LE, _LW
@@ -38,7 +37,6 @@ class Topology(object):
 
         self.controller = controller
         self.nb_api = controller.get_nb_api()
-        self.port_status_reporter = controller.get_portstatus_notifier()
         self.db_store = controller.get_db_store()
         self.openflow_app = controller.get_openflow_app()
         self.chassis_name = controller.get_chassis_name()
@@ -160,10 +158,8 @@ class Topology(object):
 
     def _vm_port_added(self, ovs_port):
         self._vm_port_updated(ovs_port)
-        # publish vm port up event
-        if cfg.CONF.df.enable_port_status_notifier:
-            self.port_status_reporter.notify_port_status(
-                ovs_port, constants.PORT_STATUS_UP)
+        self.controller.notify_port_status(
+            ovs_port, constants.PORT_STATUS_UP)
 
     def _vm_port_updated(self, ovs_port):
         lport_id = ovs_port.get_iface_id()
@@ -219,10 +215,8 @@ class Topology(object):
             LOG.exception(_LE(
                 'Failed to process logical port offline event %s') % lport_id)
         finally:
-            # publish vm port down event.
-            if cfg.CONF.df.enable_port_status_notifier:
-                self.port_status_reporter.notify_port_status(
-                    ovs_port, constants.PORT_STATUS_DOWN)
+            self.controller.notify_port_status(
+                ovs_port, constants.PORT_STATUS_DOWN)
 
             del self.ovs_to_lport_mapping[ovs_port_id]
             self._del_from_topic_subscribed(topic, lport_id)

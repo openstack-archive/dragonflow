@@ -14,7 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import random
+import abc
 import time
 
 import eventlet
@@ -144,14 +144,34 @@ class NbApi(object):
     def allocate_tunnel_key(self):
         return self.driver.allocate_unique_key('lport')
 
-    def get_all_port_status_keys(self):
-        topics = self.driver.get_all_entries('portstats')
-        topic = random.choice(topics)
-        return topic
+    def get_neutron_listener(self, id):
+        try:
+            listener = self.driver.get_key('n_listener', id, None)
+            return db_models.Listener(listener)
+        except Exception:
+            return None
 
-    def create_port_status(self, server_ip):
-        self.driver.create_key('portstats', server_ip,
-                               server_ip, None)
+    def get_all_neutron_listeners(self):
+        listeners = self.driver.get_all_entries('n_listener')
+        return [db_models.Listener(l) for l in listeners]
+
+    def create_neutron_listener(self, id, **columns):
+        listener = {
+            'id': id
+        }
+        listener.update(columns)
+        listener_json = jsonutils.dumps(listener)
+        self.driver.create_key('n_listener', id,
+                               listener_json, None)
+
+    def update_neutron_listener(self, id, **columns):
+        listener = {
+            'id': id
+        }
+        listener.update(columns)
+        listener_json = jsonutils.dumps(listener)
+        self.driver.set_key('n_listener', id,
+                            listener_json, None)
 
     def register_notification_callback(self, controller):
         self.controller = controller
@@ -160,6 +180,14 @@ class NbApi(object):
             self.driver.register_notification_callback(
                 self.db_change_callback)
         self._read_db_changes_from_queue()
+
+    def register_listener_callback(self, cb, topic):
+        if not self.use_pubsub:
+            self.driver.register_notification_callback(cb)
+            return
+        self.nb_api.subscriber.initialize(cb)
+        self.nb_api.subscriber.register_topic(topic)
+        self.nb_api.subscriber.daemonize()
 
     def db_change_callback(self, table, key, action, value, topic=None):
         update = db_common.DbUpdate(table, key, action, value, topic=topic)
@@ -777,3 +805,4 @@ class NbApi(object):
         except Exception:
             LOG.exception(_LE('Could not get qos policy %s'), policy_id)
             return None
+

@@ -10,6 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
+import random
+import time
+
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
@@ -70,16 +74,20 @@ class DFMechDriver(driver_api.MechanismDriver):
         # NOTE(nick-ma-z): This will initialize all workers (API, RPC,
         # plugin service, etc) and threads with network connections.
         self.nb_api = api_nb.NbApi.get_instance(True)
-        if cfg.CONF.df.enable_port_status_notifier:
-            port_status_notifier = df_utils.load_driver(
-                cfg.CONF.df.port_status_notifier,
-                df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
-            self.port_status_notifier = port_status_notifier
-            self.port_status_notifier.initialize(self, self.nb_api,
-                                            pub=None,
-                                            sub=self.nb_api.subscriber,
-                                            is_neutron_server=True)
+        if cfg.CONF.df.enable_neutron_listener:
+            self.create_heart_beat_reporter(cfg.CONF.host)
+
             self.port_status = None
+
+    def _nb_callback(self, table, key, action, value, topic=None):
+        # TODO(wangjian): make it a class and allow other plugins
+        # (e.g l3 plugin, or qos plugin) to register callbacks
+        if 'lport' == table and 'update' == action:
+            LOG.info(_LI("Process port %s status update event"), str(key))
+            if df_common_const.PORT_STATUS_UP == value:
+                self.set_port_status_up(key)
+            if df_common_const.PORT_STATUS_DOWN == value:
+                self.set_port_status_down(key)
 
     def subscribe_registries(self):
         registry.subscribe(self.post_fork_initialize,
@@ -578,7 +586,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         # Here we do not want port status update to trigger
         # sending event to other compute node.
-        if (cfg.CONF.df.enable_port_status_notifier and
+        if (cfg.CONF.df.enable_neutron_listener and
             n_const.DEVICE_OWNER_COMPUTE_PREFIX
             in updated_port['device_owner'] and
             context.status != context.original_status and
@@ -706,3 +714,60 @@ class DFMechDriver(driver_api.MechanismDriver):
         core_plugin.update_port_status(n_context.get_admin_context(),
                                        port_id,
                                        n_const.PORT_STATUS_DOWN)
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_NEUTRON_LISTENER)
+    def create_heart_beat_reporter(self, host):
+        listener = self.nb_api.get_neutron_listener(host)
+        if listener is None:
+            self._create_heart_beat_reporter(host)
+        else:
+            ppid = listener.get_ppid()
+            my_ppid = os.getppid()
+            LOG.info(_LI("Listener %(l)s exists, my ppid is %(ppid)s"),
+                     {'l': listener, 'ppid': my_ppid})
+            # FIXME(wangjian): if api_worker is 1, the old ppid could is
+            # equal to my_ppid. I tried to set api_worker=1, still multiple
+            # neutron-server processes were created.
+            if ppid != my_ppid:
+                self._create_heart_beat_reporter(host)
+
+    def _create_heart_beat_reporter(self, host):
+        self.nb_api.register_listener_callback(self._nb_callback,
+                                               'n_listener_' + host)
+        LOG.info(_LI("Register listener %s"), host)
+        self.heart_beat_reporter = HearBeatReporter(self.nb_api)
+        self.heart_beat_reporter.daemonize()
+
+
+class HearBeatReporter(object):
+    def __init__(self, api_nb):
+        self.api_nb = api_nb
+        self._daemon = df_utils.DFDaemon()
+
+    def daemonize(self):
+        return self._daemon.daemonize(self.run)
+
+    def stop(self):
+        return self._daemon.stop()
+
+    def run(self):
+        listener = cfg.CONF._host
+        ppid = os.getppid()
+        self.api_nb.create_neutron_listener(listener,
+                                            timestamp=int(time.time()),
+                                            ppid=ppid)
+
+        cfg_interval = cfg.CONF.df.neutron_listener_report_interval
+        delay = cfg.CONF.df.neutron_listener_report_delay
+
+        while True:
+            try:
+                interval = random.randint(cfg_interval, cfg_interval + delay)
+                time.sleep(interval)
+                timestamp = int(time.time())
+                self.api_nb.update_neutron_listener(listener,
+                                                    timestamp=timestamp,
+                                                    ppid=ppid)
+            except Exception:
+                LOG.exception(_LE(
+                        "Failed to report heart beat for %s"), listener)
