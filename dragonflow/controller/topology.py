@@ -38,7 +38,6 @@ class Topology(object):
 
         self.controller = controller
         self.nb_api = controller.get_nb_api()
-        self.port_status_reporter = controller.get_portstatus_notifier()
         self.db_store = controller.get_db_store()
         self.openflow_app = controller.get_openflow_app()
         self.chassis_name = controller.get_chassis_name()
@@ -161,8 +160,8 @@ class Topology(object):
     def _vm_port_added(self, ovs_port):
         self._vm_port_updated(ovs_port)
         # publish vm port up event
-        if cfg.CONF.df.enable_port_status_notifier:
-            self.port_status_reporter.notify_port_status(
+        if cfg.CONF.df.enable_neutron_listener:
+            self.controller.notify_port_status(
                 ovs_port, constants.PORT_STATUS_UP)
 
     def _vm_port_updated(self, ovs_port):
@@ -220,8 +219,8 @@ class Topology(object):
                 'Failed to process logical port offline event %s') % lport_id)
         finally:
             # publish vm port down event.
-            if cfg.CONF.df.enable_port_status_notifier:
-                self.port_status_reporter.notify_port_status(
+            if cfg.CONF.df.enable_neutron_listener:
+                self.controller.notify_port_status(
                     ovs_port, constants.PORT_STATUS_DOWN)
 
             del self.ovs_to_lport_mapping[ovs_port_id]
