@@ -14,75 +14,115 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
+import random
 import time
 
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow._i18n import _LI
-from dragonflow.common import constants
+from dragonflow._i18n import _LE, _LI, _LW
+from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import port_status_api
-
+from dragonflow.db.neutron import lockedobjects_db as lock_db
 
 LOG = log.getLogger(__name__)
 
 
 class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
-    # PortStatusNotifier implements port status update
-    # southbound notification mechanism based on redis
-    # pub/sub driver at present.
-
+    """
+        This class is used to implement southbound notification
+        mechanism based on pub/sub mechanism
+    """
     def __init__(self):
-        self.mech_driver = None
         self.nb_api = None
-        self.db_table_monitor = None
-        self.pub = None
-        self.sub = None
 
-    def initialize(self, mech_driver, nb_api, pub, sub,
-                   is_neutron_server=False):
-        self.mech_driver = mech_driver
+    def initialize(self, nb_api, is_neutron_server=False):
         self.nb_api = nb_api
-        self.pub = pub
-        self.sub = sub
-
         if is_neutron_server:
-            self.start_subscriber()
+            self.create_heart_beat_reporter(cfg.CONF.host)
         else:
-            # for pub/sub design, local controller will send
-            # pub/sub event to notify server if there is a
-            # new port status update
-            self.start_publisher()
+            if not cfg.CONF.df.use_pubsub:
+                LOG.warning(_LW("RedisPortStatusNotifier can not "
+                                "work when use_pubsub is disabled"))
+                return
+            self.nb_api.publisher.initialize()
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_NEUTRON_LISTENER)
+    def create_heart_beat_reporter(self, host):
+        listener = self.nb_api.get_neutron_listener(host)
+        if listener is None:
+            self._create_heart_beat_reporter(self, host)
+        else:
+            ppid = listener.get_ppid()
+            my_ppid = os.getppid()
+            LOG.info(_LI("Listener %(l)s exists, my ppid is %(ppid)s"),
+                     {'l': listener, 'ppid': my_ppid})
+            # FIXME(wangjian): if api_worker is 1, the old ppid could is
+            # equal to my_ppid. I tried to set api_worker=1, still multiple
+            # neutron-server processes were created.
+            if ppid != my_ppid:
+                self._create_heart_beat_reporter(host)
+
+    def _create_heart_beat_reporter(self, host):
+        self.nb_api.register_listener_callback(self._nb_callback,
+                                               'n_listener_' + host)
+        LOG.info(_LI("Register listener %s"), host)
+        self.heart_beat_reporter = HearBeatReporter(self.nb_api)
+        self.heart_beat_reporter.daemonize()
 
     def notify_port_status(self, ovs_port, status):
         port_id = ovs_port.get_iface_id()
-        self._send_port_status_event('lport', port_id, 'update', status)
+        self._send_event('lport', port_id, 'update', status)
 
-    # server code
-    def port_status_callback(self, table, key, action, value, topic=None):
-        if 'lport' == table and 'update' == action:
-            LOG.info(_LI("Process port %s status update event"), str(key))
-            if constants.PORT_STATUS_UP == value:
-                self.mech_driver.set_port_status_up(key)
-            if constants.PORT_STATUS_DOWN == value:
-                self.mech_driver.set_port_status_down(key)
+    def _send_event(self, table, key, action, value):
+        listeners = self.nb_api.get_all_neutron_listeners()
+        l = len(listeners)
+        if l == 0:
+            LOG.warning(_LW("No neutron listener found"))
+            return
+        elif l == 1:
+            n = listeners[0]
+        else:
+            # sort by timestamp and choose from the latest ones. This can
+            # avoid a dead one is chosen as far as possible
+            listeners.sort(key=lambda l: l.get_timestamp(), reverse=True)
+            n = random.choice(listeners[:len(listeners) / 2])
+        t = n.get_topic()
+        update = db_common.DbUpdate(table, key, action, value, topic=t)
+        LOG.info(_LI("Publish to neutron %s"), t)
+        self.nb_api.publisher.send_event(update)
 
-    # local controller code
-    def _send_port_status_event(self, table, key, action, value):
-        topic = self.nb_api.get_all_port_status_keys()
-        update = db_common.DbUpdate(table, key, action, value, topic=topic)
-        self.pub.send_event(update)
+class HearBeatReporter(object):
+    def __init__(self, api_nb):
+        self.api_nb = api_nb
+        self._daemon = df_utils.DFDaemon()
 
-    # server code
-    def start_subscriber(self):
-        self.sub.initialize(self.port_status_callback)
-        server_ip = cfg.CONF.df.local_ip
-        self.sub.register_topic(server_ip)
-        # In portstats table, there are key value pairs like this:
-        # port_status_192.168.1.10 : 192.168.1.10
-        self.nb_api.create_port_status(server_ip)
-        self.sub.daemonize()
+    def daemonize(self):
+        return self._daemon.daemonize(self.run)
 
-    def start_publisher(self):
-        self.pub.initialize()
+    def stop(self):
+        return self._daemon.stop()
+
+    def run(self):
+        listener = cfg.CONF._host
+        ppid = os.getppid()
+        self.api_nb.create_neutron_listener(listener,
+                                            timestamp=int(time.time()),
+                                            ppid=ppid)
+
+        cfg_interval = cfg.CONF.df.neutron_listener_report_interval
+        delay = cfg.CONF.df.neutron_listener_report_delay
+
+        while True:
+            try:
+                interval = random.randint(cfg_interval, cfg_interval + delay)
+                time.sleep(interval)
+                timestamp = int(time.time())
+                self.api_nb.update_neutron_listener(listener,
+                                                    timestamp=timestamp,
+                                                    ppid=ppid)
+            except Exception:
+                LOG.exception(_LE(
+                        "Failed to report heart beat for %s"), listener)
