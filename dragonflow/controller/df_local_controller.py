@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import random
 import socket
 import sys
 import time
@@ -34,6 +35,7 @@ from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
+from dragonflow.db import db_common
 from dragonflow.db import db_store
 from dragonflow.ovsdb import vswitch_impl
 
@@ -61,7 +63,6 @@ class DfLocalController(object):
         self.ip = cfg.CONF.df.local_ip
         self.tunnel_type = cfg.CONF.df.tunnel_type
         self.sync_finished = False
-        self.port_status_notifier = None
         nb_driver = df_utils.load_driver(
             cfg.CONF.df.nb_db_class,
             df_utils.DF_NB_DB_DRIVER_NAMESPACE)
@@ -69,10 +70,6 @@ class DfLocalController(object):
             nb_driver,
             use_pubsub=cfg.CONF.df.enable_df_pub_sub)
         self.vswitch_api = vswitch_impl.OvsApi(self.ip)
-        if cfg.CONF.df.enable_port_status_notifier:
-            self.port_status_notifier = df_utils.load_driver(
-                     cfg.CONF.df.port_status_notifier,
-                     df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
         kwargs = dict(
             nb_api=self.nb_api,
             vswitch_api=self.vswitch_api,
@@ -91,11 +88,7 @@ class DfLocalController(object):
                                db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api.initialize(self.nb_api)
         if cfg.CONF.df.enable_port_status_notifier:
-            self.port_status_notifier.initialize(mech_driver=None,
-                                             nb_api=self.nb_api,
-                                             pub=self.nb_api.publisher,
-                                             sub=None,
-                                             is_neutron_server=False)
+            self.nb_api.publisher.initialize()
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)
 
@@ -585,9 +578,6 @@ class DfLocalController(object):
     def get_nb_api(self):
         return self.nb_api
 
-    def get_portstatus_notifier(self):
-        return self.port_status_notifier
-
     def get_db_store(self):
         return self.db_store
 
@@ -596,6 +586,28 @@ class DfLocalController(object):
 
     def get_chassis_name(self):
         return self.chassis_name
+
+    def notify_port_status(self, ovs_port, status):
+        port_id = ovs_port.get_iface_id()
+        self._send_event('lport', port_id, 'update', status)
+
+    def _send_event(self, table, key, action, value):
+        listeners = self.nb_api.get_all_neutron_listeners()
+        # To avoid choosing a dead neutron listener, we choose
+        # from the latest half neutron-listeners
+        l = len(listeners)
+        if l == 0:
+            LOG.warning(_LW("No neutron listener found"))
+            return
+        elif l == 1:
+            n = listeners[0]
+        else:
+            listeners.sort()
+            n = random.choice(listeners[:len(listeners) / 2 + 1])
+        t = n.get_topic()
+        update = db_common.DbUpdate(table, key, action, value, topic=t)
+        LOG.info(_LI("Publish to neutron %s"), t)
+        self.nb_api.publisher.send_event(update)
 
 
 def init_ryu_config():
