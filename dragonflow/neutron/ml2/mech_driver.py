@@ -10,6 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
+import random
+import time
+
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
@@ -74,11 +78,9 @@ class DFMechDriver(driver_api.MechanismDriver):
             port_status_notifier = df_utils.load_driver(
                 cfg.CONF.df.port_status_notifier,
                 df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
-            self.port_status_notifier = port_status_notifier
-            self.port_status_notifier.initialize(self, self.nb_api,
-                                            pub=None,
-                                            sub=self.nb_api.subscriber,
+            port_status_notifier.initialize(self.nb_api,
                                             is_neutron_server=True)
+
             self.port_status = None
 
     def subscribe_registries(self):
@@ -578,7 +580,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         # Here we do not want port status update to trigger
         # sending event to other compute node.
-        if (cfg.CONF.df.enable_port_status_notifier and
+        if (cfg.CONF.df.enable_neutron_listener and
             n_const.DEVICE_OWNER_COMPUTE_PREFIX
             in updated_port['device_owner'] and
             context.status != context.original_status and

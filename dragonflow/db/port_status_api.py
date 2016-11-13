@@ -20,15 +20,11 @@ class PortStatusDriver(object):
     # notification mechanism.
 
     @abc.abstractmethod
-    def initialize(self, mech_driver, nb_api,
-                   pub, sub, is_neutron_server):
+    def initialize(self, nb_api, is_neutron_server=False):):
         """Initialise the portstatus both in server
            compute node
 
-        :param mech_driver:    neutron ml2 driver
         :nb_api:               nb_api driver
-        :pub:                  publisher
-        :sub:                  subscriber
         :is_neutron_server     server or compute
         :return:    None
         """
