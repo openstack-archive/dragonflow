@@ -10,7 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
 import random
+import socket
 import string
 import sys
 import time
@@ -19,6 +21,7 @@ from oslo_log import log
 import ryu.lib.packet
 
 from dragonflow._i18n import _LI
+from dragonflow.controller.common import constants as controller_const
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils as test_utils
@@ -1205,3 +1208,258 @@ class TestPortSecApp(test_base.DFTestBase):
         self.policy.wait(30)
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
+
+
+class TestDNATApp(test_base.DFTestBase):
+    def _get_external_network_id(self):
+        network = objects.find_first_network(
+            self.neutron,
+            {'router:external': True},
+        )
+        if network:
+            return network['id']
+
+        # No external network defined
+        network = self.store(
+            objects.NetworkTestObj(self.neutron, self.nb_api))
+
+        params = {'name': 'public',
+                  'router:external': True,
+                  'provider:network_type': 'flat',
+                  'provider:physical_network': 'public'}
+
+        network.create(params)
+        self.assertTrue(network.exists())
+
+        # Create an IPv4 subnet in the external network
+        subnet = self.store(objects.SubnetTestObj(self.neutron,
+                                                  self.nb_api,
+                                                  network.network_id))
+        subnet.create({
+            'ip_version': 4,
+            'cidr': '172.24.4.0/24',
+            'network_id': network.network_id,
+        })
+
+        self.assertTrue(subnet.exists())
+
+        # Attach interface to br-ex and assign address
+        test_utils.print_command(
+            ['ip', 'addr', 'add', '172.24.4.1/24', 'dev', 'br-ex'],
+            run_as_root=True)
+
+        def clean_tap():
+            test_utils.print_command(
+                ['ip', 'addr', 'del', '172.24.4.1/24', 'dev', 'br-ex'],
+                run_as_root=True)
+
+        self.store('tap', close_func=clean_tap)
+
+        return network.network_id
+
+    def setUp(self):
+        super(TestDNATApp, self).setUp()
+
+        # get ext net ID
+        external_network_id = self._get_external_network_id()
+
+        security_group = self.store(objects.SecGroupTestObj(
+            self.neutron,
+            self.nb_api))
+        security_group_id = security_group.create()
+        self.assertTrue(security_group.exists())
+
+        ingress_rule_info = {
+            'ethertype': 'IPv4',
+            'direction': 'ingress',
+            'protocol': 'udp',
+            'port_range_min': 2222,
+            'port_range_max': 2222,
+        }
+        egress_rule_info = {
+            'ethertype': 'IPv4',
+            'direction': 'egress',
+            'protocol': 'udp',
+            'port_range_min': 1,
+            'port_range_max': 65535,
+        }
+        ingress_rule_id = security_group.rule_create(
+            secrule=ingress_rule_info)
+        self.assertTrue(security_group.rule_exists(ingress_rule_id))
+        egress_rule_id = security_group.rule_create(
+            secrule=egress_rule_info)
+        self.assertTrue(security_group.rule_exists(egress_rule_id))
+
+        self.topology = self.store(
+            app_testing_objects.Topology(
+                self.neutron,
+                self.nb_api
+            )
+        )
+        self.int_subnet = self.topology.create_subnet(
+            cidr='192.168.12.0/24')
+
+        self.int_port = self.int_subnet.create_port([security_group_id])
+
+        # create router with port in the subnet and gw in ext net
+        self.router = self.topology.create_router(
+            [self.int_subnet.subnet_id],
+            gw_network_id=external_network_id)
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+
+        # create FIP in ext net and associate with port in subnet
+        self.fip = self.store(
+            objects.FloatingipTestObj(self.neutron, self.nb_api))
+        self.fip.create({
+            'floating_network_id': external_network_id,
+            'port_id': self.int_port.port.port_id,
+        })
+        self.assertTrue(self.fip.exists())
+        self.fip_addr = self.fip.get_floatingip().get_ip_address()
+
+    def test_send_recv_packet(self):
+        self._test_send_recv_packet()
+
+    def test_send_recv_packet_with_port_on_external_net(self):
+        ext_port = self.store(
+            objects.PortTestObj(self.neutron, self.nb_api))
+
+        ext_net = self.neutron.show_network(
+            self._get_external_network_id())['network']
+        ext_subnets = [self.neutron.show_subnet(s) for s in ext_net['subnets']]
+        ext_subnet = [
+            s for s in ext_subnets if s['subnet']['ip_version'] == 4
+        ].pop()
+
+        ext_port.create(
+            {
+                'admin_state_up': True,
+                'fixed_ips': [
+                    {
+                        'subnet_id': ext_subnet['subnet']['id'],
+                    },
+                ],
+                'network_id': self._get_external_network_id(),
+                'binding:host_id': socket.gethostname(),
+            },
+        )
+        self.assertTrue(ext_port.exists())
+
+        port_tap = app_testing_objects.LogicalPortTap(ext_port)
+        self.store(port_tap, close_func=port_tap.delete)
+        test_utils.print_command([
+            'ovs-ofctl',
+            'dump-flows',
+            '--rsort',
+            'br-int',
+            'table={0}'.format(
+                controller_const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE),
+        ], True)
+
+        self._test_send_recv_packet()
+
+    def _test_send_recv_packet(self):
+        with contextlib.closing(
+            socket.socket(socket.AF_INET, socket.SOCK_DGRAM),
+        ) as sock:
+            sock.bind(('0.0.0.0', 0))
+
+            def send_to_port(*_):
+                sock.sendto('ping', (self.fip_addr, 2222))
+
+            def create_reply(buf):
+                ingress_pkt = ryu.lib.packet.packet.Packet(buf)
+
+                ingress_eth = ingress_pkt.get_protocol(
+                    ryu.lib.packet.ethernet.ethernet)
+
+                ingress_ipv4 = ingress_pkt.get_protocol(
+                    ryu.lib.packet.ipv4.ipv4)
+
+                ingress_udp = ingress_pkt.get_protocol(
+                    ryu.lib.packet.udp.udp)
+
+                egress_eth = ryu.lib.packet.ethernet.ethernet(
+                    src=ingress_eth.dst,
+                    dst=ingress_eth.src,
+                    ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+                )
+                egress_ipv4 = ryu.lib.packet.ipv4.ipv4(
+                    src=ingress_ipv4.dst,
+                    dst=ingress_ipv4.src,
+                    proto=ryu.lib.packet.ipv4.inet.IPPROTO_UDP)
+
+                egress_udp = ryu.lib.packet.udp.udp(
+                    src_port=2222,
+                    dst_port=ingress_udp.src_port)
+
+                egress_pkt = ryu.lib.packet.packet.Packet()
+                egress_pkt.add_protocol(egress_eth)
+                egress_pkt.add_protocol(egress_ipv4)
+                egress_pkt.add_protocol(egress_udp)
+
+                # dimak: Had some issues with padded packets (<60 bytes)
+                egress_pkt.add_protocol('pong' * 5)
+                egress_pkt.serialize()
+                return egress_pkt.data
+
+            int_addr = self.int_port.port.get_logical_port().get_ip()
+
+            class _Filter(object):
+                def __call__(self, buf):
+                    pkt = ryu.lib.packet.packet.Packet(buf)
+                    ipv4 = pkt.get_protocol(ryu.lib.packet.ipv4.ipv4)
+                    if not ipv4 or ipv4.dst != int_addr:
+                        return False
+                    udp = pkt.get_protocol(ryu.lib.packet.udp.udp)
+                    if not udp:
+                        return False
+
+                    return udp.dst_port == 2222
+
+            key = (self.int_subnet.subnet_id, self.int_port.port_id)
+            port_policies = {
+                key: app_testing_objects.PortPolicy(
+                    rules=[
+                        app_testing_objects.PortPolicyRule(
+                            _Filter(),
+                            actions=[
+                                app_testing_objects.LogAction(),
+                                app_testing_objects.SendAction(
+                                    self.int_subnet.subnet_id,
+                                    self.int_port.port_id,
+                                    create_reply),
+                                app_testing_objects.StopSimulationAction(),
+                            ]
+                        ),
+                        app_testing_objects.PortPolicyRule(
+                            app_testing_objects.RyuIPv6Filter(),
+                            actions=[
+                                app_testing_objects.IgnoreAction(),
+                            ]
+                        ),
+                    ],
+                    default_action=app_testing_objects.IgnoreAction(),
+                ),
+            }
+            policy = self.store(
+                app_testing_objects.Policy(
+                    initial_actions=[
+                        send_to_port,
+                    ],
+                    port_policies=port_policies,
+                    unknown_port_action=app_testing_objects.IgnoreAction()
+                )
+            )
+
+            policy.start(self.topology)
+            policy.wait(timeout=10)
+
+            if policy.exceptions:
+                raise policy.exceptions[0]
+
+            sock.settimeout(200.0)
+            data, addr = sock.recvfrom(1024)
+            self.assertEqual(addr[0], self.fip_addr)
+            self.assertEqual(addr[1], 2222)
+            self.assertTrue('pong' in data)
