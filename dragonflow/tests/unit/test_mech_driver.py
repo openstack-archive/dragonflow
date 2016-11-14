@@ -344,6 +344,38 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             self.assertEqual('updated', called_args.get('name'))
             self.assertIsNone(called_args.get('dhcp_ip'))
 
+    def test_create_update_port_extra_dhcp_opts(self):
+        kwargs = {'extra_dhcp_opts':
+                  [{'opt_value': "192.168.0.1", 'opt_name': "3"},
+                   {'opt_value': "0.0.0.0/0,192.168.0.1", 'opt_name': "121"}]}
+        with self.subnet(enable_dhcp=False) as subnet:
+            with self.port(subnet=subnet,
+                           arg_list=('extra_dhcp_opts',),
+                           **kwargs) as p:
+                port = p['port']
+                self.assertTrue(self.nb_api.create_lport.called)
+                called_args = self.nb_api.create_lport.call_args_list[0][1]
+                expected_edo = [{'opt_value': u"192.168.0.1",
+                                 'opt_name': u"3",
+                                 'ip_version': 4},
+                                {'opt_value': u"0.0.0.0/0,192.168.0.1",
+                                 'opt_name': u"121",
+                                 'ip_version': 4}]
+                self.assertItemsEqual(expected_edo,
+                                      called_args.get("extra_dhcp_opts"))
+
+                data = {'port': {'extra_dhcp_opts': [{'opt_name': '3',
+                                                      'opt_value': None},
+                                                     {'opt_name': '121',
+                                                      'opt_value': None}]}}
+                req = self.new_update_request(
+                        'ports',
+                        data, port['id'])
+                req.get_response(self.api)
+                self.assertTrue(self.nb_api.update_lport.called)
+                called_args = self.nb_api.update_lport.call_args_list[0][1]
+                self.assertEqual([], called_args.get("extra_dhcp_opts"))
+
 
 class TestDFMechansimDriverAllowedAddressPairs(
         test_plugin.TestMl2AllowedAddressPairs,
