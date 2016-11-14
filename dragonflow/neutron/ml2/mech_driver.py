@@ -15,6 +15,7 @@ from neutron.callbacks import registry
 from neutron.callbacks import resources
 from neutron import context as n_context
 from neutron.extensions import allowedaddresspairs as addr_pair
+from neutron.extensions import extra_dhcp_opt as edo_ext
 from neutron.extensions import portbindings
 from neutron.extensions import portsecurity as psec
 from neutron.plugins.common import constants
@@ -541,7 +542,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, []),
             binding_profile=port.get(portbindings.PROFILE, None),
             binding_vnic_type=port.get(portbindings.VNIC_TYPE, None),
-            qos_policy_id=port.get('qos_policy_id', None))
+            qos_policy_id=port.get('qos_policy_id', None),
+            extra_dhcp_opts=port.get(edo_ext.EXTRADHCPOPTS, []))
 
         LOG.info(_LI("DFMechDriver: create port %s"), port['id'])
         return port
@@ -639,7 +641,8 @@ class DFMechDriver(driver_api.MechanismDriver):
             binding_profile=updated_port.get(portbindings.PROFILE, None),
             binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE, None),
             version=updated_port['revision_number'], remote_vtep=remote_vtep,
-            qos_policy_id=updated_port.get('qos_policy_id'))
+            qos_policy_id=updated_port.get('qos_policy_id'),
+            extra_dhcp_opts=updated_port.get(edo_ext.EXTRADHCPOPTS, []))
 
         LOG.info(_LI("DFMechDriver: update port %s"), updated_port['id'])
         return updated_port

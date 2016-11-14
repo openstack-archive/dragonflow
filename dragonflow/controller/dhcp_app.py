@@ -189,7 +189,7 @@ class DHCPApp(df_base_app.DFlowApp):
         dns = self._get_dns_address_list_bin(subnet)
         host_routes = self._get_host_routes_list_bin(subnet, lport)
         dhcp_server_address = str(self._get_dhcp_server_address(subnet))
-        gateway_address = self._get_port_gateway_address(subnet)
+        gateway_address = self._get_port_gateway_address(subnet, lport)
         netmask_bin = self._get_port_netmask(subnet).packed
         domain_name_bin = struct.pack('!256s', self.domain_name)
         lease_time_bin = struct.pack('!I', self.lease_time)
@@ -245,7 +245,7 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_server_address = self._get_dhcp_server_address(subnet)
         netmask_bin = self._get_port_netmask(subnet).packed
         lease_time_bin = struct.pack('!I', self.lease_time)
-        gateway_address = self._get_port_gateway_address(subnet)
+        gateway_address = self._get_port_gateway_address(subnet, lport)
         domain_name_bin = struct.pack('!256s', self.domain_name)
 
         option_list = [
@@ -301,6 +301,12 @@ class DHCPApp(df_base_app.DFlowApp):
 
         routes_bin = b''
 
+        dhcp_opts = lport.get_extra_dhcp_opts()
+        for opt in dhcp_opts:
+            if opt['opt_name'] == str(DHCP_CLASSLESS_ROUTE):
+                dest_cidr, _c, via = opt['opt_value'].partition(',')
+                host_routes.append({'destination': dest_cidr, 'nexthop': via})
+
         for route in host_routes:
             dest, slash, mask = route.get('destination').partition('/')
             mask = int(mask)
@@ -344,8 +350,15 @@ class DHCPApp(df_base_app.DFlowApp):
     def _get_dhcp_server_address(self, subnet):
         return netaddr.IPAddress(subnet.get_dhcp_server_address())
 
-    def _get_port_gateway_address(self, subnet):
-        return netaddr.IPAddress(subnet.get_gateway_ip())
+    def _get_port_gateway_address(self, subnet, lport):
+        gateway_ip = subnet.get_gateway_ip()
+        if gateway_ip:
+            return netaddr.IPAddress(gateway_ip)
+        else:
+            dhcp_opts = lport.get_extra_dhcp_opts()
+            for opt in dhcp_opts:
+                if opt['opt_name'] == str(dhcp.DHCP_GATEWAY_ADDR_OPT):
+                    return netaddr.IPAddress(opt['opt_value'])
 
     def _get_port_netmask(self, subnet):
         return netaddr.IPNetwork(subnet.get_cidr()).netmask
