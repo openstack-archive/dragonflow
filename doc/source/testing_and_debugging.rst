@@ -63,4 +63,14 @@ the pipline.  The perl script in [#]_ can be used to facilitate the use
 of this tool. The script also recirculates the packet when necessary,
 e.g. for connection tracking.
 
+::
+
+   > df-db
+
+
+This utility will allow to inspect Dragonflow northbound database. You can
+dump db content, list db tables, list db table keys and print value of the
+specific key in the table. Use *df-db --help* to list and get details on
+supported sub-commands.
+
 ..  [#] https://gist.github.com/omeranson/5c731955edcf0517bfb0ce0ce511cc9b
