@@ -21,7 +21,7 @@ between DF DB and neutron DB.
 Currently, There is only port status in DF database being updated after
 ports are created, leaving corresponding Neutron DB port status unchanged.
 Because the status of port in neutron remains the same before and after
-DF DB processed,thus no event is sent to nova.
+DF DB processed, thus no event is sent to nova.
 
 Proposed Change
 ===============
@@ -47,16 +47,16 @@ Publisher subscriber pattern
 Port status update feature depends on the sub-pub function shown in the
 following diagram. When there is a port status change, for example, nova
 create a VM which scheduled to compute A. Publisher A will send event
-with the topic(port_status_update specific).Once receiving the notification
+with the topic(port_status_update specific). Once receiving the notification
 from publisher, the subscriber in server node will invoke callback function,
 and finally changes port status in neutron DB.
 
-We need to assure that there should be and only be one neutron server to
+We need to assure that there is exactly one neutron server to
 process the event and that all neutron servers will have equal chance
 to handle the event.
 
 A kind of LB will be introduced. There are several neutron servers(for
-example,A,B,C,D),each one will subscrie a topic, for example, neutron server
+example,A,B,C,D), each one will subscribe a topic, for example, neutron server
 A will subscribe to topic A, neutron server B will subscribe to topic B, etc.
 Each local controller will publish port status event to a topic selected
 randomly.
@@ -104,7 +104,6 @@ Cons
 
 There is only one thread to process events published by several
 compute nodes at the same time. Its won't be a serious problem when
-there are a few nodes, but we should evaluate the process capability of
+there are few nodes, but we should evaluate the process capability of
 the server in detail while there are too many compute nodes, especially
 when all compute nodes are online concurrently.
-
