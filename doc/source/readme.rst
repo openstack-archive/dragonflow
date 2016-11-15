@@ -129,3 +129,5 @@ Automated setup using Vagrant + Virtualbox
 
 Troubleshooting
 ---------------
+You can check northbound database  by using db-df utility, see details in the
+`Testing and Debugging <testing_and_debugging.rst>`_. 
