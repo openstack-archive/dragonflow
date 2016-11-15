@@ -55,6 +55,7 @@ Specs
     config_generation
     cassandra_driver
     virtual_tunnel_port
+    distributed_snat
 
 
 Templates
