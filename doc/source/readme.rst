@@ -129,3 +129,9 @@ Automated setup using Vagrant + Virtualbox
 
 Troubleshooting
 ---------------
+You can check northbound database  by using db-df utility.
+
+- df-db tables - lists all db tables
+- df-db dump - dumps content of all tables
+- df-db ls TABLE - lists all the keys in the table
+- df-db get TABLE KEY - prints value of the specific key in the table
