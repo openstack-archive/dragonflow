@@ -646,6 +646,12 @@ class TestSGApp(test_base.DFTestBase):
             security_group_id2 = security_group2.create()
             self.assertTrue(security_group2.exists())
 
+            security_group3 = self.store(objects.SecGroupTestObj(
+                self.neutron,
+                self.nb_api))
+            security_group_id3 = security_group3.create()
+            self.assertTrue(security_group3.exists())
+
             self.topology = self.store(
                 app_testing_objects.Topology(
                     self.neutron,
@@ -657,6 +663,12 @@ class TestSGApp(test_base.DFTestBase):
             self.port1 = self.subnet.create_port()
             self.port2 = self.subnet.create_port()
             self.port3 = self.subnet.create_port([security_group_id])
+            self.port4 = self.subnet.create_port()
+
+            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+
+            self.port4.update(
+                {'allowed_address_pairs': [{'ip_address': '192.168.14.200'}]})
 
             port1_lport = self.port1.port.get_logical_port()
             self.assertIsNotNone(port1_lport)
@@ -692,16 +704,28 @@ class TestSGApp(test_base.DFTestBase):
                 secrule=ingress_rule_info2)
             self.assertTrue(security_group2.rule_exists(ingress_rule_id2))
 
+            ingress_rule_info3 = {
+                'ethertype': 'IPv4',
+                'direction': 'ingress',
+                'protocol': 'icmp',
+                'remote_group_id':
+                    self.topology.fake_default_security_group.secgroup_id}
+            ingress_rule_id3 = security_group3.rule_create(
+                secrule=ingress_rule_info3)
+            self.assertTrue(security_group3.rule_exists(ingress_rule_id3))
+
             self.active_security_group_id = security_group_id
             self.inactive_security_group_id = security_group_id2
             self.permit_port_id = self.port1.port_id
             self.no_permit_port_id = self.port2.port_id
             self.permit_icmp_request = self._get_icmp_request1
             self.no_permit_icmp_request = self._get_icmp_request2
+            self.allowed_address_pairs_security_group_id = security_group_id3
 
             time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
             self._update_policy()
+            self._create_allowed_address_pairs_policy()
         except Exception:
             if self.topology:
                 self.topology.close()
@@ -734,11 +758,34 @@ class TestSGApp(test_base.DFTestBase):
             )
         )
 
+    def _create_allowed_address_pairs_policy(self):
+        packet1, self.allowed_address_pairs_icmp_request = \
+            self._create_ping_packet(self.port4, self.port3)
+
+        port_policies = self._create_allowed_address_pairs_port_policies()
+
+        self.allowed_address_pairs_policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    app_testing_objects.SendAction(
+                        self.subnet.subnet_id,
+                        self.port4.port_id,
+                        str(packet1.data)
+                    )
+                ],
+                port_policies=port_policies,
+                unknown_port_action=app_testing_objects.IgnoreAction()
+            )
+        )
+
     def _get_icmp_request1(self):
         return self.icmp_request1
 
     def _get_icmp_request2(self):
         return self.icmp_request2
+
+    def _get_allowed_address_pairs_icmp_request(self):
+        return self.allowed_address_pairs_icmp_request
 
     def _create_port_policies(self):
 
@@ -851,14 +898,60 @@ class TestSGApp(test_base.DFTestBase):
             key3: policy3
         }
 
+    def _create_allowed_address_pairs_port_policies(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
+        key = (self.subnet.subnet_id, self.port3.port_id)
+        rules = [
+            app_testing_objects.PortPolicyRule(
+                # Detect ping from port4, end the test
+                app_testing_objects.RyuICMPPingFilter(
+                    self._get_allowed_address_pairs_icmp_request),
+                actions=[
+                    app_testing_objects.DisableRuleAction(),
+                    app_testing_objects.StopSimulationAction()
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore gratuitous ARP packets
+                app_testing_objects.RyuARPGratuitousFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 packets
+                app_testing_objects.RyuIPv6Filter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+        ]
+        policy1 = app_testing_objects.PortPolicy(
+            rules=rules,
+            default_action=raise_action
+        )
+        return {
+            key: policy1,
+        }
+
     def _create_ping_packet(self, src_port, dst_port):
+        allowed_address_pairs = \
+            src_port.port.get_logical_port().get_allow_address_pairs()
+        if allowed_address_pairs:
+            src_mac = allowed_address_pairs[0]['mac_address']
+            src_ip = allowed_address_pairs[0]['ip_address']
+        else:
+            src_mac = src_port.port.get_logical_port().get_mac()
+            src_ip = src_port.port.get_logical_port().get_ip()
+
         ethernet = ryu.lib.packet.ethernet.ethernet(
-            src=src_port.port.get_logical_port().get_mac(),
+            src=src_mac,
             dst=dst_port.port.get_logical_port().get_mac(),
             ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
         )
         ip = ryu.lib.packet.ipv4.ipv4(
-            src=src_port.port.get_logical_port().get_ip(),
+            src=src_ip,
             dst=dst_port.port.get_logical_port().get_ip(),
             proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
         )
@@ -972,6 +1065,15 @@ class TestSGApp(test_base.DFTestBase):
 
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
+
+        self.port3.update({"security_groups": [
+            self.allowed_address_pairs_security_group_id]})
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+        self.allowed_address_pairs_policy.start(self.topology)
+        self.allowed_address_pairs_policy.wait(30)
+
+        if len(self.allowed_address_pairs_policy.exceptions) > 0:
+            raise self.allowed_address_pairs_policy.exceptions[0]
 
 
 class TestPortSecApp(test_base.DFTestBase):
