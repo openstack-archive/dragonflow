@@ -37,6 +37,10 @@ class DfDvrRouter(legacy_router.LegacyRouter):
 
 
 class DfL3NATAgentWithStateReport(agent.L3NATAgentWithStateReport):
+    def __init__(self, host, conf=None):
+        super(DfL3NATAgentWithStateReport, self).__init__(host=host, conf=conf)
+        self.agent_state['binary'] = 'df-l3-agent'
+
     def _create_router(self, router_id, router):
         args = []
         kwargs = {
