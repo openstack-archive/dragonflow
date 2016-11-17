@@ -79,6 +79,7 @@ class SGApp(df_base_app.DFlowApp):
         self.secgroup_aggregate_addresses = collections.defaultdict(
             netaddr.IPSet
         )
+        self.secgroup_ip_refs = {}
 
     @staticmethod
     def _get_cidr_difference(cidr_set, new_cidr_set):
@@ -90,21 +91,34 @@ class SGApp(df_base_app.DFlowApp):
         return added_cidr, removed_cidr
 
     @staticmethod
-    def _get_cidr_changes_after_removing_one_address(cidr_set, address):
-        """cidr_array - IPSet
-           address - IPAddress or string
+    def _get_cidr_changes_after_removing_addresses(cidr_set, address_list):
+        """cidr_set - IPSet
+           address_list - IPAddress or string list
         """
-        new_cidr_set = cidr_set - netaddr.IPSet((address,))
+        new_cidr_set = cidr_set - netaddr.IPSet(address_list)
         added_cidr, removed_cidr = SGApp._get_cidr_difference(cidr_set,
                                                               new_cidr_set)
         return new_cidr_set, added_cidr, removed_cidr
 
     @staticmethod
-    def _get_cidr_changes_after_adding_one_address(cidr_set, address):
-        """cidr_array - IPSet
-           address - IPAddress or string
+    def _get_cidr_changes_after_adding_addresses(cidr_set, address_list):
+        """cidr_set - IPSet
+           address_list - IPAddress or string list
         """
-        new_cidr_set = cidr_set | (netaddr.IPAddress(address),)
+        new_cidr_set = cidr_set | netaddr.IPSet(address_list)
+        added_cidr, removed_cidr = SGApp._get_cidr_difference(cidr_set,
+                                                              new_cidr_set)
+        return new_cidr_set, added_cidr, removed_cidr
+
+    @staticmethod
+    def _get_cidr_changes_after_updating_addresses(cidr_set, addresses_to_add,
+                                                   addresses_to_remove):
+        """cidr_set - IPSet
+           addresses_to_add - IPAddress or string list
+           addresses_to_remove - IPAddress or string list
+        """
+        new_cidr_set = ((cidr_set | netaddr.IPSet(addresses_to_add)) -
+                        (netaddr.IPSet(addresses_to_remove)))
         added_cidr, removed_cidr = SGApp._get_cidr_difference(cidr_set,
                                                               new_cidr_set)
         return new_cidr_set, added_cidr, removed_cidr
@@ -174,6 +188,85 @@ class SGApp(df_base_app.DFlowApp):
     def _get_rule_cookie(rule_id):
         rule_cookie = rule_id << const.SECURITY_GROUP_RULE_COOKIE_SHIFT_LEN
         return rule_cookie & const.SECURITY_GROUP_RULE_COOKIE_MASK
+
+    def _add_and_check_ip(self, secgroup_id, ip, lport_id):
+        key = (secgroup_id, ip)
+        lport_id_list = \
+            self.secgroup_ip_refs.get(key, None)
+        if lport_id_list is None:
+            self.secgroup_ip_refs[key] = [lport_id]
+            return True
+        elif lport_id not in lport_id_list:
+            lport_id_list.append(lport_id)
+
+        return False
+
+    def _remove_and_check_ip(self, secgroup_id, ip, lport_id):
+        key = (secgroup_id, ip)
+        lport_id_list = \
+            self.secgroup_ip_refs.get(key)
+        if (lport_id_list is not None) and (lport_id in lport_id_list):
+            lport_id_list.remove(lport_id)
+            if len(lport_id_list) == 0:
+                del self.secgroup_ip_refs[key]
+                return True
+
+        return False
+
+    def _get_ips_in_logical_port(self, lport):
+        ips = []
+        fixed_ip = lport.get_ip()
+        if netaddr.IPNetwork(fixed_ip).version == 4:
+            # IPv6 addresses are not supported yet
+            ips.append(fixed_ip)
+
+        allowed_address_pairs = lport.get_allow_address_pairs()
+        if allowed_address_pairs is not None:
+            for pair in allowed_address_pairs:
+                ip = pair["ip_address"]
+                if (netaddr.IPNetwork(ip).version == 4) and (ip not in ips):
+                    # IPv6 addresses are not supported yet
+                    ips.append(ip)
+
+        return ips
+
+    def _get_lport_added_ips_for_secgroup(self, secgroup_id, lport):
+        added_ips = []
+        ips = self._get_ips_in_logical_port(lport)
+        for ip in ips:
+            if self._add_and_check_ip(secgroup_id, ip, lport.get_id()):
+                added_ips.append(ip)
+
+        return added_ips
+
+    def _get_lport_removed_ips_for_secgroup(self, secgroup_id, lport):
+        removed_ips = []
+        ips = self._get_ips_in_logical_port(lport)
+        for ip in ips:
+            if self._remove_and_check_ip(secgroup_id, ip, lport.get_id()):
+                removed_ips.append(ip)
+
+        return removed_ips
+
+    def _get_lport_updated_ips_for_secgroup(self, secgroup_id, lport,
+                                            original_lport):
+        added_ips = []
+        removed_ips = []
+
+        ips = self._get_ips_in_logical_port(lport)
+        original_ips = self._get_ips_in_logical_port(original_lport)
+
+        for ip in ips:
+            if (ip not in original_ips) and self._add_and_check_ip(
+                    secgroup_id, ip, lport.get_id()):
+                added_ips.append(ip)
+
+        for ip in original_ips:
+            if (ip not in ips) and self._remove_and_check_ip(
+                    secgroup_id, ip, lport.get_id()):
+                removed_ips.append(ip)
+
+        return added_ips, removed_ips
 
     def _install_security_group_permit_flow_by_direction(self,
                                                          security_group_id,
@@ -707,14 +800,15 @@ class SGApp(df_base_app.DFlowApp):
             return security_id, (SG_PRIORITY_OFFSET + security_id)
         return None, None
 
-    def _associate_secgroup_ip(self, secgroup_id, ip):
+    def _associate_secgroup_lport_addresses(self, secgroup_id, lport):
         # update the record of aggregate addresses of ports associated
         # with this security group.
         addresses = self.secgroup_aggregate_addresses[secgroup_id]
+        added_ips = self._get_lport_added_ips_for_secgroup(secgroup_id, lport)
         new_cidr_set, added_cidr, removed_cidr = \
-            SGApp._get_cidr_changes_after_adding_one_address(
+            SGApp._get_cidr_changes_after_adding_addresses(
                 addresses,
-                ip,
+                added_ips,
             )
         self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_set
 
@@ -730,16 +824,18 @@ class SGApp(df_base_app.DFlowApp):
                     added_cidr,
                     removed_cidr)
 
-    def _disassociate_secgroup_ip(self, secgroup_id, ip):
+    def _disassociate_secgroup_lport_addresses(self, secgroup_id, lport):
         # update the record of aggregate addresses of ports associated
         # with this security group.
         aggregate_addresses_range = \
             self.secgroup_aggregate_addresses[secgroup_id]
         if aggregate_addresses_range:
+            removed_ips = self._get_lport_removed_ips_for_secgroup(
+                secgroup_id, lport)
             new_cidr_set, added_cidr, removed_cidr = \
-                SGApp._get_cidr_changes_after_removing_one_address(
+                SGApp._get_cidr_changes_after_removing_addresses(
                     aggregate_addresses_range,
-                    ip,
+                    removed_ips,
                 )
             if not new_cidr_set:
                 del self.secgroup_aggregate_addresses[secgroup_id]
@@ -760,7 +856,7 @@ class SGApp(df_base_app.DFlowApp):
                     )
 
     def _add_local_port_associating(self, lport, secgroup_id):
-        self._associate_secgroup_ip(secgroup_id, lport.get_ip())
+        self._associate_secgroup_lport_addresses(secgroup_id, lport)
 
         # update the record of ports associated with this security group.
         associate_ports = \
@@ -780,7 +876,7 @@ class SGApp(df_base_app.DFlowApp):
         # uninstall associating flow
         self._uninstall_associating_flows(secgroup_id, lport)
 
-        self._disassociate_secgroup_ip(secgroup_id, lport.get_ip())
+        self._disassociate_secgroup_lport_addresses(secgroup_id, lport)
 
         # update the record of ports associated with this security group.
         associate_ports = \
@@ -794,26 +890,66 @@ class SGApp(df_base_app.DFlowApp):
                     del self.secgroup_associate_local_ports[secgroup_id]
 
     def _add_remote_port_associating(self, lport, secgroup_id):
-        self._associate_secgroup_ip(secgroup_id, lport.get_ip())
+        self._associate_secgroup_lport_addresses(secgroup_id, lport)
 
     def _remove_remote_port_associating(self, lport, secgroup_id):
-        self._disassociate_secgroup_ip(secgroup_id, lport.get_ip())
+        self._disassociate_secgroup_lport_addresses(secgroup_id, lport)
 
-    def _get_added_and_removed_secgroups(self, secgroups, original_secgroups):
+    def _update_port_addresses_process(self, lport, original_lport,
+                                       secgroup_id):
+        # update the record of aggregate addresses of ports associated
+        # with this security group.
+        aggregate_addresses_range = \
+            self.secgroup_aggregate_addresses.get(secgroup_id)
+        if aggregate_addresses_range is None:
+            aggregate_addresses_range = netaddr.IPset()
+
+        added_ips, removed_ips = self._get_lport_updated_ips_for_secgroup(
+            secgroup_id, lport, original_lport
+        )
+        new_cidr_array, added_cidr, removed_cidr = \
+            self._get_cidr_changes_after_updating_addresses(
+                aggregate_addresses_range,
+                added_ips,
+                removed_ips
+            )
+        if len(new_cidr_array) == 0:
+            if secgroup_id in self.secgroup_aggregate_addresses:
+                del self.secgroup_aggregate_addresses[secgroup_id]
+        else:
+            self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_array
+
+        # update the flows representing those rules each of which
+        # specifies this security group as its
+        # parameter of remote group.
+        secrules = self.remote_secgroup_ref.get(secgroup_id)
+        if secrules is not None:
+            for rule_info in secrules.values():
+                self._update_security_group_rule_flows_by_addresses(
+                    rule_info.get_security_group_id(),
+                    rule_info,
+                    added_cidr,
+                    removed_cidr
+                )
+
+    def _get_added_and_removed_and_unchanged_secgroups(self, secgroups,
+                                                       original_secgroups):
         added_secgroups = []
         if original_secgroups is not None:
             removed_secgroups = list(original_secgroups)
         else:
             removed_secgroups = []
+        unchanged_secgroups = []
 
         if secgroups:
             for item in secgroups:
                 if item in removed_secgroups:
                     removed_secgroups.remove(item)
+                    unchanged_secgroups.append(item)
                 else:
                     added_secgroups.append(item)
 
-        return added_secgroups, removed_secgroups
+        return added_secgroups, removed_secgroups, unchanged_secgroups
 
     def remove_local_port(self, lport):
         if self.get_datapath() is None:
@@ -854,9 +990,9 @@ class SGApp(df_base_app.DFlowApp):
         secgroups = lport.get_security_groups()
         original_secgroups = original_lport.get_security_groups()
 
-        added_secgroups, removed_secgroups = \
-            self._get_added_and_removed_secgroups(secgroups,
-                                                  original_secgroups)
+        added_secgroups, removed_secgroups, unchanged_secgroups = \
+            self._get_added_and_removed_and_unchanged_secgroups(
+                secgroups, original_secgroups)
 
         if not secgroups and original_secgroups:
             # uninstall ct table
@@ -866,7 +1002,11 @@ class SGApp(df_base_app.DFlowApp):
             self._add_local_port_associating(lport, secgroup_id)
 
         for secgroup_id in removed_secgroups:
-            self._remove_local_port_associating(lport, secgroup_id)
+            self._remove_local_port_associating(original_lport, secgroup_id)
+
+        for secgroup_id in unchanged_secgroups:
+            self._update_port_addresses_process(lport, original_lport,
+                                                secgroup_id)
 
         if secgroups and not original_secgroups:
             # install ct table
@@ -880,15 +1020,19 @@ class SGApp(df_base_app.DFlowApp):
         secgroups = lport.get_security_groups()
         original_secgroups = original_lport.get_security_groups()
 
-        added_secgroups, removed_secgroups = \
-            self._get_added_and_removed_secgroups(secgroups,
-                                                  original_secgroups)
+        added_secgroups, removed_secgroups, unchanged_secgroups = \
+            self._get_added_and_removed_and_unchanged_secgroups(
+                secgroups, original_secgroups)
 
         for secgroup_id in added_secgroups:
             self._add_remote_port_associating(lport, secgroup_id)
 
         for secgroup_id in removed_secgroups:
             self._remove_remote_port_associating(lport, secgroup_id)
+
+        for secgroup_id in unchanged_secgroups:
+            self._update_port_addresses_process(lport, original_lport,
+                                                secgroup_id)
 
     def add_local_port(self, lport):
         if self.get_datapath() is None:
