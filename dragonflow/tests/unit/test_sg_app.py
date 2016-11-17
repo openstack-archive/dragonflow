@@ -318,12 +318,76 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # delete fake security group
         self.controller.security_group_deleted(security_group.get_id())
 
+    def test_support_allowed_address_pairs(self):
+        # create fake security group
+        self.controller.security_group_updated(self.security_group)
+
+        # add a local port with allowed address pairs
+        fake_local_lport = self._get_another_local_lport()
+        fake_local_lport.inner_obj["allowed_address_pairs"] = [
+            {'ip_address': '10.0.0.100',
+             'mac_address': 'fa:16:3e:8c:2e:12'}
+        ]
+        fake_local_lport_version = fake_local_lport.inner_obj['version']
+        self.controller.logical_port_created(fake_local_lport)
+        # add flows:
+        # 1. a flow in ingress conntrack table
+        # 2. a associating flow in ingress secgroup table
+        # 3. a flow in egress conntrack table
+        # 4. a associating flow in egress secgroup table
+        # 5. a ingress rule flow in ingress secgroup table(using fixed ip)
+        # 6. a ingress rule flow in ingress secgroup table(using ip in allowed
+        #    address pairs)
+        # 7. the permit flow in ingress secgroup table
+        # 8. a egress rule flow in egress secgroup table
+        # 9. the permit flow in egress secgroup table
+        self.assertEqual(9, self._get_call_count_of_add_flow())
+        self.mock_mod_flow.reset_mock()
+
+        # update allowed address pairs of the lport
+        fake_local_lport = self._get_another_local_lport()
+        fake_local_lport.inner_obj["allowed_address_pairs"] = [
+            {'ip_address': '10.0.0.200',
+             'mac_address': 'fa:16:3e:8c:2e:12'}
+        ]
+        fake_local_lport_version += 1
+        fake_local_lport.inner_obj['version'] = fake_local_lport_version
+        self.controller.logical_port_updated(fake_local_lport)
+        # add flows:
+        # 1. a ingress rule flow in ingress secgroup table(using ip in the new
+        #    allowed address pairs)
+        # remove flows:
+        # 1. a ingress rule flow in ingress secgroup table(using ip in the old
+        #    allowed address pairs)
+        self.assertEqual(1, self._get_call_count_of_add_flow())
+        self.assertEqual(1, self._get_call_count_of_del_flow())
+        self.mock_mod_flow.reset_mock()
+
+        # remove local port
+        self.controller.logical_port_deleted(fake_local_lport.get_id())
+        # remove flows:
+        # 1. a flow in ingress conntrack table
+        # 2. a associating flow in ingress secgroup table
+        # 3. a flow in egress conntrack table
+        # 4. a associating flow in egress secgroup table
+        # 5-6. two ingress rule flow (caused by IP addresses represent
+        #    remote_group_id changed) in ingress secgroup table
+        # 7. ingress rules deleted by cookie in ingress secgroup table
+        # 8. egress rules deleted by cookie in egress secgroup table
+        # 9. the permit flow in ingress secgroup table
+        # 10. the permit flow in egress secgroup table
+        self.assertEqual(10, self._get_call_count_of_del_flow())
+        self.mock_mod_flow.reset_mock()
+
+        # delete fake security group
+        self.controller.security_group_deleted(self.security_group.get_id())
+
     def test_aggregating_flows_for_addresses(self):
         # add one address
         old_cidr_set = netaddr.IPSet(['192.168.10.6'])
         new_cidr_set, added_cidr, deleted_cidr = \
-            self.app._get_cidr_changes_after_adding_one_address(
-                old_cidr_set, '192.168.10.7')
+            self.app._get_cidr_changes_after_adding_addresses(
+                old_cidr_set, ['192.168.10.7'])
         expected_new_cidr_set = netaddr.IPSet(['192.168.10.6/31'])
         expected_added_cidr = {netaddr.IPNetwork('192.168.10.6/31')}
         expected_deleted_cidr = {netaddr.IPNetwork('192.168.10.6/32')}
@@ -334,11 +398,23 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # remove one address
         old_cidr_set = new_cidr_set
         new_cidr_set, added_cidr, deleted_cidr = \
-            self.app._get_cidr_changes_after_removing_one_address(
-                old_cidr_set, '192.168.10.7')
+            self.app._get_cidr_changes_after_removing_addresses(
+                old_cidr_set, ['192.168.10.7'])
         expected_new_cidr_set = netaddr.IPSet(['192.168.10.6/32'])
         expected_added_cidr = {netaddr.IPNetwork('192.168.10.6/32')}
         expected_deleted_cidr = {netaddr.IPNetwork('192.168.10.6/31')}
+        self.assertEqual(new_cidr_set, expected_new_cidr_set)
+        self.assertEqual(added_cidr, expected_added_cidr)
+        self.assertEqual(deleted_cidr, expected_deleted_cidr)
+
+        # update addresses
+        old_cidr_set = new_cidr_set
+        new_cidr_set, added_cidr, deleted_cidr = \
+            self.app._get_cidr_changes_after_updating_addresses(
+                old_cidr_set, ['192.168.10.7'], ['192.168.10.6'])
+        expected_new_cidr_set = netaddr.IPSet(['192.168.10.7/32'])
+        expected_added_cidr = {netaddr.IPNetwork('192.168.10.7/32')}
+        expected_deleted_cidr = {netaddr.IPNetwork('192.168.10.6/32')}
         self.assertEqual(new_cidr_set, expected_new_cidr_set)
         self.assertEqual(added_cidr, expected_added_cidr)
         self.assertEqual(deleted_cidr, expected_deleted_cidr)
