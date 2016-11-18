@@ -122,9 +122,6 @@ function _neutron_ovs_install_ovs {
 
 function install_ovs {
     _neutron_ovs_install_ovs
-
-    # reload module
-    load_module_if_not_loaded openvswitch
 }
 
 function start_ovs {
