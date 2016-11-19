@@ -61,6 +61,19 @@ def create_tap_dev(dev, mac_address=None):
                   check_exit_code=[0, 2, 254])
 
 
+def delete_tap_device(dev):
+    """Delete a tapp with name dev on the  operating system.
+    :param dev:         The name of the tap device to delete
+    :type dev:          String
+    """
+    try:
+        utils.execute(['ip', 'tuntap', 'del', 'dev', dev, 'mode', 'tap'],
+                      run_as_root=True, check_exit_code=[0, 2, 254])
+    except Exception:
+        LOG.exception('Error while deleting tap device')
+        utils.execute(['tunctl', '-d', dev], run_as_root=True)
+
+
 def packet_raw_data_to_hex(buf):
     return str(buf).encode('hex')
 
@@ -297,6 +310,7 @@ class LogicalPortTap(object):
             self.tap.fileno(),
         ))
         self.tap.close()
+        delete_tap_device(self.tap.name)
 
     def send(self, buf):
         """Send a packet out via the tap device.
