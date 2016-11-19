@@ -50,15 +50,37 @@ def create_tap_dev(dev, mac_address=None):
         # First, try with 'ip'
         utils.execute(['ip', 'tuntap', 'add', dev, 'mode', 'tap'],
                       run_as_root=True, check_exit_code=[0, 2, 254])
-    except Exception as e:
-        print e
-        # Second option: tunctl
-        utils.execute(['tunctl', '-b', '-t', dev], run_as_root=True)
+    except Exception:
+        try:
+            # Second option: tunctl
+            utils.execute(['tunctl', '-b', '-t', dev], run_as_root=True)
+        except Exception:
+            LOG.exception('Error while creating tap device {0}'.format(dev))
+            raise
+
     if mac_address:
         utils.execute(['ip', 'link', 'set', dev, 'address', mac_address],
                       run_as_root=True, check_exit_code=[0, 2, 254])
     utils.execute(['ip', 'link', 'set', dev, 'up'], run_as_root=True,
                   check_exit_code=[0, 2, 254])
+
+
+def delete_tap_device(dev):
+    """Delete a tap with name dev on the operating system.
+    :param dev: The name of the tap device to delete
+    :type dev:  String
+    """
+    try:
+        # First, try with 'ip'
+        utils.execute(['ip', 'tuntap', 'del', 'dev', dev, 'mode', 'tap'],
+                      run_as_root=True, check_exit_code=[0, 2, 254])
+    except Exception:
+        try:
+            # Second option: tunctl
+            utils.execute(['tunctl', '-d', dev], run_as_root=True)
+        except Exception:
+            LOG.exception('Error while deleting tap device {0}'.format(dev))
+            raise
 
 
 def packet_raw_data_to_hex(buf):
@@ -297,6 +319,7 @@ class LogicalPortTap(object):
             self.tap.fileno(),
         ))
         self.tap.close()
+        delete_tap_device(self.tap.name)
 
     def send(self, buf):
         """Send a packet out via the tap device.
