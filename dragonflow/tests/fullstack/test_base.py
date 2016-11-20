@@ -103,8 +103,15 @@ class DFTestBase(base.BaseTestCase):
 
         self.local_ip = self.conf.local_ip
         self.__objects_to_close = []
+        self.addCleanup(self._close_stored_objects)
+
         if cfg.CONF.df.enable_selective_topology_distribution:
             self.start_subscribing()
+
+    def _close_stored_objects(self):
+        while self.__objects_to_close:
+            close_func = self.__objects_to_close.pop()
+            close_func()
 
     def get_default_subnetpool(self):
         default_subnetpool = None
@@ -144,8 +151,3 @@ class DFTestBase(base.BaseTestCase):
     def stop_subscribing(self):
         if hasattr(self, '_topology'):
             self._topology.close()
-
-    def tearDown(self):
-        for close_func in reversed(self.__objects_to_close):
-            close_func()
-        super(DFTestBase, self).tearDown()
