@@ -24,25 +24,6 @@ class TestDbStore(tests_base.BaseTestCase):
         tests_base.BaseTestCase.setUp(self)
         self.db_store = db_store.DbStore()
 
-    def test_network_id(self):
-        self.db_store.set_network_id('ldp1', 'value1')
-        self.db_store.set_network_id('ldp2', 'value2')
-        self.db_store.set_network_id('ldp3', 'value3')
-        self.assertEqual(
-            'value1',
-            self.db_store.get_network_id('ldp1')
-        )
-        self.assertEqual(
-            'value2',
-            self.db_store.get_network_id('ldp2')
-        )
-        self.assertEqual(
-            'value1',
-            self.db_store.get_network_id('ldp1')
-        )
-        self.db_store.del_network_id('ldp3')
-        self.assertIsNone(self.db_store.get_network_id('ldp3'))
-
     def test_lswitch(self):
         self.db_store.set_lswitch('id1', 'value1', 'topic1')
         self.db_store.set_lswitch('id2', 'value2', 'topic2')

@@ -744,9 +744,7 @@ class L2App(df_base_app.DFlowApp):
         datapath = self.get_datapath()
         ofproto = datapath.ofproto
 
-        network_id = self.db_store.get_network_id(
-            lswitch.get_id(),
-        )
+        network_id = lswitch.get_unique_key()
         match = self._get_multicast_broadcast_match(network_id)
 
         self.mod_flow(

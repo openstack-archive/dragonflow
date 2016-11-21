@@ -74,7 +74,6 @@ class DbStore(object):
 
     def __init__(self):
         self.tenant_dbs = collections.defaultdict(TenantDbStore)
-        self.networks = {}
         self.remote_chassis_lport_map = {}
 
     def get(self, table_name, key, topic):
@@ -114,16 +113,10 @@ class DbStore(object):
                 if tenant_db.pop(table_name, key):
                     break
 
-    # This is a mapping between global logical data path id (network/lswitch)
-    # And a local assigned if for this controller
-    def get_network_id(self, ldp):
-        return self.networks.get(ldp, None)
-
-    def set_network_id(self, ldp, net_id):
-        self.networks[ldp] = net_id
-
-    def del_network_id(self, ldp):
-        self.networks.pop(ldp, None)
+    def get_unique_key_by_id(self, table_name, key, topic=None):
+        table_item = self.get(table_name, key, topic)
+        if table_item:
+            return table_item.get_unique_key()
 
     def get_lports_by_remote_chassis(self, chassis):
         return self.remote_chassis_lport_map.get(chassis)
