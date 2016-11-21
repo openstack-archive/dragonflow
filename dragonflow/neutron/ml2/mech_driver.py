@@ -79,7 +79,6 @@ class DFMechDriver(driver_api.MechanismDriver):
                                             pub=None,
                                             sub=self.nb_api.subscriber,
                                             is_neutron_server=True)
-            self.port_status = None
 
     def subscribe_registries(self):
         registry.subscribe(self.post_fork_initialize,
