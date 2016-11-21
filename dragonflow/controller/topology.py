@@ -15,7 +15,7 @@ from oslo_log import log
 
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import constants
-from dragonflow.db import api_nb
+from dragonflow.db import db_models
 
 LOG = log.getLogger(__name__)
 
@@ -23,10 +23,10 @@ LOG = log.getLogger(__name__)
 class Topology(object):
 
     def __init__(self, controller, enable_selective_topology_distribution):
-        self.ovs_port_type = (api_nb.OvsPort.TYPE_VM,
-                              api_nb.OvsPort.TYPE_TUNNEL,
-                              api_nb.OvsPort.TYPE_PATCH,
-                              api_nb.OvsPort.TYPE_BRIDGE)
+        self.ovs_port_type = (db_models.OvsPort.TYPE_VM,
+                              db_models.OvsPort.TYPE_TUNNEL,
+                              db_models.OvsPort.TYPE_PATCH,
+                              db_models.OvsPort.TYPE_BRIDGE)
 
         # Stores topics(tenants) subscribed by lports in the current local
         # controller. I,e, {tenant1:{lport1, lport2}, tenant2:{lport3}}
@@ -127,8 +127,8 @@ class Topology(object):
         if (ofport is None) or (ofport < 0) or (port_type is None):
             return False
 
-        if (port_type == api_nb.OvsPort.TYPE_VM) \
-                and (ovs_port.get_iface_id() is None):
+        if (port_type == db_models.OvsPort.TYPE_VM and
+                ovs_port.get_iface_id() is None):
             return False
 
         return True
