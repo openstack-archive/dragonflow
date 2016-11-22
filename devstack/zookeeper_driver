@@ -32,12 +32,10 @@ function nb_db_driver_install_server {
             sudo mkdir -p $ZOOKEEPER_LOG_DIR
             sudo mkdir -p $ZOOKEEPER_CONF_DIR
             install_package zookeeperd
+            stop_service zookeeper
             if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
-                sudo systemctl stop zookeeper.service || true
                 sudo cp $DEST/dragonflow/devstack/zookeeper.service.ubuntu /etc/systemd/system/zookeeper.service
                 sudo systemctl daemon-reload
-            else
-                sudo service zookeeper stop || true
             fi
             if [ -d $ZOOKEEPER_CONF_SAMPLE_DIR ] ; then
                 sudo cp $ZOOKEEPER_CONF_SAMPLE_DIR/* $ZOOKEEPER_CONF_DIR/ -rf
@@ -92,28 +90,12 @@ function nb_db_driver_install_client {
 
 function nb_db_driver_start_server {
     if is_service_enabled df-zookeeper-server ; then
-        if is_ubuntu; then
-            if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
-                sudo systemctl restart zookeeper.service
-            else
-                sudo service zookeeper restart
-            fi
-        elif is_fedora; then
-            sudo systemctl restart zookeeper.service
-        fi
+        start_service zookeeper
     fi
 }
 
 function nb_db_driver_stop_server {
     if is_service_enabled df-zookeeper-server ; then
-        if is_ubuntu; then
-            if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
-                sudo systemctl stop zookeeper.service || true
-            else
-                sudo service zookeeper stop || true
-            fi
-        elif is_fedora; then
-            sudo systemctl stop zookeeper.service || true
-        fi
+        stop_service zookeeper
     fi
 }

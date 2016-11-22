@@ -35,7 +35,7 @@ function _configure_etcd_systemd_service {
     iniset $ETCD_CONF DEFAULT ETCD_NAME "$HOSTNAME"
 
     sudo cp $DEST/dragonflow/devstack/etcd.service /lib/systemd/system/
-    sudo systemctl enable etcd
+    enable_service etcd
 }
 
 function _configure_etcd {
@@ -87,21 +87,13 @@ function nb_db_driver_install_client {
 
 function nb_db_driver_start_server {
     if is_service_enabled df-etcd-server ; then
-        if is_ubuntu; then
-            sudo service etcd start || true
-        elif is_fedora; then
-            sudo systemctl start etcd || true
-        fi
+        start_service etcd
     fi
 }
 
 function nb_db_driver_stop_server {
     if is_service_enabled df-etcd-server ; then
-        if is_ubuntu; then
-            sudo service etcd stop || true
-        elif is_fedora; then
-            sudo systemctl stop etcd || true
-        fi
+        stop_service etcd
     fi
 }
 
