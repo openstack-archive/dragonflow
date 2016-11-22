@@ -19,7 +19,7 @@ from oslo_config import cfg
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
-from dragonflow.db import db_models
+from dragonflow.db import models as db_models
 from dragonflow.tests import base as tests_base
 
 
