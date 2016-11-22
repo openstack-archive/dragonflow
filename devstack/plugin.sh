@@ -174,50 +174,34 @@ function configure_qos {
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
+    if [[ "$USE_ML2_PLUGIN" == "False" ]]; then
+        Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
+        Q_SERVICE_PLUGIN_CLASSES=""
+    else
+        DF_APPS_LIST=$ML2_APPS_LIST
+    fi
+
+    # Generate DF config file
+    pushd $DRAGONFLOW_DIR
+    tools/generate_config_file_samples.sh
+    popd
+    mkdir -p $Q_PLUGIN_EXTRA_CONF_PATH
+    cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
+
     if is_service_enabled q-svc ; then
+        if [[ "$USE_ML2_PLUGIN" == "True" ]] && is_service_enabled q-qos ; then
+            configure_qos
+        fi
 
         # NOTE(gsagie) needed for tempest
         export NETWORK_API_EXTENSIONS=$(python -c \
             'from dragonflow.common import extensions ;\
              print ",".join(extensions.SUPPORTED_API_EXTENSIONS)')
 
-        if [[ "$USE_ML2_PLUGIN" == "False" ]]; then
-            Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
-            Q_SERVICE_PLUGIN_CLASSES=""
-        else
-            DF_APPS_LIST=$ML2_APPS_LIST
-            if is_service_enabled q-qos ; then
-                configure_qos
-            fi
-        fi
-
-        # Generate configuration file
-        local _pwd=$(pwd)
-        (cd $DRAGONFLOW_DIR && exec ./tools/generate_config_file_samples.sh)
-        cd $_pwd
-        cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
-
-
-        iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
-        iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
-        iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
-        iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
-        iniset $DRAGONFLOW_CONF df port_status_notifier "$PORT_STATUS_NOTIFIER"
-        iniset $DRAGONFLOW_CONF df enable_port_status_notifier "$ENABLE_PORT_STATUS_NOTIFIER"
-        iniset $DRAGONFLOW_CONF df local_ip "$HOST_IP"
-        iniset $DRAGONFLOW_CONF df tunnel_type "$TUNNEL_TYPE"
-        iniset $DRAGONFLOW_CONF df integration_bridge "$INTEGRATION_BRIDGE"
-        iniset $DRAGONFLOW_CONF df apps_list "$DF_APPS_LIST"
+        # Set netron-server related settings
         iniset $DRAGONFLOW_CONF df monitor_table_poll_time "$DF_MONITOR_TABLE_POLL_TIME"
-        iniset $DRAGONFLOW_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
-        iniset $DRAGONFLOW_CONF df enable_df_pub_sub "$DF_PUB_SUB"
-        iniset $DRAGONFLOW_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
         iniset $DRAGONFLOW_CONF df publisher_rate_limit_timeout "$PUBLISHER_RATE_LIMIT_TIMEOUT"
         iniset $DRAGONFLOW_CONF df publisher_rate_limit_count "$PUBLISHER_RATE_LIMIT_COUNT"
-        iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
-        iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
-        iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
-        iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
         iniset $NEUTRON_CONF DEFAULT core_plugin "$Q_PLUGIN_CLASS"
         iniset $NEUTRON_CONF DEFAULT service_plugins "$Q_SERVICE_PLUGIN_CLASSES"
 
@@ -227,14 +211,6 @@ function configure_df_plugin {
         else
             iniset $NEUTRON_CONF DEFAULT dhcp_agent_notification "False"
         fi
-
-        if [[ "$DF_PUB_SUB" == "True" ]]; then
-            DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
-        else
-            DF_SELECTIVE_TOPO_DIST="False"
-        fi
-        iniset $DRAGONFLOW_CONF df enable_selective_topology_distribution \
-                                "$DF_SELECTIVE_TOPO_DIST"
 
         if [[ "$DF_RUNNING_IN_GATE" == "True" ]]; then
             iniset $NEUTRON_CONF quotas default_quota "-1"
@@ -246,48 +222,47 @@ function configure_df_plugin {
             iniset $NEUTRON_CONF quotas quota_security_group_rule "-1"
         fi
 
-        configure_df_metadata_service
     else
         _create_neutron_conf_dir
         # NOTE: We need to manually generate the neutron.conf file here. This
         #       is normally done by a call to _configure_neutron_common in
         #       neutron-lib, but we don't call that for compute nodes here.
         # Uses oslo config generator to generate core sample configuration files
-        local _pwd=$(pwd)
-        (cd $NEUTRON_DIR && exec ./tools/generate_config_file_samples.sh)
-        (cd $DRAGONFLOW_DIR && exec ./tools/generate_config_file_samples.sh)
-        cd $_pwd
+        pushd $NEUTRON_DIR
+        tools/generate_config_file_samples.sh
+        popd
         cp $NEUTRON_DIR/etc/neutron.conf.sample $NEUTRON_CONF
-        mkdir -p $Q_PLUGIN_EXTRA_CONF_PATH
-        cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
-
-
-        iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
-        iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
-        iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
-        iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
-        iniset $DRAGONFLOW_CONF df port_status_notifier "$PORT_STATUS_NOTIFIER"
-        iniset $DRAGONFLOW_CONF df enable_port_status_notifier "$ENABLE_PORT_STATUS_NOTIFIER"
-        iniset $DRAGONFLOW_CONF df local_ip "$HOST_IP"
-        iniset $DRAGONFLOW_CONF df tunnel_type "$TUNNEL_TYPE"
-        iniset $DRAGONFLOW_CONF df integration_bridge "$INTEGRATION_BRIDGE"
-        iniset $DRAGONFLOW_CONF df apps_list "$DF_APPS_LIST"
-        iniset $DRAGONFLOW_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
-        iniset $DRAGONFLOW_CONF df enable_df_pub_sub "$DF_PUB_SUB"
-        iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
-        iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
-        iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
-
-
-        if [[ "$DF_PUB_SUB" == "True" ]]; then
-            DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
-        else
-            DF_SELECTIVE_TOPO_DIST="False"
-        fi
-        iniset $DRAGONFLOW_CONF df enable_selective_topology_distribution \
-                                "$DF_SELECTIVE_TOPO_DIST"
-        configure_df_metadata_service
     fi
+
+    iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
+
+    iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
+    iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
+    iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
+    iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
+    iniset $DRAGONFLOW_CONF df port_status_notifier "$PORT_STATUS_NOTIFIER"
+    iniset $DRAGONFLOW_CONF df enable_port_status_notifier "$ENABLE_PORT_STATUS_NOTIFIER"
+    iniset $DRAGONFLOW_CONF df local_ip "$HOST_IP"
+    iniset $DRAGONFLOW_CONF df tunnel_type "$TUNNEL_TYPE"
+    iniset $DRAGONFLOW_CONF df integration_bridge "$INTEGRATION_BRIDGE"
+    iniset $DRAGONFLOW_CONF df apps_list "$DF_APPS_LIST"
+    iniset $DRAGONFLOW_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
+    iniset $DRAGONFLOW_CONF df enable_df_pub_sub "$DF_PUB_SUB"
+    iniset $DRAGONFLOW_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
+    iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
+    iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
+    iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
+
+    if [[ "$DF_PUB_SUB" == "True" ]]; then
+        DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
+    else
+        DF_SELECTIVE_TOPO_DIST="False"
+    fi
+
+    iniset $DRAGONFLOW_CONF df enable_selective_topology_distribution \
+                            "$DF_SELECTIVE_TOPO_DIST"
+
+    configure_df_metadata_service
 }
 
 function install_zeromq {
