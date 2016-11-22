@@ -15,7 +15,7 @@ from oslo_log import log
 
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import constants
-from dragonflow.db import db_models
+from dragonflow.db import models as db_models
 
 LOG = log.getLogger(__name__)
 
