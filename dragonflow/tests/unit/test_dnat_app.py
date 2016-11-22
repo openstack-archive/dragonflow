@@ -90,3 +90,17 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             # Duplicated updated will not trigger update flow
             self.controller.ovs_port_updated(fake_ovs_port)
             mock_func.assert_not_called()
+
+    def test_delete_port_with_deleted_floatingip(self):
+        self.dnat_app.local_floatingips[
+            test_app_base.fake_floatingip1.get_id()] = (
+                test_app_base.fake_floatingip1)
+        self.controller.logical_port_created(test_app_base.fake_local_port1)
+        self.dnat_app.delete_floatingip(test_app_base.fake_floatingip1)
+
+        with mock.patch.object(
+            self.dnat_app,
+            'delete_floatingip',
+        ) as mock_func:
+            self.dnat_app.remove_local_port(test_app_base.fake_local_port1)
+            mock_func.assert_not_called()
