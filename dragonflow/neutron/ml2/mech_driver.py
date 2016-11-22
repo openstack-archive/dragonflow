@@ -193,28 +193,11 @@ class DFMechDriver(driver_api.MechanismDriver):
                  sg_id)
         return sg_rule
 
-    def _get_security_group_id_from_security_group_rule(self, sgr_id):
-        # TODO(xiaohhui): For now, query security_group from nb DB. Once
-        # https://review.openstack.org/#/c/367728/ has been merged, just
-        # get security_group from neutron DB and remove this method.
-        security_groups = self.nb_api.get_security_groups()
-        for sg in security_groups:
-            for sg_rule in sg.get_rules():
-                if sgr_id == sg_rule.get_id():
-                    return sg.get_id()
-
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE)
     def delete_security_group_rule(self, resource, event, trigger, **kwargs):
         context = kwargs['context']
         sgr_id = kwargs['security_group_rule_id']
-
-        sg_id = self._get_security_group_id_from_security_group_rule(sgr_id)
-        if not sg_id:
-            # There is no such security group in nb DB. No other operations
-            # required.
-            LOG.error(_LE("Can't find security group for deleted security "
-                          "group rule %s"), sgr_id)
-            return
+        sg_id = kwargs['security_group_id']
 
         core_plugin = manager.NeutronManager.get_plugin()
         sg = core_plugin.get_security_group(context, sg_id)
