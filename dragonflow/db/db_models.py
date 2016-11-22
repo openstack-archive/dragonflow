@@ -292,7 +292,7 @@ class Floatingip(NbDbObject):
         return self.inner_obj.get('status')
 
     def update_fip_status(self, status):
-        self.floatingip['status'] = status
+        self.inner_obj['status'] = status
 
     def get_ip_address(self):
         return self.inner_obj.get('floating_ip_address')
