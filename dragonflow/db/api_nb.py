@@ -26,7 +26,7 @@ from oslo_serialization import jsonutils
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
-from dragonflow.db import db_models
+from dragonflow.db import models as db_models
 from dragonflow.db import pub_sub_api
 
 LOG = log.getLogger(__name__)

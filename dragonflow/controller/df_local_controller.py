@@ -34,8 +34,8 @@ from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
-from dragonflow.db import db_models
 from dragonflow.db import db_store
+from dragonflow.db import models
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -320,7 +320,7 @@ class DfLocalController(object):
         if not chassis_lports:
             chassis_value = {'id': chassis, 'ip': chassis,
                              'tunnel_type': self.tunnel_type}
-            chassis_inst = db_models.Chassis(jsonutils.dumps(chassis_value))
+            chassis_inst = models.Chassis(jsonutils.dumps(chassis_value))
             self.chassis_created(chassis_inst)
         self.db_store.add_remote_chassis_lport(chassis, lport.get_id())
 
