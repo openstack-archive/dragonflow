@@ -234,7 +234,6 @@ class DfLocalController(object):
             return
         self.open_flow_app.notify_remove_logical_switch(lswitch)
         self.db_store.del_lswitch(lswitch_id)
-        self.db_store.del_network_id(lswitch_id)
 
     def _is_physical_chassis(self, chassis):
         if not chassis or chassis == constants.DRAGONFLOW_VIRTUAL_PORT:
