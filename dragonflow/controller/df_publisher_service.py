@@ -27,6 +27,7 @@ from dragonflow.common import common_params
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
+from dragonflow.db import models
 from dragonflow.db import pub_sub_api
 
 
@@ -89,7 +90,7 @@ class PublisherService(object):
             try:
                 event = self._queue.get()
                 self.publisher.send_event(event)
-                if event.table != pub_sub_api.PUBLISHER_TABLE:
+                if event.table != models.Publisher.table_name:
                     self._update_timestamp_in_db()
                 eventlet.sleep(0)
             except Exception as e:
@@ -103,14 +104,14 @@ class PublisherService(object):
             return
         try:
             publisher_json = self.db.get_key(
-                pub_sub_api.PUBLISHER_TABLE,
+                models.Publisher.table_name,
                 self.uuid,
             )
             publisher = jsonutils.loads(publisher_json)
             publisher['last_activity_timestamp'] = time.time()
             publisher_json = jsonutils.dumps(publisher)
             self.db.set_key(
-                pub_sub_api.PUBLISHER_TABLE,
+                models.Publisher.table_name,
                 self.uuid,
                 publisher_json
             )
@@ -125,7 +126,7 @@ class PublisherService(object):
         }
         publisher_json = jsonutils.dumps(publisher)
         self.db.create_key(
-            pub_sub_api.PUBLISHER_TABLE,
+            models.Publisher.table_name,
             self.uuid, publisher_json
         )
 

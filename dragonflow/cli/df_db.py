@@ -20,12 +20,15 @@ from oslo_serialization import jsonutils
 from dragonflow.common import common_params
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
+from dragonflow.db import models
 
 cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
-db_tables = ['lport', 'lswitch', 'lrouter', 'chassis', 'secgroup',
-             'unique_key', 'floatingip', 'publisher', 'qospolicy',
-             'portstats']
+db_tables = [models.LogicalPort.table_name, models.LogicalSwitch.table_name,
+             models.LogicalRouter.table_name, models.Chassis.table_name,
+             models.SecurityGroup.table_name, models.Floatingip.table_name,
+             models.QosPolicy.table_name, models.Publisher.table_name,
+             'unique_key', 'portstats']
 
 
 def print_tables():
@@ -85,12 +88,12 @@ def print_key(db_driver, table, key):
 
 
 def bind_port_to_localhost(db_driver, port_id):
-    lport_str = db_driver.get_key('lport', port_id)
+    lport_str = db_driver.get_key(models.LogicalPort.table_name, port_id)
     lport = jsonutils.loads(lport_str)
     chassis_name = socket.gethostname()
     lport['chassis'] = chassis_name
     lport_json = jsonutils.dumps(lport)
-    db_driver.set_key('lport', port_id, lport_json)
+    db_driver.set_key(models.LogicalPort.table_name, port_id, lport_json)
 
 
 def clean_whole_table(db_driver, table):
