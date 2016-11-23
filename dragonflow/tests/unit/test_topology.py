@@ -117,3 +117,32 @@ class TestTopology(tests_base.BaseTestCase):
             self.lport1.get_id())
         self.mock_nb_api.subscriber.unregister_topic.assert_called_with(
             self.lport1.get_topic())
+
+    def test_check_topology_info(self):
+        topic = '111-222-333'
+        lport_id2 = '2'
+        ovs_port_id2 = 'ovs_port2'
+        lport_id3 = '3'
+        ovs_port_id3 = 'ovs_port3'
+
+        self.topology.ovs_to_lport_mapping = {
+            ovs_port_id2: {
+                'lport_id': lport_id2,
+                'topic': topic
+            },
+            ovs_port_id3: {
+                'lport_id': lport_id3,
+                'topic': topic
+            }
+        }
+        self.topology.ovs_ports = {
+            'ovs_port1': self.ovs_port1
+        }
+        self.topology.topic_subscribed = {
+            topic: {lport_id2, lport_id3}
+        }
+        lport1 = Mock()
+        lport1.get_topic.return_value = topic
+        self.db_store.set_port('lport1', lport1, True, topic)
+        self.topology.check_topology_info()
+        self.assertEqual(len(self.topology.topic_subscribed[topic]), 1)
