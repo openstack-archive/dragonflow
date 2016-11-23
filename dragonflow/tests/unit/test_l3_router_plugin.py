@@ -17,9 +17,10 @@
 import mock
 import testtools
 
-from dragonflow.tests.unit import test_mech_driver
 from neutron import context as nctx
-from neutron import manager
+from neutron_lib.plugins import directory
+
+from dragonflow.tests.unit import test_mech_driver
 
 
 class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
@@ -29,8 +30,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
 
     def setUp(self):
         super(TestDFL3RouterPlugin, self).setUp()
-        self.l3p = (manager.NeutronManager.
-                    get_service_plugins()['L3_ROUTER_NAT'])
+        self.l3p = directory.get_plugin('L3_ROUTER_NAT')
         self.nb_api = self.l3p.nb_api
 
     @mock.patch('neutron.db.l3_db.L3_NAT_db_mixin.create_floatingip')

@@ -10,10 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron import manager
 from neutron.plugins.common import constants as service_constants
 from neutron.plugins.ml2 import plugin as ml2_plugin
 from neutron.services.qos.notification_drivers import qos_base
+from neutron_lib.plugins import directory
 
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 
@@ -30,13 +30,12 @@ class DFQosServiceNotificationDriver(
 
     @property
     def _plugin(self):
-        return manager.NeutronManager.get_service_plugins().get(
-            service_constants.QOS)
+        return directory.get_plugin(service_constants.QOS)
 
     @property
     def nb_api(self):
         if self._nb_api is None:
-            plugin = manager.NeutronManager.get_plugin()
+            plugin = directory.get_plugin()
             if isinstance(plugin, ml2_plugin.Ml2Plugin):
                 mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
                 self._nb_api = mech_driver.nb_api

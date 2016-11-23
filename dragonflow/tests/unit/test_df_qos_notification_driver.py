@@ -12,9 +12,9 @@
 
 import mock
 from neutron.conf.services import qos_driver_manager as driver_mgr_config
-from neutron import manager
 from neutron.objects.qos import rule
 from neutron.plugins.ml2 import config as ml2_config
+from neutron_lib.plugins import directory
 
 from dragonflow.tests.unit import test_mech_driver
 
@@ -39,8 +39,7 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         ml2_config.cfg.CONF.set_override('notification_drivers',
                                          ['df_notification_driver'], 'qos')
         super(TestDFQosNotificationDriver, self).setUp()
-        self.plugin = (manager.NeutronManager.
-                       get_service_plugins()['QOS'])
+        self.plugin = directory.get_plugin('QOS')
         self.driver = (
             self.plugin.notification_driver_manager.notification_drivers[0])
 

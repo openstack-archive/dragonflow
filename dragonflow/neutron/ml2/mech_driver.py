@@ -17,13 +17,13 @@ from neutron import context as n_context
 from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import portbindings
 from neutron.extensions import portsecurity as psec
-from neutron import manager
 from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api
 from neutron.plugins.ml2 import models
 from neutron_lib.api import validators
 from neutron_lib import constants as n_const
 from neutron_lib import exceptions as n_exc
+from neutron_lib.plugins import directory
 from oslo_config import cfg
 from oslo_log import log
 
@@ -180,7 +180,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         tenant_id = sg_rule['tenant_id']
         context = kwargs['context']
 
-        core_plugin = manager.NeutronManager.get_plugin()
+        core_plugin = directory.get_plugin()
         sg = core_plugin.get_security_group(context, sg_id)
         sg_version = sg['revision_number']
 
@@ -199,7 +199,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         sgr_id = kwargs['security_group_rule_id']
         sg_id = kwargs['security_group_id']
 
-        core_plugin = manager.NeutronManager.get_plugin()
+        core_plugin = directory.get_plugin()
         sg = core_plugin.get_security_group(context, sg_id)
         sg_version = sg['revision_number']
         tenant_id = sg['tenant_id']
@@ -272,7 +272,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     def _get_dhcp_port_for_subnet(self, context, subnet_id):
         filters = {'fixed_ips': {'subnet_id': [subnet_id]},
                    'device_owner': [n_const.DEVICE_OWNER_DHCP]}
-        core_plugin = manager.NeutronManager.get_plugin()
+        core_plugin = directory.get_plugin()
         ports = core_plugin.get_ports(context, filters=filters)
         if 0 != len(ports):
             return ports[0]
@@ -325,7 +325,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                          'device_owner': n_const.DEVICE_OWNER_DHCP,
                          'mac_address': n_const.ATTR_NOT_SPECIFIED,
                          'fixed_ips': [{'subnet_id': subnet['id']}]}}
-        core_plugin = manager.NeutronManager.get_plugin()
+        core_plugin = directory.get_plugin()
         port = core_plugin.create_port(context, port)
 
         return port
@@ -408,7 +408,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             return subnet['allocation_pools'][0]['start']
 
     def _delete_subnet_dhcp_port(self, context, port):
-        core_plugin = manager.NeutronManager.get_plugin()
+        core_plugin = directory.get_plugin()
         core_plugin.delete_port(context, port['id'])
 
     def _handle_update_subnet_dhcp(self, context, old_subnet, new_subnet):
@@ -486,7 +486,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         subnet_id = subnet['id']
 
         # The network in context is still the network before deleting subnet
-        core_plugin = manager.NeutronManager.get_plugin()
+        core_plugin = directory.get_plugin()
         network = core_plugin.get_network(context._plugin_context, net_id)
 
         # update df controller with subnet delete
@@ -695,14 +695,14 @@ class DFMechDriver(driver_api.MechanismDriver):
 
     def set_port_status_up(self, port_id):
         LOG.debug("DF reports status up for port: %s", port_id)
-        core_plugin = manager.NeutronManager.get_plugin()
+        core_plugin = directory.get_plugin()
         core_plugin.update_port_status(n_context.get_admin_context(),
                                        port_id,
                                        n_const.PORT_STATUS_ACTIVE)
 
     def set_port_status_down(self, port_id):
         LOG.debug("DF reports status down for port: %s", port_id)
-        core_plugin = manager.NeutronManager.get_plugin()
+        core_plugin = directory.get_plugin()
         core_plugin.update_port_status(n_context.get_admin_context(),
                                        port_id,
                                        n_const.PORT_STATUS_DOWN)
