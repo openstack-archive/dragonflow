@@ -22,6 +22,7 @@ from oslo_log import log
 from dragonflow._i18n import _LI
 from dragonflow.common import constants
 from dragonflow.db import db_common
+from dragonflow.db import models
 from dragonflow.db import port_status_api
 from dragonflow.db import pub_sub_api
 
@@ -67,7 +68,8 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
 
     def notify_port_status(self, ovs_port, status):
         port_id = ovs_port.get_iface_id()
-        self._send_port_status_event('lport', port_id, 'update', status)
+        self._send_port_status_event(models.LogicalPort.table_name,
+                                     port_id, 'update', status)
 
     # server code
     def _start_db_table_monitor(self, table_name):
@@ -90,7 +92,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
 
     # server code
     def port_status_callback(self, table, key, action, value, topic=None):
-        if 'lport' == table and 'update' == action:
+        if models.LogicalPort.table_name == table and 'update' == action:
             LOG.info(_LI("Process port %s status update event"), str(key))
             if constants.PORT_STATUS_UP == value:
                 self.mech_driver.set_port_status_up(key)

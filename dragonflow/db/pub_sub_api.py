@@ -25,14 +25,13 @@ from dragonflow._i18n import _LE, _LI
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
+from dragonflow.db import models
 
 LOG = logging.getLogger(__name__)
 
 eventlet.monkey_patch(socket=False)
 
-PUBLISHER_TABLE = 'publisher'
-
-MONITOR_TABLES = ['chassis', PUBLISHER_TABLE]
+MONITOR_TABLES = [models.Chassis.table_name, models.Publisher.table_name]
 
 
 def pack_message(message):
@@ -302,7 +301,7 @@ class StalePublisherMonitor(TableMonitor):
 
     def __init__(self, driver, publisher, timeout, polling_time=10):
         super(StalePublisherMonitor, self).__init__(
-            PUBLISHER_TABLE,
+            models.Publisher.table_name,
             driver,
             publisher,
             polling_time

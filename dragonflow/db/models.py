@@ -48,6 +48,8 @@ class NbObject(object):
 
 class NbDbObject(NbObject):
 
+    table_name = "df_nb_object"
+
     def __init__(self, value):
         inner_obj = jsonutils.loads(value)
         super(NbDbObject, self).__init__(inner_obj)
@@ -67,6 +69,8 @@ class NbDbObjectWithUniqueKey(NbDbObject):
 
 class Chassis(NbDbObject):
 
+    table_name = "chassis"
+
     def get_ip(self):
         return self.inner_obj.get('ip')
 
@@ -84,6 +88,8 @@ class Chassis(NbDbObject):
 
 
 class LogicalSwitch(NbDbObjectWithUniqueKey):
+
+    table_name = "lswitch"
 
     def is_external(self):
         return self.inner_obj.get('router_external')
@@ -133,6 +139,8 @@ class Subnet(NbObject):
 
 
 class LogicalPort(NbDbObjectWithUniqueKey):
+
+    table_name = "lport"
 
     def __init__(self, value):
         super(LogicalPort, self).__init__(value)
@@ -204,6 +212,8 @@ class LogicalPort(NbDbObjectWithUniqueKey):
 
 class LogicalRouter(NbDbObject):
 
+    table_name = "lrouter"
+
     def get_ports(self):
         ports = self.inner_obj.get('ports')
         if ports:
@@ -251,6 +261,8 @@ class LogicalRouterPort(NbObject):
 
 class SecurityGroup(NbDbObjectWithUniqueKey):
 
+    table_name = "secgroup"
+
     def get_rules(self):
         rules = self.inner_obj.get('rules')
         if rules:
@@ -287,6 +299,8 @@ class SecurityGroupRule(NbObject):
 
 
 class Floatingip(NbDbObject):
+
+    table_name = "floatingip"
 
     def get_status(self):
         return self.inner_obj.get('status')
@@ -327,6 +341,8 @@ class Floatingip(NbDbObject):
 
 class QosPolicy(NbDbObject):
 
+    table_name = "qospolicy"
+
     def get_type(self):
         return self.inner_obj.get('type')
 
@@ -362,6 +378,8 @@ class QosPolicy(NbDbObject):
 
 
 class Publisher(NbDbObject):
+
+    table_name = "publisher"
 
     def get_uri(self):
         return self.inner_obj.get('uri')
