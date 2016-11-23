@@ -18,7 +18,6 @@ from oslo_config import cfg
 from ovs.db import idl
 from ovs import poller
 import retrying
-import six
 import threading
 
 from dragonflow.common import constants
@@ -76,7 +75,7 @@ def get_schema_helper(connection_string, db_name='Open_vSwitch', tables='all'):
     if tables == 'all':
         helper.register_all()
     elif isinstance(tables, dict):
-        for table_name, columns in six.iteritems(tables):
+        for table_name, columns in tables.items():
             if columns == 'all':
                 helper.register_table(table_name)
             else:

@@ -11,7 +11,6 @@
 #    under the License.
 
 import netaddr
-import six
 import time
 
 from neutronclient.common import exceptions
@@ -294,7 +293,7 @@ class VMTestObj(object):
         if self.server is None:
             return None
         ips = self.nova.servers.ips(self.server)
-        for id, network in six.iteritems(ips):
+        for id, network in ips.item():
             for ip in network:
                 if int(ip['version']) == 4:
                     return ip['addr']

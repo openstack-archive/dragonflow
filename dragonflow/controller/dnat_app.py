@@ -19,7 +19,6 @@ import netaddr
 from neutron_lib import constants as n_const
 from oslo_config import cfg
 from ryu.ofproto import ether
-import six
 
 from dragonflow._i18n import _
 from dragonflow.controller.common import arp_responder
@@ -70,7 +69,7 @@ class DNATApp(df_base_app.DFlowApp):
                 or mac == '00:00:00:00:00:00'):
             return
 
-        for key, floatingip in six.iteritems(self.local_floatingips):
+        for key, floatingip in self.local_floatingips.items():
             self._install_dnat_egress_rules(floatingip, mac)
 
         self.external_bridge_mac = mac
@@ -97,7 +96,7 @@ class DNATApp(df_base_app.DFlowApp):
     def _is_first_external_network(self, network_id):
         if self._get_external_network_count(network_id) == 0:
             # check whether there are other networks
-            for key, val in six.iteritems(self.external_networks):
+            for key, val in self.external_networks.items():
                 if key != network_id and val > 0:
                     return False
             return True
@@ -106,7 +105,7 @@ class DNATApp(df_base_app.DFlowApp):
     def _is_last_external_network(self, network_id):
         if self._get_external_network_count(network_id) == 1:
             # check whether there are other networks
-            for key, val in six.iteritems(self.external_networks):
+            for key, val in self.external_networks.items():
                 if key != network_id and val > 0:
                     return False
             return True
@@ -325,7 +324,7 @@ class DNATApp(df_base_app.DFlowApp):
     def remove_local_port(self, lport):
         port_id = lport.get_id()
         ips_to_disassociate = [
-            fip for fip in six.itervalues(self.local_floatingips)
+            fip for fip in self.local_floatingips.items()
             if fip.get_lport_id() == port_id]
         for floatingip in ips_to_disassociate:
             self.delete_floatingip(floatingip)
@@ -335,7 +334,7 @@ class DNATApp(df_base_app.DFlowApp):
     def add_local_port(self, lport):
         port_id = lport.get_id()
         ips_to_associate = [
-            fip for fip in six.itervalues(self.local_floatingips)
+            fip for fip in self.local_floatingips.items()
             if fip.get_lport_id() == port_id]
         for floatingip in ips_to_associate:
             self._install_ingress_nat_rules(floatingip)

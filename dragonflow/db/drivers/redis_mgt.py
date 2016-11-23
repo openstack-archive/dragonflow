@@ -124,7 +124,7 @@ class RedisMgt(object):
     def get_cluster_topology_by_all_nodes(self):
         # get redis cluster topology from local nodes cached in initialization
         new_nodes = {}
-        for host, info in six.iteritems(self.cluster_nodes):
+        for host, info in self.cluster_nodes.items():
             ip_port = host.split(':')
             try:
                 node = self._init_node(ip_port[0], ip_port[1])
@@ -216,7 +216,7 @@ class RedisMgt(object):
 
     def _parse_to_masterlist(self):
         master_list = []
-        for host, info in six.iteritems(self.cluster_nodes):
+        for host, info in self.cluster_nodes.items():
             if 'master' == info['role']:
                 slots = []
                 if len(info['slots']) > 0:
@@ -267,8 +267,8 @@ class RedisMgt(object):
             slave_cnt = 0
             slot_changed = False
 
-            for host, info in six.iteritems(old_nodes):
-                for new_host, new_info in six.iteritems(new_nodes):
+            for host, info in old_nodes.items():
+                for new_host, new_info in new_nodes.items():
                     if host == new_host and info['role'] == \
                             new_info['role']:
                         if info['slots'] != new_info['slots']:

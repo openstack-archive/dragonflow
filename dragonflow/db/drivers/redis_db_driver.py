@@ -15,7 +15,6 @@ import re
 from oslo_log import log
 from redis import client as redis_client
 from redis import exceptions
-import six
 
 from dragonflow._i18n import _LE, _LW
 from dragonflow.db import db_api
@@ -59,7 +58,7 @@ class RedisDbDriver(db_api.DbApi):
 
     def delete_table(self, table):
         local_key = self._uuid_to_key(table, '*', '*')
-        for host, client in six.iteritems(self.clients):
+        for host, client in self.clients.items():
             local_keys = client.keys(local_key)
             if len(local_keys) > 0:
                 for tmp_key in local_keys:
@@ -178,7 +177,7 @@ class RedisDbDriver(db_api.DbApi):
             local_key = self._uuid_to_key(table, key, '*')
             self._sync_master_list()
             try:
-                for host, client in six.iteritems(self.clients):
+                for host, client in self.clients.items():
                     local_keys = client.keys(local_key)
                     if len(local_keys) == 1:
                         return self._execute_cmd("GET", local_keys[0])
@@ -232,7 +231,7 @@ class RedisDbDriver(db_api.DbApi):
         if topic is None:
             local_key = self._uuid_to_key(table, '*', '*')
             try:
-                for host, client in six.iteritems(self.clients):
+                for host, client in self.clients.items():
                     local_keys = client.keys(local_key)
                     if len(local_keys) > 0:
                         for tmp_key in local_keys:
@@ -267,7 +266,7 @@ class RedisDbDriver(db_api.DbApi):
         if topic is None:
             local_key = self._uuid_to_key(table, '*', '*')
             try:
-                for host, client in six.iteritems(self.clients):
+                for host, client in self.clients.items():
                     ip_port = host
                     res.extend(client.keys(local_key))
                 return [self._strip_table_name_from_key(key) for key in res]
