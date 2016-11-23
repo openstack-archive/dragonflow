@@ -90,25 +90,27 @@ class L2App(df_base_app.DFlowApp):
             return
         if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
             return
-        ip = lport.get_ip()
-        if netaddr.IPAddress(ip).version != 4:
-            return
+        ips = lport.get_ip_list()
         network_id = lport.get_external_value('local_network_id')
         mac = lport.get_mac()
-        arp_responder.ArpResponder(self,
-                                   network_id, ip, mac).add()
+        for ip in ips:
+            if netaddr.IPAddress(ip).version != 4:
+                continue
+            arp_responder.ArpResponder(self,
+                                       network_id, ip, mac).add()
 
     def _remove_arp_responder(self, lport):
         if not self.is_install_arp_responder:
             return
         if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
             return
-        ip = lport.get_ip()
-        if netaddr.IPAddress(ip).version != 4:
-            return
+        ips = lport.get_ip_list()
         network_id = lport.get_external_value('local_network_id')
-        arp_responder.ArpResponder(self,
-                                   network_id, ip).remove()
+        for ip in ips:
+            if netaddr.IPAddress(ip).version != 4:
+                continue
+            arp_responder.ArpResponder(self,
+                                       network_id, ip).remove()
 
     def _add_dst_classifier_flow_for_port(self, network_id, mac, tunnel_key):
         parser = self.get_datapath().ofproto_parser
