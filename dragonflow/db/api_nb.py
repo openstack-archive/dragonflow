@@ -384,7 +384,9 @@ class NbApi(object):
         try:
             lswitch_value = self.driver.get_key(
                 db_models.LogicalSwitch.table_name, id, topic)
-            return db_models.LogicalSwitch(lswitch_value)
+            lswitch = db_models.LogicalSwitch(lswitch_value)
+            self._ensure_unique_key(lswitch)
+            return lswitch
         except Exception:
             return None
 
@@ -656,7 +658,9 @@ class NbApi(object):
         res = []
         for lswitch_value in self.driver.get_all_entries(
                 db_models.LogicalSwitch.table_name, topic):
-            res.append(db_models.LogicalSwitch(lswitch_value))
+            lswitch = db_models.LogicalSwitch(lswitch_value)
+            self._ensure_unique_key(lswitch)
+            res.append(lswitch)
         return res
 
     def create_floatingip(self, id, topic, **columns):
@@ -829,3 +833,21 @@ class NbApi(object):
         except Exception:
             LOG.exception(_LE('Could not get qos policy %s'), policy_id)
             return None
+
+    def _ensure_unique_key(self, nb_object):
+        """Make sure the nb_object have an unique_key in it.
+
+        For some old data that created before unique_key, this method can
+        ensure there is no error when switching to new version.
+        """
+        if not isinstance(nb_object, db_models.NbDbObjectWithUniqueKey):
+            return
+
+        if nb_object.get_unique_key():
+            return
+
+        unique_key = self.driver.allocate_unique_key(nb_object.table_name)
+        nb_object.inner_obj.update({db_models.UNIQUE_KEY: unique_key})
+        nb_object_json = jsonutils.dumps(nb_object.inner_obj)
+        self.driver.set_key(nb_object.table_name, nb_object.get_id(),
+                            nb_object_json, nb_object.get_topic())

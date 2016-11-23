@@ -43,3 +43,19 @@ class Test_API_NB(test_base.DFTestBase):
 
         self.assertNotEqual(lswitch.get_unique_key(),
                             lswitch1.get_unique_key())
+
+    def test_allocate_unique_key_if_not_exist(self):
+        fake_lswitch = test_app_base.fake_logic_switch1.inner_obj
+        self.nb_api.create_lswitch(**fake_lswitch)
+        self.addCleanup(self.nb_api.delete_lswitch,
+                        fake_lswitch['id'], fake_lswitch['topic'])
+
+        lswitch = self.nb_api.get_lswitch(fake_lswitch['id'],
+                                          fake_lswitch['topic'])
+        self.assertIsNotNone(lswitch.get_unique_key())
+
+        self.nb_api.update_lswitch(lswitch.get_id(), lswitch.get_topic(),
+                                   unique_key=None)
+        lswitch = self.nb_api.get_lswitch(fake_lswitch['id'],
+                                          fake_lswitch['topic'])
+        self.assertIsNotNone(lswitch.get_unique_key())
