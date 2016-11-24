@@ -15,7 +15,6 @@
 import mock
 
 from dragonflow.db import db_common
-from dragonflow.db import pub_sub_api
 from dragonflow.db.pubsub_drivers import redis_db_pubsub_driver
 from dragonflow.tests import base as tests_base
 
@@ -43,19 +42,9 @@ class TestRedisPubSub(tests_base.BaseTestCase):
     def test_subscribe_success(self):
         pubsub = mock.Mock()
         self.RedisSubscriberAgent.pub_sub = pubsub
-        update = db_common.DbUpdate("router",
-                                    "key",
-                                    "action",
-                                    "value",
-                                    topic='teststring')
-        data = pub_sub_api.pack_message(update.to_dict())
-        self.RedisSubscriberAgent.pub_sub.listen.return_value = \
-            [{'type': 'message', 'data': data}]
         self.RedisSubscriberAgent.pub_sub.subscribe.return_value = 1
         self.RedisSubscriberAgent.pub_sub.unsubscribe.return_value = 1
         result = self.RedisSubscriberAgent.register_topic('subscribe')
         self.assertIsNone(result)
         result = self.RedisSubscriberAgent.unregister_topic('subscribe')
-        self.RedisSubscriberAgent.db_changes_callback = mock.Mock()
-        self.RedisSubscriberAgent.db_changes_callback.return_value = 1
         self.assertIsNone(result)
