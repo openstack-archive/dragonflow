@@ -81,6 +81,10 @@ class LogicalPortNotFoundByTunnelKey(DragonflowException):
     message = _('Could not find logical port with tunnel key %(key)')
 
 
+class OperationNotSupported(DragonflowException):
+    message = _('Operation is not supported: %(operation)')
+
+
 class DFMultipleExceptions(exceptions.MultipleExceptions):
 
     def __str__(self):
