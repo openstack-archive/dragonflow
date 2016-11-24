@@ -48,8 +48,9 @@ class NbObject(object):
 
 class NbDbObject(NbObject):
 
-    def __init__(self, value):
-        inner_obj = jsonutils.loads(value)
+    def __init__(self, value=None, inner_obj=None):
+        if not inner_obj:
+            inner_obj = jsonutils.loads(value)
         super(NbDbObject, self).__init__(inner_obj)
 
     def get_name(self):
