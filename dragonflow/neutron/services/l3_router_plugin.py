@@ -16,7 +16,6 @@
 
 import netaddr
 
-from neutron import manager
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
@@ -39,6 +38,7 @@ from neutron.quota import resource_registry
 from neutron.services import service_base
 from neutron_lib import constants as const
 from neutron_lib import exceptions as n_exc
+from neutron_lib.plugins import directory
 
 from dragonflow._i18n import _LE
 from dragonflow.common import exceptions as df_exceptions
@@ -80,7 +80,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @property
     def nb_api(self):
         if self._nb_api is None:
-            plugin = manager.NeutronManager.get_plugin()
+            plugin = directory.get_plugin()
             if isinstance(plugin, ml2_plugin.Ml2Plugin):
                 mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
                 self._nb_api = mech_driver.nb_api
@@ -267,7 +267,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     def _get_core_plugin(self):
         if not self.core_plugin:
-            self.core_plugin = manager.NeutronManager.get_plugin()
+            self.core_plugin = directory.get_plugin()
         return self.core_plugin
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
