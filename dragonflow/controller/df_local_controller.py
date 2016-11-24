@@ -553,6 +553,18 @@ class DfLocalController(object):
         self.open_flow_app.notify_ovs_port_deleted(ovs_port)
         self.topology.ovs_port_deleted(ovs_port.get_id())
 
+    def lrouter_port_created(self, lrouter_port):
+        #TODO(snapiri) implement
+        pass
+
+    def lrouter_port_updated(self, lrouter_port):
+        #TODO(snapiri) implement
+        pass
+
+    def lrouter_port_deleted(self, lrouter_port_id):
+        #TODO(snapiri) implement
+        pass
+
     def ovs_sync_finished(self):
         self.open_flow_app.notify_ovs_sync_finished()
 

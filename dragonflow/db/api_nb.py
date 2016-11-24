@@ -15,6 +15,7 @@
 #    under the License.
 
 import random
+import six
 import time
 
 import eventlet
@@ -24,13 +25,13 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LI, _LW, _LE
+from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import models as db_models
 from dragonflow.db import pub_sub_api
 
 LOG = log.getLogger(__name__)
-
 
 DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
                   'sync', 'sync_started', 'sync_finished', 'dbrestart']
@@ -519,17 +520,27 @@ class NbApi(object):
         lrouter['topic'] = topic
         for col, val in columns.items():
             lrouter[col] = val
+        port_ids = []
+        for port in lrouter.get('ports', []):
+            port_id = port['id']
+            self.driver.create_key('lrouter_port', port_id, port, topic)
+            port_ids.append(port_id)
+        lrouter['ports'] = port_ids
+
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.create_key('lrouter', id, lrouter_json, topic)
         self._send_db_change_event('lrouter', id, 'create', lrouter_json,
                                    topic)
 
     def update_lrouter(self, id, topic, **columns):
-        #TODO(gampel) move the router ports to a separate table
         lrouter_json = self.driver.get_key('lrouter', id, topic)
         lrouter = jsonutils.loads(lrouter_json)
         for col, val in columns.items():
-            lrouter[col] = val
+            if col != 'ports':
+                lrouter[col] = val
+            else:
+                raise df_exceptions.OperationNotSupported(
+                    operation="Set router ports via columns API")
 
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.set_key('lrouter', id, lrouter_json, topic)
@@ -537,7 +548,14 @@ class NbApi(object):
                                    topic)
 
     def delete_lrouter(self, id, topic):
+        # First delete all the related ports
+        lrouter_json = self.driver.get_key('lrouter', id, topic)
         self.driver.delete_key('lrouter', id, topic)
+        lrouter = jsonutils.loads(lrouter_json)
+        for port_id in lrouter.get('ports', []):
+            if isinstance(port_id, six.string_types):
+                self.driver.delete_key('lrouter_port', port_id, topic)
+
         self._send_db_change_event('lrouter', id, 'delete', id,
                                    topic)
 
@@ -558,8 +576,11 @@ class NbApi(object):
                 continue
             lrouter_port[col] = val
 
+        lrouter_port_json = jsonutils.dumps(lrouter_port)
+        self.driver.set_key('lrouter_port', id, lrouter_port_json, topic)
+
         router_ports = lrouter.get('ports', [])
-        router_ports.append(lrouter_port)
+        router_ports.append(id)
         lrouter['ports'] = router_ports
         lrouter['version'] = router_version
         lrouter_json = jsonutils.dumps(lrouter)
@@ -576,8 +597,15 @@ class NbApi(object):
 
         new_ports = []
         for port in lrouter.get('ports', []):
-            if port['id'] != router_port_id:
-                new_ports.append(port)
+            if isinstance(port, six.string_types):
+                port_id = port
+                if port_id != router_port_id:
+                    new_ports.append(port_id)
+                else:
+                    self.driver.delete_key('lrouter_port', port_id, topic)
+            else:
+                if port['id'] != router_port_id:
+                    new_ports.append(port)
 
         lrouter['ports'] = new_ports
         lrouter['version'] = router_version
@@ -587,17 +615,38 @@ class NbApi(object):
         self._send_db_change_event('lrouter', lrouter_id, 'set',
                                    lrouter_json, lrouter['topic'])
 
-    def get_router(self, router_id, topic=None):
+    def _parse_router(self, lrouter, topic):
+        port_ids = lrouter['ports']
+        if port_ids:
+            all_ports = []
+            for port in port_ids:
+                if isinstance(port, six.string_types):
+                    port_id = port
+                    port_json = self.driver.get_key('lrouter_port',
+                                                port_id, topic)
+                else:
+                    port_json = port
+                all_ports.append(port_json)
+            lrouter['ports'] = all_ports
+        return db_models.LogicalRouter(inner_obj=lrouter)
+
+    def get_router(self, router_id, topic=None, no_ports=False):
         try:
-            lrouter_value = self.driver.get_key('lrouter', router_id, topic)
-            return db_models.LogicalRouter(lrouter_value)
+            lrouter_json = self.driver.get_key('lrouter', router_id, topic)
+            lrouter = jsonutils.loads(lrouter_json)
+            if no_ports:
+                lrouter['ports'] = []
+            return self._parse_router(lrouter, topic)
         except Exception:
             return None
 
-    def get_routers(self, topic=None):
+    def get_routers(self, topic=None, no_ports=False):
         res = []
-        for lrouter_value in self.driver.get_all_entries('lrouter', topic):
-            res.append(db_models.LogicalRouter(lrouter_value))
+        for lrouter_json in self.driver.get_all_entries('lrouter', topic):
+            lrouter = jsonutils.loads(lrouter_json)
+            if no_ports:
+                lrouter['ports'] = []
+            self._parse_router(lrouter, topic)
         return res
 
     def get_security_group(self, sg_id, topic=None):
