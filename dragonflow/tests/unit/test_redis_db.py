@@ -38,7 +38,7 @@ class TestRedisDB(tests_base.BaseTestCase):
         self.RedisDbDriver.redis_mgt = redis_mgt
         redis_mgt.get_ip_by_key.return_value = '0.0.0.0:1000'
         result = self.RedisDbDriver.set_key('table', 'key', 'value', 'topic')
-        self.assertEqual(result, 1)
+        self.assertEqual(1, result)
 
     def test_set_failed(self):
         client = mock.Mock()
@@ -54,7 +54,7 @@ class TestRedisDB(tests_base.BaseTestCase):
         self.RedisDbDriver.redis_mgt = redis_mgt
         redis_mgt.get_ip_by_key.return_value = '0.0.0.0:1000'
         result = self.RedisDbDriver.set_key('table', 'key', 'value', 'topic')
-        self.assertEqual(result, 0)
+        self.assertEqual(0, result)
 
     def test_get_success(self):
         client = mock.Mock()
@@ -68,10 +68,10 @@ class TestRedisDB(tests_base.BaseTestCase):
         client.get.return_value = 'value'
         client.execute_command.return_value = 'value'
         result = self.RedisDbDriver.get_key('table', 'key', 'topic')
-        self.assertEqual(result, 'value')
+        self.assertEqual('value', result)
         client.keys.return_value = 'a'
         result = self.RedisDbDriver.get_key('table', 'key')
-        self.assertEqual(result, 'value')
+        self.assertEqual('value', result)
 
     def test_get_all_entries(self):
         client = mock.Mock()
@@ -87,10 +87,10 @@ class TestRedisDB(tests_base.BaseTestCase):
         self.RedisDbDriver.redis_mgt = redis_mgt
         redis_mgt.get_ip_by_key.return_value = '0.0.0.0:1000'
         result = self.RedisDbDriver.get_all_entries('table')
-        self.assertEqual(result, ['value'])
+        self.assertEqual(['value'], result)
         client.keys.return_value = 'a'
         result = self.RedisDbDriver.get_all_entries('table', 'topic')
-        self.assertEqual(result, ['v', 'a', 'l', 'u', 'e'])
+        self.assertEqual(['v', 'a', 'l', 'u', 'e'], result)
 
     def test_delete_key(self):
         client = mock.Mock()
@@ -105,11 +105,11 @@ class TestRedisDB(tests_base.BaseTestCase):
         self.RedisDbDriver.redis_mgt = redis_mgt
         redis_mgt.get_ip_by_key.return_value = '0.0.0.0:1000'
         result = self.RedisDbDriver.delete_key('table', 'key', 'topic')
-        self.assertEqual(result, 1)
+        self.assertEqual(1, result)
 
     def test_allocate_unique_key(self):
         client = mock.Mock()
         self.RedisDbDriver._update_client = mock.Mock(return_value=client)
         client.incr.return_value = 1
         result = self.RedisDbDriver.allocate_unique_key('fake_table')
-        self.assertEqual(result, 1)
+        self.assertEqual(1, result)

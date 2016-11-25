@@ -23,12 +23,12 @@ class TestRateLimiter(tests_base.BaseTestCase):
         for idx in range(5):
             if not rate_limiter():
                 counter += 1
-        self.assertEqual(counter, 3)
+        self.assertEqual(3, counter)
         time.sleep(5)
         for idx in range(5):
             if not rate_limiter():
                 counter += 1
-        self.assertEqual(counter, 6)
+        self.assertEqual(6, counter)
 
     def test_rate_limiter_continuus(self):
         rate_limiter = utils.RateLimiter(3, 5)
@@ -37,4 +37,4 @@ class TestRateLimiter(tests_base.BaseTestCase):
             if not rate_limiter():
                 counter += 1
             time.sleep(1)
-        self.assertEqual(counter, 7)
+        self.assertEqual(7, counter)
