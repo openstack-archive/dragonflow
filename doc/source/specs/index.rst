@@ -56,6 +56,7 @@ Specs
     cassandra_driver
     virtual_tunnel_port
     ipv6
+    services_status
 
 Templates
 ---------
