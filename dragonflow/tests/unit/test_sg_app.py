@@ -15,7 +15,7 @@
 
 import netaddr
 
-from dragonflow.db import db_models
+from dragonflow.db import models as db_models
 from dragonflow.tests.unit import test_app_base
 
 COMMAND_ADD = 1
