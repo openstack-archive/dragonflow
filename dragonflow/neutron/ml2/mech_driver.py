@@ -102,6 +102,10 @@ class DFMechDriver(driver_api.MechanismDriver):
                            resources.SECURITY_GROUP_RULE,
                            events.AFTER_DELETE)
 
+    @property
+    def core_plugin(self):
+        return directory.get_plugin()
+
     def _get_attribute(self, obj, attribute):
         res = obj.get(attribute)
         if res is n_const.ATTR_NOT_SPECIFIED:
@@ -180,8 +184,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         tenant_id = sg_rule['tenant_id']
         context = kwargs['context']
 
-        core_plugin = directory.get_plugin()
-        sg = core_plugin.get_security_group(context, sg_id)
+        sg = self.core_plugin.get_security_group(context, sg_id)
         sg_version = sg['revision_number']
 
         sg_rule['topic'] = tenant_id
@@ -199,8 +202,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         sgr_id = kwargs['security_group_rule_id']
         sg_id = kwargs['security_group_id']
 
-        core_plugin = directory.get_plugin()
-        sg = core_plugin.get_security_group(context, sg_id)
+        sg = self.core_plugin.get_security_group(context, sg_id)
         sg_version = sg['revision_number']
         tenant_id = sg['tenant_id']
 
@@ -272,8 +274,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     def _get_dhcp_port_for_subnet(self, context, subnet_id):
         filters = {'fixed_ips': {'subnet_id': [subnet_id]},
                    'device_owner': [n_const.DEVICE_OWNER_DHCP]}
-        core_plugin = directory.get_plugin()
-        ports = core_plugin.get_ports(context, filters=filters)
+        ports = self.core_plugin.get_ports(context, filters=filters)
         if 0 != len(ports):
             return ports[0]
         else:
@@ -325,9 +326,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                          'device_owner': n_const.DEVICE_OWNER_DHCP,
                          'mac_address': n_const.ATTR_NOT_SPECIFIED,
                          'fixed_ips': [{'subnet_id': subnet['id']}]}}
-        core_plugin = directory.get_plugin()
-        port = core_plugin.create_port(context, port)
-
+        port = self.core_plugin.create_port(context, port)
         return port
 
     def _handle_create_subnet_dhcp(self, context, subnet):
@@ -408,8 +407,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             return subnet['allocation_pools'][0]['start']
 
     def _delete_subnet_dhcp_port(self, context, port):
-        core_plugin = directory.get_plugin()
-        core_plugin.delete_port(context, port['id'])
+        self.core_plugin.delete_port(context, port['id'])
 
     def _handle_update_subnet_dhcp(self, context, old_subnet, new_subnet):
         """Update the dhcp configuration for.
@@ -486,8 +484,8 @@ class DFMechDriver(driver_api.MechanismDriver):
         subnet_id = subnet['id']
 
         # The network in context is still the network before deleting subnet
-        core_plugin = directory.get_plugin()
-        network = core_plugin.get_network(context._plugin_context, net_id)
+        network = self.core_plugin.get_network(context._plugin_context,
+                                               net_id)
 
         # update df controller with subnet delete
         try:
@@ -695,14 +693,12 @@ class DFMechDriver(driver_api.MechanismDriver):
 
     def set_port_status_up(self, port_id):
         LOG.debug("DF reports status up for port: %s", port_id)
-        core_plugin = directory.get_plugin()
-        core_plugin.update_port_status(n_context.get_admin_context(),
-                                       port_id,
-                                       n_const.PORT_STATUS_ACTIVE)
+        self.core_plugin.update_port_status(n_context.get_admin_context(),
+                                            port_id,
+                                            n_const.PORT_STATUS_ACTIVE)
 
     def set_port_status_down(self, port_id):
         LOG.debug("DF reports status down for port: %s", port_id)
-        core_plugin = directory.get_plugin()
-        core_plugin.update_port_status(n_context.get_admin_context(),
-                                       port_id,
-                                       n_const.PORT_STATUS_DOWN)
+        self.core_plugin.update_port_status(n_context.get_admin_context(),
+                                            port_id,
+                                            n_const.PORT_STATUS_DOWN)
