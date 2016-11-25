@@ -46,7 +46,6 @@ DF_RYU_OPTS = [
                 help=_("Port to listen on for OpenFlow connections."))
 ]
 
-config.setup_logging()
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
 
 cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
@@ -588,6 +587,7 @@ def init_ryu_config():
 def main():
     chassis_name = socket.gethostname()
     common_config.init(sys.argv[1:])
+    config.setup_logging()
     init_ryu_config()
     controller = DfLocalController(chassis_name)
     controller.run()
