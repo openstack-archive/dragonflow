@@ -57,7 +57,11 @@ Specs
     virtual_tunnel_port
     ipv6
     service_function_chaining
+<<<<<<< HEAD
     classification_app
+=======
+    services_status
+>>>>>>> d418094... Spec to support service status reporting
 
 Templates
 ---------
