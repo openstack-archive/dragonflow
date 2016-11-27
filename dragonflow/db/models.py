@@ -10,7 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
+
 import netaddr
+import six
+
 from oslo_serialization import jsonutils
 
 
@@ -436,3 +440,103 @@ class OvsPort(object):
 
     def __str__(self):
         return str(self.ovs_port)
+
+
+class PortPair(NbDbObject):
+
+    table_name = 'sfc_portpair'
+
+    def get_ingress_port(self):
+        return self.inner_obj.get('ingress_port')
+
+    def get_egress_port(self):
+        return self.inner_obj.get('egress_port')
+
+    def get_correlation_mechanism(self):
+        return self.inner_obj.get('correlation_mechanism')
+
+    def get_weight(self):
+        return self.inner_obj.get('weight')
+
+
+class PortPairGroup(NbDbObject):
+
+    table_name = 'sfc_portpairgroup'
+
+    def __init__(self, value):
+        super(PortPairGroup, self).__init__(value)
+        self.weights = {
+            pp['port_pair_id']: pp['weight']
+            for pp in self.inner_obj.get('port_pair_ids')
+        }
+
+    def get_port_pair_ids(self):
+        return six.iterkeys(self.weights)
+
+    def get_port_pair_weight(self, pp):
+        # FIXME(dimak). Weight is currently stored at the portpair instead of
+        # the group.
+        return pp.get_weight()
+
+PortRange = collections.namedtuple('PortRange', ('min', 'max'))
+
+
+class FlowClassifier(NbDbObject):
+
+    table_name = 'sfc_flowclassfier'
+
+    def get_ether_type(self):
+        return self.inner_obj.get('ether_type')
+
+    def get_protocol(self):
+        return self.inner_obj.get('protocol')
+
+    def _get_cidr(self, field):
+        cidr = self.inner_obj.get(field)
+        if cidr is not None:
+            return netaddr.IPAddress(cidr)
+
+    def get_source_cidr(self):
+        return self._get_cidr('source_cidr')
+
+    def get_dest_cidr(self):
+        return self._get_cidr('dest_cidr')
+
+    def _get_transport_ports(self, field):
+        ports = self.inner_obj.get(field)
+        if ports is not None:
+            return PortRange(*ports)
+
+    def get_source_transport_ports(self):
+        return self._get_transport_ports('source_transport_ports')
+
+    def get_dest_transport_ports(self):
+        return self._get_transport_ports('dest_transport_ports')
+
+    def get_source_port_id(self):
+        return self.inner_obj.get('source_port_id')
+
+    def get_dest_port_id(self):
+        return self.inner_obj.get('dest_port_id')
+
+    def get_l7_parameters(self):
+        return self.inner_obj.get('l7_parameters')
+
+
+class PortChain(NbDbObject):
+    PROTO_MPLS = 'mpls'
+    PROTO_NSH = 'nsh'
+
+    table_name = 'sfc_portchain'
+
+    def get_proto(self):
+        return self.inner_obj.get('proto')
+
+    def get_service_path_id(self):
+        return self.inner_obj.get('service_path_id')
+
+    def get_port_pair_group_ids(self):
+        return self.inner_obj.get('port_pair_ids')
+
+    def get_flow_classifier_ids(self):
+        return self.inner_obj.get('flow_classifier_ids')
