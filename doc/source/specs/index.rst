@@ -55,7 +55,12 @@ Specs
     config_generation
     cassandra_driver
     virtual_tunnel_port
+<<<<<<< HEAD
     ipv6
+=======
+    distributed_snat
+
+>>>>>>> 216d048... Distributed SNAT spec
 
 Templates
 ---------
