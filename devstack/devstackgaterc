@@ -21,6 +21,7 @@ export OVERRIDE_ENABLED_SERVICES=key,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-ob
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_REDIS_PUBSUB=True"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_RUNNING_IN_GATE=True"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"EXTERNAL_HOST_IP=172.24.4.100"
+export DEVSTACK_LOCAL_CONFIG+=$'\n'"ENABLE_DF_SFC=True"
 
 if [ -n "${DEVSTACK_GATE_TEMPEST}"] && [ ${DEVSTACK_GATE_TEMPEST} -gt 0 ]; then
     # Only include tempest if this is a tempest job
