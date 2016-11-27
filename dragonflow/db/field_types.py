@@ -265,6 +265,12 @@ class PortRange(object):
         if port_min is not None and port_max is not None:
             return cls(port_min, port_max)
 
+    def __eq__(self, other):
+        return (self.min, self.max) == (other.min, other.max)
+
+    def __ne__(self, other):
+        return not (self == other)
+
 
 class PortRangeField(fields.BaseField):
     types = (PortRange,)
