@@ -192,6 +192,11 @@ class NetworkTestObj(object):
         self.topic = self.network['network']['tenant_id']
         return self.network_id
 
+    def update(self, network):
+        network = self.neutron.update_network(self.network_id,
+                                              body={'network': network})
+        return network['network']
+
     def close(self):
         if self.closed or self.network_id is None:
             return
