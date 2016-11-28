@@ -20,6 +20,7 @@ from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import api_nb
 from dragonflow.db import db_common
+from dragonflow.db import migration
 from dragonflow.db import model_framework
 from dragonflow.db.models import all  # noqa
 from dragonflow.db.models import l2
@@ -306,6 +307,9 @@ def add_init_command(subparsers):
         for table in db_tables:
             create_table(table)
 
+        nb_api = api_nb.NbApi(db_driver)
+        migration.mark_all_migrations_applied(nb_api)
+
     sub_parser = subparsers.add_parser('init', help="Initialize all tables.")
     sub_parser.set_defaults(handle=handle)
 
@@ -353,6 +357,15 @@ def add_create_command(subparsers):
     sub_parser.set_defaults(handle=handle)
 
 
+def add_db_upgrade_command(subparsers):
+    def handle(args):
+        migration.apply_new_migrations(nb_api)
+
+    sub_parser = subparsers.add_parser('upgrade',
+                                       help="Upgrade the Northbound Database.")
+    sub_parser.set_defaults(handle=handle)
+
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(title='subcommands',
@@ -367,6 +380,7 @@ def main():
     add_init_command(subparsers)
     add_dropall_command(subparsers)
     add_create_command(subparsers)
+    add_db_upgrade_command(subparsers)
 
     if len(sys.argv) == 1:
         parser.print_help()
