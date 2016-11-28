@@ -10,11 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from neutron.common import constants
-from neutron.services.qos.drivers import base
-from neutron.services.qos import qos_consts
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.plugins import constants as service_constants
 from neutron_lib.plugins import directory
+from neutron_lib.services.qos.drivers import base
+from neutron_lib.services.qos import qos_consts
 from oslo_log import log
 
 from dragonflow.db.models import qos
@@ -43,7 +43,7 @@ VIF_TYPES = [
     portbindings.VIF_TYPE_OVS,
     portbindings.VIF_TYPE_VHOST_USER,
 ]
-VNIC_TYPES = [portbindings.VNIC_NORMAL],
+VNIC_TYPES = [portbindings.VNIC_NORMAL]
 
 
 class DfQosDriver(base.DriverBase):
