@@ -16,6 +16,8 @@
 import mock
 
 from dragonflow.controller.common import constants
+from dragonflow.controller import topology
+from dragonflow.db import models
 from dragonflow.tests.unit import test_app_base
 
 
@@ -104,4 +106,34 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             'delete_floatingip',
         ) as mock_func:
             self.dnat_app.remove_local_port(test_app_base.fake_local_port1)
+            mock_func.assert_not_called()
+
+    def test_floatingip_removed_only_once(self):
+        self.controller.topology = topology.Topology(self.controller, True)
+        value1 = mock.Mock(name='ovs_port')
+        value1.get_id.return_value = 'ovs_port1'
+        value1.get_ofport.return_value = 1
+        value1.get_name.return_value = ''
+        value1.get_admin_state.return_value = 'True'
+        value1.get_type.return_value = 'vm'
+        value1.get_iface_id.return_value = 'fake_port1'
+        value1.get_peer.return_value = ''
+        value1.get_attached_mac.return_value = ''
+        value1.get_remote_ip.return_value = ''
+        value1.get_tunnel_type.return_value = ''
+
+        ovs_port1 = models.OvsPort(value1)
+
+        self.controller.logical_port_created(test_app_base.fake_local_port1)
+        self.controller.topology.ovs_port_updated(ovs_port1)
+        self.controller.floatingip_updated(test_app_base.fake_floatingip1)
+        self.controller.floatingip_deleted(
+            test_app_base.fake_floatingip1.get_id())
+        self.controller.logical_port_deleted(
+            test_app_base.fake_local_port1.get_id())
+        with mock.patch.object(
+            self.controller,
+            'floatingip_deleted'
+        ) as mock_func:
+            self.controller.topology.ovs_port_deleted(ovs_port1.get_id())
             mock_func.assert_not_called()

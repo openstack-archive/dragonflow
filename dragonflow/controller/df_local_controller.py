@@ -512,6 +512,7 @@ class DfLocalController(object):
         self.open_flow_app.notify_delete_floatingip(floatingip)
         LOG.info(_LI("Floatingip is deleted. Floatingip = %s") %
                  str(floatingip))
+        self.db_store.delete_floatingip(floatingip_id)
 
     def publisher_updated(self, publisher):
         self.db_store.update_publisher(publisher.get_id(), publisher)
