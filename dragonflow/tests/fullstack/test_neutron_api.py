@@ -69,14 +69,14 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                 if port.get_device_owner() == 'network:dhcp':
                     dhcp_ports_found += 1
         network.close()
-        self.assertEqual(dhcp_ports_found, 1)
+        self.assertEqual(1, dhcp_ports_found)
         ports = self.nb_api.get_all_logical_ports()
         dhcp_ports_found = 0
         for port in ports:
             if port.get_lswitch_id() == network_id:
                 if port.get_device_owner() == 'network:dhcp':
                     dhcp_ports_found += 1
-        self.assertEqual(dhcp_ports_found, 0)
+        self.assertEqual(0, dhcp_ports_found)
 
     def test_create_delete_subnet(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
