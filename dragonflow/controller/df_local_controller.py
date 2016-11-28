@@ -253,22 +253,25 @@ class DfLocalController(object):
             return False
 
     def _logical_port_process(self, lport, original_lport=None):
-        chassis = lport.get_chassis()
         lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
-        if lswitch is not None:
-            lport.set_external_value('local_network_id',
-                                     lswitch.get_unique_key())
-            network_type = lswitch.get_network_type()
-            segment_id = lswitch.get_segment_id()
-            physical_network = lswitch.get_physical_network()
+        if not lswitch:
+            LOG.warning(_LW("Could not find lswitch for lport: %s"),
+                        lport.get_id())
+            return
+        lport.set_external_value('local_network_id',
+                                 lswitch.get_unique_key())
+        network_type = lswitch.get_network_type()
+        segment_id = lswitch.get_segment_id()
+        physical_network = lswitch.get_physical_network()
 
-            lport.set_external_value('network_type', network_type)
-            if segment_id is not None:
-                lport.set_external_value('segmentation_id',
+        lport.set_external_value('network_type', network_type)
+        if segment_id is not None:
+            lport.set_external_value('segmentation_id',
                                      int(segment_id))
-            if physical_network:
-                lport.set_external_value('physical_network', physical_network)
+        if physical_network:
+            lport.set_external_value('physical_network', physical_network)
 
+        chassis = lport.get_chassis()
         if chassis == self.chassis_name:
             lport.set_external_value('is_local', True)
             self.db_store.set_port(lport.get_id(), lport, True)
