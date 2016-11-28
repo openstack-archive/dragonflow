@@ -135,6 +135,7 @@ EVENT_REMOTE_DELETED = 'remote_deleted'
     'chassis_id': 'binding.chassis.id',
     'lswitch_id': 'lswitch.id',
     'ip,lswitch': ('ips', 'lswitch.id'),
+    'qos_policy_id': 'qos_policy.id',
 })
 class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
                   mixins.UniqueKey, mixins.BasicEvents):
