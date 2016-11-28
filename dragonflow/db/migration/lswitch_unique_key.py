@@ -1,0 +1,36 @@
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+from dragonflow.db.migration import common
+from dragonflow.db import models as db_models
+
+VERSION = 1
+
+DESCRIPTION = "Add unique key to lswitch."
+
+OPENSTACK_VERSION = common.OCATA
+
+DATE = "2016-11-28 12:00"
+
+
+def upgrade(db_driver):
+    """Check if the metadata has newer version. If not, upgrade it."""
+
+    cur_ver_num = common.get_current_db_version(db_driver)
+    if cur_ver_num is not None and cur_ver_num >= VERSION:
+        return
+
+    # Do the migration
+    for lswitch_value in db_driver.get_all_entries(
+            db_models.LogicalSwitch.table_name):
+        lswitch = db_models.LogicalSwitch(lswitch_value)
+        common.ensure_unique_key(db_driver, lswitch)
