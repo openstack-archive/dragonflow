@@ -114,6 +114,9 @@ class LogicalSwitch(NbDbObject, UniqueKeyMixin):
     def get_physical_network(self):
         return self.inner_obj.get('physical_network')
 
+    def get_qos_policy_id(self):
+        return self.inner_obj.get('qos_policy_id')
+
 
 class Subnet(NbObject):
 

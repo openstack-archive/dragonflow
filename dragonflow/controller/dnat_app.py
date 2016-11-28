@@ -492,7 +492,7 @@ class DNATApp(df_base_app.DFlowApp):
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)
 
-    def update_logical_switch(self, lswitch):
+    def update_logical_switch(self, lswitch, original_lswitch):
         fip_groups = self._check_and_update_floatingips(
             lswitch)
         if not fip_groups:

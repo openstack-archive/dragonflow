@@ -319,7 +319,7 @@ class DfLocalController(object):
 
         LOG.info(_LI("Adding/Updating Logical Switch = %s"), lswitch)
         self.db_store.set_lswitch(lswitch.get_id(), lswitch)
-        self.open_flow_app.notify_update_logical_switch(lswitch)
+        self.open_flow_app.notify_update_logical_switch(lswitch, old_lswitch)
 
     def delete_lswitch(self, lswitch_id):
         lswitch = self.db_store.get_lswitch(lswitch_id)
