@@ -31,30 +31,39 @@ class PortQosApp(df_base_app.DFlowApp):
         self._update_local_port_qos(lport, original_lport)
 
     def _update_local_port_qos(self, lport, original_lport=None):
-        if (original_lport
-                and lport.get_qos_policy_id()
-                == original_lport.get_qos_policy_id()):
-            # Do nothing, if the port's qos is the same as db store.
+        port_lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
+        lswitch_qos_id = port_lswitch.get_qos_policy_id()
+
+        original_qos_id = None
+        if original_lport:
+            original_qos_id = (original_lport.get_qos_policy_id()
+                               or lswitch_qos_id)
+
+        qos_id = lport.get_qos_policy_id() or lswitch_qos_id
+        if original_qos_id == qos_id:
+            # Do nothing if the port's reference qos is not changed.
             return
 
-        qos_id = lport.get_qos_policy_id()
+        self._update_ovs_port_qos(qos_id, lport.get_id())
+
+    def _update_ovs_port_qos(self, qos_id, lport_id):
         if not qos_id:
             # If the there is no qos associated with lport in nb db,
             # the qos in ovs db should also be checked and cleared.
             # This is because the ovs db might not be consistent with
             # nb db.
-            self.vswitch_api.clear_port_qos(lport.get_id())
+            self.vswitch_api.clear_port_qos(lport_id)
             return
 
         qos = self._get_qos_policy(qos_id)
         if not qos:
-            LOG.error(_LE("Unable to get QoS %(qos)s when adding/updating "
+            LOG.error(_LE("Unable to get QoS %(qos)s when updating QoS of "
                           "local port %(port)s. It may has been deleted."),
-                      {'qos': qos_id, 'port': lport.get_id()})
-            self.vswitch_api.clear_port_qos(lport.get_id())
+                      {'qos': qos_id, 'port': lport_id})
+            self.vswitch_api.clear_port_qos(lport_id)
             return
 
-        self.vswitch_api.update_port_qos(lport.get_id(), qos)
+        self.vswitch_api.update_port_qos(lport_id, qos)
 
     def remove_local_port(self, lport):
         # If removing lport in nb db, the qos in ovs db should also be checked
@@ -67,6 +76,20 @@ class PortQosApp(df_base_app.DFlowApp):
         for port in local_ports:
             if port.get_qos_policy_id() == qos.get_id():
                 self.vswitch_api.update_port_qos(port.get_id(), qos)
+
+    def update_logical_switch(self, lswitch, original_lswitch):
+        if (original_lswitch and
+                lswitch.get_qos_policy_id()
+                == original_lswitch.get_qos_policy_id()):
+            # Do nothing, if the lswitch's qos is the same as db store.
+            return
+
+        local_ports = self.db_store.get_local_ports(lswitch.get_topic())
+        for port in local_ports:
+            if (port.get_lswitch_id() == lswitch.get_id()
+                    and not port.get_qos_policy_id()):
+                self._update_ovs_port_qos(lswitch.get_qos_policy_id(),
+                                          port.get_id())
 
     def _get_qos_policy(self, qos_id):
         qos = self.db_store.get_qos_policy(qos_id)

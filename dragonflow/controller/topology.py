@@ -253,6 +253,10 @@ class Topology(object):
             self._clear_tenant_topology(topic)
 
     def _pull_tenant_topology_from_db(self, tenant_id, lport_id):
+        qos_policies = self.nb_api.get_qos_policies(tenant_id)
+        for qos in qos_policies:
+            self.controller.qos_policy_updated(qos)
+
         switches = self.nb_api.get_all_logical_switches(tenant_id)
         for switch in switches:
             self.controller.logical_switch_updated(switch)
@@ -260,10 +264,6 @@ class Topology(object):
         sg_groups = self.nb_api.get_security_groups(tenant_id)
         for sg_group in sg_groups:
             self.controller.security_group_updated(sg_group)
-
-        qos_policies = self.nb_api.get_qos_policies(tenant_id)
-        for qos in qos_policies:
-            self.controller.qos_policy_updated(qos)
 
         ports = self.nb_api.get_all_logical_ports(tenant_id)
         for port in ports:

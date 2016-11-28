@@ -144,6 +144,12 @@ class DfLocalController(object):
                 # by the objects dependency in each other
                 items = [
                     df_db_objects_refresh.DfObjectRefresher(
+                        'QoS Policies',
+                        self.db_store.get_qos_policy_keys,
+                        self.nb_api.get_qos_policies,
+                        self.qos_policy_updated,
+                        self.qos_policy_deleted),
+                    df_db_objects_refresh.DfObjectRefresher(
                         'Switches',
                         self.db_store.get_lswitch_keys,
                         self.nb_api.get_all_logical_switches,
@@ -155,12 +161,6 @@ class DfLocalController(object):
                         self.nb_api.get_security_groups,
                         self.security_group_updated,
                         self.security_group_deleted),
-                    df_db_objects_refresh.DfObjectRefresher(
-                        'QoS Policies',
-                        self.db_store.get_qos_policy_keys,
-                        self.nb_api.get_qos_policies,
-                        self.qos_policy_updated,
-                        self.qos_policy_deleted),
                     df_db_objects_refresh.DfObjectRefresher(
                         'Ports',
                         self.db_store.get_port_keys,
@@ -228,7 +228,7 @@ class DfLocalController(object):
 
         LOG.info(_LI("Adding/Updating Logical Switch = %s"), lswitch)
         self.db_store.set_lswitch(lswitch.get_id(), lswitch)
-        self.open_flow_app.notify_update_logical_switch(lswitch)
+        self.open_flow_app.notify_update_logical_switch(lswitch, old_lswitch)
 
     def logical_switch_deleted(self, lswitch_id):
         lswitch = self.db_store.get_lswitch(lswitch_id)
