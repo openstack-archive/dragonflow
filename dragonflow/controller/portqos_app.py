@@ -25,36 +25,51 @@ LOG = log.getLogger(__name__)
 class PortQosApp(df_base_app.DFlowApp):
 
     def add_local_port(self, lport):
-        self._check_update_local_port_qos(lport)
+        if not self._is_vm_port(lport):
+            return
+
+        port_qos_id = self._get_lport_qos_policy_id(lport)
+        self._check_update_local_port_qos(lport.get_id(), port_qos_id)
 
     def update_local_port(self, lport, original_lport):
+        if not self._is_vm_port(lport):
+            return
+
+        port_qos_id = self._get_lport_qos_policy_id(lport)
         if (original_lport
-                and lport.get_qos_policy_id()
-                == original_lport.get_qos_policy_id()):
+                and port_qos_id
+                == self._get_lport_qos_policy_id(original_lport)):
             # Do nothing, if the port's qos is the same as db store.
             return
 
-        self._check_update_local_port_qos(lport)
+        self._check_update_local_port_qos(lport.get_id(), port_qos_id)
 
-    def _check_update_local_port_qos(self, lport):
-        qos_id = lport.get_qos_policy_id()
+    def _get_lport_qos_policy_id(self, lport):
+        """Get the qos policy id from lport or lport's lswitch"""
+        if lport.get_qos_policy_id():
+            return lport.get_qos_policy_id()
+
+        port_lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
+        return port_lswitch.get_qos_policy_id()
+
+    def _check_update_local_port_qos(self, lport_id, qos_id):
         if not qos_id:
             # If the there is no qos associated with lport in nb db,
             # the qos in ovs db should also be checked and cleared.
             # This is because the ovs db might not be consistent with
             # nb db.
-            self.vswitch_api.clear_port_qos(lport.get_id())
+            self.vswitch_api.clear_port_qos(lport_id)
             return
 
         qos = self._get_qos_policy(qos_id)
         if not qos:
-            LOG.error(_LE("Unable to get QoS %(qos)s when adding/updating "
+            LOG.error(_LE("Unable to get QoS %(qos)s when updating QoS of "
                           "local port %(port)s. It may have been deleted."),
-                      {'qos': qos_id, 'port': lport.get_id()})
-            self.vswitch_api.clear_port_qos(lport.get_id())
+                      {'qos': qos_id, 'port': lport_id})
+            self.vswitch_api.clear_port_qos(lport_id)
             return
 
-        self._update_local_port_qos(lport.get_id(), qos)
+        self._update_local_port_qos(lport_id, qos)
 
     def _update_local_port_qos(self, port_id, qos):
 
@@ -92,6 +107,28 @@ class PortQosApp(df_base_app.DFlowApp):
         for port in local_ports:
             if port.get_qos_policy_id() == qos.get_id():
                 self.vswitch_api.clear_port_qos(port.get_id())
+
+    def update_logical_switch(self, lswitch, original_lswitch):
+        if (original_lswitch and
+                lswitch.get_qos_policy_id()
+                == original_lswitch.get_qos_policy_id()):
+            # Do nothing, if the lswitch's qos is the same as db store.
+            return
+
+        local_ports = self.db_store.get_local_ports(lswitch.get_topic())
+        for port in local_ports:
+            if (port.get_lswitch_id() == lswitch.get_id()
+                    and not port.get_qos_policy_id()
+                    and self._is_vm_port(port)):
+                self._check_update_local_port_qos(port.get_id(),
+                                                  lswitch.get_qos_policy_id())
+
+    # TODO(xioahhui): Remove this method, and use method from common utils
+    def _is_vm_port(self, lport):
+        owner = lport.get_device_owner()
+        if not owner or "compute" in owner:
+            return True
+        return False
 
     def _get_qos_policy(self, qos_id):
         qos = self.db_store.get_qos_policy(qos_id)
