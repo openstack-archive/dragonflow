@@ -54,7 +54,8 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
 
     def test_notifies(self):
         self.mock_app.reset_mock()
-        self.ryu_df_adapter.notify_update_logical_switch(lswitch=1)
+        self.ryu_df_adapter.notify_update_logical_switch(lswitch=1,
+                                                         original_lswitch=0)
         self.ryu_df_adapter.notify_remove_logical_switch(lswitch=2)
         self.ryu_df_adapter.notify_add_local_port(lport=3)
         self.ryu_df_adapter.notify_remove_local_port(lport=4)
@@ -67,7 +68,7 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         self.ryu_df_adapter.notify_remove_security_group_rule(
                 secgroup=14, secgroup_rule=15)
         self.mock_app.assert_has_calls([
-                mock.call.update_logical_switch(lswitch=1),
+                mock.call.update_logical_switch(lswitch=1, original_lswitch=0),
                 mock.call.remove_logical_switch(lswitch=2),
                 mock.call.add_local_port(lport=3),
                 mock.call.remove_local_port(lport=4),

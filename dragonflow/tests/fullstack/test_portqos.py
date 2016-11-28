@@ -87,3 +87,73 @@ class TestPortQos(test_base.DFTestBase):
 
         qos = self.vswitch_api.get_qos_info_by_port_id(vm_port_id)
         self.assertIsNone(qos)
+
+    def test_network_with_qos(self):
+        qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
+                                                        self.nb_api))
+        qos_policy_id = qospolicy.create()
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+        self.assertTrue(qospolicy.exists())
+
+        qospolicy.create_rule(qos_policy_id,
+                              {'max_kbps': '1000', 'max_burst_kbps': '100'},
+                              'bandwidth_limit')
+        qospolicy.create_rule(qos_policy_id,
+                              {'dscp_mark': '10'},
+                              'dscp_marking')
+
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create(network={'name': 'test_network'})
+        self.assertTrue(network.exists())
+
+        subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
+                                                  network_id=network_id))
+        subnet.create()
+        self.assertTrue(subnet.exists())
+
+        net_param = {'qos_policy_id': qos_policy_id}
+        network.update(net_param)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+        nb_net = self.nb_api.get_lswitch(network.network_id)
+        self.assertEqual(qos_policy_id, nb_net.get_qos_policy_id())
+
+        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm_id = vm.create(network=network)
+
+        vm_port_id = self.vswitch_api.get_port_id_by_vm_id(vm_id)
+        self.assertIsNotNone(vm_port_id)
+        port = objects.PortTestObj(self.neutron, self.nb_api, network_id)
+        port.port_id = vm_port_id
+
+        check_columns = {
+            'ingress_policing_rate', 'ingress_policing_burst'}
+        interface = \
+            self.vswitch_api.get_interface_by_id_with_specified_columns(
+                vm_port_id, check_columns)
+        self.assertIsNotNone(interface)
+        self.assertEqual(1000, interface.get('ingress_policing_rate'))
+        self.assertEqual(100, interface.get('ingress_policing_burst'))
+
+        queue = self.vswitch_api.get_queue_info_by_port_id(vm_port_id)
+        self.assertIsNotNone(queue)
+        self.assertEqual('1024000', queue['other_config']['max-rate'])
+        self.assertEqual('1024000', queue['other_config']['min-rate'])
+        self.assertEqual(10, queue['dscp'])
+
+        qos = self.vswitch_api.get_qos_info_by_port_id(vm_port_id)
+        self.assertIsNotNone(qos)
+        self.assertEqual(qos['queues'][0].uuid, queue['_uuid'])
+
+        ovs_port = self.vswitch_api.get_ovs_port_by_id_with_specified_columns(
+            vm_port_id, {'qos'})
+        self.assertIsNotNone(ovs_port)
+        self.assertEqual(ovs_port['qos'], qos['_uuid'])
+
+        vm.close()
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+
+        queue = self.vswitch_api.get_queue_info_by_port_id(vm_port_id)
+        self.assertIsNone(queue)
+
+        qos = self.vswitch_api.get_qos_info_by_port_id(vm_port_id)
+        self.assertIsNone(qos)
