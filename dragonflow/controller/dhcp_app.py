@@ -446,7 +446,7 @@ class DHCPApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def update_logical_switch(self, lswitch):
+    def update_logical_switch(self, lswitch, original_lswitch):
         subnets = lswitch.get_subnets()
         network_id = lswitch.get_unique_key()
         all_subnets = set()
