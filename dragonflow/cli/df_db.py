@@ -20,6 +20,7 @@ from oslo_serialization import jsonutils
 from dragonflow.common import common_params
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
+from dragonflow.db.migration import common as migration_common
 from dragonflow.db import models
 
 cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
@@ -220,6 +221,17 @@ def add_init_command(subparsers):
         for table in db_tables:
             create_table(db_driver, table)
 
+        cur_version_num = migration_common.get_current_db_version(db_driver)
+        all_versions = migration_common.get_sorted_all_version_modules()
+        for version in all_versions:
+            if (cur_version_num is not None
+                    and cur_version_num >= version.VERSION):
+                continue
+
+            version.upgrade(db_driver)
+
+        migration_common.set_db_migration_metadata(db_driver, all_versions[-1])
+
     sub_parser = subparsers.add_parser('init', help="Initialize all tables.")
     sub_parser.set_defaults(handle=handle)
 
@@ -230,6 +242,30 @@ def add_dropall_command(subparsers):
             drop_table(db_driver, table)
 
     sub_parser = subparsers.add_parser('dropall', help="Drop all tables.")
+    sub_parser.set_defaults(handle=handle)
+
+
+def add_db_upgrade_command(subparsers):
+    def handle(db_driver, args):
+        cur_version_num = migration_common.get_current_db_version(db_driver)
+        all_versions = migration_common.get_sorted_all_version_modules()
+        for version in all_versions:
+            if cur_version_num is not None:
+                if cur_version_num > version.VERSION:
+                    continue
+                elif cur_version_num == version.VERSION:
+                    print "Current version %s: %s" % (version.VERSION,
+                                                      version.DESCRIPTION)
+                    continue
+
+            print "Upgrade to version %s: %s" % (version.VERSION,
+                                                 version.DESCRIPTION)
+            version.upgrade(db_driver)
+
+        migration_common.set_db_migration_metadata(db_driver, all_versions[-1])
+
+    sub_parser = subparsers.add_parser('upgrade',
+                                       help="Upgrade the Northbound Database.")
     sub_parser.set_defaults(handle=handle)
 
 
@@ -247,6 +283,7 @@ def main():
     add_rm_command(subparsers)
     add_init_command(subparsers)
     add_dropall_command(subparsers)
+    add_db_upgrade_command(subparsers)
     args = parser.parse_args()
 
     common_config.init(['--config-file',
