@@ -17,27 +17,14 @@ import collections
 
 import netaddr
 from neutron_lib import constants as n_const
-from oslo_config import cfg
 from ryu.ofproto import ether
 import six
 
-from dragonflow._i18n import _
+from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 
-
-DF_DNAT_APP_OPTS = [
-    cfg.StrOpt('external_network_bridge',
-              default='br-ex',
-              help=_("Name of bridge used for external network traffic")),
-    cfg.StrOpt('int_peer_patch_port', default='patch-ex',
-               help=_("Peer patch port in integration bridge for external "
-                      "bridge.")),
-    cfg.StrOpt('ex_peer_patch_port', default='patch-int',
-               help=_("Peer patch port in external bridge for integration "
-                      "bridge.")),
-]
 
 FIP_GW_RESOLVING_STATUS = 'resolving'
 
@@ -46,7 +33,6 @@ class DNATApp(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
         super(DNATApp, self).__init__(*args, **kwargs)
-        cfg.CONF.register_opts(DF_DNAT_APP_OPTS, group='df_dnat_app')
         self.external_network_bridge = \
             cfg.CONF.df_dnat_app.external_network_bridge
         self.external_bridge_mac = ""
