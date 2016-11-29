@@ -13,6 +13,7 @@
 import mock
 
 from dragonflow.db import db_consistent
+from dragonflow.db import models
 from dragonflow.tests import base as tests_base
 
 
@@ -56,34 +57,34 @@ class TestDBConsistent(tests_base.BaseTestCase):
         self.db_store.get_floatingips.return_value = [local_obj1, local_obj2]
 
         self.db_consistent.handle_data_comparison(
-                [self.topic], 'lswitch', True)
+                [self.topic], models.LogicalSwitch.table_name, True)
         self.controller.logical_switch_updated.assert_any_call(df_obj1)
         self.controller.logical_switch_updated.assert_any_call(df_obj2)
         self.controller.logical_switch_deleted.assert_any_call(
                 self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
-                [self.topic], 'port', True)
+                [self.topic], models.LogicalPort.table_name, True)
         self.controller.logical_port_created.assert_any_call(df_obj1)
         self.controller.logical_port_updated.assert_any_call(df_obj2)
         self.controller.logical_port_deleted.assert_any_call(
                 self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
-                [self.topic], 'router', True)
+                [self.topic], models.LogicalRouter.table_name, True)
         self.controller.router_updated.assert_any_call(df_obj1)
         self.controller.router_updated.assert_any_call(df_obj2)
         self.controller.router_deleted.assert_any_call(self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
-                [self.topic], 'secgroup', True)
+                [self.topic], models.SecurityGroup.table_name, True)
         self.controller.security_group_updated.assert_any_call(df_obj1)
         self.controller.security_group_updated.assert_any_call(df_obj2)
         self.controller.security_group_deleted.assert_any_call(
                 self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
-                [self.topic], 'floatingip', True)
+                [self.topic], models.Floatingip.table_name, True)
         self.controller.floatingip_updated.assert_any_call(df_obj1)
         self.controller.floatingip_updated.assert_any_call(df_obj2)
         self.controller.floatingip_deleted.assert_any_call(
