@@ -24,9 +24,6 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         self.vswitch_api = vswitch_impl.OvsApi(self.local_ip)
         self.vswitch_api.initialize(self.nb_api)
 
-    def tearDown(self):
-        super(TestOvsdbMonitor, self).tearDown()
-
     def _check_wanted_vm_online(self, update, mac):
         if update.table != "ovsinterface":
             return False
@@ -187,3 +184,29 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT, sleep=1,
             exception=Exception('Port was not deleted')
         )
+
+    def test_virtual_tunnel_port(self):
+        def _clear_vtp():
+            for tunnel_port in self.vswitch_api.get_virtual_tunnel_ports():
+                self.vswitch_api.delete_port(tunnel_port)
+
+        self.addCleanup(_clear_vtp)
+
+        self.vswitch_api.add_virtual_tunnel_port('vxlan')
+        self.vswitch_api.add_virtual_tunnel_port('geneve')
+
+        tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
+        self.assertEqual(2, len(tunnel_ports))
+        tunnel_types = set()
+        for t in tunnel_ports:
+            self.assertEqual(t.get_tunnel_type() + "-vtp",
+                             t.get_name())
+            tunnel_types.add(t.get_tunnel_type())
+
+        self.assertEqual({'vxlan', 'geneve'}, tunnel_types)
+
+        for t in tunnel_ports:
+            self.vswitch_api.delete_port(t)
+
+        tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
+        self.assertFalse(tunnel_ports)

@@ -59,7 +59,13 @@ class DfLocalController(object):
         self.db_store = db_store.DbStore()
         self.chassis_name = chassis_name
         self.ip = cfg.CONF.df.local_ip
-        self.tunnel_type = cfg.CONF.df.tunnel_type
+        if cfg.CONF.df.enable_virtual_tunnel_port:
+            # Virtual tunnel port support multiple tunnel types together
+            self.tunnel_types = cfg.CONF.df.tunnel_types
+        else:
+            # TODO(xiaohhui): This should be removed once virtual tunnel port
+            # is implemented.
+            self.tunnel_types = cfg.CONF.df.tunnel_type
         self.sync_finished = False
         self.port_status_notifier = None
         nb_driver = df_utils.load_driver(
@@ -329,7 +335,7 @@ class DfLocalController(object):
         chassis_lports = self.db_store.get_lports_by_remote_chassis(chassis)
         if not chassis_lports:
             chassis_value = {'id': chassis, 'ip': chassis,
-                             'tunnel_type': self.tunnel_type}
+                             'tunnel_type': self.tunnel_types}
             chassis_inst = models.Chassis(jsonutils.dumps(chassis_value))
             self.chassis_created(chassis_inst)
         self.db_store.add_remote_chassis_lport(chassis, lport.get_id())
@@ -441,13 +447,36 @@ class DfLocalController(object):
     def register_chassis(self):
         chassis = self.nb_api.get_chassis(self.chassis_name)
         # TODO(gsagie) Support tunnel type change here ?
-
         if chassis is None:
             self.nb_api.add_chassis(self.chassis_name,
                                     self.ip,
-                                    self.tunnel_type)
+                                    self.tunnel_types)
+        else:
+            if cfg.CONF.df.enable_virtual_tunnel_port:
+                old_tunnel_types = chassis.get_encap_type()
+                if (not isinstance(old_tunnel_types, list) or
+                        set(self.tunnel_types) != set(old_tunnel_types)):
+                    # There are 2 cases that needs update tunnel type in
+                    # chassis. 1) User changes tunnel types in conf file
+                    # 2) An old controller support only one type tunnel switch
+                    # to support virtual tunnel port.
+                    self.nb_api.update_chassis(self.chassis_name,
+                                               tunnel_type=self.tunnel_types)
 
     def create_tunnels(self):
+        if cfg.CONF.df.enable_virtual_tunnel_port:
+            tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
+            for tunnel_port in tunnel_ports:
+                if tunnel_port.get_tunnel_type() not in self.tunnel_types:
+                    self.vswitch_api.delete_port(tunnel_port)
+
+            for t in self.tunnel_types:
+                # The customized ovs idl will ingore the command if the port
+                # already exists.
+                self.vswitch_api.add_virtual_tunnel_port(t)
+
+            return
+
         tunnel_ports = {}
         t_ports = self.vswitch_api.get_tunnel_ports()
         for t_port in t_ports:

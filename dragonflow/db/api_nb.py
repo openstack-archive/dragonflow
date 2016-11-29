@@ -390,6 +390,15 @@ class NbApi(object):
         self.driver.create_key(db_models.Chassis.table_name,
                                id, chassis_json, None)
 
+    def update_chassis(self, id, **columns):
+        chassis_json = self.driver.get_key('chassis', id)
+        chassis = jsonutils.loads(chassis_json)
+        for col, val in columns.items():
+            chassis[col] = val
+
+        chassis_json = jsonutils.dumps(chassis)
+        self.driver.set_key('chassis', id, chassis_json, None)
+
     def get_lswitch(self, id, topic=None):
         try:
             lswitch_value = self.driver.get_key(
