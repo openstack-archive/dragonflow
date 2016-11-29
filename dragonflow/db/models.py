@@ -387,6 +387,9 @@ class Publisher(NbDbObject):
     def get_last_activity_timestamp(self):
         return self.inner_obj.get('last_activity_timestamp')
 
+    def get_version(self):
+        return 0
+
 
 class OvsPort(object):
 

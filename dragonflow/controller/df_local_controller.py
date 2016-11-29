@@ -34,6 +34,7 @@ from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
+from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db import models
 from dragonflow.ovsdb import vswitch_impl
@@ -81,6 +82,8 @@ class DfLocalController(object):
         self.open_flow_app = app_mgr.instantiate(ryu_base_app.RyuDFAdapter,
                                                  **kwargs)
         self.topology = None
+        self.db_consistency_manager = None
+        self.enable_db_consistency = cfg.CONF.df.enable_df_db_consistency
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
         self.integration_bridge = cfg.CONF.df.integration_bridge
@@ -97,6 +100,11 @@ class DfLocalController(object):
                                              is_neutron_server=False)
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)
+        if self.enable_db_consistency:
+            self.db_consistency_manager = \
+                db_consistent.DBConsistencyManager(self)
+            self.nb_api.set_db_consistency_manager(self.db_consistency_manager)
+            self.db_consistency_manager.daemonize()
 
         # both set_controller and del_controller will delete flows.
         # for reliability, here we should check if controller is set for OVS,
