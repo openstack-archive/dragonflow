@@ -20,11 +20,13 @@
 export OVERRIDE_ENABLED_SERVICES=key,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,c-sch,c-api,c-vol,horizon,rabbit,mysql,dstat,df-controller,df-redis,df-redis-server,q-svc,df-l3-agent,df-metadata,q-qos
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_REDIS_PUBSUB=True"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_RUNNING_IN_GATE=True"
-export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=False"
 
-if [ -z "${RALLY_SCENARIO}" ] ; then
-    # Only include tempest if this is not a rally job.
+if [ -n "${DEVSTACK_GATE_TEMPEST}"] && [ ${DEVSTACK_GATE_TEMPEST} -gt 0 ]; then
+    # Only include tempest if this is a tempest job
     export OVERRIDE_ENABLED_SERVICES=${OVERRIDE_ENABLED_SERVICES},tempest
+    export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=True"
+else
+    export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=False"
 fi
 
 # Begin list of exclusions.
