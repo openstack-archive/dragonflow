@@ -19,17 +19,16 @@ import time
 
 from neutron.agent.common import config
 from neutron.common import config as common_config
-from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
-from ryu.ofproto import ofproto_common
 
-from dragonflow._i18n import _LI, _LW, _
+from dragonflow._i18n import _LI, _LW
 from dragonflow.common import common_params
 from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
+from dragonflow import conf as cfg
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
@@ -40,17 +39,9 @@ from dragonflow.db import models
 from dragonflow.ovsdb import vswitch_impl
 
 
-DF_RYU_OPTS = [
-    cfg.IPOpt('of_listen_address', default='127.0.0.1',
-              help=_("Address to listen on for OpenFlow connections.")),
-    cfg.PortOpt('of_listen_port', default=ofproto_common.OFP_TCP_PORT,
-                help=_("Port to listen on for OpenFlow connections."))
-]
-
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
 
 cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
-cfg.CONF.register_opts(DF_RYU_OPTS, 'df_ryu')
 
 
 class DfLocalController(object):
