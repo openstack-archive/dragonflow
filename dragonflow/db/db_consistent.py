@@ -20,6 +20,7 @@ from oslo_log import log
 
 from dragonflow._i18n import _LE, _LW
 from dragonflow.common import utils as df_utils
+from dragonflow.db import models
 
 LOG = log.getLogger(__name__)
 
@@ -29,12 +30,12 @@ MIN_SYNC_INTERVAL_TIME = 60
 class CacheManager(object):
     def __init__(self):
         self._table_name_mapping = {
-            'lswitch': {},
-            'port': {},
-            'router': {},
-            'floatingip': {},
-            'secgroup': {},
-            'publisher': {}
+            models.LogicalSwitch.table_name: {},
+            models.LogicalPort.table_name: {},
+            models.LogicalRouter.table_name: {},
+            models.Floatingip.table_name: {},
+            models.SecurityGroup.table_name: {},
+            models.Publisher.table_name: {}
         }
 
     def get(self, table, key):
@@ -99,34 +100,34 @@ class DBConsistencyManager(object):
                               "handling db comparison: %s"), e)
 
     def _process_object(self, table, action, df_object, local_object=None):
-        if table == 'lswitch':
+        if table == models.LogicalSwitch.table_name:
             if action == 'delete':
                 self.controller.logical_switch_deleted(local_object.get_id())
             else:
                 self.controller.logical_switch_updated(df_object)
-        elif table == 'port':
+        elif table == models.LogicalPort.table_name:
             if action == 'create':
                 self.controller.logical_port_created(df_object)
             elif action == 'update':
                 self.controller.logical_port_updated(df_object)
             else:
                 self.controller.logical_port_deleted(local_object.get_id())
-        elif table == 'router':
+        elif table == models.LogicalRouter.table_name:
             if action == 'delete':
                 self.controller.router_deleted(local_object.get_id())
             else:
                 self.controller.router_updated(df_object)
-        elif table == 'secgroup':
+        elif table == models.SecurityGroup.table_name:
             if action == 'delete':
                 self.controller.security_group_deleted(local_object.get_id())
             else:
                 self.controller.security_group_updated(df_object)
-        elif table == 'floatingip':
+        elif table == models.Floatingip.table_name:
             if action == 'delete':
                 self.controller.floatingip_deleted(local_object.get_id())
             else:
                 self.controller.floatingip_updated(df_object)
-        elif table == 'publisher':
+        elif table == models.Publisher.table_name:
             if action == 'delete':
                 self.controller.publisher_deleted(local_object.get_id())
             else:
@@ -179,22 +180,22 @@ class DBConsistencyManager(object):
     def _get_df_and_local_objects(self, topic, table):
         df_objects = []
         local_objects = []
-        if table == 'lswitch':
+        if table == models.LogicalSwitch.table_name:
             df_objects = self.nb_api.get_all_logical_switches(topic)
             local_objects = self.db_store.get_lswitchs(topic)
-        elif table == 'port':
+        elif table == models.LogicalPort.table_name:
             df_objects = self.nb_api.get_all_logical_ports(topic)
             local_objects = self.db_store.get_ports(topic)
-        elif table == 'router':
+        elif table == models.LogicalRouter.table_name:
             df_objects = self.nb_api.get_routers(topic)
             local_objects = self.db_store.get_routers(topic)
-        elif table == 'secgroup':
+        elif table == models.SecurityGroup.table_name:
             df_objects = self.nb_api.get_security_groups(topic)
             local_objects = self.db_store.get_security_groups(topic)
-        elif table == 'floatingip':
+        elif table == models.Floatingip.table_name:
             df_objects = self.nb_api.get_floatingips(topic)
             local_objects = self.db_store.get_floatingips(topic)
-        elif table == 'publisher':
+        elif table == models.Publisher.table_name:
             df_objects = self.nb_api.get_publishers()
             local_objects = self.db_store.get_publishers()
 
@@ -264,7 +265,7 @@ class DBConsistencyManager(object):
                 table, df_objects, local_objects, direct)
 
     def handle_data_comparison(self, tenants, table, direct):
-        if table == 'publisher':
+        if table == models.Publisher.table_name:
             self._get_and_compare_df_and_local_data(table, direct)
             return
         for topic in tenants:
