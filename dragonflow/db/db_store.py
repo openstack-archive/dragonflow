@@ -19,6 +19,8 @@ import threading
 
 import six
 
+from dragonflow.db import models
+
 
 class TenantDbStore(object):
 
@@ -32,13 +34,13 @@ class TenantDbStore(object):
         self.publishers = {}
         self.lock = threading.Lock()
         self._table_name_mapping = {
-            'lswitchs': self.lswitchs,
-            'ports': self.ports,
+            models.LogicalSwitch.table_name: self.lswitchs,
+            models.LogicalPort.table_name: self.ports,
             'local_ports': self.local_ports,
-            'routers': self.routers,
-            'floatingips': self.floatingips,
-            'secgroups': self.secgroups,
-            'publishers': self.publishers,
+            models.LogicalRouter.table_name: self.routers,
+            models.Floatingip.table_name: self.floatingips,
+            models.SecurityGroup.table_name: self.secgroups,
+            models.Publisher.table_name: self.publishers,
         }
 
     def _get_table_by_name(self, table_name):
@@ -137,25 +139,25 @@ class DbStore(object):
         del self.remote_chassis_lport_map[chassis]
 
     def set_lswitch(self, id, lswitch, topic=None):
-        self.set('lswitchs', id, lswitch, topic)
+        self.set(models.LogicalSwitch.table_name, id, lswitch, topic)
 
     def get_lswitch(self, id, topic=None):
-        return self.get('lswitchs', id, topic)
+        return self.get(models.LogicalSwitch.table_name, id, topic)
 
     def del_lswitch(self, id, topic=None):
-        self.delete('lswitchs', id, topic)
+        self.delete(models.LogicalSwitch.table_name, id, topic)
 
     def get_port_keys(self, topic=None):
-        return self.keys('ports', topic)
+        return self.keys(models.LogicalPort.table_name, topic)
 
     def get_lswitch_keys(self, topic=None):
-        return self.keys('lswitchs', topic)
+        return self.keys(models.LogicalSwitch.table_name, topic)
 
     def get_router_keys(self, topic=None):
-        return self.keys('routers', topic)
+        return self.keys(models.LogicalRouter.table_name, topic)
 
     def get_floatingip_keys(self, topic=None):
-        return self.keys('floatingips', topic)
+        return self.keys(models.Floatingip.table_name, topic)
 
     def set_port(self, port_id, port, is_local, topic=None):
         if not topic:
@@ -166,13 +168,13 @@ class DbStore(object):
                 tenant_db.ports[port_id] = port
                 tenant_db.local_ports[port_id] = port
         else:
-            self.set('ports', port_id, port, topic)
+            self.set(models.LogicalPort.table_name, port_id, port, topic)
 
     def get_port(self, port_id, topic=None):
-        return self.get('ports', port_id, topic)
+        return self.get(models.LogicalPort.table_name, port_id, topic)
 
     def get_ports(self, topic=None):
-        return self.values('ports', topic)
+        return self.values(models.LogicalPort.table_name, topic)
 
     def get_ports_by_chassis(self, chassis_id, topic=None):
         lports = self.get_ports(topic)
@@ -191,7 +193,7 @@ class DbStore(object):
                 del tenant_db.ports[port_id]
                 del tenant_db.local_ports[port_id]
         else:
-            self.delete('ports', port_id, topic)
+            self.delete(models.LogicalPort.table_name, port_id, topic)
 
     def get_local_port(self, port_id, topic=None):
         return self.get('local_ports', port_id, topic)
@@ -205,57 +207,58 @@ class DbStore(object):
                 return lport
 
     def update_router(self, router_id, router, topic=None):
-        self.set('routers', router_id, router, topic)
+        self.set(models.LogicalRouter.table_name, router_id, router, topic)
 
     def delete_router(self, id, topic=None):
-        self.delete('routers', id, topic)
+        self.delete(models.LogicalRouter.table_name, id, topic)
 
     def get_router(self, router_id, topic=None):
-        return self.get('routers', router_id, topic)
+        return self.get(models.LogicalRouter.table_name, router_id, topic)
 
     def get_ports_by_network_id(self, lswitch_id, topic=None):
-        ports = self.values('ports', topic)
+        ports = self.values(models.LogicalPort.table_name, topic)
         return [port for port in ports if port.get_lswitch_id() == lswitch_id]
 
     def get_router_by_router_interface_mac(self, interface_mac, topic=None):
-        routers = self.values('routers', topic)
+        routers = self.values(models.LogicalRouter.table_name, topic)
         for router in routers:
             for port in router.get_ports():
                 if port.get_mac() == interface_mac:
                     return router
 
     def get_routers(self, topic=None):
-        return self.values('routers', topic)
+        return self.values(models.LogicalRouter.table_name, topic)
 
     def update_security_group(self, secgroup_id, secgroup, topic=None):
-        self.set('secgroups', secgroup_id, secgroup, topic)
+        self.set(models.SecurityGroup.table_name, secgroup_id, secgroup, topic)
 
     def delete_security_group(self, id, topic=None):
-        self.delete('secgroups', id, topic)
+        self.delete(models.SecurityGroup.table_name, id, topic)
 
     def get_security_group(self, secgroup_id, topic=None):
-        return self.get('secgroups', secgroup_id, topic)
+        return self.get(models.SecurityGroup.table_name, secgroup_id, topic)
 
     def get_security_groups(self, topic=None):
-        return self.values('secgroups', topic)
+        return self.values(models.SecurityGroup.table_name, topic)
 
     def get_security_group_keys(self, topic=None):
-        return self.keys('secgroups', topic)
+        return self.keys(models.SecurityGroup.table_name, topic)
 
     def get_lswitchs(self, topic=None):
-        return self.values('lswitchs', topic)
+        return self.values(models.LogicalSwitch.table_name, topic)
 
     def update_floatingip(self, floatingip_id, floatingip, topic=None):
-        self.set('floatingips', floatingip_id, floatingip, topic)
+        self.set(models.Floatingip.table_name,
+                 floatingip_id, floatingip, topic)
 
     def get_floatingip(self, floatingip_id, topic=None):
-        return self.get('floatingips', floatingip_id, topic)
+        return self.get(models.Floatingip.table_name, floatingip_id, topic)
 
     def delete_floatingip(self, floatingip_id, topic=None):
-        self.delete('floatingips', floatingip_id, topic)
+        self.delete(models.Floatingip.table_name, floatingip_id, topic)
 
     def get_floatingips(self, topic=None):
-        return self.values('floatingips', topic)
+        return self.values(models.Floatingip.table_name, topic)
 
     def get_floatingips_by_gateway(self, ip, topic=None):
         fip_return = []
@@ -294,13 +297,13 @@ class DbStore(object):
                 return fip
 
     def update_publisher(self, uuid, publisher, topic=None):
-        self.set('publishers', uuid, publisher, topic)
+        self.set(models.Publisher.table_name, uuid, publisher, topic)
 
     def get_publisher(self, uuid, topic=None):
-        return self.get('publishers', uuid, topic)
+        return self.get(models.Publisher.table_name, uuid, topic)
 
     def get_publishers(self, topic=None):
-        return self.values('publishers', topic)
+        return self.values(models.Publisher.table_name, topic)
 
     def delete_publisher(self, uuid, topic=None):
-        self.delete('publishers', uuid, topic)
+        self.delete(models.Publisher.table_name, uuid, topic)

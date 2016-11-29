@@ -22,6 +22,7 @@ from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import icmp_responder
 from dragonflow.controller import df_base_app
+from dragonflow.db import models
 
 ROUTE_TO_ADD = 'route_to_add'
 ROUTE_ADDED = 'route_added'
@@ -89,7 +90,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         LOG.info(_LI("Adding new logical router interface = %s"),
                  router_port)
         local_network_id = self.db_store.get_unique_key_by_id(
-            'lswitchs', router_port.get_lswitch_id())
+            models.LogicalSwitch.table_name, router_port.get_lswitch_id())
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
@@ -152,7 +153,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             if port.get_id() != router_port.get_id():
 
                 port_net_id = self.db_store.get_unique_key_by_id(
-                    'lswitchs', port.get_lswitch_id())
+                    models.LogicalSwitch.table_name, port.get_lswitch_id())
 
                 # From this router interface to all other interfaces
                 self._add_subnet_send_to_proactive_routing(
@@ -428,7 +429,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         LOG.info(_LI("Removing logical router interface = %s"),
                  router_port)
         local_network_id = self.db_store.get_unique_key_by_id(
-            'lswitchs', router_port.get_lswitch_id())
+            models.LogicalSwitch.table_name, router_port.get_lswitch_id())
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
