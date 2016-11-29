@@ -20,7 +20,6 @@ import struct
 import netaddr
 from neutron.conf import common as common_config
 from neutron.plugins.common import constants as n_p_const
-from oslo_config import cfg
 from oslo_log import log
 from ryu.lib import addrconv
 from ryu.lib.packet import dhcp
@@ -31,24 +30,10 @@ from ryu.lib.packet import udp
 from ryu.ofproto import ether
 
 from dragonflow.common import utils as df_utils
-from dragonflow._i18n import _, _LI, _LE, _LW
+from dragonflow import conf as cfg
+from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
-
-DF_DHCP_OPTS = [
-    cfg.ListOpt('df_dns_servers',
-        default=['8.8.8.8', '8.8.4.4'],
-        help=_('Comma-separated list of the DNS servers which will be used.')),
-    cfg.IntOpt('df_default_network_device_mtu', default=1460,
-        help=_('default MTU setting for interface.')),
-    cfg.IntOpt('df_dhcp_max_rate_per_sec', default=3,
-        help=_('Port Max rate of DHCP messages per second')),
-    cfg.IntOpt('df_dhcp_block_time_in_sec', default=100,
-        help=_('Time to block port that passes the max rate')),
-    cfg.BoolOpt('df_add_link_local_route', default=True,
-        help=_("Set True to add route for link local address, which will be "
-               "useful for metadata service.")),
-]
 
 LOG = log.getLogger(__name__)
 
@@ -67,7 +52,6 @@ class DHCPApp(df_base_app.DFlowApp):
         self.idle_timeout = 30
         self.hard_timeout = 0
 
-        cfg.CONF.register_opts(DF_DHCP_OPTS, 'df_dhcp_app')
         cfg.CONF.register_opts(common_config.core_opts)
         self.conf = cfg.CONF.df_dhcp_app
 
