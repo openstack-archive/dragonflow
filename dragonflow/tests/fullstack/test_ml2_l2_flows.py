@@ -89,6 +89,8 @@ class TestL2FLows(test_base.DFTestBase):
         network.close()
 
     def test_vlan_network_flows(self):
+        self.skipTest("bug/1645623")
+
         if self._check_l2_ml2_app_enable() is False:
             return
 
