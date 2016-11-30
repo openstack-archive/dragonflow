@@ -277,30 +277,25 @@ class Topology(object):
             self.controller.floatingip_updated(floating_ip)
 
     def _clear_tenant_topology(self, tenant_id):
-        switches = self.db_store.get_lswitchs()
+        switches = self.db_store.get_lswitchs(tenant_id)
         for switch in switches:
-            if tenant_id == switch.get_topic():
-                self.controller.logical_switch_deleted(switch.get_id())
+            self.controller.logical_switch_deleted(switch.get_id())
 
-        ports = self.db_store.get_ports()
+        ports = self.db_store.get_ports(tenant_id)
         for port in ports:
-            if tenant_id == port.get_topic():
-                self.controller.logical_port_deleted(port.get_id())
+            self.controller.logical_port_deleted(port.get_id())
 
-        floating_ips = self.db_store.get_floatingips()
+        floating_ips = self.db_store.get_floatingips(tenant_id)
         for floating_ip in floating_ips:
-            if tenant_id == floating_ip.get_topic():
-                self.controller.floatingip_deleted(floating_ip.get_id())
+            self.controller.floatingip_deleted(floating_ip.get_id())
 
-        routers = self.db_store.get_routers()
+        routers = self.db_store.get_routers(tenant_id)
         for router in routers:
-            if tenant_id == router.get_topic():
-                self.controller.router_deleted(router.get_id())
+            self.controller.router_deleted(router.get_id())
 
-        sg_groups = self.db_store.get_security_groups()
+        sg_groups = self.db_store.get_security_groups(tenant_id)
         for sg_group in sg_groups:
-            if tenant_id == sg_group.get_topic():
-                self.controller.security_group_deleted(sg_group.get_id())
+            self.controller.security_group_deleted(sg_group.get_id())
 
     def _get_lport(self, port_id, topic=None):
         lport = self.db_store.get_port(port_id)
