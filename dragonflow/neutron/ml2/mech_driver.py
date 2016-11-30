@@ -24,20 +24,18 @@ from neutron_lib.api import validators
 from neutron_lib import constants as n_const
 from neutron_lib import exceptions as n_exc
 from neutron_lib.plugins import directory
-from oslo_config import cfg
 from oslo_log import log
 
 from dragonflow._i18n import _, _LI, _LE
-from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
+from dragonflow import conf as cfg
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
 
 LOG = log.getLogger(__name__)
-cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 
 class DFMechDriver(driver_api.MechanismDriver):

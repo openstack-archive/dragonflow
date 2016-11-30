@@ -18,14 +18,13 @@ import traceback
 
 from neutron.agent.common import config
 from neutron.common import config as common_config
-from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LW
-from dragonflow.common import common_params
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
+from dragonflow import conf as cfg
 from dragonflow.db import db_common
 from dragonflow.db import models
 from dragonflow.db import pub_sub_api
@@ -164,7 +163,6 @@ class PublisherService(object):
 
 
 def main():
-    cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
     common_config.init(sys.argv[1:])
     config.setup_logging()
     service = PublisherService()

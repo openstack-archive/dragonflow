@@ -50,7 +50,6 @@ from neutron.quota import resource_registry
 from neutron_lib.api import validators
 from neutron_lib import constants as const
 from neutron_lib import exceptions as n_exc
-from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -58,19 +57,17 @@ import six
 from sqlalchemy.orm import exc as sa_exc
 
 from dragonflow._i18n import _, _LE, _LI
-from dragonflow.common import common_params
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import extensions
 from dragonflow.common import utils as df_utils
+from dragonflow import conf as cfg
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.db.neutron import versionobjects_db as version_db
 from dragonflow.neutron.common import constants as df_const
 
 LOG = log.getLogger(__name__)
-
-cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 router_distributed_opts = [
     cfg.BoolOpt('router_distributed',
