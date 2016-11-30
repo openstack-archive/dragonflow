@@ -172,9 +172,11 @@ def clear_local_cache(topics=None):
 def get_handler(controller, table, action):
     if action == 'delete':
         method_name = 'delete_' + table
+        default = controller.delete_model_object
     else:
         method_name = 'update_' + table
-    return getattr(controller, method_name, None)
+        default = controller.update_model_object
+    return getattr(controller, method_name, default)
 
 
 def process_object(controller, table, action, argument):
