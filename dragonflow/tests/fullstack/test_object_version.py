@@ -13,12 +13,9 @@
 import contextlib
 
 from oslo_concurrency import lockutils
-from oslo_config import cfg
 
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-
-DF_PLUGIN = 'dragonflow.neutron.plugin.DFPlugin'
 
 
 class TestObjectVersion(test_base.DFTestBase):
@@ -131,8 +128,6 @@ class TestObjectVersion(test_base.DFTestBase):
         self.assertFalse(secgroup.exists())
 
     def test_qospolicy_version(self):
-        if cfg.CONF.core_plugin == DF_PLUGIN:
-            return
 
         qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
                                                         self.nb_api))

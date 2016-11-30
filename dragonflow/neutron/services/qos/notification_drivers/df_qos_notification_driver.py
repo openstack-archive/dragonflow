@@ -11,7 +11,6 @@
 #    under the License.
 
 from neutron.plugins.common import constants as service_constants
-from neutron.plugins.ml2 import plugin as ml2_plugin
 from neutron.services.qos.notification_drivers import qos_base
 from neutron_lib.plugins import directory
 
@@ -36,12 +35,9 @@ class DFQosServiceNotificationDriver(
     def nb_api(self):
         if self._nb_api is None:
             plugin = directory.get_plugin()
-            if isinstance(plugin, ml2_plugin.Ml2Plugin):
-                mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
-                self._nb_api = mech_driver.nb_api
-            else:
-                # DF neutron plugin
-                self._nb_api = plugin.nb_api
+            mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
+            self._nb_api = mech_driver.nb_api
+
         return self._nb_api
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS_POLICY_CREATE_OR_UPDATE)
