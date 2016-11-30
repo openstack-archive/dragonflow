@@ -65,7 +65,7 @@ class DBNotifyInterface(object):
                        compute node, and is removed from db
         """
 
-    def logical_switch_deleted(self, lswitch):
+    def delete_lswitch(self, lswitch):
         """logical switch deleted hook callback
 
 

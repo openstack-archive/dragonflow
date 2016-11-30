@@ -45,8 +45,8 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.controller.topology = topology.Topology(self.controller, False)
 
         # Add basic network topology
-        self.controller.logical_switch_updated(fake_logic_switch1)
-        self.controller.logical_switch_updated(fake_external_switch1)
+        self.controller.update_lswitch(fake_logic_switch1)
+        self.controller.update_lswitch(fake_external_switch1)
         self.controller.router_updated(fake_logic_router1)
 
         self.arp_responder = mock.patch(

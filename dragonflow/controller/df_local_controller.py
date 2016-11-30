@@ -160,9 +160,9 @@ class DfLocalController(object):
                     df_db_objects_refresh.DfObjectRefresher(
                         'Switches',
                         self.db_store.get_lswitch_keys,
-                        self.nb_api.get_all_logical_switches,
-                        self.logical_switch_updated,
-                        self.logical_switch_deleted),
+                        self.nb_api.get_all_lswitch,
+                        self.update_lswitch,
+                        self.delete_lswitch),
                     df_db_objects_refresh.DfObjectRefresher(
                         'Security Groups',
                         self.db_store.get_security_group_keys,
@@ -229,16 +229,16 @@ class DfLocalController(object):
                 self.vswitch_api.delete_port(port)
                 return
 
-    def logical_switch_updated(self, lswitch):
+    def update_lswitch(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
         if not self._is_valid_version(old_lswitch, lswitch):
             return
 
         LOG.info(_LI("Adding/Updating Logical Switch = %s"), lswitch)
-        self.db_store.set_lswitch(lswitch.get_id(), lswitch)
+        self.db_store.update_lswitch(lswitch.get_id(), lswitch)
         self.open_flow_app.notify_update_logical_switch(lswitch)
 
-    def logical_switch_deleted(self, lswitch_id):
+    def delete_lswitch(self, lswitch_id):
         lswitch = self.db_store.get_lswitch(lswitch_id)
         LOG.info(_LI("Removing Logical Switch = %s") % lswitch_id)
         if lswitch is None:
@@ -246,7 +246,7 @@ class DfLocalController(object):
                         lswitch_id)
             return
         self.open_flow_app.notify_remove_logical_switch(lswitch)
-        self.db_store.del_lswitch(lswitch_id)
+        self.db_store.delete_lswitch(lswitch_id)
 
     def _is_physical_chassis(self, chassis):
         if not chassis or chassis == constants.DRAGONFLOW_VIRTUAL_PORT:
