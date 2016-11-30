@@ -89,6 +89,10 @@ class NbApi(object):
         )
         self.publisher = self._PublisherCRUDHelper(self, db_models.Publisher)
         self.qos_policy = self._CRUDHelper(self, db_models.QosPolicy)
+        self.flowclassifier = self._CRUDHelper(self, db_models.FlowClassifier)
+        self.portpair = self._CRUDHelper(self, db_models.PortPair)
+        self.portpairgroup = self._CRUDHelper(self, db_models.PortPairGroup)
+        self.portchain = self._CRUDHelper(self, db_models.PortChain)
 
         if self.use_pubsub:
             self.pubsub = PubSub(

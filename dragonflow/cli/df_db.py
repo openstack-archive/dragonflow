@@ -26,6 +26,8 @@ db_tables = [models.LogicalPort.table_name, models.LogicalSwitch.table_name,
              models.LogicalRouter.table_name, models.Chassis.table_name,
              models.SecurityGroup.table_name, models.Floatingip.table_name,
              models.QosPolicy.table_name, models.Publisher.table_name,
+             models.PortPair.table_name, models.PortPairGroup.table_name,
+             models.PortChain.table_name, models.FlowClassifier.table_name,
              'unique_key', 'portstats']
 
 
