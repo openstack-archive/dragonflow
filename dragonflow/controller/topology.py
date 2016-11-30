@@ -229,7 +229,7 @@ class Topology(object):
             self._del_from_topic_subscribed(topic, lport_id)
 
     def _add_to_topic_subscribed(self, topic, lport_id):
-        if not self.enable_selective_topo_dist:
+        if not self.enable_selective_topo_dist or not topic:
             return
 
         if topic not in self.topic_subscribed:
@@ -242,7 +242,7 @@ class Topology(object):
             self.topic_subscribed[topic].add(lport_id)
 
     def _del_from_topic_subscribed(self, topic, lport_id):
-        if not self.enable_selective_topo_dist:
+        if not self.enable_selective_topo_dist or not topic:
             return
         port_ids = self.topic_subscribed[topic]
         port_ids.remove(lport_id)

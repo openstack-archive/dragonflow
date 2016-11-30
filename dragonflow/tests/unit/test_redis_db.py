@@ -51,14 +51,49 @@ class TestRedisDB(tests_base.BaseTestCase):
         self.RedisDbDriver.redis_mgt = redis_mgt
         redis_mgt.get_ip_by_key.return_value = '0.0.0.0:1000'
 
+        #test get_key
         result = self.RedisDbDriver.get_key('table', 'key')
         self.assertEqual('value', result)
+        redis_mgt.get_ip_by_key.assert_called_with('a')
+
+        result = self.RedisDbDriver.get_key('table', 'key', '')
+        self.assertEqual('value', result)
+        redis_mgt.get_ip_by_key.assert_called_with('a')
+
         result = self.RedisDbDriver.get_key('table', 'key', 'topic')
         self.assertEqual('value', result)
+        local_key = '{table.topic}.key'
+        redis_mgt.get_ip_by_key.assert_called_with(local_key)
+
+        # test get_all_entries
         result = self.RedisDbDriver.get_all_entries('table')
         self.assertEqual(['value'], result)
+        redis_mgt.get_ip_by_key.assert_called_with('a')
+
+        result = self.RedisDbDriver.get_all_entries('table', '')
+        self.assertEqual(['value'], result)
+        redis_mgt.get_ip_by_key.assert_called_with('a')
+
         result = self.RedisDbDriver.get_all_entries('table', 'topic')
         self.assertEqual(['v', 'a', 'l', 'u', 'e'], result)
+        local_key = '{table.topic}.*'
+        redis_mgt.get_ip_by_key.assert_called_with(local_key)
+
+        # test get_all_key
+        client.keys.return_value = ['{table.*}.key']
+        result = self.RedisDbDriver.get_all_keys('table')
+        self.assertEqual(['key'], result)
+        local_key = '{table.*}.*'
+        client.keys.assert_called_with(local_key)
+
+        result = self.RedisDbDriver.get_all_keys('table', '')
+        self.assertEqual(['key'], result)
+        client.keys.assert_called_with(local_key)
+
+        result = self.RedisDbDriver.get_all_keys('table', 'topic')
+        self.assertEqual(['key'], result)
+        local_key = '{table.topic}.*'
+        redis_mgt.get_ip_by_key.assert_called_with(local_key)
 
     def test_delete_key(self):
         client = mock.Mock()

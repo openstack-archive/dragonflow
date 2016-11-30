@@ -174,7 +174,7 @@ class RedisDbDriver(db_api.DbApi):
                 raise e
 
     def get_key(self, table, key, topic=None):
-        if topic is None:
+        if not topic:
             local_key = self._uuid_to_key(table, key, '*')
             self._sync_master_list()
             try:
@@ -229,7 +229,7 @@ class RedisDbDriver(db_api.DbApi):
         res = []
         ip_port = None
         self._sync_master_list()
-        if topic is None:
+        if not topic:
             local_key = self._uuid_to_key(table, '*', '*')
             try:
                 for host, client in six.iteritems(self.clients):
@@ -264,7 +264,7 @@ class RedisDbDriver(db_api.DbApi):
         res = []
         ip_port = None
         self._sync_master_list()
-        if topic is None:
+        if not topic:
             local_key = self._uuid_to_key(table, '*', '*')
             try:
                 for host, client in six.iteritems(self.clients):
@@ -324,7 +324,7 @@ class RedisDbDriver(db_api.DbApi):
         pass
 
     def _uuid_to_key(self, table, key, topic):
-        if topic is None:
+        if not topic:
             local_key = ('{' + table + '.' + '}' + '.' + key)
         else:
             local_key = ('{' + table + '.' + topic + '}' + '.' + key)
