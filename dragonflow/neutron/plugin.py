@@ -711,8 +711,6 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         if 'binding:host_id' in port:
             chassis = port['binding:host_id']
 
-        tunnel_key = self.nb_api.allocate_tunnel_key()
-
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldnt be mapped to
         # a valid ofport (or location)
@@ -734,7 +732,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
             parent_name=parent_name, tag=tag,
             enabled=port.get('admin_state_up', None),
-            chassis=chassis, tunnel_key=tunnel_key,
+            chassis=chassis,
             version=port_version,
             device_id=port.get('device_id', None),
             device_owner=port.get('device_owner', None),
@@ -890,7 +888,7 @@ class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                      router_version=router_version,
                                      mac=port['mac_address'],
                                      network=network,
-                                     tunnel_key=logical_port.get_tunnel_key())
+                                     unique_key=logical_port.get_unique_key())
         return result
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)

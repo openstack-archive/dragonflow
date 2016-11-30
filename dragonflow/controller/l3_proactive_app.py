@@ -95,7 +95,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         ofproto = datapath.ofproto
 
         mac = router_port.get_mac()
-        tunnel_key = router_port.get_tunnel_key()
+        tunnel_key = router_port.get_unique_key()
         dst_ip = router_port.get_ip()
 
         # Add router ARP & ICMP responder for IPv4 Addresses
@@ -159,7 +159,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                     local_network_id,
                     port.get_cidr_network(),
                     port.get_cidr_netmask(),
-                    port.get_tunnel_key(),
+                    port.get_unique_key(),
                     port_net_id,
                     port.get_mac())
 
@@ -262,7 +262,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         #  Actions:ttl-1, mod_dl_dst=next_hop_mac, load_reg7=next_hop_port_key,
         #  goto: egress_table
         dst_mac = nexthop_port.get_mac()
-        tunnel_key = nexthop_port.get_tunnel_key()
+        tunnel_key = nexthop_port.get_unique_key()
         match = self._generate_l3_match(parser,
                                         destination,
                                         nexthop_port,
@@ -432,7 +432,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
-        tunnel_key = router_port.get_tunnel_key()
+        tunnel_key = router_port.get_unique_key()
         ip = router_port.get_ip()
         mac = router_port.get_mac()
 
@@ -502,7 +502,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         dst_ip = lport.get_ip()
         dst_mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
-        tunnel_key = lport.get_tunnel_key()
+        tunnel_key = lport.get_unique_key()
 
         self._add_port_process(dst_ip, dst_mac, network_id, tunnel_key)
         self._reprocess_to_add_route(lport.get_topic(), dst_ip)

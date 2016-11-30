@@ -505,7 +505,6 @@ class DFMechDriver(driver_api.MechanismDriver):
         port = context.current
         ips = [ip['ip_address'] for ip in port.get('fixed_ips', [])]
         subnets = [ip['subnet_id'] for ip in port.get('fixed_ips', [])]
-        tunnel_key = self.nb_api.allocate_tunnel_key()
 
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldnt be mapped to
@@ -531,7 +530,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             subnets=subnets,
             name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
             enabled=port.get('admin_state_up', False),
-            chassis=chassis, tunnel_key=tunnel_key,
+            chassis=chassis,
             version=port['revision_number'],
             device_owner=port.get('device_owner', None),
             device_id=port.get('device_id', None),

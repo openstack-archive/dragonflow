@@ -139,7 +139,7 @@ class L2App(df_base_app.DFlowApp):
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
         ofport = lport.get_external_value('ofport')
-        tunnel_key = lport.get_tunnel_key()
+        tunnel_key = lport.get_unique_key()
         device_owner = lport.get_device_owner()
 
         parser = self.get_datapath().ofproto_parser
@@ -194,7 +194,7 @@ class L2App(df_base_app.DFlowApp):
         lport_id = lport.get_id()
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
-        tunnel_key = lport.get_tunnel_key()
+        tunnel_key = lport.get_unique_key()
         device_owner = lport.get_device_owner()
 
         parser = self.get_datapath().ofproto_parser
@@ -223,7 +223,7 @@ class L2App(df_base_app.DFlowApp):
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
         ofport = lport.get_external_value('ofport')
-        tunnel_key = lport.get_tunnel_key()
+        tunnel_key = lport.get_unique_key()
         device_owner = lport.get_device_owner()
 
         parser = self.get_datapath().ofproto_parser
@@ -401,7 +401,7 @@ class L2App(df_base_app.DFlowApp):
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
         ofport = lport.get_external_value('ofport')
-        tunnel_key = lport.get_tunnel_key()
+        tunnel_key = lport.get_unique_key()
         device_owner = lport.get_device_owner()
 
         parser = self.get_datapath().ofproto_parser

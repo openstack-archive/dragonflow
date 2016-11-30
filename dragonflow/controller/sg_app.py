@@ -266,7 +266,7 @@ class SGApp(df_base_app.DFlowApp):
 
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            tunnel_key = lport.get_tunnel_key()
+            tunnel_key = lport.get_unique_key()
             lport_classify_match = {"reg7": tunnel_key}
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
@@ -306,7 +306,7 @@ class SGApp(df_base_app.DFlowApp):
 
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            tunnel_key = lport.get_tunnel_key()
+            tunnel_key = lport.get_unique_key()
             lport_classify_match = {"reg7": tunnel_key}
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
@@ -355,7 +355,7 @@ class SGApp(df_base_app.DFlowApp):
         if direction == 'ingress':
             pre_table_id = const.INGRESS_CONNTRACK_TABLE
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            tunnel_key = lport.get_tunnel_key()
+            tunnel_key = lport.get_unique_key()
             lport_classify_match = {"reg7": tunnel_key}
         else:
             pre_table_id = const.EGRESS_CONNTRACK_TABLE
@@ -387,7 +387,7 @@ class SGApp(df_base_app.DFlowApp):
 
         if direction == 'ingress':
             pre_table_id = const.INGRESS_CONNTRACK_TABLE
-            tunnel_key = lport.get_tunnel_key()
+            tunnel_key = lport.get_unique_key()
             lport_classify_match = {"reg7": tunnel_key}
         else:
             pre_table_id = const.EGRESS_CONNTRACK_TABLE

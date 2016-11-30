@@ -147,10 +147,6 @@ class NbApi(object):
             self.publisher.send_event(update)
             eventlet.sleep(0)
 
-    def allocate_tunnel_key(self):
-        return self.driver.allocate_unique_key(
-            db_models.LogicalPort.table_name)
-
     def get_all_port_status_keys(self):
         topics = self.driver.get_all_entries('portstats')
         topic = random.choice(topics)
@@ -534,6 +530,8 @@ class NbApi(object):
         lport['id'] = id
         lport['lswitch'] = lswitch_id
         lport['topic'] = topic
+        lport[db_models.UNIQUE_KEY] = self.driver.allocate_unique_key(
+            db_models.LogicalPort.table_name)
         for col, val in columns.items():
             lport[col] = val
         lport_json = jsonutils.dumps(lport)
