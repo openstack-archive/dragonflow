@@ -57,6 +57,7 @@ Specs
     virtual_tunnel_port
     ipv6
     service_function_chaining
+    classification_app
 
 Templates
 ---------
