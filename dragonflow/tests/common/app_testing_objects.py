@@ -19,19 +19,16 @@ import threading
 import time
 
 from neutron.agent.common import utils
-from oslo_config import cfg
 from oslo_log import log
 import pytun
 import ryu.lib.packet
 
 from dragonflow._i18n import _LI, _LE
-from dragonflow.common import common_params
 from dragonflow.common import utils as d_utils
+from dragonflow import conf as cfg
 from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_objects as objects
 
-
-cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 LOG = log.getLogger(__name__)
 

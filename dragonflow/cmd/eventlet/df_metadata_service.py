@@ -19,7 +19,6 @@ from neutron.conf.agent.metadata import config as metadata_conf
 from neutron import wsgi
 
 from dragonflow._i18n import _LI
-from dragonflow.common import common_params
 from dragonflow import conf as cfg
 from dragonflow.controller import metadata_service_app
 
@@ -71,7 +70,6 @@ def environment_destroy():
 def main():
     metadata_conf.register_meta_conf_opts(
         metadata_conf.METADATA_PROXY_HANDLER_OPTS)
-    cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
     config.init(sys.argv[1:])
     config.setup_logging()
     environment_setup()

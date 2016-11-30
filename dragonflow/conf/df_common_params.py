@@ -15,7 +15,7 @@ from oslo_config import cfg
 from dragonflow._i18n import _
 from neutron.extensions import portbindings
 
-DF_OPTS = [
+df_opts = [
     cfg.IPOpt('remote_db_ip',
               default='127.0.0.1',
               help=_('The remote db server ip address')),
@@ -159,3 +159,7 @@ DF_OPTS = [
         help=_('The name of the interface to bind the metadata service proxy'),
     )
 ]
+
+
+def register_opts():
+    cfg.CONF.register_opts(df_opts, 'df')

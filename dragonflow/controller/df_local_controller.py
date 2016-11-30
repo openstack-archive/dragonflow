@@ -25,7 +25,6 @@ from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
 from dragonflow._i18n import _LI, _LW
-from dragonflow.common import common_params
 from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
@@ -40,8 +39,6 @@ from dragonflow.ovsdb import vswitch_impl
 
 
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
-
-cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 
 class DfLocalController(object):

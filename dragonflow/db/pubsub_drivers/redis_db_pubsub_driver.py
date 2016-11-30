@@ -13,19 +13,16 @@
 #    under the License.
 
 import eventlet
-from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import redis
 
 from dragonflow._i18n import _LE, _LW, _LI
-from dragonflow.common import common_params
+from dragonflow import conf as cfg
 from dragonflow.db.drivers import redis_mgt
 from dragonflow.db import pub_sub_api
 
 LOG = logging.getLogger(__name__)
-
-cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 
 class RedisPubSub(pub_sub_api.PubSubApi):
