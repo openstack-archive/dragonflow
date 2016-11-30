@@ -283,6 +283,30 @@ class NbApi(object):
             elif action == 'delete':
                 ovs_port = db_models.OvsPort(value)
                 self.controller.ovs_port_deleted(ovs_port)
+        elif db_models.PortPair.table_name == table:
+            if action == ('create', 'set'):
+                pp = db_models.PortPair(value)
+                self.controller.portpair_updated(pp)
+            elif action == 'delete':
+                self.controller.portpair_deleted(key)
+        elif db_models.PortPairGroup.table_name == table:
+            if action == ('create', 'set'):
+                ppg = db_models.PortPairGroup(value)
+                self.controller.portpairgroup_updated(ppg)
+            elif action == 'delete':
+                self.controller.portpairgroup_deleted(key)
+        elif db_models.PortChain.table_name == table:
+            if action == ('create', 'set'):
+                pc = db_models.PortChain(value)
+                self.controller.portchain_updated(pc)
+            elif action == 'delete':
+                self.controller.portchain_deleted(key)
+        elif db_models.FlowClassifier.table_name == table:
+            if action in ('create', 'set'):
+                fc = db_models.FlowClassifier(value)
+                self.controller.flowclassifier_updated(fc)
+            elif action == 'delete':
+                self.controller.flowclassifier_deleted(key)
         elif 'log' == action:
             message = _LI(
                 'Log event (Info): '
