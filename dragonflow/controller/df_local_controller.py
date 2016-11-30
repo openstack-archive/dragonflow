@@ -19,6 +19,7 @@ import time
 
 from neutron.agent.common import config
 from neutron.common import config as common_config
+from oslo_log import helpers as log_helpers
 from oslo_log import log
 from oslo_serialization import jsonutils
 from ryu.base import app_manager
@@ -573,6 +574,38 @@ class DfLocalController(object):
 
     def get_chassis_name(self):
         return self.chassis_name
+
+    @log_helpers.log_method_call
+    def portpair_updated(self, pp):
+        pass
+
+    @log_helpers.log_method_call
+    def portpair_deleted(self, pp_id):
+        pass
+
+    @log_helpers.log_method_call
+    def portpairgroup_updated(self, ppg):
+        pass
+
+    @log_helpers.log_method_call
+    def portpairgroup_deleted(self, ppg_id):
+        pass
+
+    @log_helpers.log_method_call
+    def portchain_updated(self, pc):
+        pass
+
+    @log_helpers.log_method_call
+    def portchain_deleted(self, pc_id):
+        pass
+
+    @log_helpers.log_method_call
+    def flowclassifier_updated(self, fc):
+        pass
+
+    @log_helpers.log_method_call
+    def flowclassifier_deleted(self, fc_id):
+        pass
 
 
 def init_ryu_config():
