@@ -34,7 +34,6 @@ class CacheManager(object):
             'router': {},
             'floatingip': {},
             'secgroup': {},
-            'publisher': {}
         }
 
     def get(self, table, key):
@@ -126,11 +125,6 @@ class DBConsistencyManager(object):
                 self.controller.floatingip_deleted(local_object.get_id())
             else:
                 self.controller.floatingip_updated(df_object)
-        elif table == 'publisher':
-            if action == 'delete':
-                self.controller.publisher_deleted(local_object.get_id())
-            else:
-                self.controller.publisher_updated(df_object)
 
     def _verify_object(self, table, id, action, df_object, local_object=None):
         """Verify the object status and judge whether to create/update/delete
@@ -194,10 +188,6 @@ class DBConsistencyManager(object):
         elif table == 'floatingip':
             df_objects = self.nb_api.get_floatingips(topic)
             local_objects = self.db_store.get_floatingips(topic)
-        elif table == 'publisher':
-            df_objects = self.nb_api.get_publishers()
-            local_objects = self.db_store.get_publishers()
-
         return df_objects, local_objects
 
     def _compare_df_and_local_data(
@@ -264,9 +254,6 @@ class DBConsistencyManager(object):
                 table, df_objects, local_objects, direct)
 
     def handle_data_comparison(self, tenants, table, direct):
-        if table == 'publisher':
-            self._get_and_compare_df_and_local_data(table, direct)
-            return
         for topic in tenants:
             self._get_and_compare_df_and_local_data(table, direct, topic)
 
