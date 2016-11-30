@@ -14,14 +14,10 @@ import contextlib
 
 from neutronclient.common import exceptions as n_exc
 from oslo_concurrency import lockutils
-from oslo_config import cfg
 
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-
-# TODO(xiaohhui): This should be removed, once the DFPlugin has been removed.
-DF_PLUGIN = 'dragonflow.neutron.plugin.DFPlugin'
 
 
 class TestNeutronAPIandDB(test_base.DFTestBase):
@@ -179,8 +175,6 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(network.exists())
 
     def test_create_port_with_qospolicy(self):
-        if cfg.CONF.core_plugin == DF_PLUGIN:
-            return
 
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
@@ -213,8 +207,6 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(qospolicy.exists())
 
     def test_update_port_with_qospolicy(self):
-        if cfg.CONF.core_plugin == DF_PLUGIN:
-            return
 
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
@@ -315,8 +307,6 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertFalse(secgroup.exists())
 
     def test_create_delete_qos_policy(self):
-        if cfg.CONF.core_plugin == DF_PLUGIN:
-            return
 
         qospolicy = self.store(
             objects.QosPolicyTestObj(self.neutron, self.nb_api))
