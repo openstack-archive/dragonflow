@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import functools
 import time
 
 from oslo_config import cfg
@@ -62,6 +63,17 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
 
     def load(self, *args, **kwargs):
         self.dispatcher.load(*args, **kwargs)
+
+    def register_model(self, model):
+        for event in model.get_events():
+            callback_name = '{table_name}_{event}'.format(
+                table_name=model.table_name,
+                event=event,
+            )
+            model.register(event, self._get_dispatch_call(callback_name))
+
+    def _get_dispatch_call(self, func_name):
+        return functools.partial(self.dispatcher.dispatch, func_name)
 
     def is_ready(self):
         return self.datapath is not None
