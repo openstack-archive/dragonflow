@@ -149,6 +149,33 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def notify_delete_qos_policy(self, qos):
         self.dispatcher.dispatch('delete_qos_policy', qos)
 
+    def notify_create_portpairgroup(self, ppg):
+        self.dispatcher.dispatch('create_portpairgroup', ppg)
+
+    def notify_update_portpairgroup(self, ppg):
+        self.dispatcher.dispatch('update_portpairgroup', ppg)
+
+    def notify_delete_portpairgroup(self, ppg):
+        self.dispatcher.dispatch('delete_portpairgroup', ppg)
+
+    def notify_create_portchain(self, pc):
+        self.dispatcher.dispatch('create_portchain', pc)
+
+    def notify_update_portchain(self, pc):
+        self.dispatcher.dispatch('update_portchain', pc)
+
+    def notify_delete_portchain(self, pc):
+        self.dispatcher.dispatch('delete_portchain', pc)
+
+    def notify_create_flowclassifier(self, fc):
+        self.dispatcher.dispatch('create_flowclassifier', fc)
+
+    def notify_update_flowclassifier(self, fc):
+        self.dispatcher.dispatch('update_flowclassifier', fc)
+
+    def notify_delete_flowclassifier(self, fc):
+        self.dispatcher.dispatch('delete_flowclassifier', fc)
+
     @handler.set_ev_handler(ofp_event.EventOFPSwitchFeatures,
                             handler.CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
