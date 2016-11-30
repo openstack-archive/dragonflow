@@ -15,16 +15,10 @@ from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
-from oslo_config import cfg
-
-DF_PLUGIN = 'dragonflow.neutron.plugin.DFPlugin'
-
 
 class TestRemotePort(test_base.DFTestBase):
 
     def test_remote_port(self):
-        if cfg.CONF.core_plugin == DF_PLUGIN:
-            return
 
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create(network={'name': 'network1'})
