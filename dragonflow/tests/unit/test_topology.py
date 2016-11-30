@@ -77,28 +77,12 @@ class TestTopology(tests_base.BaseTestCase):
         self.lport1 = LogicalPort(self.lport1_value)
         self.lswitch1 = LogicalSwitch(self.lswitch1_value)
 
-    def test_vm_port_online(self):
-        self.mock_controller.reset_mock()
-        self.mock_nb_api.get_logical_port.return_value = self.lport1
-        self.mock_nb_api.get_all_logical_switches.return_value = \
-            [self.lswitch1]
-        self.mock_nb_api.get_all_logical_ports.return_value = [self.lport1]
-        self.mock_nb_api.get_routers.return_value = []
-        self.mock_nb_api.get_security_groups.return_value = []
-        self.mock_nb_api.get_floatingips.return_value = []
-
-        self.topology.ovs_port_updated(self.ovs_port1)
-
-        self.mock_controller.logical_port_updated.assert_called_with(
-            self.lport1)
-        self.mock_nb_api.subscriber.register_topic.assert_called_with(
-            self.lport1.get_topic())
-
-    def test_vm_port_offline(self):
+    def test_vm_on_and_off_line(self):
         self.mock_controller.reset_mock()
         self.db_store.set_port(
             self.lport1.get_id(),
             self.lport1,
+            True,
             self.lport1.get_topic()
         )
         self.mock_nb_api.get_logical_port.return_value = self.lport1
@@ -110,13 +94,30 @@ class TestTopology(tests_base.BaseTestCase):
         self.mock_nb_api.get_floatingips.return_value = []
 
         self.topology.ovs_port_updated(self.ovs_port1)
+        self.mock_controller.logical_port_updated.assert_called_with(
+            self.lport1)
+        self.mock_nb_api.subscriber.register_topic.assert_called_with(
+            self.lport1.get_topic())
 
         self.topology.ovs_port_deleted(self.ovs_port1.get_id())
-
         self.mock_controller.logical_port_deleted.assert_called_with(
             self.lport1.get_id())
         self.mock_nb_api.subscriber.unregister_topic.assert_called_with(
             self.lport1.get_topic())
+
+        self.mock_nb_api.reset_mock()
+        self.lport1.inner_obj['topic'] = ''
+        self.db_store.set_port(
+            self.lport1.get_id(),
+            self.lport1,
+            True,
+            ''
+        )
+        self.topology.ovs_port_updated(self.ovs_port1)
+        self.mock_nb_api.subscriber.register_topic.assert_not_called()
+
+        self.topology.ovs_port_deleted(self.ovs_port1.get_id())
+        self.mock_nb_api.subscriber.unregister_topic.assert_not_called()
 
     def test_check_topology_info(self):
         topic = '111-222-333'
