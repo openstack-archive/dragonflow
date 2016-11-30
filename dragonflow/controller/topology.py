@@ -174,6 +174,8 @@ class Topology(object):
                         % str(ovs_port))
             return
         topic = lport.get_topic()
+        if not topic:
+            return
         self._add_to_topic_subscribed(topic, lport_id)
 
         # update lport, notify apps
@@ -229,7 +231,7 @@ class Topology(object):
             self._del_from_topic_subscribed(topic, lport_id)
 
     def _add_to_topic_subscribed(self, topic, lport_id):
-        if not self.enable_selective_topo_dist:
+        if not self.enable_selective_topo_dist or not topic:
             return
 
         if topic not in self.topic_subscribed:
@@ -242,7 +244,7 @@ class Topology(object):
             self.topic_subscribed[topic].add(lport_id)
 
     def _del_from_topic_subscribed(self, topic, lport_id):
-        if not self.enable_selective_topo_dist:
+        if not self.enable_selective_topo_dist or not topic:
             return
         port_ids = self.topic_subscribed[topic]
         port_ids.remove(lport_id)
@@ -328,6 +330,8 @@ class Topology(object):
                                 ovs_port)
                     continue
                 topic = lport.get_topic()
+                if not topic:
+                    continue
                 new_ovs_to_lport_mapping[key] = {
                     'lport_id': lport_id, 'topic': topic}
                 if not delete_ovs_to_lport_mapping.pop(key, None):
