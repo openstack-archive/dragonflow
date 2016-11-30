@@ -118,8 +118,15 @@ class DfLocalController(object):
             self.vswitch_api.set_controller_fail_mode(
                 self.integration_bridge, 'secure')
         self.open_flow_app.start()
+        self._register_models()
         df_db_objects_refresh.initialize_object_refreshers(self)
         self.db_sync_loop()
+
+    def register_models(self):
+        for model in models2.iter_models():
+            self.open_flow_app.register_model(model)
+            df_db_objects_refresh.register_model(model)
+            # FIXME add db_consistency for new models here
 
     def db_sync_loop(self):
         while True:
@@ -563,6 +570,21 @@ class DfLocalController(object):
                                                  active_port.get_topic())
             if lport is not None:
                 self.open_flow_app.notify_remove_active_port(active_port)
+
+    def update_model_object(self, obj):
+        original_obj = self.db_store2.get(obj)
+        if original_obj is None:
+            obj.emit_created()
+        elif obj.is_newer_than(original_obj):
+            obj.emit_updated(original_obj)
+        else:
+            return
+
+        self.db_store2.update(obj)
+
+    def delete_model_object(self, obj):
+        obj.emit_deleted()
+        self.db_store2.delete(obj)
 
     def get_nb_api(self):
         return self.nb_api
