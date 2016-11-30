@@ -24,6 +24,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LI, _LW, _LE
+from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import models as db_models
@@ -92,6 +93,10 @@ class NbApi(object):
                     self.subscriber,
                     self.db_change_callback)
                 self.subscriber.register_hamsg_for_db()
+        self.flowclassifier = self._CRUDHelper(self, db_models.FlowClassifier)
+        self.portpair = self._CRUDHelper(self, db_models.PortPair)
+        self.portpairgroup = self._CRUDHelper(self, db_models.PortPairGroup)
+        self.portchain = self._CRUDHelper(self, db_models.PortChain)
 
     def set_db_consistency_manager(self, db_consistency_manager):
         self.db_consistency_manager = db_consistency_manager
@@ -843,3 +848,53 @@ class NbApi(object):
         except Exception:
             LOG.exception(_LE('Could not get qos policy %s'), policy_id)
             return None
+
+    class _CRUDHelper(object):
+        def __init__(self, api_nb, model):
+            self.api_nb = api_nb
+            self.model = model
+            self.table_name = model.table_name
+
+        @classmethod
+        def _serialize_object(cls, id, topic, columns):
+            obj = {
+                'id': id,
+                'topic': topic,
+            }
+            obj.update(columns)
+            return jsonutils.dumps(obj)
+
+        def create(self, id, topic, **columns):
+            obj_json = self._serialize_object(id, topic, columns)
+            self.api_nb.driver.create_key(self.table_name, id, obj_json, topic)
+            self.api_nb._send_db_change_event(self.table_name, id, 'create',
+                                              obj_json, topic)
+
+        def update(self, id, topic, **columns):
+            obj_json = self._serialize_object(id, topic, columns)
+            self.api_nb.driver.set_key(self.table_name, id, obj_json, topic)
+            self.api_nb._send_db_change_event(self.table_name, id, 'set',
+                                              obj_json, topic)
+
+        def delete(self, id, topic=None):
+            try:
+                self.api_nb.driver.delete_key(self.table_name, id, topic)
+            except df_exceptions.DBKeyNotFound:
+                LOG.warning(
+                    _LW('Could not find object %(id)s to delete in %(table)s'),
+                    id=id, table=self.table_name)
+            self.api_nb._send_db_change_event(self.table_name, id, 'delete',
+                                              id, topic)
+
+        def get(self, id, topic=None):
+            try:
+                value = self.api_nb.driver.get_key(self.table_name, id, topic)
+                return self.model(value)
+            except Exception:
+                LOG.exception(
+                    _LE('Could not get object {1} from table {0}').format(
+                        self.table_name, id))
+
+        def get_all_entries(self, topic=None):
+            res = self.api_nb.driver.get_all_entries(self.table_name, topic)
+            return [self.model(v) for v in res]
