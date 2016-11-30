@@ -113,6 +113,10 @@ def initialize_object_refreshers(df_controller):
                                    df_controller.delete_activeport))
 
 
+def add_refresher(refresher):
+    items.append(refresher)
+
+
 def sync_local_cache_from_nb_db(topics=None):
     """Sync local db store from nb db and apply to local OpenFlow
 
