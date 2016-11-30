@@ -74,13 +74,16 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             cfg.CONF.router_scheduler_driver)
         super(DFL3RouterPlugin, self).__init__()
         self._nb_api = None
-        self.core_plugin = None
         self._start_rpc_notifiers()
+
+    @property
+    def core_plugin(self):
+        return directory.get_plugin()
 
     @property
     def nb_api(self):
         if self._nb_api is None:
-            plugin = directory.get_plugin()
+            plugin = self.core_plugin
             if isinstance(plugin, ml2_plugin.Ml2Plugin):
                 mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
                 self._nb_api = mech_driver.nb_api
@@ -265,11 +268,6 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             fip['status'] = self.nb_api.get_floatingip(id).get_status()
             return fip
 
-    def _get_core_plugin(self):
-        if not self.core_plugin:
-            self.core_plugin = directory.get_plugin()
-        return self.core_plugin
-
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def add_router_interface(self, context, router_id, interface_info):
         result = super(DFL3RouterPlugin, self).add_router_interface(
@@ -277,7 +275,6 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         router = self.get_router(context, router_id)
         router_version = router['revision_number']
 
-        self.core_plugin = self._get_core_plugin()
         port = self.core_plugin.get_port(context, result['port_id'])
         subnet = self.core_plugin.get_subnet(context, result['subnet_id'])
         cidr = netaddr.IPNetwork(subnet['cidr'])
