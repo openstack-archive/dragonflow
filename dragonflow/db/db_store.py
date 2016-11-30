@@ -43,6 +43,10 @@ class TenantDbStore(object):
             models.SecurityGroup.table_name: self.secgroups,
             models.Publisher.table_name: self.publishers,
             models.QosPolicy.table_name: self.qos_policies,
+            models.PortPair.table_name: {},
+            models.PortPairGroup.table_name: {},
+            models.PortChain.table_name: {},
+            models.FlowClassifier.table_name: {},
         }
 
     def _get_table_by_name(self, table_name):
@@ -80,6 +84,10 @@ class DbStore(object):
         self.tenant_dbs = collections.defaultdict(TenantDbStore)
         self.chassis = {}
         self.remote_chassis_lport_map = {}
+        self.portpairs = self._CRUDHelper(self, models.PortPair)
+        self.portpairgroups = self._CRUDHelper(self, models.PortPairGroup)
+        self.portchains = self._CRUDHelper(self, models.PortChain)
+        self.flowclassifiers = self._CRUDHelper(self, models.FlowClassifier)
 
     def get(self, table_name, key, topic):
         if topic:
@@ -337,3 +345,20 @@ class DbStore(object):
 
     def delete_chassis(self, chassis_id):
         self.chassis.pop(chassis_id, None)
+
+    class _CRUDHelper(object):
+        def __init__(self, db_store, model):
+            self.db_store = db_store
+            self.table_name = model.table_name
+
+        def get(self, id, topic=None):
+            return self.db_store.get(self.table_name, id, topic)
+
+        def update(self, id, obj, topic=None):
+            self.db_store.set(self.table_name, id, obj, topic)
+
+        def delete(self, id, topic=None):
+            self.db_store.delete(self.table_name, id, topic)
+
+        def get_all_keys(self, topic=None):
+            return self.db_store.keys(self.table_name, topic)
