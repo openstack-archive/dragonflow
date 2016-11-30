@@ -33,7 +33,6 @@ from neutron.db import l3_agentschedulers_db
 from neutron.db import l3_gwmode_db
 from neutron.db.models import l3 as l3_db
 from neutron.plugins.common import constants
-from neutron.plugins.ml2 import plugin as ml2_plugin
 from neutron.quota import resource_registry
 from neutron.services import service_base
 from neutron_lib import constants as const
@@ -84,12 +83,9 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     def nb_api(self):
         if self._nb_api is None:
             plugin = self.core_plugin
-            if isinstance(plugin, ml2_plugin.Ml2Plugin):
-                mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
-                self._nb_api = mech_driver.nb_api
-            else:
-                # DF neutron plugin
-                self._nb_api = plugin.nb_api
+            mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
+            self._nb_api = mech_driver.nb_api
+
         return self._nb_api
 
     def _start_rpc_notifiers(self):
