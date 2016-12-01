@@ -55,15 +55,6 @@ class TestDBConsistent(tests_base.BaseTestCase):
         self.nb_api.get_floatingips.return_value = [df_obj1, df_obj2]
         self.db_store.get_floatingips.return_value = [local_obj1, local_obj2]
 
-        self.nb_api.get_publishers.return_value = [df_obj1, df_obj2]
-        self.db_store.get_publishers.return_value = [local_obj1, local_obj2]
-
-        self.db_consistent.handle_data_comparison(
-                [self.topic], 'publisher', True)
-        self.controller.publisher_updated.assert_any_call(df_obj1)
-        self.controller.publisher_updated.assert_any_call(df_obj2)
-        self.controller.publisher_deleted.assert_any_call(self.lport_id3)
-
         self.db_consistent.handle_data_comparison(
                 [self.topic], 'lswitch', True)
         self.controller.logical_switch_updated.assert_any_call(df_obj1)
