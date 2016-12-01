@@ -14,7 +14,26 @@ from neutron.agent.common import utils as agent_utils
 from neutron.common import utils as n_utils
 import re
 
+from dragonflow.common import exceptions
 from dragonflow.tests.common import constants as const
+
+
+WAIT_UNTIL_TRUE_DEFAULT_TIMEOUT = 60
+WAIT_UNTIL_TRUE_DEFAULT_SLEEP = 1
+
+
+class TestTimeoutException(exceptions.DragonflowException):
+    message = 'Operation in testing timed out'
+
+
+def wait_until_true(predicate, timeout=WAIT_UNTIL_TRUE_DEFAULT_TIMEOUT,
+                    sleep=WAIT_UNTIL_TRUE_DEFAULT_SLEEP, exception=None):
+    """Wait until predicate() returns true, and return. Raises a
+    TestTimeoutException after timeout seconds, polling once every sleep
+    seoncds.
+    """
+    exception = exception or TestTimeoutException
+    return n_utils.wait_until_true(predicate, timeout, sleep, exception)
 
 
 def wait_until_is_and_return(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
@@ -25,7 +44,7 @@ def wait_until_is_and_return(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
         container['value'] = predicate()
         return container['value']
 
-    n_utils.wait_until_true(internal_predicate, timeout, sleep, exception)
+    wait_until_true(internal_predicate, timeout, sleep, exception)
     return container.get('value')
 
 
@@ -36,10 +55,7 @@ def wait_until_none(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
         if ret:
             return False
         return True
-    n_utils.wait_until_true(internal_predicate, timeout, sleep, exception)
-
-
-wait_until_true = n_utils.wait_until_true
+    wait_until_true(internal_predicate, timeout, sleep, exception)
 
 
 def print_command(full_args, run_as_root=False):
