@@ -17,6 +17,7 @@ from dragonflow.conf import df_dhcp
 from dragonflow.conf import df_dnat
 from dragonflow.conf import df_metadata_service
 from dragonflow.conf import df_ryu
+from dragonflow.conf import df_zmq_pubsub
 from dragonflow.conf import l2_ml2
 
 
@@ -29,3 +30,4 @@ df_metadata_service.register_opts()
 l2_ml2.register_opts()
 df_dnat.register_opts()
 df_ryu.register_opts()
+df_zmq_pubsub.register_opts()
