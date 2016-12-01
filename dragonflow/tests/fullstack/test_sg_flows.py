@@ -301,7 +301,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
             lambda: self._get_vm_port(ip, mac),
             exception=Exception('No port assigned to VM')
         )
-        tunnel_key = port.get_tunnel_key()
+        tunnel_key = port.get_unique_key()
         tunnel_key_hex = hex(tunnel_key)
 
         of_port = self._get_of_port(port.get_id())

@@ -290,7 +290,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                                      router_version=router_version,
                                      mac=port['mac_address'],
                                      network=network,
-                                     tunnel_key=logical_port.get_tunnel_key())
+                                     unique_key=logical_port.get_unique_key())
         return result
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)

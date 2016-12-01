@@ -72,7 +72,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                 router_port_info['network_id'],
                 router_port_info['tenant_id'],
                 router_version=router_with_int['revision_number'],
-                mac=mock.ANY, network=mock.ANY, tunnel_key=mock.ANY)
+                mac=mock.ANY, network=mock.ANY, unique_key=mock.ANY)
 
             router_port_info = self.l3p.remove_router_interface(
                  self.context, router['id'], data)

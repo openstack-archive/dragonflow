@@ -118,7 +118,7 @@ class L3App(df_base_app.DFlowApp):
 
     def _install_l3_flow(self, dst_router_port, dst_port, msg,
                          src_network_id):
-        reg7 = dst_port.get_tunnel_key()
+        reg7 = dst_port.get_unique_key()
         dst_ip = dst_port.get_ip()
         src_mac = dst_router_port.get_mac()
         dst_mac = dst_port.get_mac()
@@ -148,7 +148,7 @@ class L3App(df_base_app.DFlowApp):
 
         self.mod_flow(
             self.get_datapath(),
-            cookie=dst_router_port.get_tunnel_key(),
+            cookie=dst_router_port.get_unique_key(),
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_VERY_HIGH,
@@ -179,7 +179,7 @@ class L3App(df_base_app.DFlowApp):
         ofproto = datapath.ofproto
 
         mac = router_port.get_mac()
-        tunnel_key = router_port.get_tunnel_key()
+        tunnel_key = router_port.get_unique_key()
         dst_ip = router_port.get_ip()
 
         # Add router ARP & ICMP responder for IPv4 Addresses
@@ -232,7 +232,7 @@ class L3App(df_base_app.DFlowApp):
                 self._add_subnet_send_to_controller(local_network_id,
                                                     port.get_cidr_network(),
                                                     port.get_cidr_netmask(),
-                                                    port.get_tunnel_key())
+                                                    port.get_unique_key())
 
                 # From all the other interfaces to this new interface
                 router_port_net_id = self.db_store.get_unique_key_by_id(
@@ -245,7 +245,7 @@ class L3App(df_base_app.DFlowApp):
 
     def _install_flow_send_to_output_table(self, network_id, router_port):
         dst_ip = router_port.get_ip()
-        tunnel_key = router_port.get_tunnel_key()
+        tunnel_key = router_port.get_unique_key()
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
@@ -307,7 +307,7 @@ class L3App(df_base_app.DFlowApp):
             'lswitchs', router_port.get_lswitch_id())
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
-        tunnel_key = router_port.get_tunnel_key()
+        tunnel_key = router_port.get_unique_key()
         ip = router_port.get_ip()
         mac = router_port.get_mac()
 

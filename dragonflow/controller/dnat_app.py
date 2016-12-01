@@ -122,7 +122,7 @@ class DNATApp(df_base_app.DFlowApp):
         lport = self.db_store.get_local_port(floatingip.get_lport_id())
         mac = lport.get_mac()
         ip = lport.get_ip()
-        tunnel_key = lport.get_tunnel_key()
+        tunnel_key = lport.get_unique_key()
         local_network_id = lport.get_external_value('local_network_id')
 
         return mac, ip, tunnel_key, local_network_id

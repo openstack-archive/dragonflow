@@ -76,7 +76,7 @@ fake_logic_router1.inner_obj = {
                "lswitch": "fake_switch1",
                "topic": "fake_tenant1",
                "mac": "fa:16:3e:50:96:f4",
-               "tunnel_key": 14,
+               "unique_key": 14,
                "lrouter": "fake_router_id",
                "id": "fake_router_port1"}]}
 
@@ -138,7 +138,7 @@ fake_local_port1.inner_obj = {
     'device_owner': 'compute:None',
     'chassis': 'fake_host',
     'version': 2,
-    'tunnel_key': 2,
+    'unique_key': 2,
     'port_security_enabled': True,
     'binding_vnic_type': 'normal',
     'id': 'fake_port1',
@@ -165,7 +165,7 @@ fake_remote_port1.inner_obj = {
     'device_owner': 'compute:None',
     'chassis': 'fake_host2',
     'version': 2,
-    'tunnel_key': 5,
+    'unique_key': 5,
     'port_security_enabled': True,
     'binding_vnic_type': 'normal',
     'id': 'fake_remote_port',

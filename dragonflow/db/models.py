@@ -167,10 +167,6 @@ class LogicalPort(NbDbObjectWithUniqueKey):
     def get_lswitch_id(self):
         return self.inner_obj.get('lswitch')
 
-    def get_tunnel_key(self):
-        # TODO(xiaohhui): This should be replaced with get_unique_key
-        return int(self.inner_obj['tunnel_key'])
-
     def get_security_groups(self):
         return self.inner_obj.get('security_groups', [])
 
@@ -255,8 +251,9 @@ class LogicalRouterPort(NbObject):
     def get_network(self):
         return self.inner_obj.get('network')
 
-    def get_tunnel_key(self):
-        return self.inner_obj.get('tunnel_key')
+    def get_unique_key(self):
+        # The unique_key of corresponding lport.
+        return self.inner_obj.get(UNIQUE_KEY)
 
 
 class SecurityGroup(NbDbObjectWithUniqueKey):

@@ -245,7 +245,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 macs=[port['mac_address']], ips=mock.ANY,
                 subnets=mock.ANY, name=port['name'],
                 enabled=port['admin_state_up'],
-                chassis=mock.ANY, tunnel_key=mock.ANY,
+                chassis=mock.ANY,
                 version=port['revision_number'],
                 device_owner=port['device_owner'],
                 device_id=port['device_id'],

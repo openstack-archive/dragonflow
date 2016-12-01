@@ -53,7 +53,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
             'device_owner': 'compute:None',
             'chassis': 'fake_host',
             'version': 2,
-            'tunnel_key': 5,
+            'unique_key': 5,
             'port_security_enabled': True,
             'binding_vnic_type': 'normal',
             'id': 'fake_port2',

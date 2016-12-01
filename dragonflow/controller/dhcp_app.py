@@ -360,7 +360,7 @@ class DHCPApp(df_base_app.DFlowApp):
             LOG.warning(_LW("No support for non IPv4 protocol"))
             return
 
-        tunnel_key = lport.get_tunnel_key()
+        tunnel_key = lport.get_unique_key()
         if tunnel_key in self.local_tunnel_to_pid_map:
             self.local_tunnel_to_pid_map.pop(tunnel_key, None)
         # Remove ingress classifier for port
@@ -391,7 +391,7 @@ class DHCPApp(df_base_app.DFlowApp):
             return
 
         lport_id = lport.get_id()
-        tunnel_key = lport.get_tunnel_key()
+        tunnel_key = lport.get_unique_key()
         ofport = lport.get_external_value('ofport')
         port_rate_limiter = df_utils.RateLimiter(
                         max_rate=self.conf.df_dhcp_max_rate_per_sec,

@@ -77,7 +77,7 @@ class TestL2FLows(test_base.DFTestBase):
             lambda: self._get_vm_port(ip, mac),
             exception=Exception('No port assigned to VM')
         )
-        tunnel_key = port.get_tunnel_key()
+        tunnel_key = port.get_unique_key()
         tunnel_key_hex = hex(tunnel_key)
         r = self._check_tunnel_flows(ovs.dump(self.integration_bridge),
                                      metadataid,
@@ -133,7 +133,7 @@ class TestL2FLows(test_base.DFTestBase):
             lambda: self._get_vm_port(ip, mac),
             exception=Exception('No port assigned to VM')
         )
-        port_key = port.get_tunnel_key()
+        port_key = port.get_unique_key()
         port_key_hex = hex(port_key)
 
         r = self._check_vlan_flows(ovs.dump(self.integration_bridge),
@@ -306,7 +306,7 @@ class TestL2FLows(test_base.DFTestBase):
             lambda: self._get_vm_port(ip, mac),
             exception=Exception('No port assigned to VM')
         )
-        port_key = port.get_tunnel_key()
+        port_key = port.get_unique_key()
         port_key_hex = hex(port_key)
         r = self._check_flat_flows(ovs.dump(self.integration_bridge),
                                    metadataid, port_key_hex, mac)

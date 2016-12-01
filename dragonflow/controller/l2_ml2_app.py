@@ -157,7 +157,7 @@ class L2App(df_base_app.DFlowApp):
         network_type = lport.get_external_value('network_type')
         segmentation_id = lport.get_external_value('segmentation_id')
         ofport = lport.get_external_value('ofport')
-        port_key = lport.get_tunnel_key()
+        port_key = lport.get_unique_key()
         topic = lport.get_topic()
         device_owner = lport.get_device_owner()
 
@@ -335,7 +335,7 @@ class L2App(df_base_app.DFlowApp):
         lport_id = lport.get_id()
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
-        tunnel_key = lport.get_tunnel_key()
+        tunnel_key = lport.get_unique_key()
         segmentation_id = lport.get_external_value('segmentation_id')
         device_owner = lport.get_device_owner()
 
@@ -400,7 +400,7 @@ class L2App(df_base_app.DFlowApp):
         lport_id = lport.get_id()
         mac = lport.get_mac()
         ofport = lport.get_external_value('ofport')
-        port_key = lport.get_tunnel_key()
+        port_key = lport.get_unique_key()
         network_id = lport.get_external_value('local_network_id')
         network_type = lport.get_external_value('network_type')
         physical_network = lport.get_external_value('physical_network')
@@ -744,7 +744,7 @@ class L2App(df_base_app.DFlowApp):
         network_type = lport.get_external_value('network_type')
         segmentation_id = lport.get_external_value('segmentation_id')
         ofport = lport.get_external_value('ofport')
-        port_key = lport.get_tunnel_key()
+        port_key = lport.get_unique_key()
 
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
