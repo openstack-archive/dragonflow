@@ -21,14 +21,13 @@ import sys
 import time
 import uuid
 
-from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 
 from neutron.common import config as common_config
 
 from dragonflow._i18n import _, _LE
-from dragonflow.common import common_params
+from dragonflow import conf as cfg
 from dragonflow.db import api_nb
 
 
@@ -150,7 +149,6 @@ def run_client(nb_api):
 
 def main():
     cfg.CONF.register_opts(df_db_test_opts, 'df_db_test')
-    cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
     common_config.init(sys.argv[2:])
     # To enable logging, uncomment the following line:
     #common_config.setup_logging()

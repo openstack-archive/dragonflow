@@ -14,16 +14,13 @@ import argparse
 import socket
 
 from neutron.common import config as common_config
-from oslo_config import cfg
 from oslo_serialization import jsonutils
 
 from dragonflow.cli import utils as cli_utils
-from dragonflow.common import common_params
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
+from dragonflow import conf as cfg
 from dragonflow.db import models
-
-cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 
 db_tables = [models.LogicalPort.table_name, models.LogicalSwitch.table_name,
              models.LogicalRouter.table_name, models.Chassis.table_name,

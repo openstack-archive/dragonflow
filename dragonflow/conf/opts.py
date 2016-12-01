@@ -10,7 +10,7 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
-from dragonflow.common import common_params
+from dragonflow.conf import df_common_params
 from dragonflow.conf import df_dhcp
 from dragonflow.conf import df_dnat
 from dragonflow.conf import df_metadata_service
@@ -20,7 +20,7 @@ from dragonflow.conf import l2_ml2
 
 def list_opts():
     return [
-        ('df', common_params.DF_OPTS),
+        ('df', df_common_params.df_opts),
         ('df_ryu', df_ryu.df_ryu_opts),
         ('df_dhcp_app', df_dhcp.df_dhcp_opts),
         ('df_dnat_app', df_dnat.df_dnat_app_opts),

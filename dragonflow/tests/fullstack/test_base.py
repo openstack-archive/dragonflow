@@ -18,11 +18,10 @@ from neutron.common import config as common_config
 from neutronclient.neutron import client
 from neutronclient.v2_0 import client as client_v2_0
 import os_client_config
-from oslo_config import cfg
 from oslo_log import log
 
 from dragonflow._i18n import _LE
-from dragonflow.common import common_params
+from dragonflow import conf as cfg
 from dragonflow.db import api_nb
 from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
@@ -30,7 +29,6 @@ from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
 
 
-cfg.CONF.register_opts(common_params.DF_OPTS, 'df')
 LOG = log.getLogger(__name__)
 
 
