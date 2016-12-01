@@ -10,16 +10,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import functools
+
 from neutron.agent.ovsdb import impl_idl
 from neutron.agent.ovsdb.native import connection
-from neutron.agent.ovsdb.native import helpers
-from neutron.agent.ovsdb.native import idlutils
 from oslo_config import cfg
 from ovs.db import idl
-from ovs import poller
-import retrying
 import six
-import threading
 
 from dragonflow.common import constants
 from dragonflow.ovsdb import commands
@@ -56,32 +53,6 @@ ovsdb_monitor_table_filter_default = {
         'next_cfg'
     ]
 }
-
-
-def get_schema_helper(connection_string, db_name='Open_vSwitch', tables='all'):
-    try:
-        helper = idlutils.get_schema_helper(connection_string,
-                                            db_name)
-    except Exception:
-        # We may have failed do to set-manager not being called
-        helpers.enable_connection_uri(connection_string)
-
-        # There is a small window for a race, so retry up to a second
-        @retrying.retry(wait_exponential_multiplier=10,
-                        stop_max_delay=1000)
-        def do_get_schema_helper():
-            return idlutils.get_schema_helper(connection_string,
-                                              db_name)
-        helper = do_get_schema_helper()
-    if tables == 'all':
-        helper.register_all()
-    elif isinstance(tables, dict):
-        for table_name, columns in six.iteritems(tables):
-            if columns == 'all':
-                helper.register_table(table_name)
-            else:
-                helper.register_columns(table_name, columns)
-    return helper
 
 
 class DFIdl(idl.Idl):
@@ -122,23 +93,13 @@ class DFConnection(connection.Connection):
     schema externally or manually.
     Much of this code was taken directly from connection.Connection class.
     """
-    def __init__(
-            self, connection, timeout, schema_helper):
-        super(DFConnection, self).__init__(connection, timeout, None)
-        assert schema_helper is not None, "schema_helper parameter is None"
-        self._schema_helper = schema_helper
-
-    def start(self, nb_api):
-        with self.lock:
-            if self.idl is not None:
-                return
-
-            self.idl = DFIdl(nb_api, self.connection, self._schema_helper)
-            idlutils.wait_for_change(self.idl, self.timeout)
-            self.poller = poller.Poller()
-            self.thread = threading.Thread(target=self.run)
-            self.thread.setDaemon(True)
-            self.thread.start()
+    def update_schema_helper(self, helper):
+        tables = ovsdb_monitor_table_filter_default
+        for table_name, columns in six.iteritems(tables):
+            if columns == 'all':
+                helper.register_table(table_name)
+            else:
+                helper.register_columns(table_name, columns)
 
 
 class DFOvsdbApi(impl_idl.OvsdbIdl):
@@ -150,20 +111,19 @@ class DFOvsdbApi(impl_idl.OvsdbIdl):
     """
     ovsdb_connection = None
 
-    def __init__(self, context, db_connection, timeout):
+    def __init__(self, context, nb_api, db_connection, timeout):
         self.context = context
         if DFOvsdbApi.ovsdb_connection is None:
             DFOvsdbApi.ovsdb_connection = DFConnection(
                 db_connection,
                 timeout,
-                get_schema_helper(
-                    db_connection,
-                    tables=ovsdb_monitor_table_filter_default))
+                'Open_vSwitch',
+                idl_class=functools.partial(DFIdl, nb_api))
             # Override the super class's attribute
             impl_idl.OvsdbIdl.ovsdb_connection = DFOvsdbApi.ovsdb_connection
 
-    def start(self, nb_api):
-        DFOvsdbApi.ovsdb_connection.start(nb_api)
+    def start(self):
+        DFOvsdbApi.ovsdb_connection.start()
         self.idl = DFOvsdbApi.ovsdb_connection.idl
 
     def add_tunnel_port(self, chassis):
