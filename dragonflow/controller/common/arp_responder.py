@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from ryu.lib.packet import arp
 from ryu.ofproto import ether
 
 from dragonflow.controller.common import constants as const
@@ -42,7 +41,7 @@ class ArpResponder(object):
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_ARP)
         match.set_arp_tpa(utils.ipv4_text_to_int(str(self.interface_ip)))
-        match.set_arp_opcode(arp.ARP_REQUEST)
+        match.set_arp_opcode(const.ARP_OP_TYPE_REQUEST)
         if self.network_id is not None:
             match.set_metadata(self.network_id)
         return match
@@ -50,7 +49,7 @@ class ArpResponder(object):
     def _get_instructions(self):
         ofproto = self.datapath.ofproto
         parser = self.datapath.ofproto_parser
-        actions = [parser.OFPActionSetField(arp_op=arp.ARP_REPLY),
+        actions = [parser.OFPActionSetField(arp_op=const.ARP_OP_TYPE_REPLY),
                    parser.NXActionRegMove(src_field='arp_sha',
                                           dst_field='arp_tha',
                                           n_bits=48),

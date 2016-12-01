@@ -207,13 +207,15 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_ack_pkt.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
                                   src=dhcp_server_address,
                                   proto=pkt_ipv4.proto))
-        dhcp_ack_pkt.add_protocol(udp.udp(src_port=67, dst_port=68))
-        dhcp_ack_pkt.add_protocol(dhcp.dhcp(op=2, chaddr=pkt_ethernet.src,
-                                         siaddr=dhcp_server_address,
-                                         boot_file=dhcp_packet.boot_file,
-                                         yiaddr=lport.get_ip(),
-                                         xid=dhcp_packet.xid,
-                                         options=options))
+        dhcp_ack_pkt.add_protocol(udp.udp(src_port=const.DHCP_SERVER_PORT,
+                                          dst_port=const.DHCP_CLIENT_PORT))
+        dhcp_ack_pkt.add_protocol(dhcp.dhcp(op=DHCP_OFFER,
+                                            chaddr=pkt_ethernet.src,
+                                            siaddr=dhcp_server_address,
+                                            boot_file=dhcp_packet.boot_file,
+                                            yiaddr=lport.get_ip(),
+                                            xid=dhcp_packet.xid,
+                                            options=options))
         return dhcp_ack_pkt
 
     def _create_dhcp_offer(self, pkt, dhcp_packet, lport):
@@ -242,7 +244,8 @@ class DHCPApp(df_base_app.DFlowApp):
                         lease_time_bin, 4),
             dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT,
                         dhcp_server_address.packed, 4),
-            dhcp.option(15, domain_name_bin, len(self.domain_name)),
+            dhcp.option(DHCP_DOMAIN_NAME_OPT,
+                        domain_name_bin, len(self.domain_name)),
             dhcp.option(DHCP_CLASSLESS_ROUTE, host_routes, len(host_routes))]
         if gateway_address:
             option_list.append(dhcp.option(
@@ -259,13 +262,15 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_offer_pkt.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
                                    src=str(dhcp_server_address),
                                    proto=pkt_ipv4.proto))
-        dhcp_offer_pkt.add_protocol(udp.udp(src_port=67, dst_port=68))
-        dhcp_offer_pkt.add_protocol(dhcp.dhcp(op=2, chaddr=pkt_ethernet.src,
-                                         siaddr=str(dhcp_server_address),
-                                         boot_file=dhcp_packet.boot_file,
-                                         yiaddr=lport.get_ip(),
-                                         xid=dhcp_packet.xid,
-                                         options=options))
+        dhcp_offer_pkt.add_protocol(udp.udp(src_port=const.DHCP_SERVER_PORT,
+                                            dst_port=const.DHCP_CLIENT_PORT))
+        dhcp_offer_pkt.add_protocol(dhcp.dhcp(op=DHCP_OFFER,
+                                              chaddr=pkt_ethernet.src,
+                                              siaddr=str(dhcp_server_address),
+                                              boot_file=dhcp_packet.boot_file,
+                                              yiaddr=lport.get_ip(),
+                                              xid=dhcp_packet.xid,
+                                              options=options))
         return dhcp_offer_pkt
 
     def _get_dns_address_list_bin(self, subnet):
@@ -505,9 +510,9 @@ class DHCPApp(df_base_app.DFlowApp):
         if ip_addr:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                             ipv4_dst=ip_addr,
-                            ip_proto=17,
-                            udp_src=68,
-                            udp_dst=67,
+                            ip_proto=const.UDP_PROTOCOL_NUMBER,
+                            udp_src=const.DHCP_CLIENT_PORT,
+                            udp_dst=const.DHCP_SERVER_PORT,
                             metadata=network_id)
         else:
             match = parser.OFPMatch(metadata=network_id)
@@ -522,10 +527,10 @@ class DHCPApp(df_base_app.DFlowApp):
         parser = self.get_datapath().ofproto_parser
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                            eth_dst='ff:ff:ff:ff:ff:ff',
-                            ip_proto=17,
-                            udp_src=68,
-                            udp_dst=67)
+                            eth_dst=const.BROADCAST_MAC,
+                            ip_proto=const.UDP_PROTOCOL_NUMBER,
+                            udp_src=const.DHCP_CLIENT_PORT,
+                            udp_dst=const.DHCP_SERVER_PORT)
 
         self.add_flow_go_to_table(self.get_datapath(),
                                   const.SERVICES_CLASSIFICATION_TABLE,
@@ -536,9 +541,9 @@ class DHCPApp(df_base_app.DFlowApp):
         parser = self.get_datapath().ofproto_parser
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                             ipv4_dst=ip_addr,
-                            ip_proto=17,
-                            udp_src=68,
-                            udp_dst=67,
+                            ip_proto=const.UDP_PROTOCOL_NUMBER,
+                            udp_src=const.DHCP_CLIENT_PORT,
+                            udp_dst=const.DHCP_SERVER_PORT,
                             metadata=network_id)
 
         self.add_flow_go_to_table(self.get_datapath(),
