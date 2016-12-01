@@ -100,7 +100,8 @@ fake_logic_switch1.inner_obj = {
     "topic": "fake_tenant1",
     "version": 2,
     "network_type": "vxlan",
-    "id": "fake_switch1"}
+    "id": "fake_switch1",
+    "unique_key": 1}
 
 
 fake_external_switch1 = db_models.LogicalSwitch("{}")

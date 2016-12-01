@@ -19,7 +19,10 @@ from dragonflow.tests.unit import test_app_base
 class Test_API_NB(test_base.DFTestBase):
 
     def test_create_lswitch(self):
-        fake_lswitch = test_app_base.fake_logic_switch1.inner_obj
+        fake_lswitch = copy.deepcopy(
+            test_app_base.fake_logic_switch1.inner_obj)
+        del fake_lswitch['unique_key']
+
         self.nb_api.create_lswitch(**fake_lswitch)
         self.addCleanup(self.nb_api.delete_lswitch,
                         fake_lswitch['id'], fake_lswitch['topic'])
