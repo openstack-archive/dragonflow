@@ -86,7 +86,7 @@ class TestTopology(tests_base.BaseTestCase):
             self.lport1.get_topic()
         )
         self.mock_nb_api.get_logical_port.return_value = self.lport1
-        self.mock_nb_api.get_all_logical_switches.return_value = \
+        self.mock_nb_api.get_all_lswitch.return_value = \
             [self.lswitch1]
         self.mock_nb_api.get_all_logical_ports.return_value = [self.lport1]
         self.mock_nb_api.get_routers.return_value = []

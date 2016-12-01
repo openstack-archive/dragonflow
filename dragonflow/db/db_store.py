@@ -136,13 +136,13 @@ class DbStore(object):
     def del_remote_chassis(self, chassis):
         del self.remote_chassis_lport_map[chassis]
 
-    def set_lswitch(self, id, lswitch, topic=None):
+    def update_lswitch(self, id, lswitch, topic=None):
         self.set('lswitchs', id, lswitch, topic)
 
     def get_lswitch(self, id, topic=None):
         return self.get('lswitchs', id, topic)
 
-    def del_lswitch(self, id, topic=None):
+    def delete_lswitch(self, id, topic=None):
         self.delete('lswitchs', id, topic)
 
     def get_port_keys(self, topic=None):
@@ -242,7 +242,7 @@ class DbStore(object):
     def get_security_group_keys(self, topic=None):
         return self.keys('secgroups', topic)
 
-    def get_lswitchs(self, topic=None):
+    def get_all_lswitch(self, topic=None):
         return self.values('lswitchs', topic)
 
     def update_floatingip(self, floatingip_id, floatingip, topic=None):

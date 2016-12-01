@@ -39,8 +39,8 @@ class TestDBConsistent(tests_base.BaseTestCase):
         local_obj1 = FakeDfLocalObj(self.lport_id2, 1)
         local_obj2 = FakeDfLocalObj(self.lport_id3, 1)
 
-        self.nb_api.get_all_logical_switches.return_value = [df_obj1, df_obj2]
-        self.db_store.get_lswitchs.return_value = [local_obj1, local_obj2]
+        self.nb_api.get_all_lswitch.return_value = [df_obj1, df_obj2]
+        self.db_store.get_all_lswitch.return_value = [local_obj1, local_obj2]
 
         self.nb_api.get_all_logical_ports.return_value = [df_obj1, df_obj2]
         self.db_store.get_ports.return_value = [local_obj1, local_obj2]
@@ -66,9 +66,9 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], 'lswitch', True)
-        self.controller.logical_switch_updated.assert_any_call(df_obj1)
-        self.controller.logical_switch_updated.assert_any_call(df_obj2)
-        self.controller.logical_switch_deleted.assert_any_call(
+        self.controller.update_lswitch.assert_any_call(df_obj1)
+        self.controller.update_lswitch.assert_any_call(df_obj2)
+        self.controller.delete_lswitch.assert_any_call(
                 self.lport_id3)
 
         self.db_consistent.handle_data_comparison(

@@ -256,9 +256,9 @@ class Topology(object):
             self._clear_tenant_topology(topic)
 
     def _pull_tenant_topology_from_db(self, tenant_id, lport_id):
-        switches = self.nb_api.get_all_logical_switches(tenant_id)
+        switches = self.nb_api.get_all_lswitch(tenant_id)
         for switch in switches:
-            self.controller.logical_switch_updated(switch)
+            self.controller.update_lswitch(switch)
 
         sg_groups = self.nb_api.get_security_groups(tenant_id)
         for sg_group in sg_groups:
@@ -279,10 +279,10 @@ class Topology(object):
             self.controller.floatingip_updated(floating_ip)
 
     def _clear_tenant_topology(self, tenant_id):
-        switches = self.db_store.get_lswitchs()
+        switches = self.db_store.get_all_lswitch()
         for switch in switches:
             if tenant_id == switch.get_topic():
-                self.controller.logical_switch_deleted(switch.get_id())
+                self.controller.delete_lswitch(switch.get_id())
 
         ports = self.db_store.get_ports()
         for port in ports:

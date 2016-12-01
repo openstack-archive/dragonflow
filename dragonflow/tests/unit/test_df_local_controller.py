@@ -263,7 +263,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_notify.assert_called_once()
 
     @mock.patch.object(db_store.DbStore, 'get_lswitch')
-    @mock.patch.object(db_store.DbStore, 'del_lswitch')
+    @mock.patch.object(db_store.DbStore, 'delete_lswitch')
     @mock.patch.object(ryu_base_app.RyuDFAdapter,
                        'notify_remove_logical_switch')
     def test_logical_switch_deleted(self, mock_notify_remove,
@@ -272,12 +272,12 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         lswitch = 'theLswitch'
 
         mock_get_lswitch.return_value = None
-        self.controller.logical_switch_deleted(lswitch_id)
+        self.controller.delete_lswitch(lswitch_id)
         self.assertFalse(mock_notify_remove.called)
 
         mock_notify_remove.mock_reset()
         mock_get_lswitch.return_value = lswitch
-        self.controller.logical_switch_deleted(lswitch_id)
+        self.controller.delete_lswitch(lswitch_id)
         mock_get_lswitch.assert_called_with(lswitch_id)
         mock_notify_remove.assert_called_with(lswitch)
         mock_del_lswitch.assert_called_with(lswitch_id)
