@@ -295,9 +295,6 @@ class NbApi(object):
         else:
             LOG.warning(_LW('Unknown table %s'), table)
 
-    def sync(self):
-        pass
-
     def create_security_group(self, id, topic, **columns):
         secgroup = {}
         secgroup['id'] = id

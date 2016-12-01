@@ -138,8 +138,6 @@ class DfLocalController(object):
 
     def run_db_poll(self):
         try:
-            self.nb_api.sync()
-
             self.register_chassis()
 
             self.create_tunnels()
