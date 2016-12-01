@@ -12,6 +12,7 @@
 
 import time
 
+from dragonflow.controller.common import constants
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
@@ -25,9 +26,12 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
 
     def check_dhcp_rule(self, flows, dhcp_srv):
         for flow in flows:
-            if flow['table'] == '9' and flow['actions'] == 'goto_table:11':
-                if ('nw_dst=' + dhcp_srv + ',tp_src=68,tp_dst=67'
-                    in flow['match']):
+            goto_dhcp = 'goto_table:' + str(constants.DHCP_TABLE)
+            if (flow['table'] == str(constants.SERVICES_CLASSIFICATION_TABLE)
+                and flow['actions'] == goto_dhcp):
+                dhcp_ports = ',tp_src=' + constants.DHCP_CLIENT_PORT +\
+                             ',tp_dst=' + constants.DHCP_SERVER_PORT
+                if ('nw_dst=' + dhcp_srv + dhcp_ports in flow['match']):
                     return True
         return False
 
@@ -47,8 +51,12 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         ovs = utils.OvsFlowsParser()
         flows = ovs.dump(self.integration_bridge)
         for flow in flows:
-            if flow['table'] == '9' and flow['actions'] == 'goto_table:11':
-                if ('udp,dl_dst=ff:ff:ff:ff:ff:ff,tp_src=68,tp_dst=67'
+            goto_dhcp = 'goto_table:' + str(constants.DHCP_TABLE)
+            if (flow['table'] == str(constants.SERVICES_CLASSIFICATION_TABLE)
+                and flow['actions'] == goto_dhcp):
+                dhcp_ports = ',tp_src=' + constants.DHCP_CLIENT_PORT + \
+                             ',tp_dst=' + constants.DHCP_SERVER_PORT
+                if ('udp,dl_dst=' + constants.BROADCAST_MAC + dhcp_ports
                     in flow['match']):
                     found_dhcp_cast_flow = True
                     break
