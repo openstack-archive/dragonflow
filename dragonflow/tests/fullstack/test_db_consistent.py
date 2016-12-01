@@ -12,6 +12,7 @@
 
 import time
 
+from dragonflow.controller.common import constants as const
 from dragonflow.db import db_consistent
 from dragonflow.db import models
 from dragonflow.tests.common import constants
@@ -25,17 +26,22 @@ from oslo_serialization import jsonutils
 class TestDbConsistent(test_base.DFTestBase):
 
     def _check_l2_lookup_rule(self, flows, mac):
+        goto_egress = 'goto_table:' + str(const.EGRESS_TABLE)
         for flow in flows:
-            if flow['table'] == '17' and 'goto_table:64' in flow['actions']:
+            if (flow['table'] == str(const.L2_LOOKUP_TABLE)
+                and goto_egress in flow['actions']):
                 if 'dl_dst=' + mac in flow['match']:
                     return True
         return False
 
     def _check_lswitch_dhcp_rule(self, flows, dhcp_ip):
+        goto_dhcp = 'goto_table:' + str(const.DHCP_TABLE)
+        dhcp_ports = ',tp_src=' + str(const.DHCP_CLIENT_PORT) + \
+                     ',tp_dst=' + str(const.DHCP_SERVER_PORT)
         for flow in flows:
-            if flow['table'] == '9' and flow['actions'] == 'goto_table:11':
-                if ('nw_dst=' + dhcp_ip + ',tp_src=68,tp_dst=67'
-                    in flow['match']):
+            if (flow['table'] == str(const.SERVICES_CLASSIFICATION_TABLE)
+                and flow['actions'] == goto_dhcp):
+                if ('nw_dst=' + dhcp_ip + dhcp_ports in flow['match']):
                     return True
         return False
 
