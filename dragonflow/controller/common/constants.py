@@ -13,6 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron_lib import constants as const
+from ryu.lib.packet import arp
+
 # Pipline Table numbers
 INGRESS_CLASSIFICATION_DISPATCH_TABLE = 0
 EGRESS_PORT_SECURITY_TABLE = 1
@@ -45,6 +48,15 @@ PRIORITY_MEDIUM = 100
 PRIORITY_HIGH = 200
 PRIORITY_VERY_HIGH = 300
 PRIORITY_CT_STATE = 65534
+
+ARP_OP_TYPE_REQUEST = arp.ARP_REQUEST
+ARP_OP_TYPE_REPLY = arp.ARP_REPLY
+UDP_PROTOCOL_NUMBER = const.PROTO_NUM_UDP
+DHCP_CLIENT_PORT = 68
+DHCP_SERVER_PORT = 67
+
+BROADCAST_MAC = 'ff:ff:ff:ff:ff:ff'
+BROADCAST_IP = '255.255.255.255'
 
 # Connection Track flags
 CT_STATE_NEW = 0x01
