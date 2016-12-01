@@ -69,14 +69,6 @@ from dragonflow.neutron.common import constants as df_const
 
 LOG = log.getLogger(__name__)
 
-router_distributed_opts = [
-    cfg.BoolOpt('router_distributed',
-                default=False,
-                help=_("System-wide flag to determine the type of router "
-                       "that tenants can create. Only admin can override.")),
-]
-cfg.CONF.register_opts(router_distributed_opts)
-
 
 class DFPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                securitygroups_db.SecurityGroupDbMixin,

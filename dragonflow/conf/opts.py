@@ -16,6 +16,7 @@ from dragonflow.conf import df_dnat
 from dragonflow.conf import df_metadata_service
 from dragonflow.conf import df_ryu
 from dragonflow.conf import l2_ml2
+from dragonflow.conf import router_distributed
 
 
 def list_opts():
@@ -25,4 +26,5 @@ def list_opts():
         ('df_dhcp_app', df_dhcp.df_dhcp_opts),
         ('df_dnat_app', df_dnat.df_dnat_app_opts),
         ('df_l2_app', l2_ml2.df_l2_app_opts),
+        ('DEFAULT', router_distributed.router_distributed_opts),
         ('df_metadata', df_metadata_service.df_metadata_opts)]
