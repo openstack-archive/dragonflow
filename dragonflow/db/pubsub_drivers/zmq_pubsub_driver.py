@@ -14,11 +14,11 @@
 
 import eventlet
 from eventlet.green import zmq
-from oslo_config import cfg
 from oslo_log import log as logging
 
 from dragonflow._i18n import _LI, _LE
 from dragonflow.common import exceptions
+from dragonflow.conf import cfg
 from dragonflow.db import db_common
 from dragonflow.db import pub_sub_api
 
@@ -71,11 +71,9 @@ class ZMQPublisherAgentBase(pub_sub_api.PublisherApi):
         super(ZMQPublisherAgentBase, self).initialize()
 
     def send_event(self, update, topic=None):
-        #NOTE(gampel) In this reference implementation we develop a trigger
-        #based pub sub without sending the value mainly in order to avoid
-        #consistency issues in th cost of extra latency i.e get
-        if update.action != 'log':
-            update.value = None
+        if cfg.CONF.df_zmq_pubsub.remove_value:
+            if update.action != 'log':
+                update.value = None
 
         if topic:
             update.topic = topic
