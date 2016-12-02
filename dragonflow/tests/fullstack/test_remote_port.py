@@ -10,7 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from dragonflow.tests.common import constants as const
+import time
+
+from dragonflow.controller.common import constants as const
+from dragonflow.tests.common import constants as test_const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -49,26 +52,25 @@ class TestRemotePort(test_base.DFTestBase):
         port.create(port=port_body)
         self.assertTrue(port.exists())
 
+        time.sleep(test_const.DEFAULT_CMD_TIMEOUT)
         ovsdb = utils.OvsDBParser()
-        utils.wait_until_true(
-            lambda: self._get_wanted_tunnel_port(ovsdb, '10.10.10.10'),
-            timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT, sleep=2,
-            exception=Exception('Could not get wanted tunnel port')
-        )
+        network_obj = network.get_network()['network']
+        network_type = network_obj['provider:network_type']
+        segmentation_id = network_obj['provider:segmentation_id']
+        ofport = ovsdb.get_tunnel_ofport(network_type)
+        port_unique_key = port.get_logical_port().get_unique_key()
 
-        port.close()
-        self.assertFalse(port.exists())
+        match = "reg7=" + str(hex(port_unique_key))
+        action = ("set_field:10.10.10.10" +
+                  "->tun_dst,set_field:" + str(hex(segmentation_id)) +
+                  "->tun_id,output:" + str(ofport))
+        ovs = utils.OvsFlowsParser()
+        matched = False
+        for flow in ovs.dump(self.integration_bridge):
+            if flow['table'] == str(const.EGRESS_TABLE):
+                if match in flow['match']:
+                    matched = True
+                    self.assertEqual(action, flow['actions'])
 
-        utils.wait_until_none(
-            lambda: ovsdb.get_tunnel_ofport('10.10.10.10'),
-            timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT, sleep=2,
-            exception=Exception('Could not delete wanted tunnel port')
-        )
-
-        subnet.close()
-        network.close()
-
-    def _get_wanted_tunnel_port(self, ovsdb, chassis_ip):
-        if ovsdb.get_tunnel_ofport(chassis_ip):
-            return True
-        return False
+        if not matched:
+            raise Exception("Can't find flows for remote port!")

@@ -179,15 +179,13 @@ class OvsDBParser(object):
         interfaces = self._ovsdb_list_intefaces(specify_interface)
         return self._parse_ovsdb_interfaces(interfaces)
 
-    def get_tunnel_ofport(self, chassis_ip):
+    def get_tunnel_ofport(self, tunnel_type):
         interfaces = self.list_interfaces()
         for item in interfaces:
-            options = item.get('options', None)
-            if options:
-                remote_ip = options.get('remote_ip', None)
-                if remote_ip == chassis_ip:
-                    return item.get('ofport', None)
-        return None
+            options = item.get('options')
+            if options and 'remote_ip' in options:
+                if tunnel_type + "-vtp" == item.get('name'):
+                    return item.get('ofport')
 
     def get_ofport(self, port_id):
         interfaces = self.list_interfaces()
