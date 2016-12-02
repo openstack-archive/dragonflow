@@ -46,11 +46,8 @@ class L3App(df_base_app.DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
 
-    def router_created(self, router):
-        self._add_new_lrouter(router)
-
     def router_updated(self, router, original_router):
-        if original_router is None:
+        if not original_router:
             LOG.info(_LI("Logical Router created = %s"), router)
             self._add_new_lrouter(router)
             return
