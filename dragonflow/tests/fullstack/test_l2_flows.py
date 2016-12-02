@@ -21,7 +21,7 @@ from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
 ML2_CONF_INI = '/etc/neutron/plugins/ml2/ml2_conf.ini'
-L2_ML2_APP_NAME = 'l2_ml2_app.L2App'
+L2_ML2_APP_NAME = 'l2_app.L2App'
 VLAN_MIN_DEFAULT = 2
 
 
