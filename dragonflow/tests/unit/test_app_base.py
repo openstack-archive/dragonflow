@@ -26,7 +26,7 @@ from dragonflow.tests import base as tests_base
 class DFAppTestBase(tests_base.BaseTestCase):
     apps_list = ""
 
-    def setUp(self):
+    def setUp(self, enable_selective_topo_dist=False):
         cfg.CONF.set_override('apps_list', self.apps_list, group='df')
         super(DFAppTestBase, self).setUp()
         mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
@@ -42,7 +42,8 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.open_flow_app = self.controller.open_flow_app
         self.datapath = self.open_flow_app._datapath = mock.Mock()
         self.open_flow_app.load(self.controller.open_flow_app, **kwargs)
-        self.controller.topology = topology.Topology(self.controller, False)
+        self.topology = self.controller.topology = topology.Topology(
+            self.controller, enable_selective_topo_dist)
 
         # Add basic network topology
         self.controller.logical_switch_updated(fake_logic_switch1)
@@ -150,6 +151,59 @@ fake_local_port1.external_dict = {'is_local': True,
                                   'ofport': 2,
                                   'network_type': 'vxlan',
                                   'local_network_id': 1}
+
+
+fake_ovs_port1 = mock.Mock(name='fake_ovs_port1')
+fake_ovs_port1.get_id.return_value = 'fake_ovs_port1'
+fake_ovs_port1.get_ofport.return_value = 2
+fake_ovs_port1.get_name.return_value = 'tap-fake_port1'
+fake_ovs_port1.get_admin_state.return_value = True
+fake_ovs_port1.get_type.return_value = db_models.OvsPort.TYPE_VM
+fake_ovs_port1.get_iface_id.return_value = 'fake_port1'
+fake_ovs_port1.get_peer.return_value = ''
+fake_ovs_port1.get_attached_mac.return_value = 'fa:16:3e:8c:2e:b3'
+fake_ovs_port1.get_remote_ip.return_value = ''
+fake_ovs_port1.get_tunnel_type.return_value = 'vxlan'
+
+
+fake_local_port2 = db_models.LogicalPort("{}")
+fake_local_port2.inner_obj = {
+    'subnets': ['fake_subnet1'],
+    'binding_profile': {},
+    'macs': ['fa:16:3e:8c:2e:b4'],
+    'name': '',
+    'allowed_address_pairs': [],
+    'lswitch': 'fake_switch1',
+    'enabled': True,
+    'topic': 'fake_tenant1',
+    'ips': ['10.0.0.7'],
+    'device_owner': 'compute:None',
+    'chassis': 'fake_host',
+    'version': 2,
+    'tunnel_key': 3,
+    'port_security_enabled': True,
+    'binding_vnic_type': 'normal',
+    'id': 'fake_port2',
+    'security_groups': ['fake_security_group_id1'],
+    'device_id': 'fake_device_id'}
+fake_local_port2.external_dict = {'is_local': True,
+                                  'segmentation_id': 41,
+                                  'ofport': 3,
+                                  'network_type': 'vxlan',
+                                  'local_network_id': 1}
+
+
+fake_ovs_port2 = mock.Mock(name='fake_ovs_port2')
+fake_ovs_port2.get_id.return_value = 'fake_ovs_port2'
+fake_ovs_port2.get_ofport.return_value = 3
+fake_ovs_port2.get_name.return_value = 'tap-fake_port2'
+fake_ovs_port2.get_admin_state.return_value = True
+fake_ovs_port2.get_type.return_value = db_models.OvsPort.TYPE_VM
+fake_ovs_port2.get_iface_id.return_value = 'fake_port2'
+fake_ovs_port2.get_peer.return_value = ''
+fake_ovs_port2.get_attached_mac.return_value = 'fa:16:3e:8c:2e:b4'
+fake_ovs_port2.get_remote_ip.return_value = ''
+fake_ovs_port2.get_tunnel_type.return_value = 'vxlan'
 
 
 fake_remote_port1 = db_models.LogicalPort("{}")
