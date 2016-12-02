@@ -243,7 +243,7 @@ class NbApi(object):
         elif db_models.Chassis.table_name == table:
             if action == 'set' or action == 'create':
                 chassis = db_models.Chassis(value)
-                self.controller.chassis_created(chassis)
+                self.controller.chassis_updated(chassis)
             elif action == 'delete':
                 chassis_id = key
                 self.controller.chassis_deleted(chassis_id)
