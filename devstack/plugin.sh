@@ -1,12 +1,5 @@
 # dragonflow.sh - Devstack extras script to install Dragonflow
 
-# By default, dragonflow uses DFPlugin as core plugin. If you want to use
-# ML2 as core plugin, you can edit local.conf file to configure
-# "USE_ML2_PLUGIN=True" and "Q_ML2_PLUGIN_MECHANISM_DRIVERS=df"
-# if you want to use df-l3 as the l3 services plugin, you could edit
-# local.conf file to configure "ML2_L3_PLUGIN=df-l3"
-USE_ML2_PLUGIN=${USE_ML2_PLUGIN:-"False"}
-
 # Enable DPDK for Open vSwitch user space datapath
 ENABLE_DPDK=${ENABLE_DPDK:-False}
 DPDK_NUM_OF_HUGEPAGES=${DPDK_NUM_OF_HUGEPAGES:-1024}
@@ -21,18 +14,14 @@ OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
 OVS_BRANCH=${OVS_BRANCH:-branch-2.6}
 
 DEFAULT_TUNNEL_TYPE="geneve"
-DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
-"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
-ML2_APPS_LIST_DEFAULT="l2_ml2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
+DEFAULT_APPS_LIST="l2_ml2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp"
 
 if is_service_enabled df-metadata ; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,metadata_service_app.MetadataServiceApp"
-    ML2_APPS_LIST_DEFAULT="$ML2_APPS_LIST_DEFAULT,metadata_service_app.MetadataServiceApp"
 fi
 
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
-ML2_APPS_LIST=${ML2_APPS_LIST:-$ML2_APPS_LIST_DEFAULT}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 
 # How to connect to the database storing the virtual topology.
@@ -173,13 +162,6 @@ function configure_qos {
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
-    if [[ "$USE_ML2_PLUGIN" == "False" ]]; then
-        Q_PLUGIN_CLASS="dragonflow.neutron.plugin.DFPlugin"
-        Q_SERVICE_PLUGIN_CLASSES=""
-    else
-        DF_APPS_LIST=$ML2_APPS_LIST
-    fi
-
     # Generate DF config file
     pushd $DRAGONFLOW_DIR
     tools/generate_config_file_samples.sh
@@ -188,7 +170,7 @@ function configure_df_plugin {
     cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
 
     if is_service_enabled q-svc ; then
-        if [[ "$USE_ML2_PLUGIN" == "True" ]] && is_service_enabled q-qos ; then
+        if is_service_enabled q-qos ; then
             configure_qos
         fi
 
