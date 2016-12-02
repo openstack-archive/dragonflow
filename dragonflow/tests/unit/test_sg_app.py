@@ -117,7 +117,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.assert_not_called()
 
         # add remote port before adding any local port
-        self.controller.logical_port_created(self.fake_remote_lport)
+        self.controller.logical_port_updated(self.fake_remote_lport)
         self.mock_mod_flow.assert_not_called()
 
         # remove remote port before adding any local port
@@ -125,7 +125,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.assert_not_called()
 
         # add local port one
-        self.controller.logical_port_created(self.fake_local_lport)
+        self.controller.logical_port_updated(self.fake_local_lport)
         # add flows:
         # 1. a flow in ingress conntrack table
         # 2. a associating flow in ingress secgroup table
@@ -140,7 +140,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # add local port two
         fake_local_lport2 = self._get_another_local_lport()
-        self.controller.logical_port_created(fake_local_lport2)
+        self.controller.logical_port_updated(fake_local_lport2)
         # add flows:
         # 1. a flow in ingress conntrack table
         # 2. a associating flow in ingress secgroup table
@@ -164,7 +164,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # add remote port after adding a local port
-        self.controller.logical_port_created(self.fake_remote_lport)
+        self.controller.logical_port_updated(self.fake_remote_lport)
         # add flows:
         # 1. a ingress rule flow (caused by IP addresses represent
         # remote_group_id changed) in ingress secgroup table
@@ -206,7 +206,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # add local port
         fake_local_lport = self._get_another_local_lport()
         fake_local_lport_version = fake_local_lport.inner_obj['version']
-        self.controller.logical_port_created(fake_local_lport)
+        self.controller.logical_port_updated(fake_local_lport)
         self.mock_mod_flow.reset_mock()
 
         # create another fake security group
@@ -277,7 +277,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         fake_local_lport = self._get_another_local_lport()
         fake_local_lport.inner_obj['security_groups'] = \
             ['fake_security_group_id2']
-        self.controller.logical_port_created(fake_local_lport)
+        self.controller.logical_port_updated(fake_local_lport)
         self.mock_mod_flow.reset_mock()
 
         # add a security group rule
