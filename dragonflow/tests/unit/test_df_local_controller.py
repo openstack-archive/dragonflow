@@ -20,7 +20,7 @@ from dragonflow.tests.unit import test_app_base
 
 class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
-    apps_list = "l2_ml2_app.L2App"
+    apps_list = "l2_app.L2App"
 
     def _get_mock_chassis(self, chassis_ids):
         all_chassis = []
