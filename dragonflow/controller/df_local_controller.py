@@ -165,9 +165,11 @@ class DfLocalController(object):
         LOG.info(_LI("Adding tunnel to remote chassis = %s") %
                  chassis.__str__())
         self.vswitch_api.add_tunnel_port(chassis)
+        self.db_store.update_chassis(chassis)
 
     def chassis_deleted(self, chassis_id):
         LOG.info(_LI("Deleting tunnel to remote chassis = %s") % chassis_id)
+        self.db_store.delete_chassis(chassis_id)
         tunnel_ports = self.vswitch_api.get_tunnel_ports()
         for port in tunnel_ports:
             if port.get_chassis_id() == chassis_id:
@@ -407,6 +409,10 @@ class DfLocalController(object):
                     # to support virtual tunnel port.
                     self.nb_api.update_chassis(self.chassis_name,
                                                tunnel_type=self.tunnel_types)
+
+        # Get all chassis from nb db to db store.
+        for c in self.nb_api.get_all_chassis():
+            self.db_store.update_chassis(c)
 
     def create_tunnels(self):
         if cfg.CONF.df.enable_virtual_tunnel_port:

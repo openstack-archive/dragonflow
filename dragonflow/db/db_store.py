@@ -76,6 +76,7 @@ class DbStore(object):
 
     def __init__(self):
         self.tenant_dbs = collections.defaultdict(TenantDbStore)
+        self.chassises = {}
         self.remote_chassis_lport_map = {}
 
     def get(self, table_name, key, topic):
@@ -307,3 +308,13 @@ class DbStore(object):
 
     def delete_publisher(self, uuid, topic=None):
         self.delete(models.Publisher.table_name, uuid, topic)
+
+    def update_chassis(self, chassis):
+        self.chassises[chassis.get_id()] = chassis
+
+    def get_chassis(self, chassis_id):
+        return self.chassises.get(chassis_id)
+
+    def delete_chassis(self, chassis_id):
+        if chassis_id in self.chassises:
+            del self.chassises[chassis_id]
