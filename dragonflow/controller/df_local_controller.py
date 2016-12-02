@@ -115,6 +115,7 @@ class DfLocalController(object):
             self.vswitch_api.set_controller_fail_mode(
                 self.integration_bridge, 'secure')
         self.open_flow_app.start()
+        df_db_objects_refresh.initialize_object_refreshers(self)
         self.db_sync_loop()
 
     def db_sync_loop(self):
@@ -140,49 +141,7 @@ class DfLocalController(object):
             self.create_tunnels()
 
             if not self.enable_selective_topo_dist:
-                # The order of the items here is meaningful, it is sorted
-                # by the objects dependency in each other
-                items = [
-                    df_db_objects_refresh.DfObjectRefresher(
-                        'Switches',
-                        self.db_store.get_lswitch_keys,
-                        self.nb_api.get_all_logical_switches,
-                        self.logical_switch_updated,
-                        self.logical_switch_deleted),
-                    df_db_objects_refresh.DfObjectRefresher(
-                        'Security Groups',
-                        self.db_store.get_security_group_keys,
-                        self.nb_api.get_security_groups,
-                        self.security_group_updated,
-                        self.security_group_deleted),
-                    df_db_objects_refresh.DfObjectRefresher(
-                        'Ports',
-                        self.db_store.get_port_keys,
-                        self.nb_api.get_all_logical_ports,
-                        self.logical_port_updated,
-                        self.logical_port_deleted),
-                    df_db_objects_refresh.DfObjectRefresher(
-                        'Routers',
-                        self.db_store.get_router_keys,
-                        self.nb_api.get_routers,
-                        self.router_updated,
-                        self.router_deleted),
-                    df_db_objects_refresh.DfObjectRefresher(
-                        'Floating IPs',
-                        self.db_store.get_floatingip_keys,
-                        self.nb_api.get_floatingips,
-                        self.floatingip_updated,
-                        self.floatingip_deleted),
-                         ]
-
-                # Refresh all the objects and find which ones should be removed
-                for item in items:
-                    item.read()
-                    item.update()
-
-                # Remove obsolete objects in reverse order
-                for item in reversed(items):
-                    item.delete()
+                df_db_objects_refresh.sync_local_cache_from_nb_db()
 
             self.sync_finished = True
 
