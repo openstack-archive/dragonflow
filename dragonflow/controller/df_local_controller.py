@@ -255,8 +255,22 @@ class DfLocalController(object):
                          str(lport))
         else:
             lport.set_external_value('is_local', False)
+            if lport.get_remote_vtep():
+                # Remote port that exists in other network pod.
+                lport.set_external_value('peer_vtep_address',
+                                         lport.get_chassis())
+            else:
+                # Remote port that exists in current network pod.
+                remote_chassis = self.db_store.get_chassis(lport.get_chassis())
+                lport.set_external_value('peer_vtep_address',
+                                         remote_chassis.get_ip())
+
             self.db_store.set_port(lport.get_id(), lport, False)
-            ofport = self.vswitch_api.get_chassis_ofport(chassis)
+            if cfg.CONF.df.enable_virtual_tunnel_port:
+                ofport = self.vswitch_api.get_vtp_ofport(
+                    lport.get_external_value('network_type'))
+            else:
+                ofport = self.vswitch_api.get_chassis_ofport(chassis)
             if ofport:
                 lport.set_external_value('ofport', ofport)
                 if original_lport is None:

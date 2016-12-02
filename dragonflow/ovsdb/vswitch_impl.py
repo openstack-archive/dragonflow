@@ -172,3 +172,6 @@ class OvsApi(object):
     def get_port_ofport(self, port):
         return self._db_get_val('Interface', port, 'ofport',
                                 check_error=False, log_errors=False)
+
+    def get_vtp_ofport(self, tunnel_type):
+        return self.get_port_ofport(tunnel_type + '-vtp')
