@@ -49,6 +49,8 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.controller.update_lswitch(fake_logic_switch1)
         self.controller.update_lswitch(fake_external_switch1)
         self.controller.update_lrouter(fake_logic_router1)
+        self.controller.db_store.update_chassis('fake_host', fake_chassis1)
+        self.controller.db_store.update_chassis('fake_host2', fake_chassis2)
 
         self.arp_responder = mock.patch(
             'dragonflow.controller.common.arp_responder.ArpResponder').start()
@@ -231,6 +233,20 @@ fake_remote_port1.external_dict = {'is_local': False,
                                   'ofport': 1,
                                   'network_type': 'vxlan',
                                   'local_network_id': 1}
+
+
+fake_chassis1 = db_models.Chassis("{}")
+fake_chassis1.inner_obj = {
+    'id': 'fake_host',
+    'ip': '172.24.4.50'
+}
+
+
+fake_chassis2 = db_models.Chassis("{}")
+fake_chassis2.inner_obj = {
+    'id': 'fake_host2',
+    'ip': '172.24.4.51'
+}
 
 
 fake_floatingip1 = db_models.Floatingip("{}")
