@@ -35,7 +35,7 @@ df_opts = [
                default='geneve',
                help=_('The encapsulation type for the tunnel')),
     cfg.BoolOpt('enable_virtual_tunnel_port',
-                default=False,
+                default=True,
                 help=_("Enable virtual tunnel port")),
     cfg.ListOpt('tunnel_types',
                 default=['geneve', 'vxlan', 'gre'],
