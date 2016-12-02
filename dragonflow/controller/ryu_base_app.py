@@ -82,9 +82,6 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def notify_remove_logical_switch(self, lswitch=None):
         self.dispatcher.dispatch('remove_logical_switch', lswitch=lswitch)
 
-    def notify_create_router(self, router=None):
-        self.dispatcher.dispatch('router_created', router=router)
-
     def notify_update_router(self, router=None, original_router=None):
         self.dispatcher.dispatch('router_updated', router=router,
                                  original_router=original_router)

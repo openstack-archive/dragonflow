@@ -221,20 +221,14 @@ class NbApi(object):
                 secgroup_id = key
                 self.controller.security_group_deleted(secgroup_id)
         elif db_models.LogicalPort.table_name == table:
-            if action == 'create':
-                lport = db_models.LogicalPort(value)
-                self.controller.logical_port_created(lport)
-            elif action == 'set':
+            if action == 'set' or action == 'create':
                 lport = db_models.LogicalPort(value)
                 self.controller.logical_port_updated(lport)
             elif action == 'delete':
                 lport_id = key
                 self.controller.logical_port_deleted(lport_id)
         elif db_models.LogicalRouter.table_name == table:
-            if action == 'create':
-                lrouter = db_models.LogicalRouter(value)
-                self.controller.router_created(lrouter)
-            elif action == 'set':
+            if action == 'set' or action == 'create':
                 lrouter = db_models.LogicalRouter(value)
                 self.controller.router_updated(lrouter)
             elif action == 'delete':
@@ -243,7 +237,7 @@ class NbApi(object):
         elif db_models.Chassis.table_name == table:
             if action == 'set' or action == 'create':
                 chassis = db_models.Chassis(value)
-                self.controller.chassis_created(chassis)
+                self.controller.chassis_updated(chassis)
             elif action == 'delete':
                 chassis_id = key
                 self.controller.chassis_deleted(chassis_id)

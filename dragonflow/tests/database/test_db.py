@@ -121,7 +121,7 @@ def run_client(nb_api):
     def publisher_deleted(uuid):
         finished()
 
-    def logical_port_created(lport):
+    def logical_port_updated(lport):
         events.append((time.time(), lport))
 
     def signal_handler(signal, frame):
@@ -135,7 +135,7 @@ def run_client(nb_api):
         print(", ".join(data_str))
 
     callback_handler = mock.Mock()
-    callback_handler.logical_port_created = logical_port_created
+    callback_handler.logical_port_updated = logical_port_updated
     callback_handler.publisher_updated = publisher_created
     callback_handler.publisher_deleted = publisher_deleted
     signal.signal(signal.SIGINT, signal_handler)

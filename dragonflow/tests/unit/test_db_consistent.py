@@ -65,7 +65,7 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.LogicalPort.table_name, True)
-        self.controller.logical_port_created.assert_any_call(df_obj1)
+        self.controller.logical_port_updated.assert_any_call(df_obj1)
         self.controller.logical_port_updated.assert_any_call(df_obj2)
         self.controller.logical_port_deleted.assert_any_call(
                 self.lport_id3)

@@ -79,13 +79,6 @@ class DBNotifyInterface(object):
         :param lswitch: logical switch that is updated
         """
 
-    def router_created(self, router):
-        """router created hook callback
-
-
-        :param router: logical router that is created
-        """
-
     def router_updated(self, router, original_router):
         """router updated hook callback
 
