@@ -27,6 +27,7 @@ from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import icmp_responder
 from dragonflow.controller import df_base_app
+from dragonflow.db import models
 
 LOG = log.getLogger(__name__)
 
@@ -170,7 +171,7 @@ class L3App(df_base_app.DFlowApp):
         LOG.info(_LI("Adding new logical router interface = %s"),
                  router_port)
         local_network_id = self.db_store.get_unique_key_by_id(
-            'lswitchs', router_port.get_lswitch_id())
+            models.LogicalSwitch.table_name, router_port.get_lswitch_id())
         datapath = self.get_datapath()
         if datapath is None:
             return
@@ -236,7 +237,7 @@ class L3App(df_base_app.DFlowApp):
 
                 # From all the other interfaces to this new interface
                 router_port_net_id = self.db_store.get_unique_key_by_id(
-                    'lswitchs', port.get_lswitch_id())
+                    models.LogicalSwitch.table_name, port.get_lswitch_id())
                 self._add_subnet_send_to_controller(
                     router_port_net_id,
                     router_port.get_cidr_network(),
@@ -304,7 +305,7 @@ class L3App(df_base_app.DFlowApp):
         LOG.info(_LI("Removing logical router interface = %s"),
                  router_port)
         local_network_id = self.db_store.get_unique_key_by_id(
-            'lswitchs', router_port.get_lswitch_id())
+            models.LogicalSwitch.table_name, router_port.get_lswitch_id())
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
         tunnel_key = router_port.get_unique_key()
