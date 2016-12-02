@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from dragonflow import conf as cfg
 from dragonflow.ovsdb import vswitch_impl
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
@@ -186,27 +187,14 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         )
 
     def test_virtual_tunnel_port(self):
-        def _clear_vtp():
-            for tunnel_port in self.vswitch_api.get_virtual_tunnel_ports():
-                self.vswitch_api.delete_port(tunnel_port)
-
-        self.addCleanup(_clear_vtp)
-
-        self.vswitch_api.add_virtual_tunnel_port('vxlan')
-        self.vswitch_api.add_virtual_tunnel_port('geneve')
+        expected_tunnel_types = cfg.CONF.df.tunnel_types
 
         tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
-        self.assertEqual(2, len(tunnel_ports))
+        self.assertEqual(len(expected_tunnel_types), len(tunnel_ports))
         tunnel_types = set()
         for t in tunnel_ports:
             self.assertEqual(t.get_tunnel_type() + "-vtp",
                              t.get_name())
             tunnel_types.add(t.get_tunnel_type())
 
-        self.assertEqual({'vxlan', 'geneve'}, tunnel_types)
-
-        for t in tunnel_ports:
-            self.vswitch_api.delete_port(t)
-
-        tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
-        self.assertFalse(tunnel_ports)
+        self.assertEqual(set(expected_tunnel_types), tunnel_types)
