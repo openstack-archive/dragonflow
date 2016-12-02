@@ -165,9 +165,11 @@ class DfLocalController(object):
         LOG.info(_LI("Adding tunnel to remote chassis = %s") %
                  chassis.__str__())
         self.vswitch_api.add_tunnel_port(chassis)
+        self.db_store.update_chassis(chassis.get_id(), chassis)
 
     def chassis_deleted(self, chassis_id):
         LOG.info(_LI("Deleting tunnel to remote chassis = %s") % chassis_id)
+        self.db_store.delete_chassis(chassis_id)
         tunnel_ports = self.vswitch_api.get_tunnel_ports()
         for port in tunnel_ports:
             if port.get_chassis_id() == chassis_id:
@@ -390,7 +392,11 @@ class DfLocalController(object):
         self._delete_old_security_group(old_secgroup)
 
     def register_chassis(self):
-        chassis = self.nb_api.get_chassis(self.chassis_name)
+        # Get all chassis from nb db to db store.
+        for c in self.nb_api.get_all_chassis():
+            self.db_store.update_chassis(c.get_id(), c)
+
+        chassis = self.db_store.get_chassis(self.chassis_name)
         # TODO(gsagie) Support tunnel type change here ?
         if chassis is None:
             self.nb_api.add_chassis(self.chassis_name,
