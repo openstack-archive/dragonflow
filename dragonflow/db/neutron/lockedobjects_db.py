@@ -48,7 +48,7 @@ RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE = 6
 RESOURCE_FIP_UPDATE_OR_DELETE = 7
 RESOURCE_ROUTER_UPDATE_OR_DELETE = 8
 RESOURCE_QOS = 9
-
+RESOURCE_NEUTRON_LISTENER = 10
 
 LOG = log.getLogger(__name__)
 
@@ -117,8 +117,12 @@ def _get_lock_id_by_resource_type(resource_type, *args, **kwargs):
         lock_id = args[1]['security_group_id']
     elif RESOURCE_QOS == resource_type:
         lock_id = args[0][2]['id']
+    elif RESOURCE_NEUTRON_LISTENER == type:
+        lock_id = args[1]
     else:
         raise df_exc.UnknownResourceException(resource_type=resource_type)
+    if not lock_id:
+        lock_id = GLOBAL_LOCK_ID
 
     return lock_id
 
