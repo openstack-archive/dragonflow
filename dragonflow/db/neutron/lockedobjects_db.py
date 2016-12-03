@@ -49,6 +49,7 @@ RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE = 4
 RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE = 5
 RESOURCE_QOS_POLICY_CREATE_OR_UPDATE = 6
 RESOURCE_QOS_POLICY_DELETE = 7
+RESOURCE_NEUTRON_LISTENER = 8
 
 LOG = log.getLogger(__name__)
 
@@ -114,7 +115,8 @@ def _get_lock_id_by_resource_type(type, *args, **kwargs):
     elif RESOURCE_QOS_POLICY_DELETE == type:
         # when delete qos policy, there's no tenant_id in args.
         lock_id = GLOBAL_LOCK_ID
-
+    elif RESOURCE_NEUTRON_LISTENER == type:
+        lock_id = args[1]
     if not lock_id:
         lock_id = GLOBAL_LOCK_ID
 

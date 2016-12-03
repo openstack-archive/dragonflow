@@ -26,8 +26,8 @@ db_tables = [models.LogicalPort.table_name, models.LogicalSwitch.table_name,
              models.LogicalRouter.table_name, models.Chassis.table_name,
              models.SecurityGroup.table_name, models.Floatingip.table_name,
              models.QosPolicy.table_name, models.Publisher.table_name,
-             models.AllowedAddressPairsActivePort.table_name, 'unique_key',
-             'portstats']
+             models.AllowedAddressPairsActivePort.table_name,
+             models.Listener.table_name, 'unique_key']
 
 
 def print_tables():
