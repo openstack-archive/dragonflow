@@ -436,3 +436,26 @@ class OvsPort(object):
 
     def __str__(self):
         return str(self.ovs_port)
+
+
+class Listener(NbDbObject):
+    def get_id(self):
+        return self.inner_obj['id']
+
+    def get_topic(self):
+        return 'n_listener' + '_' + self.inner_obj['id']
+
+    def get_timestamp(self):
+        return self.inner_obj['timestamp']
+
+    def get_ppid(self):
+        return self.inner_obj['ppid']
+
+    def get_name(self):
+        return self.inner_obj.get('name')
+
+    def get_version(self):
+        return self.inner_obj.get('version')
+
+    def __str__(self):
+        return str(self.inner_obj)
