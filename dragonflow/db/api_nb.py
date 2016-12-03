@@ -14,7 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import random
 import time
 
 import eventlet
@@ -147,14 +146,34 @@ class NbApi(object):
             self.publisher.send_event(update)
             eventlet.sleep(0)
 
-    def get_all_port_status_keys(self):
-        topics = self.driver.get_all_entries('portstats')
-        topic = random.choice(topics)
-        return topic
+    def get_neutron_listener(self, id):
+        try:
+            listener = self.driver.get_key('listener', id, None)
+            return db_models.Listener(listener)
+        except Exception:
+            return None
 
-    def create_port_status(self, server_ip):
-        self.driver.create_key('portstats', server_ip,
-                               server_ip, None)
+    def get_all_neutron_listeners(self):
+        listeners = self.driver.get_all_entries('listener')
+        return [db_models.Listener(l) for l in listeners]
+
+    def create_neutron_listener(self, id, **columns):
+        listener = {
+            'id': id
+        }
+        listener.update(columns)
+        listener_json = jsonutils.dumps(listener)
+        self.driver.create_key('listener', id,
+                               listener_json, None)
+
+    def update_neutron_listener(self, id, **columns):
+        listener = {
+            'id': id
+        }
+        listener.update(columns)
+        listener_json = jsonutils.dumps(listener)
+        self.driver.set_key('listener', id,
+                            listener_json, None)
 
     def register_notification_callback(self, controller):
         self.controller = controller
@@ -163,6 +182,14 @@ class NbApi(object):
             self.driver.register_notification_callback(
                 self.db_change_callback)
         self._read_db_changes_from_queue()
+
+    def register_listener_callback(self, cb, topic):
+        if not self.use_pubsub:
+            self.driver.register_notification_callback(cb)
+            return
+        self.subscriber.initialize(cb)
+        self.subscriber.register_topic(topic)
+        self.subscriber.daemonize()
 
     def db_change_callback(self, table, key, action, value, topic=None):
         update = db_common.DbUpdate(table, key, action, value, topic=topic)
