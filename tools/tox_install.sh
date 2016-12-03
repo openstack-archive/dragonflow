@@ -25,9 +25,9 @@ CONSTRAINTS_FILE=$1
 shift
 
 install_cmd="pip install"
-if [ $CONSTRAINTS_FILE != "unconstrained" ]; then
-    install_cmd="$install_cmd -c$CONSTRAINTS_FILE"
-fi
+#if [ $CONSTRAINTS_FILE != "unconstrained" ]; then
+#    install_cmd="$install_cmd -c$CONSTRAINTS_FILE"
+#fi
 
 if [ $neutron_installed -eq 0 ]; then
     echo "ALREADY INSTALLED" > /tmp/tox_install.txt
@@ -46,7 +46,7 @@ elif [ -x "$ZUUL_CLONER" ]; then
     cd "$cwd"
 else
     echo "PIP HARDCODE" > /tmp/tox_install.txt
-    $install_cmd -U -egit+https://git.openstack.org/openstack/neutron@$BRANCH_NAME#egg=neutron
+    $install_cmd -U -egit+http://code.huawei.com/w00348390/neutron-mirror@$BRANCH_NAME#egg=neutron
 fi
 
 $install_cmd -U $*
