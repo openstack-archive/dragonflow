@@ -86,10 +86,7 @@ class DfLocalController(object):
                                db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api.initialize(self.nb_api)
         if cfg.CONF.df.enable_port_status_notifier:
-            self.port_status_notifier.initialize(mech_driver=None,
-                                                 nb_api=self.nb_api,
-                                                 pub=self.nb_api.publisher,
-                                                 sub=None,
+            self.port_status_notifier.initialize(nb_api=self.nb_api,
                                                  is_neutron_server=False)
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)
@@ -561,9 +558,6 @@ class DfLocalController(object):
     def get_nb_api(self):
         return self.nb_api
 
-    def get_portstatus_notifier(self):
-        return self.port_status_notifier
-
     def get_db_store(self):
         return self.db_store
 
@@ -572,6 +566,10 @@ class DfLocalController(object):
 
     def get_chassis_name(self):
         return self.chassis_name
+
+    def notify_port_status(self, ovs_port, status):
+        if self.port_status_notifier:
+            self.port_status_notifier.notify_port_status(ovs_port, status)
 
 
 def init_ryu_config():
