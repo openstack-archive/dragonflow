@@ -11,6 +11,7 @@
 #    under the License.
 
 import re
+import six
 
 from neutron.agent.common import utils as agent_utils
 from neutron.common import utils as n_utils
@@ -314,3 +315,14 @@ class OvsDBParser(object):
                 iface_id = external_ids.get('iface-id')
                 if iface_id == port_id:
                     return item
+
+
+class empty_wrapper(object):
+    def __init__(self, type):
+        pass
+
+    def __call__(self, f):
+        @six.wraps(f)
+        def wrapped_f(*args, **kwargs):
+            return f(*args, **kwargs)
+        return wrapped_f
