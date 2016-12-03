@@ -24,7 +24,6 @@ from dragonflow.db import models
 
 db_tables = list(models.table_class_mapping) + ['unique_key', 'portstats']
 
-
 def print_tables():
     columns = ['table']
     tables = [{'table': table} for table in db_tables]

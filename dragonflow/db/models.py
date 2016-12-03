@@ -436,6 +436,20 @@ class AllowedAddressPairsActivePort(NbDbObject):
         return True
 
 
+class Listener(NbDbObject):
+
+    table_name = "listener"
+
+    def get_topic(self):
+        return 'listener' + '_' + self.inner_obj['id']
+
+    def get_timestamp(self):
+        return self.inner_obj['timestamp']
+
+    def get_ppid(self):
+        return self.inner_obj['ppid']
+
+
 class OvsPort(object):
 
     TYPE_VM = 'vm'
