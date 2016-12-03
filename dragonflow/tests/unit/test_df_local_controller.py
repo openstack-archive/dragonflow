@@ -218,7 +218,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
     @mock.patch.object(ryu_base_app.RyuDFAdapter,
                        'notify_associate_floatingip')
     @mock.patch.object(db_store.DbStore, 'update_floatingip')
-    def test__associate_floatingip(self, mock_update, mock_notify):
+    def test_associate_floatingip(self, mock_update, mock_notify):
         lport_id = 'fake_lport_id'
         fip_id = 'fake_fip_id'
         fip = self._get_mock_floatingip(lport_id, fip_id)
@@ -229,7 +229,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
     @mock.patch.object(ryu_base_app.RyuDFAdapter,
                        'notify_disassociate_floatingip')
     @mock.patch.object(db_store.DbStore, 'delete_floatingip')
-    def test__disassociate_floatingip(self, mock_delete, mock_notify):
+    def test_disassociate_floatingip(self, mock_delete, mock_notify):
         lport_id = 'fake_lport_id'
         fip_id = 'fake_fip_id'
         fip = self._get_mock_floatingip(lport_id, fip_id)
@@ -241,7 +241,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
                        '_associate_floatingip')
     @mock.patch.object(df_local_controller.DfLocalController,
                        '_disassociate_floatingip')
-    def test__update_floatingip(self, mock_disassoc, mock_assoc):
+    def test_update_floatingip(self, mock_disassoc, mock_assoc):
         old_lport_id = 'fake_old_lport_id'
         old_fip_id = 'fake_old_fip_id'
         old_fip = self._get_mock_floatingip(old_lport_id, old_fip_id)
