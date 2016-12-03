@@ -633,73 +633,25 @@ class L2App(df_base_app.DFlowApp):
             datapath=datapath,
             command=ofproto.OFPFC_DELETE,
             table_id=const.EGRESS_TABLE,
-            priority=const.PRIORITY_HIGH,
+            priority=const.PRIORITY_LOW,
             match=match)
 
-    def _update_multicast_broadcast_flows_for_remote(self, network_id,
-                                                     segmentation_id,
-                                                     remote_ports):
+    def _update_multicast_broadcast_flows_for_remote(
+            self, network_id, segmentation_id, remote_ports,
+            command=None):
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
 
-        match = parser.OFPMatch(eth_dst='01:00:00:00:00:00')
-        addint = haddr_to_bin('01:00:00:00:00:00')
-        match.set_dl_dst_masked(addint, addint)
-        match.set_metadata(network_id)
-
-        actions = []
-        tunnels = {}
-
-        # aggregate  remote tunnel
-        for port_id_in_network in remote_ports:
-            lport = self.db_store.get_port(port_id_in_network)
-            if lport is None:
-                continue
-            tunnel_port = lport.get_external_value('ofport')
-
-            if tunnels.get(tunnel_port) is None:
-                tunnels[tunnel_port] = tunnel_port
-                actions.append(parser.OFPActionSetField(
-                    tunnel_id_nxm=segmentation_id))
-                actions.append(parser.OFPActionOutput(port=tunnel_port))
-
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.EGRESS_TABLE,
-            command=ofproto.OFPFC_MODIFY,
-            priority=const.PRIORITY_HIGH,
-            match=match)
-
-    def _add_multicast_broadcast_handling_for_remote_port(self,
-                                                          lport_id,
-                                                          port_key,
-                                                          network_id,
-                                                          segmentation_id,
-                                                          ofport):
-        LOG.info(_LI("Adding multicast and broadcast for remote port."))
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
-        command = ofproto.OFPFC_MODIFY
-
-        local_network = self.local_networks[network_id]
-        if not local_network.remote_ports:
-            command = ofproto.OFPFC_ADD
-        local_network.remote_ports[lport_id] = port_key
+        if command is None:
+            command = ofproto.OFPFC_MODIFY
 
         match = self._get_multicast_broadcast_match(network_id)
-        actions = [parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
-                   parser.OFPActionOutput(port=ofport)]
 
-        tunnels = {ofport}
-
-        # todo
+        actions = []
+        tunnels = set()
         # aggregate  remote tunnel
-        for port_id_in_network in local_network.remote_ports:
+        for port_id_in_network in remote_ports:
             lport = self.db_store.get_port(port_id_in_network)
             if lport is None:
                 continue
@@ -710,7 +662,6 @@ class L2App(df_base_app.DFlowApp):
                 actions.append(parser.OFPActionSetField(
                     tunnel_id_nxm=segmentation_id))
                 actions.append(parser.OFPActionOutput(port=tunnel_port))
-
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                              actions)]
         self.mod_flow(
@@ -720,6 +671,22 @@ class L2App(df_base_app.DFlowApp):
             command=command,
             priority=const.PRIORITY_LOW,
             match=match)
+
+    def _add_multicast_broadcast_handling_for_remote_port(self,
+                                                          lport_id,
+                                                          port_key,
+                                                          network_id,
+                                                          segmentation_id):
+        LOG.info(_LI("Adding multicast and broadcast for remote port."))
+        ofproto = self.get_datapath().ofproto
+        command = ofproto.OFPFC_MODIFY
+
+        local_network = self.local_networks[network_id]
+        if not local_network.remote_ports:
+            command = ofproto.OFPFC_ADD
+        local_network.remote_ports[lport_id] = port_key
+        self._update_multicast_broadcast_flows_for_remote(
+            network_id, segmentation_id, local_network.remote_ports, command)
 
     def remove_logical_switch(self, lswitch):
         datapath = self.get_datapath()
@@ -777,8 +744,7 @@ class L2App(df_base_app.DFlowApp):
         self._add_multicast_broadcast_handling_for_remote_port(lport_id,
                                                                port_key,
                                                                network_id,
-                                                               segmentation_id,
-                                                               ofport)
+                                                               segmentation_id)
 
     def _install_network_flows_on_first_port_up(self,
                                                 segmentation_id,
