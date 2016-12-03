@@ -72,11 +72,9 @@ class DFMechDriver(driver_api.MechanismDriver):
             port_status_notifier = df_utils.load_driver(
                 cfg.CONF.df.port_status_notifier,
                 df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
-            self.port_status_notifier = port_status_notifier
-            self.port_status_notifier.initialize(self, self.nb_api,
-                                            pub=None,
-                                            sub=self.nb_api.subscriber,
+            port_status_notifier.initialize(self.nb_api,
                                             is_neutron_server=True)
+
             self.port_status = None
 
     def subscribe_registries(self):
