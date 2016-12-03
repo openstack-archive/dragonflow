@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
+
 from neutron.agent.common import utils as agent_utils
 from neutron.common import utils as n_utils
 import re
@@ -59,11 +61,11 @@ def wait_until_none(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
 
 
 def print_command(full_args, run_as_root=False):
-    print '{}'.format(agent_utils.execute(
+    print ('{}'.format(agent_utils.execute(
         full_args,
         run_as_root=run_as_root,
         process_input=None,
-    ))
+    )))
 
 
 class OvsFlowsParser(object):
@@ -188,3 +190,14 @@ class OvsDBParser(object):
                 if iface_id == port_id:
                     return item.get('ofport', None)
         return None
+
+
+class empty_wrapper(object):
+    def __init__(self, type):
+        pass
+
+    def __call__(self, f):
+        @six.wraps(f)
+        def wrapped_f(*args, **kwargs):
+            return f(*args, **kwargs)
+        return wrapped_f
