@@ -22,6 +22,15 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
     apps_list = "l2_ml2_app.L2App"
 
+    def test_logical_port_updated(self):
+        lport = mock.Mock()
+        lport.get_chassis.return_value = "lport-fake-chassis"
+        lport.get_id.return_value = "lport-fake-id"
+        lport.get_lswitch_id.return_value = "lport-fake-lswitch"
+        lport.get_remote_vtep.return_value = False
+        self.controller.logical_port_updated(lport)
+        lport.set_external_value.assert_not_called()
+
     def _get_mock_chassis(self, chassis_ids):
         all_chassis = []
         for chassis_id in chassis_ids:
