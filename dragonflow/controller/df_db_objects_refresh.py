@@ -48,8 +48,7 @@ class DfObjectRefresher(object):
         """
         for obj in self.db_read_objects_callback(topic):
             self.cache_update_object_callback(obj)
-            obj_id = obj.get_id()
-            self.object_ids_to_remove.discard(obj_id)
+            self.object_ids_to_remove.discard(obj.id)
 
     def delete(self):
         """Does the actual removal of the objects marked for removal.
@@ -105,6 +104,10 @@ def initialize_object_refreshers(df_controller):
                                    nb_api.get_active_ports,
                                    df_controller.update_activeport,
                                    df_controller.delete_activeport))
+
+
+def add_refresher(refresher):
+    items.append(refresher)
 
 
 def sync_local_cache_from_nb_db(topics=None):
