@@ -96,6 +96,28 @@ def initialize_object_refreshers(df_controller):
                                    df_controller.floatingip_updated,
                                    df_controller.floatingip_deleted))
 
+    # SFC objects
+    items.append(DfObjectRefresher('Port Pairs',
+                                   db_store.portpairs.get_all_keys,
+                                   nb_api.portpair.get_all_entries,
+                                   df_controller.portpair_updated,
+                                   df_controller.portpair_deleted))
+    items.append(DfObjectRefresher('Port Pair Groups',
+                                   db_store.portpairgroups.get_all_keys,
+                                   nb_api.portpairgroup.get_all_entries,
+                                   df_controller.portpairgroup_updated,
+                                   df_controller.portpairgroup_deleted))
+    items.append(DfObjectRefresher('Flow classifiers',
+                                   db_store.flowclassifiers.get_all_keys,
+                                   nb_api.flowclassifier.get_all_entries,
+                                   df_controller.floatingip_updated,
+                                   df_controller.flowclassifier_deleted))
+    items.append(DfObjectRefresher('Port Chains',
+                                   db_store.portchains.get_all_keys,
+                                   nb_api.portchain.get_all_entries,
+                                   df_controller.portchain_updated,
+                                   df_controller.portchain_deleted))
+
 
 def sync_local_cache_from_nb_db(topics=None):
     """Sync local db store from nb db and apply to local OpenFlow
