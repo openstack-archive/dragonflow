@@ -55,41 +55,6 @@ class GetBridgePorts(commands.BaseCommand):
         self.result = [p for p in br.ports if p.name != self.bridge]
 
 
-class AddTunnelPort(commands.BaseCommand):
-    def __init__(self, api, chassis):
-        super(AddTunnelPort, self).__init__(api)
-        self.chassis = chassis
-        self.integration_bridge = cfg.CONF.df.integration_bridge
-
-    def run_idl(self, txn):
-        bridge = idlutils.row_by_value(self.api.idl, 'Bridge',
-                                       'name', self.integration_bridge)
-        port_name = "df-" + self.chassis.get_id()
-
-        interface = txn.insert(self.api.idl.tables['Interface'])
-        interface.name = port_name
-        interface.type = self.chassis.get_encap_type()
-        options_dict = getattr(interface, 'options', {})
-        options_dict['remote_ip'] = self.chassis.get_ip()
-        options_dict['key'] = 'flow'
-        interface.options = options_dict
-
-        port = txn.insert(self.api.idl.tables['Port'])
-        port.name = port_name
-        port.verify('interfaces')
-        ifaces = getattr(port, 'interfaces', [])
-        ifaces.append(interface)
-        port.interfaces = ifaces
-        external_ids_dict = getattr(interface, 'external_ids', {})
-        external_ids_dict['df-chassis-id'] = self.chassis.get_id()
-        port.external_ids = external_ids_dict
-
-        bridge.verify('ports')
-        ports = getattr(bridge, 'ports', [])
-        ports.append(port)
-        bridge.ports = ports
-
-
 class AddVirtualTunnelPort(commands.BaseCommand):
     def __init__(self, api, tunnel_type):
         super(AddVirtualTunnelPort, self).__init__(api)

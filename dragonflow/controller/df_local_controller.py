@@ -20,7 +20,6 @@ import time
 from neutron.agent.common import config
 from neutron.common import config as common_config
 from oslo_log import log
-from oslo_serialization import jsonutils
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
@@ -34,7 +33,6 @@ from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
 from dragonflow.db import db_store
-from dragonflow.db import models
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -47,13 +45,13 @@ class DfLocalController(object):
         self.db_store = db_store.DbStore()
         self.chassis_name = chassis_name
         self.ip = cfg.CONF.df.local_ip
-        if cfg.CONF.df.enable_virtual_tunnel_port:
+        if cfg.CONF.df.tunnel_types:
             # Virtual tunnel port support multiple tunnel types together
             self.tunnel_types = cfg.CONF.df.tunnel_types
         else:
-            # TODO(xiaohhui): This should be removed once virtual tunnel port
-            # is implemented.
-            self.tunnel_types = cfg.CONF.df.tunnel_type
+            # NOTE(xiaohhui): This should be removed along with the config
+            # option tunnel_type
+            self.tunnel_types = [cfg.CONF.df.tunnel_type]
         self.sync_finished = False
         self.port_status_notifier = None
         nb_driver = df_utils.load_driver(
@@ -152,49 +150,23 @@ class DfLocalController(object):
 
     def update_chassis(self, chassis):
         self.db_store.update_chassis(chassis.get_id(), chassis)
-
         remote_chassis_name = chassis.get_id()
         if self.chassis_name == remote_chassis_name:
             return
 
-        if cfg.CONF.df.enable_virtual_tunnel_port:
-            # Notify about remote port update
-            remote_ports = self.db_store.get_ports_by_chassis(
-                remote_chassis_name)
-            for port in remote_ports:
-                self._logical_port_process(port, None)
-            return
-
-        # Check if tunnel already exists to this chassis
-        t_ports = self.vswitch_api.get_tunnel_ports()
-        for t_port in t_ports:
-            if t_port.get_chassis_id() == remote_chassis_name:
-                LOG.info(_LI("remote Chassis Tunnel already installed  = %s") %
-                     chassis.__str__())
-                return
-        # Create tunnel port to this chassis
-        LOG.info(_LI("Adding tunnel to remote chassis = %s") %
-                 chassis.__str__())
-        self.vswitch_api.add_tunnel_port(chassis)
-        self.db_store.update_chassis(chassis.get_id(), chassis)
+        # Notify about remote port update
+        remote_ports = self.db_store.get_ports_by_chassis(remote_chassis_name)
+        for port in remote_ports:
+            self._logical_port_process(port, None)
 
     def delete_chassis(self, chassis_id):
-        LOG.info(_LI("Deleting tunnel to remote chassis = %s") % chassis_id)
-        if cfg.CONF.df.enable_virtual_tunnel_port:
-            # Chassis is deleted, there is no reason to keep the remote port
-            # in it.
-            remote_ports = self.db_store.get_ports_by_chassis(chassis_id)
-            for port in remote_ports:
-                self.logical_port_deleted(port.get_id())
-            self.db_store.delete_chassis(chassis_id)
-            return
-
+        LOG.info(_LI("Deleting remote ports in remote chassis %s"), chassis_id)
+        # Chassis is deleted, there is no reason to keep the remote port
+        # in it.
+        remote_ports = self.db_store.get_ports_by_chassis(chassis_id)
+        for port in remote_ports:
+            self.logical_port_deleted(port.get_id())
         self.db_store.delete_chassis(chassis_id)
-        tunnel_ports = self.vswitch_api.get_tunnel_ports()
-        for port in tunnel_ports:
-            if port.get_chassis_id() == chassis_id:
-                self.vswitch_api.delete_port(port)
-                return
 
     def update_lswitch(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
@@ -289,11 +261,8 @@ class DfLocalController(object):
                 lport.set_external_value('peer_vtep_address',
                                          remote_chassis.get_ip())
 
-            if cfg.CONF.df.enable_virtual_tunnel_port:
-                ofport = self.vswitch_api.get_vtp_ofport(
-                    lport.get_external_value('network_type'))
-            else:
-                ofport = self.vswitch_api.get_chassis_ofport(chassis)
+            ofport = self.vswitch_api.get_vtp_ofport(
+                lport.get_external_value('network_type'))
             if ofport:
                 lport.set_external_value('ofport', ofport)
                 if original_lport is None:
@@ -308,29 +277,10 @@ class DfLocalController(object):
                     self.open_flow_app.notify_update_remote_port(
                         lport, original_lport)
             else:
-                # TODO(gampel) add handling for this use case
-                # remote port but no tunnel to remote Host
-                # if this should never happen raise an exception
-                LOG.warning(_LW("No tunnel for remote logical port %s") %
-                            str(lport))
-
-    def _add_remote_port_on_chassis(self, lport):
-        chassis = lport.get_chassis()
-        chassis_lports = self.db_store.get_lports_by_remote_chassis(chassis)
-        if not chassis_lports:
-            chassis_value = {'id': chassis, 'ip': chassis,
-                             'tunnel_type': self.tunnel_types}
-            chassis_inst = models.Chassis(jsonutils.dumps(chassis_value))
-            self.update_chassis(chassis_inst)
-        self.db_store.add_remote_chassis_lport(chassis, lport.get_id())
-
-    def _delete_remote_port_from_chassis(self, lport):
-        chassis = lport.get_chassis()
-        self.db_store.del_remote_chassis_lport(chassis, lport.get_id())
-        chassis_lports = self.db_store.get_lports_by_remote_chassis(chassis)
-        if not chassis_lports:
-            self.delete_chassis(chassis)
-            self.db_store.del_remote_chassis(chassis)
+                # The tunnel port online event will update the remote logical
+                # port. Log this warning first.
+                LOG.warning(_LW("No tunnel for remote logical port %s"),
+                            lport)
 
     def update_lport(self, lport):
         chassis = lport.get_chassis()
@@ -341,17 +291,7 @@ class DfLocalController(object):
         original_lport = self.db_store.get_port(lport.get_id())
         if original_lport and not original_lport.get_external_value("ofport"):
             original_lport = None
-        if not original_lport:
-            if lport.get_remote_vtep():
-                self._add_remote_port_on_chassis(lport)
-        else:
-            original_chassis = original_lport.get_chassis()
-            if original_chassis != chassis:
-                if original_lport.get_remote_vtep():
-                    self._delete_remote_port_from_chassis(original_lport)
 
-                if lport.get_remote_vtep():
-                    self._add_remote_port_on_chassis(lport)
         if not self._is_valid_version(original_lport, lport):
             return
         self._logical_port_process(lport, original_lport)
@@ -439,58 +379,36 @@ class DfLocalController(object):
             self.db_store.update_chassis(c.get_id(), c)
 
         chassis = self.db_store.get_chassis(self.chassis_name)
-        # TODO(gsagie) Support tunnel type change here ?
         if chassis is None:
             self.nb_api.add_chassis(self.chassis_name,
                                     self.ip,
                                     self.tunnel_types)
         else:
-            if cfg.CONF.df.enable_virtual_tunnel_port:
-                kwargs = {}
-                old_tunnel_types = chassis.get_encap_type()
-                if (not isinstance(old_tunnel_types, list) or
-                        set(self.tunnel_types) != set(old_tunnel_types)):
-                    # There are 2 cases that needs update tunnel type in
-                    # chassis. 1) User changes tunnel types in conf file
-                    # 2) An old controller support only one type tunnel switch
-                    # to support virtual tunnel port.
-                    kwargs['tunnel_type'] = self.tunnel_types
-                if self.ip != chassis.get_ip():
-                    kwargs['ip'] = self.ip
+            kwargs = {}
+            old_tunnel_types = chassis.get_encap_type()
+            if (not isinstance(old_tunnel_types, list) or
+                    set(self.tunnel_types) != set(old_tunnel_types)):
+                # There are 2 cases that needs update tunnel type in
+                # chassis. 1) User changes tunnel types in conf file
+                # 2) An old controller support only one type tunnel switch
+                # to support virtual tunnel port.
+                kwargs['tunnel_type'] = self.tunnel_types
+            if self.ip != chassis.get_ip():
+                kwargs['ip'] = self.ip
 
-                if kwargs:
-                    self.nb_api.update_chassis(self.chassis_name, **kwargs)
+            if kwargs:
+                self.nb_api.update_chassis(self.chassis_name, **kwargs)
 
     def create_tunnels(self):
-        if cfg.CONF.df.enable_virtual_tunnel_port:
-            tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
-            for tunnel_port in tunnel_ports:
-                if tunnel_port.get_tunnel_type() not in self.tunnel_types:
-                    self.vswitch_api.delete_port(tunnel_port)
+        tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
+        for tunnel_port in tunnel_ports:
+            if tunnel_port.get_tunnel_type() not in self.tunnel_types:
+                self.vswitch_api.delete_port(tunnel_port)
 
-            for t in self.tunnel_types:
-                # The customized ovs idl will ingore the command if the port
-                # already exists.
-                self.vswitch_api.add_virtual_tunnel_port(t)
-
-            return
-
-        tunnel_ports = {}
-        t_ports = self.vswitch_api.get_tunnel_ports()
-        for t_port in t_ports:
-            tunnel_ports[t_port.get_chassis_id()] = t_port
-
-        for chassis in self.nb_api.get_all_chassis():
-            if chassis.get_id() in tunnel_ports:
-                del tunnel_ports[chassis.get_id()]
-            elif chassis.get_id() == self.chassis_name:
-                pass
-            else:
-                self.update_chassis(chassis)
-
-        # Iterate all tunnel ports that needs to be deleted
-        for port in tunnel_ports.values():
-            self.vswitch_api.delete_port(port)
+        for t in self.tunnel_types:
+            # The customized ovs idl will ingore the command if the port
+            # already exists.
+            self.vswitch_api.add_virtual_tunnel_port(t)
 
     def _update_security_group_rules(self, old_secgroup, new_secgroup):
         new_secgroup_rules = new_secgroup.get_rules()

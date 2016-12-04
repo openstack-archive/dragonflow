@@ -11,7 +11,6 @@
 #    under the License.
 
 import mock
-import testtools
 
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
@@ -22,77 +21,6 @@ from dragonflow.tests.unit import test_app_base
 class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
     apps_list = "l2_app.L2App"
-
-    def _get_mock_chassis(self, chassis_ids):
-        all_chassis = []
-        for chassis_id in chassis_ids:
-            mock_chassis = mock.Mock()
-            mock_chassis.get_id.return_value = chassis_id
-            all_chassis.append(mock_chassis)
-        return all_chassis
-
-    def _get_mock_ports(self, chassis_ids):
-        ports = []
-        for chassis_id in chassis_ids:
-            mock_port = mock.Mock()
-            mock_port.get_chassis_id.return_value = chassis_id
-            ports.append(mock_port)
-        return ports
-
-    @testtools.skip('enable_virtual_tunnel_port')
-    def test_chassis_deleted(self):
-        ids = ['foo', 'bar']
-        mock_ports = self._get_mock_ports(ids)
-        self.controller.vswitch_api.get_tunnel_ports.return_value = mock_ports
-        self.controller.delete_chassis(ids[0])
-        self.controller.vswitch_api.get_tunnel_ports.assert_called_once_with()
-        self.controller.vswitch_api.delete_port.assert_called_once_with(
-            mock_ports[0])
-
-    def test_chassis_created_if_self_installed(self):
-        mock_ports = self._get_mock_ports(['fake_chassis_id'])
-        ids = [self.controller.chassis_name]
-        mock_chassis = self._get_mock_chassis(ids)[0]
-        self.controller.update_chassis(mock_chassis)
-        self.assertFalse(mock_ports[0].get_chassis_id.called)
-        self.assertFalse(self.controller.vswitch_api.add_tunnel_port.called)
-
-    @testtools.skip('enable_virtual_tunnel_port')
-    def test_chassis_created_if_remote_installed(self):
-        ids = ['fake_chassis_id']
-        mock_ports = self._get_mock_ports(ids)
-        self.controller.vswitch_api.get_tunnel_ports.return_value = mock_ports
-        mock_chassis = self._get_mock_chassis(ids)[0]
-        self.controller.update_chassis(mock_chassis)
-        mock_ports[0].get_chassis_id.assert_called_once_with()
-        self.assertFalse(self.controller.vswitch_api.add_tunnel_port.called)
-
-    @testtools.skip('enable_virtual_tunnel_port')
-    def test_chassis_created(self):
-        ids = ['fake_chassis_id']
-        mock_chassis = mock.Mock()
-        self.controller.vswitch_api.get_tunnel_ports.return_value = (
-            self._get_mock_ports(ids))
-        self.controller.update_chassis(mock_chassis)
-        self.controller.vswitch_api.add_tunnel_port.assert_called_once_with(
-            mock_chassis)
-
-    @testtools.skip('enable_virtual_tunnel_port')
-    @mock.patch.object(df_local_controller.DfLocalController,
-                       'update_chassis')
-    def test_create_tunnels(self, mock_create):
-        shared = mock.Mock()
-        port_ids = [shared, 'to_be_deleted']
-        chassis_ids = [shared, self.controller.chassis_name, 'else']
-        t_ports = self._get_mock_ports(port_ids)
-        self.controller.vswitch_api.get_tunnel_ports.return_value = t_ports
-        chassis = self._get_mock_chassis(chassis_ids)
-        self.controller.nb_api.get_all_chassis.return_value = chassis
-        self.controller.create_tunnels()
-        self.nb_api.get_all_chassis.assert_called_once()
-        self.controller.update_chassis.assert_called_once_with(chassis[2])
-        self.controller.vswitch_api.delete_port.assert_called_once_with(
-            t_ports[1])
 
     def _get_mock_secgroup(self, secgroup_id, rules):
         secgroup = mock.Mock()
