@@ -139,20 +139,29 @@ class Topology(object):
         self._tunnel_port_updated(ovs_port)
 
     def _process_ovs_tunnel_port(self, ovs_port, action):
-        remote_chassis = ovs_port.get_remote_chassis()
-        if not remote_chassis:
+        tunnel_type = ovs_port.get_tunnel_type()
+        if not tunnel_type:
             return
-        lports = self.db_store.get_ports_by_chassis(remote_chassis)
-        for lport in lports:
-            try:
-                if action == "set":
-                    self.controller.update_lport(lport)
-                else:
-                    self.controller.delete_lport(lport.get_id())
-            except Exception:
-                LOG.exception(_LE("Failed to process logical port"
-                                  "when %(action)s tunnel %(lport)s")
-                              % {'action': action, 'lport': lport})
+
+        lswitch_ids = self.db_store.get_lswitch_keys_by_network_type(
+            tunnel_type)
+        for lswitch_id in lswitch_ids:
+            lports = self.db_store.get_ports_by_network_id(lswitch_id)
+            for lport in lports:
+                if lport.get_external_value('is_local'):
+                    continue
+
+                # Update of virtual tunnel port should update remote port in
+                # the lswitch of same type.
+                try:
+                    if action == "set":
+                        self.controller.update_lport(lport)
+                    else:
+                        self.controller.delete_lport(lport.get_id())
+                except Exception:
+                    LOG.exception(_LE("Failed to process logical port"
+                                      "when %(action)s tunnel %(lport)s"),
+                                  {'action': action, 'lport': lport})
 
     def _tunnel_port_updated(self, ovs_port):
         self._process_ovs_tunnel_port(ovs_port, "set")

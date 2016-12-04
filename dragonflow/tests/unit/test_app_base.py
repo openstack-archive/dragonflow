@@ -164,7 +164,6 @@ fake_ovs_port1.get_type.return_value = db_models.OvsPort.TYPE_VM
 fake_ovs_port1.get_iface_id.return_value = 'fake_port1'
 fake_ovs_port1.get_peer.return_value = ''
 fake_ovs_port1.get_attached_mac.return_value = 'fa:16:3e:8c:2e:b3'
-fake_ovs_port1.get_remote_ip.return_value = ''
 fake_ovs_port1.get_tunnel_type.return_value = 'vxlan'
 
 
@@ -204,7 +203,6 @@ fake_ovs_port2.get_type.return_value = db_models.OvsPort.TYPE_VM
 fake_ovs_port2.get_iface_id.return_value = 'fake_port2'
 fake_ovs_port2.get_peer.return_value = ''
 fake_ovs_port2.get_attached_mac.return_value = 'fa:16:3e:8c:2e:b4'
-fake_ovs_port2.get_remote_ip.return_value = ''
 fake_ovs_port2.get_tunnel_type.return_value = 'vxlan'
 
 
