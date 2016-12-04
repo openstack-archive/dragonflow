@@ -30,8 +30,8 @@ class TestDbObjectsRefresh(tests_base.BaseTestCase):
         self.test_objs = {}
         self.deleted_objs = set()
         for _i in range(self.TEST_ITEMS):
-            item = mock.Mock()
-            self.test_objs[item.get_id()] = item
+            item = mock.Mock(id=_i)
+            self.test_objs[_i] = item
 
     def _db_read_objects(self, topic=None):
         # Return only half of the objects
@@ -41,7 +41,7 @@ class TestDbObjectsRefresh(tests_base.BaseTestCase):
         return objects
 
     def _cache_update_object(self, item):
-        self.test_objs[item.get_id()] = item
+        self.test_objs[item.id] = item
 
     def _cache_delete_id(self, item_id):
         self.test_objs.pop(item_id, None)
