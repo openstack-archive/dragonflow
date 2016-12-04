@@ -189,3 +189,17 @@ class TestDbStore(tests_base.BaseTestCase):
         self.assertEqual(pub3, self.db_store.get_publisher('id3'))
         self.db_store.delete_publisher('id3')
         self.assertIsNone(self.db_store.get_publisher('id3'))
+
+    def test_chassis(self):
+        chassis1 = mock.Mock()
+        chassis1.get_id.return_value = "chassis1"
+        chassis2 = mock.Mock()
+        chassis2.get_id.return_value = "chassis2"
+        self.db_store.update_chassis('chassis1', chassis1)
+        self.db_store.update_chassis('chassis2', chassis2)
+        self.assertEqual(chassis1, self.db_store.get_chassis('chassis1'))
+        self.assertEqual(chassis2, self.db_store.get_chassis('chassis2'))
+        self.assertIsNone(self.db_store.get_chassis('chassis3'))
+
+        self.db_store.delete_chassis('chassis2')
+        self.assertIsNone(self.db_store.get_chassis('chassis2'))
