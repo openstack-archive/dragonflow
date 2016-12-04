@@ -577,35 +577,72 @@ class DfLocalController(object):
 
     @log_helpers.log_method_call
     def portpair_updated(self, pp):
-        pass
+        # No need to notify apps, only name can be updated
+        original_pp = self.db_store.portpairs.get(pp.get_id())
+        if original_pp is None or self._is_valid_version(original_pp, pp):
+            self.db_store.portpairs.update(pp.get_id(), pp)
 
     @log_helpers.log_method_call
     def portpair_deleted(self, pp_id):
-        pass
+        # No need to notify either, if it was deleted its no longer used by PPG
+        self.db_store.portpairs.delete(pp_id)
 
     @log_helpers.log_method_call
     def portpairgroup_updated(self, ppg):
-        pass
+        original_ppg = self.db_store.portpairgroups.get(ppg.get_id())
+        if original_ppg is None:
+            self.open_flow_app.notify_create_portpairgroup(ppg)
+        elif self._is_valid_version(original_ppg, ppg):
+            self.open_flow_app.notify_update_portpairgroup(ppg)
+        else:
+            return
+
+        self.db_store.portpairgroups.update(ppg.get_id(), ppg)
 
     @log_helpers.log_method_call
     def portpairgroup_deleted(self, ppg_id):
-        pass
+        ppg = self.db_store.portpairgroups.get(ppg_id)
+        if ppg is not None:
+            self.open_flow_app.notify_delete_portpairgroup(ppg)
+            self.db_store.portpairgroups.delete(ppg_id)
 
     @log_helpers.log_method_call
     def portchain_updated(self, pc):
-        pass
+        original_pc = self.db_store.portchains.get(pc.get_id())
+        if original_pc is None:
+            self.open_flow_app.notify_create_portchain(pc)
+        elif self._is_valid_version(original_pc, pc):
+            self.open_flow_app.notify_update_portchain(pc)
+        else:
+            return
+
+        self.db_store.portchains.update(pc.get_id(), pc)
 
     @log_helpers.log_method_call
     def portchain_deleted(self, pc_id):
-        pass
+        pc = self.db_store.portchains.get(pc_id)
+        if pc is not None:
+            self.open_flow_app.notify_delete_portchain(pc)
+            self.db_store.portchains.delete(pc_id)
 
     @log_helpers.log_method_call
     def flowclassifier_updated(self, fc):
-        pass
+        original_fc = self.db_store.flowclassifiers.get(fc.get_id())
+        if original_fc is None:
+            self.open_flow_app.notify_create_flowclassifier(fc)
+        elif self._is_valid_version(original_fc, fc):
+            self.open_flow_app.notify_update_flowclassifier(fc)
+        else:
+            return
+
+        self.db_store.flowclassifiers.update(fc.get_id(), fc)
 
     @log_helpers.log_method_call
     def flowclassifier_deleted(self, fc_id):
-        pass
+        fc = self.db_store.flowclassifiers.get(fc_id)
+        if fc is not None:
+            self.open_flow_app.notify_delete_flowclassifier(fc)
+            self.db_store.flowclassifiers.delete(fc_id)
 
 
 def init_ryu_config():
