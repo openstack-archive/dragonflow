@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import functools
 
 
 class DfObjectRefresher(object):
@@ -38,6 +39,12 @@ class DfObjectRefresher(object):
         """Reads the objects IDs from the cache."""
         self.object_ids_to_remove = set(self.cache_read_ids_callback(topic))
 
+    def get_id(self, obj):
+        try:
+            return obj.id
+        except AttributeError:
+            return obj.get_id()
+
     def update(self, topic=None):
         """Updates existing objects and marks obsolete ones for removal.
 
@@ -48,7 +55,7 @@ class DfObjectRefresher(object):
         """
         for obj in self.db_read_objects_callback(topic):
             self.cache_update_object_callback(obj)
-            obj_id = obj.get_id()
+            obj_id = self.get_id(obj)
             self.object_ids_to_remove.discard(obj_id)
 
     def delete(self):
@@ -107,6 +114,18 @@ def initialize_object_refreshers(df_controller):
                                    df_controller.delete_activeport))
 
 
+def register_model(controller, model):
+    items.append(
+        DfObjectRefresher(
+            model.__name__,
+            functools.partial(controller.db_store2.get_keys, model),
+            functools.partial(controller.nb_api.get_all, model),
+            get_handler(controller, model.table_name, 'update'),
+            get_handler(controller, model.table_name, 'delete'),
+        ),
+    )
+
+
 def sync_local_cache_from_nb_db(topics=None):
     """Sync local db store from nb db and apply to local OpenFlow
 
@@ -150,11 +169,15 @@ def clear_local_cache(topics=None):
             _delete_items(topic)
 
 
-def process_object(controller, table, action, argument):
+def get_handler(controller, table, action):
     if action == 'delete':
         method_name = 'delete_' + table
     else:
         method_name = 'update_' + table
-    handler = getattr(controller, method_name, None)
+    return getattr(controller, method_name, None)
+
+
+def process_object(controller, table, action, argument):
+    handler = get_handler(controller, table, action)
     if handler:
         handler(argument)
