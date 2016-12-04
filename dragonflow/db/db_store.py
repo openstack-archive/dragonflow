@@ -77,7 +77,6 @@ class DbStore(object):
     def __init__(self):
         self.tenant_dbs = collections.defaultdict(TenantDbStore)
         self.chassises = {}
-        self.remote_chassis_lport_map = {}
 
     def get(self, table_name, key, topic):
         if topic:
@@ -121,24 +120,6 @@ class DbStore(object):
         if table_item:
             return table_item.get_unique_key()
 
-    def get_lports_by_remote_chassis(self, chassis):
-        return self.remote_chassis_lport_map.get(chassis)
-
-    def add_remote_chassis_lport(self, chassis, lport_id):
-        lport_ids = self.remote_chassis_lport_map.get(chassis)
-        if not lport_ids:
-            self.remote_chassis_lport_map[chassis] = {lport_id}
-        else:
-            lport_ids.add(lport_id)
-
-    def del_remote_chassis_lport(self, chassis, lport_id):
-        lport_ids = self.remote_chassis_lport_map.get(chassis)
-        if lport_ids:
-            lport_ids.remove(lport_id)
-
-    def del_remote_chassis(self, chassis):
-        del self.remote_chassis_lport_map[chassis]
-
     def set_lswitch(self, id, lswitch, topic=None):
         self.set(models.LogicalSwitch.table_name, id, lswitch, topic)
 
@@ -153,6 +134,11 @@ class DbStore(object):
 
     def get_lswitch_keys(self, topic=None):
         return self.keys(models.LogicalSwitch.table_name, topic)
+
+    def get_lswitch_keys_by_network_type(self, network_type):
+        lswitches = self.values(models.LogicalSwitch.table_name, None)
+        return {lswitch.get_id() for lswitch in lswitches
+                if lswitch.get_network_type() == network_type}
 
     def get_router_keys(self, topic=None):
         return self.keys(models.LogicalRouter.table_name, topic)

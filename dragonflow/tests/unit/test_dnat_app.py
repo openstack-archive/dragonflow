@@ -119,7 +119,6 @@ class TestDNATApp(test_app_base.DFAppTestBase):
         value1.get_iface_id.return_value = 'fake_port1'
         value1.get_peer.return_value = ''
         value1.get_attached_mac.return_value = ''
-        value1.get_remote_ip.return_value = ''
         value1.get_tunnel_type.return_value = ''
 
         ovs_port1 = models.OvsPort(value1)
