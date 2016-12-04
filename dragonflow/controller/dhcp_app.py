@@ -40,7 +40,7 @@ LOG = log.getLogger(__name__)
 
 DHCP_DOMAIN_NAME_OPT = 15
 DHCP_INTERFACE_MTU_OPT = 26
-DHCP_CLASSLESS_ROUTE = 121
+DHCP_CLASSLESS_ROUTE_OPT = 121
 
 
 class DHCPApp(df_base_app.DFlowApp):
@@ -59,7 +59,7 @@ class DHCPApp(df_base_app.DFlowApp):
         self.block_hard_timeout = self.conf.df_dhcp_block_time_in_sec
         self.default_interface_mtu = self.conf.df_default_network_device_mtu
 
-        self.local_tunnel_to_pid_map = {}
+        self.ofport_to_dhcp_app_port_data = {}
         self.api.register_table_handler(const.DHCP_TABLE,
                 self.packet_in_handler)
         self.switch_dhcp_ip_map = collections.defaultdict(dict)
@@ -78,76 +78,56 @@ class DHCPApp(df_base_app.DFlowApp):
         msg = event.msg
 
         pkt = ryu_packet.Packet(msg.data)
-        is_pkt_ipv4 = pkt.get_protocol(ipv4.ipv4) is not None
+        pkt_ip = pkt.get_protocol(ipv4.ipv4)
 
-        if is_pkt_ipv4:
-            pkt_ip = pkt.get_protocol(ipv4.ipv4)
-        else:
+        if not pkt_ip:
             LOG.error(_LE("No support for non IPv4 protocol"))
             return
 
-        if pkt_ip is None:
-            LOG.error(_LE("Received None IP Packet"))
-            return
-
-        port_tunnel_key = msg.match.get('metadata')
-        if port_tunnel_key not in self.local_tunnel_to_pid_map:
+        ofport = msg.match.get('in_port')
+        port_data = self.ofport_to_dhcp_app_port_data.get(ofport)
+        if not port_data:
             LOG.error(
-                _LE("No lport found for tunnel_id %s for dhcp req"),
-                port_tunnel_key)
+                _LE("No lport found for ofport %s for dhcp req"),
+                ofport)
             return
 
-        (port_rate_limiter,
-            ofport_num,
-            lport_id) = self.local_tunnel_to_pid_map[port_tunnel_key]
+        port_rate_limiter, lport = port_data
         if port_rate_limiter():
             self._block_port_dhcp_traffic(
-                    ofport_num,
+                    ofport,
                     self.block_hard_timeout)
             LOG.warning(_LW("pass rate limit for %(port_id)s blocking DHCP"
                 " traffic for %(time)s sec") %
-                    {'port_id': lport_id,
+                    {'port_id': lport.get_id(),
                     'time': self.block_hard_timeout})
             return
-        lport = self.db_store.get_port(lport_id)
-        if lport is None:
-            LOG.error(
-                _LE("No lport found for tunnel_id %s for dhcp req"),
-                port_tunnel_key)
+        if not self.db_store.get_port(lport.get_id()):
+            LOG.error(_LE("Port %s no longer found."), lport.get_id())
             return
         try:
-            self._handle_dhcp_request(msg, pkt, lport)
-        except Exception as exception:
-            LOG.exception(_LE(
-                "Unable to handle packet %(msg)s: %(e)s")
-                % {'msg': msg, 'e': exception}
-            )
+            self._handle_dhcp_request(pkt, lport, ofport)
+        except Exception:
+            LOG.exception(_LE("Unable to handle packet %s"), msg)
 
-    def _handle_dhcp_request(self, msg, pkt, lport):
-        packet = ryu_packet.Packet(data=msg.data)
-        in_port = msg.match.get("in_port")
-
-        if isinstance(packet[3], str):
-            dhcp_packet = dhcp.dhcp.parser(packet[3])[0]
-        else:
-            dhcp_packet = packet[3]
-
+    def _handle_dhcp_request(self, packet, lport, ofport):
+        dhcp_packet = packet.get_protocol(dhcp.dhcp)
         dhcp_message_type = self._get_dhcp_message_type_opt(dhcp_packet)
         send_packet = None
         if dhcp_message_type == dhcp.DHCP_DISCOVER:
-            #DHCP DISCOVER
-            send_packet = self._create_dhcp_offer(
-                                pkt,
+            send_packet = self._create_dhcp_packet(
+                                packet,
                                 dhcp_packet,
+                                dhcp.DHCP_OFFER,
                                 lport)
             LOG.info(_LI("sending DHCP offer for port IP %(port_ip)s"
                 " port id %(port_id)s")
                      % {'port_ip': lport.get_ip(), 'port_id': lport.get_id()})
         elif dhcp_message_type == dhcp.DHCP_REQUEST:
-            #DHCP REQUEST
-            send_packet = self._create_dhcp_ack(
-                                pkt,
+            send_packet = self._create_dhcp_packet(
+                                packet,
                                 dhcp_packet,
+                                dhcp.DHCP_ACK,
                                 lport)
             LOG.info(_LI("sending DHCP ACK for port IP %(port_ip)s"
                         " port id %(tunnel_id)s")
@@ -157,67 +137,11 @@ class DHCPApp(df_base_app.DFlowApp):
             LOG.error(_LE("DHCP message type %d not handled"),
                 dhcp_message_type)
         if send_packet:
-            self._send_packet(self.get_datapath(), in_port, send_packet)
+            self._send_packet(self.get_datapath(), ofport, send_packet)
 
-    def _create_dhcp_ack(self, pkt, dhcp_packet, lport):
-        pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
-
-        subnet = self._get_subnet_by_port(lport)
-        if subnet is None:
-            LOG.error(_LE("No subnet found for port <%s>") %
-                      lport.get_id())
-            return
-
-        dns = self._get_dns_address_list_bin(subnet)
-        host_routes = self._get_host_routes_list_bin(subnet, lport)
-        dhcp_server_address = str(self._get_dhcp_server_address(subnet))
-        gateway_address = self._get_port_gateway_address(subnet)
-        netmask_bin = self._get_port_netmask(subnet).packed
-        domain_name_bin = struct.pack('!256s', self.domain_name)
-        lease_time_bin = struct.pack('!I', self.lease_time)
-        option_list = [
-            dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, b'\x05', 1),
-            dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask_bin, 4),
-            dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT, gateway_address.packed, 4),
-            dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT,
-                    lease_time_bin, 4),
-            dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns, len(dns)),
-            dhcp.option(DHCP_DOMAIN_NAME_OPT,
-                    domain_name_bin,
-                    len(self.domain_name)),
-            dhcp.option(DHCP_CLASSLESS_ROUTE, host_routes, len(host_routes))]
-
-        if self.advertise_mtu:
-            intreface_mtu = self._get_port_mtu(lport)
-            mtu_bin = struct.pack('!H', intreface_mtu)
-            option_list.append(dhcp.option(
-                                    DHCP_INTERFACE_MTU_OPT,
-                                    mtu_bin,
-                                    len(mtu_bin)))
-        options = dhcp.options(option_list=option_list)
-        dhcp_ack_pkt = ryu_packet.Packet()
-        dhcp_ack_pkt.add_protocol(ethernet.ethernet(
-                                                ethertype=ether.ETH_TYPE_IP,
-                                                dst=pkt_ethernet.src,
-                                                src=pkt_ethernet.dst))
-        dhcp_ack_pkt.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
-                                  src=dhcp_server_address,
-                                  proto=pkt_ipv4.proto))
-        dhcp_ack_pkt.add_protocol(udp.udp(src_port=const.DHCP_SERVER_PORT,
-                                          dst_port=const.DHCP_CLIENT_PORT))
-        dhcp_ack_pkt.add_protocol(dhcp.dhcp(op=dhcp.DHCP_BOOT_REPLY,
-                                            chaddr=pkt_ethernet.src,
-                                            siaddr=dhcp_server_address,
-                                            boot_file=dhcp_packet.boot_file,
-                                            yiaddr=lport.get_ip(),
-                                            xid=dhcp_packet.xid,
-                                            options=options))
-        return dhcp_ack_pkt
-
-    def _create_dhcp_offer(self, pkt, dhcp_packet, lport):
-        pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
+    def _create_dhcp_packet(self, packet, dhcp_packet, pkt_type, lport):
+        pkt_ipv4 = packet.get_protocol(ipv4.ipv4)
+        pkt_ethernet = packet.get_protocol(ethernet.ethernet)
 
         subnet = self._get_subnet_by_port(lport)
         if subnet is None:
@@ -225,50 +149,53 @@ class DHCPApp(df_base_app.DFlowApp):
                       lport.get_id())
             return
 
+        pkt_type_packed = struct.pack('!B', pkt_type)
         dns = self._get_dns_address_list_bin(subnet)
         host_routes = self._get_host_routes_list_bin(subnet, lport)
         dhcp_server_address = self._get_dhcp_server_address(subnet)
         netmask_bin = self._get_port_netmask(subnet).packed
-        lease_time_bin = struct.pack('!I', self.lease_time)
-        gateway_address = self._get_port_gateway_address(subnet)
         domain_name_bin = struct.pack('!256s', self.domain_name)
-
+        lease_time_bin = struct.pack('!I', self.lease_time)
         option_list = [
-            dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, b'\x02', 1),
-            dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask_bin, 4),
-            dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns, len(dns)),
-            dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT,
-                        lease_time_bin, 4),
+            dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, pkt_type_packed),
+            dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask_bin),
+            dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT, lease_time_bin),
             dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT,
-                        dhcp_server_address.packed, 4),
+                        dhcp_server_address.packed),
+            dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns),
             dhcp.option(DHCP_DOMAIN_NAME_OPT,
-                        domain_name_bin, len(self.domain_name)),
-            dhcp.option(DHCP_CLASSLESS_ROUTE, host_routes, len(host_routes))]
-        if gateway_address:
-            option_list.append(dhcp.option(
-                                    dhcp.DHCP_GATEWAY_ADDR_OPT,
-                                    gateway_address.packed,
-                                    4))
+                    domain_name_bin,
+                    len(self.domain_name)),
+            dhcp.option(DHCP_CLASSLESS_ROUTE_OPT, host_routes),
+        ]
+        gw_ip = subnet.get_gateway_ip()
+        if gw_ip:
+            option_list.append(dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT,
+                                           netaddr.IPAddress(gw_ip).packed))
 
+        if pkt_type == dhcp.DHCP_ACK and self.advertise_mtu:
+            intreface_mtu = self._get_port_mtu(lport)
+            mtu_bin = struct.pack('!H', intreface_mtu)
+            option_list.append(dhcp.option(DHCP_INTERFACE_MTU_OPT, mtu_bin))
         options = dhcp.options(option_list=option_list)
-        dhcp_offer_pkt = ryu_packet.Packet()
-        dhcp_offer_pkt.add_protocol(ethernet.ethernet(
-                                    ethertype=ether.ETH_TYPE_IP,
-                                    dst=pkt_ethernet.src,
-                                    src=pkt_ethernet.dst))
-        dhcp_offer_pkt.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
-                                   src=str(dhcp_server_address),
-                                   proto=pkt_ipv4.proto))
-        dhcp_offer_pkt.add_protocol(udp.udp(src_port=const.DHCP_SERVER_PORT,
-                                            dst_port=const.DHCP_CLIENT_PORT))
-        dhcp_offer_pkt.add_protocol(dhcp.dhcp(op=dhcp.DHCP_BOOT_REPLY,
-                                              chaddr=pkt_ethernet.src,
-                                              siaddr=str(dhcp_server_address),
-                                              boot_file=dhcp_packet.boot_file,
-                                              yiaddr=lport.get_ip(),
-                                              xid=dhcp_packet.xid,
-                                              options=options))
-        return dhcp_offer_pkt
+        dhcp_pkt = ryu_packet.Packet()
+        dhcp_pkt.add_protocol(ethernet.ethernet(
+                                                ethertype=ether.ETH_TYPE_IP,
+                                                dst=pkt_ethernet.src,
+                                                src=pkt_ethernet.dst))
+        dhcp_pkt.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
+                                  src=dhcp_server_address,
+                                  proto=pkt_ipv4.proto))
+        dhcp_pkt.add_protocol(udp.udp(src_port=const.DHCP_SERVER_PORT,
+                                      dst_port=const.DHCP_CLIENT_PORT))
+        dhcp_pkt.add_protocol(dhcp.dhcp(op=dhcp.DHCP_BOOT_REPLY,
+                                        chaddr=pkt_ethernet.src,
+                                        siaddr=dhcp_server_address,
+                                        boot_file=dhcp_packet.boot_file,
+                                        yiaddr=lport.get_ip(),
+                                        xid=dhcp_packet.xid,
+                                        options=options))
+        return dhcp_pkt
 
     def _get_dns_address_list_bin(self, subnet):
         dns_servers = self.global_dns_list
@@ -332,9 +259,6 @@ class DHCPApp(df_base_app.DFlowApp):
     def _get_dhcp_server_address(self, subnet):
         return netaddr.IPAddress(subnet.get_dhcp_server_address())
 
-    def _get_port_gateway_address(self, subnet):
-        return netaddr.IPAddress(subnet.get_gateway_ip())
-
     def _get_port_netmask(self, subnet):
         return netaddr.IPNetwork(subnet.get_cidr()).netmask
 
@@ -364,9 +288,8 @@ class DHCPApp(df_base_app.DFlowApp):
             LOG.warning(_LW("No support for non IPv4 protocol"))
             return
 
-        tunnel_key = lport.get_unique_key()
-        if tunnel_key in self.local_tunnel_to_pid_map:
-            self.local_tunnel_to_pid_map.pop(tunnel_key, None)
+        ofport = lport.get_external_value('ofport')
+        self.ofport_to_dhcp_app_port_data.pop(ofport, None)
 
         subnet_id = lport.get_subnets()[0]
         self.subnet_vm_port_map[subnet_id].discard(lport.get_id())
@@ -415,32 +338,24 @@ class DHCPApp(df_base_app.DFlowApp):
     def _install_dhcp_flow_for_vm_port(self, lport):
         """Install dhcp flow in DHCP_TABLE for a port of vm."""
 
-        lport_id = lport.get_id()
-        tunnel_key = lport.get_unique_key()
         ofport = lport.get_external_value('ofport')
         port_rate_limiter = df_utils.RateLimiter(
                         max_rate=self.conf.df_dhcp_max_rate_per_sec,
                         time_unit=1)
-        self.local_tunnel_to_pid_map[tunnel_key] = (port_rate_limiter,
-                                                    ofport,
-                                                    lport_id)
+        self.ofport_to_dhcp_app_port_data[ofport] = (port_rate_limiter, lport)
 
-        LOG.info(_LI("Register VM as DHCP client::port <%s>") % lport.get_id())
+        LOG.info(_LI("Register VM as DHCP client::port <%s>"), lport.get_id())
 
-        ofport = lport.get_external_value('ofport')
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
-        match = parser.OFPMatch()
-        match.set_in_port(ofport)
-        actions = []
-        actions.append(parser.OFPActionSetField(metadata=tunnel_key))
-        actions.append(parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER))
-        inst = [self.get_datapath().ofproto_parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-
+        datapath = self.get_datapath()
+        parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
+        match = parser.OFPMatch(in_port=ofport)
+        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                          ofproto.OFPCML_NO_BUFFER)]
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                             actions)]
         self.mod_flow(
-            self.get_datapath(),
+            datapath,
             inst=inst,
             table_id=const.DHCP_TABLE,
             priority=const.PRIORITY_MEDIUM,
