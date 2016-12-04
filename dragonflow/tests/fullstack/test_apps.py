@@ -19,6 +19,7 @@ from oslo_log import log
 import ryu.lib.packet
 
 from dragonflow._i18n import _LI
+from dragonflow.controller.common import constants
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils as test_utils
@@ -130,11 +131,11 @@ class TestArpResponder(test_base.DFTestBase):
     def _create_arp_request(self, src_port, dst_port):
         ethernet = ryu.lib.packet.ethernet.ethernet(
             src=src_port.get_mac(),
-            dst="ff:ff:ff:ff:ff:ff",
+            dst=constants.BROADCAST_MAC,
             ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_ARP,
         )
         arp = ryu.lib.packet.arp.arp_ip(
-            opcode=1,
+            opcode=ryu.lib.packet.arp.ARP_REQUEST,
             src_mac=src_port.get_mac(), src_ip=src_port.get_ip(),
             dst_mac='00:00:00:00:00:00', dst_ip=dst_port.get_ip(),
         )
@@ -186,9 +187,9 @@ class TestDHCPApp(test_base.DFTestBase):
             raise
 
     def _create_udp_packet_for_dhcp(self,
-            dst_mac="ff:ff:ff:ff:ff:ff",
+            dst_mac=constants.BROADCAST_MAC,
             src_ip='0.0.0.0',
-            dst_ip='255.255.255.255'):
+            dst_ip=constants.BROADCAST_IP):
         ethernet = ryu.lib.packet.ethernet.ethernet(
             src=self.port1.port.get_logical_port().get_mac(),
             dst=dst_mac,
@@ -200,8 +201,8 @@ class TestDHCPApp(test_base.DFTestBase):
             proto=ryu.lib.packet.ipv4.inet.IPPROTO_UDP,
         )
         udp = ryu.lib.packet.udp.udp(
-            src_port=68,
-            dst_port=67,
+            src_port=constants.DHCP_CLIENT_PORT,
+            dst_port=constants.DHCP_SERVER_PORT,
         )
         result = ryu.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
