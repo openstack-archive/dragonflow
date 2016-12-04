@@ -71,12 +71,6 @@ class ZMQPublisherAgentBase(pub_sub_api.PublisherApi):
         super(ZMQPublisherAgentBase, self).initialize()
 
     def send_event(self, update, topic=None):
-        #NOTE(gampel) In this reference implementation we develop a trigger
-        #based pub sub without sending the value mainly in order to avoid
-        #consistency issues in th cost of extra latency i.e get
-        if update.action != 'log':
-            update.value = None
-
         if topic:
             update.topic = topic
         elif update.topic:
