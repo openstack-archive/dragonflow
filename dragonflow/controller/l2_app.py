@@ -517,15 +517,12 @@ class L2App(df_base_app.DFlowApp):
 
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        if cfg.CONF.df.enable_virtual_tunnel_port:
-            ofport = self.vswitch_api.get_vtp_ofport(network_type)
-            if not ofport:
-                return
+        ofport = self.vswitch_api.get_vtp_ofport(network_type)
+        if not ofport:
+            return
 
-            match = parser.OFPMatch(tunnel_id_nxm=segmentation_id,
-                                    in_port=ofport)
-        else:
-            match = parser.OFPMatch(tunnel_id_nxm=segmentation_id)
+        match = parser.OFPMatch(tunnel_id_nxm=segmentation_id,
+                                in_port=ofport)
 
         self.mod_flow(
             datapath=datapath,
@@ -654,35 +651,19 @@ class L2App(df_base_app.DFlowApp):
         match = self._get_multicast_broadcast_match(network_id)
 
         actions = []
-        if cfg.CONF.df.enable_virtual_tunnel_port:
-            remote_ips = set()
-            for port_id_in_network in remote_ports:
-                lport = self.db_store.get_port(port_id_in_network)
-                if not lport:
-                    continue
-                remote_ip = lport.get_external_value('peer_vtep_address')
-                if remote_ip not in remote_ips:
-                    remote_ips.add(remote_ip)
-                    ofport = lport.get_external_value('ofport')
-                    actions.extend(
-                        [parser.OFPActionSetField(tun_ipv4_dst=remote_ip),
-                         parser.OFPActionSetField(
-                             tunnel_id_nxm=segmentation_id),
-                         parser.OFPActionOutput(port=ofport)])
-        else:
-            tunnels = set()
-            # aggregate  remote tunnel
-            for port_id_in_network in remote_ports:
-                lport = self.db_store.get_port(port_id_in_network)
-                if lport is None:
-                    continue
-                tunnel_port = lport.get_external_value('ofport')
-
-                if tunnel_port not in tunnels:
-                    tunnels.add(tunnel_port)
-                    actions.append(parser.OFPActionSetField(
-                        tunnel_id_nxm=segmentation_id))
-                    actions.append(parser.OFPActionOutput(port=tunnel_port))
+        remote_ips = set()
+        for port_id_in_network in remote_ports:
+            lport = self.db_store.get_port(port_id_in_network)
+            if not lport:
+                continue
+            remote_ip = lport.get_external_value('peer_vtep_address')
+            if remote_ip not in remote_ips:
+                remote_ips.add(remote_ip)
+                ofport = lport.get_external_value('ofport')
+                actions.extend(
+                    [parser.OFPActionSetField(tun_ipv4_dst=remote_ip),
+                     parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
+                     parser.OFPActionOutput(port=ofport)])
 
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                              actions)]
@@ -754,10 +735,9 @@ class L2App(df_base_app.DFlowApp):
             return
 
         match = parser.OFPMatch(reg7=port_key)
-        actions = [parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
+        actions = [parser.OFPActionSetField(tun_ipv4_dst=remote_ip),
+                   parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
                    parser.OFPActionOutput(port=ofport)]
-        if cfg.CONF.df.enable_virtual_tunnel_port:
-            actions.insert(0, parser.OFPActionSetField(tun_ipv4_dst=remote_ip))
 
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
@@ -812,15 +792,12 @@ class L2App(df_base_app.DFlowApp):
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        if cfg.CONF.df.enable_virtual_tunnel_port:
-            ofport = self.vswitch_api.get_vtp_ofport(network_type)
-            if not ofport:
-                return
+        ofport = self.vswitch_api.get_vtp_ofport(network_type)
+        if not ofport:
+            return
 
-            match = parser.OFPMatch(tunnel_id_nxm=segmentation_id,
-                                    in_port=ofport)
-        else:
-            match = parser.OFPMatch(tunnel_id_nxm=segmentation_id)
+        match = parser.OFPMatch(tunnel_id_nxm=segmentation_id,
+                                in_port=ofport)
 
         actions = [parser.OFPActionSetField(metadata=local_network_id)]
         action_inst = parser.OFPInstructionActions(
