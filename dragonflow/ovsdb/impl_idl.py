@@ -126,9 +126,6 @@ class DFOvsdbApi(impl_idl.OvsdbIdl):
         DFOvsdbApi.ovsdb_connection.start()
         self.idl = DFOvsdbApi.ovsdb_connection.idl
 
-    def add_tunnel_port(self, chassis):
-        return commands.AddTunnelPort(self, chassis)
-
     def get_bridge_ports(self, bridge):
         return commands.GetBridgePorts(self, bridge)
 
