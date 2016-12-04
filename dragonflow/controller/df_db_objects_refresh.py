@@ -38,6 +38,12 @@ class DfObjectRefresher(object):
         """Reads the objects IDs from the cache."""
         self.object_ids_to_remove = set(self.cache_read_ids_callback(topic))
 
+    def get_id(self, obj):
+        try:
+            return obj.id
+        except AttributeError:
+            return obj.get_id()
+
     def update(self, topic=None):
         """Updates existing objects and marks obsolete ones for removal.
 
@@ -48,7 +54,7 @@ class DfObjectRefresher(object):
         """
         for obj in self.db_read_objects_callback(topic):
             self.cache_update_object_callback(obj)
-            obj_id = obj.get_id()
+            obj_id = self.get_id(obj)
             self.object_ids_to_remove.discard(obj_id)
 
     def delete(self):
