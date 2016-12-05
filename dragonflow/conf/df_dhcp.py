@@ -35,3 +35,7 @@ df_dhcp_opts = [
 
 def register_opts():
     cfg.CONF.register_opts(df_dhcp_opts, 'df_dhcp_app')
+
+
+def list_opts():
+    return {'df_dhcp_app': df_dhcp_opts}
