@@ -453,14 +453,6 @@ class NbApi(object):
                                    lswitch_id, 'set',
                                    lswitch_json, lswitch['topic'])
 
-    def get_logical_port(self, port_id, topic=None):
-        try:
-            port_value = self.driver.get_key(db_models.LogicalPort.table_name,
-                                             port_id, topic)
-            return db_models.LogicalPort(port_value)
-        except Exception:
-            return None
-
     def get_all_logical_ports(self, topic=None):
         res = []
         for lport_value in self.driver.get_all_entries(
@@ -471,39 +463,11 @@ class NbApi(object):
             res.append(lport)
         return res
 
-    def create_lport(self, id, lswitch_id, topic, **columns):
-        lport = {}
-        lport['id'] = id
-        lport['lswitch'] = lswitch_id
-        lport['topic'] = topic
-        lport[db_models.UNIQUE_KEY] = self.driver.allocate_unique_key(
-            db_models.LogicalPort.table_name)
         for col, val in columns.items():
-            lport[col] = val
-        lport_json = jsonutils.dumps(lport)
-        self.driver.create_key(db_models.LogicalPort.table_name,
-                               id, lport_json, topic)
-        self._send_db_change_event(db_models.LogicalPort.table_name,
-                                   id, 'create', lport_json, topic)
 
-    def update_lport(self, id, topic, **columns):
-        lport_json = self.driver.get_key(db_models.LogicalPort.table_name,
-                                         id, topic)
-        lport = jsonutils.loads(lport_json)
         for col, val in columns.items():
-            if val != const.ATTR_NOT_SPECIFIED:
-                lport[col] = val
-        lport_json = jsonutils.dumps(lport)
-        self.driver.set_key(db_models.LogicalPort.table_name,
-                            id, lport_json, lport['topic'])
-        self._send_db_change_event(db_models.LogicalPort.table_name,
-                                   id, 'set', lport_json, lport['topic'])
 
-    def delete_lport(self, id, topic):
-        self.driver.delete_key(db_models.LogicalPort.table_name, id, topic)
-        self._send_db_change_event(db_models.LogicalPort.table_name,
                                    id, 'delete', id, topic)
-
     def create_lrouter(self, id, topic, **columns):
         lrouter = {}
         lrouter['id'] = id
