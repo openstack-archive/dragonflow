@@ -87,7 +87,7 @@ class NbApi(object):
             self,
             db_models.Floatingip,
         )
-        self.publisher = self._CRUDHelper(self, db_models.Publisher)
+        self.publisher = self._PublisherCRUDHelper(self, db_models.Publisher)
         self.qos_policy = self._CRUDHelper(self, db_models.QosPolicy)
 
         if self.use_pubsub:
@@ -149,7 +149,7 @@ class NbApi(object):
                 cfg.CONF.df.publisher_transport,
                 ip,
                 cfg.CONF.df.publisher_port) for ip in publishers_ips}
-        publishers = self.get_publishers()
+        publishers = self.publisher.get_all()
         uris |= {publisher.get_uri() for publisher in publishers}
         for uri in uris:
             self.pubsub.subscriber.register_listen_address(uri)
@@ -323,86 +323,6 @@ class NbApi(object):
                 db_models.QosPolicy.table_name, topic):
             res.append(db_models.QosPolicy(qos))
         return res
-
-    def create_publisher(self, uuid, topic, **columns):
-        publisher = {
-            'id': uuid,
-            'topic': topic
-        }
-        publisher.update(columns)
-        publisher_json = jsonutils.dumps(publisher)
-        self.driver.create_key(
-            db_models.Publisher.table_name,
-            uuid,
-            publisher_json, topic
-        )
-        self._send_db_change_event(
-            db_models.Publisher.table_name,
-            uuid,
-            'create',
-            publisher_json,
-            topic,
-        )
-
-    def delete_publisher(self, uuid, topic):
-        self.driver.delete_key(db_models.Publisher.table_name, uuid, topic)
-        self._send_db_change_event(
-            db_models.Publisher.table_name,
-            uuid,
-            'delete',
-            uuid,
-            topic,
-        )
-
-    def get_publisher(self, uuid, topic=None):
-        try:
-            publisher_value = self.driver.get_key(
-                db_models.Publisher.table_name,
-                uuid,
-                topic,
-            )
-            return db_models.Publisher(publisher_value)
-        except Exception:
-            LOG.exception(_LE('Could not get publisher %s'), uuid)
-            return None
-
-    def get_publishers(self, topic=None):
-        publishers_values = self.driver.get_all_entries(
-            db_models.Publisher.table_name,
-            topic,
-        )
-        publishers = [db_models.Publisher(value)
-                      for value in publishers_values]
-        timeout = cfg.CONF.df.publisher_timeout
-
-        def _publisher_not_too_old(publisher):
-            last_activity_timestamp = publisher.get_last_activity_timestamp()
-            return (last_activity_timestamp >= time.time() - timeout)
-        filter(_publisher_not_too_old, publishers)
-        return publishers
-
-    def update_publisher(self, uuid, topic, **columns):
-        publisher_value = self.driver.get_key(
-            db_models.Publisher.table_name,
-            uuid,
-            topic,
-        )
-        publisher = jsonutils.loads(publisher_value)
-        publisher.update(columns)
-        publisher_value = jsonutils.dumps(publisher)
-        self.driver.set_key(
-            db_models.Publisher.table_name,
-            uuid,
-            publisher_value,
-            topic,
-        )
-        self._send_db_change_event(
-            db_models.Publisher.table_name,
-            uuid,
-            'set',
-            publisher_value,
-            topic,
-        )
 
     def create_qos_policy(self, policy_id, topic, **columns):
         policy = {'id': policy_id,
@@ -606,3 +526,14 @@ class NbApi(object):
             notify = notify or columns.get('port_id') is not None
             super(NbApi._FloatingipCRUDHelper, self).create(
                 id, topic, notify=notify, **columns)
+
+    class _PublisherCRUDHelper(_CRUDHelper):
+        @classmethod
+        def _publisher_not_too_old(cls, publisher):
+            timeout = cfg.CONF.df.publisher_timeout
+            last_activity_timestamp = publisher.get_last_activity_timestamp()
+            return (last_activity_timestamp >= time.time() - timeout)
+
+        def get_all(self, topic=None):
+            publishers = super(NbApi._PublisherCRUDHelper, self).get_all(topic)
+            return [p for p in publishers if self._publisher_not_too_old(p)]
