@@ -53,7 +53,7 @@ class TestDBConsistent(tests_base.BaseTestCase):
         self.db_store.get_security_groups.return_value = [
             local_obj1, local_obj2]
 
-        self.nb_api.get_floatingips.return_value = [df_obj1, df_obj2]
+        self.nb_api.floatingip.get_all.return_value = [df_obj1, df_obj2]
         self.db_store.get_floatingips.return_value = [local_obj1, local_obj2]
 
         self.db_consistent.handle_data_comparison(
