@@ -23,19 +23,19 @@ class Test_API_NB(test_base.DFTestBase):
             test_app_base.fake_logic_switch1.inner_obj)
         del fake_lswitch['unique_key']
 
-        self.nb_api.create_lswitch(**fake_lswitch)
-        self.addCleanup(self.nb_api.delete_lswitch,
+        self.nb_api.lswitch.create(**fake_lswitch)
+        self.addCleanup(self.nb_api.lswitch.delete,
                         fake_lswitch['id'], fake_lswitch['topic'])
-        lswitch = self.nb_api.get_lswitch(fake_lswitch['id'],
+        lswitch = self.nb_api.lswitch.get(fake_lswitch['id'],
                                           fake_lswitch['topic'])
         self.assertIsNotNone(lswitch.get_unique_key())
 
         fake_lswitch1 = copy.deepcopy(fake_lswitch)
         fake_lswitch1['id'] = 'other_id'
-        self.nb_api.create_lswitch(**fake_lswitch1)
-        self.addCleanup(self.nb_api.delete_lswitch,
+        self.nb_api.lswitch.create(**fake_lswitch1)
+        self.addCleanup(self.nb_api.lswitch.delete,
                         fake_lswitch1['id'], fake_lswitch1['topic'])
-        lswitch1 = self.nb_api.get_lswitch(fake_lswitch1['id'],
+        lswitch1 = self.nb_api.lswitch.get(fake_lswitch1['id'],
                                           fake_lswitch1['topic'])
         self.assertIsNotNone(lswitch1.get_unique_key())
 

@@ -119,7 +119,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         with self.network() as n:
             network = n['network']
             self.assertGreater(network['revision_number'], 0)
-            self.nb_api.create_lswitch.assert_called_with(
+            self.nb_api.lswitch.create.assert_called_with(
                 id=network['id'], topic=network['tenant_id'],
                 name=network['name'],
                 network_type=network['provider:network_type'],
@@ -285,7 +285,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         network = self._test_create_network_revision()
         req = self.new_delete_request('networks', network['id'])
         req.get_response(self.api)
-        self.nb_api.delete_lswitch.assert_called_with(
+        self.nb_api.lswitch.delete.assert_called_with(
             id=network['id'], topic=network['tenant_id'])
 
     def test_create_update_remote_port(self):

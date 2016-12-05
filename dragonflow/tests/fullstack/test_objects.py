@@ -194,7 +194,7 @@ class NetworkTestObj(object):
         return self.topic
 
     def exists(self):
-        netobj = self.nb_api.get_lswitch(self.network_id)
+        netobj = self.nb_api.lswitch.get(self.network_id)
         if netobj:
             return True
         return False
@@ -336,7 +336,7 @@ class SubnetTestObj(object):
         return subnet['subnet']
 
     def get_subnet(self):
-        network = self.nb_api.get_lswitch(self.network_id)
+        network = self.nb_api.lswitch.get(self.network_id)
         if not network:
             return None
         subnets = network.get_subnets()

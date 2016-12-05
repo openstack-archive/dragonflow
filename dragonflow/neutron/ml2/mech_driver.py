@@ -219,7 +219,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     def create_network_postcommit(self, context):
         network = context.current
 
-        self.nb_api.create_lswitch(
+        self.nb_api.lswitch.create(
             id=network['id'],
             topic=network['tenant_id'],
             name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
@@ -242,7 +242,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         tenant_id = network['tenant_id']
 
         try:
-            self.nb_api.delete_lswitch(id=network_id,
+            self.nb_api.lswitch.delete(id=network_id,
                                        topic=tenant_id)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
@@ -255,7 +255,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     def update_network_postcommit(self, context):
         network = context.current
 
-        self.nb_api.update_lswitch(
+        self.nb_api.lswitch.update(
             id=network['id'],
             topic=network['tenant_id'],
             name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
