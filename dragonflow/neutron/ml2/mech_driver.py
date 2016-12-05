@@ -219,7 +219,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     def create_network_postcommit(self, context):
         network = context.current
 
-        self.nb_api.create_lswitch(
+        self.nb_api.lswitch.create(
             id=network['id'],
             topic=network['tenant_id'],
             name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
@@ -242,7 +242,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         tenant_id = network['tenant_id']
 
         try:
-            self.nb_api.delete_lswitch(id=network_id,
+            self.nb_api.lswitch.delete(id=network_id,
                                        topic=tenant_id)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
@@ -255,7 +255,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     def update_network_postcommit(self, context):
         network = context.current
 
-        self.nb_api.update_lswitch(
+        self.nb_api.lswitch.update(
             id=network['id'],
             topic=network['tenant_id'],
             name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
@@ -375,12 +375,12 @@ class DFMechDriver(driver_api.MechanismDriver):
                 _LE("Failed to create dhcp port for subnet %s"), subnet['id'])
             return None
 
-        self.nb_api.add_subnet(
-            subnet['id'],
-            net_id,
-            subnet['tenant_id'],
+        self.nb_api.lswitch.add_subnet(
+            id=net_id,
+            topic=subnet['tenant_id'],
+            version=network['revision_number'],
+            subnet_id=subnet['id'],
             name=subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
-            nw_version=network['revision_number'],
             enable_dhcp=subnet['enable_dhcp'],
             cidr=subnet['cidr'],
             dhcp_ip=dhcp_ip,
@@ -454,12 +454,12 @@ class DFMechDriver(driver_api.MechanismDriver):
                 new_subnet['id'])
             return None
 
-        self.nb_api.update_subnet(
-            new_subnet['id'],
-            new_subnet['network_id'],
-            new_subnet['tenant_id'],
+        self.nb_api.lswitch.update_subnet(
+            id=new_subnet['network_id'],
+            topic=new_subnet['tenant_id'],
+            version=network['revision_number'],
+            subnet_id=new_subnet['id'],
             name=new_subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
-            nw_version=network['revision_number'],
             enable_dhcp=new_subnet['enable_dhcp'],
             cidr=new_subnet['cidr'],
             dhcp_ip=dhcp_ip,
@@ -487,8 +487,12 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         # update df controller with subnet delete
         try:
-            self.nb_api.delete_subnet(subnet_id, net_id, subnet['tenant_id'],
-                                      nw_version=network['revision_number'])
+            self.nb_api.lswitch.delete_subnet(
+                id=net_id,
+                topic=subnet['tenant_id'],
+                version=network['revision_number'],
+                subnet_id=subnet_id,
+            )
         except df_exceptions.DBKeyNotFound:
             LOG.debug("network %s is not found in DB, might have "
                       "been deleted concurrently" % net_id)
