@@ -347,48 +347,6 @@ class NbApi(object):
             self._send_db_change_event(db_models.Floatingip.table_name,
                                        id, 'create', floatingip_json, topic)
 
-    def create_publisher(self, uuid, topic, **columns):
-        publisher = {
-            'id': uuid,
-            'topic': topic
-        }
-        publisher.update(columns)
-        publisher_json = jsonutils.dumps(publisher)
-        self.driver.create_key(
-            db_models.Publisher.table_name,
-            uuid,
-            publisher_json, topic
-        )
-        self._send_db_change_event(
-            db_models.Publisher.table_name,
-            uuid,
-            'create',
-            publisher_json,
-            topic,
-        )
-
-    def delete_publisher(self, uuid, topic):
-        self.driver.delete_key(db_models.Publisher.table_name, uuid, topic)
-        self._send_db_change_event(
-            db_models.Publisher.table_name,
-            uuid,
-            'delete',
-            uuid,
-            topic,
-        )
-
-    def get_publisher(self, uuid, topic=None):
-        try:
-            publisher_value = self.driver.get_key(
-                db_models.Publisher.table_name,
-                uuid,
-                topic,
-            )
-            return db_models.Publisher(publisher_value)
-        except Exception:
-            LOG.exception(_LE('Could not get publisher %s'), uuid)
-            return None
-
     def get_publishers(self, topic=None):
         publishers_values = self.driver.get_all_entries(
             db_models.Publisher.table_name,
@@ -403,29 +361,6 @@ class NbApi(object):
             return (last_activity_timestamp >= time.time() - timeout)
         filter(_publisher_not_too_old, publishers)
         return publishers
-
-    def update_publisher(self, uuid, topic, **columns):
-        publisher_value = self.driver.get_key(
-            db_models.Publisher.table_name,
-            uuid,
-            topic,
-        )
-        publisher = jsonutils.loads(publisher_value)
-        publisher.update(columns)
-        publisher_value = jsonutils.dumps(publisher)
-        self.driver.set_key(
-            db_models.Publisher.table_name,
-            uuid,
-            publisher_value,
-            topic,
-        )
-        self._send_db_change_event(
-            db_models.Publisher.table_name,
-            uuid,
-            'set',
-            publisher_value,
-            topic,
-        )
 
     def create_qos_policy(self, policy_id, topic, **columns):
         policy = {'id': policy_id,
