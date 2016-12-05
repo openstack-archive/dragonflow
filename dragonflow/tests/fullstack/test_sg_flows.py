@@ -188,7 +188,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         self.assertTrue(egress_permit_flow_check)
 
     def _get_vm_port(self, ip, mac):
-        ports = self.nb_api.get_all_logical_ports()
+        ports = self.nb_api.lport.get_all()
         for port in ports:
             if port.get_device_owner() == 'compute:None':
                 if port.get_ip() == ip and port.get_mac() == mac:

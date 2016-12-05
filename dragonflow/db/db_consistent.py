@@ -182,7 +182,7 @@ class DBConsistencyManager(object):
             df_objects = self.nb_api.lswitch.get_all(topic)
             local_objects = self.db_store.get_lswitchs(topic)
         elif table == models.LogicalPort.table_name:
-            df_objects = self.nb_api.get_all_logical_ports(topic)
+            df_objects = self.nb_api.lport.get_all(topic)
             local_objects = self.db_store.get_ports(topic)
         elif table == models.LogicalRouter.table_name:
             df_objects = self.nb_api.get_routers(topic)
