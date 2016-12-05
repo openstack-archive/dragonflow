@@ -48,7 +48,7 @@ def run_server(nb_api):
     topic = str(uuid.uuid4())
     publisher = str(uuid.uuid4())
     lswitch_name = 'lswitch0'
-    nb_api.create_publisher(
+    nb_api.publisher.create(
         publisher,
         topic,
         last_activity_timestamp=time.time()
@@ -62,7 +62,7 @@ def run_server(nb_api):
             lswitch=lswitch_name,
             timestamp=time.time()
         )
-    nb_api.delete_publisher(publisher, topic)
+    nb_api.publisher.delete(publisher, topic)
     end = time.time()
     data_str = [str(end - start), str(cfg.CONF.df_db_test.count),
                 str(cfg.CONF.df_db_test.count / (end - start))]
