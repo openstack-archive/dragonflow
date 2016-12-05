@@ -159,7 +159,10 @@ class OvsApi(object):
                 return iface['ofport']
 
     def create_patch_port(self, bridge, port, remote_name):
-        self.ovsdb.add_br(bridge, datapath_type='system').execute()
+        if cfg.CONF.df.enable_dpdk:
+            self.ovsdb.add_br(bridge, datapath_type='netdev').execute()
+        else:
+            self.ovsdb.add_br(bridge, datapath_type='system').execute()
         if not self.patch_port_exist(port):
             self.ovsdb.add_patch_port(bridge, port, remote_name).execute()
         return self.get_port_ofport(port)
