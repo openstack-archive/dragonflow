@@ -63,7 +63,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return True
 
     def _get_vm_port_by_mac_address(self, mac):
-        lports = self.nb_api.get_all_logical_ports()
+        lports = self.nb_api.lport.get_all()
         for lport in lports:
             if lport.get_mac() == mac:
                 return lport
