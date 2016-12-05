@@ -56,10 +56,10 @@ def run_server(nb_api):
     nb_api.lswitch.create(lswitch_name, topic)
     start = time.time()
     for idx in range(cfg.CONF.df_db_test.count):
-        nb_api.create_lport(
+        nb_api.lport.create(
             'lport{}'.format(idx),
-            lswitch_name,
             topic,
+            lswitch=lswitch_name,
             timestamp=time.time()
         )
     nb_api.delete_publisher(publisher, topic)
