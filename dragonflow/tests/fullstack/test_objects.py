@@ -86,7 +86,7 @@ class RouterTestObj(object):
         self.closed = True
 
     def exists(self):
-        router = self.nb_api.get_router(self.router_id)
+        router = self.nb_api.lrouter.get(self.router_id)
         if router:
             return True
         return False

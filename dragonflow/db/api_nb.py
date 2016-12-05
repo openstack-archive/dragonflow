@@ -433,37 +433,6 @@ class NbApi(object):
             res.append(lport)
         return res
 
-    def create_lrouter(self, id, topic, **columns):
-        lrouter = {}
-        lrouter['id'] = id
-        lrouter['topic'] = topic
-        for col, val in columns.items():
-            lrouter[col] = val
-        lrouter_json = jsonutils.dumps(lrouter)
-        self.driver.create_key(db_models.LogicalRouter.table_name,
-                               id, lrouter_json, topic)
-        self._send_db_change_event(db_models.LogicalRouter.table_name,
-                                   id, 'create', lrouter_json, topic)
-
-    def update_lrouter(self, id, topic, **columns):
-        #TODO(gampel) move the router ports to a separate table
-        lrouter_json = self.driver.get_key(db_models.LogicalRouter.table_name,
-                                           id, topic)
-        lrouter = jsonutils.loads(lrouter_json)
-        for col, val in columns.items():
-            lrouter[col] = val
-
-        lrouter_json = jsonutils.dumps(lrouter)
-        self.driver.set_key(db_models.LogicalRouter.table_name,
-                            id, lrouter_json, topic)
-        self._send_db_change_event(db_models.LogicalRouter.table_name,
-                                   id, 'set', lrouter_json, topic)
-
-    def delete_lrouter(self, id, topic):
-        self.driver.delete_key(db_models.LogicalRouter.table_name, id, topic)
-        self._send_db_change_event(db_models.LogicalRouter.table_name,
-                                   id, 'delete', id, topic)
-
     def add_lrouter_port(self, id, lrouter_id, lswitch_id,
                          topic, **columns):
         lrouter_json = self.driver.get_key(db_models.LogicalRouter.table_name,
