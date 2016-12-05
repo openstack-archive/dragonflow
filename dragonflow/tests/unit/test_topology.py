@@ -33,7 +33,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         # By default, return empty value for all resources, each case can
         # customize the return value on their own.
         self.nb_api.lswitch.get_all.return_value = []
-        self.nb_api.get_all_logical_ports.return_value = []
+        self.nb_api.lport.get_all.return_value = []
         self.nb_api.get_routers.return_value = []
         self.nb_api.get_security_groups.return_value = []
         self.nb_api.get_floatingips.return_value = []
@@ -41,10 +41,9 @@ class TestTopology(test_app_base.DFAppTestBase):
     def test_vm_port_online_offline(self):
         self.nb_api.lswitch.get_all.return_value = [
             test_app_base.fake_logic_switch1]
-        self.nb_api.get_all_logical_ports.return_value = [
+        self.nb_api.lport.get_all.return_value = [
             test_app_base.fake_local_port1]
-        self.nb_api.get_logical_port.return_value = (
-            test_app_base.fake_local_port1)
+        self.nb_api.lport.get.return_value = test_app_base.fake_local_port1
 
         original_update = self.controller.logical_port_updated
         self.controller.logical_port_updated = mock.Mock()
@@ -62,7 +61,7 @@ class TestTopology(test_app_base.DFAppTestBase):
             test_app_base.fake_local_port1.get_topic())
 
         # Verify port offline
-        self.nb_api.get_all_logical_ports.return_value = []
+        self.nb_api.lport.get_all.return_value = []
         self.topology.ovs_port_deleted(test_app_base.fake_ovs_port1.get_id())
         self.controller.logical_port_deleted.assert_called_once_with(
             test_app_base.fake_local_port1.get_id())
@@ -72,7 +71,7 @@ class TestTopology(test_app_base.DFAppTestBase):
     def test_vm_online_after_topology_pulled(self):
         self.nb_api.lswitch.get_all.return_value = [
             test_app_base.fake_logic_switch1]
-        self.nb_api.get_all_logical_ports.return_value = [
+        self.nb_api.lport.get_all.return_value = [
             test_app_base.fake_local_port1]
 
         def _get_logical_port(lport_id, topic):
@@ -81,14 +80,14 @@ class TestTopology(test_app_base.DFAppTestBase):
             if lport_id == test_app_base.fake_local_port2.get_id():
                 return test_app_base.fake_local_port2
 
-        self.nb_api.get_logical_port.side_effect = _get_logical_port
+        self.nb_api.lport.get.side_effect = _get_logical_port
 
         # Pull topology by first ovs port online
         df_db_objects_refresh.initialize_object_refreshers(self.controller)
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
 
         # Another port online
-        self.nb_api.get_all_logical_ports.return_value = [
+        self.nb_api.lport.get_all.return_value = [
             test_app_base.fake_local_port1,
             test_app_base.fake_local_port2]
         self.controller.logical_port_updated = mock.Mock()
@@ -102,7 +101,7 @@ class TestTopology(test_app_base.DFAppTestBase):
     def test_multi_vm_port_online_restart_controller(self):
         self.nb_api.lswitch.get_all.return_value = [
             test_app_base.fake_logic_switch1]
-        self.nb_api.get_all_logical_ports.return_value = [
+        self.nb_api.lport.get_all.return_value = [
             test_app_base.fake_local_port1,
             test_app_base.fake_local_port2]
 
@@ -112,7 +111,7 @@ class TestTopology(test_app_base.DFAppTestBase):
             if lport_id == test_app_base.fake_local_port2.get_id():
                 return test_app_base.fake_local_port2
 
-        self.nb_api.get_logical_port.side_effect = _get_logical_port
+        self.nb_api.lport.get.side_effect = _get_logical_port
         original_update = self.controller.logical_port_updated
         self.controller.logical_port_updated = mock.Mock()
         self.controller.logical_port_updated.side_effect = original_update

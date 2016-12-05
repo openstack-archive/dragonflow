@@ -200,8 +200,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                            arg_list=('allowed_address_pairs',),
                            **kwargs) as p:
                 port = p['port']
-                self.assertTrue(self.nb_api.create_lport.called)
-                called_args = self.nb_api.create_lport.call_args_list[0][1]
+                self.assertTrue(self.nb_api.lport.create.called)
+                called_args = self.nb_api.lport.create.call_args_list[0][1]
                 expected_aap = [{"ip_address": "10.1.1.10",
                                  "mac_address": port['mac_address']},
                                 {"ip_address": "20.1.1.20",
@@ -214,8 +214,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                         'ports',
                         data, port['id'])
                 req.get_response(self.api)
-                self.assertTrue(self.nb_api.update_lport.called)
-                called_args = self.nb_api.update_lport.call_args_list[0][1]
+                self.assertTrue(self.nb_api.lport.update.called)
+                called_args = self.nb_api.lport.update.call_args_list[0][1]
                 self.assertEqual([], called_args.get("allowed_address_pairs"))
 
     def _test_create_update_port_security(self, enabled):
@@ -224,9 +224,9 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             with self.port(subnet=subnet,
                            arg_list=('port_security_enabled',),
                            **kwargs) as port:
-                self.assertTrue(self.nb_api.create_lport.called)
+                self.assertTrue(self.nb_api.lport.create.called)
                 called_args_dict = (
-                    self.nb_api.create_lport.call_args_list[0][1])
+                    self.nb_api.lport.create.call_args_list[0][1])
                 self.assertEqual(enabled,
                                  called_args_dict.get('port_security_enabled'))
 
@@ -234,9 +234,9 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 req = self.new_update_request('ports',
                                               data, port['port']['id'])
                 req.get_response(self.api)
-                self.assertTrue(self.nb_api.update_lport.called)
+                self.assertTrue(self.nb_api.lport.update.called)
                 called_args_dict = (
-                    self.nb_api.update_lport.call_args_list[0][1])
+                    self.nb_api.lport.update.call_args_list[0][1])
                 self.assertEqual(enabled,
                                  called_args_dict.get('port_security_enabled'))
 
@@ -251,9 +251,9 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                        device_id='fake_id') as p:
             port = p['port']
             self.assertGreater(port['revision_number'], 0)
-            self.nb_api.create_lport.assert_called_with(
+            self.nb_api.lport.create.assert_called_with(
                 id=port['id'],
-                lswitch_id=port['network_id'],
+                lswitch=port['network_id'],
                 topic=port['tenant_id'],
                 macs=[port['mac_address']], ips=mock.ANY,
                 subnets=mock.ANY, name=port['name'],
@@ -276,7 +276,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             prev_version = port['revision_number']
             port = self.driver.get_port(self.context, port['id'])
             self.assertGreater(port['revision_number'], prev_version)
-            self.nb_api.update_lport.assert_called_with(
+            self.nb_api.lport.update.assert_called_with(
                 id=port['id'],
                 topic=port['tenant_id'],
                 macs=[port['mac_address']], ips=mock.ANY,
@@ -309,9 +309,9 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                            arg_list=('binding:profile',),
                            **profile_arg) as port:
                 port = port['port']
-                self.assertTrue(self.nb_api.create_lport.called)
+                self.assertTrue(self.nb_api.lport.create.called)
                 called_args_dict = (
-                    self.nb_api.create_lport.call_args_list[0][1])
+                    self.nb_api.lport.create.call_args_list[0][1])
                 self.assertTrue(called_args_dict.get('remote_vtep'))
                 self.assertEqual("20.0.0.2",
                                  called_args_dict.get('chassis'))
@@ -320,9 +320,9 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 data = {'port': {'binding:profile': profile}}
                 req = self.new_update_request('ports', data, port['id'])
                 req.get_response(self.api)
-                self.assertTrue(self.nb_api.update_lport.called)
+                self.assertTrue(self.nb_api.lport.update.called)
                 called_args_dict = (
-                    self.nb_api.update_lport.call_args_list[0][1])
+                    self.nb_api.lport.update.call_args_list[0][1])
                 self.assertTrue(called_args_dict.get('remote_vtep'))
                 self.assertEqual("20.0.0.20",
                                  called_args_dict.get('chassis'))
@@ -333,7 +333,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
         req = self.new_delete_request('ports', port['id'])
         req.get_response(self.api)
-        self.nb_api.delete_lport.assert_called_with(
+        self.nb_api.lport.delete.assert_called_with(
             id=port['id'], topic=port['tenant_id'])
 
     def test_delete_security_group(self):
