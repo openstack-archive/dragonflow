@@ -191,7 +191,7 @@ class DBConsistencyManager(object):
             df_objects = self.nb_api.security_group.get_all(topic)
             local_objects = self.db_store.get_security_groups(topic)
         elif table == models.Floatingip.table_name:
-            df_objects = self.nb_api.get_floatingips(topic)
+            df_objects = self.nb_api.floatingip.get_all(topic)
             local_objects = self.db_store.get_floatingips(topic)
         elif table == models.QosPolicy.table_name:
             df_objects = self.nb_api.get_qos_policies(topic)
