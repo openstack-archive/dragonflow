@@ -398,15 +398,17 @@ class DfLocalController(object):
 
     def register_chassis(self):
         # Get all chassis from nb db to db store.
-        for c in self.nb_api.get_all_chassis():
+        for c in self.nb_api.chassis.get_all():
             self.db_store.update_chassis(c.get_id(), c)
 
         chassis = self.db_store.get_chassis(self.chassis_name)
         # TODO(gsagie) Support tunnel type change here ?
         if chassis is None:
-            self.nb_api.add_chassis(self.chassis_name,
-                                    self.ip,
-                                    self.tunnel_types)
+            self.nb_api.chassis.create(
+                id=self.chassis_name,
+                ip=self.ip,
+                tunnel_type=self.tunnel_types,
+            )
         else:
             if cfg.CONF.df.enable_virtual_tunnel_port:
                 old_tunnel_types = chassis.get_encap_type()
@@ -416,7 +418,7 @@ class DfLocalController(object):
                     # chassis. 1) User changes tunnel types in conf file
                     # 2) An old controller support only one type tunnel switch
                     # to support virtual tunnel port.
-                    self.nb_api.update_chassis(self.chassis_name,
+                    self.nb_api.chassis.update(self.chassis_name,
                                                tunnel_type=self.tunnel_types)
 
     def create_tunnels(self):
@@ -438,7 +440,7 @@ class DfLocalController(object):
         for t_port in t_ports:
             tunnel_ports[t_port.get_chassis_id()] = t_port
 
-        for chassis in self.nb_api.get_all_chassis():
+        for chassis in self.nb_api.chassis.get_all():
             if chassis.get_id() in tunnel_ports:
                 del tunnel_ports[chassis.get_id()]
             elif chassis.get_id() == self.chassis_name:

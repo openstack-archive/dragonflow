@@ -82,9 +82,9 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         t_ports = self._get_mock_ports(port_ids)
         self.controller.vswitch_api.get_tunnel_ports.return_value = t_ports
         chassis = self._get_mock_chassis(chassis_ids)
-        self.controller.nb_api.get_all_chassis.return_value = chassis
+        self.controller.nb_api.chassis.get_all.return_value = chassis
         self.controller.create_tunnels()
-        self.nb_api.get_all_chassis.assert_called_once()
+        self.nb_api.chassis.get_all.assert_called_once()
         self.controller.chassis_updated.assert_called_once_with(chassis[2])
         self.controller.vswitch_api.delete_port.assert_called_once_with(
             t_ports[1])
