@@ -180,16 +180,7 @@ class Subnet(object):
             'cidr': cidr,
             'enable_dhcp': enable_dhcp,
             'ip_version': 4,
-            'network_id': topology.network.network_id,
-            'host_routes': [
-                {
-                    'destination': '1.1.1.0/24',
-                    'nexthop': '2.2.2.2'
-                },
-                {
-                    'destination': '1.1.2.0/24',
-                    'nexthop': '3.3.3.3'
-                },
+            'network_id': topology.network.network_id
             ]
         })
 
