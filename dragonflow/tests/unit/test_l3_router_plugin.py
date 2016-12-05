@@ -44,7 +44,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                         'admin_state_up': True}}
         router = self.l3p.create_router(self.context, r)
         self.assertGreater(router['revision_number'], 0)
-        self.nb_api.create_lrouter.assert_called_once_with(
+        self.nb_api.lrouter.create.assert_called_once_with(
             router['id'], topic='tenant', name='router', distributed=False,
             version=router['revision_number'], ports=[])
         return router
