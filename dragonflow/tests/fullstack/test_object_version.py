@@ -87,16 +87,16 @@ class TestObjectVersion(test_base.DFTestBase):
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         router_id = router.create()
         self.assertTrue(router.exists())
-        prev_version = self.nb_api.get_router(router_id).get_version()
+        prev_version = self.nb_api.lrouter.get(router_id).get_version()
 
         subnet_msg = {'subnet_id': subnet_id}
         self.neutron.add_interface_router(router_id, body=subnet_msg)
-        version = self.nb_api.get_router(router_id).get_version()
+        version = self.nb_api.lrouter.get(router_id).get_version()
         self.assertGreater(version, prev_version)
         prev_version = version
 
         self.neutron.remove_interface_router(router_id, body=subnet_msg)
-        version = self.nb_api.get_router(router_id).get_version()
+        version = self.nb_api.lrouter.get(router_id).get_version()
         self.assertGreater(version, prev_version)
 
         router.close()
