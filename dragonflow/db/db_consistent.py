@@ -185,7 +185,7 @@ class DBConsistencyManager(object):
             df_objects = self.nb_api.lport.get_all(topic)
             local_objects = self.db_store.get_ports(topic)
         elif table == models.LogicalRouter.table_name:
-            df_objects = self.nb_api.get_routers(topic)
+            df_objects = self.nb_api.lrouter.get_all(topic)
             local_objects = self.db_store.get_routers(topic)
         elif table == models.SecurityGroup.table_name:
             df_objects = self.nb_api.security_group.get_all(topic)
