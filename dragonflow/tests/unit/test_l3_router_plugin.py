@@ -115,9 +115,9 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
         new_fip = self.l3p.update_floatingip(
             self.context, floatingip['id'], {'floatingip': floatingip})
         self.assertGreater(new_fip['revision_number'], old_version)
-        self.nb_api.update_floatingip.assert_called_once_with(
+        self.nb_api.floatingip.update.assert_called_once_with(
             id=floatingip['id'], topic=new_fip['tenant_id'],
-            notify=True, name=mock.ANY, router_id=mock.ANY,
+            name=mock.ANY, router_id=mock.ANY,
             port_id=mock.ANY, version=new_fip['revision_number'],
             fixed_ip_address=mock.ANY)
 
