@@ -125,10 +125,10 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         router_id = router.create()
         self.assertTrue(router.exists())
-        version1 = self.nb_api.get_router(router_id).get_version()
+        version1 = self.nb_api.lrouter.get(router_id).get_version()
         router.update()
         self.assertTrue(router.exists())
-        version2 = self.nb_api.get_router(router_id).get_version()
+        version2 = self.nb_api.lrouter.get(router_id).get_version()
         self.assertTrue(version1 != version2)
         router.close()
         self.assertFalse(router.exists())
@@ -257,7 +257,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         interface_msg = {'subnet_id': subnet_id}
         router_l = self.neutron.add_interface_router(router_id,
                                                      body=interface_msg)
-        routers = self.nb_api.get_routers()
+        routers = self.nb_api.lrouter.get_all()
         router2 = None
         for r in routers:
             if r.get_id() == router_l['id']:
