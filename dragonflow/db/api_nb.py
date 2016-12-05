@@ -79,7 +79,10 @@ class NbApi(object):
         self.lport = self._LportCRUDHelper(self, db_models.LogicalPort)
         self.lswitch = self._LswitchCRUDHelper(self, db_models.LogicalSwitch)
         self.lrouter = self._CRUDHelper(self, db_models.LogicalRouter)
-        self.security_group = self._CRUDHelper(self, db_models.SecurityGroup)
+        self.security_group = self._SecurityGroupCRUDHelper(
+            self,
+            db_models.SecurityGroup,
+        )
         self.floatingip = self._CRUDHelper(self, db_models.Floatingip)
         self.publisher = self._CRUDHelper(self, db_models.Publisher)
         self.qos_policy = self._CRUDHelper(self, db_models.QosPolicy)
@@ -311,72 +314,6 @@ class NbApi(object):
         else:
             LOG.warning(_LW('Unknown table %s'), table)
 
-    def create_security_group(self, id, topic, **columns):
-        secgroup = {}
-        secgroup['id'] = id
-        secgroup['topic'] = topic
-        for col, val in columns.items():
-            secgroup[col] = val
-        secgroup_json = jsonutils.dumps(secgroup)
-        self.driver.create_key(db_models.SecurityGroup.table_name,
-                               id, secgroup_json, topic)
-        self._send_db_change_event(db_models.SecurityGroup.table_name,
-                                   id, 'create', secgroup_json, topic)
-
-    def update_security_group(self, id, topic, **columns):
-        secgroup_json = self.driver.get_key(db_models.SecurityGroup.table_name,
-                                            id, topic)
-        secgroup = jsonutils.loads(secgroup_json)
-        for col, val in columns.items():
-            secgroup[col] = val
-        secgroup_json = jsonutils.dumps(secgroup)
-        self.driver.set_key(db_models.SecurityGroup.table_name,
-                            id, secgroup_json, topic)
-        self._send_db_change_event(db_models.SecurityGroup.table_name,
-                                   id, 'set', secgroup_json, topic)
-
-    def delete_security_group(self, id, topic):
-        self.driver.delete_key(db_models.SecurityGroup.table_name, id, topic)
-        self._send_db_change_event(db_models.SecurityGroup.table_name,
-                                   id, 'delete', id, topic)
-
-    def add_security_group_rules(self, sg_id, topic, **columns):
-        secgroup_json = self.driver.get_key(db_models.SecurityGroup.table_name,
-                                            sg_id, topic)
-        new_rules = columns.get('sg_rules')
-        sg_version_id = columns.get('sg_version')
-        secgroup = jsonutils.loads(secgroup_json)
-        rules = secgroup.get('rules', [])
-        rules.extend(new_rules)
-        secgroup['rules'] = rules
-        secgroup['version'] = sg_version_id
-        secgroup_json = jsonutils.dumps(secgroup)
-        self.driver.set_key(db_models.SecurityGroup.table_name,
-                            sg_id, secgroup_json, secgroup['topic'])
-        self._send_db_change_event(db_models.SecurityGroup.table_name,
-                                   sg_id, 'set', secgroup_json,
-                                   secgroup['topic'])
-
-    def delete_security_group_rule(self, sg_id, sgr_id, topic, **columns):
-        secgroup_json = self.driver.get_key(db_models.SecurityGroup.table_name,
-                                            sg_id, topic)
-        secgroup = jsonutils.loads(secgroup_json)
-        sg_version_id = columns.get('sg_version')
-        rules = secgroup.get('rules')
-        new_rules = []
-        for rule in rules:
-            if rule['id'] != sgr_id:
-                new_rules.append(rule)
-        secgroup['rules'] = new_rules
-        secgroup['version'] = sg_version_id
-        secgroup_json = jsonutils.dumps(secgroup)
-        self.driver.set_key(db_models.SecurityGroup.table_name,
-                            sg_id, secgroup_json,
-                            secgroup['topic'])
-        self._send_db_change_event(db_models.SecurityGroup.table_name,
-                                   sg_id, 'set', secgroup_json,
-                                   secgroup['topic'])
-
     def create_lrouter(self, id, topic, **columns):
         lrouter = {}
         lrouter['id'] = id
@@ -465,28 +402,6 @@ class NbApi(object):
             return db_models.LogicalRouter(lrouter_value)
         except Exception:
             return None
-
-    def get_routers(self, topic=None):
-        res = []
-        for lrouter_value in self.driver.get_all_entries(
-                db_models.LogicalRouter.table_name, topic):
-            res.append(db_models.LogicalRouter(lrouter_value))
-        return res
-
-    def get_security_group(self, sg_id, topic=None):
-        try:
-            secgroup_value = self.driver.get_key(
-                db_models.SecurityGroup.table_name, sg_id, topic)
-            return db_models.SecurityGroup(secgroup_value)
-        except Exception:
-            return None
-
-    def get_security_groups(self, topic=None):
-        res = []
-        for secgroup_value in self.driver.get_all_entries(
-                db_models.SecurityGroup.table_name, topic):
-            res.append(db_models.SecurityGroup(secgroup_value))
-        return res
 
     def get_qos_policies(self, topic=None):
         res = []
@@ -768,6 +683,13 @@ class NbApi(object):
             columns[db_models.UNIQUE_KEY] = unique_key
             return super(NbApi._UniqueKeyCRUDHelper, self).create(
                 id, topic, notify, **columns)
+
+    class _SecurityGroupCRUDHelper(_UniqueKeyCRUDHelper):
+        def add_rule(self, id, topic, version, rule):
+            self._add_element(id, topic, version, 'rules', rule)
+
+        def delete_rule(self, id, topic, version, rule_id):
+            self._remove_element(id, topic, version, 'rules', rule_id)
 
     class _LswitchCRUDHelper(_UniqueKeyCRUDHelper):
         def add_subnet(self, id, topic, version, subnet_id, **columns):

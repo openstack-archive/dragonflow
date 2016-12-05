@@ -154,12 +154,12 @@ class DFMechDriver(driver_api.MechanismDriver):
             rule['topic'] = rule.get('tenant_id')
             del rule['tenant_id']
         if event == events.AFTER_CREATE:
-            self.nb_api.create_security_group(id=sg_id, topic=tenant_id,
+            self.nb_api.security_group.create(id=sg_id, topic=tenant_id,
                                               name=sg_name, rules=rules,
                                               version=sg_version)
             LOG.info(_LI("DFMechDriver: create security group %s"), sg_name)
         elif event == events.AFTER_UPDATE:
-            self.nb_api.update_security_group(id=sg_id, topic=tenant_id,
+            self.nb_api.security_group.update(id=sg_id, topic=tenant_id,
                                               name=sg_name, rules=rules,
                                               version=sg_version)
             LOG.info(_LI("DFMechDriver: update security group %s"), sg_name)
@@ -172,7 +172,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         sg_id = kwargs['security_group_id']
         tenant_id = sg['tenant_id']
 
-        self.nb_api.delete_security_group(sg_id, topic=tenant_id)
+        self.nb_api.security_group.delete(sg_id, topic=tenant_id)
         LOG.info(_LI("DFMechDriver: delete security group %s") % sg_id)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE)
@@ -187,9 +187,12 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         sg_rule['topic'] = tenant_id
         del sg_rule['tenant_id']
-        self.nb_api.add_security_group_rules(sg_id, tenant_id,
-                                             sg_rules=[sg_rule],
-                                             sg_version=sg_version)
+        self.nb_api.security_group.add_rule(
+            id=sg_id,
+            topic=tenant_id,
+            version=sg_version,
+            rule=sg_rule,
+        )
         LOG.info(_LI("DFMechDriver: create security group rule in group %s"),
                  sg_id)
         return sg_rule
@@ -204,8 +207,12 @@ class DFMechDriver(driver_api.MechanismDriver):
         sg_version = sg['revision_number']
         tenant_id = sg['tenant_id']
 
-        self.nb_api.delete_security_group_rule(sg_id, sgr_id, tenant_id,
-                                               sg_version=sg_version)
+        self.nb_api.security_group.delete_rule(
+            id=sg_id,
+            topic=tenant_id,
+            version=sg_version,
+            rule_id=sgr_id
+        )
         LOG.info(_LI("DFMechDriver: delete security group rule %s"), sgr_id)
 
     def create_network_precommit(self, context):
