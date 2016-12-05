@@ -34,7 +34,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         # customize the return value on their own.
         self.nb_api.lswitch.get_all.return_value = []
         self.nb_api.lport.get_all.return_value = []
-        self.nb_api.get_routers.return_value = []
+        self.nb_api.lrouter.get_all.return_value = []
         self.nb_api.security_groups.get_all.return_value = []
         self.nb_api.get_floatingips.return_value = []
 
