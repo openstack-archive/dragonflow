@@ -58,6 +58,15 @@ def wait_until_none(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
     wait_until_true(internal_predicate, timeout, sleep, exception)
 
 
+def check_dhcp_ip_rule(flows, dhcp_ip):
+    for flow in flows:
+        if flow['table'] == '9' and flow['actions'] == 'goto_table:11':
+            if ('nw_dst=' + dhcp_ip + ',tp_src=68,tp_dst=67'
+                in flow['match']):
+                return True
+    return False
+
+
 def print_command(full_args, run_as_root=False):
     print '{}'.format(agent_utils.execute(
         full_args,
