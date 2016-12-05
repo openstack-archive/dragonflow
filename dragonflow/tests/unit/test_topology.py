@@ -32,14 +32,14 @@ class TestTopology(test_app_base.DFAppTestBase):
         super(TestTopology, self).setUp(enable_selective_topo_dist=True)
         # By default, return empty value for all resources, each case can
         # customize the return value on their own.
-        self.nb_api.get_all_logical_switches.return_value = []
+        self.nb_api.lswitch.get_all.return_value = []
         self.nb_api.get_all_logical_ports.return_value = []
         self.nb_api.get_routers.return_value = []
         self.nb_api.get_security_groups.return_value = []
         self.nb_api.get_floatingips.return_value = []
 
     def test_vm_port_online_offline(self):
-        self.nb_api.get_all_logical_switches.return_value = [
+        self.nb_api.lswitch.get_all.return_value = [
             test_app_base.fake_logic_switch1]
         self.nb_api.get_all_logical_ports.return_value = [
             test_app_base.fake_local_port1]
@@ -70,7 +70,7 @@ class TestTopology(test_app_base.DFAppTestBase):
             test_app_base.fake_local_port1.get_topic())
 
     def test_vm_online_after_topology_pulled(self):
-        self.nb_api.get_all_logical_switches.return_value = [
+        self.nb_api.lswitch.get_all.return_value = [
             test_app_base.fake_logic_switch1]
         self.nb_api.get_all_logical_ports.return_value = [
             test_app_base.fake_local_port1]
@@ -100,7 +100,7 @@ class TestTopology(test_app_base.DFAppTestBase):
             self.nb_api.pubsub.subscriber.register_topic.call_count)
 
     def test_multi_vm_port_online_restart_controller(self):
-        self.nb_api.get_all_logical_switches.return_value = [
+        self.nb_api.lswitch.get_all.return_value = [
             test_app_base.fake_logic_switch1]
         self.nb_api.get_all_logical_ports.return_value = [
             test_app_base.fake_local_port1,

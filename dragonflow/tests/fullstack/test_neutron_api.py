@@ -37,7 +37,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network.create()
         self.assertTrue(network.exists())
         netobj = network.get_network()
-        lswitch = self.nb_api.get_lswitch(netobj['network']['id'],
+        lswitch = self.nb_api.lswitch.get(netobj['network']['id'],
                                           netobj['network']['tenant_id'])
         net_mtu = lswitch.get_mtu()
         self.assertEqual(netobj['network']['mtu'], net_mtu)
@@ -115,7 +115,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             ]
         }
         subnet.create(subnet_data)
-        lswitch = self.nb_api.get_lswitch(network_id)
+        lswitch = self.nb_api.lswitch.get(network_id)
         subnet = lswitch.get_subnets()
         self.assertEqual(
             0, cmp(subnet_data['host_routes'], subnet[0].get_host_routes())
