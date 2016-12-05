@@ -12,6 +12,7 @@
 
 import collections
 import fcntl
+import netaddr
 import os
 import re
 import socket
@@ -176,21 +177,12 @@ class Subnet(object):
             self.topology.network.network_id
         )
         enable_dhcp = kwargs.get('enable_dhcp', True)
+        ip_version = self._get_ip_version(cidr)
         self.subnet.create(subnet={
             'cidr': cidr,
             'enable_dhcp': enable_dhcp,
-            'ip_version': 4,
-            'network_id': topology.network.network_id,
-            'host_routes': [
-                {
-                    'destination': '1.1.1.0/24',
-                    'nexthop': '2.2.2.2'
-                },
-                {
-                    'destination': '1.1.2.0/24',
-                    'nexthop': '3.3.3.3'
-                },
-            ]
+            'ip_version': ip_version,
+            'network_id': topology.network.network_id
         })
 
     def update(self, updated_parameters):
@@ -218,6 +210,16 @@ class Subnet(object):
                     security_groups=security_groups_used)
         self.ports.append(port)
         return port
+
+    def _get_ip_version(self, cidr):
+        """
+        Calculates the IP version from the CIDR, and returns it.
+        Raises AddrFormatError if the CIDR is not correctly formatted
+        :param cidr: The address range for this subnet. Format IP/MaskLen
+        """
+        network = netaddr.IPNetwork(cidr)
+        ip_version = network.ip.version
+        return ip_version
 
 
 class Port(object):
