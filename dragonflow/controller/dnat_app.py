@@ -292,7 +292,7 @@ class DNATApp(df_base_app.DFlowApp):
 
     def update_floatingip_status(self, floatingip, status):
         floatingip.update_fip_status(status)
-        self.nb_api.update_floatingip(id=floatingip.get_id(),
+        self.nb_api.floatingip.update(id=floatingip.get_id(),
                                       topic=floatingip.get_topic(),
                                       notify=False,
                                       status=status)
@@ -339,7 +339,7 @@ class DNATApp(df_base_app.DFlowApp):
         for fip_group in fip_groups:
             fip, old_fip = fip_group
             # save to df db
-            self.nb_api.update_floatingip(
+            self.nb_api.floatingip.update(
                 id=fip.get_id(),
                 topic=fip.get_topic(),
                 notify=False,
