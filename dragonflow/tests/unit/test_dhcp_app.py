@@ -48,7 +48,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         # Bump the version to pass the version check
         fake_lswitch.inner_obj['version'] += 1
         self.app._install_dhcp_flow_for_vm_port = mock.Mock()
-        self.controller.logical_switch_updated(fake_lswitch)
+        self.controller.update_lswitch(fake_lswitch)
         self.controller.logical_port_created(test_app_base.fake_local_port1)
         self.assertFalse(self.app._install_dhcp_flow_for_vm_port.called)
 
@@ -57,7 +57,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         fake_lswitch1.inner_obj['subnets'][0]['dhcp_ip'] = "10.0.0.2"
         # Bump the version to pass the version check
         fake_lswitch1.inner_obj['version'] += 1
-        self.controller.logical_switch_updated(fake_lswitch1)
+        self.controller.update_lswitch(fake_lswitch1)
         self.assertTrue(self.app._install_dhcp_flow_for_vm_port.called)
 
     def test_update_dhcp_ip_subnet_redownload_dhcp_unicast_flow(self):
@@ -70,7 +70,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.app._install_dhcp_unicast_match_flow = mock.Mock()
         self.app._remove_dhcp_unicast_match_flow = mock.Mock()
         self.app._install_dhcp_flow_for_vm_in_subnet = mock.Mock()
-        self.controller.logical_switch_updated(fake_lswitch)
+        self.controller.update_lswitch(fake_lswitch)
         self.assertFalse(self.app._install_dhcp_flow_for_vm_in_subnet.called)
         self.app._install_dhcp_unicast_match_flow.assert_called_once_with(
             '10.0.0.100', test_app_base.fake_logic_switch1.get_unique_key())
