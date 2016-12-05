@@ -478,7 +478,7 @@ class QosPolicyTestObj(object):
         self.closed = True
 
     def exists(self):
-        qospolicy = self.nb_api.get_qos_policy(self.policy_id)
+        qospolicy = self.nb_api.qos_policy.get(self.policy_id)
         if qospolicy:
             return True
         return False
