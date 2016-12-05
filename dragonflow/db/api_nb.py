@@ -23,8 +23,10 @@ from neutron_lib import constants as const
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
+import six
 
 from dragonflow._i18n import _LI, _LW, _LE
+from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import models as db_models
@@ -95,6 +97,15 @@ class NbApi(object):
                     self.pubsub.subscriber,
                     self.db_change_callback)
                 self.pubsub.subscriber.register_hamsg_for_db()
+
+        self.chassis = self._CRUDHelper(self, db_models.Chassis)
+        self.lport = self._CRUDHelper(self, db_models.LogicalPort)
+        self.lswitch = self._CRUDHelper(self, db_models.LogicalSwitch)
+        self.lrouter = self._CRUDHelper(self, db_models.LogicalRouter)
+        self.security_group = self._CRUDHelper(self, db_models.SecurityGroup)
+        self.floatingip = self._CRUDHelper(self, db_models.Floatingip)
+        self.publisher = self._CRUDHelper(self, db_models.Publisher)
+        self.qos_policy = self._CRUDHelper(self, db_models.QosPolicy)
 
     def set_db_consistency_manager(self, db_consistency_manager):
         self.db_consistency_manager = db_consistency_manager
@@ -846,3 +857,101 @@ class NbApi(object):
         except Exception:
             LOG.exception(_LE('Could not get qos policy %s'), policy_id)
             return None
+
+    class _CRUDHelper(object):
+        def __init__(self, api_nb, model):
+            self.api_nb = api_nb
+            self.model = model
+            self.table_name = model.table_name
+
+        @classmethod
+        def _serialize_object(cls, id, topic, columns):
+            obj = {
+                'id': id,
+                'topic': topic,
+            }
+            obj.update(columns)
+            return jsonutils.dumps(obj)
+
+        def create(self, id, topic, notify=True, **columns):
+            # Allocate unique key if our class needs one
+            if issubclass(self.model, db_models.NbDbObjectWithUniqueKey):
+                unique_key = self.api_nb.driver.allocate_unique_key(
+                    self.table_name)
+                columns[db_models.UNIQUE_KEY] = unique_key
+
+            obj_json = self._serialize_object(id, topic, columns)
+            self.api_nb.driver.create_key(self.table_name, id, obj_json, topic)
+            if notify:
+                self.api_nb._send_db_change_event(self.table_name, id,
+                                                  'create', obj_json, topic)
+
+        def update(self, id, topic, notify=True, **columns):
+            original = self.get(id)
+
+            # original.update(columns)
+            for key, value in six.iteritems(columns):
+                if value == const.ATTR_NOT_SPECIFIED:
+                    continue
+                original[key] = value
+
+            obj_json = self._serialize_object(id, topic, **original)
+            self.api_nb.driver.set_key(self.table_name, id, obj_json, topic)
+            if notify:
+                self.api_nb._send_db_change_event(self.table_name, id, 'set',
+                                                obj_json, topic)
+
+        def delete(self, id, topic=None):
+            try:
+                self.api_nb.driver.delete_key(self.table_name, id, topic)
+            except df_exceptions.DBKeyNotFound:
+                LOG.warning(
+                    _LW('Could not find object %(id)s to delete in %(table)s'),
+                    id=id, table=self.table_name)
+                raise
+            finally:
+                self.api_nb._send_db_change_event(self.table_name, id,
+                                                  'delete', id, topic)
+
+        def _get_raw(self, id, topic=None):
+            try:
+                return self.api_nb.driver.get_key(self.table_name, id, topic)
+            except Exception:
+                LOG.exception(
+                    _LE('Could not get object {1} from table {0}').format(
+                        self.table_name, id))
+                return None
+
+        def get(self, id, topic=None):
+            value = self._get_raw(id, topic)
+            return self.model(value)
+
+        def get_all(self, topic=None):
+            res = self.api_nb.driver.get_all_entries(self.table_name, topic)
+            return [self.model(v) for v in res]
+
+        def _add_element(self, id, topic, new_version, elem_name, nested_obj):
+            obj = self._get_raw(id, topic)
+            obj['version'] = new_version
+            obj.setdefault(elem_name, []).append(nested_obj)
+            self.update(id, topic, **obj)
+
+        def _update_element(self, id, topic, new_version, elem_name,
+                            elem_id, update_dict):
+            obj = self._get_raw(id, topic)
+            obj['version'] = new_version
+            for elem in obj.setdefault(elem_name, []):
+                if elem['id'] == elem_id:
+                    elem.update(update_dict)
+                    break
+            self.update(id, topic, **obj)
+
+        def _remove_element(self, id, topic, new_version,
+                            elem_name, nested_id):
+            obj = self._get_raw(id, topic)
+            obj['version'] = new_version
+            obj[elem_name] = [
+                e for e in obj.setdefault(elem_name, [])
+                if e['id'] != nested_id
+            ]
+            self.update(id, topic, **obj)
