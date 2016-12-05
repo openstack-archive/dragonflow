@@ -72,9 +72,9 @@ def initialize_object_refreshers(df_controller):
 
     items.append(DfObjectRefresher('Switches',
                                    db_store.get_lswitch_keys,
-                                   nb_api.get_all_logical_switches,
-                                   df_controller.logical_switch_updated,
-                                   df_controller.logical_switch_deleted))
+                                   nb_api.get_all_lswitches,
+                                   df_controller.update_lswitch,
+                                   df_controller.delete_lswitch))
     items.append(DfObjectRefresher('Security Groups',
                                    db_store.get_security_group_keys,
                                    nb_api.get_security_groups,
