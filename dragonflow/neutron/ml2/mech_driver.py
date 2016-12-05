@@ -518,9 +518,9 @@ class DFMechDriver(driver_api.MechanismDriver):
             chassis = binding_profile.get(df_const.DF_BINDING_PROFILE_HOST_IP)
             remote_vtep = True
 
-        self.nb_api.create_lport(
+        self.nb_api.lport.create(
             id=port['id'],
-            lswitch_id=port['network_id'],
+            lswitch=port['network_id'],
             topic=port['tenant_id'],
             macs=[port['mac_address']], ips=ips,
             subnets=subnets,
@@ -564,8 +564,8 @@ class DFMechDriver(driver_api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
     def update_port_postcommit(self, context):
         updated_port = context.current
-        if not self.nb_api.get_logical_port(updated_port['id'],
-                                            updated_port['tenant_id']):
+        if not self.nb_api.lport.get(updated_port['id'],
+                                     updated_port['tenant_id']):
             # REVISIT(xiaohhui): Should we unify the check before update nb db?
             LOG.debug("The port %s has been deleted from dragonflow NB DB, "
                       "by concurrent operation.", updated_port['id'])
@@ -616,7 +616,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
         subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
 
-        self.nb_api.update_lport(
+        self.nb_api.lport.update(
             id=updated_port['id'],
             topic=updated_port['tenant_id'],
             macs=[updated_port['mac_address']],
@@ -646,7 +646,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         try:
             topic = port['tenant_id']
-            self.nb_api.delete_lport(id=port_id, topic=topic)
+            self.nb_api.lport.delete(id=port_id, topic=topic)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("port %s is not found in DF DB, might have "
                       "been deleted concurrently" % port_id)

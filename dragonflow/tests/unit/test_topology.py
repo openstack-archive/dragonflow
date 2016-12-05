@@ -43,8 +43,7 @@ class TestTopology(test_app_base.DFAppTestBase):
             test_app_base.fake_logic_switch1]
         self.nb_api.get_all_logical_ports.return_value = [
             test_app_base.fake_local_port1]
-        self.nb_api.get_logical_port.return_value = (
-            test_app_base.fake_local_port1)
+        self.nb_api.lport.get.return_value = test_app_base.fake_local_port1
 
         original_update = self.controller.logical_port_updated
         self.controller.logical_port_updated = mock.Mock()
@@ -81,7 +80,7 @@ class TestTopology(test_app_base.DFAppTestBase):
             if lport_id == test_app_base.fake_local_port2.get_id():
                 return test_app_base.fake_local_port2
 
-        self.nb_api.get_logical_port.side_effect = _get_logical_port
+        self.nb_api.lport.get.side_effect = _get_logical_port
 
         # Pull topology by first ovs port online
         df_db_objects_refresh.initialize_object_refreshers(self.controller)
@@ -110,7 +109,7 @@ class TestTopology(test_app_base.DFAppTestBase):
             if lport_id == test_app_base.fake_local_port2.get_id():
                 return test_app_base.fake_local_port2
 
-        self.nb_api.get_logical_port.side_effect = _get_logical_port
+        self.nb_api.lport.get.side_effect = _get_logical_port
         original_update = self.controller.logical_port_updated
         self.controller.logical_port_updated = mock.Mock()
         self.controller.logical_port_updated.side_effect = original_update
