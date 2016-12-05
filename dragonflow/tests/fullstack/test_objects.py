@@ -126,7 +126,7 @@ class SecGroupTestObj(object):
         self.closed = True
 
     def exists(self):
-        secgroup = self.nb_api.get_security_group(self.secgroup_id)
+        secgroup = self.nb_api.security_group.get(self.secgroup_id)
         if secgroup:
             return True
         return False
@@ -142,7 +142,7 @@ class SecGroupTestObj(object):
         self.neutron.delete_security_group_rule(secrule_id)
 
     def rule_exists(self, secrule_id):
-        secgroup = self.nb_api.get_security_group(self.secgroup_id)
+        secgroup = self.nb_api.security_group.get(self.secgroup_id)
         if secgroup:
             for rule in secgroup.get_rules():
                 if rule.get_id() == secrule_id:
