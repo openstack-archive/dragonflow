@@ -75,7 +75,7 @@ class NbApi(object):
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
 
-        self.chassis = self._CRUDHelper(self, db_models.Chassis)
+        self.chassis = self._ChassisCRUDHelper(self, db_models.Chassis)
         self.lport = self._CRUDHelper(self, db_models.LogicalPort)
         self.lswitch = self._LswitchCRUDHelper(self, db_models.LogicalSwitch)
         self.lrouter = self._CRUDHelper(self, db_models.LogicalRouter)
@@ -376,37 +376,6 @@ class NbApi(object):
         self._send_db_change_event(db_models.SecurityGroup.table_name,
                                    sg_id, 'set', secgroup_json,
                                    secgroup['topic'])
-
-    def get_chassis(self, id):
-        try:
-            chassis_value = self.driver.get_key(db_models.Chassis.table_name,
-                                                id, None)
-            return db_models.Chassis(chassis_value)
-        except Exception:
-            return None
-
-    def get_all_chassis(self):
-        res = []
-        for entry_value in self.driver.get_all_entries(
-                db_models.Chassis.table_name, None):
-            res.append(db_models.Chassis(entry_value))
-        return res
-
-    def add_chassis(self, id, ip, tunnel_type):
-        chassis = {'id': id, 'ip': ip,
-                   'tunnel_type': tunnel_type}
-        chassis_json = jsonutils.dumps(chassis)
-        self.driver.create_key(db_models.Chassis.table_name,
-                               id, chassis_json, None)
-
-    def update_chassis(self, id, **columns):
-        chassis_json = self.driver.get_key('chassis', id)
-        chassis = jsonutils.loads(chassis_json)
-        for col, val in columns.items():
-            chassis[col] = val
-
-        chassis_json = jsonutils.dumps(chassis)
-        self.driver.set_key('chassis', id, chassis_json, None)
 
     def get_logical_port(self, port_id, topic=None):
         try:
@@ -867,3 +836,14 @@ class NbApi(object):
         def update_subnet(self, id, topic, version, subnet_id, **columns):
             self._update_element(id, topic, version, 'subnets',
                                  subnet_id, columns)
+
+    class _ChassisCRUDHelper(_CRUDHelper):
+        def create(self, id, ip, tunnel_type):
+            obj_json = jsonutils.dumps({
+                'id': id,
+                'ip': ip,
+                'tunnel_type': tunnel_type,
+            })
+            self.api_nb.driver.create_key(self.table_name, id, obj_json)
+            self.api_nb._send_db_change_event(self.table_name, id,
+                                              'create', obj_json)
