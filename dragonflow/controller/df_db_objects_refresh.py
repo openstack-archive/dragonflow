@@ -72,7 +72,7 @@ def initialize_object_refreshers(df_controller):
 
     items.append(DfObjectRefresher('QoS Policies',
                                    db_store.get_qos_policy_keys,
-                                   nb_api.get_qos_policies,
+                                   nb_api.qos_policy.get_all,
                                    df_controller.qos_policy_updated,
                                    df_controller.qos_policy_deleted))
     items.append(DfObjectRefresher('Switches',
