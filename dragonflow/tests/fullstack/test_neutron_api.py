@@ -148,11 +148,11 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertTrue(router.exists())
         subnet_msg = {'subnet_id': subnet_id}
         port = self.neutron.add_interface_router(router_id, body=subnet_msg)
-        port2 = self.nb_api.get_logical_port(port['port_id'])
+        port2 = self.nb_api.lport.get(port['port_id'])
         self.assertIsNotNone(port2)
         router.close()
         utils.wait_until_none(
-            lambda: self.nb_api.get_logical_port(port['port_id']),
+            lambda: self.nb_api.lport.get(port['port_id']),
             exception=Exception('Port was not deleted')
         )
         subnet.close()
@@ -269,11 +269,11 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         interface_port = self.neutron.show_port(router_l['port_id'])
         self.assertRaises(n_exc.Conflict, self.neutron.delete_port,
                           interface_port['port']['id'])
-        self.assertIsNotNone(self.nb_api.
-                             get_logical_port(interface_port['port']['id']))
+        self.assertIsNotNone(self.nb_api.lport.get(
+            interface_port['port']['id']))
         self.neutron.remove_interface_router(router.router_id,
                                              body=interface_msg)
-        port2 = self.nb_api.get_logical_port(interface_port['port']['id'])
+        port2 = self.nb_api.lport.get(interface_port['port']['id'])
         self.assertIsNone(port2)
         subnet.close()
         router.close()
@@ -381,8 +381,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             priv_subnet_id = priv_subnet.create(private_subnet_para)
             self.assertTrue(priv_subnet.exists())
             router_interface = router.add_interface(subnet_id=priv_subnet_id)
-            router_lport = self.nb_api.get_logical_port(
-                router_interface['port_id'])
+            router_lport = self.nb_api.lport.get(router_interface['port_id'])
             self.assertIsNotNone(router_lport)
 
             port = self.store(
@@ -440,8 +439,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             priv_subnet_id = priv_subnet.create(private_subnet_para)
             self.assertTrue(priv_subnet.exists())
             router_interface = router.add_interface(subnet_id=priv_subnet_id)
-            router_lport = self.nb_api.get_logical_port(
-                router_interface['port_id'])
+            router_lport = self.nb_api.lport.get(router_interface['port_id'])
             self.assertIsNotNone(router_lport)
 
             port = self.store(

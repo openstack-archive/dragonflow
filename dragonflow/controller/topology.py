@@ -269,7 +269,7 @@ class Topology(object):
     def _get_lport(self, port_id, topic=None):
         lport = self.db_store.get_port(port_id)
         if lport is None:
-            lport = self.nb_api.get_logical_port(port_id, topic)
+            lport = self.nb_api.lport.get(port_id, topic)
 
         return lport
 

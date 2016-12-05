@@ -46,21 +46,18 @@ class Test_API_NB(test_base.DFTestBase):
         fake_lport = copy.deepcopy(
             test_app_base.fake_local_port1.inner_obj)
         del fake_lport['unique_key']
-        fake_lport['lswitch_id'] = 'fake_switch1'
-        self.nb_api.create_lport(**fake_lport)
-        self.addCleanup(self.nb_api.delete_lport,
+        self.nb_api.lport.create(**fake_lport)
+        self.addCleanup(self.nb_api.lport.delete,
                         fake_lport['id'], fake_lport['topic'])
-        lport = self.nb_api.get_logical_port(fake_lport['id'],
-                                             fake_lport['topic'])
+        lport = self.nb_api.lport.get(fake_lport['id'], fake_lport['topic'])
         self.assertIsNotNone(lport.get_unique_key())
 
         fake_lport1 = copy.deepcopy(fake_lport)
         fake_lport1['id'] = 'other_id'
-        self.nb_api.create_lport(**fake_lport1)
-        self.addCleanup(self.nb_api.delete_lport,
+        self.nb_api.lport.create(**fake_lport1)
+        self.addCleanup(self.nb_api.lport.delete,
                         fake_lport1['id'], fake_lport1['topic'])
-        lport1 = self.nb_api.get_logical_port(fake_lport1['id'],
-                                              fake_lport1['topic'])
+        lport1 = self.nb_api.lport.get(fake_lport1['id'], fake_lport1['topic'])
         self.assertIsNotNone(lport1.get_unique_key())
 
         self.assertNotEqual(lport.get_unique_key(),
