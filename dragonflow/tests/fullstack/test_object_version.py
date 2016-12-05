@@ -111,17 +111,17 @@ class TestObjectVersion(test_base.DFTestBase):
                         objects.SecGroupTestObj(self.neutron, self.nb_api))
         sg_id = secgroup.create()
         self.assertTrue(secgroup.exists())
-        version = self.nb_api.get_security_group(sg_id).get_version()
+        version = self.nb_api.security_group.get(sg_id).get_version()
 
         secrule_id = secgroup.rule_create()
         self.assertTrue(secgroup.rule_exists(secrule_id))
-        new_version = self.nb_api.get_security_group(sg_id).get_version()
+        new_version = self.nb_api.security_group.get(sg_id).get_version()
         self.assertGreater(new_version, version)
 
         secgroup.rule_delete(secrule_id)
         self.assertFalse(secgroup.rule_exists(secrule_id))
         version = new_version
-        new_version = self.nb_api.get_security_group(sg_id).get_version()
+        new_version = self.nb_api.security_group.get(sg_id).get_version()
         self.assertGreater(new_version, version)
 
         secgroup.close()
