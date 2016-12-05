@@ -47,7 +47,7 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         qos_policy = {'policy': {'name': "policy1", 'tenant_id': "tenant1"}}
         qos_obj = self.plugin.create_policy(self.context, qos_policy)
         self.assertGreater(qos_obj['revision_number'], 0)
-        self.driver.nb_api.create_qos_policy.assert_called_with(
+        self.driver.nb_api.qos_policy.create.assert_called_with(
             mock.ANY, 'tenant1', name='policy1',
             rules=[], version=qos_obj['revision_number'])
         return qos_obj
@@ -61,7 +61,7 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
             self.context, qos_obj['id'], {'policy': {'name': 'policy2'}})
         self.assertGreater(new_qos_obj['revision_number'],
                            qos_obj['revision_number'])
-        self.driver.nb_api.update_qos_policy.assert_called_with(
+        self.driver.nb_api.qos_policy.update.assert_called_with(
             qos_obj['id'], 'tenant1', name='policy2',
             rules=[], version=new_qos_obj['revision_number'])
 
@@ -75,7 +75,7 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         new_qos_obj = self.plugin.get_policy(self.context, qos_obj['id'])
         self.assertGreater(new_qos_obj['revision_number'],
                            qos_obj['revision_number'])
-        self.driver.nb_api.update_qos_policy.assert_called_with(
+        self.driver.nb_api.qos_policy.update.assert_called_with(
             qos_obj['id'], 'tenant1', name='policy1',
             rules=[qos_rule_obj], version=new_qos_obj['revision_number'])
 
@@ -86,12 +86,12 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         newer_qos_obj = self.plugin.get_policy(self.context, qos_obj['id'])
         self.assertGreater(newer_qos_obj['revision_number'],
                            new_qos_obj['revision_number'])
-        self.driver.nb_api.update_qos_policy.assert_called_with(
+        self.driver.nb_api.qos_policy.update.assert_called_with(
             qos_obj['id'], 'tenant1', name='policy1',
             rules=[], version=newer_qos_obj['revision_number'])
 
     def test_delete_policy(self):
         qos_obj = self._test_create_policy()
         self.plugin.delete_policy(self.context, qos_obj['id'])
-        self.driver.nb_api.delete_qos_policy.assert_called_with(
+        self.driver.nb_api.qos_policy.delete.assert_called_with(
             qos_obj['id'], 'tenant1')

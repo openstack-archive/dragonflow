@@ -317,53 +317,6 @@ class NbApi(object):
         else:
             LOG.warning(_LW('Unknown table %s'), table)
 
-    def get_qos_policies(self, topic=None):
-        res = []
-        for qos in self.driver.get_all_entries(
-                db_models.QosPolicy.table_name, topic):
-            res.append(db_models.QosPolicy(qos))
-        return res
-
-    def create_qos_policy(self, policy_id, topic, **columns):
-        policy = {'id': policy_id,
-                  'topic': topic}
-        policy.update(columns)
-        policy_json = jsonutils.dumps(policy)
-
-        self.driver.create_key(db_models.QosPolicy.table_name,
-                               policy_id, policy_json, topic)
-        self._send_db_change_event(db_models.QosPolicy.table_name,
-                                   policy_id, 'create',
-                                   policy_json, topic)
-
-    def update_qos_policy(self, policy_id, topic, **columns):
-        qospolicy_json = self.driver.get_key(db_models.QosPolicy.table_name,
-                                             policy_id, topic)
-        policy = jsonutils.loads(qospolicy_json)
-        policy.update(columns)
-        policy_json = jsonutils.dumps(policy)
-
-        self.driver.set_key(db_models.QosPolicy.table_name,
-                            policy_id, policy_json, topic)
-        self._send_db_change_event(db_models.QosPolicy.table_name,
-                                   policy_id, 'set',
-                                   policy_json, topic)
-
-    def delete_qos_policy(self, policy_id, topic):
-        self.driver.delete_key(db_models.QosPolicy.table_name,
-                               policy_id, topic)
-        self._send_db_change_event(db_models.QosPolicy.table_name,
-                                   policy_id, 'delete', policy_id, topic)
-
-    def get_qos_policy(self, policy_id, topic=None):
-        try:
-            qospolicy_value = self.driver.get_key(
-                db_models.QosPolicy.table_name, policy_id, topic)
-            return db_models.QosPolicy(qospolicy_value)
-        except Exception:
-            LOG.exception(_LE('Could not get qos policy %s'), policy_id)
-            return None
-
     class _CRUDHelper(object):
         def __init__(self, api_nb, model):
             self.api_nb = api_nb
