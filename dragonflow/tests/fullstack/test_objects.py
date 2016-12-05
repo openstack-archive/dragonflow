@@ -433,10 +433,10 @@ class FloatingipTestObj(object):
         self.closed = True
 
     def get_floatingip(self):
-        return self.nb_api.get_floatingip(self.floatingip_id)
+        return self.nb_api.floatingip.get(self.floatingip_id)
 
     def exists(self):
-        floatingip = self.nb_api.get_floatingip(self.floatingip_id)
+        floatingip = self.nb_api.floatingip.get(self.floatingip_id)
         if floatingip:
             return True
         return False
