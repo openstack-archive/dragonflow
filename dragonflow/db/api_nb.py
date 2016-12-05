@@ -76,7 +76,7 @@ class NbApi(object):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
 
         self.chassis = self._ChassisCRUDHelper(self, db_models.Chassis)
-        self.lport = self._CRUDHelper(self, db_models.LogicalPort)
+        self.lport = self._LportCRUDHelper(self, db_models.LogicalPort)
         self.lswitch = self._LswitchCRUDHelper(self, db_models.LogicalSwitch)
         self.lrouter = self._CRUDHelper(self, db_models.LogicalRouter)
         self.security_group = self._CRUDHelper(self, db_models.SecurityGroup)
@@ -376,57 +376,6 @@ class NbApi(object):
         self._send_db_change_event(db_models.SecurityGroup.table_name,
                                    sg_id, 'set', secgroup_json,
                                    secgroup['topic'])
-
-    def get_logical_port(self, port_id, topic=None):
-        try:
-            port_value = self.driver.get_key(db_models.LogicalPort.table_name,
-                                             port_id, topic)
-            return db_models.LogicalPort(port_value)
-        except Exception:
-            return None
-
-    def get_all_logical_ports(self, topic=None):
-        res = []
-        for lport_value in self.driver.get_all_entries(
-                db_models.LogicalPort.table_name, topic):
-            lport = db_models.LogicalPort(lport_value)
-            if lport.get_chassis() is None:
-                continue
-            res.append(lport)
-        return res
-
-    def create_lport(self, id, lswitch_id, topic, **columns):
-        lport = {}
-        lport['id'] = id
-        lport['lswitch'] = lswitch_id
-        lport['topic'] = topic
-        lport[db_models.UNIQUE_KEY] = self.driver.allocate_unique_key(
-            db_models.LogicalPort.table_name)
-        for col, val in columns.items():
-            lport[col] = val
-        lport_json = jsonutils.dumps(lport)
-        self.driver.create_key(db_models.LogicalPort.table_name,
-                               id, lport_json, topic)
-        self._send_db_change_event(db_models.LogicalPort.table_name,
-                                   id, 'create', lport_json, topic)
-
-    def update_lport(self, id, topic, **columns):
-        lport_json = self.driver.get_key(db_models.LogicalPort.table_name,
-                                         id, topic)
-        lport = jsonutils.loads(lport_json)
-        for col, val in columns.items():
-            if val != const.ATTR_NOT_SPECIFIED:
-                lport[col] = val
-        lport_json = jsonutils.dumps(lport)
-        self.driver.set_key(db_models.LogicalPort.table_name,
-                            id, lport_json, lport['topic'])
-        self._send_db_change_event(db_models.LogicalPort.table_name,
-                                   id, 'set', lport_json, lport['topic'])
-
-    def delete_lport(self, id, topic):
-        self.driver.delete_key(db_models.LogicalPort.table_name, id, topic)
-        self._send_db_change_event(db_models.LogicalPort.table_name,
-                                   id, 'delete', id, topic)
 
     def create_lrouter(self, id, topic, **columns):
         lrouter = {}
@@ -847,3 +796,8 @@ class NbApi(object):
             self.api_nb.driver.create_key(self.table_name, id, obj_json)
             self.api_nb._send_db_change_event(self.table_name, id,
                                               'create', obj_json)
+
+    class _LportCRUDHelper(_UniqueKeyCRUDHelper):
+        def get_all(self, topic=None):
+            ports = super(NbApi._LportCRUDHelper, self).get_all(topic)
+            return [p for p in ports if p.get_chassis() is not None]

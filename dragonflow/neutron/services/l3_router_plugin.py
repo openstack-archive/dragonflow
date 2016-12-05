@@ -205,7 +205,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 # delete the stale floatingip port
                 try:
                     if floatingip_port:
-                        self.nb_api.delete_lport(floatingip_port['id'],
+                        self.nb_api.lport.delete(floatingip_port['id'],
                                                  floatingip_port['tenant_id'])
                 except df_exceptions.DBKeyNotFound:
                     pass
@@ -274,8 +274,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         cidr = netaddr.IPNetwork(subnet['cidr'])
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
-        logical_port = self.nb_api.get_logical_port(port['id'],
-                                                    port['tenant_id'])
+        logical_port = self.nb_api.lport.get(port['id'], port['tenant_id'])
 
         self.nb_api.add_lrouter_port(result['port_id'],
                                      result['id'],

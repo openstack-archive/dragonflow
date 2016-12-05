@@ -530,7 +530,7 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
         return h
 
     def _get_logical_port_by_tunnel_key(self, tunnel_key):
-        lports = self.nb_api.get_all_logical_ports()
+        lports = self.nb_api.lport.get_all()
         for lport in lports:
             if lport.get_unique_key() == tunnel_key:
                 return lport
