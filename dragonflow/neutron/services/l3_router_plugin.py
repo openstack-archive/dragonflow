@@ -118,7 +118,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         tenant_id = router['tenant_id']
         is_distributed = router.get('distributed', False)
         router_name = router.get('name', df_const.DF_ROUTER_DEFAULT_NAME)
-        self.nb_api.create_lrouter(router_id, topic=tenant_id,
+        self.nb_api.lrouter.create(router_id, topic=tenant_id,
                                    name=router_name,
                                    distributed=is_distributed,
                                    version=router_version,
@@ -136,7 +136,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             if gw_info:
                 gw_info.update({'port_id': router.get('gw_port_id')})
             is_distributed = router.get('distributed', False)
-            self.nb_api.update_lrouter(
+            self.nb_api.lrouter.update(
                 router_id,
                 topic=router['tenant_id'],
                 name=router['name'],
@@ -158,8 +158,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         ret_val = super(DFL3RouterPlugin, self).delete_router(context,
                                                               router_id)
         try:
-            self.nb_api.delete_lrouter(id=router_id,
-                                       topic=router['tenant_id'])
+            self.nb_api.lrouter.delete(id=router_id, topic=router['tenant_id'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("router %s is not found in DF DB" % router_id)
         return ret_val
@@ -276,14 +275,17 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                              str(cidr.prefixlen))
         logical_port = self.nb_api.lport.get(port['id'], port['tenant_id'])
 
-        self.nb_api.add_lrouter_port(result['port_id'],
-                                     result['id'],
-                                     result['network_id'],
-                                     result['tenant_id'],
-                                     router_version=router_version,
-                                     mac=port['mac_address'],
-                                     network=network,
-                                     unique_key=logical_port.get_unique_key())
+        self.nb_api.lrouter.add_port(
+            id=result['id'],
+            topic=result['tenant_id'],
+            version=router_version,
+            port_id=result['port_id'],
+            lswitch_id=result['network_id'],
+            mac=port['mac_address'],
+            network=network,
+            unique_key=logical_port.get_unique_key(),
+        )
+
         return result
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
@@ -295,10 +297,12 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         router_version = router['revision_number']
 
         try:
-            self.nb_api.delete_lrouter_port(router_port_info['port_id'],
-                                            router_id,
-                                            router_port_info['tenant_id'],
-                                            router_version=router_version)
+            self.nb_api.lrouter.delete_port(
+                id=router_id,
+                topic=router_port_info['tenant_id'],
+                version=router_version,
+                port_id=router_port_info['port_id'],
+            )
         except df_exceptions.DBKeyNotFound:
             LOG.exception(_LE("logical router %s is not found in DF DB, "
                               "suppressing delete_lrouter_port "
