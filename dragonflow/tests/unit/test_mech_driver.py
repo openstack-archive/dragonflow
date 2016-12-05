@@ -69,7 +69,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         sg = self.driver.create_security_group(self.context, s)
         self.assertGreater(sg['revision_number'], 0)
 
-        self.nb_api.create_security_group.assert_called_with(
+        self.nb_api.security_group.create.assert_called_with(
             id=sg['id'], topic=sg['tenant_id'],
             name=sg['name'], rules=sg['security_group_rules'],
             version=sg['revision_number'])
@@ -85,7 +85,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             self.context, sg['id'], data)
         self.assertGreater(new_sg['revision_number'], sg['revision_number'])
 
-        self.nb_api.update_security_group.assert_called_with(
+        self.nb_api.security_group.update.assert_called_with(
             id=sg['id'], topic=sg['tenant_id'],
             name='updated', rules=new_sg['security_group_rules'],
             version=new_sg['revision_number'])
@@ -103,17 +103,23 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         rule = self.driver.create_security_group_rule(self.context, r)
         new_sg = self.driver.get_security_group(self.context, sg['id'])
         self.assertGreater(new_sg['revision_number'], sg['revision_number'])
-        self.nb_api.add_security_group_rules.assert_called_with(
-            sg['id'], sg['tenant_id'],
-            sg_rules=[rule], sg_version=new_sg['revision_number'])
+        self.nb_api.security_group.add_rule.assert_called_with(
+            id=sg['id'],
+            topic=sg['tenant_id'],
+            version=new_sg['revision_number'],
+            rule=rule,
+        )
 
         self.driver.delete_security_group_rule(self.context, rule['id'])
         newer_sg = self.driver.get_security_group(self.context, sg['id'])
         self.assertGreater(newer_sg['revision_number'],
                            new_sg['revision_number'])
-        self.nb_api.delete_security_group_rule.assert_called_with(
-            sg['id'], rule['id'], sg['tenant_id'],
-            sg_version=newer_sg['revision_number'])
+        self.nb_api.security_group.delete_rule.assert_called_with(
+            id=sg['id'],
+            topic=sg['tenant_id'],
+            version=newer_sg['revision_number'],
+            rule_id=rule['id'],
+        )
 
     def _test_create_network_revision(self):
         with self.network() as n:
@@ -339,7 +345,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
     def test_delete_security_group(self):
         sg = self._test_create_security_group_revision()
         self.driver.delete_security_group(self.context, sg['id'])
-        self.nb_api.delete_security_group.assert_called_with(
+        self.nb_api.security_group.delete.assert_called_with(
             sg['id'], topic=sg['tenant_id'])
 
     def test_update_subnet_with_disabled_dhcp(self):
