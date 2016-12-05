@@ -82,7 +82,7 @@ def initialize_object_refreshers(df_controller):
                                    df_controller.logical_switch_deleted))
     items.append(DfObjectRefresher('Security Groups',
                                    db_store.get_security_group_keys,
-                                   nb_api.get_security_groups,
+                                   nb_api.security_group.get_all,
                                    df_controller.security_group_updated,
                                    df_controller.security_group_deleted))
     items.append(DfObjectRefresher('Ports',
