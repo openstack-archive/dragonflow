@@ -76,11 +76,11 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def unregister_table_handler(self, table_id, handler):
         self.table_handlers.pop(table_id, None)
 
-    def notify_update_logical_switch(self, lswitch=None):
-        self.dispatcher.dispatch('update_logical_switch', lswitch=lswitch)
+    def notify_update_lswitch(self, lswitch=None):
+        self.dispatcher.dispatch('update_lswitch', lswitch=lswitch)
 
-    def notify_remove_logical_switch(self, lswitch=None):
-        self.dispatcher.dispatch('remove_logical_switch', lswitch=lswitch)
+    def notify_delete_lswitch(self, lswitch=None):
+        self.dispatcher.dispatch('delete_lswitch', lswitch=lswitch)
 
     def notify_create_router(self, router=None):
         self.dispatcher.dispatch('router_created', router=router)
