@@ -49,7 +49,7 @@ class TestDBConsistent(tests_base.BaseTestCase):
         self.nb_api.get_routers.return_value = [df_obj1, df_obj2]
         self.db_store.get_routers.return_value = [local_obj1, local_obj2]
 
-        self.nb_api.get_security_groups.return_value = [df_obj1, df_obj2]
+        self.nb_api.security_group.get_all.return_value = [df_obj1, df_obj2]
         self.db_store.get_security_groups.return_value = [
             local_obj1, local_obj2]
 
