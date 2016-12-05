@@ -53,7 +53,7 @@ def run_server(nb_api):
         topic,
         last_activity_timestamp=time.time()
     )
-    nb_api.create_lswitch(lswitch_name, topic)
+    nb_api.lswitch.create(lswitch_name, topic)
     start = time.time()
     for idx in range(cfg.CONF.df_db_test.count):
         nb_api.create_lport(

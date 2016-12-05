@@ -27,19 +27,19 @@ class TestObjectVersion(test_base.DFTestBase):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         self.assertTrue(network.exists())
-        version = self.nb_api.get_lswitch(network_id).get_version()
+        version = self.nb_api.lswitch.get(network_id).get_version()
 
         subnet = self.store(objects.SubnetTestObj(
                 self.neutron, self.nb_api, network_id))
         subnet.create()
         self.assertTrue(subnet.exists())
-        new_version = self.nb_api.get_lswitch(network_id).get_version()
+        new_version = self.nb_api.lswitch.get(network_id).get_version()
         self.assertGreater(new_version, version)
 
         subnet.close()
         self.assertFalse(subnet.exists())
         version = new_version
-        new_version = self.nb_api.get_lswitch(network_id).get_version()
+        new_version = self.nb_api.lswitch.get(network_id).get_version()
         self.assertGreater(new_version, version)
 
         network.close()
