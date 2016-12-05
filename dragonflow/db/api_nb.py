@@ -306,35 +306,6 @@ class NbApi(object):
         else:
             LOG.warning(_LW('Unknown table %s'), table)
 
-    def create_security_group(self, id, topic, **columns):
-        secgroup = {}
-        secgroup['id'] = id
-        secgroup['topic'] = topic
-        for col, val in columns.items():
-            secgroup[col] = val
-        secgroup_json = jsonutils.dumps(secgroup)
-        self.driver.create_key(db_models.SecurityGroup.table_name,
-                               id, secgroup_json, topic)
-        self._send_db_change_event(db_models.SecurityGroup.table_name,
-                                   id, 'create', secgroup_json, topic)
-
-    def update_security_group(self, id, topic, **columns):
-        secgroup_json = self.driver.get_key(db_models.SecurityGroup.table_name,
-                                            id, topic)
-        secgroup = jsonutils.loads(secgroup_json)
-        for col, val in columns.items():
-            secgroup[col] = val
-        secgroup_json = jsonutils.dumps(secgroup)
-        self.driver.set_key(db_models.SecurityGroup.table_name,
-                            id, secgroup_json, topic)
-        self._send_db_change_event(db_models.SecurityGroup.table_name,
-                                   id, 'set', secgroup_json, topic)
-
-    def delete_security_group(self, id, topic):
-        self.driver.delete_key(db_models.SecurityGroup.table_name, id, topic)
-        self._send_db_change_event(db_models.SecurityGroup.table_name,
-                                   id, 'delete', id, topic)
-
     def add_security_group_rules(self, sg_id, topic, **columns):
         secgroup_json = self.driver.get_key(db_models.SecurityGroup.table_name,
                                             sg_id, topic)
@@ -548,36 +519,6 @@ class NbApi(object):
         self._send_db_change_event(db_models.LogicalRouter.table_name,
                                    lrouter_id, 'set',
                                    lrouter_json, lrouter['topic'])
-
-    def get_router(self, router_id, topic=None):
-        try:
-            lrouter_value = self.driver.get_key(
-                db_models.LogicalRouter.table_name, router_id, topic)
-            return db_models.LogicalRouter(lrouter_value)
-        except Exception:
-            return None
-
-    def get_routers(self, topic=None):
-        res = []
-        for lrouter_value in self.driver.get_all_entries(
-                db_models.LogicalRouter.table_name, topic):
-            res.append(db_models.LogicalRouter(lrouter_value))
-        return res
-
-    def get_security_group(self, sg_id, topic=None):
-        try:
-            secgroup_value = self.driver.get_key(
-                db_models.SecurityGroup.table_name, sg_id, topic)
-            return db_models.SecurityGroup(secgroup_value)
-        except Exception:
-            return None
-
-    def get_security_groups(self, topic=None):
-        res = []
-        for secgroup_value in self.driver.get_all_entries(
-                db_models.SecurityGroup.table_name, topic):
-            res.append(db_models.SecurityGroup(secgroup_value))
-        return res
 
     def create_floatingip(self, id, topic, **columns):
         floatingip = {}
