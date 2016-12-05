@@ -106,7 +106,10 @@ class NbApi(object):
             self,
             db_models.SecurityGroup,
         )
-        self.floatingip = self._CRUDHelper(self, db_models.Floatingip)
+        self.floatingip = self._FloatingipCRUDHelper(
+            self,
+            db_models.Floatingip,
+        )
         self.publisher = self._CRUDHelper(self, db_models.Publisher)
         self.qos_policy = self._CRUDHelper(self, db_models.QosPolicy)
 
@@ -324,44 +327,6 @@ class NbApi(object):
         if floatingip.get('port_id', None) is not None:
             self._send_db_change_event(db_models.Floatingip.table_name,
                                        id, 'create', floatingip_json, topic)
-
-    def delete_floatingip(self, id, topic):
-        floatingip = self.driver.get_key(db_models.Floatingip.table_name,
-                                         id, topic)
-        fip_dict = jsonutils.loads(floatingip)
-        if fip_dict.get('port_id', None) is not None:
-            self._send_db_change_event(db_models.Floatingip.table_name,
-                                       id, 'delete', id, topic)
-        self.driver.delete_key('floatingip', id, topic)
-
-    def update_floatingip(self, id, topic, notify, **columns):
-        floatingip_json = self.driver.get_key(db_models.Floatingip.table_name,
-                                              id, topic)
-        floatingip = jsonutils.loads(floatingip_json)
-        for col, val in columns.items():
-            floatingip[col] = val
-        floatingip_json = jsonutils.dumps(floatingip)
-        self.driver.set_key(db_models.Floatingip.table_name,
-                            id, floatingip_json, floatingip['topic'])
-        if notify:
-            self._send_db_change_event(db_models.Floatingip.table_name,
-                                       id, 'set',
-                                       floatingip_json, floatingip['topic'])
-
-    def get_floatingip(self, id, topic=None):
-        try:
-            floatingip_value = self.driver.get_key(
-                db_models.Floatingip.table_name, id, topic)
-            return db_models.Floatingip(floatingip_value)
-        except Exception:
-            return None
-
-    def get_floatingips(self, topic=None):
-        res = []
-        for floatingip in self.driver.get_all_entries(
-                db_models.Floatingip.table_name, topic):
-            res.append(db_models.Floatingip(floatingip))
-        return res
 
     def create_publisher(self, uuid, topic, **columns):
         publisher = {
@@ -632,3 +597,9 @@ class NbApi(object):
         def get_all(self, topic=None):
             ports = super(NbApi._LportCRUDHelper, self).get_all(topic)
             return [p for p in ports if p.get_chassis() is not None]
+
+    class _FloatingipCRUDHelper(_CRUDHelper):
+        def create(self, id, topic, **columns):
+            notify = columns.get('port_id') is not None
+            super(NbApi._FloatingipCRUDHelper.self).create(
+                id, topic, notify=notify, **columns)
