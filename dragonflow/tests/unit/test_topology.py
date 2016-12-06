@@ -35,7 +35,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.nb_api.get_all_logical_switches.return_value = []
         self.nb_api.get_all_logical_ports.return_value = []
         self.nb_api.get_routers.return_value = []
-        self.nb_api.get_security_groups.return_value = []
+        self.nb_api.get_all_security_groups.return_value = []
         self.nb_api.get_floatingips.return_value = []
 
     def test_vm_port_online_offline(self):

@@ -239,7 +239,7 @@ class DbStore(object):
     def get_security_group(self, secgroup_id, topic=None):
         return self.get(models.SecurityGroup.table_name, secgroup_id, topic)
 
-    def get_security_groups(self, topic=None):
+    def get_all_security_groups(self, topic=None):
         return self.values(models.SecurityGroup.table_name, topic)
 
     def get_security_group_keys(self, topic=None):

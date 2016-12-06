@@ -373,7 +373,7 @@ class DfLocalController(object):
         self.open_flow_app.notify_delete_router(router)
         self.db_store.delete_router(lrouter_id)
 
-    def security_group_updated(self, secgroup):
+    def update_security_group(self, secgroup):
         old_secgroup = self.db_store.get_security_group(secgroup.get_id())
         if old_secgroup is None:
             LOG.info(_LI("Security Group created = %s") %
@@ -385,7 +385,7 @@ class DfLocalController(object):
         self._update_security_group_rules(old_secgroup, secgroup)
         self.db_store.update_security_group(secgroup.get_id(), secgroup)
 
-    def security_group_deleted(self, secgroup_id):
+    def delete_security_group(self, secgroup_id):
         old_secgroup = self.db_store.get_security_group(secgroup_id)
         if old_secgroup is None:
             return
