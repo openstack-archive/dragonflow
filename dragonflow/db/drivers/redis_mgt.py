@@ -57,6 +57,8 @@ class RedisMgt(object):
         self.daemon = df_utils.DFDaemon()
         self.db_callback = None
         self.db_recover_callback = None
+        self.subscriber = None
+        self.publisher = None
 
     @staticmethod
     def get_instance(ip, port):
