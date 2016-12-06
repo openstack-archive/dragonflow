@@ -123,9 +123,9 @@ class DBConsistencyManager(object):
                 self.controller.security_group_updated(df_object)
         elif table == models.Floatingip.table_name:
             if action == 'delete':
-                self.controller.floatingip_deleted(local_object.get_id())
+                self.controller.delete_floatingip(local_object.get_id())
             else:
-                self.controller.floatingip_updated(df_object)
+                self.controller.update_floatingip(df_object)
 
     def _verify_object(self, table, id, action, df_object, local_object=None):
         """Verify the object status and judge whether to create/update/delete
@@ -187,8 +187,8 @@ class DBConsistencyManager(object):
             df_objects = self.nb_api.get_security_groups(topic)
             local_objects = self.db_store.get_security_groups(topic)
         elif table == models.Floatingip.table_name:
-            df_objects = self.nb_api.get_floatingips(topic)
-            local_objects = self.db_store.get_floatingips(topic)
+            df_objects = self.nb_api.get_all_floatingips(topic)
+            local_objects = self.db_store.get_all_floatingips(topic)
         return df_objects, local_objects
 
     def _compare_df_and_local_data(

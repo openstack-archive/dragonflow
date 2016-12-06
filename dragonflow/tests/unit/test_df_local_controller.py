@@ -173,27 +173,27 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         fip_id = 'fake_fip_id'
         fip = self._get_mock_floatingip(lport_id, fip_id)
         mock_get_lport.return_value = None
-        self.assertIsNone(self.controller.floatingip_updated(fip))
+        self.assertIsNone(self.controller.update_floatingip(fip))
         mock_get_lport.assert_called_once_with(lport_id)
 
         mock_get_fip.return_value = None
         fip.get_lport_id.return_value = None
-        self.assertIsNone(self.controller.floatingip_updated(fip))
+        self.assertIsNone(self.controller.update_floatingip(fip))
         mock_get_fip.assert_called_once_with(fip_id)
 
         mock_get_lport.return_value = mock.Mock()
         fip.get_lport_id.return_value = lport_id
-        self.assertIsNone(self.controller.floatingip_updated(fip))
+        self.assertIsNone(self.controller.update_floatingip(fip))
         mock_assoc.assert_called_once_with(fip)
 
         old_fip = mock.Mock()
         mock_get_fip.return_value = old_fip
         mock_is_valid.return_value = False
-        self.assertIsNone(self.controller.floatingip_updated(fip))
+        self.assertIsNone(self.controller.update_floatingip(fip))
         mock_is_valid.assert_called_once()
 
         mock_is_valid.return_value = True
-        self.controller.floatingip_updated(fip)
+        self.controller.update_floatingip(fip)
         mock_update.assert_called_once_with(old_fip, fip)
 
     @mock.patch.object(ryu_base_app.RyuDFAdapter,
@@ -204,9 +204,9 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         lport_id = 'fake_lport_id'
         fip_id = 'fake_fip_id'
         fip = self._get_mock_floatingip(lport_id, fip_id)
-        self.assertIsNone(self.controller.floatingip_deleted(fip_id))
+        self.assertIsNone(self.controller.delete_floatingip(fip_id))
         mock_get_fip.return_value = fip
-        self.controller.floatingip_deleted(fip_id)
+        self.controller.delete_floatingip(fip_id)
         mock_notify.assert_called_once_with(fip)
 
     def _get_mock_publisher(self, uri, publisher_id):
