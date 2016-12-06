@@ -29,52 +29,52 @@ from dragonflow.tests.fullstack import test_objects as objects
 events_num = 0
 
 
-def get_publisher():
-    if cfg.CONF.df.pub_sub_use_multiproc:
-        pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
-    else:
-        pubsub_driver_name = cfg.CONF.df.pub_sub_driver
-    pub_sub_driver = df_utils.load_driver(
-        pubsub_driver_name,
-        df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
-    publisher = pub_sub_driver.get_publisher()
-    publisher.initialize()
-    return publisher
-
-
-def get_server_publisher():
-    cfg.CONF.df.publisher_port = "12345"
-    cfg.CONF.df.publisher_bind_address = "127.0.0.1"
-    pub_sub_driver = df_utils.load_driver(
-        cfg.CONF.df.pub_sub_driver,
-        df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
-    publisher = pub_sub_driver.get_publisher()
-    publisher.initialize()
-    return publisher
-
-
-def get_subscriber(callback):
-    pub_sub_driver = df_utils.load_driver(
-        cfg.CONF.df.pub_sub_driver,
-        df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
-    subscriber = pub_sub_driver.get_subscriber()
-    subscriber.initialize(callback)
-    subscriber.register_topic(db_common.SEND_ALL_TOPIC)
-    uri = '%s://%s:%s' % (
-        cfg.CONF.df.publisher_transport,
-        '127.0.0.1',
-        cfg.CONF.df.publisher_port
-    )
-    subscriber.register_listen_address(uri)
-    subscriber.daemonize()
-    return subscriber
-
-
 class Namespace(object):
     pass
 
 
-class TestPubSub(test_base.DFTestBase):
+class PubSubTestBase(test_base.DFTestBase):
+    def _get_publisher(self, pubsub_driver_name):
+        pub_sub_driver = df_utils.load_driver(
+            pubsub_driver_name,
+            df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+        publisher = pub_sub_driver.get_publisher()
+        publisher.initialize()
+        return publisher
+
+    def get_publisher(self):
+        if cfg.CONF.df.pub_sub_use_multiproc:
+            pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
+        else:
+            pubsub_driver_name = cfg.CONF.df.pub_sub_driver
+        return self._get_publisher(pubsub_driver_name)
+
+    def get_server_publisher(self, bind_address="127.0.0.1", port=12345):
+        cfg.CONF.df.publisher_port = str(port)
+        cfg.CONF.df.publisher_bind_address = bind_address
+        return self._get_publisher(cfg.CONF.df.pub_sub_driver)
+
+    def get_subscriber(self, callback):
+        pub_sub_driver = df_utils.load_driver(
+            cfg.CONF.df.pub_sub_driver,
+            df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+        subscriber = pub_sub_driver.get_subscriber()
+        subscriber.initialize(callback)
+        subscriber.register_topic(db_common.SEND_ALL_TOPIC)
+        uri = '%s://%s:%s' % (
+            cfg.CONF.df.publisher_transport,
+            '127.0.0.1',
+            cfg.CONF.df.publisher_port
+        )
+        subscriber.register_listen_address(uri)
+        publishers = self.nb_api.get_publishers()
+        for publisher in publishers:
+            subscriber.register_listen_address(publisher.get_uri())
+        subscriber.daemonize()
+        return subscriber
+
+
+class TestPubSub(PubSubTestBase):
 
     def setUp(self):
         super(TestPubSub, self).setUp()
@@ -92,7 +92,7 @@ class TestPubSub(test_base.DFTestBase):
         def _db_change_callback(table, key, action, value, topic):
             global events_num
             events_num += 1
-        subscriber = get_subscriber(_db_change_callback)
+        subscriber = self.get_subscriber(_db_change_callback)
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         if cfg.CONF.df.enable_selective_topology_distribution:
@@ -135,7 +135,7 @@ class TestPubSub(test_base.DFTestBase):
         def _db_change_callback(table, key, action, value, topic):
             ns.events_num += 1
 
-        subscriber = get_subscriber(_db_change_callback)
+        subscriber = self.get_subscriber(_db_change_callback)
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         if cfg.CONF.df.enable_selective_topology_distribution:
@@ -188,8 +188,8 @@ class TestPubSub(test_base.DFTestBase):
                 ns.events_num += 1
                 ns.events_action = action
 
-        publisher = get_publisher()
-        subscriber = get_subscriber(_db_change_callback)
+        publisher = self.get_server_publisher()
+        subscriber = self.get_subscriber(_db_change_callback)
 
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         local_events_num = ns.events_num
@@ -222,8 +222,8 @@ class TestPubSub(test_base.DFTestBase):
                 self.events_num_t += 1
                 self.events_action_t = action
 
-        publisher = get_publisher()
-        subscriber = get_subscriber(_db_change_callback_topic)
+        publisher = self.get_server_publisher()
+        subscriber = self.get_subscriber(_db_change_callback_topic)
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         topic = "topic"
         subscriber.register_topic(topic)
@@ -267,8 +267,8 @@ class TestPubSub(test_base.DFTestBase):
                 ns.events_num += 1
                 ns.events_action = action
 
-        publisher = get_publisher()
-        subscriber = get_subscriber(_db_change_callback)
+        publisher = self.get_server_publisher()
+        subscriber = self.get_subscriber(_db_change_callback)
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         action = "log"
         update = db_common.DbUpdate(
@@ -283,7 +283,7 @@ class TestPubSub(test_base.DFTestBase):
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertEqual(ns.events_action, action)
 
-        publisher2 = get_server_publisher()
+        publisher2 = self.get_server_publisher(port=12346)
         uri = '%s://%s:%s' % (
                 cfg.CONF.df.publisher_transport,
                 '127.0.0.1',
@@ -298,7 +298,7 @@ class TestPubSub(test_base.DFTestBase):
         self.assertEqual(ns.events_action, action)
 
 
-class TestMultiprocPubSub(test_base.DFTestBase):
+class TestMultiprocPubSub(PubSubTestBase):
 
     def setUp(self):
         super(TestMultiprocPubSub, self).setUp()
@@ -346,7 +346,7 @@ class TestMultiprocPubSub(test_base.DFTestBase):
         self.subscriber = None
 
 
-class TestDbTableMonitors(test_base.DFTestBase):
+class TestDbTableMonitors(PubSubTestBase):
     def setUp(self):
         super(TestDbTableMonitors, self).setUp()
         self.events_num = 0
@@ -357,8 +357,8 @@ class TestDbTableMonitors(test_base.DFTestBase):
         self.namespace = Namespace()
         self.namespace.events = []
         self.namespace.has_values = False
-        self.publisher = get_publisher()
-        self.subscriber = get_subscriber(self._db_change_callback)
+        self.publisher = self.get_server_publisher()
+        self.subscriber = self.get_subscriber(self._db_change_callback)
         self.monitor = self._create_monitor('chassis')
 
     def tearDown(self):
