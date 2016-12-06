@@ -69,7 +69,6 @@ def get_subscriber(callback):
     subscriber.daemonize()
     return subscriber
 
-
 class Namespace(object):
     pass
 
