@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import random
 import time
 
@@ -36,6 +37,7 @@ DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
                   'db_sync']
 
 _nb_api = None
+PubSub = collections.namedtuple('PubSub', ('publisher', 'subscriber'))
 
 
 class NbApi(object):
@@ -46,8 +48,7 @@ class NbApi(object):
         self.controller = None
         self._queue = eventlet.queue.PriorityQueue()
         self.use_pubsub = use_pubsub
-        self.publisher = None
-        self.subscriber = None
+        self.pubsub = None
         self.db_consistency_manager = None
         self.is_neutron_server = is_neutron_server
         self.enable_selective_topo_dist = \
@@ -72,26 +73,28 @@ class NbApi(object):
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
         if self.use_pubsub:
-            self.publisher = self._get_publisher()
-            self.subscriber = self._get_subscriber()
+            self.pubsub = PubSub(
+                publisher=self._get_publisher(),
+                subscriber=self._get_subscriber(),
+            )
             if self.is_neutron_server:
                 # Publisher is part of the neutron server Plugin
-                self.publisher.initialize()
+                self.pubsub.publisher.initialize()
                 # Start a thread to detect DB failover in Plugin
-                self.publisher.set_publisher_for_failover(
-                    self.publisher,
+                self.pubsub.publisher.set_publisher_for_failover(
+                    self.pubsub.publisher,
                     self.db_recover_callback)
-                self.publisher.start_detect_for_failover()
+                self.pubsub.publisher.start_detect_for_failover()
                 self.driver.set_neutron_server(True)
             else:
                 # NOTE(gampel) we want to start queuing event as soon
                 # as possible
                 self._start_subscriber()
                 # Register for DB Failover detection in NB Plugin
-                self.subscriber.set_subscriber_for_failover(
-                    self.subscriber,
+                self.pubsub.subscriber.set_subscriber_for_failover(
+                    self.pubsub.subscriber,
                     self.db_change_callback)
-                self.subscriber.register_hamsg_for_db()
+                self.pubsub.subscriber.register_hamsg_for_db()
 
     def set_db_consistency_manager(self, db_consistency_manager):
         self.db_consistency_manager = db_consistency_manager
@@ -99,8 +102,8 @@ class NbApi(object):
     def db_recover_callback(self):
         # only db with HA func can go in here
         self.driver.process_ha()
-        self.publisher.process_ha()
-        self.subscriber.process_ha()
+        self.pubsub.publisher.process_ha()
+        self.pubsub.subscriber.process_ha()
         if self.db_consistency_manager and not self.is_neutron_server:
             self.db_consistency_manager.process(True)
 
@@ -121,8 +124,8 @@ class NbApi(object):
         return pub_sub_driver.get_subscriber()
 
     def _start_subscriber(self):
-        self.subscriber.initialize(self.db_change_callback)
-        self.subscriber.register_topic(db_common.SEND_ALL_TOPIC)
+        self.pubsub.subscriber.initialize(self.db_change_callback)
+        self.pubsub.subscriber.register_topic(db_common.SEND_ALL_TOPIC)
         publishers_ips = cfg.CONF.df.publishers_ips
         uris = {'%s://%s:%s' % (
                 cfg.CONF.df.publisher_transport,
@@ -131,8 +134,8 @@ class NbApi(object):
         publishers = self.get_publishers()
         uris |= {publisher.get_uri() for publisher in publishers}
         for uri in uris:
-            self.subscriber.register_listen_address(uri)
-        self.subscriber.daemonize()
+            self.pubsub.subscriber.register_listen_address(uri)
+        self.pubsub.subscriber.daemonize()
 
     def support_publish_subscribe(self):
         if self.use_pubsub:
@@ -144,7 +147,7 @@ class NbApi(object):
             if not self.enable_selective_topo_dist:
                 topic = db_common.SEND_ALL_TOPIC
             update = db_common.DbUpdate(table, key, action, value, topic=topic)
-            self.publisher.send_event(update)
+            self.pubsub.publisher.send_event(update)
             eventlet.sleep(0)
 
     def get_all_port_status_keys(self):
