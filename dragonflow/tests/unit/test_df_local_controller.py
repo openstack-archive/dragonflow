@@ -281,3 +281,12 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_get_lswitch.assert_called_with(lswitch_id)
         mock_notify_remove.assert_called_with(lswitch)
         mock_del_lswitch.assert_called_with(lswitch_id)
+
+    def test_logical_port_updated(self):
+        lport = mock.Mock()
+        lport.get_chassis.return_value = "lport-fake-chassis"
+        lport.get_id.return_value = "lport-fake-id"
+        lport.get_lswitch_id.return_value = "lport-fake-lswitch"
+        lport.get_remote_vtep.return_value = False
+        self.controller.logical_port_updated(lport)
+        lport.set_external_value.assert_not_called()
