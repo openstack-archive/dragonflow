@@ -242,7 +242,7 @@ class Topology(object):
         if topic not in self.topic_subscribed:
             LOG.info(_LI("Subscribe topic: %(topic)s by lport: %(id)s") %
                      {"topic": topic, "id": lport_id})
-            self.nb_api.subscriber.register_topic(topic)
+            self.nb_api.pubsub.subscriber.register_topic(topic)
             self._pull_tenant_topology_from_db(topic)
             self.topic_subscribed[topic] = set([lport_id])
         else:
@@ -257,7 +257,7 @@ class Topology(object):
             LOG.info(_LI("Unsubscribe topic: %(topic)s by lport: %(id)s") %
                      {"topic": topic, "id": lport_id})
             del self.topic_subscribed[topic]
-            self.nb_api.subscriber.unregister_topic(topic)
+            self.nb_api.pubsub.subscriber.unregister_topic(topic)
             self._clear_tenant_topology(topic)
 
     def _pull_tenant_topology_from_db(self, tenant_id):

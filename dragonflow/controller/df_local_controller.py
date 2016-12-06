@@ -89,7 +89,7 @@ class DfLocalController(object):
         if cfg.CONF.df.enable_port_status_notifier:
             self.port_status_notifier.initialize(mech_driver=None,
                                              nb_api=self.nb_api,
-                                             pub=self.nb_api.publisher,
+                                             pub=self.nb_api.pubsub.publisher,
                                              sub=None,
                                              is_neutron_server=False)
         self.topology = topology.Topology(self,
@@ -513,13 +513,14 @@ class DfLocalController(object):
     def publisher_updated(self, publisher):
         self.db_store.update_publisher(publisher.get_id(), publisher)
         LOG.info(_LI('Registering to new publisher: %s'), str(publisher))
-        self.nb_api.subscriber.register_listen_address(publisher.get_uri())
+        self.nb_api.pubsub.subscriber.register_listen_address(
+            publisher.get_uri())
 
     def publisher_deleted(self, uuid):
         publisher = self.db_store.get_publisher(uuid)
         if publisher:
             LOG.info(_LI('Deleting publisher: %s'), str(publisher))
-            self.nb_api.subscriber.unregister_listen_address(
+            self.nb_api.pubsub.subscriber.unregister_listen_address(
                 publisher.get_uri()
             )
             self.db_store.delete_publisher(uuid)
