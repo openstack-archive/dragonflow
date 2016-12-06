@@ -58,6 +58,11 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
             cfg.CONF.df.remote_db_port)
         self._update_client()
 
+    def close(self):
+        if self.remote:
+            self.client.client_kill(self.remote)
+        self.client = None
+
     def _update_client(self):
         if self.redis_mgt is not None:
             self.remote = self.redis_mgt.pubsub_select_node_idx()

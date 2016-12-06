@@ -110,6 +110,10 @@ class PublisherApi(object):
         :returns:       None
         """
 
+    @abc.abstractmethod
+    def close(self):
+        """Close the publisher. Release all used resources"""
+
     def set_publisher_for_failover(self, pub, callback):
         pass
 
