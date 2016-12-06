@@ -75,7 +75,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             self.port_status_notifier = port_status_notifier
             self.port_status_notifier.initialize(self, self.nb_api,
                                             pub=None,
-                                            sub=self.nb_api.subscriber,
+                                            sub=self.nb_api.pubsub.subscriber,
                                             is_neutron_server=True)
             self.port_status = None
 

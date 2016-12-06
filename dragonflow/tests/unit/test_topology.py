@@ -58,7 +58,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
         self.controller.logical_port_updated.assert_called_once_with(
             test_app_base.fake_local_port1)
-        self.nb_api.subscriber.register_topic.assert_called_once_with(
+        self.nb_api.pubsub.subscriber.register_topic.assert_called_once_with(
             test_app_base.fake_local_port1.get_topic())
 
         # Verify port offline
@@ -66,7 +66,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.topology.ovs_port_deleted(test_app_base.fake_ovs_port1.get_id())
         self.controller.logical_port_deleted.assert_called_once_with(
             test_app_base.fake_local_port1.get_id())
-        self.nb_api.subscriber.unregister_topic.assert_called_once_with(
+        self.nb_api.pubsub.subscriber.unregister_topic.assert_called_once_with(
             test_app_base.fake_local_port1.get_topic())
 
     def test_vm_online_after_topology_pulled(self):
@@ -95,7 +95,9 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port2)
         self.controller.logical_port_updated.assert_called_once_with(
             test_app_base.fake_local_port2)
-        self.assertEqual(1, self.nb_api.subscriber.register_topic.call_count)
+        self.assertEqual(
+            1,
+            self.nb_api.pubsub.subscriber.register_topic.call_count)
 
     def test_multi_vm_port_online_restart_controller(self):
         self.nb_api.get_all_logical_switches.return_value = [
@@ -125,7 +127,9 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.controller.logical_port_updated.assert_has_calls(
             calls, any_order=True)
         self.assertEqual(2, self.controller.logical_port_updated.call_count)
-        self.assertEqual(1, self.nb_api.subscriber.register_topic.call_count)
+        self.assertEqual(
+            1,
+            self.nb_api.pubsub.subscriber.register_topic.call_count)
 
     def test_check_topology_info(self):
         topic = 'fake_tenant1'
