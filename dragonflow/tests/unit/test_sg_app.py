@@ -113,7 +113,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
     def test_add_delete_lport(self):
         # create fake security group
-        self.controller.security_group_updated(self.security_group)
+        self.controller.update_security_group(self.security_group)
         self.mock_mod_flow.assert_not_called()
 
         # add remote port before adding any local port
@@ -196,12 +196,12 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # delete fake security group
-        self.controller.security_group_deleted(self.security_group.get_id())
+        self.controller.delete_security_group(self.security_group.get_id())
         self.mock_mod_flow.assert_not_called()
 
     def test_update_lport(self):
         # create fake security group
-        self.controller.security_group_updated(self.security_group)
+        self.controller.update_security_group(self.security_group)
 
         # add local port
         fake_local_lport = self._get_another_local_lport()
@@ -211,7 +211,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # create another fake security group
         fake_security_group2 = self._get_another_security_group()
-        self.controller.security_group_updated(fake_security_group2)
+        self.controller.update_security_group(fake_security_group2)
 
         # update the association of the lport to a new security group
         fake_local_lport = self._get_another_local_lport()
@@ -264,14 +264,14 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.controller.logical_port_deleted(fake_local_lport.get_id())
 
         # delete fake security group
-        self.controller.security_group_deleted(self.security_group.get_id())
-        self.controller.security_group_deleted(fake_security_group2.get_id())
+        self.controller.delete_security_group(self.security_group.get_id())
+        self.controller.delete_security_group(fake_security_group2.get_id())
 
     def test_add_del_security_group_rule(self):
         # create another fake security group
         security_group = self._get_another_security_group()
         security_group_version = security_group.inner_obj['version']
-        self.controller.security_group_updated(security_group)
+        self.controller.update_security_group(security_group)
 
         # add local port
         fake_local_lport = self._get_another_local_lport()
@@ -295,7 +295,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
             "id": "fake_security_group_rule_5"})
         security_group_version += 1
         security_group.inner_obj['version'] = security_group_version
-        self.controller.security_group_updated(security_group)
+        self.controller.update_security_group(security_group)
         # add flows:
         # 1. a egress rule flow in egress secgroup table
         self.assertEqual(1, self._get_call_count_of_add_flow())
@@ -305,7 +305,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         security_group = self._get_another_security_group()
         security_group_version += 1
         security_group.inner_obj['version'] = security_group_version
-        self.controller.security_group_updated(security_group)
+        self.controller.update_security_group(security_group)
         # remove flows:
         # 1. a egress rule flow in egress secgroup table
         self.assertEqual(1, self._get_call_count_of_del_flow())
@@ -316,7 +316,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # delete fake security group
-        self.controller.security_group_deleted(security_group.get_id())
+        self.controller.delete_security_group(security_group.get_id())
 
     def test_aggregating_flows_for_addresses(self):
         # add one address

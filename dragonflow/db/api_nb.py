@@ -216,10 +216,10 @@ class NbApi(object):
         if db_models.SecurityGroup.table_name == table:
             if action == 'set' or action == 'create':
                 secgroup = db_models.SecurityGroup(value)
-                self.controller.security_group_updated(secgroup)
+                self.controller.update_security_group(secgroup)
             elif action == 'delete':
                 secgroup_id = key
-                self.controller.security_group_deleted(secgroup_id)
+                self.controller.delete_security_group(secgroup_id)
         elif db_models.LogicalPort.table_name == table:
             if action == 'create':
                 lport = db_models.LogicalPort(value)
@@ -659,7 +659,7 @@ class NbApi(object):
         except Exception:
             return None
 
-    def get_security_groups(self, topic=None):
+    def get_all_security_groups(self, topic=None):
         res = []
         for secgroup_value in self.driver.get_all_entries(
                 db_models.SecurityGroup.table_name, topic):

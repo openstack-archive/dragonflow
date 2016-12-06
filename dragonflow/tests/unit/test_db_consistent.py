@@ -49,8 +49,8 @@ class TestDBConsistent(tests_base.BaseTestCase):
         self.nb_api.get_routers.return_value = [df_obj1, df_obj2]
         self.db_store.get_routers.return_value = [local_obj1, local_obj2]
 
-        self.nb_api.get_security_groups.return_value = [df_obj1, df_obj2]
-        self.db_store.get_security_groups.return_value = [
+        self.nb_api.get_all_security_groups.return_value = [df_obj1, df_obj2]
+        self.db_store.get_all_security_groups.return_value = [
             local_obj1, local_obj2]
 
         self.nb_api.get_floatingips.return_value = [df_obj1, df_obj2]
@@ -78,9 +78,9 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.SecurityGroup.table_name, True)
-        self.controller.security_group_updated.assert_any_call(df_obj1)
-        self.controller.security_group_updated.assert_any_call(df_obj2)
-        self.controller.security_group_deleted.assert_any_call(
+        self.controller.update_security_group.assert_any_call(df_obj1)
+        self.controller.update_security_group.assert_any_call(df_obj2)
+        self.controller.delete_security_group.assert_any_call(
                 self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
