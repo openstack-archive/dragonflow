@@ -111,9 +111,9 @@ class DBConsistencyManager(object):
                 self.controller.logical_port_updated(df_object)
         elif table == models.LogicalRouter.table_name:
             if action == 'delete':
-                self.controller.router_deleted(local_object.get_id())
+                self.controller.delete_lrouter(local_object.get_id())
             else:
-                self.controller.router_updated(df_object)
+                self.controller.update_lrouter(df_object)
         elif table == models.SecurityGroup.table_name:
             if action == 'delete':
                 self.controller.delete_security_group(local_object.get_id())
@@ -179,8 +179,8 @@ class DBConsistencyManager(object):
             df_objects = self.nb_api.get_all_logical_ports(topic)
             local_objects = self.db_store.get_ports(topic)
         elif table == models.LogicalRouter.table_name:
-            df_objects = self.nb_api.get_routers(topic)
-            local_objects = self.db_store.get_routers(topic)
+            df_objects = self.nb_api.get_all_lrouters(topic)
+            local_objects = self.db_store.get_all_lrouters(topic)
         elif table == models.SecurityGroup.table_name:
             df_objects = self.nb_api.get_all_security_groups(topic)
             local_objects = self.db_store.get_all_security_groups(topic)

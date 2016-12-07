@@ -230,10 +230,10 @@ class NbApi(object):
         elif db_models.LogicalRouter.table_name == table:
             if action == 'set' or action == 'create':
                 lrouter = db_models.LogicalRouter(value)
-                self.controller.router_updated(lrouter)
+                self.controller.update_lrouter(lrouter)
             elif action == 'delete':
                 lrouter_id = key
-                self.controller.router_deleted(lrouter_id)
+                self.controller.delete_lrouter(lrouter_id)
         elif db_models.Chassis.table_name == table:
             if action == 'set' or action == 'create':
                 chassis = db_models.Chassis(value)
@@ -630,7 +630,7 @@ class NbApi(object):
                                    lrouter_id, 'set',
                                    lrouter_json, lrouter['topic'])
 
-    def get_router(self, router_id, topic=None):
+    def get_lrouter(self, router_id, topic=None):
         try:
             lrouter_value = self.driver.get_key(
                 db_models.LogicalRouter.table_name, router_id, topic)
@@ -638,7 +638,7 @@ class NbApi(object):
         except Exception:
             return None
 
-    def get_routers(self, topic=None):
+    def get_all_lrouters(self, topic=None):
         res = []
         for lrouter_value in self.driver.get_all_entries(
                 db_models.LogicalRouter.table_name, topic):
