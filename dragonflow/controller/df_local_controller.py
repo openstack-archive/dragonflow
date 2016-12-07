@@ -465,7 +465,7 @@ class DfLocalController(object):
         self.open_flow_app.notify_remove_security_group_rule(
                  secgroup, secgroup_rule)
 
-    def floatingip_updated(self, floatingip):
+    def update_floatingip(self, floatingip):
         # check whether this floatingip is associated with a lport or not
         if floatingip.get_lport_id():
             if self.db_store.get_local_port(floatingip.get_lport_id()) is None:
@@ -482,7 +482,7 @@ class DfLocalController(object):
             return
         self._update_floatingip(old_floatingip, floatingip)
 
-    def floatingip_deleted(self, floatingip_id):
+    def delete_floatingip(self, floatingip_id):
         floatingip = self.db_store.get_floatingip(floatingip_id)
         if not floatingip:
             return

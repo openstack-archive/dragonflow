@@ -251,10 +251,10 @@ class NbApi(object):
         elif db_models.Floatingip.table_name == table:
             if action == 'set' or action == 'create':
                 floatingip = db_models.Floatingip(value)
-                self.controller.floatingip_updated(floatingip)
+                self.controller.update_floatingip(floatingip)
             elif action == 'delete':
                 floatingip_id = key
-                self.controller.floatingip_deleted(floatingip_id)
+                self.controller.delete_floatingip(floatingip_id)
         elif db_models.Publisher.table_name == table:
             if action == 'set' or action == 'create':
                 publisher = db_models.Publisher(value)
@@ -711,7 +711,7 @@ class NbApi(object):
         except Exception:
             return None
 
-    def get_floatingips(self, topic=None):
+    def get_all_floatingips(self, topic=None):
         res = []
         for floatingip in self.driver.get_all_entries(
                 db_models.Floatingip.table_name, topic):
