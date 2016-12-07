@@ -446,7 +446,7 @@ class DHCPApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def update_logical_switch(self, lswitch):
+    def update_lswitch(self, lswitch):
         subnets = lswitch.get_subnets()
         network_id = lswitch.get_unique_key()
         all_subnets = set()
@@ -496,7 +496,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
             del self.switch_dhcp_ip_map[network_id][subnet_id]
 
-    def remove_logical_switch(self, lswitch):
+    def remove_lswitch(self, lswitch):
         network_id = lswitch.get_unique_key()
         self._remove_dhcp_unicast_match_flow(network_id)
         del self.switch_dhcp_ip_map[network_id]

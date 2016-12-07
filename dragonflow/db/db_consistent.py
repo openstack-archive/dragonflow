@@ -101,9 +101,9 @@ class DBConsistencyManager(object):
     def _process_object(self, table, action, df_object, local_object=None):
         if table == models.LogicalSwitch.table_name:
             if action == 'delete':
-                self.controller.logical_switch_deleted(local_object.get_id())
+                self.controller.delete_lswitch(local_object.get_id())
             else:
-                self.controller.logical_switch_updated(df_object)
+                self.controller.update_lswitch(df_object)
         elif table == models.LogicalPort.table_name:
             if action == 'delete':
                 self.controller.logical_port_deleted(local_object.get_id())
@@ -173,8 +173,8 @@ class DBConsistencyManager(object):
         df_objects = []
         local_objects = []
         if table == models.LogicalSwitch.table_name:
-            df_objects = self.nb_api.get_all_logical_switches(topic)
-            local_objects = self.db_store.get_lswitchs(topic)
+            df_objects = self.nb_api.get_all_lswitches(topic)
+            local_objects = self.db_store.get_all_lswitches(topic)
         elif table == models.LogicalPort.table_name:
             df_objects = self.nb_api.get_all_logical_ports(topic)
             local_objects = self.db_store.get_ports(topic)

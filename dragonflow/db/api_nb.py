@@ -244,10 +244,10 @@ class NbApi(object):
         elif db_models.LogicalSwitch.table_name == table:
             if action == 'set' or action == 'create':
                 lswitch = db_models.LogicalSwitch(value)
-                self.controller.logical_switch_updated(lswitch)
+                self.controller.update_lswitch(lswitch)
             elif action == 'delete':
                 lswitch_id = key
-                self.controller.logical_switch_deleted(lswitch_id)
+                self.controller.delete_lswitch(lswitch_id)
         elif db_models.Floatingip.table_name == table:
             if action == 'set' or action == 'create':
                 floatingip = db_models.Floatingip(value)
@@ -660,7 +660,7 @@ class NbApi(object):
             res.append(db_models.SecurityGroup(secgroup_value))
         return res
 
-    def get_all_logical_switches(self, topic=None):
+    def get_all_lswitches(self, topic=None):
         res = []
         for lswitch_value in self.driver.get_all_entries(
                 db_models.LogicalSwitch.table_name, topic):
