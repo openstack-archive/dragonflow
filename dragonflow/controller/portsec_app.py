@@ -14,7 +14,9 @@
 #    under the License.
 
 import netaddr
+from neutron_lib import constants as n_const
 from oslo_log import log
+from ryu.lib.packet import arp
 from ryu.ofproto import ether
 
 from dragonflow._i18n import _LI
@@ -23,11 +25,6 @@ from dragonflow.controller import df_base_app
 
 
 LOG = log.getLogger(__name__)
-
-ARP_OP_TYPE_REQUEST = 1
-UDP_PROTOCOL_NUMBER = 17
-DHCP_CLIENT_PORT = 68
-DHCP_SERVER_PORT = 67
 
 
 class PortSecApp(df_base_app.DFlowApp):
@@ -157,11 +154,11 @@ class PortSecApp(df_base_app.DFlowApp):
         # DHCP packets with the vm mac pass
         match = parser.OFPMatch(in_port=ofport,
                                 eth_src=vm_mac,
-                                eth_dst="ff:ff:ff:ff:ff:ff",
+                                eth_dst=const.BROADCAST_MAC,
                                 eth_type=ether.ETH_TYPE_IP,
-                                ip_proto=UDP_PROTOCOL_NUMBER,
-                                udp_src=68,
-                                udp_dst=67)
+                                ip_proto=n_const.PROTO_NUM_UDP,
+                                udp_src=const.DHCP_CLIENT_PORT,
+                                udp_dst=const.DHCP_SERVER_PORT)
         self.add_flow_go_to_table(datapath,
                                   const.EGRESS_PORT_SECURITY_TABLE,
                                   const.PRIORITY_HIGH,
@@ -172,7 +169,7 @@ class PortSecApp(df_base_app.DFlowApp):
         match = parser.OFPMatch(in_port=ofport,
                                 eth_src=vm_mac,
                                 eth_type=ether.ETH_TYPE_ARP,
-                                arp_op=ARP_OP_TYPE_REQUEST,
+                                arp_op=arp.ARP_REQUEST,
                                 arp_spa=0,
                                 arp_sha=vm_mac)
         self.add_flow_go_to_table(datapath,
@@ -187,11 +184,11 @@ class PortSecApp(df_base_app.DFlowApp):
         # Remove DHCP packets with the vm mac pass
         match = parser.OFPMatch(in_port=ofport,
                                 eth_src=vm_mac,
-                                eth_dst="ff:ff:ff:ff:ff:ff",
+                                eth_dst=const.BROADCAST_MAC,
                                 eth_type=ether.ETH_TYPE_IP,
-                                ip_proto=UDP_PROTOCOL_NUMBER,
-                                udp_src=68,
-                                udp_dst=67)
+                                ip_proto=n_const.PROTO_NUM_UDP,
+                                udp_src=const.DHCP_CLIENT_PORT,
+                                udp_dst=const.DHCP_SERVER_PORT)
         self._remove_one_port_security_flow(datapath,
                                             const.PRIORITY_HIGH,
                                             match)
@@ -200,7 +197,7 @@ class PortSecApp(df_base_app.DFlowApp):
         match = parser.OFPMatch(in_port=ofport,
                                 eth_src=vm_mac,
                                 eth_type=ether.ETH_TYPE_ARP,
-                                arp_op=ARP_OP_TYPE_REQUEST,
+                                arp_op=arp.ARP_REQUEST,
                                 arp_spa=0,
                                 arp_sha=vm_mac)
         self._remove_one_port_security_flow(datapath,
