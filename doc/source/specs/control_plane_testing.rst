@@ -22,7 +22,7 @@ In Dragonflow controller
 2. DF controller fetches full object records from NoSQL db
 3. DF controller, if required, creates nessesary OpenFlow rules.
 
-Now a new object is basically transfered to the actuall OpenFlow rules.
+Now a new object is basically transferred to the actual OpenFlow rules.
 
 In the control plane test we will basically test all components of the Dragonflow
 architecture.
@@ -41,7 +41,7 @@ We check only time required to deploy these rules in this project.
 Our goals:
 ----------
 In this project we would like to see that the time required to add new configuration
-element to the system will not exceed XXX Miliseconds and we do not have a noticable
+element to the system will not exceed XXX Miliseconds and we do not have a noticeable
 degradation when the system has more configuration entities.
 
 
@@ -73,7 +73,7 @@ NoSQL random access test scenario
 =================================
 
 The test will create 1000 database objects and performs random access test.
-We can optionally compare the results agains MySQL by reading values from Neutron DB.
+We can optionally compare the results against MySQL by reading values from Neutron DB.
 These tests will mimic the case when Dragonflow receives notification when an
 object is created and it needs to load object records from the database.
 

@@ -26,7 +26,8 @@ VLAN_MIN_DEFAULT = 2
 
 
 class TestL2FLows(test_base.DFTestBase):
-    def _get_metadata_id(self, flows, ip, mac):
+    @staticmethod
+    def _get_metadata_id(flows, ip, mac):
         for flow in flows:
             if flow['table'] == str(const.L3_PROACTIVE_LOOKUP_TABLE):
                 if 'nw_dst=' + ip in flow['match'] and mac in flow['actions']:
@@ -52,11 +53,11 @@ class TestL2FLows(test_base.DFTestBase):
         network_params = network.get_network()
         segmentation_id = network_params['network']['provider:segmentation_id']
         subnet = {'network_id': network_id,
-            'cidr': '10.200.0.0/24',
-            'gateway_ip': '10.200.0.1',
-            'ip_version': 4,
-            'name': 'private',
-            'enable_dhcp': True}
+                  'cidr': '10.200.0.0/24',
+                  'gateway_ip': '10.200.0.1',
+                  'ip_version': 4,
+                  'name': 'private',
+                  'enable_dhcp': True}
         subnet = self.neutron.create_subnet({'subnet': subnet})
         self.assertIsNotNone(subnet)
 
@@ -146,10 +147,11 @@ class TestL2FLows(test_base.DFTestBase):
         vm.close()
         network.close()
 
-    def _check_tunnel_flows(self, flows, metadtata, segmentation_id,
-                          port_key_hex, mac):
+    @staticmethod
+    def _check_tunnel_flows(flows, metadtata, segmentation_id,
+                            port_key_hex, mac):
         l2_lookup_unicast_match = 'metadata=0x' + metadtata + \
-                                 ',dl_dst=' + mac
+                                  ',dl_dst=' + mac
         l2_lookup_unicast_action = 'goto_table:' + \
                                    str(const.EGRESS_TABLE)
         l2_lookup_multicast_match = 'metadata=0x' + metadtata + ',dl_dst=' + \
@@ -172,36 +174,36 @@ class TestL2FLows(test_base.DFTestBase):
 
         for flow in flows:
             if flow['table'] == str(const.L2_LOOKUP_TABLE):
-                if (l2_lookup_multicast_match in flow['match']):
+                if l2_lookup_multicast_match in flow['match']:
                     if l2_lookup_multicast_action in flow['actions']:
                         l2_lookup_multicast_check = True
-                if (l2_lookup_unicast_match in flow['match']):
+                if l2_lookup_unicast_match in flow['match']:
                     if l2_lookup_unicast_action in flow['actions']:
                         l2_lookup_unicast_check = True
 
             if flow['table'] == str(
                     const.INGRESS_CLASSIFICATION_DISPATCH_TABLE):
-                if (ingress_match in flow['match']):
+                if ingress_match in flow['match']:
                     if ingress_action in flow['actions']:
                         ingress_check = True
 
-        if l2_lookup_multicast_check is None or \
-            l2_lookup_unicast_check is None or \
-            ingress_check is None:
+        if l2_lookup_multicast_check is None or l2_lookup_unicast_check is \
+                None or ingress_check is None:
             return None
 
         return True
 
-    def _check_vlan_flows(self, flows, metadtata, segmentation_id,
+    @staticmethod
+    def _check_vlan_flows(flows, metadtata, segmentation_id,
                           port_key_hex, mac):
         l2_lookup_unicast_match = 'metadata=0x' + metadtata + \
-                                 ',dl_dst=' + mac
+                                  ',dl_dst=' + mac
         l2_lookup_unicast_action = 'goto_table:' + \
                                    str(const.EGRESS_TABLE)
         l2_lookup_unknown_match = 'metadata=0x' + metadtata + \
                                   ',dl_dst=00:00:00:00:00:00/01:00:00:00:00:00'
-        l2_lookup_unkown_action = 'goto_table:' + \
-                                  str(const.EGRESS_TABLE)
+        l2_lookup_unknown_action = 'goto_table:' + \
+                                   str(const.EGRESS_TABLE)
         l2_lookup_multicast_match = 'metadata=0x' + metadtata + ',dl_dst=' + \
                                     '01:00:00:00:00:00/01:00:00:00:00:00'
         l2_lookup_multicast_action = 'set_field:' + port_key_hex + \
@@ -224,38 +226,36 @@ class TestL2FLows(test_base.DFTestBase):
 
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
-        l2_lookup_unkown_check = None
+        l2_lookup_unknown_check = None
         egress_check = None
         ingress_check = None
 
         for flow in flows:
             if flow['table'] == str(const.L2_LOOKUP_TABLE):
-                if (l2_lookup_multicast_match in flow['match']):
+                if l2_lookup_multicast_match in flow['match']:
                     if l2_lookup_multicast_action in flow['actions']:
                         l2_lookup_multicast_check = True
-                if (l2_lookup_unicast_match in flow['match']):
+                if l2_lookup_unicast_match in flow['match']:
                     if l2_lookup_unicast_action in flow['actions']:
                         l2_lookup_unicast_check = True
-                if (l2_lookup_unknown_match in flow['match']):
-                    if l2_lookup_unkown_action in flow['actions']:
-                        l2_lookup_unkown_check = True
+                if l2_lookup_unknown_match in flow['match']:
+                    if l2_lookup_unknown_action in flow['actions']:
+                        l2_lookup_unknown_check = True
             if flow['table'] == str(const.EGRESS_TABLE):
-                if (egress_match in flow['match']):
+                if egress_match in flow['match']:
                     if egress_action in flow['actions']:
                         egress_check = True
 
             if flow['table'] == str(
                     const.INGRESS_CLASSIFICATION_DISPATCH_TABLE):
-                if (ingress_match in flow['match']):
+                if ingress_match in flow['match']:
                     if ingress_action in flow['actions']:
                         ingress_check = True
 
         if l2_lookup_multicast_check is None or \
-           l2_lookup_unicast_check is None or \
-           l2_lookup_unkown_check is None or \
-            egress_check is None or \
-            ingress_check is None:
-
+                l2_lookup_unicast_check is None or \
+                l2_lookup_unknown_check is None or \
+                egress_check is None or ingress_check is None:
             return None
 
         return True
@@ -316,16 +316,17 @@ class TestL2FLows(test_base.DFTestBase):
         network.close()
         return None
 
-    def _check_flat_flows(self, flows, metadtata,
+    @staticmethod
+    def _check_flat_flows(flows, metadtata,
                           port_key_hex, mac):
         l2_lookup_unicast_match = 'metadata=0x' + metadtata + \
-                                 ',dl_dst=' + mac
+                                  ',dl_dst=' + mac
         l2_lookup_unicast_action = 'goto_table:' + \
                                    str(const.EGRESS_TABLE)
-        l2_lookup_unkown_match = 'metadata=0x' + metadtata + \
-                                 ',dl_dst=00:00:00:00:00:00/01:00:00:00:00:00'
-        l2_lookup_unkown_action = 'goto_table:' + \
-                                  str(const.EGRESS_TABLE)
+        l2_lookup_unknown_match = 'metadata=0x' + metadtata + \
+                                  ',dl_dst=00:00:00:00:00:00/01:00:00:00:00:00'
+        l2_lookup_unknown_action = 'goto_table:' + \
+                                   str(const.EGRESS_TABLE)
         l2_lookup_multicast_match = 'metadata=0x' + metadtata + ',dl_dst=' + \
                                     '01:00:00:00:00:00/01:00:00:00:00:00'
         l2_lookup_multicast_action = 'set_field:' + port_key_hex + \
@@ -344,59 +345,60 @@ class TestL2FLows(test_base.DFTestBase):
                          str(const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
-        l2_lookup_unkown_check = None
+        l2_lookup_unknown_check = None
         ingress_check = None
         egress_check = None
 
         for flow in flows:
             if flow['table'] == str(const.L2_LOOKUP_TABLE):
-                if (l2_lookup_multicast_match in flow['match']):
+                if l2_lookup_multicast_match in flow['match']:
                     if l2_lookup_multicast_action in flow['actions']:
                         l2_lookup_multicast_check = True
-                if (l2_lookup_unicast_match in flow['match']):
+                if l2_lookup_unicast_match in flow['match']:
                     if l2_lookup_unicast_action in flow['actions']:
                         l2_lookup_unicast_check = True
-                if (l2_lookup_unkown_match in flow['match']):
-                    if l2_lookup_unkown_action in flow['actions']:
-                        l2_lookup_unkown_check = True
+                if l2_lookup_unknown_match in flow['match']:
+                    if l2_lookup_unknown_action in flow['actions']:
+                        l2_lookup_unknown_check = True
             if flow['table'] == str(const.EGRESS_TABLE):
-                if (egress_match in flow['match']):
+                if egress_match in flow['match']:
                     if egress_action in flow['actions']:
                         egress_check = True
 
             if flow['table'] == str(
                     const.INGRESS_CLASSIFICATION_DISPATCH_TABLE):
-                if (ingress_match in flow['match']):
+                if ingress_match in flow['match']:
                     if ingress_action in flow['actions']:
                         ingress_check = True
 
         if l2_lookup_multicast_check is None or \
-            l2_lookup_unicast_check is None or \
-            l2_lookup_unkown_check is None or \
-            egress_check is None or \
-            ingress_check is None:
+                l2_lookup_unicast_check is None or \
+                l2_lookup_unknown_check is None or \
+                egress_check is None or \
+                ingress_check is None:
             return None
         return True
 
-    def _get_config_values(self, section, key):
+    @staticmethod
+    def _get_config_values(section, key):
         readhandle = None
-        value = None
         try:
             config = ConfigParser.ConfigParser()
             readhandle = open(ML2_CONF_INI, 'r')
             config.readfp(readhandle)
             value = config.get(section, key)
-        except Exception:
+        except IOError:
             value = None
 
         if readhandle is not None:
             try:
                 readhandle.close()
-            except Exception:
+            except IOError:
                 return value
         return value
 
-    def _check_l2_ml2_app_enable(self):
+    @staticmethod
+    def _check_l2_ml2_app_enable():
         apps_list = cfg.CONF.df.apps_list
         if L2_ML2_APP_NAME in apps_list:
             return True
