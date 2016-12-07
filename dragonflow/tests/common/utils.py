@@ -15,6 +15,7 @@ from neutron.common import utils as n_utils
 import re
 
 from dragonflow.common import exceptions
+from dragonflow.controller.common import constants as df_const
 from dragonflow.tests.common import constants as const
 
 
@@ -56,6 +57,18 @@ def wait_until_none(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
             return False
         return True
     wait_until_true(internal_predicate, timeout, sleep, exception)
+
+
+def check_dhcp_ip_rule(flows, dhcp_ip):
+    goto_dhcp = 'goto_table:' + str(df_const.DHCP_TABLE)
+    dhcp_ports = ',tp_src=' + str(df_const.DHCP_CLIENT_PORT) + \
+                 ',tp_dst=' + str(df_const.DHCP_SERVER_PORT)
+    for flow in flows:
+        if (flow['table'] == str(df_const.SERVICES_CLASSIFICATION_TABLE)
+            and flow['actions'] == goto_dhcp):
+            if ('nw_dst=' + dhcp_ip + dhcp_ports in flow['match']):
+                return True
+    return False
 
 
 def print_command(full_args, run_as_root=False):

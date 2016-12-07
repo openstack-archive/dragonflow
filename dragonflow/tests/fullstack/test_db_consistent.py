@@ -34,19 +34,8 @@ class TestDbConsistent(test_base.DFTestBase):
                     return True
         return False
 
-    def _check_lswitch_dhcp_rule(self, flows, dhcp_ip):
-        goto_dhcp = 'goto_table:' + str(const.DHCP_TABLE)
-        dhcp_ports = ',tp_src=' + str(const.DHCP_CLIENT_PORT) + \
-                     ',tp_dst=' + str(const.DHCP_SERVER_PORT)
-        for flow in flows:
-            if (flow['table'] == str(const.SERVICES_CLASSIFICATION_TABLE)
-                and flow['actions'] == goto_dhcp):
-                if ('nw_dst=' + dhcp_ip + dhcp_ports in flow['match']):
-                    return True
-        return False
-
     def _check_no_lswitch_dhcp_rule(self, flows, dhcp_ip):
-        if self._check_lswitch_dhcp_rule(flows, dhcp_ip):
+        if utils.check_dhcp_ip_rule(flows, dhcp_ip):
             return False
         return True
 
@@ -114,7 +103,7 @@ class TestDbConsistent(test_base.DFTestBase):
 
         time.sleep(self.db_sync_time)
         utils.wait_until_true(
-            lambda: self._check_lswitch_dhcp_rule(
+            lambda: utils.check_dhcp_ip_rule(
                     ovs.dump(self.integration_bridge), '10.60.0.2'),
             timeout=self.db_sync_time + constants.DEFAULT_CMD_TIMEOUT, sleep=1,
             exception=Exception('no goto dhcp rule for lswitch')
@@ -127,7 +116,7 @@ class TestDbConsistent(test_base.DFTestBase):
 
         time.sleep(self.db_sync_time)
         utils.wait_until_true(
-            lambda: self._check_lswitch_dhcp_rule(
+            lambda: utils.check_dhcp_ip_rule(
                     ovs.dump(self.integration_bridge), '10.60.0.3'),
             timeout=self.db_sync_time + constants.DEFAULT_CMD_TIMEOUT, sleep=1,
             exception=Exception('no goto dhcp rule for lswitch')
