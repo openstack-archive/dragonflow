@@ -100,6 +100,7 @@ class TestTopology(test_app_base.DFAppTestBase):
     def test_multi_vm_port_online_restart_controller(self):
         self.nb_api.get_all_lswitches.return_value = [
             test_app_base.fake_logic_switch1]
+        
         self.nb_api.get_all_lports.return_value = [
             test_app_base.fake_local_port1,
             test_app_base.fake_local_port2]
