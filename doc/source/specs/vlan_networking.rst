@@ -156,7 +156,7 @@ When controller receives local ports updated message,
 it will install flows for unicast forwarding.
 
 If it is the first port of the network locally,
-controller will install flow for remote and unkown ports.
+controller will install flow for remote and unknown ports.
 1.Table=L2_Lookup, Match: reg7=port_unique_key, Actions: output:ofport
 2.Table=L2_Lookup, Match: metadata=network_id,
 dl_dst=00:00:00:00:00:00/01:00:00:00:00:00,  Actions: goto "Egress_Table"
