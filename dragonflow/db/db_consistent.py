@@ -202,7 +202,7 @@ class DBConsistencyManager(object):
         :param local_object:  Object from local cache
         :param direct:  the process model, if True, we'll do the operation
         directly after this comparison, if False, we'll go into the verify
-        process which need twice comparision to do the operation.
+        process which need twice comparison to do the operation.
         """
         local_object_map = {}
         for local_object in local_objects:
