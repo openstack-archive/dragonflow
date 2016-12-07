@@ -96,7 +96,7 @@ Neighbor Discovery is used in the ICMPv6 protocol to verify there are no
 IP collisions, to match IP to MAC addresses, and to provide information
 to fellow VMs and routers.
 
-In Dragonflow, the plan is to write a Neighbor & Router Advertisment [#]_. It
+In Dragonflow, the plan is to write a Neighbor & Router Advertisement [#]_. It
 will be implemented using OpenFlow flows. It will detect neighbor
 solicitation requests by identifying the packet type [#]_. The application will
 build the response with the requested Link-Layer Address.

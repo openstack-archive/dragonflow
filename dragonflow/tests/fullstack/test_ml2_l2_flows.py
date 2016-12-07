@@ -200,7 +200,7 @@ class TestL2FLows(test_base.DFTestBase):
                                    str(const.EGRESS_TABLE)
         l2_lookup_unknown_match = 'metadata=0x' + metadtata + \
                                   ',dl_dst=00:00:00:00:00:00/01:00:00:00:00:00'
-        l2_lookup_unkown_action = 'goto_table:' + \
+        l2_lookup_unknown_action = 'goto_table:' + \
                                   str(const.EGRESS_TABLE)
         l2_lookup_multicast_match = 'metadata=0x' + metadtata + ',dl_dst=' + \
                                     '01:00:00:00:00:00/01:00:00:00:00:00'
@@ -224,7 +224,7 @@ class TestL2FLows(test_base.DFTestBase):
 
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
-        l2_lookup_unkown_check = None
+        l2_lookup_unknown_check = None
         egress_check = None
         ingress_check = None
 
@@ -237,8 +237,8 @@ class TestL2FLows(test_base.DFTestBase):
                     if l2_lookup_unicast_action in flow['actions']:
                         l2_lookup_unicast_check = True
                 if (l2_lookup_unknown_match in flow['match']):
-                    if l2_lookup_unkown_action in flow['actions']:
-                        l2_lookup_unkown_check = True
+                    if l2_lookup_unknown_action in flow['actions']:
+                        l2_lookup_unknown_check = True
             if flow['table'] == str(const.EGRESS_TABLE):
                 if (egress_match in flow['match']):
                     if egress_action in flow['actions']:
@@ -252,7 +252,7 @@ class TestL2FLows(test_base.DFTestBase):
 
         if l2_lookup_multicast_check is None or \
            l2_lookup_unicast_check is None or \
-           l2_lookup_unkown_check is None or \
+           l2_lookup_unknown_check is None or \
             egress_check is None or \
             ingress_check is None:
 
@@ -322,9 +322,9 @@ class TestL2FLows(test_base.DFTestBase):
                                  ',dl_dst=' + mac
         l2_lookup_unicast_action = 'goto_table:' + \
                                    str(const.EGRESS_TABLE)
-        l2_lookup_unkown_match = 'metadata=0x' + metadtata + \
+        l2_lookup_unknown_match = 'metadata=0x' + metadtata + \
                                  ',dl_dst=00:00:00:00:00:00/01:00:00:00:00:00'
-        l2_lookup_unkown_action = 'goto_table:' + \
+        l2_lookup_unknown_action = 'goto_table:' + \
                                   str(const.EGRESS_TABLE)
         l2_lookup_multicast_match = 'metadata=0x' + metadtata + ',dl_dst=' + \
                                     '01:00:00:00:00:00/01:00:00:00:00:00'
@@ -344,7 +344,7 @@ class TestL2FLows(test_base.DFTestBase):
                          str(const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
-        l2_lookup_unkown_check = None
+        l2_lookup_unknown_check = None
         ingress_check = None
         egress_check = None
 
@@ -356,9 +356,9 @@ class TestL2FLows(test_base.DFTestBase):
                 if (l2_lookup_unicast_match in flow['match']):
                     if l2_lookup_unicast_action in flow['actions']:
                         l2_lookup_unicast_check = True
-                if (l2_lookup_unkown_match in flow['match']):
-                    if l2_lookup_unkown_action in flow['actions']:
-                        l2_lookup_unkown_check = True
+                if (l2_lookup_unknown_match in flow['match']):
+                    if l2_lookup_unknown_action in flow['actions']:
+                        l2_lookup_unknown_check = True
             if flow['table'] == str(const.EGRESS_TABLE):
                 if (egress_match in flow['match']):
                     if egress_action in flow['actions']:
@@ -372,7 +372,7 @@ class TestL2FLows(test_base.DFTestBase):
 
         if l2_lookup_multicast_check is None or \
             l2_lookup_unicast_check is None or \
-            l2_lookup_unkown_check is None or \
+            l2_lookup_unknown_check is None or \
             egress_check is None or \
             ingress_check is None:
             return None
