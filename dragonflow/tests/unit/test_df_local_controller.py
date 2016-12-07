@@ -51,7 +51,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_ports = self._get_mock_ports(['fake_chassis_id'])
         ids = [self.controller.chassis_name]
         mock_chassis = self._get_mock_chassis(ids)[0]
-        self.controller.chassis_created(mock_chassis)
+        self.controller.chassis_updated(mock_chassis)
         self.assertFalse(mock_ports[0].get_chassis_id.called)
         self.assertFalse(self.controller.vswitch_api.add_tunnel_port.called)
 
@@ -60,7 +60,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_ports = self._get_mock_ports(ids)
         self.controller.vswitch_api.get_tunnel_ports.return_value = mock_ports
         mock_chassis = self._get_mock_chassis(ids)[0]
-        self.controller.chassis_created(mock_chassis)
+        self.controller.chassis_updated(mock_chassis)
         mock_ports[0].get_chassis_id.assert_called_once_with()
         self.assertFalse(self.controller.vswitch_api.add_tunnel_port.called)
 
@@ -69,12 +69,12 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_chassis = mock.Mock()
         self.controller.vswitch_api.get_tunnel_ports.return_value = (
             self._get_mock_ports(ids))
-        self.controller.chassis_created(mock_chassis)
+        self.controller.chassis_updated(mock_chassis)
         self.controller.vswitch_api.add_tunnel_port.assert_called_once_with(
             mock_chassis)
 
     @mock.patch.object(df_local_controller.DfLocalController,
-                       'chassis_created')
+                       'chassis_updated')
     def test_create_tunnels(self, mock_create):
         shared = mock.Mock()
         port_ids = [shared, 'to_be_deleted']
@@ -85,7 +85,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.controller.nb_api.get_all_chassis.return_value = chassis
         self.controller.create_tunnels()
         self.nb_api.get_all_chassis.assert_called_once()
-        self.controller.chassis_created.assert_called_once_with(chassis[2])
+        self.controller.chassis_updated.assert_called_once_with(chassis[2])
         self.controller.vswitch_api.delete_port.assert_called_once_with(
             t_ports[1])
 

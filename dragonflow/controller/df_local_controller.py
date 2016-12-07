@@ -150,7 +150,7 @@ class DfLocalController(object):
             LOG.warning(_LW("run_db_poll - suppressing exception"))
             LOG.exception(e)
 
-    def chassis_created(self, chassis):
+    def chassis_updated(self, chassis):
         # Check if tunnel already exists to this chassis
         t_ports = self.vswitch_api.get_tunnel_ports()
         remote_chassis_name = chassis.get_id()
@@ -284,7 +284,7 @@ class DfLocalController(object):
             chassis_value = {'id': chassis, 'ip': chassis,
                              'tunnel_type': self.tunnel_types}
             chassis_inst = models.Chassis(jsonutils.dumps(chassis_value))
-            self.chassis_created(chassis_inst)
+            self.chassis_updated(chassis_inst)
         self.db_store.add_remote_chassis_lport(chassis, lport.get_id())
 
     def _delete_remote_port_from_chassis(self, lport):
@@ -294,16 +294,6 @@ class DfLocalController(object):
         if not chassis_lports:
             self.chassis_deleted(chassis)
             self.db_store.del_remote_chassis(chassis)
-
-    def logical_port_created(self, lport):
-        chassis = lport.get_chassis()
-        if not self._is_physical_chassis(chassis):
-            LOG.debug(("Port %s has not been bound or it is a vPort") %
-                      lport.get_id())
-            return
-        if lport.get_remote_vtep():
-            self._add_remote_port_on_chassis(lport)
-        self._logical_port_process(lport)
 
     def logical_port_updated(self, lport):
         chassis = lport.get_chassis()
@@ -351,10 +341,6 @@ class DfLocalController(object):
 
     def bridge_port_updated(self, lport):
         self.open_flow_app.notify_update_bridge_port(lport)
-
-    def router_created(self, lrouter):
-        self.open_flow_app.notify_create_router(lrouter)
-        self.db_store.update_router(lrouter.get_id(), lrouter)
 
     def router_updated(self, lrouter):
         old_lrouter = self.db_store.get_router(lrouter.get_id())
@@ -439,7 +425,7 @@ class DfLocalController(object):
             elif chassis.get_id() == self.chassis_name:
                 pass
             else:
-                self.chassis_created(chassis)
+                self.chassis_updated(chassis)
 
         # Iterate all tunnel ports that needs to be deleted
         for port in tunnel_ports.values():

@@ -105,12 +105,10 @@ class DBConsistencyManager(object):
             else:
                 self.controller.logical_switch_updated(df_object)
         elif table == models.LogicalPort.table_name:
-            if action == 'create':
-                self.controller.logical_port_created(df_object)
-            elif action == 'update':
-                self.controller.logical_port_updated(df_object)
-            else:
+            if action == 'delete':
                 self.controller.logical_port_deleted(local_object.get_id())
+            else:
+                self.controller.logical_port_updated(df_object)
         elif table == models.LogicalRouter.table_name:
             if action == 'delete':
                 self.controller.router_deleted(local_object.get_id())
