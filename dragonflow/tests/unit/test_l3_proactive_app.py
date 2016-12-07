@@ -49,7 +49,7 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         router_with_route = copy.deepcopy(self.router)
         router_with_route.inner_obj['routes'] = [route]
         router_with_route.inner_obj['version'] += 1
-        self.controller.logical_port_updated(test_app_base.fake_local_port1)
+        self.controller.update_lport(test_app_base.fake_local_port1)
         self.controller.update_lrouter(router_with_route)
         self.assertEqual(2, self.mock_mod_flow.call_count)
 

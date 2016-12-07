@@ -81,10 +81,10 @@ def initialize_object_refreshers(df_controller):
                                    df_controller.update_security_group,
                                    df_controller.delete_security_group))
     items.append(DfObjectRefresher('Ports',
-                                   db_store.get_port_keys,
-                                   nb_api.get_all_logical_ports,
-                                   df_controller.logical_port_updated,
-                                   df_controller.logical_port_deleted))
+                                   db_store.get_lport_keys,
+                                   nb_api.get_all_lports,
+                                   df_controller.update_lport,
+                                   df_controller.delete_lport))
     items.append(DfObjectRefresher('Routers',
                                    db_store.get_lrouter_keys,
                                    nb_api.get_all_lrouters,

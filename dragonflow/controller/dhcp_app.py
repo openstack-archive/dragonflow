@@ -109,7 +109,7 @@ class DHCPApp(df_base_app.DFlowApp):
                     {'port_id': lport_id,
                     'time': self.block_hard_timeout})
             return
-        lport = self.db_store.get_port(lport_id)
+        lport = self.db_store.get_lport(lport_id)
         if lport is None:
             LOG.error(
                 _LE("No lport found for tunnel_id %s for dhcp req"),

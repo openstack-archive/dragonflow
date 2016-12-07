@@ -288,5 +288,5 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         lport.get_id.return_value = "lport-fake-id"
         lport.get_lswitch_id.return_value = "lport-fake-lswitch"
         lport.get_remote_vtep.return_value = False
-        self.controller.logical_port_updated(lport)
+        self.controller.update_lport(lport)
         lport.set_external_value.assert_not_called()

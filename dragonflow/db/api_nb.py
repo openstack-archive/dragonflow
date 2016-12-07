@@ -223,10 +223,10 @@ class NbApi(object):
         elif db_models.LogicalPort.table_name == table:
             if action == 'set' or action == 'create':
                 lport = db_models.LogicalPort(value)
-                self.controller.logical_port_updated(lport)
+                self.controller.update_lport(lport)
             elif action == 'delete':
                 lport_id = key
-                self.controller.logical_port_deleted(lport_id)
+                self.controller.delete_lport(lport_id)
         elif db_models.LogicalRouter.table_name == table:
             if action == 'set' or action == 'create':
                 lrouter = db_models.LogicalRouter(value)
@@ -475,7 +475,7 @@ class NbApi(object):
         except Exception:
             return None
 
-    def get_all_logical_ports(self, topic=None):
+    def get_all_lports(self, topic=None):
         res = []
         for lport_value in self.driver.get_all_entries(
                 db_models.LogicalPort.table_name, topic):

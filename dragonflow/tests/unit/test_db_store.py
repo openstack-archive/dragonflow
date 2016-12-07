@@ -50,25 +50,25 @@ class TestDbStore(tests_base.BaseTestCase):
         port3.get_lswitch_id.return_value = 'net1'
         port4 = mock.Mock()
         port4.get_id.return_value = 'port_id3'
-        self.db_store.set_port('id1', port1, False, 'topic1')
-        self.db_store.set_port('id2', port2, False, 'topic2')
-        self.db_store.set_port('id3', port3, False, 'topic2')
-        self.db_store.set_port('id4', port4, True, 'topic2')
-        port_keys = self.db_store.get_port_keys()
-        port_keys_topic2 = self.db_store.get_port_keys('topic2')
+        self.db_store.update_lport('id1', port1, False, 'topic1')
+        self.db_store.update_lport('id2', port2, False, 'topic2')
+        self.db_store.update_lport('id3', port3, False, 'topic2')
+        self.db_store.update_lport('id4', port4, True, 'topic2')
+        port_keys = self.db_store.get_lport_keys()
+        port_keys_topic2 = self.db_store.get_lport_keys('topic2')
         self.assertEqual({'id1', 'id2', 'id3', 'id4'}, set(port_keys))
         self.assertIn('id2', port_keys_topic2)
         self.assertIn('id3', port_keys_topic2)
-        ports = self.db_store.get_ports()
-        ports_topic2 = self.db_store.get_ports('topic2')
+        ports = self.db_store.get_all_lports()
+        ports_topic2 = self.db_store.get_all_lports('topic2')
         self.assertEqual({port1, port2, port3, port4}, set(ports))
         self.assertIn(port2, ports_topic2)
         self.assertIn(port3, ports_topic2)
-        self.assertEqual(port1, self.db_store.get_port('id1'))
-        self.assertEqual(port2, self.db_store.get_port('id2'))
+        self.assertEqual(port1, self.db_store.get_lport('id1'))
+        self.assertEqual(port2, self.db_store.get_lport('id2'))
         self.assertEqual(
             port1,
-            self.db_store.get_port('id1', 'topic1'),
+            self.db_store.get_lport('id1', 'topic1'),
         )
         self.assertIsNone(self.db_store.get_local_port('id1'))
         self.assertIsNone(self.db_store.get_local_port('id2', 'topic2'))
@@ -85,14 +85,14 @@ class TestDbStore(tests_base.BaseTestCase):
             self.db_store.get_local_port('id4', 'topic2')
         )
         self.assertIsNone(
-            self.db_store.get_port('id4', 'topic2')
+            self.db_store.get_lport('id4', 'topic2')
         )
         self.assertEqual(
             {port2, port3},
             set(self.db_store.get_ports_by_network_id('net1'))
         )
         self.db_store.delete_port('id3', False, 'topic2')
-        self.assertIsNone(self.db_store.get_port('id3'))
+        self.assertIsNone(self.db_store.get_lport('id3'))
 
     def test_router(self):
         router1 = mock.Mock()

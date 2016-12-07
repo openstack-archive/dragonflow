@@ -148,7 +148,7 @@ class DbStore(object):
     def delete_lswitch(self, id, topic=None):
         self.delete(models.LogicalSwitch.table_name, id, topic)
 
-    def get_port_keys(self, topic=None):
+    def get_lport_keys(self, topic=None):
         return self.keys(models.LogicalPort.table_name, topic)
 
     def get_lswitch_keys(self, topic=None):
@@ -160,7 +160,7 @@ class DbStore(object):
     def get_floatingip_keys(self, topic=None):
         return self.keys(models.Floatingip.table_name, topic)
 
-    def set_port(self, port_id, port, is_local, topic=None):
+    def update_lport(self, port_id, port, is_local, topic=None):
         if not topic:
             topic = port.get_topic()
         if is_local:
@@ -171,14 +171,14 @@ class DbStore(object):
         else:
             self.set(models.LogicalPort.table_name, port_id, port, topic)
 
-    def get_port(self, port_id, topic=None):
+    def get_lport(self, port_id, topic=None):
         return self.get(models.LogicalPort.table_name, port_id, topic)
 
-    def get_ports(self, topic=None):
+    def get_all_lports(self, topic=None):
         return self.values(models.LogicalPort.table_name, topic)
 
     def get_ports_by_chassis(self, chassis_id, topic=None):
-        lports = self.get_ports(topic)
+        lports = self.get_all_lports(topic)
         ret_lports = []
         for lport in lports:
             if lport.get_chassis() == chassis_id:
@@ -188,7 +188,7 @@ class DbStore(object):
     def delete_port(self, port_id, is_local, topic=None):
         if is_local:
             if not topic:
-                topic = self.get_port(port_id).get_topic()
+                topic = self.get_lport(port_id).get_topic()
             tenant_db = self.tenant_dbs[topic]
             with tenant_db.lock:
                 del tenant_db.ports[port_id]
