@@ -342,22 +342,22 @@ class DfLocalController(object):
     def bridge_port_updated(self, lport):
         self.open_flow_app.notify_update_bridge_port(lport)
 
-    def router_updated(self, lrouter):
-        old_lrouter = self.db_store.get_router(lrouter.get_id())
+    def update_lrouter(self, lrouter):
+        old_lrouter = self.db_store.get_lrouter(lrouter.get_id())
         if not self._is_valid_version(old_lrouter, lrouter):
             return
-        self.open_flow_app.notify_update_router(lrouter, old_lrouter)
-        self.db_store.update_router(lrouter.get_id(), lrouter)
+        self.open_flow_app.notify_update_lrouter(lrouter, old_lrouter)
+        self.db_store.update_lrouter(lrouter.get_id(), lrouter)
 
-    def router_deleted(self, lrouter_id):
-        router = self.db_store.get_router(lrouter_id)
+    def delete_lrouter(self, lrouter_id):
+        router = self.db_store.get_lrouter(lrouter_id)
         if router is None:
             LOG.warning(_LW("Try to delete a nonexistent router(%s)"),
                         lrouter_id)
             return
         LOG.info(_LI("Removing router = %s"), lrouter_id)
-        self.open_flow_app.notify_delete_router(router)
-        self.db_store.delete_router(lrouter_id)
+        self.open_flow_app.notify_delete_lrouter(router)
+        self.db_store.delete_lrouter(lrouter_id)
 
     def update_secgroup(self, secgroup):
         old_secgroup = self.db_store.get_secgroup(secgroup.get_id())

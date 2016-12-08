@@ -91,10 +91,10 @@ def initialize_object_refreshers(df_controller):
                                    df_controller.logical_port_updated,
                                    df_controller.logical_port_deleted))
     items.append(DfObjectRefresher('Routers',
-                                   db_store.get_router_keys,
-                                   nb_api.get_routers,
-                                   df_controller.router_updated,
-                                   df_controller.router_deleted))
+                                   db_store.get_lrouter_keys,
+                                   nb_api.get_all_lrouters,
+                                   df_controller.update_lrouter,
+                                   df_controller.delete_lrouter))
     items.append(DfObjectRefresher('Floating IPs',
                                    db_store.get_floatingip_keys,
                                    nb_api.get_all_floatingips,

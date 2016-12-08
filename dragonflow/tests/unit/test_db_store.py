@@ -103,20 +103,20 @@ class TestDbStore(tests_base.BaseTestCase):
         router2.get_ports.return_value = [mock.Mock()]
         router3 = mock.Mock()
         router3.get_ports.return_value = [mock.Mock(), mock.Mock()]
-        self.db_store.update_router('id1', router1, 'topic1')
-        self.db_store.update_router('id2', router2, 'topic2')
-        self.db_store.update_router('id3', router3, 'topic2')
-        self.assertEqual(router1, self.db_store.get_router('id1'))
-        self.assertEqual(router2, self.db_store.get_router('id2'))
+        self.db_store.update_lrouter('id1', router1, 'topic1')
+        self.db_store.update_lrouter('id2', router2, 'topic2')
+        self.db_store.update_lrouter('id3', router3, 'topic2')
+        self.assertEqual(router1, self.db_store.get_lrouter('id1'))
+        self.assertEqual(router2, self.db_store.get_lrouter('id2'))
         self.assertEqual(
             router1,
-            self.db_store.get_router('id1', 'topic1'),
+            self.db_store.get_lrouter('id1', 'topic1'),
         )
-        self.assertIn(router2, self.db_store.get_routers('topic2'))
-        self.assertIn(router3, self.db_store.get_routers('topic2'))
+        self.assertIn(router2, self.db_store.get_all_lrouters('topic2'))
+        self.assertIn(router3, self.db_store.get_all_lrouters('topic2'))
         self.assertEqual(
             {router1, router2, router3},
-            set(self.db_store.get_routers()),
+            set(self.db_store.get_all_lrouters()),
         )
         self.assertEqual(
             router1,
@@ -124,8 +124,8 @@ class TestDbStore(tests_base.BaseTestCase):
                 '12:34:56:78:90:ab'
             )
         )
-        self.db_store.delete_router('id3', 'topic2')
-        self.assertIsNone(self.db_store.get_router('id3'))
+        self.db_store.delete_lrouter('id3', 'topic2')
+        self.assertIsNone(self.db_store.get_lrouter('id3'))
 
     def test_security_group(self):
         sg1 = 'sg1'

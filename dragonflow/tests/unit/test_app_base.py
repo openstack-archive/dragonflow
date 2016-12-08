@@ -48,7 +48,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         # Add basic network topology
         self.controller.update_lswitch(fake_logic_switch1)
         self.controller.update_lswitch(fake_external_switch1)
-        self.controller.router_updated(fake_logic_router1)
+        self.controller.update_lrouter(fake_logic_router1)
 
         self.arp_responder = mock.patch(
             'dragonflow.controller.common.arp_responder.ArpResponder').start()

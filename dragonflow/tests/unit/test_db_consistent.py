@@ -46,8 +46,8 @@ class TestDBConsistent(tests_base.BaseTestCase):
         self.nb_api.get_all_logical_ports.return_value = [df_obj1, df_obj2]
         self.db_store.get_ports.return_value = [local_obj1, local_obj2]
 
-        self.nb_api.get_routers.return_value = [df_obj1, df_obj2]
-        self.db_store.get_routers.return_value = [local_obj1, local_obj2]
+        self.nb_api.get_all_lrouters.return_value = [df_obj1, df_obj2]
+        self.db_store.get_all_lrouters.return_value = [local_obj1, local_obj2]
 
         self.nb_api.get_all_secgroups.return_value = [df_obj1, df_obj2]
         self.db_store.get_all_secgroups.return_value = [
@@ -73,9 +73,9 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.LogicalRouter.table_name, True)
-        self.controller.router_updated.assert_any_call(df_obj1)
-        self.controller.router_updated.assert_any_call(df_obj2)
-        self.controller.router_deleted.assert_any_call(self.lport_id3)
+        self.controller.update_lrouter.assert_any_call(df_obj1)
+        self.controller.update_lrouter.assert_any_call(df_obj2)
+        self.controller.delete_lrouter.assert_any_call(self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.SecurityGroup.table_name, True)

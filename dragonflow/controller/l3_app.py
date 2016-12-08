@@ -46,7 +46,7 @@ class L3App(df_base_app.DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
 
-    def router_updated(self, router, original_router):
+    def update_lrouter(self, router, original_router):
         if not original_router:
             LOG.info(_LI("Logical Router created = %s"), router)
             self._add_new_lrouter(router)
@@ -54,7 +54,7 @@ class L3App(df_base_app.DFlowApp):
 
         self._update_router_interfaces(original_router, router)
 
-    def router_deleted(self, router):
+    def delete_lrouter(self, router):
         for port in router.get_ports():
             self._delete_router_port(port)
 
