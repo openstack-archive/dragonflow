@@ -127,9 +127,9 @@ class DBConsistencyManager(object):
                 self.controller.update_floatingip(df_object)
         elif table == models.QosPolicy.table_name:
             if action == 'delete':
-                self.controller.qos_policy_deleted(local_object.get_id())
+                self.controller.delete_qos(local_object.get_id())
             else:
-                self.controller.qos_policy_updated(df_object)
+                self.controller.update_qos(df_object)
 
     def _verify_object(self, table, id, action, df_object, local_object=None):
         """Verify the object status and judge whether to create/update/delete
@@ -194,8 +194,8 @@ class DBConsistencyManager(object):
             df_objects = self.nb_api.get_all_floatingips(topic)
             local_objects = self.db_store.get_all_floatingips(topic)
         elif table == models.QosPolicy.table_name:
-            df_objects = self.nb_api.get_qos_policies(topic)
-            local_objects = self.db_store.get_qos_policies(topic)
+            df_objects = self.nb_api.get_all_qoses(topic)
+            local_objects = self.db_store.get_all_qoses(topic)
         return df_objects, local_objects
 
     def _compare_df_and_local_data(
