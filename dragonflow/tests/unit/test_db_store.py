@@ -166,8 +166,8 @@ class TestDbStore(tests_base.BaseTestCase):
             fip3,
             self.db_store.get_floatingip('id3', 'topic2')
         )
-        fips = self.db_store.get_floatingips()
-        fips_topic2 = self.db_store.get_floatingips('topic2')
+        fips = self.db_store.get_all_floatingips()
+        fips_topic2 = self.db_store.get_all_floatingips('topic2')
         self.assertEqual({fip1, fip2, fip3}, set(fips))
         self.assertIn(fip2, fips_topic2)
         self.assertIn(fip3, fips_topic2)

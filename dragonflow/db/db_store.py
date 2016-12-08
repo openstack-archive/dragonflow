@@ -263,12 +263,12 @@ class DbStore(object):
     def delete_floatingip(self, floatingip_id, topic=None):
         self.delete(models.Floatingip.table_name, floatingip_id, topic)
 
-    def get_floatingips(self, topic=None):
+    def get_all_floatingips(self, topic=None):
         return self.values(models.Floatingip.table_name, topic)
 
     def get_floatingips_by_gateway(self, ip, topic=None):
         fip_return = []
-        for fip in self.get_floatingips(topic):
+        for fip in self.get_all_floatingips(topic):
             if fip.get_external_gateway_ip() == ip:
                 fip_return.append(fip)
         return fip_return
@@ -278,7 +278,7 @@ class DbStore(object):
         if not lswitch.is_external():
             return fip_return
         network_id = lswitch.get_id()
-        for fip in self.get_floatingips(topic):
+        for fip in self.get_all_floatingips(topic):
             if fip.get_floating_network_id() == network_id:
                 update_fip = self.update_floatingip_gateway(
                     fip, lswitch)
@@ -298,7 +298,7 @@ class DbStore(object):
         return None
 
     def get_first_floatingip(self, network_id):
-        for fip in self.get_floatingips():
+        for fip in self.get_all_floatingips():
             if fip.get_floating_network_id() == network_id:
                 return fip
 

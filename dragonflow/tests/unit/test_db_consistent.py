@@ -53,8 +53,8 @@ class TestDBConsistent(tests_base.BaseTestCase):
         self.db_store.get_all_secgroups.return_value = [
             local_obj1, local_obj2]
 
-        self.nb_api.get_floatingips.return_value = [df_obj1, df_obj2]
-        self.db_store.get_floatingips.return_value = [local_obj1, local_obj2]
+        self.nb_api.get_all_floatingips.return_value = [df_obj1, df_obj2]
+        self.db_store.get_all_floatingips.return_value = [local_obj1, local_obj2]
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.LogicalSwitch.table_name, True)
@@ -85,9 +85,9 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.Floatingip.table_name, True)
-        self.controller.floatingip_updated.assert_any_call(df_obj1)
-        self.controller.floatingip_updated.assert_any_call(df_obj2)
-        self.controller.floatingip_deleted.assert_any_call(
+        self.controller.update_floatingip.assert_any_call(df_obj1)
+        self.controller.update_floatingip.assert_any_call(df_obj2)
+        self.controller.delete_floatingip.assert_any_call(
                 self.lport_id3)
 
 
