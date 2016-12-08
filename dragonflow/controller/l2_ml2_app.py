@@ -721,7 +721,7 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
-    def remove_logical_switch(self, lswitch):
+    def delete_lswitch(self, lswitch):
         datapath = self.get_datapath()
         ofproto = datapath.ofproto
 
