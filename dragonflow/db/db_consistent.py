@@ -122,9 +122,9 @@ class DBConsistencyManager(object):
                 self.controller.update_secgroup(df_object)
         elif table == models.Floatingip.table_name:
             if action == 'delete':
-                self.controller.floatingip_deleted(local_object.get_id())
+                self.controller.delete_floatingip(local_object.get_id())
             else:
-                self.controller.floatingip_updated(df_object)
+                self.controller.update_floatingip(df_object)
         elif table == models.QosPolicy.table_name:
             if action == 'delete':
                 self.controller.qos_policy_deleted(local_object.get_id())
@@ -191,8 +191,8 @@ class DBConsistencyManager(object):
             df_objects = self.nb_api.get_all_secgroups(topic)
             local_objects = self.db_store.get_all_secgroups(topic)
         elif table == models.Floatingip.table_name:
-            df_objects = self.nb_api.get_floatingips(topic)
-            local_objects = self.db_store.get_floatingips(topic)
+            df_objects = self.nb_api.get_all_floatingips(topic)
+            local_objects = self.db_store.get_all_floatingips(topic)
         elif table == models.QosPolicy.table_name:
             df_objects = self.nb_api.get_qos_policies(topic)
             local_objects = self.db_store.get_qos_policies(topic)

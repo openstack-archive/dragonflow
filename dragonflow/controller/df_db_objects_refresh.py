@@ -97,9 +97,9 @@ def initialize_object_refreshers(df_controller):
                                    df_controller.router_deleted))
     items.append(DfObjectRefresher('Floating IPs',
                                    db_store.get_floatingip_keys,
-                                   nb_api.get_floatingips,
-                                   df_controller.floatingip_updated,
-                                   df_controller.floatingip_deleted))
+                                   nb_api.get_all_floatingips,
+                                   df_controller.update_floatingip,
+                                   df_controller.delete_floatingip))
 
 
 def sync_local_cache_from_nb_db(topics=None):

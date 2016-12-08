@@ -155,13 +155,13 @@ class DFMechDriver(driver_api.MechanismDriver):
             del rule['tenant_id']
         if event == events.AFTER_CREATE:
             self.nb_api.create_secgroup(id=sg_id, topic=tenant_id,
-                                              name=sg_name, rules=rules,
-                                              version=sg_version)
+                                        name=sg_name, rules=rules,
+                                        version=sg_version)
             LOG.info(_LI("DFMechDriver: create security group %s"), sg_name)
         elif event == events.AFTER_UPDATE:
             self.nb_api.update_secgroup(id=sg_id, topic=tenant_id,
-                                              name=sg_name, rules=rules,
-                                              version=sg_version)
+                                        name=sg_name, rules=rules,
+                                        version=sg_version)
             LOG.info(_LI("DFMechDriver: update security group %s"), sg_name)
 
         return sg
