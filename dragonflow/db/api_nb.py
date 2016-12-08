@@ -213,7 +213,14 @@ class NbApi(object):
             self.db_consistency_manager.process(False)
             return
 
-        if db_models.SecurityGroup.table_name == table:
+        if db_models.QosPolicy.table_name == table:
+            if action == 'set' or action == 'create':
+                qos = db_models.QosPolicy(value)
+                self.controller.qos_policy_updated(qos)
+            elif action == 'delete':
+                qos_id = key
+                self.controller.qos_policy_deleted(qos_id)
+        elif db_models.SecurityGroup.table_name == table:
             if action == 'set' or action == 'create':
                 secgroup = db_models.SecurityGroup(value)
                 self.controller.security_group_updated(secgroup)
@@ -658,6 +665,13 @@ class NbApi(object):
         for secgroup_value in self.driver.get_all_entries(
                 db_models.SecurityGroup.table_name, topic):
             res.append(db_models.SecurityGroup(secgroup_value))
+        return res
+
+    def get_qos_policies(self, topic=None):
+        res = []
+        for qos in self.driver.get_all_entries(
+                db_models.QosPolicy.table_name, topic):
+            res.append(db_models.QosPolicy(qos))
         return res
 
     def get_all_logical_switches(self, topic=None):

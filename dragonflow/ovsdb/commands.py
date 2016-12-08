@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
+
 from neutron.agent.ovsdb.native import commands
 from neutron.agent.ovsdb.native import idlutils
 from oslo_config import cfg
@@ -124,3 +126,87 @@ class AddVirtualTunnelPort(commands.BaseCommand):
         ifaces = getattr(port, 'interfaces', [])
         ifaces.append(iface)
         port.interfaces = ifaces
+
+
+class CreateQos(commands.BaseCommand):
+    def __init__(self, api, port_id, qos):
+        super(CreateQos, self).__init__(api)
+        self.port_id = port_id
+        self.qos = qos
+
+    def run_idl(self, txn):
+        queue = txn.insert(self.api.idl.tables['Queue'])
+        dscp = self.qos.get_dscp_marking()
+        if dscp:
+            queue.dscp = dscp
+
+        queue_external_ids = {}
+        queue_external_ids['iface-id'] = self.port_id
+        queue.external_ids = queue_external_ids
+        queue.verify('other_config')
+        other_config = getattr(queue, 'other_config', {})
+        max_kbps = self.qos.get_max_kbps()
+        max_bps = max_kbps * 1024
+        other_config['max-rate'] = str(max_bps)
+        other_config['min-rate'] = str(max_bps)
+        queue.other_config = other_config
+
+        qos = txn.insert(self.api.idl.tables['QoS'])
+        qos.type = 'linux-htb'
+        qos_external_ids = {}
+        qos_external_ids['version'] = str(self.qos.get_version())
+        qos_external_ids['qos-id'] = self.qos.get_id()
+        qos_external_ids['iface-id'] = self.port_id
+        qos.external_ids = qos_external_ids
+        qos.verify('queues')
+        qos.queues = {0: queue.uuid}
+
+        self.result = qos.uuid
+
+
+class DeleteQos(commands.BaseCommand):
+    def __init__(self, api, port_id):
+        super(DeleteQos, self).__init__(api)
+        self.port_id = port_id
+
+    def run_idl(self, txn):
+        conditions = [('external_ids', '=', {'iface-id': self.port_id})]
+        rows_to_delete = []
+        for table in ['QoS', 'Queue']:
+            for r in six.itervalues(self.api._tables[table].rows):
+                if idlutils.row_match(r, conditions):
+                    rows_to_delete.append(r)
+
+        for r in rows_to_delete:
+            r.delete()
+
+
+class UpdateQos(commands.BaseCommand):
+    def __init__(self, api, port_id, qos):
+        super(UpdateQos, self).__init__(api)
+        self.port_id = port_id
+        self.qos = qos
+
+    def run_idl(self, txn):
+        conditions = [('external_ids', '=', {'iface-id': self.port_id})]
+        queue_table = self.api._tables['Queue']
+        for r in six.itervalues(queue_table.rows):
+            if idlutils.row_match(r, conditions):
+                dscp = self.qos.get_dscp_marking()
+                dscp = dscp if dscp else []
+                setattr(r, 'dscp', dscp)
+
+                max_kbps = self.qos.get_max_kbps()
+                max_bps = max_kbps * 1024 if max_kbps else 0
+                other_config = getattr(r, 'other_config', {})
+                other_config['max-rate'] = str(max_bps)
+                other_config['min-rate'] = str(max_bps)
+                setattr(r, 'other_config', other_config)
+
+        qos_table = self.api._tables['QoS']
+        for r in six.itervalues(qos_table.rows):
+            if idlutils.row_match(r, conditions):
+                external_ids = getattr(r, 'external_ids', {})
+                external_ids['version'] = str(self.qos.get_version())
+                external_ids['qos-id'] = self.qos.get_id()
+                setattr(r, 'external_ids', external_ids)
