@@ -223,10 +223,10 @@ class NbApi(object):
         elif db_models.SecurityGroup.table_name == table:
             if action == 'set' or action == 'create':
                 secgroup = db_models.SecurityGroup(value)
-                self.controller.security_group_updated(secgroup)
+                self.controller.update_secgroup(secgroup)
             elif action == 'delete':
                 secgroup_id = key
-                self.controller.security_group_deleted(secgroup_id)
+                self.controller.delete_secgroup(secgroup_id)
         elif db_models.LogicalPort.table_name == table:
             if action == 'set' or action == 'create':
                 lport = db_models.LogicalPort(value)
@@ -296,7 +296,7 @@ class NbApi(object):
         else:
             LOG.warning(_LW('Unknown table %s'), table)
 
-    def create_security_group(self, id, topic, **columns):
+    def create_secgroup(self, id, topic, **columns):
         secgroup = {}
         secgroup['id'] = id
         secgroup['topic'] = topic
@@ -308,7 +308,7 @@ class NbApi(object):
         self._send_db_change_event(db_models.SecurityGroup.table_name,
                                    id, 'create', secgroup_json, topic)
 
-    def update_security_group(self, id, topic, **columns):
+    def update_secgroup(self, id, topic, **columns):
         secgroup_json = self.driver.get_key(db_models.SecurityGroup.table_name,
                                             id, topic)
         secgroup = jsonutils.loads(secgroup_json)
@@ -320,7 +320,7 @@ class NbApi(object):
         self._send_db_change_event(db_models.SecurityGroup.table_name,
                                    id, 'set', secgroup_json, topic)
 
-    def delete_security_group(self, id, topic):
+    def delete_secgroup(self, id, topic):
         self.driver.delete_key(db_models.SecurityGroup.table_name, id, topic)
         self._send_db_change_event(db_models.SecurityGroup.table_name,
                                    id, 'delete', id, topic)
@@ -652,7 +652,7 @@ class NbApi(object):
             res.append(db_models.LogicalRouter(lrouter_value))
         return res
 
-    def get_security_group(self, sg_id, topic=None):
+    def get_secgroup(self, sg_id, topic=None):
         try:
             secgroup_value = self.driver.get_key(
                 db_models.SecurityGroup.table_name, sg_id, topic)
@@ -660,7 +660,7 @@ class NbApi(object):
         except Exception:
             return None
 
-    def get_security_groups(self, topic=None):
+    def get_all_secgroups(self, topic=None):
         res = []
         for secgroup_value in self.driver.get_all_entries(
                 db_models.SecurityGroup.table_name, topic):

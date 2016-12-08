@@ -359,8 +359,8 @@ class DfLocalController(object):
         self.open_flow_app.notify_delete_router(router)
         self.db_store.delete_router(lrouter_id)
 
-    def security_group_updated(self, secgroup):
-        old_secgroup = self.db_store.get_security_group(secgroup.get_id())
+    def update_secgroup(self, secgroup):
+        old_secgroup = self.db_store.get_secgroup(secgroup.get_id())
         if old_secgroup is None:
             LOG.info(_LI("Security Group created = %s") %
                      secgroup)
@@ -369,10 +369,10 @@ class DfLocalController(object):
         if not self._is_valid_version(old_secgroup, secgroup):
             return
         self._update_security_group_rules(old_secgroup, secgroup)
-        self.db_store.update_security_group(secgroup.get_id(), secgroup)
+        self.db_store.update_secgroup(secgroup.get_id(), secgroup)
 
-    def security_group_deleted(self, secgroup_id):
-        old_secgroup = self.db_store.get_security_group(secgroup_id)
+    def delete_secgroup(self, secgroup_id):
+        old_secgroup = self.db_store.get_secgroup(secgroup_id)
         if old_secgroup is None:
             return
         self._delete_old_security_group(old_secgroup)
@@ -465,12 +465,12 @@ class DfLocalController(object):
     def _add_new_security_group(self, secgroup):
         for new_rule in secgroup.get_rules():
             self._add_new_security_group_rule(secgroup, new_rule)
-        self.db_store.update_security_group(secgroup.get_id(), secgroup)
+        self.db_store.update_secgroup(secgroup.get_id(), secgroup)
 
     def _delete_old_security_group(self, secgroup):
         for rule in secgroup.get_rules():
             self._delete_security_group_rule(secgroup, rule)
-        self.db_store.delete_security_group(secgroup.get_id())
+        self.db_store.delete_secgroup(secgroup.get_id())
 
     def _add_new_security_group_rule(self, secgroup, secgroup_rule):
         LOG.info(_LI("Adding new secgroup rule = %s") %

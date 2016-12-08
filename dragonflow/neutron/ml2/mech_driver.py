@@ -154,14 +154,14 @@ class DFMechDriver(driver_api.MechanismDriver):
             rule['topic'] = rule.get('tenant_id')
             del rule['tenant_id']
         if event == events.AFTER_CREATE:
-            self.nb_api.create_security_group(id=sg_id, topic=tenant_id,
-                                              name=sg_name, rules=rules,
-                                              version=sg_version)
+            self.nb_api.create_secgroup(id=sg_id, topic=tenant_id,
+                                        name=sg_name, rules=rules,
+                                        version=sg_version)
             LOG.info(_LI("DFMechDriver: create security group %s"), sg_name)
         elif event == events.AFTER_UPDATE:
-            self.nb_api.update_security_group(id=sg_id, topic=tenant_id,
-                                              name=sg_name, rules=rules,
-                                              version=sg_version)
+            self.nb_api.update_secgroup(id=sg_id, topic=tenant_id,
+                                        name=sg_name, rules=rules,
+                                        version=sg_version)
             LOG.info(_LI("DFMechDriver: update security group %s"), sg_name)
 
         return sg
@@ -172,7 +172,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         sg_id = kwargs['security_group_id']
         tenant_id = sg['tenant_id']
 
-        self.nb_api.delete_security_group(sg_id, topic=tenant_id)
+        self.nb_api.delete_secgroup(sg_id, topic=tenant_id)
         LOG.info(_LI("DFMechDriver: delete security group %s") % sg_id)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE)

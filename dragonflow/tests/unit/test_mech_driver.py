@@ -69,7 +69,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         sg = self.driver.create_security_group(self.context, s)
         self.assertGreater(sg['revision_number'], 0)
 
-        self.nb_api.create_security_group.assert_called_with(
+        self.nb_api.create_secgroup.assert_called_with(
             id=sg['id'], topic=sg['tenant_id'],
             name=sg['name'], rules=sg['security_group_rules'],
             version=sg['revision_number'])
@@ -85,7 +85,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             self.context, sg['id'], data)
         self.assertGreater(new_sg['revision_number'], sg['revision_number'])
 
-        self.nb_api.update_security_group.assert_called_with(
+        self.nb_api.update_secgroup.assert_called_with(
             id=sg['id'], topic=sg['tenant_id'],
             name='updated', rules=new_sg['security_group_rules'],
             version=new_sg['revision_number'])
@@ -326,7 +326,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
     def test_delete_security_group(self):
         sg = self._test_create_security_group_revision()
         self.driver.delete_security_group(self.context, sg['id'])
-        self.nb_api.delete_security_group.assert_called_with(
+        self.nb_api.delete_secgroup.assert_called_with(
             sg['id'], topic=sg['tenant_id'])
 
     def test_update_subnet_with_disabled_dhcp(self):

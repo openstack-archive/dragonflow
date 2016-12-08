@@ -235,19 +235,19 @@ class DbStore(object):
     def get_routers(self, topic=None):
         return self.values(models.LogicalRouter.table_name, topic)
 
-    def update_security_group(self, secgroup_id, secgroup, topic=None):
+    def update_secgroup(self, secgroup_id, secgroup, topic=None):
         self.set(models.SecurityGroup.table_name, secgroup_id, secgroup, topic)
 
-    def delete_security_group(self, id, topic=None):
+    def delete_secgroup(self, id, topic=None):
         self.delete(models.SecurityGroup.table_name, id, topic)
 
-    def get_security_group(self, secgroup_id, topic=None):
+    def get_secgroup(self, secgroup_id, topic=None):
         return self.get(models.SecurityGroup.table_name, secgroup_id, topic)
 
-    def get_security_groups(self, topic=None):
+    def get_all_secgroups(self, topic=None):
         return self.values(models.SecurityGroup.table_name, topic)
 
-    def get_security_group_keys(self, topic=None):
+    def get_secgroup_keys(self, topic=None):
         return self.keys(models.SecurityGroup.table_name, topic)
 
     def get_all_lswitches(self, topic=None):
