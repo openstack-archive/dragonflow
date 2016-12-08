@@ -277,7 +277,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
         logical_port = self.nb_api.get_lport(port['id'],
-                                                    port['tenant_id'])
+                                             port['tenant_id'])
 
         self.nb_api.add_lrouter_port(result['port_id'],
                                      result['id'],

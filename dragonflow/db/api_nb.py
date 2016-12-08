@@ -216,10 +216,10 @@ class NbApi(object):
         if db_models.QosPolicy.table_name == table:
             if action == 'set' or action == 'create':
                 qos = db_models.QosPolicy(value)
-                self.controller.qos_policy_updated(qos)
+                self.controller.update_qos(qos)
             elif action == 'delete':
                 qos_id = key
-                self.controller.qos_policy_deleted(qos_id)
+                self.controller.delete_qos(qos_id)
         elif db_models.SecurityGroup.table_name == table:
             if action == 'set' or action == 'create':
                 secgroup = db_models.SecurityGroup(value)
@@ -667,7 +667,7 @@ class NbApi(object):
             res.append(db_models.SecurityGroup(secgroup_value))
         return res
 
-    def get_qos_policies(self, topic=None):
+    def get_all_qoses(self, topic=None):
         res = []
         for qos in self.driver.get_all_entries(
                 db_models.QosPolicy.table_name, topic):
@@ -812,7 +812,7 @@ class NbApi(object):
             topic,
         )
 
-    def create_qos_policy(self, policy_id, topic, **columns):
+    def create_qos(self, policy_id, topic, **columns):
         policy = {'id': policy_id,
                   'topic': topic}
         policy.update(columns)
@@ -824,7 +824,7 @@ class NbApi(object):
                                    policy_id, 'create',
                                    policy_json, topic)
 
-    def update_qos_policy(self, policy_id, topic, **columns):
+    def update_qos(self, policy_id, topic, **columns):
         qospolicy_json = self.driver.get_key(db_models.QosPolicy.table_name,
                                              policy_id, topic)
         policy = jsonutils.loads(qospolicy_json)
@@ -837,13 +837,13 @@ class NbApi(object):
                                    policy_id, 'set',
                                    policy_json, topic)
 
-    def delete_qos_policy(self, policy_id, topic):
+    def delete_qos(self, policy_id, topic):
         self.driver.delete_key(db_models.QosPolicy.table_name,
                                policy_id, topic)
         self._send_db_change_event(db_models.QosPolicy.table_name,
                                    policy_id, 'delete', policy_id, topic)
 
-    def get_qos_policy(self, policy_id, topic=None):
+    def get_qos(self, policy_id, topic=None):
         try:
             qospolicy_value = self.driver.get_key(
                 db_models.QosPolicy.table_name, policy_id, topic)

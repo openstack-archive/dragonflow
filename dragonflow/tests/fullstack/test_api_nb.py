@@ -51,7 +51,7 @@ class Test_API_NB(test_base.DFTestBase):
         self.addCleanup(self.nb_api.delete_lport,
                         fake_lport['id'], fake_lport['topic'])
         lport = self.nb_api.get_lport(fake_lport['id'],
-                                             fake_lport['topic'])
+                                      fake_lport['topic'])
         self.assertIsNotNone(lport.get_unique_key())
 
         fake_lport1 = copy.deepcopy(fake_lport)
@@ -60,7 +60,7 @@ class Test_API_NB(test_base.DFTestBase):
         self.addCleanup(self.nb_api.delete_lport,
                         fake_lport1['id'], fake_lport1['topic'])
         lport1 = self.nb_api.get_lport(fake_lport1['id'],
-                                              fake_lport1['topic'])
+                                       fake_lport1['topic'])
         self.assertIsNotNone(lport1.get_unique_key())
 
         self.assertNotEqual(lport.get_unique_key(),

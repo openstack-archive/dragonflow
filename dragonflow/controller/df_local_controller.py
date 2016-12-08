@@ -377,24 +377,24 @@ class DfLocalController(object):
             return
         self._delete_old_security_group(old_secgroup)
 
-    def qos_policy_updated(self, qos):
-        original_qos = self.db_store.get_qos_policy(qos.get_id())
+    def update_qos(self, qos):
+        original_qos = self.db_store.get_qos(qos.get_id())
         if not self._is_valid_version(original_qos, qos):
             return
 
-        self.db_store.set_qos_policy(qos.get_id(), qos)
+        self.db_store.update_qos(qos.get_id(), qos)
         if not original_qos:
             return
 
-        self.open_flow_app.notify_update_qos_policy(qos)
+        self.open_flow_app.notify_update_qos(qos)
 
-    def qos_policy_deleted(self, qos_id):
-        qos = self.db_store.get_qos_policy(qos_id)
+    def delete_qos(self, qos_id):
+        qos = self.db_store.get_qos(qos_id)
         if not qos:
             return
 
-        self.open_flow_app.notify_delete_qos_policy(qos)
-        self.db_store.delete_qos_policy(qos_id)
+        self.open_flow_app.notify_delete_qos(qos)
+        self.db_store.delete_qos(qos_id)
 
     def register_chassis(self):
         # Get all chassis from nb db to db store.
