@@ -43,8 +43,8 @@ class TestDBConsistent(tests_base.BaseTestCase):
         self.nb_api.get_all_lswitches.return_value = [df_obj1, df_obj2]
         self.db_store.get_all_lswitches.return_value = [local_obj1, local_obj2]
 
-        self.nb_api.get_all_logical_ports.return_value = [df_obj1, df_obj2]
-        self.db_store.get_ports.return_value = [local_obj1, local_obj2]
+        self.nb_api.get_all_lports.return_value = [df_obj1, df_obj2]
+        self.db_store.get_all_lports.return_value = [local_obj1, local_obj2]
 
         self.nb_api.get_all_lrouters.return_value = [df_obj1, df_obj2]
         self.db_store.get_all_lrouters.return_value = [local_obj1, local_obj2]
@@ -66,9 +66,9 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.LogicalPort.table_name, True)
-        self.controller.logical_port_updated.assert_any_call(df_obj1)
-        self.controller.logical_port_updated.assert_any_call(df_obj2)
-        self.controller.logical_port_deleted.assert_any_call(
+        self.controller.update_lport.assert_any_call(df_obj1)
+        self.controller.update_lport.assert_any_call(df_obj2)
+        self.controller.delete_lport.assert_any_call(
                 self.lport_id3)
 
         self.db_consistent.handle_data_comparison(

@@ -235,7 +235,7 @@ class DfLocalController(object):
         chassis = lport.get_chassis()
         if chassis == self.chassis_name:
             lport.set_external_value('is_local', True)
-            self.db_store.set_port(lport.get_id(), lport, True)
+            self.db_store.update_lport(lport.get_id(), lport, True)
             ofport = self.vswitch_api.get_port_ofport_by_id(lport.get_id())
             if ofport:
                 lport.set_external_value('ofport', ofport)
@@ -255,7 +255,7 @@ class DfLocalController(object):
                          str(lport))
         else:
             lport.set_external_value('is_local', False)
-            self.db_store.set_port(lport.get_id(), lport, False)
+            self.db_store.update_lport(lport.get_id(), lport, False)
             ofport = self.vswitch_api.get_chassis_ofport(chassis)
             if ofport:
                 lport.set_external_value('ofport', ofport)
@@ -295,13 +295,13 @@ class DfLocalController(object):
             self.chassis_deleted(chassis)
             self.db_store.del_remote_chassis(chassis)
 
-    def logical_port_updated(self, lport):
+    def update_lport(self, lport):
         chassis = lport.get_chassis()
         if not self._is_physical_chassis(chassis):
             LOG.debug(("Port %s has not been bound or it is a vPort") %
                       lport.get_id())
             return
-        original_lport = self.db_store.get_port(lport.get_id())
+        original_lport = self.db_store.get_lport(lport.get_id())
         if original_lport and not original_lport.get_external_value("ofport"):
             original_lport = None
         if not original_lport:
@@ -319,8 +319,8 @@ class DfLocalController(object):
             return
         self._logical_port_process(lport, original_lport)
 
-    def logical_port_deleted(self, lport_id):
-        lport = self.db_store.get_port(lport_id)
+    def delete_lport(self, lport_id):
+        lport = self.db_store.get_lport(lport_id)
         if lport is None:
             return
         if lport.get_external_value('is_local'):
@@ -328,13 +328,13 @@ class DfLocalController(object):
                      str(lport))
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_local_port(lport)
-            self.db_store.delete_port(lport.get_id(), True)
+            self.db_store.delete_lport(lport.get_id(), True)
         else:
             LOG.info(_LI("Removing remote logical port = %s") %
                      str(lport))
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_remote_port(lport)
-            self.db_store.delete_port(lport.get_id(), False)
+            self.db_store.delete_lport(lport.get_id(), False)
 
         if lport.get_remote_vtep():
             self._delete_remote_port_from_chassis(lport)

@@ -171,7 +171,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                     router_port.get_mac())
 
     def _get_port(self, ip, lswitch_id, topic):
-        ports = self.db_store.get_ports(topic)
+        ports = self.db_store.get_all_lports(topic)
         for port in ports:
             if port.get_ip() == ip and port.get_lswitch_id() == lswitch_id:
                 return port
