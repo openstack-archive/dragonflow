@@ -20,6 +20,7 @@ from oslo_log import log
 
 from dragonflow._i18n import _LE, _LW
 from dragonflow.common import utils as df_utils
+from dragonflow.controller import df_db_objects_refresh as obj_refresh
 from dragonflow.db import models
 
 LOG = log.getLogger(__name__)
@@ -99,38 +100,6 @@ class DBConsistencyManager(object):
                 LOG.exception(_LE("Exception occurred when"
                               "handling db comparison: %s"), e)
 
-    def _process_object(self, table, action, df_object, local_object=None):
-        if table == models.LogicalSwitch.table_name:
-            if action == 'delete':
-                self.controller.delete_lswitch(local_object.get_id())
-            else:
-                self.controller.update_lswitch(df_object)
-        elif table == models.LogicalPort.table_name:
-            if action == 'delete':
-                self.controller.delete_lport(local_object.get_id())
-            else:
-                self.controller.update_lport(df_object)
-        elif table == models.LogicalRouter.table_name:
-            if action == 'delete':
-                self.controller.delete_lrouter(local_object.get_id())
-            else:
-                self.controller.update_lrouter(df_object)
-        elif table == models.SecurityGroup.table_name:
-            if action == 'delete':
-                self.controller.delete_secgroup(local_object.get_id())
-            else:
-                self.controller.update_secgroup(df_object)
-        elif table == models.Floatingip.table_name:
-            if action == 'delete':
-                self.controller.delete_floatingip(local_object.get_id())
-            else:
-                self.controller.update_floatingip(df_object)
-        elif table == models.QosPolicy.table_name:
-            if action == 'delete':
-                self.controller.delete_qos(local_object.get_id())
-            else:
-                self.controller.update_qos(df_object)
-
     def _verify_object(self, table, id, action, df_object, local_object=None):
         """Verify the object status and judge whether to create/update/delete
         the object or not, we'll use twice comparison to verify the status,
@@ -157,45 +126,34 @@ class DBConsistencyManager(object):
         old_local_version = old_cache_obj.get_local_version()
         if action == 'create':
             if df_version >= old_df_version:
-                self._process_object(table, 'create', df_object)
+                obj_refresh.process_object(
+                    self.controller, table, 'create', df_object)
                 self.cache_manager.remove(table, id)
             return
         elif action == 'update':
             if df_version < old_df_version:
                 return
             if local_version <= old_local_version:
-                self._process_object(table, 'update', df_object)
+                obj_refresh.process_object(
+                    self.controller, table, 'update', df_object)
                 self.cache_manager.remove(table, id)
             else:
                 cache_obj = CacheObject(action, df_version, local_version)
                 self.cache_manager.set(table, id, cache_obj)
         elif action == 'delete':
-            self._process_object(table, 'delete', None, local_object)
+            obj_refresh.process_object(
+                self.controller, table, 'delete', None, id)
             self.cache_manager.remove(table, id)
         else:
             LOG.warning(_LW('Unknown action %s in db consistent'), action)
 
     def _get_df_and_local_objects(self, topic, table):
-        df_objects = []
-        local_objects = []
-        if table == models.LogicalSwitch.table_name:
-            df_objects = self.nb_api.get_all_lswitches(topic)
-            local_objects = self.db_store.get_all_lswitches(topic)
-        elif table == models.LogicalPort.table_name:
-            df_objects = self.nb_api.get_all_lports(topic)
-            local_objects = self.db_store.get_all_lports(topic)
-        elif table == models.LogicalRouter.table_name:
-            df_objects = self.nb_api.get_all_lrouters(topic)
-            local_objects = self.db_store.get_all_lrouters(topic)
-        elif table == models.SecurityGroup.table_name:
-            df_objects = self.nb_api.get_all_secgroups(topic)
-            local_objects = self.db_store.get_all_secgroups(topic)
-        elif table == models.Floatingip.table_name:
-            df_objects = self.nb_api.get_all_floatingips(topic)
-            local_objects = self.db_store.get_all_floatingips(topic)
-        elif table == models.QosPolicy.table_name:
-            df_objects = self.nb_api.get_all_qoses(topic)
-            local_objects = self.db_store.get_all_qoses(topic)
+        suffix = df_utils.get_suffix_by_word(table)
+        method_name = "get_all_" + table + suffix
+        nb_api_handler = getattr(self.nb_api, method_name, None)
+        db_store_handler = getattr(self.db_store, method_name, None)
+        df_objects = nb_api_handler(topic)
+        local_objects = db_store_handler(topic)
         return df_objects, local_objects
 
     def _compare_df_and_local_data(
@@ -226,14 +184,14 @@ class DBConsistencyManager(object):
                 if not local_version:
                     LOG.debug("Version is None in local_object: %s",
                               local_object)
-                    self._process_object(
-                                table, 'update', df_object)
+                    obj_refresh.process_object(
+                        self.controller, table, 'update', df_object)
                 elif df_version > local_version:
                     LOG.debug("Find a newer version df object: %s",
                               df_object)
                     if direct:
-                        self._process_object(
-                                table, 'update', df_object)
+                        obj_refresh.process_object(
+                            self.controller, table, 'update', df_object)
                     else:
                         self._verify_object(
                                 table, df_id, 'update',
@@ -241,7 +199,8 @@ class DBConsistencyManager(object):
             else:
                 LOG.debug("Find an additional df object: %s", df_object)
                 if direct:
-                    self._process_object(table, 'create', df_object)
+                    obj_refresh.process_object(
+                        self.controller, table, 'create', df_object)
                 else:
                     self._verify_object(table, df_id,
                                         'create', df_object)
@@ -249,7 +208,9 @@ class DBConsistencyManager(object):
         for local_object in local_object_map.values():
             LOG.debug("Find a redundant local object: %s", local_object)
             if direct:
-                self._process_object(table, 'delete', None, local_object)
+                obj_refresh.process_object(
+                    self.controller, table, 'delete', None,
+                    local_object.get_id())
             else:
                 self._verify_object(
                         table, local_object.get_id(),

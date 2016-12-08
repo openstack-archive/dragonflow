@@ -43,6 +43,16 @@ def get_vhu_sockpath(sock_dir, port_id):
         (n_const.VHOST_USER_DEVICE_PREFIX + port_id)[:14])
 
 
+def get_suffix_by_word(word):
+    end = word[-2:]
+    if end in ['ch', 'os']:
+        return "es"
+    elif end in ['is']:
+        return ''
+    else:
+        return 's'
+
+
 def load_driver(driver_cfg, namespace):
     try:
         # Try to resolve by alias
