@@ -212,13 +212,13 @@ class DbStore(object):
             if lport.get_id().startswith(port_id_prefix):
                 return lport
 
-    def update_router(self, router_id, router, topic=None):
+    def update_lrouter(self, router_id, router, topic=None):
         self.set(models.LogicalRouter.table_name, router_id, router, topic)
 
-    def delete_router(self, id, topic=None):
+    def delete_lrouter(self, id, topic=None):
         self.delete(models.LogicalRouter.table_name, id, topic)
 
-    def get_router(self, router_id, topic=None):
+    def get_lrouter(self, router_id, topic=None):
         return self.get(models.LogicalRouter.table_name, router_id, topic)
 
     def get_ports_by_network_id(self, lswitch_id, topic=None):
@@ -232,7 +232,7 @@ class DbStore(object):
                 if port.get_mac() == interface_mac:
                     return router
 
-    def get_routers(self, topic=None):
+    def get_all_lrouters(self, topic=None):
         return self.values(models.LogicalRouter.table_name, topic)
 
     def update_secgroup(self, secgroup_id, secgroup, topic=None):

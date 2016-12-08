@@ -79,7 +79,7 @@ class DBNotifyInterface(object):
         :param lswitch: logical switch that is updated
         """
 
-    def router_updated(self, router, original_router):
+    def update_lrouter(self, router, original_router):
         """router updated hook callback
 
 
@@ -87,7 +87,7 @@ class DBNotifyInterface(object):
         :param original_router: logical router before update
         """
 
-    def router_deleted(self, router):
+    def delete_lrouter(self, router):
         """router updated hook callback
 
 
