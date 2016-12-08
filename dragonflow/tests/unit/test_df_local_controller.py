@@ -103,10 +103,10 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_secgroup = self._get_mock_secgroup(secgroup_id, rules)
         self.controller._add_new_security_group(mock_secgroup)
         mock_add.assert_called_once_with(mock_secgroup, rules[0])
-        sec_group = self.controller.db_store.get_security_group(secgroup_id)
+        sec_group = self.controller.db_store.get_secgroup(secgroup_id)
         self.assertIn(rules[0], sec_group.get_rules())
 
-    @mock.patch.object(db_store.DbStore, 'delete_security_group')
+    @mock.patch.object(db_store.DbStore, 'delete_secgroup')
     @mock.patch.object(df_local_controller.DfLocalController,
                        '_delete_security_group_rule')
     def test_delete_old_security_group(self, mock_delete, mock_db_delete):

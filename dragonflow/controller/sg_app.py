@@ -218,7 +218,7 @@ class SGApp(df_base_app.DFlowApp):
         self._install_security_group_permit_flow_by_direction(
             security_group_id, 'egress')
 
-        secgroup = self.db_store.get_security_group(security_group_id)
+        secgroup = self.db_store.get_secgroup(security_group_id)
         if secgroup is not None:
             for rule in secgroup.get_rules():
                 self.add_security_group_rule(secgroup, rule)
@@ -254,7 +254,7 @@ class SGApp(df_base_app.DFlowApp):
         self._uninstall_security_group_permit_flow_by_direction(
             security_group_id, 'egress')
 
-        secgroup = self.db_store.get_security_group(security_group_id)
+        secgroup = self.db_store.get_secgroup(security_group_id)
         if secgroup is not None:
             for rule in secgroup.get_rules():
                 self.remove_security_group_rule(secgroup, rule)
