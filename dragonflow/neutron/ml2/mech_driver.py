@@ -565,7 +565,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     def update_port_postcommit(self, context):
         updated_port = context.current
         if not self.nb_api.get_lport(updated_port['id'],
-                                            updated_port['tenant_id']):
+                                     updated_port['tenant_id']):
             # REVISIT(xiaohhui): Should we unify the check before update nb db?
             LOG.debug("The port %s has been deleted from dragonflow NB DB, "
                       "by concurrent operation.", updated_port['id'])

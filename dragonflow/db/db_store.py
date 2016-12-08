@@ -302,19 +302,19 @@ class DbStore(object):
             if fip.get_floating_network_id() == network_id:
                 return fip
 
-    def set_qos_policy(self, qos_id, qos, topic=None):
+    def update_qos(self, qos_id, qos, topic=None):
         self.set(models.QosPolicy.table_name, qos_id, qos, topic)
 
-    def get_qos_policy(self, qos_id, topic=None):
+    def get_qos(self, qos_id, topic=None):
         return self.get(models.QosPolicy.table_name, qos_id, topic)
 
-    def delete_qos_policy(self, qos_id, topic=None):
+    def delete_qos(self, qos_id, topic=None):
         self.delete(models.QosPolicy.table_name, qos_id, topic)
 
-    def get_qos_policy_keys(self, topic=None):
+    def get_qos_keys(self, topic=None):
         return self.keys(models.QosPolicy.table_name, topic)
 
-    def get_qos_policies(self, topic=None):
+    def get_all_qoses(self, topic=None):
         return self.values(models.QosPolicy.table_name, topic)
 
     def update_publisher(self, uuid, publisher, topic=None):
