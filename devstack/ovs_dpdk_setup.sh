@@ -88,8 +88,8 @@ function _uninstall_dpdk {
 }
 
 function install_ovs {
-    _neutron_ovs_configure_dependencies
     _install_dpdk
+    _neutron_ovs_configure_dependencies
     _neutron_ovs_clone_ovs
 
     # If OVS is already installed, remove it, because we're about to re-install
