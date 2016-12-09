@@ -55,7 +55,7 @@ function _configure_ovs_dpdk {
 
     # Set up DPDK NIC
     sudo ip link set ${DPDK_NIC_NAME} down
-    sudo dpdk_nic_bind --bind=${DPDK_BIND_DRIVER} ${DPDK_PCI_TARGET}
+	sudo $DPDK_DIR/tools/dpdk-devbind.py --bind=${DPDK_BIND_DRIVER} ${DPDK_PCI_TARGET}
 }
 
 function _install_dpdk {
@@ -72,7 +72,7 @@ function _install_dpdk {
 }
 
 function _uninstall_dpdk {
-    sudo dpdk_nic_bind -u ${DPDK_PCI_TARGET}
+	sudo $DPDK_DIR/tools/dpdk-devbind.py -u ${DPDK_PCI_TARGET}
     sudo rmmod $DPDK_BUILD/kmod/${DPDK_BIND_DRIVER}.ko
     sudo modprobe -r uio
     sudo ip link set ${DPDK_NIC_NAME} up
