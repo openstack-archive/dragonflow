@@ -17,9 +17,16 @@ import copy
 import mock
 from oslo_config import cfg
 from ryu.lib import addrconv
+from ryu.lib.packet import dhcp
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.unit import test_app_base
+
+
+class Option(object):
+    def __init__(self, tag, value):
+        self.tag = tag
+        self.value = value
 
 
 class TestDHCPApp(test_app_base.DFAppTestBase):
@@ -76,3 +83,61 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
             '10.0.0.100', test_app_base.fake_logic_switch1.get_unique_key())
         self.app._remove_dhcp_unicast_match_flow.assert_called_once_with(
             test_app_base.fake_logic_switch1.get_unique_key(), '10.0.0.2')
+
+    def test__get_lswitch_by_port(self):
+        lport = test_app_base.fake_local_port1
+        l_switch_id = lport.get_lswitch_id()
+        fake_lswitch = test_app_base.fake_logic_switch1
+        self.app.db_store.set_lswitch(l_switch_id, fake_lswitch)
+        lswitch = self.app._get_lswitch_by_port(lport)
+        self.assertEqual(fake_lswitch, lswitch)
+
+    def test__get_dhcp_message_type_opt(self):
+        fake_dhcp_packet = mock.Mock()
+        fake_dhcp_packet.options.option_list = (
+            [Option(dhcp.DHCP_MESSAGE_TYPE_OPT, 'a'), Option(52, 'b')])
+        a_unicode = 97
+        opt_value = self.app._get_dhcp_message_type_opt(fake_dhcp_packet)
+        self.assertEqual(a_unicode, opt_value)
+        fake_dhcp_packet.options.option_list = (
+            [Option(dhcp.DHCP_END_OPT, 'a'), Option(52, 'b')])
+        opt_value2 = self.app._get_dhcp_message_type_opt(fake_dhcp_packet)
+        self.assertIsNone(opt_value2)
+
+    def test__get_subnet_by_port(self):
+        fake_lport = copy.deepcopy(test_app_base.fake_local_port1)
+        fake_lport_subnet = test_app_base.fake_logic_switch1.get_subnets()[0]
+        subnet = self.app._get_subnet_by_port(fake_lport)
+        self.assertEqual(fake_lport_subnet, subnet)
+
+        fake_lport.inner_obj['subnets'] = ['ThisSubnetDoesNotExist']
+        self.controller.logical_port_updated(fake_lport)
+        subnet = self.app._get_subnet_by_port(fake_lport)
+        self.assertIsNone(subnet)
+
+    def test_remove_local_port(self):
+        fake_lport = copy.deepcopy(test_app_base.fake_local_port1)
+        fake_lport.inner_obj['ips'] = ['ThisIsNotAValidIP']
+        self.controller.logical_port_updated(fake_lport)
+        subnet = fake_lport.get_subnets()[0]
+        self.app.subnet_vm_port_map[subnet] = set([fake_lport.get_id()])
+        # test case: lport has an invalid IP
+        self.app.remove_local_port(fake_lport)
+        self.assertIn(fake_lport.get_id(), self.app.subnet_vm_port_map[subnet])
+
+        fake_lport.inner_obj['ips'] = ['10.0.0.6']
+        tunnel_key = fake_lport.get_unique_key()
+        self.app.local_tunnel_to_pid_map.update({tunnel_key: None})
+        self.app._uninstall_dhcp_flow_for_vm_port = mock.Mock()
+        # test case: lport has valid ip
+        self.app.remove_local_port(fake_lport)
+        self.assertNotIn(fake_lport.get_id(),
+            self.app.subnet_vm_port_map[subnet])
+        self.app._uninstall_dhcp_flow_for_vm_port.assert_called_once()
+
+    def test_remove_logical_switch(self):
+        fake_lswitch = test_app_base.fake_logic_switch1
+        network_id = fake_lswitch.get_unique_key()
+        self.app._remove_dhcp_unicast_match_flow = mock.Mock()
+        self.app.remove_logical_switch(fake_lswitch)
+        self.assertNotIn(network_id, self.app.switch_dhcp_ip_map)
