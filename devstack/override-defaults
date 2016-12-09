@@ -30,3 +30,9 @@ NEUTRON_CONFIG_ARG+=" --config-file $DRAGONFLOW_CONF"
 
 Q_ML2_PLUGIN_MECHANISM_DRIVERS=${Q_ML2_PLUGIN_MECHANISM_DRIVERS:-"df"}
 ML2_L3_PLUGIN=${ML2_L3_PLUGIN:-"df-l3"}
+
+if [[ "$ENABLE_DPDK" == "True" ]]; then
+    # By default, dragonflow uses OVS kernel datapath. If you want to use
+    # user space datapath powered by DPDK, please use 'netdev'.
+    OVS_DATAPATH_TYPE=netdev
+fi
