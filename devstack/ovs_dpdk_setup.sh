@@ -1,7 +1,7 @@
 #!/bin/bash
 
-DPDK_VERSION=16.07
-DPDK_DIR=$DEST/dpdk/dpdk-${DPDK_VERSION}
+DPDK_VERSION=16.07.2
+DPDK_DIR=$DEST/dpdk/dpdk-stable-${DPDK_VERSION}
 DPDK_TARGET=x86_64-native-linuxapp-gcc
 DPDK_BUILD=$DPDK_DIR/$DPDK_TARGET
 
@@ -15,12 +15,6 @@ OVSDB_SOCK=/usr/local/var/run/openvswitch/db.sock
 source $DEST/dragonflow/devstack/ovs_setup.sh
 
 function _neutron_ovs_configure_dependencies {
-    if is_fedora; then
-        install_package -y kernel-devel
-    elif is_ubuntu; then
-        install_package -y build-essential
-    fi
-
     # Configure TUN
     if [ ! -e /sys/class/misc/tun]; then
         sudo modprobe tun
@@ -36,8 +30,8 @@ function _neutron_ovs_configure_dependencies {
     sudo mount -t hugetlbfs none /dev/hugepages
 
     # Configure UIO
-    sudo modprobe uio
-    sudo insmod $DPDK_BUILD/kmod/${DPDK_BIND_DRIVER}.ko
+    sudo modprobe uio || true
+    sudo insmod $DPDK_BUILD/kmod/${DPDK_BIND_DRIVER}.ko || true
 }
 
 function _configure_ovs_dpdk {
@@ -55,24 +49,32 @@ function _configure_ovs_dpdk {
 
     # Set up DPDK NIC
     sudo ip link set ${DPDK_NIC_NAME} down
-    sudo dpdk_nic_bind --bind=${DPDK_BIND_DRIVER} ${DPDK_PCI_TARGET}
+    sudo $DPDK_DIR/tools/dpdk-devbind.py --bind=${DPDK_BIND_DRIVER} ${DPDK_PCI_TARGET}
 }
 
 function _install_dpdk {
-    mkdir -p $DEST/dpdk
-    pushd $DEST/dpdk
-    if [ ! -e $DEST/dpdk/dpdk-${DPDK_VERSION}.zip ]
-    then
-        wget http://dpdk.org/browse/dpdk/snapshot/dpdk-${DPDK_VERSION}.zip
+    if is_fedora; then
+        install_package kernel-devel
+    elif is_ubuntu; then
+        install_package build-essential
     fi
-    unzip -o dpdk-${DPDK_VERSION}.zip
-    cd $DPDK_DIR
-    sudo make install T=$DPDK_TARGET DESTDIR=install
-    popd
+
+    if [ ! -d $DEST/dpdk ]; then
+        mkdir -p $DEST/dpdk
+        pushd $DEST/dpdk
+        if [ ! -e $DEST/dpdk/dpdk-${DPDK_VERSION}.tar.xz ]
+        then
+            wget http://fast.dpdk.org/rel/dpdk-${DPDK_VERSION}.tar.xz
+        fi
+        tar xvJf dpdk-${DPDK_VERSION}.tar.xz
+        cd $DPDK_DIR
+        sudo make install T=$DPDK_TARGET DESTDIR=install
+        popd
+    fi
 }
 
 function _uninstall_dpdk {
-    sudo dpdk_nic_bind -u ${DPDK_PCI_TARGET}
+    sudo $DPDK_DIR/tools/dpdk-devbind.py -u ${DPDK_PCI_TARGET}
     sudo rmmod $DPDK_BUILD/kmod/${DPDK_BIND_DRIVER}.ko
     sudo modprobe -r uio
     sudo ip link set ${DPDK_NIC_NAME} up
