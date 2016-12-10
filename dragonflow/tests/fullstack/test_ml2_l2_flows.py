@@ -443,3 +443,57 @@ class TestL2FLows(test_base.DFTestBase):
             physical_network = flat_network
 
         return physical_network
+
+    """
+    Ethernet frames with a value of 1 in the least-significant bit of the first
+    octet of the destination address are treated as multicast frames and are
+    flooded to all points on the network.
+    https://en.wikipedia.org/wiki/Multicast_address
+    """
+    def _check_multicast_rule(self, flows, metadataid, tunnel_key_hex):
+        check = 'set_field:' + tunnel_key_hex + '->reg7,resubmit(,' + \
+                str(const.EGRESS_TABLE) + ')'
+        for flow in flows:
+            if flow['table'] == str(const.L2_LOOKUP_TABLE):
+                if ('dl_dst=01:00:00:00:00:00/01:00:00:00:00:00' in
+                        flow['match']):
+                    if 'metadata=0x' + metadataid in flow['match']:
+                        if check in flow['actions']:
+                            return flow
+        return None
+
+    def test_vm_multicast(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create(network={'name': 'private'})
+        subnet = {'network_id': network_id,
+                  'cidr': '10.200.0.0/24',
+                  'gateway_ip': '10.200.0.1',
+                  'ip_version': 4,
+                  'name': 'private',
+                  'enable_dhcp': True}
+        subnet = self.neutron.create_subnet({'subnet': subnet})
+
+        ovs = utils.OvsFlowsParser()
+        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm.create(network=network)
+        ip = vm.get_first_ipv4()
+        self.assertIsNotNone(ip)
+        self.assertIsNotNone(vm.server.addresses['private'])
+        mac = vm.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(mac)
+        metadataid = utils.wait_until_is_and_return(
+            lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
+                                          ip, mac),
+            exception=Exception('Metadata id was not found in OpenFlow rules')
+        )
+        port = utils.wait_until_is_and_return(
+            lambda: self._get_vm_port(ip, mac),
+            exception=Exception('No port assigned to VM')
+        )
+        tunnel_key = port.get_unique_key()
+        tunnel_key_hex = hex(tunnel_key)
+        r = self._check_multicast_rule(ovs.dump(self.integration_bridge),
+                                       metadataid, tunnel_key_hex)
+        self.assertIsNotNone(r)
+        vm.close()
+        network.close()
