@@ -73,33 +73,33 @@ def initialize_object_refreshers(df_controller):
     items.append(DfObjectRefresher('QoS Policies',
                                    db_store.get_qos_policy_keys,
                                    nb_api.get_qos_policies,
-                                   df_controller.qos_policy_updated,
-                                   df_controller.qos_policy_deleted))
+                                   df_controller.update_qospolicy,
+                                   df_controller.delete_qospolicy))
     items.append(DfObjectRefresher('Switches',
                                    db_store.get_lswitch_keys,
                                    nb_api.get_all_logical_switches,
-                                   df_controller.logical_switch_updated,
-                                   df_controller.logical_switch_deleted))
+                                   df_controller.update_lswitch,
+                                   df_controller.delete_lswitch))
     items.append(DfObjectRefresher('Security Groups',
                                    db_store.get_security_group_keys,
                                    nb_api.get_security_groups,
-                                   df_controller.security_group_updated,
-                                   df_controller.security_group_deleted))
+                                   df_controller.update_secgroup,
+                                   df_controller.delete_secgroup))
     items.append(DfObjectRefresher('Ports',
                                    db_store.get_port_keys,
                                    nb_api.get_all_logical_ports,
-                                   df_controller.logical_port_updated,
-                                   df_controller.logical_port_deleted))
+                                   df_controller.update_lport,
+                                   df_controller.delete_lport))
     items.append(DfObjectRefresher('Routers',
                                    db_store.get_router_keys,
                                    nb_api.get_routers,
-                                   df_controller.router_updated,
-                                   df_controller.router_deleted))
+                                   df_controller.update_lrouter,
+                                   df_controller.delete_lrouter))
     items.append(DfObjectRefresher('Floating IPs',
                                    db_store.get_floatingip_keys,
                                    nb_api.get_floatingips,
-                                   df_controller.floatingip_updated,
-                                   df_controller.floatingip_deleted))
+                                   df_controller.update_floatingip,
+                                   df_controller.delete_floatingip))
 
 
 def sync_local_cache_from_nb_db(topics=None):

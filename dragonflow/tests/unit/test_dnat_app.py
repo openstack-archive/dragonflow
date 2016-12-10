@@ -33,7 +33,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
         self.dnat_app.local_floatingips[
             test_app_base.fake_floatingip1.get_id()] = (
                 test_app_base.fake_floatingip1)
-        self.controller.logical_port_updated(test_app_base.fake_local_port1)
+        self.controller.update_lport(test_app_base.fake_local_port1)
 
         # Assert calls have been placed
         self.arp_responder.assert_called_once_with(
@@ -94,9 +94,9 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             mock_func.assert_not_called()
 
     def test_delete_port_with_deleted_floatingip(self):
-        self.controller.logical_port_updated(test_app_base.fake_local_port1)
-        self.controller.floatingip_updated(test_app_base.fake_floatingip1)
-        self.controller.floatingip_deleted(
+        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update_floatingip(test_app_base.fake_floatingip1)
+        self.controller.delete_floatingip(
             test_app_base.fake_floatingip1.get_id())
 
         self.assertFalse(self.dnat_app.local_floatingips)
@@ -124,12 +124,12 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
         ovs_port1 = models.OvsPort(value1)
 
-        self.controller.logical_port_updated(test_app_base.fake_local_port1)
+        self.controller.update_lport(test_app_base.fake_local_port1)
         self.controller.topology.ovs_port_updated(ovs_port1)
-        self.controller.floatingip_updated(test_app_base.fake_floatingip1)
-        self.controller.floatingip_deleted(
+        self.controller.update_floatingip(test_app_base.fake_floatingip1)
+        self.controller.delete_floatingip(
             test_app_base.fake_floatingip1.get_id())
-        self.controller.logical_port_deleted(
+        self.controller.delete_lport(
             test_app_base.fake_local_port1.get_id())
         with mock.patch.object(
             self.controller,
