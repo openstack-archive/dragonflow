@@ -23,7 +23,7 @@ from dragonflow.tests.unit import test_app_base
 class TestTopology(test_app_base.DFAppTestBase):
     # This is to comply the current code, as the app_list can't be empty.
     # But we don't need any app in this test, acutally.
-    apps_list = "l2_ml2_app.L2App"
+    apps_list = "l2_app.L2App"
 
     def setUp(self):
         cfg.CONF.set_override('enable_selective_topology_distribution',

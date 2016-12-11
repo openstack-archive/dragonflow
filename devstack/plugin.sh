@@ -14,7 +14,7 @@ OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
 OVS_BRANCH=${OVS_BRANCH:-branch-2.6}
 
 DEFAULT_TUNNEL_TYPE="geneve"
-DEFAULT_APPS_LIST="l2_ml2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
+DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp,"\
 "portqos_app.PortQosApp"
 
