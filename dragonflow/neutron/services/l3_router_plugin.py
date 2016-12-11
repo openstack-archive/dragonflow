@@ -27,7 +27,6 @@ from neutron.common import exceptions as n_common_exc
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.db import common_db_mixin
-from neutron.db import db_base_plugin_v2
 from neutron.db import extraroute_db
 from neutron.db import l3_agentschedulers_db
 from neutron.db import l3_gwmode_db
@@ -49,7 +48,6 @@ LOG = log.getLogger(__name__)
 
 
 class DFL3RouterPlugin(service_base.ServicePluginBase,
-                       db_base_plugin_v2.NeutronDbPluginV2,
                        common_db_mixin.CommonDbMixin,
                        extraroute_db.ExtraRoute_db_mixin,
                        l3_gwmode_db.L3_NAT_db_mixin,
@@ -168,13 +166,13 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     def _get_floatingip_port(self, context, floatingip_id):
         filters = {'device_id': [floatingip_id]}
-        floating_ports = self.get_ports(context, filters=filters)
+        floating_ports = self.core_plugin.get_ports(context, filters=filters)
         if floating_ports:
             return floating_ports[0]
         return None
 
     def _get_floatingip_subnet(self, context, subnet_id):
-        gateway_subnet = self.get_subnet(context, subnet_id)
+        gateway_subnet = self.core_plugin.get_subnet(context, subnet_id)
         if gateway_subnet['ip_version'] == 4:
             return gateway_subnet
         return None
