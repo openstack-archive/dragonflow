@@ -166,3 +166,7 @@ df_opts = [
 
 def register_opts():
     cfg.CONF.register_opts(df_opts, 'df')
+
+
+def list_opts():
+    return {'df': df_opts}
