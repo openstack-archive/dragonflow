@@ -32,3 +32,7 @@ df_dnat_app_opts = [
 
 def register_opts():
     cfg.CONF.register_opts(df_dnat_app_opts, group='df_dnat_app')
+
+
+def list_opts():
+    return {'df_dnat_app': df_dnat_app_opts}

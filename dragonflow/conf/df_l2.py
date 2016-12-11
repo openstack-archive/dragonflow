@@ -39,3 +39,7 @@ df_l2_app_opts = [
 
 def register_opts():
     cfg.CONF.register_opts(df_l2_app_opts, group='df_l2_app')
+
+
+def list_opts():
+    return {'df_l2_app': df_l2_app_opts}
