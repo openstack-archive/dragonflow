@@ -28,3 +28,7 @@ df_ryu_opts = [
 
 def register_opts():
     cfg.CONF.register_opts(df_ryu_opts, 'df_ryu')
+
+
+def list_opts():
+    return {'df_ryu': df_ryu_opts}
