@@ -119,7 +119,8 @@ class DNATApp(df_base_app.DFlowApp):
              const.INGRESS_NAT_TABLE).remove()
 
     def _get_vm_port_info(self, floatingip):
-        lport = self.db_store.get_local_port(floatingip.get_lport_id())
+        lport = self.db_store.get(self.db_store.local_ports,
+                                  floatingip.get_lport_id())
         mac = lport.get_mac()
         ip = lport.get_ip()
         tunnel_key = lport.get_unique_key()
@@ -128,8 +129,10 @@ class DNATApp(df_base_app.DFlowApp):
         return mac, ip, tunnel_key, local_network_id
 
     def _get_vm_gateway_info(self, floatingip):
-        lport = self.db_store.get_local_port(floatingip.get_lport_id())
-        lrouter = self.db_store.get_router(floatingip.get_lrouter_id())
+        lport = self.db_store.get(self.db_store.local_ports,
+                                  floatingip.get_lport_id())
+        lrouter = self.db_store.get(self.db_store.lrouter,
+                                    floatingip.get_lrouter_id())
         for router_port in lrouter.get_ports():
             if router_port.get_lswitch_id() == lport.get_lswitch_id():
                 return router_port.get_mac()

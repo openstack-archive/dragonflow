@@ -103,10 +103,10 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_secgroup = self._get_mock_secgroup(secgroup_id, rules)
         self.controller._add_new_security_group(mock_secgroup)
         mock_add.assert_called_once_with(mock_secgroup, rules[0])
-        sec_group = self.controller.db_store.get_security_group(secgroup_id)
+        sec_group = self.controller.db_store.get('secgroup', secgroup_id)
         self.assertIn(rules[0], sec_group.get_rules())
 
-    @mock.patch.object(db_store.DbStore, 'delete_security_group')
+    @mock.patch.object(db_store.DbStore, 'delete')
     @mock.patch.object(df_local_controller.DfLocalController,
                        '_delete_security_group_rule')
     def test_delete_old_security_group(self, mock_delete, mock_db_delete):
@@ -115,7 +115,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_secgroup = self._get_mock_secgroup(secgroup_id, rules)
         self.controller._delete_old_security_group(mock_secgroup)
         mock_delete.assert_called_once_with(mock_secgroup, rules[0])
-        mock_db_delete.assert_called_once_with(secgroup_id)
+        mock_db_delete.assert_called_once_with('secgroup', secgroup_id)
 
     @mock.patch.object(df_local_controller.DfLocalController,
                        '_delete_security_group_rule')
@@ -166,7 +166,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
     @mock.patch.object(df_local_controller.DfLocalController,
                        '_associate_floatingip')
     @mock.patch.object(db_store.DbStore, 'get_floatingip')
-    @mock.patch.object(db_store.DbStore, 'get_local_port')
+    @mock.patch.object(db_store.DbStore, 'get')
     def test_floatingip_updated(self, mock_get_lport, mock_get_fip,
                                 mock_assoc, mock_is_valid, mock_update):
         lport_id = 'fake_lport_id'
@@ -174,7 +174,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         fip = self._get_mock_floatingip(lport_id, fip_id)
         mock_get_lport.return_value = None
         self.assertIsNone(self.controller.floatingip_updated(fip))
-        mock_get_lport.assert_called_once_with(lport_id)
+        mock_get_lport.assert_called_once_with('local_ports', lport_id)
 
         mock_get_fip.return_value = None
         fip.get_lport_id.return_value = None
@@ -262,8 +262,8 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.controller.ovs_sync_started()
         mock_notify.assert_called_once()
 
-    @mock.patch.object(db_store.DbStore, 'get_lswitch')
-    @mock.patch.object(db_store.DbStore, 'del_lswitch')
+    @mock.patch.object(db_store.DbStore, 'get')
+    @mock.patch.object(db_store.DbStore, 'del')
     @mock.patch.object(ryu_base_app.RyuDFAdapter,
                        'notify_remove_logical_switch')
     def test_logical_switch_deleted(self, mock_notify_remove,
@@ -278,9 +278,9 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_notify_remove.mock_reset()
         mock_get_lswitch.return_value = lswitch
         self.controller.logical_switch_deleted(lswitch_id)
-        mock_get_lswitch.assert_called_with(lswitch_id)
+        mock_get_lswitch.assert_called_with('lswitch', lswitch_id)
         mock_notify_remove.assert_called_with(lswitch)
-        mock_del_lswitch.assert_called_with(lswitch_id)
+        mock_del_lswitch.assert_called_with('lswitch', lswitch_id)
 
     def test_logical_port_updated(self):
         lport = mock.Mock()

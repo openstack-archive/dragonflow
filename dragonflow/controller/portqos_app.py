@@ -82,13 +82,15 @@ class PortQosApp(df_base_app.DFlowApp):
         self.vswitch_api.delete_port_qos_and_queue(lport.get_id())
 
     def update_qos_policy(self, qos):
-        local_ports = self.db_store.get_local_ports(qos.get_topic())
+        local_ports = self.db_store.values(
+            self.db_store.local_ports, qos.get_topic())
         for port in local_ports:
             if port.get_qos_policy_id() == qos.get_id():
                 self._update_local_port_qos(port.get_id(), qos)
 
     def delete_qos_policy(self, qos):
-        local_ports = self.db_store.get_local_ports(qos.get_topic())
+        local_ports = self.db_store.values(
+            self.db_store.local_ports, qos.get_topic())
         for port in local_ports:
             if port.get_qos_policy_id() == qos.get_id():
                 self.vswitch_api.clear_port_qos(port.get_id())

@@ -25,22 +25,24 @@ class TestDbStore(tests_base.BaseTestCase):
         self.db_store = db_store.DbStore()
 
     def test_lswitch(self):
-        self.db_store.set_lswitch('id1', 'value1', 'topic1')
-        self.db_store.set_lswitch('id2', 'value2', 'topic2')
-        self.db_store.set_lswitch('id3', 'value3', 'topic2')
-        self.assertEqual('value1', self.db_store.get_lswitch('id1'))
-        self.assertEqual('value2', self.db_store.get_lswitch('id2'))
+        self.db_store.set(self.db_store.lswitch, 'id1', 'value1', 'topic1')
+        self.db_store.set(self.db_store.lswitch, 'id2', 'value2', 'topic2')
+        self.db_store.set(self.db_store.lswitch, 'id3', 'value3', 'topic2')
+        self.assertEqual('value1', self.db_store.get(
+            self.db_store.lswitch, 'id1'))
+        self.assertEqual('value2', self.db_store.get(
+            self.db_store.lswitch, 'id2'))
         self.assertEqual(
             'value1',
-            self.db_store.get_lswitch('id1', 'topic1'),
+            self.db_store.get(self.db_store.lswitch, 'id1', 'topic1'),
         )
-        lswitchs = self.db_store.get_lswitchs()
-        lswitchs_topic2 = self.db_store.get_lswitchs('topic2')
+        lswitchs = self.db_store.values(self.db_store.lswitch)
+        lswitchs_topic2 = self.db_store.values(self.db_store.lswitch, 'topic2')
         self.assertEqual({'value1', 'value2', 'value3'}, set(lswitchs))
         self.assertIn('value2', lswitchs_topic2)
         self.assertIn('value3', lswitchs_topic2)
-        self.db_store.del_lswitch('id3', 'topic2')
-        self.assertIsNone(self.db_store.get_lswitch('id3'))
+        self.db_store.delete(self.db_store.lswitch, 'id3', 'topic2')
+        self.assertIsNone(self.db_store.get(self.db_store.lswitch, 'id3'))
 
     def test_port(self):
         port1 = mock.Mock()
@@ -54,27 +56,28 @@ class TestDbStore(tests_base.BaseTestCase):
         self.db_store.set_port('id2', port2, False, 'topic2')
         self.db_store.set_port('id3', port3, False, 'topic2')
         self.db_store.set_port('id4', port4, True, 'topic2')
-        port_keys = self.db_store.get_port_keys()
-        port_keys_topic2 = self.db_store.get_port_keys('topic2')
+        port_keys = self.db_store.keys(self.db_store.lport)
+        port_keys_topic2 = self.db_store.keys(self.db_store.lport, 'topic2')
         self.assertEqual({'id1', 'id2', 'id3', 'id4'}, set(port_keys))
         self.assertIn('id2', port_keys_topic2)
         self.assertIn('id3', port_keys_topic2)
-        ports = self.db_store.get_ports()
-        ports_topic2 = self.db_store.get_ports('topic2')
+        ports = self.db_store.values(self.db_store.lport)
+        ports_topic2 = self.db_store.values(self.db_store.lport, 'topic2')
         self.assertEqual({port1, port2, port3, port4}, set(ports))
         self.assertIn(port2, ports_topic2)
         self.assertIn(port3, ports_topic2)
-        self.assertEqual(port1, self.db_store.get_port('id1'))
-        self.assertEqual(port2, self.db_store.get_port('id2'))
+        self.assertEqual(port1, self.db_store.get(self.db_store.lport, 'id1'))
+        self.assertEqual(port2, self.db_store.get(self.db_store.lport, 'id2'))
         self.assertEqual(
             port1,
-            self.db_store.get_port('id1', 'topic1'),
+            self.db_store.get(self.db_store.lport, 'id1', 'topic1'),
         )
-        self.assertIsNone(self.db_store.get_local_port('id1'))
-        self.assertIsNone(self.db_store.get_local_port('id2', 'topic2'))
+        self.assertIsNone(self.db_store.get(self.db_store.local_ports, 'id1'))
+        self.assertIsNone(self.db_store.get(
+            self.db_store.local_ports, 'id2', 'topic2'))
         self.assertEqual(
             port4,
-            self.db_store.get_local_port('id4', 'topic2')
+            self.db_store.get(self.db_store.local_ports, 'id4', 'topic2')
         )
         self.assertEqual(
             port4,
@@ -82,17 +85,17 @@ class TestDbStore(tests_base.BaseTestCase):
         )
         self.db_store.delete_port('id4', True, 'topic2')
         self.assertIsNone(
-            self.db_store.get_local_port('id4', 'topic2')
+            self.db_store.get(self.db_store.local_ports, 'id4', 'topic2')
         )
         self.assertIsNone(
-            self.db_store.get_port('id4', 'topic2')
+            self.db_store.get(self.db_store.lport, 'id4', 'topic2')
         )
         self.assertEqual(
             {port2, port3},
             set(self.db_store.get_ports_by_network_id('net1'))
         )
         self.db_store.delete_port('id3', False, 'topic2')
-        self.assertIsNone(self.db_store.get_port('id3'))
+        self.assertIsNone(self.db_store.get(self.db_store.lport, 'id3'))
 
     def test_router(self):
         router1 = mock.Mock()
@@ -103,20 +106,24 @@ class TestDbStore(tests_base.BaseTestCase):
         router2.get_ports.return_value = [mock.Mock()]
         router3 = mock.Mock()
         router3.get_ports.return_value = [mock.Mock(), mock.Mock()]
-        self.db_store.update_router('id1', router1, 'topic1')
-        self.db_store.update_router('id2', router2, 'topic2')
-        self.db_store.update_router('id3', router3, 'topic2')
-        self.assertEqual(router1, self.db_store.get_router('id1'))
-        self.assertEqual(router2, self.db_store.get_router('id2'))
+        self.db_store.set(self.db_store.lrouter, 'id1', router1, 'topic1')
+        self.db_store.set(self.db_store.lrouter, 'id2', router2, 'topic2')
+        self.db_store.set(self.db_store.lrouter, 'id3', router3, 'topic2')
+        self.assertEqual(router1, self.db_store.get(
+            self.db_store.lrouter, 'id1'))
+        self.assertEqual(router2, self.db_store.get(
+            self.db_store.lrouter, 'id2'))
         self.assertEqual(
             router1,
-            self.db_store.get_router('id1', 'topic1'),
+            self.db_store.get(self.db_store.lrouter, 'id1', 'topic1'),
         )
-        self.assertIn(router2, self.db_store.get_routers('topic2'))
-        self.assertIn(router3, self.db_store.get_routers('topic2'))
+        self.assertIn(router2, self.db_store.values(
+            self.db_store.lrouter, 'topic2'))
+        self.assertIn(router3, self.db_store.values(
+            self.db_store.lrouter, 'topic2'))
         self.assertEqual(
             {router1, router2, router3},
-            set(self.db_store.get_routers()),
+            set(self.db_store.values(self.db_store.lrouter)),
         )
         self.assertEqual(
             router1,
@@ -124,34 +131,35 @@ class TestDbStore(tests_base.BaseTestCase):
                 '12:34:56:78:90:ab'
             )
         )
-        self.db_store.delete_router('id3', 'topic2')
-        self.assertIsNone(self.db_store.get_router('id3'))
+        self.db_store.delete(self.db_store.lrouter, 'id3', 'topic2')
+        self.assertIsNone(self.db_store.get(self.db_store.lrouter, 'id3'))
 
     def test_security_group(self):
         sg1 = 'sg1'
         sg2 = 'sg2'
         sg3 = 'sg3'
-        self.db_store.update_security_group('id1', sg1, 'topic1')
-        self.db_store.update_security_group('id2', sg2, 'topic2')
-        self.db_store.update_security_group('id3', sg3, 'topic2')
-        self.assertEqual(sg1, self.db_store.get_security_group('id1'))
-        self.assertEqual(sg2, self.db_store.get_security_group('id2'))
+        self.db_store.set(self.db_store.secgroup, 'id1', sg1, 'topic1')
+        self.db_store.set(self.db_store.secgroup, 'id2', sg2, 'topic2')
+        self.db_store.set(self.db_store.secgroup, 'id3', sg3, 'topic2')
+        self.assertEqual(sg1, self.db_store.get(self.db_store.secgroup, 'id1'))
+        self.assertEqual(sg2, self.db_store.get(self.db_store.secgroup, 'id2'))
         self.assertEqual(
             sg3,
-            self.db_store.get_security_group('id3', 'topic2')
+            self.db_store.get(self.db_store.secgroup, 'id3', 'topic2')
         )
-        sg_keys = self.db_store.get_security_group_keys()
-        sg_keys_topic2 = self.db_store.get_security_group_keys('topic2')
-        sgs = self.db_store.get_security_groups()
-        sgs_topic2 = self.db_store.get_security_groups('topic2')
+        sg_keys = self.db_store.keys(self.db_store.secgroup)
+        sg_keys_topic2 = self.db_store.keys(self.db_store.secgroup, 'topic2')
+        sgs = self.db_store.values(self.db_store.secgroup)
+        sgs_topic2 = self.db_store.values(self.db_store.secgroup, 'topic2')
         self.assertEqual({'id1', 'id2', 'id3'}, set(sg_keys))
         self.assertIn('id2', sg_keys_topic2)
         self.assertIn('id3', sg_keys_topic2)
         self.assertEqual({sg1, sg2, sg3}, set(sgs))
         self.assertIn(sg2, sgs_topic2)
         self.assertIn(sg3, sgs_topic2)
-        self.db_store.delete_security_group('id3', 'topic2')
-        self.assertIsNone(self.db_store.get_security_group('id3', 'topic2'))
+        self.db_store.delete(self.db_store.secgroup, 'id3', 'topic2')
+        self.assertIsNone(self.db_store.get(
+            self.db_store.secgroup, 'id3', 'topic2'))
 
     def test_floating_ip(self):
         fip1 = 'fip1'

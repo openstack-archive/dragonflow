@@ -183,7 +183,7 @@ class Topology(object):
         self.ovs_to_lport_mapping[ovs_port_id] = {'lport_id': lport_id,
                                                   'topic': topic}
 
-        cached_lport = self.db_store.get_port(lport_id)
+        cached_lport = self.db_store.get(self.db_store.lport, lport_id)
         if not cached_lport or not cached_lport.get_external_value("ofport"):
             # If the logical port is not in db store or its ofport is not
             # valid. It has not been applied to dragonflow apps. We need to
@@ -208,7 +208,7 @@ class Topology(object):
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.get_id()
         lport_id = ovs_port.get_iface_id()
-        lport = self.db_store.get_port(lport_id)
+        lport = self.db_store.get(self.db_store.lport, lport_id)
         if lport is None:
             lport = self.ovs_to_lport_mapping.get(ovs_port_id)
             if lport is None:
@@ -267,7 +267,7 @@ class Topology(object):
         df_db_objects_refresh.clear_local_cache({tenant_id})
 
     def _get_lport(self, port_id, topic=None):
-        lport = self.db_store.get_port(port_id)
+        lport = self.db_store.get(self.db_store.lport, port_id)
         if lport is None:
             lport = self.nb_api.get_logical_port(port_id, topic)
 

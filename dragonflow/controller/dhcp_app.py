@@ -109,7 +109,7 @@ class DHCPApp(df_base_app.DFlowApp):
                     {'port_id': lport_id,
                     'time': self.block_hard_timeout})
             return
-        lport = self.db_store.get_port(lport_id)
+        lport = self.db_store.get(self.db_store.lport, lport_id)
         if lport is None:
             LOG.error(
                 _LE("No lport found for tunnel_id %s for dhcp req"),
@@ -316,7 +316,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def _get_subnet_by_port(self, lport):
         l_switch_id = lport.get_lswitch_id()
-        l_switch = self.db_store.get_lswitch(l_switch_id)
+        l_switch = self.db_store.get(self.db_store.lswitch, l_switch_id)
         subnets = l_switch.get_subnets()
         subnet_id = lport.get_subnets()[0]
         for subnet in subnets:
@@ -326,7 +326,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def _get_lswitch_by_port(self, lport):
         l_switch_id = lport.get_lswitch_id()
-        l_switch = self.db_store.get_lswitch(l_switch_id)
+        l_switch = self.db_store.get(self.db_store.lswitch, l_switch_id)
         return l_switch
 
     def _get_dhcp_server_address(self, subnet):
@@ -551,14 +551,14 @@ class DHCPApp(df_base_app.DFlowApp):
     def _install_dhcp_flow_for_vm_in_subnet(self, subnet_id):
         local_ports = self.subnet_vm_port_map[subnet_id]
         for p_id in local_ports:
-            port = self.db_store.get_local_port(p_id)
+            port = self.db_store.get(self.db_store.local_ports, p_id)
             if port:
                 self._install_dhcp_flow_for_vm_port(port)
 
     def _uninstall_dhcp_flow_for_vm_in_subnet(self, subnet_id):
         local_ports = self.subnet_vm_port_map[subnet_id]
         for p_id in local_ports:
-            port = self.db_store.get_local_port(p_id)
+            port = self.db_store.get(self.db_store.local_ports, p_id)
             if port:
                 self._uninstall_dhcp_flow_for_vm_port(port)
 

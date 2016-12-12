@@ -177,23 +177,24 @@ class DfLocalController(object):
                 return
 
     def logical_switch_updated(self, lswitch):
-        old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
+        old_lswitch = self.db_store.get(
+            self.db_store.lswitch, lswitch.get_id())
         if not self._is_valid_version(old_lswitch, lswitch):
             return
 
         LOG.info(_LI("Adding/Updating Logical Switch = %s"), lswitch)
-        self.db_store.set_lswitch(lswitch.get_id(), lswitch)
+        self.db_store.set(self.db_store.lswitch, lswitch.get_id(), lswitch)
         self.open_flow_app.notify_update_logical_switch(lswitch)
 
     def logical_switch_deleted(self, lswitch_id):
-        lswitch = self.db_store.get_lswitch(lswitch_id)
+        lswitch = self.db_store.get(self.db_store.lswitch, lswitch_id)
         LOG.info(_LI("Removing Logical Switch = %s") % lswitch_id)
         if lswitch is None:
             LOG.warning(_LW("Try to delete a nonexistent lswitch(%s)") %
                         lswitch_id)
             return
         self.open_flow_app.notify_remove_logical_switch(lswitch)
-        self.db_store.del_lswitch(lswitch_id)
+        self.db_store.delete(self.db_store.lswitch, lswitch_id)
 
     def _is_physical_chassis(self, chassis):
         if not chassis or chassis == constants.DRAGONFLOW_VIRTUAL_PORT:
@@ -214,7 +215,8 @@ class DfLocalController(object):
             return False
 
     def _logical_port_process(self, lport, original_lport=None):
-        lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
+        lswitch = self.db_store.get(
+            self.db_store.lswitch, lport.get_lswitch_id())
         if not lswitch:
             LOG.warning(_LW("Could not find lswitch for lport: %s"),
                         lport.get_id())
@@ -301,7 +303,7 @@ class DfLocalController(object):
             LOG.debug(("Port %s has not been bound or it is a vPort") %
                       lport.get_id())
             return
-        original_lport = self.db_store.get_port(lport.get_id())
+        original_lport = self.db_store.get(self.db_store.lport, lport.get_id())
         if original_lport and not original_lport.get_external_value("ofport"):
             original_lport = None
         if not original_lport:
@@ -320,7 +322,7 @@ class DfLocalController(object):
         self._logical_port_process(lport, original_lport)
 
     def logical_port_deleted(self, lport_id):
-        lport = self.db_store.get_port(lport_id)
+        lport = self.db_store.get(self.db_store.lport, lport_id)
         if lport is None:
             return
         if lport.get_external_value('is_local'):
@@ -343,24 +345,26 @@ class DfLocalController(object):
         self.open_flow_app.notify_update_bridge_port(lport)
 
     def router_updated(self, lrouter):
-        old_lrouter = self.db_store.get_router(lrouter.get_id())
+        old_lrouter = self.db_store.get(
+            self.db_store.lrouter, lrouter.get_id())
         if not self._is_valid_version(old_lrouter, lrouter):
             return
         self.open_flow_app.notify_update_router(lrouter, old_lrouter)
-        self.db_store.update_router(lrouter.get_id(), lrouter)
+        self.db_store.set(self.db_store.lrouter, lrouter.get_id(), lrouter)
 
     def router_deleted(self, lrouter_id):
-        router = self.db_store.get_router(lrouter_id)
+        router = self.db_store.get(self.db_store.lrouter, lrouter_id)
         if router is None:
             LOG.warning(_LW("Try to delete a nonexistent router(%s)"),
                         lrouter_id)
             return
         LOG.info(_LI("Removing router = %s"), lrouter_id)
         self.open_flow_app.notify_delete_router(router)
-        self.db_store.delete_router(lrouter_id)
+        self.db_store.delete(self.db_store.lrouter, lrouter_id)
 
     def security_group_updated(self, secgroup):
-        old_secgroup = self.db_store.get_security_group(secgroup.get_id())
+        old_secgroup = self.db_store.get(
+            self.db_store.secgroup, secgroup.get_id())
         if old_secgroup is None:
             LOG.info(_LI("Security Group created = %s") %
                      secgroup)
@@ -369,10 +373,10 @@ class DfLocalController(object):
         if not self._is_valid_version(old_secgroup, secgroup):
             return
         self._update_security_group_rules(old_secgroup, secgroup)
-        self.db_store.update_security_group(secgroup.get_id(), secgroup)
+        self.db_store.set(self.db_store.secgroup, secgroup.get_id(), secgroup)
 
     def security_group_deleted(self, secgroup_id):
-        old_secgroup = self.db_store.get_security_group(secgroup_id)
+        old_secgroup = self.db_store.get(self.db_store.secgroup, secgroup_id)
         if old_secgroup is None:
             return
         self._delete_old_security_group(old_secgroup)
@@ -465,12 +469,12 @@ class DfLocalController(object):
     def _add_new_security_group(self, secgroup):
         for new_rule in secgroup.get_rules():
             self._add_new_security_group_rule(secgroup, new_rule)
-        self.db_store.update_security_group(secgroup.get_id(), secgroup)
+        self.db_store.set(self.db_store.secgroup, secgroup.get_id(), secgroup)
 
     def _delete_old_security_group(self, secgroup):
         for rule in secgroup.get_rules():
             self._delete_security_group_rule(secgroup, rule)
-        self.db_store.delete_security_group(secgroup.get_id())
+        self.db_store.delete(self.db_store.secgroup, secgroup.get_id())
 
     def _add_new_security_group_rule(self, secgroup, secgroup_rule):
         LOG.info(_LI("Adding new secgroup rule = %s") %
@@ -487,7 +491,8 @@ class DfLocalController(object):
     def floatingip_updated(self, floatingip):
         # check whether this floatingip is associated with a lport or not
         if floatingip.get_lport_id():
-            if self.db_store.get_local_port(floatingip.get_lport_id()) is None:
+            if self.db_store.get(self.db_store.local_ports,
+                                 floatingip.get_lport_id()) is None:
                 return
 
         old_floatingip = self.db_store.get_floatingip(floatingip.get_id())

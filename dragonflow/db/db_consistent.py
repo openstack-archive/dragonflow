@@ -180,16 +180,16 @@ class DBConsistencyManager(object):
         local_objects = []
         if table == models.LogicalSwitch.table_name:
             df_objects = self.nb_api.get_all_logical_switches(topic)
-            local_objects = self.db_store.get_lswitchs(topic)
+            local_objects = self.db_store.values(self.db_store.lswitch, topic)
         elif table == models.LogicalPort.table_name:
             df_objects = self.nb_api.get_all_logical_ports(topic)
-            local_objects = self.db_store.get_ports(topic)
+            local_objects = self.db_store.values(self.db_store.lport, topic)
         elif table == models.LogicalRouter.table_name:
             df_objects = self.nb_api.get_routers(topic)
-            local_objects = self.db_store.get_routers(topic)
+            local_objects = self.db_store.values(self.db_store.lrouter, topic)
         elif table == models.SecurityGroup.table_name:
             df_objects = self.nb_api.get_security_groups(topic)
-            local_objects = self.db_store.get_security_groups(topic)
+            local_objects = self.db_store.values(self.db_store.secgroup, topic)
         elif table == models.Floatingip.table_name:
             df_objects = self.nb_api.get_floatingips(topic)
             local_objects = self.db_store.get_floatingips(topic)
