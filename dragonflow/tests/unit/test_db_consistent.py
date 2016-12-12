@@ -58,36 +58,36 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.LogicalSwitch.table_name, True)
-        self.controller.logical_switch_updated.assert_any_call(df_obj1)
-        self.controller.logical_switch_updated.assert_any_call(df_obj2)
-        self.controller.logical_switch_deleted.assert_any_call(
+        self.controller.update_lswitch.assert_any_call(df_obj1)
+        self.controller.update_lswitch.assert_any_call(df_obj2)
+        self.controller.delete_lswitch.assert_any_call(
                 self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.LogicalPort.table_name, True)
-        self.controller.logical_port_updated.assert_any_call(df_obj1)
-        self.controller.logical_port_updated.assert_any_call(df_obj2)
-        self.controller.logical_port_deleted.assert_any_call(
+        self.controller.update_lport.assert_any_call(df_obj1)
+        self.controller.update_lport.assert_any_call(df_obj2)
+        self.controller.delete_lport.assert_any_call(
                 self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.LogicalRouter.table_name, True)
-        self.controller.router_updated.assert_any_call(df_obj1)
-        self.controller.router_updated.assert_any_call(df_obj2)
-        self.controller.router_deleted.assert_any_call(self.lport_id3)
+        self.controller.update_lrouter.assert_any_call(df_obj1)
+        self.controller.update_lrouter.assert_any_call(df_obj2)
+        self.controller.delete_lrouter.assert_any_call(self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.SecurityGroup.table_name, True)
-        self.controller.security_group_updated.assert_any_call(df_obj1)
-        self.controller.security_group_updated.assert_any_call(df_obj2)
-        self.controller.security_group_deleted.assert_any_call(
+        self.controller.update_secgroup.assert_any_call(df_obj1)
+        self.controller.update_secgroup.assert_any_call(df_obj2)
+        self.controller.delete_secgroup.assert_any_call(
                 self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.Floatingip.table_name, True)
-        self.controller.floatingip_updated.assert_any_call(df_obj1)
-        self.controller.floatingip_updated.assert_any_call(df_obj2)
-        self.controller.floatingip_deleted.assert_any_call(
+        self.controller.update_floatingip.assert_any_call(df_obj1)
+        self.controller.update_floatingip.assert_any_call(df_obj2)
+        self.controller.delete_floatingip.assert_any_call(
                 self.lport_id3)
 
 

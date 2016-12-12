@@ -146,9 +146,9 @@ class Topology(object):
         for lport in lports:
             try:
                 if action == "set":
-                    self.controller.logical_port_updated(lport)
+                    self.controller.update_lport(lport)
                 else:
-                    self.controller.logical_port_deleted(lport.get_id())
+                    self.controller.delete_lport(lport.get_id())
             except Exception:
                 LOG.exception(_LE("Failed to process logical port"
                                   "when %(action)s tunnel %(lport)s")
@@ -190,7 +190,7 @@ class Topology(object):
             # update it in dragonflow controller.
             LOG.info(_LI("A local logical port(%s) is online"), lport)
             try:
-                self.controller.logical_port_updated(lport)
+                self.controller.update_lport(lport)
             except Exception:
                 LOG.exception(_LE('Failed to process logical port online '
                                   'event: %s'), lport)
@@ -222,7 +222,7 @@ class Topology(object):
 
         LOG.info(_LI("The logical port(%s) is offline") % str(lport))
         try:
-            self.controller.logical_port_deleted(lport_id)
+            self.controller.delete_lport(lport_id)
         except Exception:
             LOG.exception(_LE(
                 'Failed to process logical port offline event %s') % lport_id)
