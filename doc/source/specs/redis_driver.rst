@@ -173,8 +173,8 @@ Driver Subscriber thread is only one thread to do message dispatch according to 
 listen() is a generator that blocks until a message is available.
 
 
-Subscriber managment
---------------------
+Subscriber management
+---------------------
 This resubscription should be done only when connection to DB server is recovered.
 
 driver only does connection fix,throw exception when connection is recovered,
