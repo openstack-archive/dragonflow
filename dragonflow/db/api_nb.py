@@ -25,6 +25,7 @@ from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.common import utils as df_utils
+from dragonflow.controller import df_db_objects_refresh as obj_refresh
 from dragonflow.db import db_common
 from dragonflow.db import models as db_models
 
@@ -52,6 +53,16 @@ class NbApi(object):
         self.is_neutron_server = is_neutron_server
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
+        self._table_class_mapping = {
+            db_models.LogicalSwitch.table_name: db_models.LogicalSwitch,
+            db_models.LogicalPort.table_name: db_models.LogicalPort,
+            db_models.LogicalRouter.table_name: db_models.LogicalRouter,
+            db_models.Floatingip.table_name: db_models.Floatingip,
+            db_models.SecurityGroup.table_name: db_models.SecurityGroup,
+            db_models.Publisher.table_name: db_models.Publisher,
+            db_models.QosPolicy.table_name: db_models.QosPolicy,
+            db_models.Chassis.table_name: db_models.Chassis
+        }
 
     @staticmethod
     def get_instance(is_neutron_server):
@@ -196,6 +207,11 @@ class NbApi(object):
                     self.apply_db_change(None, None, 'sync', None)
             self._queue.task_done()
 
+    def _get_object_by_table(self, table, value):
+        if table in self._table_class_mapping:
+            return self._table_class_mapping[table](value)
+        return None
+
     def apply_db_change(self, table, key, action, value):
         # determine if the action is allowed or not
         if action not in DB_ACTION_LIST:
@@ -213,61 +229,11 @@ class NbApi(object):
             self.db_consistency_manager.process(False)
             return
 
-        if db_models.QosPolicy.table_name == table:
-            if action == 'set' or action == 'create':
-                qos = db_models.QosPolicy(value)
-                self.controller.update_qospolicy(qos)
-            elif action == 'delete':
-                qos_id = key
-                self.controller.delete_qospolicy(qos_id)
-        elif db_models.SecurityGroup.table_name == table:
-            if action == 'set' or action == 'create':
-                secgroup = db_models.SecurityGroup(value)
-                self.controller.update_secgroup(secgroup)
-            elif action == 'delete':
-                secgroup_id = key
-                self.controller.delete_secgroup(secgroup_id)
-        elif db_models.LogicalPort.table_name == table:
-            if action == 'set' or action == 'create':
-                lport = db_models.LogicalPort(value)
-                self.controller.update_lport(lport)
-            elif action == 'delete':
-                lport_id = key
-                self.controller.delete_lport(lport_id)
-        elif db_models.LogicalRouter.table_name == table:
-            if action == 'set' or action == 'create':
-                lrouter = db_models.LogicalRouter(value)
-                self.controller.update_lrouter(lrouter)
-            elif action == 'delete':
-                lrouter_id = key
-                self.controller.delete_lrouter(lrouter_id)
-        elif db_models.Chassis.table_name == table:
-            if action == 'set' or action == 'create':
-                chassis = db_models.Chassis(value)
-                self.controller.update_chassis(chassis)
-            elif action == 'delete':
-                chassis_id = key
-                self.controller.delete_chassis(chassis_id)
-        elif db_models.LogicalSwitch.table_name == table:
-            if action == 'set' or action == 'create':
-                lswitch = db_models.LogicalSwitch(value)
-                self.controller.update_lswitch(lswitch)
-            elif action == 'delete':
-                lswitch_id = key
-                self.controller.delete_lswitch(lswitch_id)
-        elif db_models.Floatingip.table_name == table:
-            if action == 'set' or action == 'create':
-                floatingip = db_models.Floatingip(value)
-                self.controller.update_floatingip(floatingip)
-            elif action == 'delete':
-                floatingip_id = key
-                self.controller.delete_floatingip(floatingip_id)
-        elif db_models.Publisher.table_name == table:
-            if action == 'set' or action == 'create':
-                publisher = db_models.Publisher(value)
-                self.controller.update_publisher(publisher)
-            elif action == 'delete':
-                self.controller.delete_publisher(key)
+        nb_object = self._get_object_by_table(table, value)
+        if nb_object:
+            obj_refresh.process_object(
+                self.controller, table, action, nb_object, key)
+
         elif 'ovsinterface' == table:
             if action == 'set' or action == 'create':
                 ovs_port = db_models.OvsPort(value)
