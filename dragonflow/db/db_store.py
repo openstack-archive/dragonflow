@@ -78,10 +78,18 @@ class DbStore(object):
 
     def __init__(self):
         self.tenant_dbs = collections.defaultdict(TenantDbStore)
-        self.chassis = {}
+        self.chassis_mapping = {}
         self.remote_chassis_lport_map = {}
+        self.chassis = models.Chassis.table_name
+        self.publisher = models.Publisher.table_name
+        self.lswitch = models.LogicalSwitch.table_name
+        self.lport = models.LogicalPort.table_name
+        self.lrouter = models.LogicalRouter.table_name
+        self.secgroup = models.SecurityGroup.table_name
+        self.floatingip = models.Floatingip.table_name
+        self.qospolicy = models.QosPolicy.table_name
 
-    def get(self, table_name, key, topic):
+    def get(self, table_name, key, topic=None):
         if topic:
             return self.tenant_dbs[topic].get(table_name, key)
         for tenant_db in six.itervalues(self.tenant_dbs):
@@ -89,7 +97,7 @@ class DbStore(object):
             if value:
                 return value
 
-    def keys(self, table_name, topic):
+    def keys(self, table_name, topic=None):
         if topic:
             return self.tenant_dbs[topic].keys(table_name)
         result = []
@@ -97,7 +105,7 @@ class DbStore(object):
             result.extend(tenant_db.keys(table_name))
         return result
 
-    def values(self, table_name, topic):
+    def values(self, table_name, topic=None):
         if topic:
             return self.tenant_dbs[topic].values(table_name)
         result = []
@@ -105,12 +113,12 @@ class DbStore(object):
             result.extend(tenant_db.values(table_name))
         return result
 
-    def set(self, table_name, key, value, topic):
+    def set(self, table_name, key, value, topic=None):
         if not topic:
             topic = value.get_topic()
         self.tenant_dbs[topic].set(table_name, key, value)
 
-    def delete(self, table_name, key, topic):
+    def delete(self, table_name, key, topic=None):
         if topic:
             self.tenant_dbs[topic].pop(table_name, key)
         else:
@@ -141,20 +149,8 @@ class DbStore(object):
     def del_remote_chassis(self, chassis):
         del self.remote_chassis_lport_map[chassis]
 
-    def set_lswitch(self, id, lswitch, topic=None):
-        self.set(models.LogicalSwitch.table_name, id, lswitch, topic)
-
-    def get_lswitch(self, id, topic=None):
-        return self.get(models.LogicalSwitch.table_name, id, topic)
-
-    def del_lswitch(self, id, topic=None):
-        self.delete(models.LogicalSwitch.table_name, id, topic)
-
     def get_port_keys(self, topic=None):
         return self.keys(models.LogicalPort.table_name, topic)
-
-    def get_lswitch_keys(self, topic=None):
-        return self.keys(models.LogicalSwitch.table_name, topic)
 
     def get_router_keys(self, topic=None):
         return self.keys(models.LogicalRouter.table_name, topic)
@@ -250,9 +246,6 @@ class DbStore(object):
     def get_security_group_keys(self, topic=None):
         return self.keys(models.SecurityGroup.table_name, topic)
 
-    def get_lswitchs(self, topic=None):
-        return self.values(models.LogicalSwitch.table_name, topic)
-
     def update_floatingip(self, floatingip_id, floatingip, topic=None):
         self.set(models.Floatingip.table_name,
                  floatingip_id, floatingip, topic)
@@ -330,10 +323,10 @@ class DbStore(object):
         self.delete(models.Publisher.table_name, uuid, topic)
 
     def update_chassis(self, chassis_id, chassis):
-        self.chassis[chassis_id] = chassis
+        self.chassis_mapping[chassis_id] = chassis
 
     def get_chassis(self, chassis_id):
-        return self.chassis.get(chassis_id)
+        return self.chassis_mapping.get(chassis_id)
 
     def delete_chassis(self, chassis_id):
-        self.chassis.pop(chassis_id, None)
+        self.chassis_mapping.pop(chassis_id, None)

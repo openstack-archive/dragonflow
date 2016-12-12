@@ -41,7 +41,7 @@ class TestDBConsistent(tests_base.BaseTestCase):
         local_obj2 = FakeDfLocalObj(self.lport_id3, 1)
 
         self.nb_api.get_all_logical_switches.return_value = [df_obj1, df_obj2]
-        self.db_store.get_lswitchs.return_value = [local_obj1, local_obj2]
+        self.db_store.values.return_value = [local_obj1, local_obj2]
 
         self.nb_api.get_all_logical_ports.return_value = [df_obj1, df_obj2]
         self.db_store.get_ports.return_value = [local_obj1, local_obj2]

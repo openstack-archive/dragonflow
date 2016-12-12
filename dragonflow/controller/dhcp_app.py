@@ -316,7 +316,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def _get_subnet_by_port(self, lport):
         l_switch_id = lport.get_lswitch_id()
-        l_switch = self.db_store.get_lswitch(l_switch_id)
+        l_switch = self.db_store.get(self.db_store.lswitch, l_switch_id)
         subnets = l_switch.get_subnets()
         subnet_id = lport.get_subnets()[0]
         for subnet in subnets:
@@ -326,7 +326,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def _get_lswitch_by_port(self, lport):
         l_switch_id = lport.get_lswitch_id()
-        l_switch = self.db_store.get_lswitch(l_switch_id)
+        l_switch = self.db_store.get(self.db_store.lswitch, l_switch_id)
         return l_switch
 
     def _get_dhcp_server_address(self, subnet):

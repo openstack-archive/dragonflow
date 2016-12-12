@@ -76,7 +76,7 @@ def initialize_object_refreshers(df_controller):
                                    df_controller.update_qospolicy,
                                    df_controller.delete_qospolicy))
     items.append(DfObjectRefresher('Switches',
-                                   db_store.get_lswitch_keys,
+                                   db_store.keys(db_store.lswitch),
                                    nb_api.get_all_logical_switches,
                                    df_controller.update_lswitch,
                                    df_controller.delete_lswitch))

@@ -25,22 +25,24 @@ class TestDbStore(tests_base.BaseTestCase):
         self.db_store = db_store.DbStore()
 
     def test_lswitch(self):
-        self.db_store.set_lswitch('id1', 'value1', 'topic1')
-        self.db_store.set_lswitch('id2', 'value2', 'topic2')
-        self.db_store.set_lswitch('id3', 'value3', 'topic2')
-        self.assertEqual('value1', self.db_store.get_lswitch('id1'))
-        self.assertEqual('value2', self.db_store.get_lswitch('id2'))
+        self.db_store.set(self.db_store.lswitch, 'id1', 'value1', 'topic1')
+        self.db_store.set(self.db_store.lswitch, 'id2', 'value2', 'topic2')
+        self.db_store.set(self.db_store.lswitch, 'id3', 'value3', 'topic2')
+        self.assertEqual('value1', self.db_store.get(
+            self.db_store.lswitch, 'id1'))
+        self.assertEqual('value2', self.db_store.get(
+            self.db_store.lswitch, 'id2'))
         self.assertEqual(
             'value1',
-            self.db_store.get_lswitch('id1', 'topic1'),
+            self.db_store.get(self.db_store.lswitch, 'id1', 'topic1'),
         )
-        lswitchs = self.db_store.get_lswitchs()
-        lswitchs_topic2 = self.db_store.get_lswitchs('topic2')
+        lswitchs = self.db_store.values(self.db_store.lswitch)
+        lswitchs_topic2 = self.db_store.values(self.db_store.lswitch, 'topic2')
         self.assertEqual({'value1', 'value2', 'value3'}, set(lswitchs))
         self.assertIn('value2', lswitchs_topic2)
         self.assertIn('value3', lswitchs_topic2)
-        self.db_store.del_lswitch('id3', 'topic2')
-        self.assertIsNone(self.db_store.get_lswitch('id3'))
+        self.db_store.delete(self.db_store.lswitch, 'id3', 'topic2')
+        self.assertIsNone(self.db_store.get(self.db_store.lswitch, 'id3'))
 
     def test_port(self):
         port1 = mock.Mock()

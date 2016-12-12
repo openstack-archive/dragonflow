@@ -152,7 +152,7 @@ class DBConsistencyManager(object):
         local_objects = []
         if table == models.LogicalSwitch.table_name:
             df_objects = self.nb_api.get_all_logical_switches(topic)
-            local_objects = self.db_store.get_lswitchs(topic)
+            local_objects = self.db_store.values(self.db_store.lswitch, topic)
         elif table == models.LogicalPort.table_name:
             df_objects = self.nb_api.get_all_logical_ports(topic)
             local_objects = self.db_store.get_ports(topic)
