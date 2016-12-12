@@ -113,19 +113,19 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
     def test_add_delete_lport(self):
         # create fake security group
-        self.controller.security_group_updated(self.security_group)
+        self.controller.update_secgroup(self.security_group)
         self.mock_mod_flow.assert_not_called()
 
         # add remote port before adding any local port
-        self.controller.logical_port_updated(self.fake_remote_lport)
+        self.controller.update_lport(self.fake_remote_lport)
         self.mock_mod_flow.assert_not_called()
 
         # remove remote port before adding any local port
-        self.controller.logical_port_deleted(self.fake_remote_lport.get_id())
+        self.controller.delete_lport(self.fake_remote_lport.get_id())
         self.mock_mod_flow.assert_not_called()
 
         # add local port one
-        self.controller.logical_port_updated(self.fake_local_lport)
+        self.controller.update_lport(self.fake_local_lport)
         # add flows:
         # 1. a flow in ingress conntrack table
         # 2. a associating flow in ingress secgroup table
@@ -140,7 +140,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # add local port two
         fake_local_lport2 = self._get_another_local_lport()
-        self.controller.logical_port_updated(fake_local_lport2)
+        self.controller.update_lport(fake_local_lport2)
         # add flows:
         # 1. a flow in ingress conntrack table
         # 2. a associating flow in ingress secgroup table
@@ -152,7 +152,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # remove local port two
-        self.controller.logical_port_deleted(fake_local_lport2.get_id())
+        self.controller.delete_lport(fake_local_lport2.get_id())
         # remove flows:
         # 1. a flow in ingress conntrack table
         # 2. a associating flow in ingress secgroup table
@@ -164,7 +164,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # add remote port after adding a local port
-        self.controller.logical_port_updated(self.fake_remote_lport)
+        self.controller.update_lport(self.fake_remote_lport)
         # add flows:
         # 1. a ingress rule flow (caused by IP addresses represent
         # remote_group_id changed) in ingress secgroup table
@@ -172,7 +172,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # remove remote port after adding a local port
-        self.controller.logical_port_deleted(self.fake_remote_lport.get_id())
+        self.controller.delete_lport(self.fake_remote_lport.get_id())
         # remove flows:
         # 1. a ingress rule flow (caused by IP addresses represent
         # remote_group_id changed) in ingress secgroup table
@@ -180,7 +180,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # remove local port one
-        self.controller.logical_port_deleted(self.fake_local_lport.get_id())
+        self.controller.delete_lport(self.fake_local_lport.get_id())
         # remove flows:
         # 1. a flow in ingress conntrack table
         # 2. a associating flow in ingress secgroup table
@@ -196,22 +196,22 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # delete fake security group
-        self.controller.security_group_deleted(self.security_group.get_id())
+        self.controller.delete_secgroup(self.security_group.get_id())
         self.mock_mod_flow.assert_not_called()
 
     def test_update_lport(self):
         # create fake security group
-        self.controller.security_group_updated(self.security_group)
+        self.controller.update_secgroup(self.security_group)
 
         # add local port
         fake_local_lport = self._get_another_local_lport()
         fake_local_lport_version = fake_local_lport.inner_obj['version']
-        self.controller.logical_port_updated(fake_local_lport)
+        self.controller.update_lport(fake_local_lport)
         self.mock_mod_flow.reset_mock()
 
         # create another fake security group
         fake_security_group2 = self._get_another_security_group()
-        self.controller.security_group_updated(fake_security_group2)
+        self.controller.update_secgroup(fake_security_group2)
 
         # update the association of the lport to a new security group
         fake_local_lport = self._get_another_local_lport()
@@ -219,7 +219,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
             ['fake_security_group_id2']
         fake_local_lport_version += 1
         fake_local_lport.inner_obj['version'] = fake_local_lport_version
-        self.controller.logical_port_updated(fake_local_lport)
+        self.controller.update_lport(fake_local_lport)
         # add flows:
         # 1. a associating flow in ingress secgroup table
         # 2. a associating flow in egress secgroup table
@@ -245,7 +245,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         fake_local_lport.inner_obj['security_groups'] = []
         fake_local_lport_version += 1
         fake_local_lport.inner_obj['version'] = fake_local_lport_version
-        self.controller.logical_port_updated(fake_local_lport)
+        self.controller.update_lport(fake_local_lport)
         # remove flows:
         # 1. a flow in ingress conntrack table
         # 2. a associating flow in ingress secgroup table
@@ -261,23 +261,23 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # remove local port
-        self.controller.logical_port_deleted(fake_local_lport.get_id())
+        self.controller.delete_lport(fake_local_lport.get_id())
 
         # delete fake security group
-        self.controller.security_group_deleted(self.security_group.get_id())
-        self.controller.security_group_deleted(fake_security_group2.get_id())
+        self.controller.delete_secgroup(self.security_group.get_id())
+        self.controller.delete_secgroup(fake_security_group2.get_id())
 
     def test_add_del_security_group_rule(self):
         # create another fake security group
         security_group = self._get_another_security_group()
         security_group_version = security_group.inner_obj['version']
-        self.controller.security_group_updated(security_group)
+        self.controller.update_secgroup(security_group)
 
         # add local port
         fake_local_lport = self._get_another_local_lport()
         fake_local_lport.inner_obj['security_groups'] = \
             ['fake_security_group_id2']
-        self.controller.logical_port_updated(fake_local_lport)
+        self.controller.update_lport(fake_local_lport)
         self.mock_mod_flow.reset_mock()
 
         # add a security group rule
@@ -295,7 +295,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
             "id": "fake_security_group_rule_5"})
         security_group_version += 1
         security_group.inner_obj['version'] = security_group_version
-        self.controller.security_group_updated(security_group)
+        self.controller.update_secgroup(security_group)
         # add flows:
         # 1. a egress rule flow in egress secgroup table
         self.assertEqual(1, self._get_call_count_of_add_flow())
@@ -305,18 +305,18 @@ class TestSGApp(test_app_base.DFAppTestBase):
         security_group = self._get_another_security_group()
         security_group_version += 1
         security_group.inner_obj['version'] = security_group_version
-        self.controller.security_group_updated(security_group)
+        self.controller.update_secgroup(security_group)
         # remove flows:
         # 1. a egress rule flow in egress secgroup table
         self.assertEqual(1, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
 
         # remove local ports
-        self.controller.logical_port_deleted(fake_local_lport.get_id())
+        self.controller.delete_lport(fake_local_lport.get_id())
         self.mock_mod_flow.reset_mock()
 
         # delete fake security group
-        self.controller.security_group_deleted(security_group.get_id())
+        self.controller.delete_secgroup(security_group.get_id())
 
     def test_aggregating_flows_for_addresses(self):
         # add one address
