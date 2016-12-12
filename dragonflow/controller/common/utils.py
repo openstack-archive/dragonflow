@@ -16,9 +16,25 @@ import struct
 
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as const
+from dragonflow.db import models
 
 UINT32_MAX = 0xffffffff
 _aging_cookie = 0
+
+table_class_mapping = {
+    models.LogicalSwitch.table_name: models.LogicalSwitch,
+    models.LogicalPort.table_name: models.LogicalPort,
+    models.LogicalRouter.table_name: models.LogicalRouter,
+    models.Floatingip.table_name: models.Floatingip,
+    models.SecurityGroup.table_name: models.SecurityGroup,
+    models.Publisher.table_name: models.Publisher,
+    models.QosPolicy.table_name: models.QosPolicy,
+    models.Chassis.table_name: models.Chassis
+}
+
+
+def get_class_by_table(table):
+    return table_class_mapping.get(table)
 
 
 def ipv4_text_to_int(ip_text):
