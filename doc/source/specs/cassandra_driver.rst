@@ -41,7 +41,7 @@ Besides performance, it also has many noticeable advantages such as
    like Hinted Handoff and Read Repair.
 #. Easy to Maintain: The control plane of the whole geographically-distributed
    data cluster is fully implemented without support of external applications.
-   It also provides an operation portal for daily maintainance.
+   It also provides an operation portal for daily maintenance.
 
 Currently, we implement control plane of clustering for Redis inside Dragonflow,
 which is actually beyond the scope of Dragonflow project. The reason why we
