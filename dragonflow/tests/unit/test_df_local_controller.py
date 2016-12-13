@@ -42,7 +42,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         ids = ['foo', 'bar']
         mock_ports = self._get_mock_ports(ids)
         self.controller.vswitch_api.get_tunnel_ports.return_value = mock_ports
-        self.controller.chassis_deleted(ids[0])
+        self.controller.delete_chassis(ids[0])
         self.controller.vswitch_api.get_tunnel_ports.assert_called_once_with()
         self.controller.vswitch_api.delete_port.assert_called_once_with(
             mock_ports[0])
@@ -51,7 +51,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_ports = self._get_mock_ports(['fake_chassis_id'])
         ids = [self.controller.chassis_name]
         mock_chassis = self._get_mock_chassis(ids)[0]
-        self.controller.chassis_updated(mock_chassis)
+        self.controller.update_chassis(mock_chassis)
         self.assertFalse(mock_ports[0].get_chassis_id.called)
         self.assertFalse(self.controller.vswitch_api.add_tunnel_port.called)
 
@@ -60,7 +60,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_ports = self._get_mock_ports(ids)
         self.controller.vswitch_api.get_tunnel_ports.return_value = mock_ports
         mock_chassis = self._get_mock_chassis(ids)[0]
-        self.controller.chassis_updated(mock_chassis)
+        self.controller.update_chassis(mock_chassis)
         mock_ports[0].get_chassis_id.assert_called_once_with()
         self.assertFalse(self.controller.vswitch_api.add_tunnel_port.called)
 
@@ -69,12 +69,12 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_chassis = mock.Mock()
         self.controller.vswitch_api.get_tunnel_ports.return_value = (
             self._get_mock_ports(ids))
-        self.controller.chassis_updated(mock_chassis)
+        self.controller.update_chassis(mock_chassis)
         self.controller.vswitch_api.add_tunnel_port.assert_called_once_with(
             mock_chassis)
 
     @mock.patch.object(df_local_controller.DfLocalController,
-                       'chassis_updated')
+                       'update_chassis')
     def test_create_tunnels(self, mock_create):
         shared = mock.Mock()
         port_ids = [shared, 'to_be_deleted']
@@ -85,7 +85,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.controller.nb_api.get_all_chassis.return_value = chassis
         self.controller.create_tunnels()
         self.nb_api.get_all_chassis.assert_called_once()
-        self.controller.chassis_updated.assert_called_once_with(chassis[2])
+        self.controller.update_chassis.assert_called_once_with(chassis[2])
         self.controller.vswitch_api.delete_port.assert_called_once_with(
             t_ports[1])
 
@@ -173,27 +173,27 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         fip_id = 'fake_fip_id'
         fip = self._get_mock_floatingip(lport_id, fip_id)
         mock_get_lport.return_value = None
-        self.assertIsNone(self.controller.floatingip_updated(fip))
+        self.assertIsNone(self.controller.update_floatingip(fip))
         mock_get_lport.assert_called_once_with(lport_id)
 
         mock_get_fip.return_value = None
         fip.get_lport_id.return_value = None
-        self.assertIsNone(self.controller.floatingip_updated(fip))
+        self.assertIsNone(self.controller.update_floatingip(fip))
         mock_get_fip.assert_called_once_with(fip_id)
 
         mock_get_lport.return_value = mock.Mock()
         fip.get_lport_id.return_value = lport_id
-        self.assertIsNone(self.controller.floatingip_updated(fip))
+        self.assertIsNone(self.controller.update_floatingip(fip))
         mock_assoc.assert_called_once_with(fip)
 
         old_fip = mock.Mock()
         mock_get_fip.return_value = old_fip
         mock_is_valid.return_value = False
-        self.assertIsNone(self.controller.floatingip_updated(fip))
+        self.assertIsNone(self.controller.update_floatingip(fip))
         mock_is_valid.assert_called_once()
 
         mock_is_valid.return_value = True
-        self.controller.floatingip_updated(fip)
+        self.controller.update_floatingip(fip)
         mock_update.assert_called_once_with(old_fip, fip)
 
     @mock.patch.object(ryu_base_app.RyuDFAdapter,
@@ -204,9 +204,9 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         lport_id = 'fake_lport_id'
         fip_id = 'fake_fip_id'
         fip = self._get_mock_floatingip(lport_id, fip_id)
-        self.assertIsNone(self.controller.floatingip_deleted(fip_id))
+        self.assertIsNone(self.controller.delete_floatingip(fip_id))
         mock_get_fip.return_value = fip
-        self.controller.floatingip_deleted(fip_id)
+        self.controller.delete_floatingip(fip_id)
         mock_notify.assert_called_once_with(fip)
 
     def _get_mock_publisher(self, uri, publisher_id):
@@ -272,12 +272,12 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         lswitch = 'theLswitch'
 
         mock_get_lswitch.return_value = None
-        self.controller.logical_switch_deleted(lswitch_id)
+        self.controller.delete_lswitch(lswitch_id)
         self.assertFalse(mock_notify_remove.called)
 
         mock_notify_remove.mock_reset()
         mock_get_lswitch.return_value = lswitch
-        self.controller.logical_switch_deleted(lswitch_id)
+        self.controller.delete_lswitch(lswitch_id)
         mock_get_lswitch.assert_called_with(lswitch_id)
         mock_notify_remove.assert_called_with(lswitch)
         mock_del_lswitch.assert_called_with(lswitch_id)
@@ -288,5 +288,5 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         lport.get_id.return_value = "lport-fake-id"
         lport.get_lswitch_id.return_value = "lport-fake-lswitch"
         lport.get_remote_vtep.return_value = False
-        self.controller.logical_port_updated(lport)
+        self.controller.update_lport(lport)
         lport.set_external_value.assert_not_called()
