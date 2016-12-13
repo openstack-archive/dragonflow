@@ -58,6 +58,7 @@ Specs
     ipv6
     service_function_chaining
     classification_app
+    nb_api_refactor
 
 Templates
 ---------
