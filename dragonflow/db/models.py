@@ -436,3 +436,19 @@ class OvsPort(object):
 
     def __str__(self):
         return str(self.ovs_port)
+
+
+table_class_mapping = {
+    LogicalSwitch.table_name: LogicalSwitch,
+    LogicalPort.table_name: LogicalPort,
+    LogicalRouter.table_name: LogicalRouter,
+    Floatingip.table_name: Floatingip,
+    SecurityGroup.table_name: SecurityGroup,
+    Publisher.table_name: Publisher,
+    QosPolicy.table_name: QosPolicy,
+    Chassis.table_name: Chassis
+}
+
+
+def get_class_by_table(table):
+    return table_class_mapping.get(table)
