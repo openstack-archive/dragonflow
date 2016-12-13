@@ -216,58 +216,58 @@ class NbApi(object):
         if db_models.QosPolicy.table_name == table:
             if action == 'set' or action == 'create':
                 qos = db_models.QosPolicy(value)
-                self.controller.qos_policy_updated(qos)
+                self.controller.update_qospolicy(qos)
             elif action == 'delete':
                 qos_id = key
-                self.controller.qos_policy_deleted(qos_id)
+                self.controller.delete_qospolicy(qos_id)
         elif db_models.SecurityGroup.table_name == table:
             if action == 'set' or action == 'create':
                 secgroup = db_models.SecurityGroup(value)
-                self.controller.security_group_updated(secgroup)
+                self.controller.update_secgroup(secgroup)
             elif action == 'delete':
                 secgroup_id = key
-                self.controller.security_group_deleted(secgroup_id)
+                self.controller.delete_secgroup(secgroup_id)
         elif db_models.LogicalPort.table_name == table:
             if action == 'set' or action == 'create':
                 lport = db_models.LogicalPort(value)
-                self.controller.logical_port_updated(lport)
+                self.controller.update_lport(lport)
             elif action == 'delete':
                 lport_id = key
-                self.controller.logical_port_deleted(lport_id)
+                self.controller.delete_lport(lport_id)
         elif db_models.LogicalRouter.table_name == table:
             if action == 'set' or action == 'create':
                 lrouter = db_models.LogicalRouter(value)
-                self.controller.router_updated(lrouter)
+                self.controller.update_lrouter(lrouter)
             elif action == 'delete':
                 lrouter_id = key
-                self.controller.router_deleted(lrouter_id)
+                self.controller.delete_lrouter(lrouter_id)
         elif db_models.Chassis.table_name == table:
             if action == 'set' or action == 'create':
                 chassis = db_models.Chassis(value)
-                self.controller.chassis_updated(chassis)
+                self.controller.update_chassis(chassis)
             elif action == 'delete':
                 chassis_id = key
-                self.controller.chassis_deleted(chassis_id)
+                self.controller.delete_chassis(chassis_id)
         elif db_models.LogicalSwitch.table_name == table:
             if action == 'set' or action == 'create':
                 lswitch = db_models.LogicalSwitch(value)
-                self.controller.logical_switch_updated(lswitch)
+                self.controller.update_lswitch(lswitch)
             elif action == 'delete':
                 lswitch_id = key
-                self.controller.logical_switch_deleted(lswitch_id)
+                self.controller.delete_lswitch(lswitch_id)
         elif db_models.Floatingip.table_name == table:
             if action == 'set' or action == 'create':
                 floatingip = db_models.Floatingip(value)
-                self.controller.floatingip_updated(floatingip)
+                self.controller.update_floatingip(floatingip)
             elif action == 'delete':
                 floatingip_id = key
-                self.controller.floatingip_deleted(floatingip_id)
+                self.controller.delete_floatingip(floatingip_id)
         elif db_models.Publisher.table_name == table:
             if action == 'set' or action == 'create':
                 publisher = db_models.Publisher(value)
-                self.controller.publisher_updated(publisher)
+                self.controller.update_publisher(publisher)
             elif action == 'delete':
-                self.controller.publisher_deleted(key)
+                self.controller.delete_publisher(key)
         elif 'ovsinterface' == table:
             if action == 'set' or action == 'create':
                 ovs_port = db_models.OvsPort(value)

@@ -102,34 +102,34 @@ class DBConsistencyManager(object):
     def _process_object(self, table, action, df_object, local_object=None):
         if table == models.LogicalSwitch.table_name:
             if action == 'delete':
-                self.controller.logical_switch_deleted(local_object.get_id())
+                self.controller.delete_lswitch(local_object.get_id())
             else:
-                self.controller.logical_switch_updated(df_object)
+                self.controller.update_lswitch(df_object)
         elif table == models.LogicalPort.table_name:
             if action == 'delete':
-                self.controller.logical_port_deleted(local_object.get_id())
+                self.controller.delete_lport(local_object.get_id())
             else:
-                self.controller.logical_port_updated(df_object)
+                self.controller.update_lport(df_object)
         elif table == models.LogicalRouter.table_name:
             if action == 'delete':
-                self.controller.router_deleted(local_object.get_id())
+                self.controller.delete_lrouter(local_object.get_id())
             else:
-                self.controller.router_updated(df_object)
+                self.controller.update_lrouter(df_object)
         elif table == models.SecurityGroup.table_name:
             if action == 'delete':
-                self.controller.security_group_deleted(local_object.get_id())
+                self.controller.delete_secgroup(local_object.get_id())
             else:
-                self.controller.security_group_updated(df_object)
+                self.controller.update_secgroup(df_object)
         elif table == models.Floatingip.table_name:
             if action == 'delete':
-                self.controller.floatingip_deleted(local_object.get_id())
+                self.controller.delete_floatingip(local_object.get_id())
             else:
-                self.controller.floatingip_updated(df_object)
+                self.controller.update_floatingip(df_object)
         elif table == models.QosPolicy.table_name:
             if action == 'delete':
-                self.controller.qos_policy_deleted(local_object.get_id())
+                self.controller.delete_qospolicy(local_object.get_id())
             else:
-                self.controller.qos_policy_updated(df_object)
+                self.controller.update_qospolicy(df_object)
 
     def _verify_object(self, table, id, action, df_object, local_object=None):
         """Verify the object status and judge whether to create/update/delete
