@@ -143,3 +143,15 @@ def clear_local_cache(topics=None):
             _delete_items(topic)
     else:
         _delete_items()
+
+
+def process_object(controller, table, action, df_object, obj_id=None):
+    if action == 'delete':
+        method_name = 'delete_' + table
+        argument = obj_id
+    else:
+        method_name = 'update_' + table
+        argument = df_object
+    handler = getattr(controller, method_name, None)
+    if handler:
+        handler(argument)
