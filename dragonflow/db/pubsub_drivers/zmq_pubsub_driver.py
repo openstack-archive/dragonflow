@@ -82,6 +82,11 @@ class ZMQPublisherAgentBase(pub_sub_api.PublisherApi):
         self.socket.send_multipart([topic, data])
         LOG.debug("sending %s" % update)
 
+    def close(self):
+        if self.socket:
+            self.socket.close()
+            self.socket = None
+
 
 class ZMQPublisherAgent(ZMQPublisherAgentBase):
     def __init__(self):
