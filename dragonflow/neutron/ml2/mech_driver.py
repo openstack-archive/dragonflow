@@ -574,11 +574,11 @@ class DFMechDriver(driver_api.MechanismDriver):
         # Here we do not want port status update to trigger
         # sending event to other compute node.
         if (cfg.CONF.df.enable_port_status_notifier and
-            n_const.DEVICE_OWNER_COMPUTE_PREFIX
-            in updated_port['device_owner'] and
-            context.status != context.original_status and
-            (context.status == n_const.PORT_STATUS_DOWN or
-            context.status == n_const.PORT_STATUS_ACTIVE)):
+                n_const.DEVICE_OWNER_COMPUTE_PREFIX
+                in updated_port['device_owner'] and
+                context.status != context.original_status and
+                (context.status == n_const.PORT_STATUS_DOWN or
+                context.status == n_const.PORT_STATUS_ACTIVE)):
             return None
 
         # If a subnet enabled dhcp, the DFMechDriver will create a dhcp server
