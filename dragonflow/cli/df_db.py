@@ -22,11 +22,7 @@ from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.db import models
 
-db_tables = [models.LogicalPort.table_name, models.LogicalSwitch.table_name,
-             models.LogicalRouter.table_name, models.Chassis.table_name,
-             models.SecurityGroup.table_name, models.Floatingip.table_name,
-             models.QosPolicy.table_name, models.Publisher.table_name,
-             'unique_key', 'portstats']
+db_tables = list(models.table_class_mapping) + ['unique_key', 'portstats']
 
 
 def print_tables():

@@ -10,8 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import inspect
 import netaddr
 from oslo_serialization import jsonutils
+import sys
 
 
 UNIQUE_KEY = 'unique_key'
@@ -61,7 +63,7 @@ class NbDbObject(NbObject):
         return self.inner_obj.get('version')
 
 
-class NbDbObjectWithUniqueKey(NbDbObject):
+class UniqueKeyMixin(object):
 
     def get_unique_key(self):
         return self.inner_obj.get(UNIQUE_KEY)
@@ -87,7 +89,7 @@ class Chassis(NbDbObject):
         return None
 
 
-class LogicalSwitch(NbDbObjectWithUniqueKey):
+class LogicalSwitch(NbDbObject, UniqueKeyMixin):
 
     table_name = "lswitch"
 
@@ -138,7 +140,7 @@ class Subnet(NbObject):
         return self.inner_obj.get('host_routes', [])
 
 
-class LogicalPort(NbDbObjectWithUniqueKey):
+class LogicalPort(NbDbObject, UniqueKeyMixin):
 
     table_name = "lport"
 
@@ -227,7 +229,7 @@ class LogicalRouter(NbDbObject):
         return self.inner_obj.get('gateway', {})
 
 
-class LogicalRouterPort(NbObject):
+class LogicalRouterPort(NbObject, UniqueKeyMixin):
 
     def __init__(self, lroute_port):
         super(LogicalRouterPort, self).__init__(lroute_port)
@@ -251,12 +253,8 @@ class LogicalRouterPort(NbObject):
     def get_network(self):
         return self.inner_obj.get('network')
 
-    def get_unique_key(self):
-        # The unique_key of corresponding lport.
-        return self.inner_obj.get(UNIQUE_KEY)
 
-
-class SecurityGroup(NbDbObjectWithUniqueKey):
+class SecurityGroup(NbDbObject, UniqueKeyMixin):
 
     table_name = "secgroup"
 
@@ -438,17 +436,17 @@ class OvsPort(object):
         return str(self.ovs_port)
 
 
-table_class_mapping = {
-    LogicalSwitch.table_name: LogicalSwitch,
-    LogicalPort.table_name: LogicalPort,
-    LogicalRouter.table_name: LogicalRouter,
-    Floatingip.table_name: Floatingip,
-    SecurityGroup.table_name: SecurityGroup,
-    Publisher.table_name: Publisher,
-    QosPolicy.table_name: QosPolicy,
-    Chassis.table_name: Chassis
-}
+table_class_mapping = {}
+
+
+def _register_models():
+    for _, cls in inspect.getmembers(sys.modules[__name__], inspect.isclass):
+        if issubclass(cls, NbDbObject) and cls != NbDbObject:
+            table_class_mapping.update({cls.table_name: cls})
 
 
 def get_class_by_table(table):
     return table_class_mapping.get(table)
+
+
+_register_models()
