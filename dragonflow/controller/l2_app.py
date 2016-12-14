@@ -166,16 +166,6 @@ class L2App(df_base_app.DFlowApp):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
 
-        # Remove ingress classifier for port
-        match = parser.OFPMatch()
-        match.set_in_port(ofport)
-        self.mod_flow(
-            datapath=datapath,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
         match = parser.OFPMatch(reg7=port_key)
         self.mod_flow(
             datapath=datapath,
@@ -417,23 +407,6 @@ class L2App(df_base_app.DFlowApp):
         ofproto = datapath.ofproto
 
         # Ingress classifier for port
-        match = parser.OFPMatch()
-        match.set_in_port(ofport)
-        actions = [parser.OFPActionSetField(reg6=port_key),
-                   parser.OFPActionSetField(metadata=network_id)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        goto_inst = parser.OFPInstructionGotoTable(
-            const.EGRESS_PORT_SECURITY_TABLE)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
         # Dispatch to local port according to unique tunnel_id
         match = parser.OFPMatch(reg7=port_key)
         actions = [parser.OFPActionOutput(ofport,
@@ -888,24 +861,6 @@ class L2App(df_base_app.DFlowApp):
         # Match: dl_vlan=vlan_id,
         # Actions: metadata=network_id,
         # goto 'Destination Port Classification'
-        match = parser.OFPMatch()
-        match.set_vlan_vid(segmentation_id)
-        actions = [parser.OFPActionSetField(metadata=local_network_id),
-                   parser.OFPActionPopVlan()]
-
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        goto_inst = parser.OFPInstructionGotoTable(
-            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
-
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=const.PRIORITY_LOW,
-            match=match)
 
     def _install_network_flows_for_flat(self, physical_network,
                                         local_network_id):
@@ -944,21 +899,6 @@ class L2App(df_base_app.DFlowApp):
                                                local_network_id)
 
         # Ingress
-        match = parser.OFPMatch(vlan_vid=0)
-        actions = [parser.OFPActionSetField(metadata=local_network_id)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        goto_inst = parser.OFPInstructionGotoTable(
-            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
-
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=const.PRIORITY_LOW,
-            match=match)
 
     def _del_network_flows_for_vlan(self, segmentation_id, local_network_id):
         if segmentation_id is None:
@@ -967,14 +907,6 @@ class L2App(df_base_app.DFlowApp):
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        match = parser.OFPMatch()
-        match.set_vlan_vid(segmentation_id)
-        self.mod_flow(
-            datapath=datapath,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_LOW,
-            match=match)
 
         match = parser.OFPMatch(metadata=local_network_id)
         self.mod_flow(
@@ -996,14 +928,6 @@ class L2App(df_base_app.DFlowApp):
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        match = parser.OFPMatch(vlan_vid=0)
-        self.mod_flow(
-            datapath=datapath,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_LOW,
-            match=match)
-
         match = parser.OFPMatch(metadata=local_network_id)
         self.mod_flow(
             datapath=datapath,
