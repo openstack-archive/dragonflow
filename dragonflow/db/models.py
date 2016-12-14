@@ -16,6 +16,13 @@ from oslo_serialization import jsonutils
 
 UNIQUE_KEY = 'unique_key'
 
+table_class_mapping = {}
+
+
+def register_model_class(cls):
+    table_class_mapping[cls.table_name] = cls
+    return cls
+
 
 class NbObject(object):
 
@@ -61,12 +68,13 @@ class NbDbObject(NbObject):
         return self.inner_obj.get('version')
 
 
-class NbDbObjectWithUniqueKey(NbDbObject):
+class UniqueKeyMixin(object):
 
     def get_unique_key(self):
         return self.inner_obj.get(UNIQUE_KEY)
 
 
+@register_model_class
 class Chassis(NbDbObject):
 
     table_name = "chassis"
@@ -87,7 +95,8 @@ class Chassis(NbDbObject):
         return None
 
 
-class LogicalSwitch(NbDbObjectWithUniqueKey):
+@register_model_class
+class LogicalSwitch(NbDbObject, UniqueKeyMixin):
 
     table_name = "lswitch"
 
@@ -138,7 +147,8 @@ class Subnet(NbObject):
         return self.inner_obj.get('host_routes', [])
 
 
-class LogicalPort(NbDbObjectWithUniqueKey):
+@register_model_class
+class LogicalPort(NbDbObject, UniqueKeyMixin):
 
     table_name = "lport"
 
@@ -206,6 +216,7 @@ class LogicalPort(NbDbObjectWithUniqueKey):
         return str(lport_with_exteral_dict)
 
 
+@register_model_class
 class LogicalRouter(NbDbObject):
 
     table_name = "lrouter"
@@ -227,7 +238,7 @@ class LogicalRouter(NbDbObject):
         return self.inner_obj.get('gateway', {})
 
 
-class LogicalRouterPort(NbObject):
+class LogicalRouterPort(NbObject, UniqueKeyMixin):
 
     def __init__(self, lroute_port):
         super(LogicalRouterPort, self).__init__(lroute_port)
@@ -251,12 +262,9 @@ class LogicalRouterPort(NbObject):
     def get_network(self):
         return self.inner_obj.get('network')
 
-    def get_unique_key(self):
-        # The unique_key of corresponding lport.
-        return self.inner_obj.get(UNIQUE_KEY)
 
-
-class SecurityGroup(NbDbObjectWithUniqueKey):
+@register_model_class
+class SecurityGroup(NbDbObject, UniqueKeyMixin):
 
     table_name = "secgroup"
 
@@ -295,6 +303,7 @@ class SecurityGroupRule(NbObject):
         return self.inner_obj.get('security_group_id')
 
 
+@register_model_class
 class Floatingip(NbDbObject):
 
     table_name = "floatingip"
@@ -336,6 +345,7 @@ class Floatingip(NbDbObject):
         return self.inner_obj.get('floating_port_id')
 
 
+@register_model_class
 class QosPolicy(NbDbObject):
 
     table_name = "qospolicy"
@@ -374,6 +384,7 @@ class QosPolicy(NbDbObject):
         return dscp_marking
 
 
+@register_model_class
 class Publisher(NbDbObject):
 
     table_name = "publisher"
