@@ -200,6 +200,21 @@ class LogicalPort(NbDbObjectWithUniqueKey):
     def get_remote_vtep(self):
         return self.inner_obj.get('remote_vtep', False)
 
+    def get_network_id(self):
+        return self.get_external_value('local_network_id')
+
+    def get_network_type(self):
+        return self.get_external_value('network_type')
+
+    def get_physical_network(self):
+        return self.get_external_value('physical_network')
+
+    def get_segmentation_id (self):
+        return self.get_external_value('segmentation_id')
+
+    def get_ofport(self):
+        return self.get_external_value('ofport')
+
     def __str__(self):
         lport_with_exteral_dict = dict(self.inner_obj)
         lport_with_exteral_dict['external_dict'] = self.external_dict
