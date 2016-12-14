@@ -185,9 +185,9 @@ class TestL2FLows(test_base.DFTestBase):
                     if ingress_action in flow['actions']:
                         ingress_check = True
 
-        if l2_lookup_multicast_check is None or \
-            l2_lookup_unicast_check is None or \
-            ingress_check is None:
+        if (l2_lookup_multicast_check is None or
+                l2_lookup_unicast_check is None or
+                ingress_check is None):
             return None
 
         return True
@@ -250,11 +250,11 @@ class TestL2FLows(test_base.DFTestBase):
                     if ingress_action in flow['actions']:
                         ingress_check = True
 
-        if l2_lookup_multicast_check is None or \
-           l2_lookup_unicast_check is None or \
-           l2_lookup_unkown_check is None or \
-            egress_check is None or \
-            ingress_check is None:
+        if (l2_lookup_multicast_check is None or
+                l2_lookup_unicast_check is None or
+                l2_lookup_unkown_check is None or
+                egress_check is None or
+                ingress_check is None):
 
             return None
 
@@ -370,11 +370,11 @@ class TestL2FLows(test_base.DFTestBase):
                     if ingress_action in flow['actions']:
                         ingress_check = True
 
-        if l2_lookup_multicast_check is None or \
-            l2_lookup_unicast_check is None or \
-            l2_lookup_unkown_check is None or \
-            egress_check is None or \
-            ingress_check is None:
+        if (l2_lookup_multicast_check is None or
+                l2_lookup_unicast_check is None or
+                l2_lookup_unkown_check is None or
+                egress_check is None or
+                ingress_check is None):
             return None
         return True
 
