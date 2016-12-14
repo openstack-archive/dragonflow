@@ -66,7 +66,12 @@ def print_whole_table(db_driver, table):
         print('Table not found: ' + table)
         return
 
-    values = [jsonutils.loads(db_driver.get_key(table, key)) for key in keys]
+    if not keys:
+        print('Table is empty: ' + table)
+        return
+
+    raw_values = [db_driver.get_key(table, key) for key in keys]
+    values = [jsonutils.loads(value) for value in raw_values if value]
     if isinstance(values[0], dict):
         columns = values[0].keys()
         labels, formatters = \
