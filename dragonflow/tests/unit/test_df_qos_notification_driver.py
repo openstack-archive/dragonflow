@@ -94,4 +94,4 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         qos_obj = self._test_create_policy()
         self.plugin.delete_policy(self.context, qos_obj['id'])
         self.driver.nb_api.delete_qos_policy.assert_called_with(
-            qos_obj['id'], 'tenant1')
+            qos_obj['id'], mock.ANY)

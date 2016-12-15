@@ -64,7 +64,7 @@ class DFQosServiceNotificationDriver(
     def delete_policy(self, context, policy):
         policy_id = policy['id']
         # Only id will be in policy in the argument. Get full policy from
-        # neutron.
-        policy_neutron = self._plugin.get_policy(context, policy_id)
+        # nb db.
+        policy_obj = self.nb_api.get_qos_policy(policy_id)
 
-        self.nb_api.delete_qos_policy(policy_id, policy_neutron['tenant_id'])
+        self.nb_api.delete_qos_policy(policy_id, policy_obj.get_topic())
