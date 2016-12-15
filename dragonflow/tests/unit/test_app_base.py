@@ -257,6 +257,7 @@ fake_security_group.inner_obj = {
     "name": "fake_security_group",
     "topic": "fake_tenant1",
     "version": 5,
+    "unique_key": 1,
     "id": "fake_security_group_id1",
     "rules": [{"direction": "egress",
                "security_group_id": "fake_security_group_id1",

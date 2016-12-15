@@ -73,6 +73,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
             "name": "fake_security_group",
             "topic": "fake_tenant1",
             "version": 5,
+            "unique_key": 2,
             "id": "fake_security_group_id2",
             "rules": [{"direction": "egress",
                        "security_group_id": "fake_security_group_id2",
