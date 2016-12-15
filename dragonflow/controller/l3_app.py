@@ -17,6 +17,9 @@ import netaddr
 from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import ethernet
+from ryu.lib.packet import icmp
+from ryu.lib.packet import icmpv6
+from ryu.lib.packet import in_proto
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
@@ -101,9 +104,15 @@ class L3App(df_base_app.DFlowApp):
         for router_port in router.get_ports():
             if ip_addr in netaddr.IPNetwork(router_port.get_network()):
                 if str(ip_addr) == router_port.get_ip():
-                    self._install_flow_send_to_output_table(
-                        network_id,
-                        router_port)
+                    if (pkt_ip.proto == in_proto.IPPROTO_ICMP
+                            or pkt_ip.proto == in_proto.IPPROTO_ICMPV6):
+                        self._install_icmp_responder(
+                            pkt_ethernet.src, pkt_ethernet.dst,
+                            pkt_ip.src, pkt_ip.dst, msg)
+                    else:
+                        self._install_flow_send_to_output_table(
+                            network_id,
+                            router_port)
                     return
                 dst_ports = self.db_store.get_ports_by_network_id(
                     router_port.get_lswitch_id())
@@ -113,6 +122,39 @@ class L3App(df_base_app.DFlowApp):
                                               out_port, msg,
                                               network_id)
                         return
+
+    def _install_icmp_responder(self, src_mac, dst_mac, src_ip, dst_ip, msg):
+        icmp_pkt = packet.Packet()
+        icmp_pkt.add_protocol(ethernet.ethernet(
+            ethertype=ether.ETH_TYPE_IP,
+            src=dst_mac, dst=src_mac))
+        pkt = packet.Packet(msg.data)
+        icmp_request = pkt.get_protocol(icmp.icmp)
+        if not icmp_request:
+            icmp_request = pkt.get_protocol(icmpv6.icmpv6)
+            icmp_pkt.add_protocol(ipv6.ipv6(
+                proto=in_proto.IPPROTO_ICMPV6,
+                src=dst_ip, dst=src_ip))
+            echo = icmp_request.data
+            echo.data = bytearray(echo.data)
+            icmp_pkt.add_protocol(icmpv6.icmpv6(
+                icmpv6.ICMPV6_ECHO_REPLY, data=echo))
+        else:
+            icmp_pkt.add_protocol(ipv4.ipv4(
+                proto=in_proto.IPPROTO_ICMP,
+                src=dst_ip, dst=src_ip))
+            echo = icmp_request.data
+            echo.data = bytearray(echo.data)
+            icmp_pkt.add_protocol(icmp.icmp(icmp.ICMP_ECHO_REPLY, data=echo))
+
+        self._send_packet(self.get_datapath(),
+                          msg.match.get('in_port'),
+                          icmp_pkt)
+        icmp_responder.ICMPResponder(
+            self, dst_ip, dst_mac,
+            table_id=const.L3_LOOKUP_TABLE).add(
+                idle_timeout=self.idle_timeout,
+                hard_timeout=self.hard_timeout)
 
     def _install_l3_flow(self, dst_router_port, dst_port, msg,
                          src_network_id):
