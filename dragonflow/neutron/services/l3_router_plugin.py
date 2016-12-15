@@ -15,7 +15,6 @@
 #    under the License.
 
 import netaddr
-import six
 
 from oslo_config import cfg
 from oslo_log import log
@@ -137,19 +136,13 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             if gw_info:
                 gw_info.update({'port_id': router.get('gw_port_id')})
             is_distributed = router.get('distributed', False)
-            # Convert route content to string, as neutron uses object
-            # to store routes.
-            router_routes = []
-            for route in router.get('routes', []):
-                router_routes.append({k: str(v) for k, v in
-                                      six.iteritems(route)})
             self.nb_api.update_lrouter(
                 router_id,
                 topic=router['tenant_id'],
                 name=router['name'],
                 distributed=is_distributed,
                 version=router_version,
-                routes=router_routes,
+                routes=router.get('routes', []),
                 admin_state_up=router['admin_state_up'],
                 description=router['description'],
                 gateway=gw_info
