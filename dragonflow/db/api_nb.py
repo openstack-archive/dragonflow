@@ -300,6 +300,8 @@ class NbApi(object):
         secgroup = {}
         secgroup['id'] = id
         secgroup['topic'] = topic
+        secgroup[db_models.UNIQUE_KEY] = self.driver.allocate_unique_key(
+            db_models.SecurityGroup.table_name)
         for col, val in columns.items():
             secgroup[col] = val
         secgroup_json = jsonutils.dumps(secgroup)
