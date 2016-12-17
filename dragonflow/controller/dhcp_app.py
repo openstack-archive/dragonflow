@@ -55,7 +55,6 @@ class DHCPApp(df_base_app.DFlowApp):
         self.global_dns_list = self.conf.df_dns_servers
         self.lease_time = cfg.CONF.dhcp_lease_duration
         self.domain_name = cfg.CONF.dns_domain
-        self.advertise_mtu = cfg.CONF.advertise_mtu
         self.block_hard_timeout = self.conf.df_dhcp_block_time_in_sec
         self.default_interface_mtu = self.conf.df_default_network_device_mtu
 
@@ -173,7 +172,7 @@ class DHCPApp(df_base_app.DFlowApp):
             option_list.append(dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT,
                                            netaddr.IPAddress(gw_ip).packed))
 
-        if pkt_type == dhcp.DHCP_ACK and self.advertise_mtu:
+        if pkt_type == dhcp.DHCP_ACK:
             intreface_mtu = self._get_port_mtu(lport)
             mtu_bin = struct.pack('!H', intreface_mtu)
             option_list.append(dhcp.option(DHCP_INTERFACE_MTU_OPT, mtu_bin))
