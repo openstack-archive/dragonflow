@@ -216,8 +216,6 @@ function configure_df_plugin {
         cp $NEUTRON_DIR/etc/neutron.conf.sample $NEUTRON_CONF
     fi
 
-    iniset $NEUTRON_CONF DEFAULT advertise_mtu "True"
-
     iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
     iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
     iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
