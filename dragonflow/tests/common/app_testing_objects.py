@@ -22,7 +22,11 @@ import time
 from neutron.agent.common import utils
 from oslo_log import log
 import pytun
-import ryu.lib.packet
+from ryu.lib.packet import arp
+from ryu.lib.packet import dhcp
+from ryu.lib.packet import icmp
+from ryu.lib.packet import ipv6
+from ryu.lib.packet import packet
 
 from dragonflow._i18n import _LI, _LE
 from dragonflow.common import utils as d_utils
@@ -591,52 +595,53 @@ class Filter(object):
 class RyuIPv6Filter(object):
     """Use ryu to parse the packet and test if it's IPv6."""
     def __call__(self, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
-        return (pkt.get_protocol(ryu.lib.packet.ipv6.ipv6) is not None)
+        pkt = packet.Packet(buf)
+        return (pkt.get_protocol(ipv6.ipv6) is not None)
 
 
 class RyuARPReplyFilter(object):
     """Use ryu to parse the packet and test if it's an ARP reply."""
     def __call__(self, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
-        arp = pkt.get_protocol(ryu.lib.packet.arp.arp)
-        if not arp:
+        pkt = packet.Packet(buf)
+        pkt_arp_protocol = pkt.get_protocol(arp.arp)
+        if not pkt_arp_protocol:
             return False
-        return arp.opcode == 2
+        return pkt_arp_protocol.opcode == 2
 
 
 class RyuARPGratuitousFilter(object):
     """Use ryu to parse the packet and test if it's a gratuitous ARP."""
     def __call__(self, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
-        arp = pkt.get_protocol(ryu.lib.packet.arp.arp)
-        if not arp:
+        pkt = packet.Packet(buf)
+        pkt_arp_protocol = pkt.get_protocol(arp.arp)
+        if not pkt_arp_protocol:
             return False
-        return arp.src_ip == arp.dst_ip
+        return pkt_arp_protocol.src_ip == pkt_arp_protocol.dst_ip
 
 
 # Taken from the DHCP app
 def _get_dhcp_message_type_opt(dhcp_packet):
     for opt in dhcp_packet.options.option_list:
-        if opt.tag == ryu.lib.packet.dhcp.DHCP_MESSAGE_TYPE_OPT:
+        if opt.tag == dhcp.DHCP_MESSAGE_TYPE_OPT:
             return ord(opt.value)
 
 
 class RyuDHCPFilter(object):
     """Use ryu to parse the packet and test if it's a DHCP Ack"""
     def __call__(self, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
-        return (pkt.get_protocol(ryu.lib.packet.dhcp.dhcp) is not None)
+        pkt = packet.Packet(buf)
+        return (pkt.get_protocol(dhcp.dhcp) is not None)
 
 
 class RyuDHCPPacketTypeFilter(object):
     """Use ryu to parse the packet and test if it's a DHCP Ack"""
     def __call__(self, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
-        dhcp = pkt.get_protocol(ryu.lib.packet.dhcp.dhcp)
-        if not dhcp:
+        pkt = packet.Packet(buf)
+        pkt_dhcp_protocol = pkt.get_protocol(dhcp.dhcp)
+        if not pkt_dhcp_protocol:
             return False
-        return _get_dhcp_message_type_opt(dhcp) == self.get_dhcp_packet_type()
+        dhcp_type = _get_dhcp_message_type_opt(pkt_dhcp_protocol)
+        return dhcp_type == self.get_dhcp_packet_type()
 
     def get_dhcp_packet_type(self):
         raise Exception('DHCP packet type filter not fully implemented')
@@ -644,23 +649,23 @@ class RyuDHCPPacketTypeFilter(object):
 
 class RyuDHCPOfferFilter(RyuDHCPPacketTypeFilter):
     def get_dhcp_packet_type(self):
-        return ryu.lib.packet.dhcp.DHCP_OFFER
+        return dhcp.DHCP_OFFER
 
 
 class RyuDHCPAckFilter(RyuDHCPPacketTypeFilter):
     def get_dhcp_packet_type(self):
-        return ryu.lib.packet.dhcp.DHCP_ACK
+        return dhcp.DHCP_ACK
 
 
 class RyuICMPFilter(object):
     def __call__(self, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
-        icmp = pkt.get_protocol(ryu.lib.packet.icmp.icmp)
-        if not icmp:
+        pkt = packet.Packet(buf)
+        pkt_icmp_protocol = pkt.get_protocol(icmp.icmp)
+        if not pkt_icmp_protocol:
             return False
-        return self.filter_icmp(pkt, icmp)
+        return self.filter_icmp(pkt, pkt_icmp_protocol)
 
-    def filter_icmp(self, pkt, icmp):
+    def filter_icmp(self, pkt, icmp_prot):
         return True
 
     def is_same_icmp(self, icmp1, icmp2):
@@ -683,13 +688,13 @@ class RyuICMPPingFilter(RyuICMPFilter):
         super(RyuICMPPingFilter, self).__init__()
         self.get_ping = get_ping
 
-    def filter_icmp(self, pkt, icmp):
-        if icmp.type != ryu.lib.packet.icmp.ICMP_ECHO_REQUEST:
+    def filter_icmp(self, pkt, proto):
+        if proto.type != icmp.ICMP_ECHO_REQUEST:
             return False
         result = True
         if self.get_ping is not None:
             ping = self.get_ping()
-            result = super(RyuICMPPingFilter, self).is_same_icmp(icmp, ping)
+            result = super(RyuICMPPingFilter, self).is_same_icmp(proto, ping)
         return result
 
 
@@ -703,11 +708,11 @@ class RyuICMPPongFilter(RyuICMPFilter):
         super(RyuICMPPongFilter, self).__init__()
         self.get_ping = get_ping
 
-    def filter_icmp(self, pkt, icmp):
-        if icmp.type != ryu.lib.packet.icmp.ICMP_ECHO_REPLY:
+    def filter_icmp(self, pkt, icmp_prot):
+        if icmp_prot.type != icmp.ICMP_ECHO_REPLY:
             return False
         ping = self.get_ping()
-        return super(RyuICMPPongFilter, self).is_same_icmp(icmp, ping)
+        return super(RyuICMPPongFilter, self).is_same_icmp(icmp_prot, ping)
 
 
 class Action(object):
@@ -731,7 +736,7 @@ class Action(object):
 class LogAction(Action):
     """Action to log the received packet."""
     def __call__(self, policy, rule, port_thread, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
+        pkt = packet.Packet(buf)
         LOG.info(_LI('LogAction: Got packet: {}').format(str(pkt)))
 
 
@@ -818,7 +823,7 @@ class RaiseAction(Action):
         self.message = message
 
     def __call__(self, policy, rule, port_thread, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
+        pkt = packet.Packet(buf)
         raise Exception("Packet {} raised exception on port: {}: {}".format(
             str(pkt),
             (port_thread.port.subnet.subnet_id, port_thread.port.port_id),
