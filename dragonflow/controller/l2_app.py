@@ -494,15 +494,13 @@ class L2App(df_base_app.DFlowApp):
                                              local_network_id,
                                              segmentation_id,
                                              network_type):
-        LOG.info(_LI("Delete network on last port down "
-                     "segmentation_id =%(segmentation_id)s, "
-                     "local_network_id =%(local_network_id)s") %
-                 {'segmentation_id': str(segmentation_id),
-                  'local_network_id': str(local_network_id)})
-
         network = self.local_networks.get(local_network_id)
         if network and network.local_ports:
             return
+
+        LOG.info(_LI("Remove network flows on last port down. Network type "
+                     "is %(type)s, and segmentation ID is %(s_id)s."),
+                 {'type': network_type, 's_id': segmentation_id})
 
         if network_type == 'vlan':
             self._del_network_flows_for_vlan(segmentation_id, local_network_id)
@@ -512,7 +510,6 @@ class L2App(df_base_app.DFlowApp):
             self._del_network_flows_for_tunnel(segmentation_id)
 
     def _del_network_flows_for_tunnel(self, segmentation_id):
-        LOG.info(_LI("Delete network flows for tunnel."))
         if segmentation_id is None:
             return
 
@@ -785,10 +782,13 @@ class L2App(df_base_app.DFlowApp):
                                                 physical_network,
                                                 network_type,
                                                 local_network_id):
-        LOG.info(_LI('Install network flows on first port up.'))
         network = self.local_networks.get(local_network_id)
         if network and network.local_ports:
             return
+
+        LOG.info(_LI("Install network flows on first port up. Network type "
+                     "is %(type)s, and segmentation ID is %(s_id)s."),
+                 {'type': network_type, 's_id': segmentation_id})
 
         if network_type == 'vlan':
             self._install_network_flows_for_vlan(segmentation_id,
@@ -809,10 +809,8 @@ class L2App(df_base_app.DFlowApp):
     """
     def _install_network_flows_for_tunnel(self, segmentation_id,
                                           local_network_id):
-        LOG.debug('Install network flows on first tunnel port up .')
         if segmentation_id is None:
             return
-        LOG.info(_LI("Segmentation_id  = %s"), str(segmentation_id))
 
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
@@ -839,8 +837,6 @@ class L2App(df_base_app.DFlowApp):
     """
     def _install_network_flows_for_vlan(self, segmentation_id,
                                         physical_network, local_network_id):
-        LOG.info(_LI("Install network flows on first vlan up"))
-
         # L2_LOOKUP for Remote ports
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
@@ -960,7 +956,6 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
     def _del_network_flows_for_vlan(self, segmentation_id, local_network_id):
-        LOG.info(_LI("Delete network flows for vlan"))
         if segmentation_id is None:
             return
 
@@ -993,8 +988,6 @@ class L2App(df_base_app.DFlowApp):
         return match
 
     def _del_network_flows_for_flat(self, local_network_id):
-        LOG.info(_LI("Delete network flows for flat"))
-
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
