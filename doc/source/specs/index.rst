@@ -61,6 +61,7 @@ Specs
     tap_as_a_service
     services_status
     vm_live_migration
+    distributed_snat
     nb_api_refactor
     support_check_chassis_alive
     traceroute
