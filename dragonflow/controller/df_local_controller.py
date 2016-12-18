@@ -150,7 +150,7 @@ class DfLocalController(object):
             LOG.warning(_LW("run_db_poll - suppressing exception"))
             LOG.exception(e)
 
-    def chassis_updated(self, chassis):
+    def update_chassis(self, chassis):
         # Check if tunnel already exists to this chassis
         t_ports = self.vswitch_api.get_tunnel_ports()
         remote_chassis_name = chassis.get_id()
@@ -167,7 +167,7 @@ class DfLocalController(object):
         self.vswitch_api.add_tunnel_port(chassis)
         self.db_store.update_chassis(chassis.get_id(), chassis)
 
-    def chassis_deleted(self, chassis_id):
+    def delete_chassis(self, chassis_id):
         LOG.info(_LI("Deleting tunnel to remote chassis = %s") % chassis_id)
         self.db_store.delete_chassis(chassis_id)
         tunnel_ports = self.vswitch_api.get_tunnel_ports()
@@ -176,7 +176,7 @@ class DfLocalController(object):
                 self.vswitch_api.delete_port(port)
                 return
 
-    def logical_switch_updated(self, lswitch):
+    def update_lswitch(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
         if not self._is_valid_version(old_lswitch, lswitch):
             return
@@ -185,7 +185,7 @@ class DfLocalController(object):
         self.db_store.set_lswitch(lswitch.get_id(), lswitch)
         self.open_flow_app.notify_update_logical_switch(lswitch)
 
-    def logical_switch_deleted(self, lswitch_id):
+    def delete_lswitch(self, lswitch_id):
         lswitch = self.db_store.get_lswitch(lswitch_id)
         LOG.info(_LI("Removing Logical Switch = %s") % lswitch_id)
         if lswitch is None:
@@ -284,7 +284,7 @@ class DfLocalController(object):
             chassis_value = {'id': chassis, 'ip': chassis,
                              'tunnel_type': self.tunnel_types}
             chassis_inst = models.Chassis(jsonutils.dumps(chassis_value))
-            self.chassis_updated(chassis_inst)
+            self.update_chassis(chassis_inst)
         self.db_store.add_remote_chassis_lport(chassis, lport.get_id())
 
     def _delete_remote_port_from_chassis(self, lport):
@@ -292,10 +292,10 @@ class DfLocalController(object):
         self.db_store.del_remote_chassis_lport(chassis, lport.get_id())
         chassis_lports = self.db_store.get_lports_by_remote_chassis(chassis)
         if not chassis_lports:
-            self.chassis_deleted(chassis)
+            self.delete_chassis(chassis)
             self.db_store.del_remote_chassis(chassis)
 
-    def logical_port_updated(self, lport):
+    def update_lport(self, lport):
         chassis = lport.get_chassis()
         if not self._is_physical_chassis(chassis):
             LOG.debug(("Port %s has not been bound or it is a vPort") %
@@ -319,7 +319,7 @@ class DfLocalController(object):
             return
         self._logical_port_process(lport, original_lport)
 
-    def logical_port_deleted(self, lport_id):
+    def delete_lport(self, lport_id):
         lport = self.db_store.get_port(lport_id)
         if lport is None:
             return
@@ -342,14 +342,14 @@ class DfLocalController(object):
     def bridge_port_updated(self, lport):
         self.open_flow_app.notify_update_bridge_port(lport)
 
-    def router_updated(self, lrouter):
+    def update_lrouter(self, lrouter):
         old_lrouter = self.db_store.get_router(lrouter.get_id())
         if not self._is_valid_version(old_lrouter, lrouter):
             return
         self.open_flow_app.notify_update_router(lrouter, old_lrouter)
         self.db_store.update_router(lrouter.get_id(), lrouter)
 
-    def router_deleted(self, lrouter_id):
+    def delete_lrouter(self, lrouter_id):
         router = self.db_store.get_router(lrouter_id)
         if router is None:
             LOG.warning(_LW("Try to delete a nonexistent router(%s)"),
@@ -359,7 +359,7 @@ class DfLocalController(object):
         self.open_flow_app.notify_delete_router(router)
         self.db_store.delete_router(lrouter_id)
 
-    def security_group_updated(self, secgroup):
+    def update_secgroup(self, secgroup):
         old_secgroup = self.db_store.get_security_group(secgroup.get_id())
         if old_secgroup is None:
             LOG.info(_LI("Security Group created = %s") %
@@ -371,13 +371,13 @@ class DfLocalController(object):
         self._update_security_group_rules(old_secgroup, secgroup)
         self.db_store.update_security_group(secgroup.get_id(), secgroup)
 
-    def security_group_deleted(self, secgroup_id):
+    def delete_secgroup(self, secgroup_id):
         old_secgroup = self.db_store.get_security_group(secgroup_id)
         if old_secgroup is None:
             return
         self._delete_old_security_group(old_secgroup)
 
-    def qos_policy_updated(self, qos):
+    def update_qospolicy(self, qos):
         original_qos = self.db_store.get_qos_policy(qos.get_id())
         if not self._is_valid_version(original_qos, qos):
             return
@@ -388,7 +388,7 @@ class DfLocalController(object):
 
         self.open_flow_app.notify_update_qos_policy(qos)
 
-    def qos_policy_deleted(self, qos_id):
+    def delete_qospolicy(self, qos_id):
         qos = self.db_store.get_qos_policy(qos_id)
         if not qos:
             return
@@ -444,7 +444,7 @@ class DfLocalController(object):
             elif chassis.get_id() == self.chassis_name:
                 pass
             else:
-                self.chassis_updated(chassis)
+                self.update_chassis(chassis)
 
         # Iterate all tunnel ports that needs to be deleted
         for port in tunnel_ports.values():
@@ -484,7 +484,7 @@ class DfLocalController(object):
         self.open_flow_app.notify_remove_security_group_rule(
                  secgroup, secgroup_rule)
 
-    def floatingip_updated(self, floatingip):
+    def update_floatingip(self, floatingip):
         # check whether this floatingip is associated with a lport or not
         if floatingip.get_lport_id():
             if self.db_store.get_local_port(floatingip.get_lport_id()) is None:
@@ -501,7 +501,7 @@ class DfLocalController(object):
             return
         self._update_floatingip(old_floatingip, floatingip)
 
-    def floatingip_deleted(self, floatingip_id):
+    def delete_floatingip(self, floatingip_id):
         floatingip = self.db_store.get_floatingip(floatingip_id)
         if not floatingip:
             return
@@ -510,12 +510,12 @@ class DfLocalController(object):
                  str(floatingip))
         self.db_store.delete_floatingip(floatingip_id)
 
-    def publisher_updated(self, publisher):
+    def update_publisher(self, publisher):
         self.db_store.update_publisher(publisher.get_id(), publisher)
         LOG.info(_LI('Registering to new publisher: %s'), str(publisher))
         self.nb_api.subscriber.register_listen_address(publisher.get_uri())
 
-    def publisher_deleted(self, uuid):
+    def delete_publisher(self, uuid):
         publisher = self.db_store.get_publisher(uuid)
         if publisher:
             LOG.info(_LI('Deleting publisher: %s'), str(publisher))
