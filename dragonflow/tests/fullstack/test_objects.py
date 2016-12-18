@@ -43,7 +43,7 @@ def get_port_by_mac(neutron, vm_mac):
     ports = neutron.list_ports(mac_address=vm_mac)
     if not ports:
         return None
-    ports = ports.get('ports', None)
+    ports = ports.get('ports')
     if not ports:
         return None
     return ports[0]
@@ -267,7 +267,7 @@ class VMTestObj(object):
         ports = self.neutron.list_ports(device_id=self.server.id)
         if not ports:
             return None
-        ports = ports.get('ports', None)
+        ports = ports.get('ports')
         if not ports:
             return None
         return ports[0]

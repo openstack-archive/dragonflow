@@ -154,7 +154,7 @@ class NbApi(object):
 
     def create_port_status(self, server_ip):
         self.driver.create_key('portstats', server_ip,
-                               server_ip, None)
+                               server_ip)
 
     def register_notification_callback(self, controller):
         self.controller = controller
@@ -365,7 +365,7 @@ class NbApi(object):
     def get_chassis(self, id):
         try:
             chassis_value = self.driver.get_key(db_models.Chassis.table_name,
-                                                id, None)
+                                                id)
             return db_models.Chassis(chassis_value)
         except Exception:
             return None
@@ -373,7 +373,7 @@ class NbApi(object):
     def get_all_chassis(self):
         res = []
         for entry_value in self.driver.get_all_entries(
-                db_models.Chassis.table_name, None):
+                db_models.Chassis.table_name):
             res.append(db_models.Chassis(entry_value))
         return res
 
@@ -382,7 +382,7 @@ class NbApi(object):
                    'tunnel_type': tunnel_type}
         chassis_json = jsonutils.dumps(chassis)
         self.driver.create_key(db_models.Chassis.table_name,
-                               id, chassis_json, None)
+                               id, chassis_json)
 
     def update_chassis(self, id, **columns):
         chassis_json = self.driver.get_key('chassis', id)
@@ -391,7 +391,7 @@ class NbApi(object):
             chassis[col] = val
 
         chassis_json = jsonutils.dumps(chassis)
-        self.driver.set_key('chassis', id, chassis_json, None)
+        self.driver.set_key('chassis', id, chassis_json)
 
     def get_lswitch(self, id, topic=None):
         try:
@@ -690,7 +690,7 @@ class NbApi(object):
         floatingip_json = jsonutils.dumps(floatingip)
         self.driver.create_key(db_models.Floatingip.table_name,
                                id, floatingip_json, topic)
-        if floatingip.get('port_id', None) is not None:
+        if floatingip.get('port_id') is not None:
             self._send_db_change_event(db_models.Floatingip.table_name,
                                        id, 'create', floatingip_json, topic)
 
@@ -698,7 +698,7 @@ class NbApi(object):
         floatingip = self.driver.get_key(db_models.Floatingip.table_name,
                                          id, topic)
         fip_dict = jsonutils.loads(floatingip)
-        if fip_dict.get('port_id', None) is not None:
+        if fip_dict.get('port_id') is not None:
             self._send_db_change_event(db_models.Floatingip.table_name,
                                        id, 'delete', id, topic)
         self.driver.delete_key('floatingip', id, topic)

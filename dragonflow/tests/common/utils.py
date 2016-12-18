@@ -182,21 +182,21 @@ class OvsDBParser(object):
     def get_tunnel_ofport(self, chassis_ip):
         interfaces = self.list_interfaces()
         for item in interfaces:
-            options = item.get('options', None)
+            options = item.get('options')
             if options:
-                remote_ip = options.get('remote_ip', None)
+                remote_ip = options.get('remote_ip')
                 if remote_ip == chassis_ip:
-                    return item.get('ofport', None)
+                    return item.get('ofport')
         return None
 
     def get_ofport(self, port_id):
         interfaces = self.list_interfaces()
         for item in interfaces:
-            external_ids = item.get('external_ids', None)
+            external_ids = item.get('external_ids')
             if external_ids is not None:
-                iface_id = external_ids.get('iface-id', None)
+                iface_id = external_ids.get('iface-id')
                 if iface_id == port_id:
-                    return item.get('ofport', None)
+                    return item.get('ofport')
         return None
 
     def get_port_id_by_vm_id(self, vm_id):
