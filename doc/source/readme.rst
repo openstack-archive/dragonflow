@@ -13,27 +13,16 @@ Quick Installation
 
    ``git clone https://git.openstack.org/openstack-dev/devstack``
 
-2) Edit local.conf according to your configuration, See `Detailed Installation`_ for more details, or the Devstack_ configuration manual
+2) Copy one of the following as your ``local.conf`` to your devstack folder:
+
+.. _DevStack Single Node Configuration: https://github.com/openstack/dragonflow/tree/master/doc/source/single-node-conf
+
+.. _DevStack Multi Node Configuration: https://github.com/openstack/dragonflow/tree/master/doc/source/multi-node-conf
+
+3) Edit local.conf according to your configuration, See `Detailed Installation`_ for more details, or the Devstack_ configuration manual
 
 .. _Devstack: http://docs.openstack.org/developer/devstack/configuration.html
 
-3) Add the following lines in ``local.conf``:
-
-::
-
-   Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER=True
-
-   enable_plugin dragonflow https://github.com/openstack/dragonflow.git
-
-   enable_service df-controller
-
-   enable_service df-l3-agent
-
-   enable_service q-svc
-
-   disable_service q-agt
-
-   disable_service n-net
 
 DHCP configuration (IPv4 Only Environment):
 -------------------------------------------
@@ -98,6 +87,7 @@ Redis Database:
     enable_service df-redis
 
     enable_service df-redis-server
+
 
 Detailed Installation
 ---------------------
