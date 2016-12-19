@@ -152,8 +152,8 @@ def _release_lock(oid, sid):
     # retry logic will bust any parent transactions
     session = db_api.get_session()
     with session.begin():
-        LOG.info(_LI("Try to get lock for object %(oid)s in "
-                     "session %(sid)s."), {'oid': oid, 'sid': sid})
+        LOG.debug(_LI("Try to release lock for object %(oid)s in "
+                      "session %(sid)s."), {'oid': oid, 'sid': sid})
         _lock_free_update(session, oid, lock_state=True, session_id=sid)
         LOG.info(_LI("Lock is released for object %(oid)s in "
                      "session %(sid)s."), {'oid': oid, 'sid': sid})
