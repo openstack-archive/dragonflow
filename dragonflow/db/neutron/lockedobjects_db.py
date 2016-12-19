@@ -134,11 +134,11 @@ def _acquire_lock(oid):
     # retry logic will bust any parent transactions
     session = db_api.get_session()
     with session.begin():
-        LOG.info(_LI("Try to get lock for object %(oid)s in "
-                     "session %(sid)s."), {'oid': oid, 'sid': sid})
+        LOG.debug("Try to get lock for object %(oid)s in "
+                  "session %(sid)s.", {'oid': oid, 'sid': sid})
         _lock_free_update(session, oid, lock_state=False, session_id=sid)
-        LOG.info(_LI("Lock is acquired for object %(oid)s in "
-                     "session %(sid)s."), {'oid': oid, 'sid': sid})
+        LOG.debug("Lock is acquired for object %(oid)s in "
+                  "session %(sid)s.", {'oid': oid, 'sid': sid})
         return sid
 
 
@@ -152,11 +152,11 @@ def _release_lock(oid, sid):
     # retry logic will bust any parent transactions
     session = db_api.get_session()
     with session.begin():
-        LOG.info(_LI("Try to get lock for object %(oid)s in "
-                     "session %(sid)s."), {'oid': oid, 'sid': sid})
+        LOG.debug("Try to release lock for object %(oid)s in "
+                  "session %(sid)s.", {'oid': oid, 'sid': sid})
         _lock_free_update(session, oid, lock_state=True, session_id=sid)
-        LOG.info(_LI("Lock is released for object %(oid)s in "
-                     "session %(sid)s."), {'oid': oid, 'sid': sid})
+        LOG.debug("Lock is released for object %(oid)s in "
+                  "session %(sid)s.", {'oid': oid, 'sid': sid})
 
 
 def _generate_session_id():
@@ -220,9 +220,9 @@ def _lock_free_update(session, id, lock_state=False, session_id=0):
         update(update_params, synchronize_session='fetch')
 
     if not rows_update:
-        LOG.info(_LI('The lock for object %(id)s in session '
-                     '%(sid)s cannot be updated.'), {'id': id,
-                                                     'sid': session_id})
+        LOG.debug('The lock for object %(id)s in session '
+                  '%(sid)s cannot be updated.', {'id': id,
+                                                 'sid': session_id})
         raise db_exc.RetryRequest(df_exc.DBLockFailed(oid=id, sid=session_id))
 
 
