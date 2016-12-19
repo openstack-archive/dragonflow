@@ -18,7 +18,7 @@ from dragonflow.db.neutron import lockedobjects_db as lock_db
 
 
 class DFQosServiceNotificationDriver(
-    qos_base.QosServiceNotificationDriverBase):
+        qos_base.QosServiceNotificationDriverBase):
     """Dragonflow notification driver for QoS."""
 
     def __init__(self):
