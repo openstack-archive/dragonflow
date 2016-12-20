@@ -127,7 +127,6 @@ class DfLocalController(object):
                 self.nb_api.register_notification_callback(self)
 
     def run_sync(self):
-        self.sync_finished = True
         while True:
             time.sleep(1)
             self.run_db_poll()
@@ -137,14 +136,11 @@ class DfLocalController(object):
     def run_db_poll(self):
         try:
             self.register_chassis()
-
             self.create_tunnels()
 
-            if not self.enable_selective_topo_dist:
-                df_db_objects_refresh.sync_local_cache_from_nb_db()
-
+            topics = self.topology.get_subscribed_topics()
+            df_db_objects_refresh.sync_local_cache_from_nb_db(topics)
             self.sync_finished = True
-
         except Exception as e:
             self.sync_finished = False
             LOG.warning(_LW("run_db_poll - suppressing exception"))
