@@ -144,7 +144,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
     def update_security_group(self, resource, event, trigger, **kwargs):
         sg = kwargs['security_group']
-        sg_id = sg['id']
+        sg_id = kwargs['security_group_id']
         sg_name = sg.get('name', df_const.DF_SG_DEFAULT_NAME)
         tenant_id = sg['tenant_id']
         rules = sg.get('security_group_rules', [])
