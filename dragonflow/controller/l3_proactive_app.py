@@ -245,7 +245,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         LOG.debug('reprocess to del routes again')
         for router in self.db_store.get_routers(topic):
             router_id = router.get_id()
-            cached_routes = self.route_cache.get(router_id, None)
+            cached_routes = self.route_cache.get(router_id)
             if cached_routes is None:
                 continue
             routes_added = cached_routes.get(ROUTE_ADDED)

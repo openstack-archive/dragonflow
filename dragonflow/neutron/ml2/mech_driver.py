@@ -351,7 +351,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             return None
 
         for fixed_ip in port['fixed_ips']:
-            ip = fixed_ip.get('ip_address', None)
+            ip = fixed_ip.get('ip_address')
             if ip:
                 return ip
 
@@ -508,7 +508,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         if port.get('device_owner') == n_const.DEVICE_OWNER_ROUTER_GW:
             chassis = None
         else:
-            chassis = port.get('binding:host_id', None) or None
+            chassis = port.get('binding:host_id') or None
 
         binding_profile = port.get('binding:profile')
         remote_vtep = False
@@ -528,15 +528,15 @@ class DFMechDriver(driver_api.MechanismDriver):
             enabled=port.get('admin_state_up', False),
             chassis=chassis,
             version=port['revision_number'],
-            device_owner=port.get('device_owner', None),
-            device_id=port.get('device_id', None),
+            device_owner=port.get('device_owner'),
+            device_id=port.get('device_id'),
             security_groups=port.get('security_groups', []),
             port_security_enabled=port.get(psec.PORTSECURITY, False),
             remote_vtep=remote_vtep,
             allowed_address_pairs=port.get(addr_pair.ADDRESS_PAIRS, []),
-            binding_profile=port.get(portbindings.PROFILE, None),
-            binding_vnic_type=port.get(portbindings.VNIC_TYPE, None),
-            qos_policy_id=port.get('qos_policy_id', None))
+            binding_profile=port.get(portbindings.PROFILE),
+            binding_vnic_type=port.get(portbindings.VNIC_TYPE),
+            qos_policy_id=port.get('qos_policy_id'))
 
         LOG.info(_LI("DFMechDriver: create port %s"), port['id'])
         return port
@@ -547,11 +547,11 @@ class DFMechDriver(driver_api.MechanismDriver):
         # In ml2/plugin.py, when delete subnet, it will call
         # update_port_postcommit, DFMechDriver should judge the port is dhcp
         # port or not, if it is, then delete it.
-        host_id = port.get('binding:host_id', None)
+        host_id = port.get('binding:host_id')
         subnet_id = None
 
         for fixed_ip in port['fixed_ips']:
-            subnet_id = fixed_ip.get('subnet_id', None)
+            subnet_id = fixed_ip.get('subnet_id')
             if subnet_id:
                 break
 
@@ -597,7 +597,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         if updated_port.get('device_owner') == n_const.DEVICE_OWNER_ROUTER_GW:
             chassis = None
         else:
-            chassis = updated_port.get('binding:host_id', None) or None
+            chassis = updated_port.get('binding:host_id') or None
 
         binding_profile = updated_port.get('binding:profile')
         remote_vtep = False
@@ -625,14 +625,14 @@ class DFMechDriver(driver_api.MechanismDriver):
             name=updated_port.get('name', df_const.DF_PORT_DEFAULT_NAME),
             enabled=updated_port['admin_state_up'],
             chassis=chassis,
-            device_owner=updated_port.get('device_owner', None),
-            device_id=updated_port.get('device_id', None),
+            device_owner=updated_port.get('device_owner'),
+            device_id=updated_port.get('device_id'),
             security_groups=security_groups,
             port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
             allowed_address_pairs=updated_port.get(addr_pair.ADDRESS_PAIRS,
                                                    []),
-            binding_profile=updated_port.get(portbindings.PROFILE, None),
-            binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE, None),
+            binding_profile=updated_port.get(portbindings.PROFILE),
+            binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE),
             version=updated_port['revision_number'], remote_vtep=remote_vtep,
             qos_policy_id=updated_port.get('qos_policy_id'))
 
