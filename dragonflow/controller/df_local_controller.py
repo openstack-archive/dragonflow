@@ -178,7 +178,8 @@ class DfLocalController(object):
 
     def update_lswitch(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
-        if not self._is_valid_version(old_lswitch, lswitch):
+        if not df_utils.is_valid_version(
+                old_lswitch.inner_obj, lswitch.inner_obj):
             return
 
         LOG.info(_LI("Adding/Updating Logical Switch = %s"), lswitch)
@@ -199,19 +200,6 @@ class DfLocalController(object):
         if not chassis or chassis == constants.DRAGONFLOW_VIRTUAL_PORT:
             return False
         return True
-
-    def _is_valid_version(self, old_obj, new_obj):
-        if not old_obj:
-            return True
-
-        if new_obj.get_version() > old_obj.get_version():
-            return True
-        elif new_obj.get_version() == old_obj.get_version():
-            return False
-        else:
-            LOG.debug("new_obj has an old version, new_obj: %s, old_obj: %s",
-                      new_obj, old_obj)
-            return False
 
     def _logical_port_process(self, lport, original_lport=None):
         lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
@@ -315,7 +303,8 @@ class DfLocalController(object):
 
                 if lport.get_remote_vtep():
                     self._add_remote_port_on_chassis(lport)
-        if not self._is_valid_version(original_lport, lport):
+        if not df_utils.is_valid_version(
+                original_lport.inner_obj, lport.inner_obj):
             return
         self._logical_port_process(lport, original_lport)
 
@@ -344,7 +333,8 @@ class DfLocalController(object):
 
     def update_lrouter(self, lrouter):
         old_lrouter = self.db_store.get_router(lrouter.get_id())
-        if not self._is_valid_version(old_lrouter, lrouter):
+        if not df_utils.is_valid_version(
+                old_lrouter.inner_obj, lrouter.inner_obj):
             return
         self.open_flow_app.notify_update_router(lrouter, old_lrouter)
         self.db_store.update_router(lrouter.get_id(), lrouter)
@@ -366,7 +356,8 @@ class DfLocalController(object):
                      secgroup)
             self._add_new_security_group(secgroup)
             return
-        if not self._is_valid_version(old_secgroup, secgroup):
+        if not df_utils.is_valid_version(
+                old_secgroup.inner_obj, secgroup.inner_obj):
             return
         self._update_security_group_rules(old_secgroup, secgroup)
         self.db_store.update_security_group(secgroup.get_id(), secgroup)
@@ -379,7 +370,8 @@ class DfLocalController(object):
 
     def update_qospolicy(self, qos):
         original_qos = self.db_store.get_qos_policy(qos.get_id())
-        if not self._is_valid_version(original_qos, qos):
+        if not df_utils.is_valid_version(
+                original_qos.inner_obj, qos.inner_obj):
             return
 
         self.db_store.set_qos_policy(qos.get_id(), qos)
@@ -497,7 +489,8 @@ class DfLocalController(object):
                 return
             self._associate_floatingip(floatingip)
             return
-        if not self._is_valid_version(old_floatingip, floatingip):
+        if not df_utils.is_valid_version(
+                old_floatingip.inner_obj, floatingip.inner_obj):
             return
         self._update_floatingip(old_floatingip, floatingip)
 

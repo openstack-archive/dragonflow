@@ -105,7 +105,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.assertGreater(new_sg['revision_number'], sg['revision_number'])
         self.nb_api.add_security_group_rules.assert_called_with(
             sg['id'], sg['tenant_id'],
-            sg_rules=[rule], sg_version=new_sg['revision_number'])
+            sg_rules=[rule], version=new_sg['revision_number'])
 
         self.driver.delete_security_group_rule(self.context, rule['id'])
         newer_sg = self.driver.get_security_group(self.context, sg['id'])
@@ -113,7 +113,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                            new_sg['revision_number'])
         self.nb_api.delete_security_group_rule.assert_called_with(
             sg['id'], rule['id'], sg['tenant_id'],
-            sg_version=newer_sg['revision_number'])
+            version=newer_sg['revision_number'])
 
     def _test_create_network_revision(self):
         with self.network() as n:
@@ -145,7 +145,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                            network['revision_number'])
         self.nb_api.add_subnet.assert_called_with(
             subnet_id, network['id'], subnet['tenant_id'], name=subnet['name'],
-            nw_version=new_network['revision_number'],
+            version=new_network['revision_number'],
             enable_dhcp=subnet['enable_dhcp'], cidr=subnet['cidr'],
             dhcp_ip=mock.ANY, gateway_ip=subnet['gateway_ip'],
             dns_nameservers=subnet['dns_nameservers'],
@@ -160,7 +160,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                            network['revision_number'])
         self.nb_api.update_subnet.assert_called_with(
             subnet_id, network['id'], subnet['tenant_id'], name='updated',
-            nw_version=new_network['revision_number'],
+            version=new_network['revision_number'],
             enable_dhcp=subnet['enable_dhcp'], cidr=subnet['cidr'],
             dhcp_ip=mock.ANY, gateway_ip=subnet['gateway_ip'],
             dns_nameservers=subnet['dns_nameservers'],
@@ -175,7 +175,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                            network['revision_number'])
         self.nb_api.delete_subnet.assert_called_with(
             subnet_id, network['id'], subnet['tenant_id'],
-            nw_version=new_network['revision_number'])
+            version=new_network['revision_number'])
 
     def test_create_update_port_allowed_address_pairs(self):
         kwargs = {'allowed_address_pairs':

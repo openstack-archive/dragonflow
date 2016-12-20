@@ -71,7 +71,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                 router_port_info['port_id'], router_port_info['id'],
                 router_port_info['network_id'],
                 router_port_info['tenant_id'],
-                router_version=router_with_int['revision_number'],
+                version=router_with_int['revision_number'],
                 mac=mock.ANY, network=mock.ANY, unique_key=mock.ANY)
 
             router_port_info = self.l3p.remove_router_interface(
@@ -83,7 +83,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
             self.nb_api.delete_lrouter_port.assert_called_once_with(
                  router_port_info['port_id'], router_port_info['id'],
                  router_port_info['tenant_id'],
-                 router_version=router_without_int['revision_number'])
+                 version=router_without_int['revision_number'])
 
     def _test_create_floatingip_revision(self):
         kwargs = {'arg_list': ('router:external',),

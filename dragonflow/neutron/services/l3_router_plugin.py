@@ -281,7 +281,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                                      result['id'],
                                      result['network_id'],
                                      result['tenant_id'],
-                                     router_version=router_version,
+                                     version=router_version,
                                      mac=port['mac_address'],
                                      network=network,
                                      unique_key=logical_port.get_unique_key())
@@ -299,7 +299,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             self.nb_api.delete_lrouter_port(router_port_info['port_id'],
                                             router_id,
                                             router_port_info['tenant_id'],
-                                            router_version=router_version)
+                                            version=router_version)
         except df_exceptions.DBKeyNotFound:
             LOG.exception(_LE("logical router %s is not found in DF DB, "
                               "suppressing delete_lrouter_port "

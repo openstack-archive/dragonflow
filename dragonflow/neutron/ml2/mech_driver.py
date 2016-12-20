@@ -189,7 +189,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         del sg_rule['tenant_id']
         self.nb_api.add_security_group_rules(sg_id, tenant_id,
                                              sg_rules=[sg_rule],
-                                             sg_version=sg_version)
+                                             version=sg_version)
         LOG.info(_LI("DFMechDriver: create security group rule in group %s"),
                  sg_id)
         return sg_rule
@@ -205,7 +205,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         tenant_id = sg['tenant_id']
 
         self.nb_api.delete_security_group_rule(sg_id, sgr_id, tenant_id,
-                                               sg_version=sg_version)
+                                               version=sg_version)
         LOG.info(_LI("DFMechDriver: delete security group rule %s"), sgr_id)
 
     def create_network_precommit(self, context):
@@ -380,7 +380,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             net_id,
             subnet['tenant_id'],
             name=subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
-            nw_version=network['revision_number'],
+            version=network['revision_number'],
             enable_dhcp=subnet['enable_dhcp'],
             cidr=subnet['cidr'],
             dhcp_ip=dhcp_ip,
@@ -459,7 +459,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             new_subnet['network_id'],
             new_subnet['tenant_id'],
             name=new_subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
-            nw_version=network['revision_number'],
+            version=network['revision_number'],
             enable_dhcp=new_subnet['enable_dhcp'],
             cidr=new_subnet['cidr'],
             dhcp_ip=dhcp_ip,
@@ -488,7 +488,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         # update df controller with subnet delete
         try:
             self.nb_api.delete_subnet(subnet_id, net_id, subnet['tenant_id'],
-                                      nw_version=network['revision_number'])
+                                      version=network['revision_number'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("network %s is not found in DB, might have "
                       "been deleted concurrently" % net_id)
