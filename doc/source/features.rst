@@ -23,8 +23,8 @@ Dragonflow offers the following virtual network services:
 
 * Metadata
 
-  Currently uses conventional metadata agent.
-  In the process of creating distributed Metadata application.
+  Distributed Metadata proxy application running locally at each
+  compute node.
 
 * DPDK
 
