@@ -110,7 +110,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         return ("L3 Router Service Plugin for basic L3 forwarding "
                 "using Dragonflow.")
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_CREATE)
     def create_router(self, context, router):
         router = super(DFL3RouterPlugin, self).create_router(context, router)
         router_version = router['revision_number']
@@ -125,7 +125,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                                    ports=[])
         return router
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def update_router(self, context, router_id, router):
         router = super(DFL3RouterPlugin, self).update_router(
                        context, router_id, router)
@@ -152,7 +152,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
         return router
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def delete_router(self, context, router_id):
         router = self.get_router(context, router_id)
         ret_val = super(DFL3RouterPlugin, self).delete_router(context,
@@ -262,7 +262,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             fip['status'] = self.nb_api.get_floatingip(id).get_status()
             return fip
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def add_router_interface(self, context, router_id, interface_info):
         result = super(DFL3RouterPlugin, self).add_router_interface(
                        context, router_id, interface_info)
@@ -287,7 +287,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                                      unique_key=logical_port.get_unique_key())
         return result
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def remove_router_interface(self, context, router_id, interface_info):
         router_port_info = (
             super(DFL3RouterPlugin, self).remove_router_interface(
