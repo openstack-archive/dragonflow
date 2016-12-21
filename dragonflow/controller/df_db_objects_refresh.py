@@ -100,6 +100,11 @@ def initialize_object_refreshers(df_controller):
                                    nb_api.get_floatingips,
                                    df_controller.update_floatingip,
                                    df_controller.delete_floatingip))
+    items.append(DfObjectRefresher('Active Ports',
+                                   db_store.get_active_port_keys,
+                                   nb_api.get_active_ports,
+                                   df_controller.update_active_port,
+                                   df_controller.delete_active_port))
 
 
 def sync_local_cache_from_nb_db(topics=None):

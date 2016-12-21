@@ -12,6 +12,7 @@
 
 from oslo_config import cfg
 
+from dragonflow.conf import df_active_port_detection
 from dragonflow.conf import df_common_params
 from dragonflow.conf import df_dhcp
 from dragonflow.conf import df_dnat
@@ -26,6 +27,7 @@ CONF = cfg.CONF
 df_common_params.register_opts()
 df_dhcp.register_opts()
 df_metadata_service.register_opts()
+df_active_port_detection.register_opts()
 l2_ml2.register_opts()
 df_dnat.register_opts()
 df_ryu.register_opts()
