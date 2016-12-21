@@ -48,8 +48,10 @@ RESOURCE_ML2_SUBNET = 3
 RESOURCE_ML2_SECURITY_GROUP = 4
 RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE = 5
 RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE = 6
-RESOURCE_QOS_POLICY_CREATE_OR_UPDATE = 7
-RESOURCE_QOS_POLICY_DELETE = 8
+RESOURCE_ROUTER_CREATE = 7
+RESOURCE_ROUTER_UPDATE_OR_DELETE = 8
+RESOURCE_QOS = 9
+
 
 LOG = log.getLogger(__name__)
 
@@ -106,17 +108,18 @@ def _get_lock_id_by_resource_type(type, *args, **kwargs):
         lock_id = args[0][1].current['id']
     elif RESOURCE_ML2_SUBNET == type:
         lock_id = args[0][1].current['network_id']
+    elif RESOURCE_ROUTER_CREATE == type:
+        lock_id = args[0][2]['id']
+    elif RESOURCE_ROUTER_UPDATE_OR_DELETE == type:
+        lock_id = args[0][2]
     elif RESOURCE_ML2_SECURITY_GROUP == type:
         lock_id = args[1]['security_group']['id']
     elif RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE == type:
         lock_id = args[1]['security_group_rule']['security_group_id']
     elif RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE == type:
         lock_id = args[1]['security_group_id']
-    elif RESOURCE_QOS_POLICY_CREATE_OR_UPDATE == type:
-        lock_id = args[0][2]['tenant_id']
-    elif RESOURCE_QOS_POLICY_DELETE == type:
-        # when delete qos policy, there's no tenant_id in args.
-        lock_id = GLOBAL_LOCK_ID
+    elif RESOURCE_QOS == type:
+        lock_id = args[0][2]['id']
 
     if not lock_id:
         lock_id = GLOBAL_LOCK_ID
