@@ -34,7 +34,7 @@ from dragonflow.db.neutron import models
 LOCK_SEED = 9876543210
 
 # Used to wait and retry for distributed lock
-LOCK_MAX_RETRIES = 100
+LOCK_MAX_RETRIES = 500
 LOCK_INIT_RETRY_INTERVAL = 0.1
 LOCK_MAX_RETRY_INTERVAL = 1
 
