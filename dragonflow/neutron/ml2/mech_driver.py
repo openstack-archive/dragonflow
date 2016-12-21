@@ -169,7 +169,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
     def delete_security_group(self, resource, event, trigger, **kwargs):
         sg = kwargs['security_group']
-        sg_id = kwargs['security_group_id']
+        sg_id = sg['id']
         tenant_id = sg['tenant_id']
 
         self.nb_api.delete_security_group(sg_id, topic=tenant_id)

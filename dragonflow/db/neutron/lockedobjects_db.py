@@ -104,11 +104,11 @@ def _get_lock_id_by_resource_type(type, *args, **kwargs):
     elif RESOURCE_ML2_CORE == type:
         lock_id = args[0][1].current['tenant_id']
     elif RESOURCE_ML2_SECURITY_GROUP == type:
-        lock_id = args[1]['security_group']['tenant_id']
+        lock_id = args[1]['security_group']['id']
     elif RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE == type:
-        lock_id = args[1]['security_group_rule']['tenant_id']
+        lock_id = args[1]['security_group_rule']['security_group_id']
     elif RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE == type:
-        lock_id = args[1]['context'].tenant_id
+        lock_id = args[1]['security_group_id']
     elif RESOURCE_QOS_POLICY_CREATE_OR_UPDATE == type:
         lock_id = args[0][2]['tenant_id']
     elif RESOURCE_QOS_POLICY_DELETE == type:
