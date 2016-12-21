@@ -40,7 +40,7 @@ class DFQosServiceNotificationDriver(
 
         return self._nb_api
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS_POLICY_CREATE_OR_UPDATE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS)
     def create_policy(self, context, policy):
         self.nb_api.create_qos_policy(policy['id'],
                                       policy['tenant_id'],
@@ -48,7 +48,7 @@ class DFQosServiceNotificationDriver(
                                       rules=policy.get('rules', []),
                                       version=policy['revision_number'])
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS_POLICY_CREATE_OR_UPDATE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS)
     def update_policy(self, context, policy):
         policy_id = policy['id']
         # NOTE: Neutron will not pass policy with latest revision_number
@@ -60,7 +60,7 @@ class DFQosServiceNotificationDriver(
             name=policy['name'], rules=policy_neutron['rules'],
             version=policy_neutron['revision_number'])
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS_POLICY_DELETE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS)
     def delete_policy(self, context, policy):
         policy_id = policy['id']
         # Only id will be in policy in the argument. Get full policy from
