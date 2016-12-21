@@ -44,11 +44,13 @@ GLOBAL_LOCK_ID = "ffffffffffffffffffffffffffffffff"
 # The resource need to be protected by lock
 RESOURCE_DF_PLUGIN = 1
 RESOURCE_ML2_CORE = 2  # network, subnet, port
-RESOURCE_ML2_SECURITY_GROUP = 3
-RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE = 4
-RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE = 5
-RESOURCE_QOS_POLICY_CREATE_OR_UPDATE = 6
-RESOURCE_QOS_POLICY_DELETE = 7
+RESOURCE_ML2_NETWORK = 3
+RESOURCE_ML2_SUBNET = 4
+RESOURCE_ML2_SECURITY_GROUP = 5
+RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE = 6
+RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE = 7
+RESOURCE_QOS_POLICY_CREATE_OR_UPDATE = 8
+RESOURCE_QOS_POLICY_DELETE = 9
 
 LOG = log.getLogger(__name__)
 
@@ -103,6 +105,10 @@ def _get_lock_id_by_resource_type(type, *args, **kwargs):
         lock_id = args[0][1].project_id
     elif RESOURCE_ML2_CORE == type:
         lock_id = args[0][1].current['tenant_id']
+    elif RESOURCE_ML2_NETWORK == type:
+        lock_id = args[0][1].current['id']
+    elif RESOURCE_ML2_SUBNET == type:
+        lock_id = args[0][1].current['network_id']
     elif RESOURCE_ML2_SECURITY_GROUP == type:
         lock_id = args[1]['security_group']['id']
     elif RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE == type:

@@ -215,7 +215,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             msg = _('Multi-provider networks are not supported')
             raise n_exc.InvalidInput(error_message=msg)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK)
     def create_network_postcommit(self, context):
         network = context.current
 
@@ -235,7 +235,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         LOG.info(_LI("DFMechDriver: create network %s"), network['id'])
         return network
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK)
     def delete_network_postcommit(self, context):
         network = context.current
         network_id = network['id']
@@ -251,7 +251,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         LOG.info(_LI("DFMechDriver: delete network %s"), network_id)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK)
     def update_network_postcommit(self, context):
         network = context.current
 
@@ -357,7 +357,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         return None
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SUBNET)
     def create_subnet_postcommit(self, context):
         subnet = context.current
         network = context.network.current
@@ -434,7 +434,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
             return None, None
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SUBNET)
     def update_subnet_postcommit(self, context):
         new_subnet = context.current
         old_subnet = context.original
@@ -470,7 +470,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         LOG.info(_LI("DFMechDriver: update subnet %s"), new_subnet['id'])
         return new_subnet
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SUBNET)
     def delete_subnet_postcommit(self, context):
         """If the subnet enabled dhcp, the dhcp server port should be deleted.
         But the operation of delete dhcp port can't do here, because in this
