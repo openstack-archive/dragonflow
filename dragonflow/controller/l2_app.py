@@ -507,9 +507,9 @@ class L2App(df_base_app.DFlowApp):
         elif network_type == 'flat':
             self._del_network_flows_for_flat(local_network_id)
         else:
-            self._del_network_flows_for_tunnel(segmentation_id)
+            self._del_network_flows_for_tunnel(segmentation_id, network_type)
 
-    def _del_network_flows_for_tunnel(self, segmentation_id):
+    def _del_network_flows_for_tunnel(self, segmentation_id, network_type):
         if segmentation_id is None:
             return
 
@@ -517,7 +517,15 @@ class L2App(df_base_app.DFlowApp):
 
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        match = parser.OFPMatch(tunnel_id_nxm=segmentation_id)
+        if cfg.CONF.df.enable_virtual_tunnel_port:
+            ofport = self.vswitch_api.get_vtp_ofport(network_type)
+            if not ofport:
+                return
+
+            match = parser.OFPMatch(tunnel_id_nxm=segmentation_id,
+                                    in_port=ofport)
+        else:
+            match = parser.OFPMatch(tunnel_id_nxm=segmentation_id)
 
         self.mod_flow(
             datapath=datapath,
@@ -646,19 +654,36 @@ class L2App(df_base_app.DFlowApp):
         match = self._get_multicast_broadcast_match(network_id)
 
         actions = []
-        tunnels = set()
-        # aggregate  remote tunnel
-        for port_id_in_network in remote_ports:
-            lport = self.db_store.get_port(port_id_in_network)
-            if lport is None:
-                continue
-            tunnel_port = lport.get_external_value('ofport')
+        if cfg.CONF.df.enable_virtual_tunnel_port:
+            remote_ips = set()
+            for port_id_in_network in remote_ports:
+                lport = self.db_store.get_port(port_id_in_network)
+                if not lport:
+                    continue
+                remote_ip = lport.get_external_value('peer_vtep_address')
+                if remote_ip not in remote_ips:
+                    remote_ips.add(remote_ip)
+                    ofport = lport.get_external_value('ofport')
+                    actions.extend(
+                        [parser.OFPActionSetField(tun_ipv4_dst=remote_ip),
+                         parser.OFPActionSetField(
+                             tunnel_id_nxm=segmentation_id),
+                         parser.OFPActionOutput(port=ofport)])
+        else:
+            tunnels = set()
+            # aggregate  remote tunnel
+            for port_id_in_network in remote_ports:
+                lport = self.db_store.get_port(port_id_in_network)
+                if lport is None:
+                    continue
+                tunnel_port = lport.get_external_value('ofport')
 
-            if tunnel_port not in tunnels:
-                tunnels.add(tunnel_port)
-                actions.append(parser.OFPActionSetField(
-                    tunnel_id_nxm=segmentation_id))
-                actions.append(parser.OFPActionOutput(port=tunnel_port))
+                if tunnel_port not in tunnels:
+                    tunnels.add(tunnel_port)
+                    actions.append(parser.OFPActionSetField(
+                        tunnel_id_nxm=segmentation_id))
+                    actions.append(parser.OFPActionOutput(port=tunnel_port))
+
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                              actions)]
         self.mod_flow(
@@ -710,6 +735,7 @@ class L2App(df_base_app.DFlowApp):
         network_type = lport.get_external_value('network_type')
         segmentation_id = lport.get_external_value('segmentation_id')
         ofport = lport.get_external_value('ofport')
+        remote_ip = lport.get_external_value('peer_vtep_address')
         port_key = lport.get_unique_key()
 
         datapath = self.get_datapath()
@@ -730,6 +756,9 @@ class L2App(df_base_app.DFlowApp):
         match = parser.OFPMatch(reg7=port_key)
         actions = [parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
                    parser.OFPActionOutput(port=ofport)]
+        if cfg.CONF.df.enable_virtual_tunnel_port:
+            actions.insert(0, parser.OFPActionSetField(tun_ipv4_dst=remote_ip))
+
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
@@ -766,6 +795,7 @@ class L2App(df_base_app.DFlowApp):
                                                  local_network_id)
         else:
             self._install_network_flows_for_tunnel(segmentation_id,
+                                                   network_type,
                                                    local_network_id)
 
     """
@@ -774,7 +804,7 @@ class L2App(df_base_app.DFlowApp):
     Match: tunnel_id= vni
     Actions: metadata=network_id, goto:INGRESS_DESTIANTION_PORT_LOOKUP_TABLE
     """
-    def _install_network_flows_for_tunnel(self, segmentation_id,
+    def _install_network_flows_for_tunnel(self, segmentation_id, network_type,
                                           local_network_id):
         if segmentation_id is None:
             return
@@ -782,7 +812,15 @@ class L2App(df_base_app.DFlowApp):
         datapath = self.get_datapath()
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-        match = parser.OFPMatch(tunnel_id_nxm=segmentation_id)
+        if cfg.CONF.df.enable_virtual_tunnel_port:
+            ofport = self.vswitch_api.get_vtp_ofport(network_type)
+            if not ofport:
+                return
+
+            match = parser.OFPMatch(tunnel_id_nxm=segmentation_id,
+                                    in_port=ofport)
+        else:
+            match = parser.OFPMatch(tunnel_id_nxm=segmentation_id)
 
         actions = [parser.OFPActionSetField(metadata=local_network_id)]
         action_inst = parser.OFPInstructionActions(

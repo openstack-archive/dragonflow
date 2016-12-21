@@ -257,3 +257,6 @@ class OvsApi(object):
 
     def delete_port_qos_and_queue(self, port_id):
         self.ovsdb.delete_qos(port_id).execute()
+
+    def get_vtp_ofport(self, tunnel_type):
+        return self.get_port_ofport(tunnel_type + '-vtp')
