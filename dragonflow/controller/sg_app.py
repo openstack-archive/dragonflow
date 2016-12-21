@@ -22,6 +22,7 @@ import six
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
+from dragonflow.db import models
 
 
 LOG = log.getLogger(__name__)
@@ -66,12 +67,7 @@ class SGApp(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
         super(SGApp, self).__init__(*args, **kwargs)
-        self.secgroup_mappings = {}
         self.secgroup_rule_mappings = {}
-        # When the value of a conj_id match is zero, it can match every
-        # packets with no conj_id, which is not we expected. So We simply skip
-        # the value of zero, and allocate conj_ids begin with one.
-        self.next_secgroup_id = 1
         self.next_secgroup_rule_id = 0
         self.secgroup_refcount = {}
         self.remote_secgroup_ref = {}
@@ -307,6 +303,9 @@ class SGApp(df_base_app.DFlowApp):
     def _install_security_group_permit_flow_by_direction(self,
                                                          security_group_id,
                                                          direction):
+        if self._is_sg_not_associated_with_local_port(security_group_id):
+            return
+
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
             recirc_table = const.INGRESS_DISPATCH_TABLE
@@ -319,10 +318,6 @@ class SGApp(df_base_app.DFlowApp):
 
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(security_group_id)
-        if conj_id is None:
-            LOG.error(_LE("the conj_id of the security group %s is none"),
-                      security_group_id)
-            return
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP, conj_id=conj_id)
         actions = [parser.NXActionCT(actions=[],
@@ -355,6 +350,9 @@ class SGApp(df_base_app.DFlowApp):
     def _uninstall_security_group_permit_flow_by_direction(self,
                                                            security_group_id,
                                                            direction):
+        if self._is_sg_not_associated_with_local_port(security_group_id):
+            return
+
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
         else:
@@ -365,10 +363,6 @@ class SGApp(df_base_app.DFlowApp):
 
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(security_group_id)
-        if conj_id is None:
-            LOG.error(_LE("the conj_id of the security group %s is none"),
-                      security_group_id)
-            return
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP, conj_id=conj_id)
         self.mod_flow(
@@ -390,6 +384,9 @@ class SGApp(df_base_app.DFlowApp):
 
     def _install_associating_flow_by_direction(self, security_group_id,
                                                lport, direction):
+        if self._is_sg_not_associated_with_local_port(security_group_id):
+            return
+
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
 
@@ -404,10 +401,6 @@ class SGApp(df_base_app.DFlowApp):
 
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(security_group_id)
-        if conj_id is None:
-            LOG.error(_LE("the conj_id of the security group (%s) is none"),
-                      security_group_id)
-            return
 
         match = parser.OFPMatch(ct_state=(const.CT_STATE_TRK |
                                           const.CT_STATE_NEW,
@@ -430,6 +423,9 @@ class SGApp(df_base_app.DFlowApp):
 
     def _uninstall_associating_flow_by_direction(self, security_group_id,
                                                  lport, direction):
+        if self._is_sg_not_associated_with_local_port(security_group_id):
+            return
+
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
 
@@ -444,10 +440,6 @@ class SGApp(df_base_app.DFlowApp):
 
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(security_group_id)
-        if conj_id is None:
-            LOG.error(_LE("the conj_id of the security group %s is none"),
-                      security_group_id)
-            return
 
         match = parser.OFPMatch(ct_state=(const.CT_STATE_TRK |
                                           const.CT_STATE_NEW,
@@ -541,15 +533,15 @@ class SGApp(df_base_app.DFlowApp):
         self._uninstall_connection_track_flow_by_direction(lport, 'egress')
 
     def _update_security_group_rule_flows_by_addresses(self,
-                                                       secgroup,
+                                                       secgroup_id,
                                                        secgroup_rule,
                                                        added_cidr,
                                                        removed_cidr):
-        conj_id, priority = self._get_secgroup_conj_id_and_priority(secgroup)
-        if conj_id is None:
-            LOG.error(_LE("the conj_id of the security group (%s) is none"),
-                      secgroup)
+        if self._is_sg_not_associated_with_local_port(secgroup_id):
             return
+
+        conj_id, priority = self._get_secgroup_conj_id_and_priority(
+            secgroup_id)
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
@@ -609,12 +601,9 @@ class SGApp(df_base_app.DFlowApp):
                     match=match,
                     command=ofproto.OFPFC_DELETE_STRICT)
 
-    def _install_security_group_rule_flows(self, secgroup, secgroup_rule):
-        conj_id, priority = self._get_secgroup_conj_id_and_priority(secgroup)
-        if conj_id is None:
-            LOG.error(_LE("the conj_id of the security group %s is none"),
-                      secgroup)
-            return
+    def _install_security_group_rule_flows(self, secgroup_id, secgroup_rule):
+        conj_id, priority = self._get_secgroup_conj_id_and_priority(
+            secgroup_id)
 
         parser = self.get_datapath().ofproto_parser
         ofproto = self.get_datapath().ofproto
@@ -799,42 +788,10 @@ class SGApp(df_base_app.DFlowApp):
             self.secgroup_rule_mappings[lrule_id] = self.next_secgroup_rule_id
             return self.next_secgroup_rule_id
 
-    def _allocate_security_group_id(self, lgroup_id):
-        # allocate a number
-        security_id = self.next_secgroup_id
-        LOG.info(_LI("allocate a number %(security_id)s to the security group "
-                     "%(lgroup_id)s")
-                 % {'security_id': security_id,
-                    'lgroup_id': lgroup_id})
-        self.next_secgroup_id += 1
-
-        # save in DB
-        # TODO(yuanwei)
-
-        # save in local mapping
-        self.secgroup_mappings[lgroup_id] = security_id
-
-    def _release_security_group_id(self, lgroup_id):
-        # release in local mapping
-        security_id = self.secgroup_mappings.get(lgroup_id)
-        LOG.info(_LI("release the allocated number %(security_id)s of the"
-                     "security group %(lgroup_id)s")
-                 % {'security_id': security_id,
-                    'lgroup_id': lgroup_id})
-        if security_id is not None:
-            del self.secgroup_mappings[lgroup_id]
-
-        # release in DB
-        # TODO(yuan wei)
-
-        # release this number
-        # TODO(yuan wei)
-
-    def _get_secgroup_conj_id_and_priority(self, lgroup_id):
-        security_id = self.secgroup_mappings.get(lgroup_id)
-        if security_id is not None:
-            return security_id, (SG_PRIORITY_OFFSET + security_id)
-        return None, None
+    def _get_secgroup_conj_id_and_priority(self, secgroup_id):
+        sg_unique_key = self.db_store.get_unique_key_by_id(
+            models.SecurityGroup.table_name, secgroup_id)
+        return sg_unique_key, (SG_PRIORITY_OFFSET + sg_unique_key)
 
     def _associate_secgroup_lport_addresses(self, secgroup_id, lport):
         # update the record of aggregate addresses of ports associated
@@ -900,7 +857,6 @@ class SGApp(df_base_app.DFlowApp):
         if associate_ports is None:
             self.secgroup_associate_local_ports[secgroup_id] = \
                 [lport.get_id()]
-            self._allocate_security_group_id(secgroup_id)
             self._install_security_group_flows(secgroup_id)
         elif lport.get_id() not in associate_ports:
             associate_ports.append(lport.get_id())
@@ -922,7 +878,6 @@ class SGApp(df_base_app.DFlowApp):
                 associate_ports.remove(lport.get_id())
                 if len(associate_ports) == 0:
                     self._uninstall_security_group_flow(secgroup_id)
-                    self._release_security_group_id(secgroup_id)
                     del self.secgroup_associate_local_ports[secgroup_id]
 
     def _add_remote_port_associating(self, lport, secgroup_id):
@@ -1102,20 +1057,22 @@ class SGApp(df_base_app.DFlowApp):
         for secgroup_id in secgroups:
             self._add_remote_port_associating(lport, secgroup_id)
 
+    def _is_sg_not_associated_with_local_port(self, secgroup_id):
+        return self.secgroup_associate_local_ports.get(secgroup_id) is None
+
     def add_security_group_rule(self, secgroup, secgroup_rule):
-        LOG.info(_LI("add a rule %(rule)s to security group %(secgroup)s")
-                 % {'rule': secgroup_rule, 'secgroup': secgroup.get_id()})
         if self.get_datapath() is None:
             LOG.error(_LE("datapath is none"))
             return
 
-        conj_id, priority = \
-            self._get_secgroup_conj_id_and_priority(secgroup.get_id())
-        if conj_id is None:
-            # this security group wasn't associated with a local port
-            LOG.info(_LI("this security group %s wasn't associated with"
-                         " a local port"), secgroup.get_id())
+        secgroup_id = secgroup.get_id()
+        if self._is_sg_not_associated_with_local_port(secgroup_id):
+            LOG.debug("Security group %s wasn't associated with a local port",
+                      secgroup_id)
             return
+
+        LOG.info(_LI("Add a rule %(rule)s to security group %(secgroup)s"),
+                 {'rule': secgroup_rule, 'secgroup': secgroup_id})
 
         # update the record of rules each of which specifies a same security
         #  group as its parameter of remote group.
@@ -1128,23 +1085,24 @@ class SGApp(df_base_app.DFlowApp):
             else:
                 associate_rules[secgroup_rule.get_id()] = secgroup_rule
 
-        self._install_security_group_rule_flows(
-                secgroup.get_id(), secgroup_rule)
+        self._install_security_group_rule_flows(secgroup_id, secgroup_rule)
 
     def remove_security_group_rule(self, secgroup, secgroup_rule):
-        LOG.info(_LI("remove a rule %(rule)s to security group %(secgroup)s")
-                 % {'rule': secgroup_rule, 'secgroup': secgroup.get_id()})
         if self.get_datapath() is None:
             LOG.error(_LE("datapath is none"))
             return
 
+        secgroup_id = secgroup.get_id()
+        if self._is_sg_not_associated_with_local_port(secgroup_id):
+            LOG.debug("Security group %s wasn't associated with a local port",
+                      secgroup_id)
+            return
+
+        LOG.info(_LI("Remove a rule %(rule)s to security group %(secgroup)s"),
+                 {'rule': secgroup_rule, 'secgroup': secgroup.get_id()})
+
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(secgroup.get_id())
-        if conj_id is None:
-            # this security group wasn't associated with a local port
-            LOG.info(_LI("this security group %s wasn't associated with"
-                         " a local port"), secgroup.get_id())
-            return
 
         # update the record of rules each of which specifies a same security
         # group as its parameter of remote group.
