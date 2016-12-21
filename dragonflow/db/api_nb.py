@@ -323,8 +323,9 @@ class NbApi(object):
         secgroup_json = self.driver.get_key(db_models.SecurityGroup.table_name,
                                             id, topic)
         secgroup = jsonutils.loads(secgroup_json)
-        for col, val in columns.items():
-            secgroup[col] = val
+        if not df_utils.is_valid_version(secgroup, columns):
+            return
+        secgroup.update(columns)
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.set_key(db_models.SecurityGroup.table_name,
                             id, secgroup_json, topic)
@@ -340,12 +341,15 @@ class NbApi(object):
         secgroup_json = self.driver.get_key(db_models.SecurityGroup.table_name,
                                             sg_id, topic)
         new_rules = columns.get('sg_rules')
-        sg_version_id = columns.get('sg_version')
+        sg_version = columns.get('sg_version')
         secgroup = jsonutils.loads(secgroup_json)
+        sg_dict = {'id': sg_id, 'version': sg_version}
+        if not df_utils.is_valid_version(secgroup, sg_dict):
+            return
         rules = secgroup.get('rules', [])
         rules.extend(new_rules)
         secgroup['rules'] = rules
-        secgroup['version'] = sg_version_id
+        secgroup['version'] = sg_version
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.set_key(db_models.SecurityGroup.table_name,
                             sg_id, secgroup_json, secgroup['topic'])
@@ -357,14 +361,17 @@ class NbApi(object):
         secgroup_json = self.driver.get_key(db_models.SecurityGroup.table_name,
                                             sg_id, topic)
         secgroup = jsonutils.loads(secgroup_json)
-        sg_version_id = columns.get('sg_version')
+        sg_version = columns.get('sg_version')
+        sg_dict = {'id': sg_id, 'version': sg_version}
+        if not df_utils.is_valid_version(secgroup, sg_dict):
+            return
         rules = secgroup.get('rules')
         new_rules = []
         for rule in rules:
             if rule['id'] != sgr_id:
                 new_rules.append(rule)
         secgroup['rules'] = new_rules
-        secgroup['version'] = sg_version_id
+        secgroup['version'] = sg_version
         secgroup_json = jsonutils.dumps(secgroup)
         self.driver.set_key(db_models.SecurityGroup.table_name,
                             sg_id, secgroup_json,
@@ -416,7 +423,10 @@ class NbApi(object):
         lswitch_json = self.driver.get_key(db_models.LogicalSwitch.table_name,
                                            lswitch_id, topic)
         lswitch = jsonutils.loads(lswitch_json)
-        network_version = None
+        nw_version = columns.get('nw_version')
+        nw_dict = {'id': lswitch_id, 'version': nw_version}
+        if not df_utils.is_valid_version(lswitch, nw_dict):
+            return
 
         subnet = {}
         subnet['id'] = id
@@ -424,14 +434,13 @@ class NbApi(object):
         subnet['topic'] = topic
         for col, val in columns.items():
             if col == 'nw_version':
-                network_version = val
                 continue
             subnet[col] = val
 
         subnets = lswitch.get('subnets', [])
         subnets.append(subnet)
         lswitch['subnets'] = subnets
-        lswitch['version'] = network_version
+        lswitch['version'] = nw_version
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key(db_models.LogicalSwitch.table_name,
                             lswitch_id, lswitch_json, lswitch['topic'])
@@ -443,20 +452,21 @@ class NbApi(object):
         lswitch_json = self.driver.get_key(db_models.LogicalSwitch.table_name,
                                            lswitch_id, topic)
         lswitch = jsonutils.loads(lswitch_json)
+        nw_version = columns.get('nw_version')
+        nw_dict = {'id': lswitch_id, 'version': nw_version}
+        if not df_utils.is_valid_version(lswitch, nw_dict):
+            return
         subnet = None
-        network_version = None
         for s in lswitch.get('subnets', []):
             if s['id'] == id:
                 subnet = s
 
         for col, val in columns.items():
             if col == 'nw_version':
-                network_version = val
                 continue
             subnet[col] = val
 
-        lswitch['version'] = network_version
-
+        lswitch['version'] = nw_version
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key(db_models.LogicalSwitch.table_name,
                             lswitch_id, lswitch_json, lswitch['topic'])
@@ -468,7 +478,10 @@ class NbApi(object):
         lswitch_json = self.driver.get_key(db_models.LogicalSwitch.table_name,
                                            lswitch_id, topic)
         lswitch = jsonutils.loads(lswitch_json)
-        network_version = columns.get('nw_version')
+        nw_version = columns.get('nw_version')
+        nw_dict = {'id': lswitch_id, 'version': nw_version}
+        if not df_utils.is_valid_version(lswitch, nw_dict):
+            return
 
         new_ports = []
         for subnet in lswitch.get('subnets', []):
@@ -476,7 +489,7 @@ class NbApi(object):
                 new_ports.append(subnet)
 
         lswitch['subnets'] = new_ports
-        lswitch['version'] = network_version
+        lswitch['version'] = nw_version
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key(db_models.LogicalSwitch.table_name,
                             lswitch_id, lswitch_json,
@@ -521,8 +534,9 @@ class NbApi(object):
         lswitch_json = self.driver.get_key(db_models.LogicalSwitch.table_name,
                                            id, topic)
         lswitch = jsonutils.loads(lswitch_json)
-        for col, val in columns.items():
-            lswitch[col] = val
+        if not df_utils.is_valid_version(lswitch, columns):
+            return
+        lswitch.update(columns)
         lswitch_json = jsonutils.dumps(lswitch)
         self.driver.set_key(db_models.LogicalSwitch.table_name,
                             id, lswitch_json, lswitch['topic'])
@@ -553,6 +567,8 @@ class NbApi(object):
         lport_json = self.driver.get_key(db_models.LogicalPort.table_name,
                                          id, topic)
         lport = jsonutils.loads(lport_json)
+        if not df_utils.is_valid_version(lport, columns):
+            return
         for col, val in columns.items():
             if val != const.ATTR_NOT_SPECIFIED:
                 lport[col] = val
@@ -584,9 +600,9 @@ class NbApi(object):
         lrouter_json = self.driver.get_key(db_models.LogicalRouter.table_name,
                                            id, topic)
         lrouter = jsonutils.loads(lrouter_json)
-        for col, val in columns.items():
-            lrouter[col] = val
-
+        if not df_utils.is_valid_version(lrouter, columns):
+            return
+        lrouter.update(columns)
         lrouter_json = jsonutils.dumps(lrouter)
         self.driver.set_key(db_models.LogicalRouter.table_name,
                             id, lrouter_json, topic)
@@ -603,7 +619,10 @@ class NbApi(object):
         lrouter_json = self.driver.get_key(db_models.LogicalRouter.table_name,
                                            lrouter_id, topic)
         lrouter = jsonutils.loads(lrouter_json)
-        router_version = None
+        router_version = columns.get('router_version')
+        router_dict = {'id': lrouter_id, 'version': router_version}
+        if not df_utils.is_valid_version(lrouter, router_dict):
+            return
 
         lrouter_port = {}
         lrouter_port['id'] = id
@@ -612,7 +631,6 @@ class NbApi(object):
         lrouter_port['topic'] = topic
         for col, val in columns.items():
             if col == 'router_version':
-                router_version = val
                 continue
             lrouter_port[col] = val
 
@@ -633,6 +651,9 @@ class NbApi(object):
                                            lrouter_id, topic)
         lrouter = jsonutils.loads(lrouter_json)
         router_version = columns.get('router_version')
+        router_dict = {'id': lrouter_id, 'version': router_version}
+        if not df_utils.is_valid_version(lrouter, router_dict):
+            return
 
         new_ports = []
         for port in lrouter.get('ports', []):
@@ -718,8 +739,9 @@ class NbApi(object):
         floatingip_json = self.driver.get_key(db_models.Floatingip.table_name,
                                               id, topic)
         floatingip = jsonutils.loads(floatingip_json)
-        for col, val in columns.items():
-            floatingip[col] = val
+        if not df_utils.is_valid_version(floatingip, columns):
+            return
+        floatingip.update(columns)
         floatingip_json = jsonutils.dumps(floatingip)
         self.driver.set_key(db_models.Floatingip.table_name,
                             id, floatingip_json, floatingip['topic'])
@@ -839,6 +861,8 @@ class NbApi(object):
         qospolicy_json = self.driver.get_key(db_models.QosPolicy.table_name,
                                              policy_id, topic)
         policy = jsonutils.loads(qospolicy_json)
+        if not df_utils.is_valid_version(policy, columns):
+            return
         policy.update(columns)
         policy_json = jsonutils.dumps(policy)
 
