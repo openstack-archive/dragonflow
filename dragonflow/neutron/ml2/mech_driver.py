@@ -215,7 +215,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             msg = _('Multi-provider networks are not supported')
             raise n_exc.InvalidInput(error_message=msg)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK)
     def create_network_postcommit(self, context):
         network = context.current
 
@@ -235,7 +235,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         LOG.info(_LI("DFMechDriver: create network %s"), network['id'])
         return network
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK)
     def delete_network_postcommit(self, context):
         network = context.current
         network_id = network['id']
@@ -251,7 +251,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         LOG.info(_LI("DFMechDriver: delete network %s"), network_id)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_CORE)
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK)
     def update_network_postcommit(self, context):
         network = context.current
 
