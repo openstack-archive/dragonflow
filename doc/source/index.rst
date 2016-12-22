@@ -24,6 +24,7 @@ Contents:
    configuration
    usage
    features
+   manual_deployment
    contributing
    releasenotes
 
