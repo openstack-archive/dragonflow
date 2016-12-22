@@ -28,6 +28,7 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         self.app = self.open_flow_app.dispatcher.apps[0]
         self.mock_mod_flow = mock.Mock(name='mod_flow')
         self.app.mod_flow = self.mock_mod_flow
+        self.app._add_subnet_send_to_snat = mock.Mock()
         self.router = test_app_base.fake_logic_router1
 
     def test_add_del_route(self):
@@ -37,10 +38,16 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
 
         # add router
         self.mock_mod_flow.reset_mock()
+        self.app._add_subnet_send_to_snat.reset_mock()
         self.controller.update_lrouter(self.router)
         self.assertEqual(4, self.mock_mod_flow.call_count)
         args, kwargs = self.mock_mod_flow.call_args
         self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])
+        self.app._add_subnet_send_to_snat.assert_called_once_with(
+            test_app_base.fake_logic_switch1.get_unique_key(),
+            self.router.get_ports()[0].get_mac(),
+            self.router.get_ports()[0].get_unique_key()
+        )
         self.mock_mod_flow.reset_mock()
 
         # add route
