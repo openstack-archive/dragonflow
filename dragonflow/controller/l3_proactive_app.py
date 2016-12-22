@@ -186,7 +186,10 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                     router_port.get_cidr_netmask(),
                     tunnel_key,
                     local_network_id,
-                    router_port.get_mac())
+                    mac)
+
+        # Fall through to sNAT
+        self._add_subnet_send_to_snat(local_network_id, mac, tunnel_key)
 
     def _get_port(self, ip, lswitch_id, topic):
         ports = self.db_store.get_ports(topic)
@@ -440,6 +443,35 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
+    def _add_subnet_send_to_snat(self, network_id, mac, tunnel_key):
+        datapath = self.get_datapath()
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        match = parser.OFPMatch(metadata=network_id, eth_dst=mac)
+        actions = [parser.OFPActionSetField(reg7=tunnel_key)]
+        inst = [
+            parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
+            parser.OFPInstructionGotoTable(const.EGRESS_TABLE),
+        ]
+        self.mod_flow(
+            self.get_datapath(),
+            inst=inst,
+            table_id=const.L3_LOOKUP_TABLE,
+            priority=const.PRIORITY_LOW,
+            match=match)
+
+    def _delete_subnet_send_to_snat(self, network_id, mac):
+        datapath = self.get_datapath()
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        match = parser.OFPMatch(metadata=network_id, eth_dst=mac)
+        self.mod_flow(
+            self.get_datapath(),
+            command=ofproto.OFPFC_DELETE_STRICT,
+            table_id=const.L3_LOOKUP_TABLE,
+            priority=const.PRIORITY_LOW,
+            match=match)
+
     def _delete_router_port(self, router, router_port):
         LOG.info(_LI("Removing logical router interface = %s"),
                  router_port)
@@ -451,6 +483,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         tunnel_key = router_port.get_unique_key()
         ip = router_port.get_ip()
         mac = router_port.get_mac()
+
+        self._delete_subnet_send_to_snat(local_network_id, mac)
 
         if netaddr.IPAddress(ip).version == 4:
             arp_responder.ArpResponder(self, local_network_id, ip).remove()
