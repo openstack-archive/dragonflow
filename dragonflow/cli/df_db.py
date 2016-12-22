@@ -270,7 +270,7 @@ def main():
     args = parser.parse_args()
 
     common_config.init(['--config-file',
-                        '/etc/neutron/plugins/dragonflow.ini',
+                        '/etc/neutron/dragonflow.ini',
                         '--config-file',
                         '/etc/neutron/neutron.conf'])
     db_driver = df_utils.load_driver(
