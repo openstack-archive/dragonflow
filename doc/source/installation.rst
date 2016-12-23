@@ -26,7 +26,7 @@ the Open vSwitch backend.
 
 Vagrant allows to configure the provider on which the virtual machines are
 created. Virtualbox is the default provider used to launch the VM's on a
-developer computer, but other providers can be used: VMWare, AWS, Openstack,
+developer computer, but other providers can be used: VMWare, AWS, OpenStack,
 containers stuff, ...
 
 Quick Start
