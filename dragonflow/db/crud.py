@@ -89,3 +89,10 @@ class NbApiCRUD(object):
             self.model.from_json(e)
             for e in self.driver.get_all_entries(self.table_name, topic)
         ]
+
+
+class UniqueKeyNbApiCRUD(NbApiCRUD):
+    def create(self, obj):
+        model = type(obj)
+        obj.unique_key = self.driver.allocate_unique_key(model.table_name)
+        return super(UniqueKeyNbApiCRUD, self).create(obj)
