@@ -91,7 +91,7 @@ class DFTestBase(base.BaseTestCase):
             self.create_default_subnetpool()
 
         common_config.init(['--config-file',
-                            '/etc/neutron/plugins/dragonflow.ini',
+                            '/etc/neutron/dragonflow.ini',
                             '--config-file',
                             '/etc/neutron/neutron.conf'])
         self.conf = cfg.CONF.df
