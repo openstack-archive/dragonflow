@@ -78,8 +78,8 @@ class NbApi(object):
         if self.use_pubsub:
             self.publisher = self._get_publisher()
             self.subscriber = self._get_subscriber()
-            self.publisher.initialize()
             if self.is_neutron_server:
+                self.publisher.initialize()
                 # Start a thread to detect DB failover in Plugin
                 self.publisher.set_publisher_for_failover(
                     self.publisher,
@@ -87,6 +87,12 @@ class NbApi(object):
                 self.publisher.start_detect_for_failover()
                 self.driver.set_neutron_server(True)
             else:
+                # FIXME(nick-ma-z): if active-detection is enabled,
+                # we initialize the publisher here. Make sure it
+                # only supports redis-based pub/sub driver.
+                if "ActivePortDetectionApp" in cfg.CONF.df.apps_list:
+                    self.publisher.initialize()
+
                 # NOTE(gampel) we want to start queuing event as soon
                 # as possible
                 self._start_subscriber()
