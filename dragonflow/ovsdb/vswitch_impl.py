@@ -90,15 +90,6 @@ class OvsApi(object):
                                              self.integration_bridge,
                                              'fail_mode')
 
-    def get_tunnel_ports(self):
-        res = []
-        ports = self.ovsdb.get_bridge_ports(self.integration_bridge).execute()
-        for port in ports:
-            if 'df-chassis-id' in port.external_ids:
-                chassis_id = port.external_ids['df-chassis-id']
-                res.append(objects.OvsdbTunnelPort(port.name, chassis_id))
-        return res
-
     def get_virtual_tunnel_ports(self):
         ifaces = self.ovsdb.db_find(
             'Interface', ('options', '=', {'remote_ip': 'flow'}),
@@ -113,9 +104,6 @@ class OvsApi(object):
                                                               iface['type']))
 
         return tunnel_ports
-
-    def add_tunnel_port(self, chassis):
-        self.ovsdb.add_tunnel_port(chassis).execute()
 
     def add_virtual_tunnel_port(self, tunnel_type):
         self.ovsdb.add_virtual_tunnel_port(tunnel_type).execute()
@@ -135,16 +123,6 @@ class OvsApi(object):
             return False
 
         return True
-
-    def get_chassis_ofport(self, chassis_id):
-        # TODO(xiaohhui): Can we just call get_port_ofport('df-'+chassis_id)?
-        ports = self.ovsdb.db_find(
-            'Port', ('external_ids', '=', {'df-chassis-id': chassis_id}),
-            columns=['external_ids', 'name']).execute()
-        for port in ports:
-            ofport = self.get_port_ofport(port['name'])
-            if self._check_ofport(port['name'], ofport):
-                return ofport
 
     def _get_port_by_id_with_only_specified_columns(self, port_id,
                                                     specified_columns):
