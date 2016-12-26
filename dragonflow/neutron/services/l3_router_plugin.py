@@ -103,7 +103,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         return self.conn.consume_in_threads()
 
     def get_plugin_type(self):
-        return constants.L3_ROUTER_NAT
+        return const.L3
 
     def get_plugin_description(self):
         """Returns string description of the plugin."""
