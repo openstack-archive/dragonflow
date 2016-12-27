@@ -394,9 +394,9 @@ class NbApi(object):
             res.append(db_models.Chassis(entry_value))
         return res
 
-    def add_chassis(self, id, ip, tunnel_type):
+    def add_chassis(self, id, ip, tunnel_types):
         chassis = {'id': id, 'ip': ip,
-                   'tunnel_type': tunnel_type}
+                   'tunnel_types': tunnel_types}
         chassis_json = jsonutils.dumps(chassis)
         self.driver.create_key(db_models.Chassis.table_name,
                                id, chassis_json)
