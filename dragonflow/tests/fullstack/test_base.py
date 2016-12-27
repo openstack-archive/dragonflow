@@ -99,7 +99,7 @@ class DFTestBase(base.BaseTestCase):
 
         self.nb_api = api_nb.NbApi.get_instance(False)
 
-        self.local_ip = self.conf.local_ip
+        self.manager_ip = self.conf.manager_ip
         self.__objects_to_close = []
         self.addCleanup(self._close_stored_objects)
 

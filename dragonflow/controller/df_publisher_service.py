@@ -132,7 +132,7 @@ class PublisherService(object):
     def _get_uri(self):
         ip = cfg.CONF.df.publisher_bind_address
         if ip == '*' or ip == '127.0.0.1':
-            ip = cfg.CONF.df.local_ip
+            ip = cfg.CONF.df.manager_ip
         return "{}://{}:{}".format(
             cfg.CONF.df.publisher_transport,
             ip,
