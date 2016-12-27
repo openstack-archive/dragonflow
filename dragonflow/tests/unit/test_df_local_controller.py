@@ -12,6 +12,7 @@
 
 import mock
 
+from dragonflow.common import utils
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
@@ -94,8 +95,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
     @mock.patch.object(df_local_controller.DfLocalController,
                        '_update_floatingip')
-    @mock.patch.object(df_local_controller.DfLocalController,
-                       '_is_valid_version')
+    @mock.patch.object(utils, 'is_valid_version')
     @mock.patch.object(df_local_controller.DfLocalController,
                        '_associate_floatingip')
     @mock.patch.object(db_store.DbStore, 'get_floatingip')
