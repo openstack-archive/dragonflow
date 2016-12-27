@@ -35,6 +35,9 @@ REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
 REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
 REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
 
+# Data plane ip address for node
+LOCAL_IP=${LOCAL_IP:-$HOST_IP}
+
 # OVS bridge definition
 PUBLIC_BRIDGE=${PUBLIC_BRIDGE:-br-ex}
 INTEGRATION_BRIDGE=${INTEGRATION_BRIDGE:-br-int}
@@ -228,7 +231,8 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df port_status_notifier "$PORT_STATUS_NOTIFIER"
     iniset $DRAGONFLOW_CONF df enable_port_status_notifier "$ENABLE_PORT_STATUS_NOTIFIER"
     iniset $DRAGONFLOW_CONF df enable_dpdk "$ENABLE_DPDK"
-    iniset $DRAGONFLOW_CONF df local_ip "$HOST_IP"
+    iniset $DRAGONFLOW_CONF df manager_ip "$HOST_IP"
+    iniset $DRAGONFLOW_CONF df local_ip "$LOCAL_IP"
     iniset $DRAGONFLOW_CONF df tunnel_type "$TUNNEL_TYPE"
     iniset $DRAGONFLOW_CONF df integration_bridge "$INTEGRATION_BRIDGE"
     iniset $DRAGONFLOW_CONF df apps_list "$DF_APPS_LIST"
