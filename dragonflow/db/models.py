@@ -82,8 +82,8 @@ class Chassis(NbDbObject):
     def get_ip(self):
         return self.inner_obj.get('ip')
 
-    def get_encap_type(self):
-        return self.inner_obj.get('tunnel_type')
+    def get_tunnel_types(self):
+        return self.inner_obj.get('tunnel_types')
 
     def get_topic(self):
         return None

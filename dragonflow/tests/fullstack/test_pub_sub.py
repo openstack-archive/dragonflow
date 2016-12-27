@@ -394,7 +394,7 @@ class TestDbTableMonitors(PubSubTestBase):
         test_chassis = {
             "ip": "1.2.3.4",
             "id": "chassis-1",
-            "tunnel_type": "geneve"
+            "tunnel_types": ["geneve"]
         }
 
         expected_event = {

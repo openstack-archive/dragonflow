@@ -400,14 +400,14 @@ class DfLocalController(object):
                                     self.tunnel_types)
         else:
             kwargs = {}
-            old_tunnel_types = chassis.get_encap_type()
+            old_tunnel_types = chassis.get_tunnel_types()
             if (not isinstance(old_tunnel_types, list) or
                     set(self.tunnel_types) != set(old_tunnel_types)):
                 # There are 2 cases that needs update tunnel type in
                 # chassis. 1) User changes tunnel types in conf file
                 # 2) An old controller support only one type tunnel switch
                 # to support virtual tunnel port.
-                kwargs['tunnel_type'] = self.tunnel_types
+                kwargs['tunnel_types'] = self.tunnel_types
             if self.ip != chassis.get_ip():
                 kwargs['ip'] = self.ip
 
