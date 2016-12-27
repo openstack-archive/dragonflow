@@ -76,7 +76,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
     # server code
     def start_subscriber(self):
         self.sub.initialize(self.port_status_callback)
-        server_ip = cfg.CONF.df.local_ip
+        server_ip = cfg.CONF.df.manager_ip
         self.sub.register_topic(server_ip)
         # In portstats table, there are key value pairs like this:
         # port_status_192.168.1.10 : 192.168.1.10
