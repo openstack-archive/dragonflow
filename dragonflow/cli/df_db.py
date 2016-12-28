@@ -20,9 +20,14 @@ from dragonflow.cli import utils as cli_utils
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.db import model_framework
 from dragonflow.db import models
 
-db_tables = list(models.table_class_mapping) + ['unique_key', 'portstats']
+db_tables = (
+    list(models.table_class_mapping) +
+    list(model_framework.iter_tables) +
+    ['unique_key', 'portstats']
+)
 
 
 def print_tables():
