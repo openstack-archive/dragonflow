@@ -876,3 +876,25 @@ class NbApi(object):
             res.append(db_models.AllowedAddressPairsActivePort(
                 active_port_json))
         return res
+
+    def _get_crud(self, model):
+        return model.get_nb_crud(self.driver, self.publisher)
+
+    def create(self, obj):
+        model = type(obj)
+        self._get_crud(model).create(obj)
+
+    def update(self, obj):
+        model = type(obj)
+        self._get_crud(model).update(obj)
+
+    def delete(self, obj):
+        model = type(obj)
+        self._get_crud(model).delete(obj)
+
+    def get(self, lean_obj):
+        model = type(lean_obj)
+        return self._get_crud(model).get(lean_obj)
+
+    def get_all(self, model, topic=None):
+        return self._get_crud(model).get_all(topic)
