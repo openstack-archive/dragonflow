@@ -24,6 +24,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LI, _LW, _LE
+import dragonflow.common.exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.controller import df_db_objects_refresh as obj_refresh
 from dragonflow.db import db_common
@@ -876,3 +877,60 @@ class NbApi(object):
             res.append(db_models.AllowedAddressPairsActivePort(
                 active_port_json))
         return res
+
+    def create(self, obj):
+        obj.on_create_pre()
+        serialized_obj = jsonutils.dumps(obj.to_struct())
+        self.driver.create_key(self.table_name, obj.id,
+                               serialized_obj, obj.topic)
+        self._send_db_change_event(self.table_name, obj.id, 'create',
+                                   serialized_obj, obj.topic)
+
+    def update(self, obj):
+        full_obj = self.get(obj)
+
+        for key, _ in obj:
+            attr = getattr(obj, key)
+            if attr is not None and attr != const.ATTR_NOT_SPECIFIED:
+                setattr(full_obj, key, attr)
+
+        full_obj.on_update_pre()
+        serialized_obj = jsonutils.dumps(full_obj.to_struct())
+        self.driver.set_key(self.table_name, full_obj.id,
+                            serialized_obj, full_obj.topic)
+        self._send_db_change_event(self.table_name, full_obj.id, 'set',
+                                   serialized_obj, full_obj.topic)
+
+    def delete(self, obj):
+        obj.on_delete()
+        try:
+            self.driver.delete_key(self.table_name, obj.id, obj.topic)
+            self._send_db_change_event(self.table_name, obj.id, 'delete',
+                                    obj.id. obj.topic)
+        except df_exceptions.DBKeyNotFound:
+            LOG.warning(
+                _LW('Could not find object %(id)s to delete in %(table)s'),
+                extra={'id': id, 'table': self.table_name})
+            raise
+
+    def get(self, lean_obj):
+        model = type(lean_obj)
+        try:
+            serialized_obj = self.driver.get_key(
+                self.table_name,
+                lean_obj.id,
+                lean_obj.topic,
+            )
+            model.from_json(serialized_obj)
+        except df_exceptions.DBKeyNotFound:
+            LOG.exception(
+                _LE('Could not get object %(id)s from table %(table)s'),
+                extra={'id': id, 'table': self.table_name})
+            return None
+
+    def get_all(self, model, topic=None):
+        all_objects = [
+            model.from_json(e)
+            for e in self.driver.get_all_entries(self.table_name, topic)
+        ]
+        return model.on_get_all_post(all_objects)
