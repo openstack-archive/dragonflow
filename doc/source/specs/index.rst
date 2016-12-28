@@ -66,6 +66,7 @@ Specs
     traceroute
     api
     publish_subscribe_v2
+    fwaas
 
 Templates
 ---------
