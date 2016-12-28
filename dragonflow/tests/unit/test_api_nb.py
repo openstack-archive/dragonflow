@@ -9,11 +9,22 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from jsonmodels import fields
 import mock
 
 from dragonflow.db import api_nb
 from dragonflow.db import db_common
+import dragonflow.db.model_framework as mf
 from dragonflow.tests import base as tests_base
+
+
+@mf.construct_nb_db_model
+class ModelTest(mf.ModelBase):
+    table_name = 'dummy_table'
+
+    id = fields.StringField()
+    topic = fields.StringField()
+    field1 = fields.StringField()
 
 
 class TestNbApi(tests_base.BaseTestCase):
@@ -40,3 +51,81 @@ class TestNbApi(tests_base.BaseTestCase):
         self.api_nb.publisher.send_event.assert_called()
         update, = self.api_nb.publisher.send_event.call_args_list[0][0]
         self.assertEqual('topic', update.topic)
+
+    def test_create(self):
+        m = ModelTest(id='id1', topic='topic')
+        m.on_create_pre = mock.Mock()
+        self.api_nb.create(m)
+
+        self.api_nb.publisher.send_event.assert_called_once()
+        update, = self.api_nb.publisher.send_event.call_args_list[0][0]
+
+        self.assertEqual('dummy_table', update.table)
+        self.assertEqual('id1', update.key)
+        self.assertEqual('create', update.action)
+        self.assertEqual('topic', update.topic)
+        self.assertEqual(m.to_json(), update.value)
+
+        self.api_nb.driver.create_key.assert_called_once_with(
+            'dummy_table', 'id1', m.to_json(), 'topic')
+
+        m.on_create_pre.assert_called()
+
+    def test_update(self):
+        old_m = ModelTest(id='id1', topic='topic', field1='2')
+        old_m.on_update_pre = mock.Mock()
+        self.api_nb.get = mock.Mock(return_value=old_m)
+        m_update = ModelTest(id='id1', field1='1')
+        self.api_nb.update(m_update)
+
+        m_new = ModelTest(id='id1', topic='topic', field1='1')
+
+        self.api_nb.publisher.send_event.assert_called_once()
+        update, = self.api_nb.publisher.send_event.call_args_list[0][0]
+
+        self.assertEqual('dummy_table', update.table)
+        self.assertEqual('id1', update.key)
+        self.assertEqual('set', update.action)
+        self.assertEqual('topic', update.topic)
+        self.assertEqual(m_new.to_json(), update.value)
+
+        self.api_nb.driver.set_key.assert_called_once_with(
+            'dummy_table', 'id1', m_new.to_json(), 'topic')
+
+        old_m.on_update_pre.assert_called()
+
+    def test_delete(self):
+        m = ModelTest(id='id1', topic='topic')
+        m.on_delete_pre = mock.Mock()
+        self.api_nb.delete(m)
+
+        self.api_nb.publisher.send_event.assert_called_once()
+        update, = self.api_nb.publisher.send_event.call_args_list[0][0]
+
+        self.assertEqual('dummy_table', update.table)
+        self.assertEqual('id1', update.key)
+        self.assertEqual('delete', update.action)
+        self.assertEqual('topic', update.topic)
+        self.assertEqual('id1', update.value)
+
+        self.api_nb.driver.delete_key.assert_called_once_with(
+            'dummy_table', 'id1', 'topic')
+
+        m.on_delete_pre.assert_called()
+
+    def test_get(self):
+        m = ModelTest(id='id1', topic='topic')
+        self.api_nb.driver.get_key.return_value = m.to_json()
+        self.assertEqual(m.to_struct(),
+                         self.api_nb.get(ModelTest(id='id1')).to_struct())
+
+    def test_get_all(self):
+        m1 = ModelTest(id='id1', topic='topic')
+        m2 = ModelTest(id='id2', topic='topic')
+        ModelTest.on_get_all_post = mock.Mock(side_effect=lambda x: x)
+        self.api_nb.driver.get_all_entries.return_value = (m1.to_json(),
+                                                           m2.to_json())
+        res = self.api_nb.get_all(ModelTest)
+        self.assertItemsEqual((m1.to_struct(), m2.to_struct()),
+                              (o.to_struct() for o in res))
+        ModelTest.on_get_all_post.assert_called_once()
