@@ -21,10 +21,13 @@ from neutron_lib import constants as const
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
+from oslo_utils import excutils
 
 from dragonflow._i18n import _LI, _LW, _LE
+import dragonflow.common.exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
+from dragonflow.db import model_framework as mf
 from dragonflow.db import models as db_models
 
 LOG = log.getLogger(__name__)
@@ -35,6 +38,10 @@ DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
                   'db_sync']
 
 _nb_api = None
+
+
+def _get_topic(obj):
+    return getattr(obj, 'topic', None)
 
 
 class NbApi(object):
@@ -263,14 +270,20 @@ class NbApi(object):
             self.db_consistency_manager.process(False)
             return
 
-        model_class = db_models.table_class_mapping.get(table)
-        if model_class:
+        try:
+            model_class = mf.get_model(table)
+        except KeyError:
+            # Model class not found, possibly update was not about a model
+            pass
+        else:
             if action == 'delete':
                 self.controller.delete_by_id(model_class, key)
             else:
-                nb_object = model_class(value)
-                self.controller.update(nb_object)
-        elif 'ovsinterface' == table:
+                obj = model_class.from_json(value)
+                self.controller.update(obj)
+            return
+
+        if 'ovsinterface' == table:
             if action == 'set' or action == 'create':
                 ovs_port = db_models.OvsPort(value)
                 self.controller.ovs_port_updated(ovs_port)
@@ -916,3 +929,95 @@ class NbApi(object):
             res.append(db_models.AllowedAddressPairsActivePort(
                 active_port_json))
         return res
+
+    def create(self, obj):
+        """Create the provided object in the database and publish an event
+           about its creation.
+        """
+        model = type(obj)
+        obj.on_create_pre()
+        serialized_obj = obj.to_json()
+        topic = _get_topic(obj)
+        self.driver.create_key(model.table_name, obj.id,
+                               serialized_obj, topic)
+        self._send_db_change_event(model.table_name, obj.id, 'create',
+                                   serialized_obj, topic)
+
+    def update(self, obj):
+        """Update the provided object in the database and publish an event
+           about the change.
+
+           This method reads the existing object from the database and updates
+           any non-empty fields of the provided object. Retrieval happens by
+           id/topic fields.
+        """
+        model = type(obj)
+        full_obj = self.get(obj)
+
+        if full_obj is None:
+            raise df_exceptions.DBKeyNotFound(key=obj.id)
+
+        changed_fields = full_obj.update(obj)
+
+        if not changed_fields:
+            return
+
+        full_obj.on_update_pre()
+        serialized_obj = full_obj.to_json()
+        topic = _get_topic(full_obj)
+
+        self.driver.set_key(model.table_name, full_obj.id,
+                            serialized_obj, topic)
+        self._send_db_change_event(model.table_name, full_obj.id, 'set',
+                                   serialized_obj, topic)
+
+    def delete(self, obj):
+        """Delete the provided object from the database and publish the event
+           about its deletion.
+
+           The provided object does not have to have all the fields filled,
+           just the ID / topic (if applicable) of the object we wish to delete.
+        """
+        model = type(obj)
+        obj.on_delete_pre()
+        topic = _get_topic(obj)
+        try:
+            self.driver.delete_key(model.table_name, obj.id, topic)
+        except df_exceptions.DBKeyNotFound:
+            with excutils.save_and_reraise_exception():
+                LOG.warning(
+                    _LW('Could not find object %(id)s to delete in %(table)s'),
+                    extra={'id': id, 'table': model.table_name})
+
+        self._send_db_change_event(model.table_name, obj.id, 'delete',
+                                   obj.id, topic)
+
+    def get(self, lean_obj):
+        """Retrieve a model instance from the database. This function uses
+           lean_obj to deduce ID and model type
+
+           >>> nb_api.get(Chassis(id="one"))
+           Chassis(id="One", ip="192.168.121.22", tunnel_types=["vxlan"])
+
+        """
+        model = type(lean_obj)
+        try:
+            serialized_obj = self.driver.get_key(
+                model.table_name,
+                lean_obj.id,
+                _get_topic(lean_obj),
+            )
+        except df_exceptions.DBKeyNotFound:
+            LOG.exception(
+                _LE('Could not get object %(id)s from table %(table)s'),
+                extra={'id': id, 'table': model.table_name})
+        else:
+            return model.from_json(serialized_obj)
+
+    def get_all(self, model, topic=None):
+        """Get all instances of provided model, can be limited to instances
+           with a specific topic.
+        """
+        all_values = self.driver.get_all_entries(model.table_name, topic)
+        all_objects = [model.from_json(e) for e in all_values]
+        return model.on_get_all_post(all_objects)
