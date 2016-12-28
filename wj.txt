@@ -1,0 +1,23 @@
+:spell
+z=
+:spellr
+u   ctrl-r
+Wang Joan is a good man
+Wang Joan is a good man
+Wang Joan is a good man
+wANG Joan is a good man
+Wang 
+
+search 
+hls
+ic
+n, N, * #
+q/
+
+mova
+ctrl b f
+
+edit
+~
+
+vimdiff
