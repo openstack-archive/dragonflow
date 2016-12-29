@@ -533,7 +533,7 @@ class DfLocalController(object):
     def ovs_sync_started(self):
         self.open_flow_app.notify_ovs_sync_started()
 
-    def update_active_port(self, active_port):
+    def update_activeport(self, active_port):
         old_active_port = self.db_store.get_active_port(active_port.get_id())
         lport_id = active_port.get_detected_lport_id()
         lport = self.db_store.get_local_port(lport_id,
@@ -550,7 +550,7 @@ class DfLocalController(object):
             LOG.info(_LI("The logical port is not ready for the "
                          "active node: %s"), active_port)
 
-    def delete_active_port(self, active_port_key):
+    def delete_activeport(self, active_port_key):
         active_port = self.db_store.get_active_port(active_port_key)
         if active_port is not None:
             self.db_store.delete_active_port(active_port_key)
