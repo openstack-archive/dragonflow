@@ -120,8 +120,7 @@ def _get_lock_id_by_resource_type(type, *args, **kwargs):
         lock_id = args[1]['security_group_id']
     elif RESOURCE_QOS == type:
         lock_id = args[0][2]['id']
-
-    if not lock_id:
+    else:
         lock_id = GLOBAL_LOCK_ID
 
     return lock_id
