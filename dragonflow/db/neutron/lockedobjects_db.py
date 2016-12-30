@@ -38,9 +38,6 @@ LOCK_MAX_RETRIES = 500
 LOCK_INIT_RETRY_INTERVAL = 0.1
 LOCK_MAX_RETRY_INTERVAL = 1
 
-# global lock id
-GLOBAL_LOCK_ID = "ffffffffffffffffffffffffffffffff"
-
 # The resource need to be protected by lock
 RESOURCE_DF_PLUGIN = 1
 RESOURCE_ML2_NETWORK_OR_PORT = 2
@@ -101,28 +98,27 @@ class wrap_db_lock(object):
         return wrap_db_lock
 
 
-def _get_lock_id_by_resource_type(type, *args, **kwargs):
-    if RESOURCE_DF_PLUGIN == type:
+def _get_lock_id_by_resource_type(resource_type, *args, **kwargs):
+    if RESOURCE_DF_PLUGIN == resource_type:
         lock_id = args[0][1].project_id
-    elif RESOURCE_ML2_NETWORK_OR_PORT == type:
+    elif RESOURCE_ML2_NETWORK_OR_PORT == resource_type:
         lock_id = args[0][1].current['id']
-    elif RESOURCE_ML2_SUBNET == type:
+    elif RESOURCE_ML2_SUBNET == resource_type:
         lock_id = args[0][1].current['network_id']
-    elif RESOURCE_FIP_UPDATE_OR_DELETE == type:
+    elif RESOURCE_FIP_UPDATE_OR_DELETE == resource_type:
         lock_id = args[0][2]
-    elif RESOURCE_ROUTER_UPDATE_OR_DELETE == type:
+    elif RESOURCE_ROUTER_UPDATE_OR_DELETE == resource_type:
         lock_id = args[0][2]
-    elif RESOURCE_ML2_SECURITY_GROUP == type:
+    elif RESOURCE_ML2_SECURITY_GROUP == resource_type:
         lock_id = args[1]['security_group']['id']
-    elif RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE == type:
+    elif RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE == resource_type:
         lock_id = args[1]['security_group_rule']['security_group_id']
-    elif RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE == type:
+    elif RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE == resource_type:
         lock_id = args[1]['security_group_id']
-    elif RESOURCE_QOS == type:
+    elif RESOURCE_QOS == resource_type:
         lock_id = args[0][2]['id']
-
-    if not lock_id:
-        lock_id = GLOBAL_LOCK_ID
+    else:
+        raise df_exc.UnknownResourceException(resource_type=resource_type)
 
     return lock_id
 

@@ -89,3 +89,7 @@ class DFMultipleExceptions(exceptions.MultipleExceptions):
 
     def __str__(self):
         return ','.join(str(error) for error in self.inner_exceptions)
+
+
+class UnknownResourceException(DragonflowException):
+    message = _('Could not find lock id for resource type %(resource_type)')
