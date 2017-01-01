@@ -154,6 +154,17 @@ df_opts = [
                default="/var/run/openvswitch",
                help=_("The directory in which vhost virtio socket"
                       "is created by all the vswitch daemons")),
+    cfg.IntOpt(
+        'service_down_time',
+        default=80,
+        help=_('This time(in seconds) should be at least thrice of '
+               'report_interval, to be sure the service is really down.')
+    ),
+    cfg.IntOpt(
+        'report_interval',
+        default=25,
+        help=_('Time(in seconds) interval between two heartbeats')
+    ),
     cfg.IntOpt('neutron_listener_report_interval',
                default=25,
                help=_('Neutron report heart beat every this number in seconds'
