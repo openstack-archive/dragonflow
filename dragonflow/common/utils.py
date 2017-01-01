@@ -14,6 +14,7 @@
 import os
 import sys
 import time
+import uuid
 
 import collections
 import eventlet
@@ -55,6 +56,15 @@ def is_valid_version(old_obj, new_obj):
         LOG.debug("new_obj has an old version, new_obj: %s, old_obj: %s",
                   new_obj, old_obj)
         return False
+
+
+def generate_uuid(*args):
+    """
+    Generate a non-random uuid based on the fully provided arguments.
+    This UUID is supposed to remain the same, if the same arguments
+    are passed .
+    """
+    return str(uuid.uuid5(uuid.NAMESPACE_OID, ''.join(args)))
 
 
 def load_driver(driver_cfg, namespace):
