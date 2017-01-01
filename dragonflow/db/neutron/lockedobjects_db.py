@@ -27,6 +27,7 @@ import six
 from sqlalchemy.orm import exc as orm_exc
 
 from dragonflow.common import exceptions as df_exc
+from dragonflow.common import utils
 from dragonflow.db.neutron import models
 
 # Used to identify each API session
@@ -47,6 +48,7 @@ RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE = 6
 RESOURCE_FIP_UPDATE_OR_DELETE = 7
 RESOURCE_ROUTER_UPDATE_OR_DELETE = 8
 RESOURCE_QOS = 9
+RESOURCE_SERVICE_STATUS = 10
 RESOURCE_NEUTRON_LISTENER = 10
 
 LOG = log.getLogger(__name__)
@@ -112,6 +114,8 @@ def _get_lock_id_by_resource_type(resource_type, *args, **kwargs):
         lock_id = args[1]['security_group_id']
     elif RESOURCE_QOS == resource_type:
         lock_id = args[0][2]['id']
+    elif RESOURCE_SERVICE_STATUS == resource_type:
+        lock_id = utils.generate_uuid(args[0][1])
     elif RESOURCE_NEUTRON_LISTENER == resource_type:
         # The db model of lock is uuid of 36 chars, but the neutron listener
         # uses hostname as lock-id, so we need to truncate it.
