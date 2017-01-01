@@ -256,7 +256,7 @@ class L3App(df_base_app.DFlowApp):
         self.mod_flow(
             self.get_datapath(),
             inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             priority=const.PRIORITY_HIGH,
             match=match)
 
@@ -365,7 +365,7 @@ class L3App(df_base_app.DFlowApp):
         match.set_dl_dst(haddr_to_bin(mac))
         self.mod_flow(
             datapath=self.get_datapath(),
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
             match=match)
