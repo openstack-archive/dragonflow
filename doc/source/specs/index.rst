@@ -59,6 +59,7 @@ Specs
     service_function_chaining
     classification_app
     tap_as_a_service
+    services_status
 
 Templates
 ---------
