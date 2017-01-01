@@ -155,7 +155,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         inst = [goto_inst]
         self.mod_flow(
             inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             priority=const.PRIORITY_HIGH,
             match=match)
 
@@ -507,7 +507,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         match.set_metadata(local_network_id)
         match.set_dl_dst(haddr_to_bin(mac))
         self.mod_flow(
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
             match=match)
