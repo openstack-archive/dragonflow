@@ -29,8 +29,8 @@ from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import ryu_base_app
+from dragonflow.controller import service
 from dragonflow.controller import topology
-from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.ovsdb import vswitch_impl
@@ -38,10 +38,13 @@ from dragonflow.ovsdb import vswitch_impl
 
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
 
+SERVICE_NAME = 'df-local-controller'
 
-class DfLocalController(object):
+
+class DfLocalController(service.Service):
 
     def __init__(self, chassis_name):
+        super(DfLocalController, self).__init__(SERVICE_NAME)
         self.db_store = db_store.DbStore()
         self.chassis_name = chassis_name
         self.mgt_ip = cfg.CONF.df.management_ip
@@ -55,12 +58,6 @@ class DfLocalController(object):
             self.tunnel_types = [cfg.CONF.df.tunnel_type]
         self.sync_finished = False
         self.port_status_notifier = None
-        nb_driver = df_utils.load_driver(
-            cfg.CONF.df.nb_db_class,
-            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-        self.nb_api = api_nb.NbApi(
-            nb_driver,
-            use_pubsub=cfg.CONF.df.enable_df_pub_sub)
         self.vswitch_api = vswitch_impl.OvsApi(self.mgt_ip)
         if cfg.CONF.df.enable_port_status_notifier:
             self.port_status_notifier = df_utils.load_driver(
@@ -82,8 +79,6 @@ class DfLocalController(object):
         self.integration_bridge = cfg.CONF.df.integration_bridge
 
     def run(self):
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                               db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api.initialize(self.nb_api)
         if cfg.CONF.df.enable_port_status_notifier:
             self.port_status_notifier.initialize(mech_driver=None,

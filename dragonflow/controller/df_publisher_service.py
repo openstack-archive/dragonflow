@@ -25,6 +25,7 @@ from dragonflow._i18n import _LW
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.controller.service import service
 from dragonflow.db import db_common
 from dragonflow.db import models
 from dragonflow.db import pub_sub_api
@@ -32,20 +33,20 @@ from dragonflow.db import pub_sub_api
 
 LOG = logging.getLogger(__name__)
 
+SERVICE_NAME = 'df-publisher-service'
 
-class PublisherService(object):
+
+class PublisherService(service.Service):
     def __init__(self):
         self._queue = queue.Queue()
         self.publisher = self._get_publisher()
         self.multiproc_subscriber = self._get_multiproc_subscriber()
-        self.db = df_utils.load_driver(
-            cfg.CONF.df.nb_db_class,
-            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
         self.uuid = pub_sub_api.generate_publisher_uuid()
         self._rate_limit = df_utils.RateLimiter(
             cfg.CONF.df.publisher_rate_limit_count,
             cfg.CONF.df.publisher_rate_limit_timeout,
         )
+        super(PublisherService, self).__init__(SERVICE_NAME)
 
     def _get_publisher(self):
         pub_sub_driver = df_utils.load_driver(
