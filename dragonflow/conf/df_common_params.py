@@ -160,8 +160,19 @@ df_opts = [
     cfg.StrOpt(
         'metadata_interface',
         default='tap-metadata',
-        help=_('The name of the interface to bind the metadata'
-               'service proxy')),
+        help=_('The name of the interface to bind the metadata service proxy'),
+    ),
+    cfg.IntOpt(
+        'service_down_time',
+        default=80,
+        help=_('This time(in seconds) should be at least thrice of '
+               'report_interval, to be sure the service is really down.')
+    ),
+    cfg.IntOpt(
+        'report_interval',
+        default=25,
+        help=_('Time(in seconds) interval between two heartbeats')
+    ),
     cfg.IntOpt('neutron_listener_report_interval',
                default=25,
                help=_('Neutron report heart beat every this number in seconds'
