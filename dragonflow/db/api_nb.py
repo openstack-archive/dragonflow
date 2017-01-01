@@ -14,8 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import time
-
 import eventlet
 from jsonmodels import errors
 from neutron_lib import constants as const
@@ -23,12 +21,14 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
+from oslo_utils import timeutils
 
-import dragonflow.common.exceptions as df_exceptions
+from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import model_framework as mf
 from dragonflow.db import models as db_models
+
 
 LOG = log.getLogger(__name__)
 
@@ -781,7 +781,7 @@ class NbApi(object):
 
         def _publisher_not_too_old(publisher):
             last_activity_timestamp = publisher.get_last_activity_timestamp()
-            return (last_activity_timestamp >= time.time() - timeout)
+            return (last_activity_timestamp >= timeutils.now() - timeout)
         filter(_publisher_not_too_old, publishers)
         return publishers
 
