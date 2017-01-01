@@ -12,6 +12,7 @@
 
 import netaddr
 from oslo_serialization import jsonutils
+import time
 
 
 UNIQUE_KEY = 'unique_key'
@@ -478,3 +479,15 @@ class OvsPort(object):
 
     def __str__(self):
         return str(self.ovs_port)
+
+
+@register_model_class
+class Service(NbDbObject):
+
+    table_name = "service"
+
+    def get_chassis(self):
+        return self.inner_obj.get('chassis')
+
+    def get_host(binary):
+        return self.inner_obj.get('binary')

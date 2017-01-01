@@ -14,6 +14,7 @@
 import os
 import sys
 import time
+import uuid
 
 import collections
 import eventlet
@@ -43,18 +44,13 @@ def get_vhu_sockpath(sock_dir, port_id):
         (n_const.VHOST_USER_DEVICE_PREFIX + port_id)[:14])
 
 
-def is_valid_version(old_obj, new_obj):
-    if not old_obj:
-        return True
-
-    if new_obj.get('version') > old_obj.get('version'):
-        return True
-    elif new_obj.get('version') == old_obj.get('version'):
-        return False
-    else:
-        LOG.debug("new_obj has an old version, new_obj: %s, old_obj: %s",
-                  new_obj, old_obj)
-        return False
+def generate_uuid(*args):
+    """
+    Generate a non-random uuid based on the fully provided arguments.
+    This UUID is supposed to remain the same, if the same arguments
+    are passed .
+    """
+    return str(uuid.uuid5(uuid.NAMESPACE_OID, ''.join(args)))
 
 
 def load_driver(driver_cfg, namespace):

@@ -12,6 +12,7 @@
 
 import eventlet
 from eventlet import queue
+import socket
 import sys
 import time
 import traceback
@@ -23,6 +24,7 @@ from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LW
 from dragonflow.common import exceptions
+from dragonflow.common import report_status
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.db import db_common
@@ -31,6 +33,8 @@ from dragonflow.db import pub_sub_api
 
 
 LOG = logging.getLogger(__name__)
+
+SERVICE_NAME = 'df-publisher-service'
 
 
 class PublisherService(object):
@@ -46,6 +50,17 @@ class PublisherService(object):
             cfg.CONF.df.publisher_rate_limit_count,
             cfg.CONF.df.publisher_rate_limit_timeout,
         )
+        self.nb_api = api_nb.NbApi(
+            self.db,
+            use_pubsub=cfg.CONF.df.enable_df_pub_sub)
+        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
+                               db_port=cfg.CONF.df.remote_db_port)
+        chassis = socket.gethostname()
+        self.nb_api.create_service(chassis, SERVICE_NAME)
+        report_status.run_status_reporter(self.nb_api.report_up,
+                                          self.nb_api,
+                                          chassis,
+                                          SERVICE_NAME)
 
     def _get_publisher(self):
         pub_sub_driver = df_utils.load_driver(
