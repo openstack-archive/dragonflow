@@ -19,6 +19,7 @@ import httplib2
 import netaddr
 import six
 import six.moves.urllib.parse as urlparse
+import socket
 import webob
 
 from oslo_log import log
@@ -26,6 +27,7 @@ from oslo_utils import encodeutils
 
 from dragonflow._i18n import _, _LW, _LE
 from dragonflow.common import exceptions
+from dragonflow.common import report_status
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
@@ -42,6 +44,7 @@ from ryu.ofproto import nicira_ext
 LOG = log.getLogger(__name__)
 
 FLOW_IDLE_TIMEOUT = 60
+SERVICE_NAME = 'df-metadata-service'
 
 # TODO(oanson) The TCP_* flag constants have already made it into ryu
 # master, but not to pip. Once that is done, they should be taken from
@@ -487,6 +490,12 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
             use_pubsub=cfg.CONF.df.enable_df_pub_sub)
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
+        chassis = socket.gethostname()
+        self.nb_api.create_service(chassis, SERVICE_NAME)
+        report_status.run_status_reporter(self.nb_api.report_up,
+                                          self.nb_api,
+                                          chassis,
+                                          SERVICE_NAME)
 
     def _get_ovsdb_connection_string(self):
         return 'tcp:{}:6640'.format(cfg.CONF.df.local_ip)

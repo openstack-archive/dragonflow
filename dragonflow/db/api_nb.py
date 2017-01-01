@@ -24,6 +24,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LI, _LW, _LE
+from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.controller import df_db_objects_refresh as obj_refresh
 from dragonflow.db import db_common
@@ -882,3 +883,106 @@ class NbApi(object):
             res.append(db_models.AllowedAddressPairsActivePort(
                 active_port_json))
         return res
+
+    def _get_chassis_service_json(self, chassis):
+        services = self.driver.get_key(db_models.Service.table_name, chassis)
+        return jsonutils.loads(services)
+
+    def _put_chassis_service_json(self, services, chassis):
+        services_json = jsonutils.dumps(services)
+        self.driver.create_key(db_models.Service.table_name,
+                               chassis,
+                               services_json)
+
+    def _set_chassis_service_json(self, services, chassis):
+        services_json = jsonutils.dumps(services)
+        self.driver.set_key(db_models.Service.table_name,
+                            chassis,
+                            services_json)
+
+    def get_service(self, chassis, binary):
+        try:
+            chassis_services = self._get_chassis_service_json(chassis)
+            json_service = jsonutils.dumps(chassis_services[binary])
+            return db_models.Service(json_service)
+        except KeyError:
+            LOG.exception(_LE('Could not get %(binary)s service for '
+                              '%(chassis)s'),
+                          {'binary': binary, 'chassis': chassis})
+
+        return ''
+
+    def get_all_service(self):
+        res = []
+        for entry_value in self.driver.get_all_entries(
+                db_models.Service.table_name):
+            services = jsonutils.loads(entry_value)
+            for service in services:
+                res.append(db_models.Service(service))
+        return res
+
+    def _does_service_exist(self, chassis, binary, uuid):
+        service = self.get_service(chassis, binary)
+        if service and service.get_id() == uuid:
+            return True
+
+        return False
+
+    def create_service(self, chassis, binary):
+        try:
+            chassis_services = self._get_chassis_service_json(chassis)
+        except exceptions.DBKeyNotFound:
+            chassis_services = {}
+
+        service = {
+            'id': df_utils.generate_uuid(chassis, binary),
+            'chassis': chassis,
+            'binary': binary,
+            'last_seen_up': time.time(),
+            'disable': False,
+            'disabled_reason': ''
+        }
+
+        if self._does_service_exist(chassis, binary, service['id']):
+            return
+
+        chassis_services[binary] = service
+        self._put_chassis_service_json(chassis_services, chassis)
+
+    def delete_service(self, chassis, binary):
+        chassis_services = self._get_chassis_service_json(chassis)
+        try:
+            del chassis_services[binary]
+        except KeyError:
+            pass
+
+        if not chassis_services:
+            self.driver.delete_key(db_models.Service.table_name, chassis)
+        else:
+            self._set_chassis_service_json(chassis_services, chassis)
+
+    # Direct updation will not be allowed, a service can update status only
+    def report_up(self, chassis, binary):
+        chassis_services = self._get_chassis_service_json(chassis)
+        try:
+            chassis_services[binary]['last_seen_up'] = time.time()
+        except KeyError:
+            # It helps if create_service is missed. It can be discussed and
+            # removed, if everyone thinks the other way around.
+            self.create_service(chassis, binary)
+
+        self._set_chassis_service_json(chassis_services, chassis)
+
+    def is_service_alive(self, chassis, binary):
+        chassis_services = self._get_chassis_service_json(chassis)
+        try:
+            last_seen_up = chassis_services[binary]['last_seen_up']
+        except KeyError:
+            # If service id not register but asked for its aliveness
+            return False
+
+        report_time_diff = time.time() - last_seen_up
+        if report_time_diff > cfg.CONF.df.service_down_time:
+            return False
+
+        return True

@@ -25,6 +25,7 @@ from ryu import cfg as ryu_cfg
 
 from dragonflow._i18n import _LI, _LW
 from dragonflow.common import constants
+from dragonflow.common import report_status
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller import df_db_objects_refresh
@@ -37,6 +38,8 @@ from dragonflow.ovsdb import vswitch_impl
 
 
 LOG = log.getLogger("dragonflow.controller.df_local_controller")
+
+SERVICE_NAME = 'df-local-controller'
 
 
 class DfLocalController(object):
@@ -83,6 +86,11 @@ class DfLocalController(object):
     def run(self):
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
+        self.nb_api.create_service(self.chassis_name, SERVICE_NAME)
+        report_status.run_status_reporter(self.nb_api.report_up,
+                                          self.nb_api,
+                                          self.chassis_name,
+                                          SERVICE_NAME)
         self.vswitch_api.initialize(self.nb_api)
         if cfg.CONF.df.enable_port_status_notifier:
             self.port_status_notifier.initialize(mech_driver=None,

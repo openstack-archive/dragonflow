@@ -158,6 +158,16 @@ df_opts = [
         'metadata_interface',
         default='tap-metadata',
         help=_('The name of the interface to bind the metadata service proxy'),
+    ),
+    cfg.IntOpt(
+        'service_down_time',
+        default=80,
+        help=_('Time period after which service will be considered down')
+    ),
+    cfg.IntOpt(
+        'report_interval',
+        default=25,
+        help=_('Time interval between two heartbeats')
     )
 ]
 
