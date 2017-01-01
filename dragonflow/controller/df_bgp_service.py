@@ -21,6 +21,7 @@ from oslo_utils import importutils
 
 from dragonflow import conf as cfg
 from dragonflow.controller import df_db_objects_refresh
+from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
 from dragonflow.db import db_store2
 from dragonflow.db import model_framework
@@ -31,15 +32,12 @@ LOG = logging.getLogger(__name__)
 
 
 class BGPService(service.Service):
-    def __init__(self):
+    def __init__(self, nb_api):
         super(BGPService, self).__init__()
         self.initialize_driver()
         self.db_store = db_store2.get_instance()
 
-        # BGP dynamic route is not a service that needs real time response.
-        # So disable pubsub here and use period task to do BGP job.
-        cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
-        self.nb_api = api_nb.NbApi.get_instance(False)
+        self.nb_api = nb_api
 
         self.bgp_pulse = loopingcall.FixedIntervalLoopingCall(
             self.sync_data_from_nb_db)
@@ -162,5 +160,10 @@ class BGPService(service.Service):
 def main():
     common_config.init(sys.argv[1:])
     common_config.setup_logging()
-    server = BGPService()
+    # BGP dynamic route is not a service that needs real time response.
+    # So disable pubsub here and use period task to do BGP job.
+    cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
+    nb_api = api_nb.NbApi.get_instance(False)
+    server = BGPService(nb_api)
+    df_service.register_service('df-bgp-service', nb_api, server)
     service.launch(cfg.CONF, server).wait()
