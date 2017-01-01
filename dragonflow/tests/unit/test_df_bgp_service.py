@@ -17,6 +17,7 @@ from eventlet import greenthread
 import mock
 
 from dragonflow.controller import df_bgp_service
+from dragonflow.db import api_nb
 from dragonflow.db.models import bgp
 from dragonflow.tests import base as tests_base
 
@@ -76,7 +77,8 @@ class TestDFBGPService(tests_base.BaseTestCase):
         mock_nb_api = mock.patch('dragonflow.db.api_nb.NbApi.get_instance')
         mock_nb_api.start()
         self.addCleanup(mock_nb_api.stop)
-        self.bgp_service = df_bgp_service.BGPService()
+        nb_api = api_nb.NbApi.get_instance(False)
+        self.bgp_service = df_bgp_service.BGPService(nb_api)
         self.bgp_service.bgp_driver = mock.Mock()
         self.bgp_service.bgp_pulse = LoopingCallByEvent(
                 self.bgp_service.sync_data_from_nb_db)
