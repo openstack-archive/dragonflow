@@ -12,3 +12,4 @@
 from dragonflow.db.models import core  # noqa
 from dragonflow.db.models import legacy  # noqa
 from dragonflow.db.models import qos  # noqa
+from dragonflow.db.models import service  # noqa
