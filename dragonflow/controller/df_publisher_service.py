@@ -23,6 +23,8 @@ from oslo_serialization import jsonutils
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.controller import service as df_service
+from dragonflow.db import api_nb
 from dragonflow.db import db_common
 from dragonflow.db import models
 from dragonflow.db import pub_sub_api
@@ -32,18 +34,17 @@ LOG = logging.getLogger(__name__)
 
 
 class PublisherService(object):
-    def __init__(self):
+    def __init__(self, nb_api):
         self._queue = queue.Queue()
         self.publisher = self._get_publisher()
         self.multiproc_subscriber = self._get_multiproc_subscriber()
-        self.db = df_utils.load_driver(
-            cfg.CONF.df.nb_db_class,
-            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
         self.uuid = pub_sub_api.generate_publisher_uuid()
         self._rate_limit = df_utils.RateLimiter(
             cfg.CONF.df.publisher_rate_limit_count,
             cfg.CONF.df.publisher_rate_limit_timeout,
         )
+        self.nb_api = nb_api
+        self.db = nb_api.driver
 
     def _get_publisher(self):
         pub_sub_driver = df_utils.load_driver(
@@ -76,11 +77,6 @@ class PublisherService(object):
     def run(self):
         if self.multiproc_subscriber:
             self.multiproc_subscriber.daemonize()
-        self.db.initialize(
-            db_ip=cfg.CONF.df.remote_db_ip,
-            db_port=cfg.CONF.df.remote_db_port,
-            config=cfg.CONF.df
-        )
         self._register_as_publisher()
         self._start_db_table_monitors()
         while True:
@@ -162,6 +158,9 @@ class PublisherService(object):
 def main():
     common_config.init(sys.argv[1:])
     common_config.setup_logging()
-    service = PublisherService()
+    cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
+    nb_api = api_nb.NbApi.get_instance(False)
+    service = PublisherService(nb_api)
+    df_service.register_service('df-publisher-service', nb_api, service)
     service.initialize()
     service.run()

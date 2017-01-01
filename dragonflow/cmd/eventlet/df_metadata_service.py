@@ -20,6 +20,8 @@ from neutron import wsgi
 
 from dragonflow import conf as cfg
 from dragonflow.controller import metadata_service_app
+from dragonflow.controller import service as df_service
+from dragonflow.db import api_nb
 
 import sys
 
@@ -74,9 +76,15 @@ def main():
     config.init(sys.argv[1:])
     config.setup_logging()
     environment_setup()
+    cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
+    nb_api = api_nb.NbApi.get_instance(False)
+    service_instance = metadata_service_app.DFMetadataProxyHandler(
+            cfg.CONF, nb_api)
+    df_service.register_service(
+            'df-metadata-service', nb_api, service_instance)
     service = wsgi.Server('dragonflow-metadata-service', disable_ssl=True)
     service.start(
-        metadata_service_app.DFMetadataProxyHandler(cfg.CONF),
+        service_instance,
         host=cfg.CONF.df_metadata.ip,
         port=cfg.CONF.df_metadata.port,
     )

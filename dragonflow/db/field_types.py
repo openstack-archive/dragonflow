@@ -162,6 +162,9 @@ class IpNetworkField(fields.BaseField):
             return str(obj)
 
 
+TimestampField = fields.FloatField
+
+
 class EnumField(fields.StringField):
     '''A field that can hold a string from a set of predetermined values:
 

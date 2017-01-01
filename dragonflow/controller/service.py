@@ -1,5 +1,3 @@
-# Copyright (c) 2015 OpenStack Foundation.
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -11,18 +9,23 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-#
 
-from neutron.agent import l3_agent
+import functools
 
+from dragonflow.common import report_status
 from dragonflow import conf as cfg
-from dragonflow.controller import service
-from dragonflow.db import api_nb
+from dragonflow.db.models import service
 
 
-def main(manager='dragonflow.neutron.agent.l3.df_router.'
-                 'DfL3NATAgentWithStateReport'):
-    cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
-    nb_api = api_nb.NbApi.get_instance(False)
-    service.register_service('df-l3-agent', nb_api)
-    l3_agent.main(manager)
+service_names = {}
+
+
+def register_service(service_name, nb_api, instance=None):
+    if instance:
+        service_names[id(instance)] = service_name
+    chassis_id = cfg.CONF.host
+    nb_api.create(service.Service(chassis=chassis_id, binary=service_name),
+                  skip_send_event=True)
+    callback = functools.partial(service.Service.update_last_seen,
+                                 nb_api, chassis_id, service_name)
+    report_status.run_status_reporter(callback)
