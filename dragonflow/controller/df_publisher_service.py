@@ -22,6 +22,7 @@ from oslo_log import log as logging
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
 from dragonflow.db import db_common
 from dragonflow.db.models import core
@@ -39,14 +40,11 @@ def _get_publisher():
 
 
 class PublisherService(object):
-    def __init__(self):
-        # Disable pub_sub so NbApi doesn't instantiate a subscriber
-        cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
-        self.nb_api = api_nb.NbApi.get_instance(False)
-
+    def __init__(self, nb_api):
         self._queue = queue.Queue()
         self.publisher = _get_publisher()
         self.multiproc_subscriber = self._get_multiproc_subscriber()
+        self.nb_api = nb_api
         self.db = self.nb_api.driver
         self.uuid = pub_sub_api.generate_publisher_uuid()
         self._rate_limit = df_utils.RateLimiter(
@@ -151,6 +149,9 @@ class PublisherService(object):
 def main():
     common_config.init(sys.argv[1:])
     common_config.setup_logging()
-    service = PublisherService()
+    cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
+    nb_api = api_nb.NbApi.get_instance(False)
+    service = PublisherService(nb_api)
+    df_service.register_service('df-publisher-service', nb_api, service)
     service.initialize()
     service.run()

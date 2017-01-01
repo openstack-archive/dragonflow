@@ -30,12 +30,10 @@ import webob
 
 from dragonflow._i18n import _
 from dragonflow.common import exceptions
-from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
-from dragonflow.db import api_nb
 
 
 LOG = log.getLogger(__name__)
@@ -400,7 +398,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
 
 
 class BaseMetadataProxyHandler(object):
-
     @webob.dec.wsgify(RequestClass=webob.Request)
     def __call__(self, req):
         try:
@@ -477,17 +474,10 @@ class BaseMetadataProxyHandler(object):
 
 
 class DFMetadataProxyHandler(BaseMetadataProxyHandler):
-    def __init__(self, conf):
+    def __init__(self, conf, nb_api):
         super(DFMetadataProxyHandler, self).__init__()
         self.conf = conf
-        nb_driver = df_utils.load_driver(
-            cfg.CONF.df.nb_db_class,
-            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-        self.nb_api = api_nb.NbApi(
-            nb_driver,
-            use_pubsub=False)
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                               db_port=cfg.CONF.df.remote_db_port)
+        self.nb_api = nb_api
 
     def _get_ovsdb_connection_string(self):
         return 'tcp:{}:6640'.format(cfg.CONF.df.management_ip)
