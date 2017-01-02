@@ -18,3 +18,4 @@ testtools>=1.4.0 # MIT
 redis>=2.10.0 # MIT
 hiredis>=0.2.0 # BSD
 reno>=1.8.0 # Apache-2.0
+networking-sfc
