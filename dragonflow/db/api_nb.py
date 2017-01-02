@@ -243,12 +243,6 @@ class NbApi(object):
             elif action == 'delete':
                 ovs_port = db_models.OvsPort(value)
                 self.controller.ovs_port_deleted(ovs_port)
-        elif db_models.AllowedAddressPairsActivePort.table_name == table:
-            if action == 'set' or action == 'create':
-                active_port = db_models.AllowedAddressPairsActivePort(value)
-                self.controller.update_active_port(active_port)
-            elif action == 'delete':
-                self.controller.delete_active_port(key)
         elif 'log' == action:
             message = _LI(
                 'Log event (Info): '

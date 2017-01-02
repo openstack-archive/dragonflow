@@ -399,6 +399,7 @@ class Publisher(NbDbObject):
         return 0
 
 
+@register_model_class
 class AllowedAddressPairsActivePort(NbDbObject):
 
     table_name = "activeport"
