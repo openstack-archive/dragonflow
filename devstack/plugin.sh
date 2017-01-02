@@ -23,7 +23,7 @@ DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "provider_networks_app.ProviderNetworksApp"
 
 if [[ $ENABLE_DF_SFC == "True" ]]; then
-    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,fc_app.FcApp"
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,fc_app.FcApp,sfc_app.SfcApp"
 fi
 
 if is_service_enabled df-metadata ; then
