@@ -32,7 +32,9 @@ from ryu.lib.packet import icmp
 from ryu.lib.packet import icmpv6
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
+from ryu.lib.packet import mpls
 from ryu.lib.packet import packet
+from ryu.lib.packet import udp
 from ryu.lib.packet import vlan
 
 from dragonflow import conf as cfg
@@ -156,7 +158,8 @@ class Topology(object):
     def get_networks(self):
         return self.networks
 
-    def create_subnet(self, network=None, cidr=None, enable_dhcp=True):
+    def create_subnet(self, network=None, cidr=None, enable_dhcp=True,
+                      allocation_pool=()):
         """Create a subnet in this topology, with the given subnet address
         range.
         :param cidr: The subnet's address range, in form <IP>/<mask len>.
@@ -165,11 +168,14 @@ class Topology(object):
         :type cidr:  String
         :param enable_dhcp: Whether to enable dhcp for this subnet.
         :type cidr:  Boolean
+        :param allocation_pool: Optional, allocation range for DHCP
+        :type allocation_pool:  Tuple of 2 addresses (start, end)
         """
         if not network:
             network = self.networks[0]
         subnet_id = len(self.subnets)
-        subnet = Subnet(self, network, subnet_id, cidr, enable_dhcp)
+        subnet = Subnet(self, network, subnet_id, cidr, enable_dhcp,
+                        allocation_pool)
         self.subnets.append(subnet)
         return subnet
 
@@ -204,7 +210,8 @@ class Topology(object):
 
 class Subnet(object):
     """Represent a single subnet."""
-    def __init__(self, topology, network, subnet_id, cidr, enable_dhcp):
+    def __init__(self, topology, network, subnet_id, cidr, enable_dhcp,
+                 allocation_pool):
         """Create the subnet under the given topology, with the given ID, and
         the given address range.
         :param topology:  The topology to which the subnet belongs
@@ -219,6 +226,9 @@ class Subnet(object):
         :type cidr:       String
         :param enable_dhcp: Whether to enable dhcp for this subnet.
         :type cidr:  Boolean
+        :param allocation_pool: Allocation range for DHCP
+        :type allocation_pool:  Tuple of (start, end) or empty tuple for
+                                implicit range.
         """
         self.topology = topology
         self.subnet_id = subnet_id
@@ -231,12 +241,21 @@ class Subnet(object):
         )
         if cidr:
             ip_version = self._get_ip_version(cidr)
-            self.subnet.create(subnet={
+            subnet = {
                 'cidr': cidr,
                 'enable_dhcp': enable_dhcp,
                 'ip_version': ip_version,
                 'network_id': self.network.network_id
-            })
+            }
+            if allocation_pool:
+                start, end = allocation_pool
+                subnet['allocation_pools'] = [
+                    {
+                        'start': start,
+                        'end': end,
+                    },
+                ]
+            self.subnet.create(subnet=subnet)
         else:
             self.subnet.create()
 
@@ -666,6 +685,21 @@ class Filter(object):
         raise Exception('Filter not implemented')
 
 
+class ExactMatchFilter(Filter):
+    def __init__(self, fixture):
+        self._fixture = fixture
+
+    def __call__(self, buf):
+        return self._fixture == buf
+
+
+class RyuIPv4Filter(object):
+    """Use ryu to parse the packet and test if it's IPv4."""
+    def __call__(self, buf):
+        pkt = packet.Packet(buf)
+        return (pkt.get_protocol(ipv4.ipv4) is not None)
+
+
 class RyuIPv6Filter(object):
     """Use ryu to parse the packet and test if it's IPv6."""
     def __call__(self, buf):
@@ -935,6 +969,40 @@ class AndingFilter(object):
     def __call__(self, buf):
         """Return false if any filter returns false. Otherwise, return True"""
         return all(filter_(buf) for filter_ in self.filters)
+
+
+class RyuMplsFilter(object):
+    def __init__(self, label=None):
+        self._label = label
+
+    def __call__(self, buf):
+        pkt = packet.Packet(buf)
+        pkt_mpls = pkt.get_protocol(mpls.mpls)
+
+        if pkt_mpls is None:
+            return False
+
+        if self._label is not None and pkt_mpls.label != self._label:
+            return False
+
+        return True
+
+
+class RyuUdpFilter(object):
+    def __init__(self, dst_port=None):
+        self._dst_port = dst_port
+
+    def __call__(self, buf):
+        pkt = packet.Packet(buf)
+        pkt_udp = pkt.get_protocol(udp.udp)
+
+        if pkt_udp is None:
+            return False
+
+        if self._dst_port is not None and pkt_udp.dst_port != self._dst_port:
+            return False
+
+        return True
 
 
 class Action(object):
