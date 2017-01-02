@@ -1741,3 +1741,212 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
 
         # check if the active port was removed from DF DB
         self.assertFalse(self._if_the_expected_active_port_exists())
+
+
+class TestSfcApp(test_base.DFTestBase):
+    def setUp(self):
+        super(TestSfcApp, self).setUp()
+
+        security_group = self.store(objects.SecGroupTestObj(
+            self.neutron,
+            self.nb_api))
+
+        security_group_id = security_group.create()
+        self.assertTrue(security_group.exists())
+
+        ingress_rule_info = {
+            'ethertype': 'IPv4',
+            'direction': 'ingress',
+            'protocol': 'udp',
+            'port_range_min': 1,
+            'port_range_max': 65535,
+        }
+
+        ingress_rule_id = security_group.rule_create(secrule=ingress_rule_info)
+        self.assertTrue(security_group.rule_exists(ingress_rule_id))
+
+        egress_rule_info = {
+            'ethertype': 'IPv4',
+            'direction': 'egress',
+            'protocol': 'udp',
+            'port_range_min': 1,
+            'port_range_max': 65535,
+        }
+
+        egress_rule_id = security_group.rule_create(secrule=egress_rule_info)
+        self.assertTrue(security_group.rule_exists(egress_rule_id))
+
+        self.topology = self.store(
+            app_testing_objects.Topology(
+                self.neutron,
+                self.nb_api,
+            ),
+        )
+
+        self.subnet = self.topology.create_subnet('192.168.12.0/24')
+
+        self.src_port = self.subnet.create_port([security_group_id])
+        self.dst_port = self.subnet.create_port([security_group_id])
+
+        self.pp1_ingress_port = self.subnet.create_port([security_group_id])
+        self.pp1_egress_port = self.subnet.create_port([security_group_id])
+        self.pp1_ingress_port.update({'device_id': 'device1'})
+        self.pp1_egress_port.update({'device_id': 'device1'})
+
+        self.pp2_ingress_port = self.subnet.create_port([security_group_id])
+        self.pp2_egress_port = self.subnet.create_port([security_group_id])
+        self.pp2_ingress_port.update({'device_id': 'device2'})
+        self.pp2_egress_port.update({'device_id': 'device2'})
+
+        self.pp1 = self.store(
+            objects.PortPairTestObj(self.neutron, self.nb_api))
+        self.pp1.create({
+            'ingress': self.pp1_ingress_port.port.port_id,
+            'egress': self.pp1_egress_port.port.port_id,
+        })
+        self.pp2 = self.store(
+            objects.PortPairTestObj(self.neutron, self.nb_api))
+        self.pp2.create({
+            'ingress': self.pp2_ingress_port.port.port_id,
+            'egress': self.pp2_egress_port.port.port_id,
+        })
+
+        self.ppg1 = self.store(
+            objects.PortPairGroupTestObj(self.neutron, self.nb_api))
+        self.ppg1.create({
+            'port_pairs': [self.pp1.portpair_id],
+        })
+
+        self.ppg2 = self.store(
+            objects.PortPairGroupTestObj(self.neutron, self.nb_api))
+        self.ppg2.create({
+            'port_pairs': [self.pp2.portpair_id],
+        })
+
+        self.fc = self.store(
+            objects.FlowClassifierTestObj(self.neutron, self.nb_api))
+        self.fc.create({
+            'logical_source_port': self.src_port.port.port_id})
+
+        self.pc = self.store(
+            objects.PortChainTestObj(self.neutron, self.nb_api))
+        self.pc.create({
+            'flow_classifiers': [
+                self.fc.flowclassifier_id,
+            ],
+            'port_pair_groups': [
+                self.ppg1.portpairgroup_id,
+                self.ppg2.portpairgroup_id,
+            ],
+        })
+
+    def test_ping_pong(self):
+        pp1_ingress_key = (
+            self.subnet.subnet_id,
+            self.pp1_ingress_port.port_id,
+        )
+        pp2_ingress_key = (
+            self.subnet.subnet_id,
+            self.pp2_ingress_port.port_id,
+        )
+        dst_key = (
+            self.subnet.subnet_id,
+            self.dst_port.port_id,
+        )
+
+        def send_initial_packet(*_):
+            src_lport = self.nb_api.get_logical_port(
+                self.src_port.port.port_id)
+            dst_lport = self.nb_api.get_logical_port(
+                self.dst_port.port.port_id)
+
+            res = ryu.lib.packet.packet.Packet()
+            res.add_protocol(ryu.lib.packet.ethernet.ethernet(
+                src=src_lport.get_mac(),
+                dst=dst_lport.get_mac(),
+                ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+            ))
+            res.add_protocol(ryu.lib.packet.ipv4.ipv4(
+                src=src_lport.get_ip(),
+                dst=dst_lport.get_ip(),
+                proto=ryu.lib.packet.ipv4.inet.IPPROTO_UDP,
+            ))
+            res.add_protocol(ryu.lib.packet.udp.udp(
+                src_port=2222,
+                dst_port=2222,
+            ))
+
+            res.add_protocol('asdf' * 15)
+            res.serialize()
+            return res.data
+
+        def resend_buffer(buf):
+            pkt = ryu.lib.packet.packet.Packet(buf)
+            pkt.get_protocol(ryu.lib.packet.udp.udp).dst_port += 1
+            pkt.serialize()
+            return pkt.data
+
+        port_policies = {
+            pp1_ingress_key: app_testing_objects.PortPolicy(
+                rules=[
+                    app_testing_objects.PortPolicyRule(
+                        app_testing_objects.RyuUdpFilter(2222),
+                        actions=[
+                            app_testing_objects.LogAction(),
+                            app_testing_objects.SendAction(
+                                self.subnet.subnet_id,
+                                self.pp1_egress_port.port_id,
+                                resend_buffer,
+                            ),
+                        ],
+                    ),
+                ],
+                default_action=app_testing_objects.LogAction(),
+            ),
+            pp2_ingress_key: app_testing_objects.PortPolicy(
+                rules=[
+                    app_testing_objects.PortPolicyRule(
+                        app_testing_objects.RyuUdpFilter(2223),
+                        actions=[
+                            app_testing_objects.LogAction(),
+                            app_testing_objects.SendAction(
+                                self.subnet.subnet_id,
+                                self.pp2_egress_port.port_id,
+                                resend_buffer,
+                            ),
+                        ],
+                    ),
+                ],
+                default_action=app_testing_objects.IgnoreAction(),
+            ),
+            dst_key: app_testing_objects.PortPolicy(
+                rules=[
+                    app_testing_objects.PortPolicyRule(
+                        app_testing_objects.RyuUdpFilter(2224),
+                        actions=[
+                            app_testing_objects.LogAction(),
+                            app_testing_objects.StopSimulationAction(),
+                        ],
+                    ),
+                ],
+                default_action=app_testing_objects.LogAction(),
+            ),
+        }
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    app_testing_objects.SendAction(
+                        self.subnet.subnet_id,
+                        self.src_port.port_id,
+                        send_initial_packet,
+                    ),
+                ],
+                port_policies=port_policies,
+                unknown_port_action=app_testing_objects.LogAction()
+            ),
+        )
+        policy.start(self.topology)
+        policy.wait(10)
+
+        if policy.exceptions:
+            raise policy.exceptions[0]
