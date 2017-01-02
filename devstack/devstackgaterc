@@ -30,6 +30,11 @@ else
     export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=False"
 fi
 
+# Disable SFC for tempest and rally jobs
+if [ ! -n "{DEVSTACK_GATE_TEMPEST}" ] && [[ "${PROJECTS}" != *"openstack/rally"* ]]; then
+    export DEVSTACK_LOCAL_CONFIG+=$'\n'"ENABLE_DF_SFC=True"
+fi
+
 # Begin list of exclusions.
 r="^(?!.*"
 
