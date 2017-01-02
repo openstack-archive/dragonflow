@@ -26,7 +26,8 @@ PROTO_MPLS = 'mpls'
 @mf.register_model
 @mf.construct_nb_db_model(
     indexes={
-        'egress': 'egress_port',
+        'egress': 'egress_port.id',
+        'ingress': 'ingress_port.id',
     },
 )
 class PortPair(mf.ModelBase,
@@ -44,7 +45,7 @@ class PortPair(mf.ModelBase,
 @mf.register_model
 @mf.construct_nb_db_model(
     indexes={
-        'port_pairs': 'port_pairs',
+        'port_pairs': 'port_pairs.id',
     },
 )
 class PortPairGroup(mf.ModelBase,
@@ -141,7 +142,7 @@ class FlowClassifier(mf.ModelBase,
 @mf.construct_nb_db_model(
     indexes={
         'flow_classifiers': 'flow_classifiers.id',
-        'port_pair_groups': 'port_pair_groups',
+        'port_pair_groups': 'port_pair_groups.id',
     },
 )
 class PortChain(mf.ModelBase,

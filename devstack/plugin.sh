@@ -20,7 +20,7 @@ DEFAULT_TUNNEL_TYPES="vxlan,geneve,gre"
 DEFAULT_APPS_LIST="l2,l3_proactive,dhcp,dnat,sg,portsec,portqos,classifier,tunneling,provider"
 
 if [[ $ENABLE_DF_SFC == "True" ]]; then
-    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,fc"
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,fc,sfc"
 fi
 
 if is_service_enabled df-metadata ; then
@@ -193,6 +193,10 @@ function configure_bgp {
     iniset $NEUTRON_CONF DEFAULT api_extensions_path "$DEST/neutron-dynamic-routing/neutron_dynamic_routing/extensions"
 }
 
+function configure_sfc {
+    setup_develop $DEST/networking-sfc
+}
+
 function init_neutron_sample_config {
     # NOTE: We must make sure that neutron config file exists before
     # going further with ovs setup
@@ -226,6 +230,10 @@ function configure_df_plugin {
 
         if is_service_enabled q-trunk ; then
             configure_trunk
+        fi
+
+        if [[ "$ENABLE_DF_SFC" == "True" ]]; then
+            configure_sfc
         fi
 
         # NOTE(gsagie) needed for tempest

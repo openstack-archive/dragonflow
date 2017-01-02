@@ -28,6 +28,11 @@ if [ -n "${DEVSTACK_GATE_TEMPEST}" ] && [ ${DEVSTACK_GATE_TEMPEST} -gt 0 ]; then
     export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=True"
 else
     export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=False"
+
+    # Enable SFC only in fullstack job
+    if [[ "${PROJECTS}" != *"openstack/rally"* ]]; then
+        export DEVSTACK_LOCAL_CONFIG+=$'\n'"ENABLE_DF_SFC=True"
+    fi
 fi
 
 # Begin list of exclusions.
