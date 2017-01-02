@@ -528,3 +528,107 @@ class QosPolicyTestObj(object):
         if qospolicy:
             return True
         return False
+
+
+class PortPairTestObj(object):
+    def __init__(self, neutron, nb_api):
+        self.portpair_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.closed = False
+
+    def create(self, portpair):
+        new_portpair = self.neutron.create_port_pair({'port_pair': portpair})
+        self.portpair_id = new_portpair['port_pair']['id']
+        return self.portpair_id
+
+    def create_from_ports(self, ingress, egress, type_='mpls'):
+        self.create({
+            'ingress': ingress.port.port_id,
+            'egress': egress.port.port_id,
+            'service_function_parameters': {
+                'correlation': type_,
+            },
+        })
+        self.ingress = ingress
+        self.egress = egress
+
+    def close(self):
+        if self.closed or self.portpair_id is None:
+            return
+        self.neutron.delete_port_pair(self.portpair_id)
+        self.portpair_id = None
+
+
+class PortPairGroupTestObj(object):
+    def __init__(self, neutron, nb_api):
+        self.portpairgroup_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.closed = False
+
+    def create(self, portpairgroup):
+        new_ppg = self.neutron.create_port_pair_group(
+            {'port_pair_group': portpairgroup})
+        self.portpairgroup_id = new_ppg['port_pair_group']['id']
+        return self.portpairgroup_id
+
+    def create_from_portpairs(self, pps):
+        self.create({
+            'port_pairs': [pp.portpair_id for pp in pps],
+        })
+        self.port_pairs = pps
+
+    def close(self):
+        if self.closed or self.portpairgroup_id is None:
+            return
+        self.neutron.delete_port_pair_group(self.portpairgroup_id)
+        self.portpairgroup_id = None
+
+
+class PortChainTestObj(object):
+    def __init__(self, neutron, nb_api):
+        self.portchain_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.closed = False
+
+    def create(self, portchain):
+        new_portchain = self.neutron.create_port_chain(
+            {'port_chain': portchain})
+        self.portchain_id = new_portchain['port_chain']['id']
+        return self.portchain_id
+
+    def create_from_fcs_ppgs(self, fcs, ppgs):
+        self.create({
+            'flow_classifiers': [fc.flowclassifier_id for fc in fcs],
+            'port_pair_groups': [ppg.portpairgroup_id for ppg in ppgs],
+        })
+        self.flow_classifiers = fcs
+        self.port_pair_groups = ppgs
+
+    def close(self):
+        if self.closed or self.portchain_id is None:
+            return
+        self.neutron.delete_port_chain(self.portchain_id)
+        self.portchain_id = None
+
+
+class FlowClassifierTestObj(object):
+    def __init__(self, neutron, nb_api):
+        self.flowclassifier_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.closed = False
+
+    def create(self, flowclassifier):
+        new_flowclassifier = self.neutron.create_flow_classifier(
+            {'flow_classifier': flowclassifier})
+        self.flowclassifier_id = new_flowclassifier['flow_classifier']['id']
+        return self.flowclassifier_id
+
+    def close(self):
+        if self.closed or self.flowclassifier_id is None:
+            return
+        self.neutron.delete_flow_classifier(self.flowclassifier_id)
+        self.flowclassifier_id = None
