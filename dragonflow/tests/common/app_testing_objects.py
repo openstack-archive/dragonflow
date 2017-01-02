@@ -26,6 +26,7 @@ from ryu.lib.packet import arp
 from ryu.lib.packet import dhcp
 from ryu.lib.packet import icmp
 from ryu.lib.packet import icmpv6
+from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 
@@ -591,6 +592,13 @@ class Filter(object):
         :type buf:  String (encoded)
         """
         raise Exception('Filter not implemented')
+
+
+class RyuIPv4Filter(object):
+    """Use ryu to parse the packet and test if it's IPv4."""
+    def __call__(self, buf):
+        pkt = packet.Packet(buf)
+        return (pkt.get_protocol(ipv4.ipv4) is not None)
 
 
 class RyuIPv6Filter(object):
