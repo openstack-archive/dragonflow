@@ -33,6 +33,7 @@ Specs
     :maxdepth: 3
 
     models
+    of_groups
 
 
 Indices and tables
