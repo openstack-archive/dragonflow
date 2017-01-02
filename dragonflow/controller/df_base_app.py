@@ -166,7 +166,7 @@ class DFlowApp(object):
         LOG.debug("Got the following flows: %s", flows)
         return flows
 
-    def add_group(self, group_id, group_type, buckets):
+    def add_group(self, group_id, group_type, buckets, replace=False):
         """Add an entry to the groups table:
 
             :param group_id:    ID for the new group
@@ -174,6 +174,12 @@ class DFlowApp(object):
             :param buckets:     List of parser.OFPBucket objects that define
                                 group's actions.
         """
+        if replace:
+            self.del_group(
+                group_id=group_id,
+                group_type=group_type,
+            )
+
         self._mod_group(
             command=self.ofproto.OFPGC_ADD,
             group_id=group_id,
