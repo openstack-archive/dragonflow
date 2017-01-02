@@ -70,8 +70,9 @@ class DHCPApp(df_base_app.DFlowApp):
                                   const.DHCP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
+        self.ofport_to_dhcp_app_port_data.clear()
+        self.switch_dhcp_ip_map.clear()
         self.subnet_vm_port_map.clear()
-        # TODO(gampel) handle network changes
 
     def packet_in_handler(self, event):
         msg = event.msg

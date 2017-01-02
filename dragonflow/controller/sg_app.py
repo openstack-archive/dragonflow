@@ -69,7 +69,6 @@ class SGApp(df_base_app.DFlowApp):
         super(SGApp, self).__init__(*args, **kwargs)
         self.secgroup_rule_mappings = {}
         self.next_secgroup_rule_id = 0
-        self.secgroup_refcount = {}
         self.remote_secgroup_ref = {}
         self.secgroup_associate_local_ports = {}
         self.secgroup_aggregate_addresses = collections.defaultdict(
@@ -777,6 +776,10 @@ class SGApp(df_base_app.DFlowApp):
 
         self._install_env_init_flow_by_direction('ingress')
         self._install_env_init_flow_by_direction('egress')
+        self.secgroup_associate_local_ports.clear()
+        self.remote_secgroup_ref.clear()
+        self.secgroup_aggregate_addresses.clear()
+        self.secgroup_ip_refs.clear()
 
     def _get_security_rule_mapping(self, lrule_id):
         rule_id = self.secgroup_rule_mappings.get(lrule_id)
