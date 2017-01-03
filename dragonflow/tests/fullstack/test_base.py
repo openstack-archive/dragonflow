@@ -17,8 +17,7 @@ import string
 from keystoneauth1 import identity
 from keystoneauth1 import session
 from neutron.common import config as common_config
-from neutronclient.neutron import client
-from neutronclient.v2_0 import client as client_v2_0
+from neutronclient.v2_0 import client
 import os_client_config
 from oslo_log import log
 
@@ -45,29 +44,31 @@ def credentials(cloud='devstack-admin'):
 
 def get_neutron_client_from_cloud_config():
     creds = credentials()
-    tenant_name = creds['project_name']
-    auth_url = creds['auth_url'] + "/v2.0"
-    neutron = client.Client('2.0', username=creds['username'],
-         password=creds['password'], auth_url=auth_url,
-         tenant_name=tenant_name)
-    return neutron
+    return get_neutron_client(
+        auth_url=creds['auth_url'] + '/v3',
+        username=creds['username'],
+        password=creds['password'],
+        project_name=creds['project_name'],
+        project_domain_id=creds['project_domain_id'],
+        user_domain_id=creds['user_domain_id'],
+    )
 
 
 def get_neutron_client_from_env():
-    username = os.environ['OS_USERNAME']
-    password = os.environ['OS_PASSWORD']
-    project_name = os.environ['OS_PROJECT_NAME']
-    project_domain_name = os.environ['OS_PROJECT_DOMAIN_NAME']
-    user_domain_name = os.environ['OS_USER_DOMAIN_NAME']
-    auth_url = os.environ['OS_AUTH_URL']
-    auth = identity.Password(auth_url=auth_url,
-                             username=username,
-                             password=password,
-                             project_name=project_name,
-                             project_domain_name=project_domain_name,
-                             user_domain_name=user_domain_name)
+    return get_neutron_client(
+        auth_url=os.environ['OS_AUTH_URL'],
+        username=os.environ['OS_USERNAME'],
+        password=os.environ['OS_PASSWORD'],
+        project_name=os.environ['OS_PROJECT_NAME'],
+        project_domain_name=os.environ['OS_PROJECT_DOMAIN_NAME'],
+        user_domain_name=os.environ['OS_USER_DOMAIN_NAME'],
+    )
+
+
+def get_neutron_client(**kwargs):
+    auth = identity.Password(**kwargs)
     sess = session.Session(auth=auth)
-    neutron = client_v2_0.Client(session=sess)
+    neutron = client.Client(session=sess)
     return neutron
 
 
