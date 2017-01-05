@@ -40,7 +40,6 @@ class Classifier(df_base_app.DFlowApp):
             self.ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
         self.mod_flow(
-            datapath=self.get_datapath(),
             inst=inst,
             table_id=const.INGRESS_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -59,7 +58,6 @@ class Classifier(df_base_app.DFlowApp):
             const.EGRESS_PORT_SECURITY_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath=self.get_datapath(),
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -73,7 +71,6 @@ class Classifier(df_base_app.DFlowApp):
         port_key = lport.get_unique_key()
         match = self.parser.OFPMatch(reg7=port_key)
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.INGRESS_DISPATCH_TABLE,
             command=self.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -83,7 +80,6 @@ class Classifier(df_base_app.DFlowApp):
         ofport = lport.get_external_value('ofport')
         match = self.parser.OFPMatch(in_port=ofport)
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=self.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
