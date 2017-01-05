@@ -44,6 +44,7 @@ class DfLocalController(object):
     def __init__(self, chassis_name):
         self.db_store = db_store.DbStore()
         self.chassis_name = chassis_name
+        self.mgt_ip = cfg.CONF.df.management_ip
         self.ip = cfg.CONF.df.local_ip
         if cfg.CONF.df.tunnel_types:
             # Virtual tunnel port support multiple tunnel types together
@@ -60,7 +61,7 @@ class DfLocalController(object):
         self.nb_api = api_nb.NbApi(
             nb_driver,
             use_pubsub=cfg.CONF.df.enable_df_pub_sub)
-        self.vswitch_api = vswitch_impl.OvsApi(self.ip)
+        self.vswitch_api = vswitch_impl.OvsApi(self.mgt_ip)
         if cfg.CONF.df.enable_port_status_notifier:
             self.port_status_notifier = df_utils.load_driver(
                      cfg.CONF.df.port_status_notifier,

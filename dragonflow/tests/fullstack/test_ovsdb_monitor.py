@@ -22,7 +22,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
     def setUp(self):
         super(TestOvsdbMonitor, self).setUp()
         self.set_wanted_vms = set()
-        self.vswitch_api = vswitch_impl.OvsApi(self.local_ip)
+        self.vswitch_api = vswitch_impl.OvsApi(self.mgt_ip)
         self.vswitch_api.initialize(self.nb_api)
 
     def _check_wanted_vm_online(self, update, mac):

@@ -495,7 +495,7 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
                                db_port=cfg.CONF.df.remote_db_port)
 
     def _get_ovsdb_connection_string(self):
-        return 'tcp:{}:6640'.format(cfg.CONF.df.local_ip)
+        return 'tcp:{}:6640'.format(cfg.CONF.df.management_ip)
 
     def get_headers(self, req):
         remote_addr = req.remote_addr
