@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import copy
-
 import mock
 
 from dragonflow.controller.common import constants as const
@@ -26,46 +24,45 @@ class TestL2App(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestL2App, self).setUp()
+        fake_local_switch1 = test_app_base.make_fake_logic_switch(
+                subnets=test_app_base.fake_lswitch_default_subnets,
+                network_type='local',
+                id='fake_local_switch1',
+                segmentation_id=41,
+                mtu=1500,
+                topic='fake_tenant1',
+                unique_key=1,
+                router_external=False,
+                name='private')
+        self.controller.update_lswitch(fake_local_switch1)
         self.app = self.open_flow_app.dispatcher.apps[0]
 
-    def test_multicast_flow_for_remote_port(self):
-        self.controller.update_lport(test_app_base.fake_remote_port1)
-        # The multicast flow will be added to EGRESS_TABLE with priority low
+    def test_multicast_local_port(self):
+        fake_local_port1 = test_app_base.make_fake_local_port(
+                network_type='local',
+                macs=['00:0b:0c:0d:0e:0f'],
+                ips=['10.0.0.11'],
+                lswitch='fake_local_switch1')
+        self.controller.update_lport(fake_local_port1)
         self.app.mod_flow.assert_called_with(
             inst=mock.ANY,
-            table_id=const.EGRESS_TABLE,
-            command=self.datapath.ofproto.OFPFC_ADD,
-            priority=const.PRIORITY_LOW,
+            command=self.app.ofproto.OFPFC_ADD,
+            table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
+            priority=const.PRIORITY_HIGH,
             match=mock.ANY)
         self.app.mod_flow.reset_mock()
 
-        remote_port2 = copy.deepcopy(test_app_base.fake_remote_port1)
-        remote_port2.inner_obj['id'] = 'fake_remote_port2'
-        self.controller.update_lport(remote_port2)
-        # The multicast flow will be modified to EGRESS_TABLE with priority low
+        fake_local_port2 = test_app_base.make_fake_local_port(
+                network_type='local',
+                lswitch='fake_local_switch1',
+                macs=['1a:0b:0c:0d:0e:0f'],
+                ips=['10.0.0.12'],
+                ofport=2)
+        self.controller.update_lport(fake_local_port2)
         self.app.mod_flow.assert_called_with(
             inst=mock.ANY,
-            table_id=const.EGRESS_TABLE,
-            command=self.datapath.ofproto.OFPFC_MODIFY,
-            priority=const.PRIORITY_LOW,
+            command=self.app.ofproto.OFPFC_MODIFY,
+            table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
+            priority=const.PRIORITY_HIGH,
             match=mock.ANY)
         self.app.mod_flow.reset_mock()
-
-        self.controller.delete_lport('fake_remote_port2')
-        # The multicast flow will be modified to EGRESS_TABLE with priority low
-        self.app.mod_flow.assert_called_with(
-            inst=mock.ANY,
-            table_id=const.EGRESS_TABLE,
-            command=self.datapath.ofproto.OFPFC_MODIFY,
-            priority=const.PRIORITY_LOW,
-            match=mock.ANY)
-        self.app.mod_flow.reset_mock()
-
-        self.controller.delete_lport(
-            test_app_base.fake_remote_port1.get_id())
-        # The multicast flow will be deleted to EGRESS_TABLE with priority low
-        self.app.mod_flow.assert_called_with(
-            table_id=const.EGRESS_TABLE,
-            command=self.datapath.ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_LOW,
-            match=mock.ANY)
