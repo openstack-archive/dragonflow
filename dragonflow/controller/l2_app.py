@@ -317,31 +317,15 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
     def remove_remote_port(self, lport):
-        lport_id = lport.get_id()
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
-        tunnel_key = lport.get_unique_key()
-        segmentation_id = lport.get_external_value('segmentation_id')
         device_owner = lport.get_device_owner()
-
-        parser = self.parser
-        ofproto = self.ofproto
 
         # Remove destination classifier for port
         if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
             self._delete_dst_classifier_flow_for_port(network_id, mac)
 
-        # Remove egress classifier for port
-        match = parser.OFPMatch(reg7=tunnel_key)
-        self.mod_flow(
-            table_id=const.EGRESS_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
         self._remove_l2_responders(lport)
-        self._del_multicast_broadcast_handling_for_remote(
-            lport_id, network_id, segmentation_id)
 
     def _add_dst_classifier_flow_for_port(self, network_id, mac, port_key):
         parser = self.parser
@@ -446,28 +430,6 @@ class L2App(df_base_app.DFlowApp):
             self._del_network_flows_for_vlan(segmentation_id, local_network_id)
         elif network_type == 'flat':
             self._del_network_flows_for_flat(local_network_id)
-        else:
-            self._del_network_flows_for_tunnel(segmentation_id, network_type)
-
-    def _del_network_flows_for_tunnel(self, segmentation_id, network_type):
-        if segmentation_id is None:
-            return
-
-        parser = self.parser
-        ofproto = self.ofproto
-
-        ofport = self.vswitch_api.get_vtp_ofport(network_type)
-        if not ofport:
-            return
-
-        match = parser.OFPMatch(tunnel_id_nxm=segmentation_id,
-                                in_port=ofport)
-
-        self.mod_flow(
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_LOW,
-            match=match)
 
     def _add_multicast_broadcast_handling_for_local_port(self,
                                                          lport_id,
@@ -536,93 +498,6 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
-    def _del_multicast_broadcast_handling_for_remote(self,
-                                                     lport_id,
-                                                     network_id,
-                                                     segmentation_id):
-        network = self.local_networks.get(network_id)
-        if network is None:
-            return
-
-        if lport_id not in network.remote_ports:
-            return
-
-        del network.remote_ports[lport_id]
-
-        if not network.remote_ports:
-            self._del_multicast_broadcast_flows_for_remote(network_id)
-
-            # delete from local_networks
-            if network.is_empty():
-                del self.local_networks[network_id]
-        else:
-            self._update_multicast_broadcast_flows_for_remote(
-                network_id,
-                segmentation_id,
-                network.remote_ports)
-
-    def _del_multicast_broadcast_flows_for_remote(self, network_id):
-        ofproto = self.ofproto
-
-        match = self._get_multicast_broadcast_match(network_id)
-        self.mod_flow(
-            command=ofproto.OFPFC_DELETE,
-            table_id=const.EGRESS_TABLE,
-            priority=const.PRIORITY_LOW,
-            match=match)
-
-    def _update_multicast_broadcast_flows_for_remote(
-            self, network_id, segmentation_id, remote_ports,
-            command=None):
-        parser = self.parser
-        ofproto = self.ofproto
-
-        if command is None:
-            command = ofproto.OFPFC_MODIFY
-
-        match = self._get_multicast_broadcast_match(network_id)
-
-        actions = []
-        remote_ips = set()
-        for port_id_in_network in remote_ports:
-            lport = self.db_store.get_port(port_id_in_network)
-            if not lport:
-                continue
-            remote_ip = lport.get_external_value('peer_vtep_address')
-            if remote_ip not in remote_ips:
-                remote_ips.add(remote_ip)
-                ofport = lport.get_external_value('ofport')
-                actions.extend(
-                    [parser.OFPActionSetField(tun_ipv4_dst=remote_ip),
-                     parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
-                     parser.OFPActionOutput(port=ofport)])
-
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.EGRESS_TABLE,
-            command=command,
-            priority=const.PRIORITY_LOW,
-            match=match)
-
-    def _add_multicast_broadcast_handling_for_remote_port(self,
-                                                          lport_id,
-                                                          port_key,
-                                                          network_id,
-                                                          segmentation_id):
-        LOG.debug("Add/update multicast and broadcast for remote port %s.",
-                  lport_id)
-        ofproto = self.ofproto
-        command = ofproto.OFPFC_MODIFY
-
-        local_network = self.local_networks[network_id]
-        if not local_network.remote_ports:
-            command = ofproto.OFPFC_ADD
-        local_network.remote_ports[lport_id] = port_key
-        self._update_multicast_broadcast_flows_for_remote(
-            network_id, segmentation_id, local_network.remote_ports, command)
-
     def remove_logical_switch(self, lswitch):
         ofproto = self.ofproto
 
@@ -636,17 +511,9 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
     def add_remote_port(self, lport):
-        lport_id = lport.get_id()
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
-        network_type = lport.get_external_value('network_type')
-        segmentation_id = lport.get_external_value('segmentation_id')
-        ofport = lport.get_external_value('ofport')
-        remote_ip = lport.get_external_value('peer_vtep_address')
         port_key = lport.get_unique_key()
-
-        parser = self.parser
-        ofproto = self.ofproto
 
         # Router MAC's go to L3 table will be taken care by l3 app
         # REVISIT(xiaohhui): This check might be removed when l3-agent is
@@ -655,27 +522,6 @@ class L2App(df_base_app.DFlowApp):
             self._add_dst_classifier_flow_for_port(network_id, mac, port_key)
 
         self._add_l2_responders(lport)
-
-        if network_type == 'vlan' or network_type == 'flat':
-            return
-
-        match = parser.OFPMatch(reg7=port_key)
-        actions = [parser.OFPActionSetField(tun_ipv4_dst=remote_ip),
-                   parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
-                   parser.OFPActionOutput(port=ofport)]
-
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [action_inst]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.EGRESS_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-        self._add_multicast_broadcast_handling_for_remote_port(lport_id,
-                                                               port_key,
-                                                               network_id,
-                                                               segmentation_id)
 
     def _install_network_flows_on_first_port_up(self,
                                                 segmentation_id,
@@ -697,44 +543,6 @@ class L2App(df_base_app.DFlowApp):
         elif network_type == 'flat':
             self._install_network_flows_for_flat(physical_network,
                                                  local_network_id)
-        else:
-            self._install_network_flows_for_tunnel(segmentation_id,
-                                                   network_type,
-                                                   local_network_id)
-
-    """
-    Install Ingress network flow for vxlan
-    Table=INGRESS_CLASSIFICATION_DISPATCH_TABLE, priority=Medium
-    Match: tunnel_id= vni
-    Actions: metadata=network_id, goto:INGRESS_DESTIANTION_PORT_LOOKUP_TABLE
-    """
-    def _install_network_flows_for_tunnel(self, segmentation_id, network_type,
-                                          local_network_id):
-        if segmentation_id is None:
-            return
-
-        parser = self.parser
-        ofproto = self.ofproto
-        ofport = self.vswitch_api.get_vtp_ofport(network_type)
-        if not ofport:
-            return
-
-        match = parser.OFPMatch(tunnel_id_nxm=segmentation_id,
-                                in_port=ofport)
-
-        actions = [parser.OFPActionSetField(metadata=local_network_id)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        goto_inst = parser.OFPInstructionGotoTable(
-            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
-
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
 
     """
     Install network flows for vlan
