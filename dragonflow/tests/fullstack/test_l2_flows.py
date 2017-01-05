@@ -168,7 +168,7 @@ class TestL2FLows(test_base.DFTestBase):
                          + ",in_port=" + str(tunnel_ofport))
         ingress_action = 'set_field:0x' + metadtata + '->metadata,' + \
                          'goto_table:' + \
-                         str(const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
+                         str(const.L2_LOOKUP_TABLE)
 
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
