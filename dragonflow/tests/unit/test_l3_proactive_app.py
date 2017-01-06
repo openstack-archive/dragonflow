@@ -31,6 +31,19 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         self.router = test_app_base.fake_logic_router1
 
     def test_add_del_route(self):
+        _add_subnet_send_to_snat = mock.patch.object(
+            self.app,
+            '_add_subnet_send_to_snat'
+        )
+        self.addCleanup(_add_subnet_send_to_snat.stop)
+        _add_subnet_send_to_snat.start()
+        _del_subnet_send_to_snat = mock.patch.object(
+            self.app,
+            '_delete_subnet_send_to_snat'
+        )
+        self.addCleanup(_del_subnet_send_to_snat.stop)
+        _del_subnet_send_to_snat.start()
+
         # delete router
         self.controller.delete_lrouter(self.router.get_id())
         self.assertEqual(5, self.mock_mod_flow.call_count)
@@ -41,6 +54,11 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         self.assertEqual(4, self.mock_mod_flow.call_count)
         args, kwargs = self.mock_mod_flow.call_args
         self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])
+        self.app._add_subnet_send_to_snat.assert_called_once_with(
+            test_app_base.fake_logic_switch1.get_unique_key(),
+            self.router.get_ports()[0].get_mac(),
+            self.router.get_ports()[0].get_unique_key()
+        )
         self.mock_mod_flow.reset_mock()
 
         # add route
@@ -59,3 +77,7 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         self.router.inner_obj['version'] += 2
         self.controller.update_lrouter(self.router)
         self.assertEqual(1, self.mock_mod_flow.call_count)
+        self.app._delete_subnet_send_to_snat.assert_called_once_with(
+            test_app_base.fake_logic_switch1.get_unique_key(),
+            self.router.get_ports()[0].get_mac(),
+        )
