@@ -168,7 +168,7 @@ class DHCPApp(df_base_app.DFlowApp):
                     len(self.domain_name)),
             dhcp.option(DHCP_CLASSLESS_ROUTE_OPT, host_routes),
         ]
-        gw_ip = subnet.get_gateway_ip()
+        gw_ip = self._get_port_gateway_address(subnet, lport)
         if gw_ip:
             option_list.append(dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT,
                                            netaddr.IPAddress(gw_ip).packed))
@@ -216,6 +216,12 @@ class DHCPApp(df_base_app.DFlowApp):
 
         routes_bin = b''
 
+        dhcp_opts = lport.get_extra_dhcp_opts()
+        for opt in dhcp_opts:
+            if opt['opt_name'] == str(DHCP_CLASSLESS_ROUTE_OPT):
+                dest_cidr, _c, via = opt['opt_value'].partition(',')
+                host_routes.append({'destination': dest_cidr, 'nexthop': via})
+
         for route in host_routes:
             dest, slash, mask = route.get('destination').partition('/')
             mask = int(mask)
@@ -258,6 +264,16 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def _get_dhcp_server_address(self, subnet):
         return netaddr.IPAddress(subnet.get_dhcp_server_address())
+
+    def _get_port_gateway_address(self, subnet, lport):
+        gateway_ip = subnet.get_gateway_ip()
+        if gateway_ip:
+            return gateway_ip
+
+        dhcp_opts = lport.get_extra_dhcp_opts()
+        for opt in dhcp_opts:
+            if opt['opt_name'] == str(dhcp.DHCP_GATEWAY_ADDR_OPT):
+                return opt['opt_value']
 
     def _get_port_netmask(self, subnet):
         return netaddr.IPNetwork(subnet.get_cidr()).netmask

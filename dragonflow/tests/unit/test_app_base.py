@@ -147,7 +147,13 @@ fake_local_port1.inner_obj = {
     'binding_vnic_type': 'normal',
     'id': 'fake_port1',
     'security_groups': ['fake_security_group_id1'],
-    'device_id': 'fake_device_id'}
+    'device_id': 'fake_device_id',
+    'extra_dhcp_opts': [{'opt_value': "10.0.0.1",
+                         'opt_name': "3",
+                         'ip_version': 4},
+                        {'opt_value': "0.0.0.0/0,10.0.0.1",
+                         'opt_name': "121",
+                         'ip_version': 4}]}
 fake_local_port1.external_dict = {'is_local': True,
                                   'segmentation_id': 41,
                                   'ofport': 2,

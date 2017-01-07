@@ -15,6 +15,7 @@
 
 import copy
 import mock
+
 from oslo_config import cfg
 from ryu.lib import addrconv
 from ryu.lib.packet import dhcp
@@ -39,12 +40,9 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
     def test_host_route_include_metadata_route(self):
         cfg.CONF.set_override('df_add_link_local_route', True,
                               group='df_dhcp_app')
-        mock_subnet = mock.MagicMock()
-        mock_subnet.get_host_routes.return_value = []
-        lport = mock.MagicMock()
-        lport.get_ip.return_value = "10.0.0.3"
+        subnet = test_app_base.fake_logic_switch1.get_subnets()[0]
         host_route_bin = self.app._get_host_routes_list_bin(
-            mock_subnet, lport)
+            subnet, test_app_base.fake_local_port1)
         self.assertIn(addrconv.ipv4.text_to_bin(const.METADATA_SERVICE_IP),
                       host_route_bin)
 
@@ -143,3 +141,16 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.app._remove_dhcp_unicast_match_flow = mock.Mock()
         self.app.remove_logical_switch(fake_lswitch)
         self.assertNotIn(network_id, self.app.switch_dhcp_ip_map)
+
+    def test_host_route_include_port_dhcp_opt_121(self):
+        subnet = test_app_base.fake_logic_switch1.get_subnets()[0]
+        host_route_bin = self.app._get_host_routes_list_bin(
+            subnet, test_app_base.fake_local_port1)
+        self.assertIn(addrconv.ipv4.text_to_bin('10.0.0.1'), host_route_bin)
+
+    def test_gateway_include_port_dhcp_opt_3(self):
+        subnet = copy.copy(test_app_base.fake_logic_switch1.get_subnets()[0])
+        subnet.inner_obj['gateway_ip'] = ''
+        gateway_ip = self.app._get_port_gateway_address(
+            subnet, test_app_base.fake_local_port1)
+        self.assertEqual('10.0.0.1', str(gateway_ip))

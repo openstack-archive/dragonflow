@@ -210,6 +210,9 @@ class LogicalPort(NbDbObject, UniqueKeyMixin):
     def get_remote_vtep(self):
         return self.inner_obj.get('remote_vtep', False)
 
+    def get_extra_dhcp_opts(self):
+        return self.inner_obj.get('extra_dhcp_opts', [])
+
     def __str__(self):
         lport_with_exteral_dict = dict(self.inner_obj)
         lport_with_exteral_dict['external_dict'] = self.external_dict
