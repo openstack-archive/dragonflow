@@ -42,7 +42,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
         self.dnat_app.add_flow_go_to_table.assert_has_calls(
             [mock.call(self.datapath,
                        constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                       constants.PRIORITY_DEFAULT,
+                       constants.PRIORITY_LOW,
                        constants.INGRESS_NAT_TABLE,
                        match=mock.ANY),
              mock.call(self.datapath,

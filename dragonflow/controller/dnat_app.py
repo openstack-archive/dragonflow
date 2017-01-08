@@ -266,7 +266,7 @@ class DNATApp(df_base_app.DFlowApp):
             match.set_in_port(self.external_ofport)
             self.add_flow_go_to_table(self.get_datapath(),
                 const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                const.PRIORITY_DEFAULT,
+                const.PRIORITY_LOW,
                 const.INGRESS_NAT_TABLE,
                 match=match)
         self._install_floatingip_arp_responder(floatingip)
@@ -284,9 +284,9 @@ class DNATApp(df_base_app.DFlowApp):
             match.set_in_port(self.external_ofport)
             self.mod_flow(
                 self.get_datapath(),
-                command=ofproto.OFPFC_DELETE,
+                command=ofproto.OFPFC_DELETE_STRICT,
                 table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                priority=const.PRIORITY_DEFAULT,
+                priority=const.PRIORITY_LOW,
                 match=match)
         self._remove_floatingip_arp_responder(floatingip)
         self._remove_dnat_ingress_rules(floatingip)
