@@ -34,6 +34,7 @@ class TenantDbStore(object):
         self.publishers = {}
         self.qos_policies = {}
         self.activeports = {}
+
         self.lock = threading.Lock()
         self._table_name_mapping = {
             models.LogicalSwitch.table_name: self.lswitchs,
