@@ -332,14 +332,8 @@ class DbStore(object):
     def delete_publisher(self, uuid, topic=None):
         self.delete(models.Publisher.table_name, uuid, topic)
 
-    def update_chassis(self, chassis_id, chassis):
-        self.chassis[chassis_id] = chassis
-
     def get_chassis(self, chassis_id):
         return self.chassis.get(chassis_id)
-
-    def delete_chassis(self, chassis_id):
-        self.chassis.pop(chassis_id, None)
 
     def get_active_port(self, active_port_key, topic=None):
         return self.get(models.AllowedAddressPairsActivePort.table_name,
