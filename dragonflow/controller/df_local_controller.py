@@ -33,6 +33,7 @@ from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
 from dragonflow.db import db_store
+from dragonflow.db import models2
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -43,6 +44,8 @@ class DfLocalController(object):
 
     def __init__(self, chassis_name):
         self.db_store = db_store.DbStore()
+        self.db_store2 = self.db_store.new_api
+
         self.chassis_name = chassis_name
         self.ip = cfg.CONF.df.local_ip
         if cfg.CONF.df.tunnel_types:
@@ -167,7 +170,7 @@ class DfLocalController(object):
         remote_ports = self.db_store.get_ports_by_chassis(chassis_id)
         for port in remote_ports:
             self.logical_port_deleted(port.get_id())
-        self.db_store.delete_chassis(chassis_id)
+        self.db_store2.delete(models2.Chassis(id=chassis_id))
 
     def update_lswitch(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
@@ -395,29 +398,22 @@ class DfLocalController(object):
 
     def register_chassis(self):
         # Get all chassis from nb db to db store.
-        for c in self.nb_api.get_all_chassis():
-            self.db_store.update_chassis(c.get_id(), c)
+        for c in self.nb_api.get_all(models2.Chassis):
+            self.db_store2.update(c)
 
-        chassis = self.db_store.get_chassis(self.chassis_name)
-        if chassis is None:
-            self.nb_api.add_chassis(self.chassis_name,
-                                    self.ip,
-                                    self.tunnel_types)
+        old_chassis = self.db_store2.get(models2.Chassis(id=self.chassis_name))
+
+        chassis = models2.Chassis(
+            id=self.chassis_name,
+            ip=self.ip,
+            tunnel_types=self.tunnel_types,
+        )
+        self.db_store2.update(chassis)
+
+        if old_chassis is None:
+            self.nb_api.create(chassis)
         else:
-            kwargs = {}
-            old_tunnel_types = chassis.get_tunnel_types()
-            if (not isinstance(old_tunnel_types, list) or
-                    set(self.tunnel_types) != set(old_tunnel_types)):
-                # There are 2 cases that needs update tunnel type in
-                # chassis. 1) User changes tunnel types in conf file
-                # 2) An old controller support only one type tunnel switch
-                # to support virtual tunnel port.
-                kwargs['tunnel_types'] = self.tunnel_types
-            if self.ip != chassis.get_ip():
-                kwargs['ip'] = self.ip
-
-            if kwargs:
-                self.nb_api.update_chassis(self.chassis_name, **kwargs)
+            self.nb_api.update(chassis)
 
     def create_tunnels(self):
         tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
