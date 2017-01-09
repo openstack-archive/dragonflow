@@ -23,6 +23,7 @@ class TestDbStore(tests_base.BaseTestCase):
     def setUp(self):
         tests_base.BaseTestCase.setUp(self)
         self.db_store = db_store.DbStore()
+        self.db_store2 = self.db_store.new_api
 
     def test_lswitch(self):
         self.db_store.set_lswitch('id1', 'value1', 'topic1')
