@@ -1,6 +1,3 @@
-# Copyright (c) 2015 OpenStack Foundation.
-# All Rights Reserved.
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -13,10 +10,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from jsonmodels import fields
 import mock
 
 from dragonflow.db import db_store
+from dragonflow.db import db_store2
+from dragonflow.db import model_framework
 from dragonflow.tests import base as tests_base
+from dragonflow.utils import namespace
 
 
 class TestDbStore(tests_base.BaseTestCase):
@@ -203,3 +204,99 @@ class TestDbStore(tests_base.BaseTestCase):
 
         self.db_store.delete_chassis('chassis2')
         self.assertIsNone(self.db_store.get_chassis('chassis2'))
+
+
+@model_framework.construct_nb_db_model(
+    indexes=namespace.Namespace(id='id', topic_id=('topic', 'id')),
+)
+class ModelTest(model_framework.ModelBase):
+    id = fields.StringField()
+    topic = fields.StringField()
+    extra_field = fields.StringField()
+
+
+class TestDbStore2(tests_base.BaseTestCase):
+    def setUp(self):
+        super(TestDbStore2, self).setUp()
+
+        # Skip singleton instance to have clean state for each test
+        self.db_store = db_store2.DbStore2()
+
+    def test_store_retrieve(self):
+        o1 = ModelTest(id='id1', topic='topic')
+
+        self.db_store.update(o1)
+        self.assertEqual(o1, self.db_store.get(ModelTest(id='id1')))
+        self.assertIn(o1, self.db_store)
+        self.assertIsNone(self.db_store.get(ModelTest(id='id2')))
+
+    def test_store_update(self):
+        o1 = ModelTest(id='id1', topic='topic')
+
+        self.db_store.update(o1)
+
+        o1_old = o1
+        o1 = ModelTest(id='id1', topic='topic', extra_field='foo')
+        self.db_store.update(o1)
+
+        self.assertEqual(o1, self.db_store.get(ModelTest(id='id1')))
+
+        self.assertIn(o1, self.db_store)
+        self.assertNotIn(o1_old, self.db_store)
+
+    def test_store_delete(self):
+        o1 = ModelTest(id='id1', topic='topic')
+        self.db_store.update(o1)
+        self.db_store.delete(o1)
+        self.assertNotIn(o1, self.db_store)
+
+    def test_get_all(self):
+        o1 = ModelTest(id='id1', topic='topic')
+        o2 = ModelTest(id='id2', topic='topic')
+
+        self.db_store.update(o1)
+        self.db_store.update(o2)
+
+        self.assertItemsEqual((o1, o2), self.db_store.get_all(ModelTest))
+
+    def test_get_all_by_topic(self):
+        o1 = ModelTest(id='id1', topic='topic')
+        o2 = ModelTest(id='id2', topic='topic1')
+        o3 = ModelTest(id='id3', topic='topic')
+
+        self.db_store.update(o1)
+        self.db_store.update(o2)
+        self.db_store.update(o3)
+
+        self.assertItemsEqual(
+            (o1, o3),
+            self.db_store.get_all_by_topic(ModelTest, topic='topic'),
+        )
+        self.assertItemsEqual(
+            (o2,),
+            self.db_store.get_all_by_topic(ModelTest, topic='topic1'),
+        )
+
+    def test_get_keys(self):
+        self.db_store.update(ModelTest(id='id1', topic='topic'))
+        self.db_store.update(ModelTest(id='id2', topic='topic'))
+
+        self.assertItemsEqual(
+            ('id1', 'id2'),
+            self.db_store.get_keys(ModelTest),
+        )
+
+    def test_get_keys_by_topic(self):
+        self.db_store.update(ModelTest(id='id1', topic='topic'))
+        self.db_store.update(ModelTest(id='id2', topic='topic1'))
+        self.db_store.update(ModelTest(id='id3', topic='topic'))
+
+        self.assertItemsEqual(
+            ('id1', 'id3'),
+            self.db_store.get_keys_by_topic(ModelTest, topic='topic'),
+        )
+
+        self.assertItemsEqual(
+            ('id2',),
+            self.db_store.get_keys_by_topic(ModelTest, topic='topic1'),
+        )
