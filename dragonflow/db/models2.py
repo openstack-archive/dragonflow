@@ -12,6 +12,7 @@
 from jsonmodels import fields
 
 from dragonflow.db import crud
+import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
 from dragonflow.utils import namespace
 
@@ -38,3 +39,13 @@ class NbDbModelBase(NbModelBase):
 @mf.construct_nb_db_model(nb_crud=crud.UniqueKeyNbApiCRUD)
 class NbDbUniqueKeyMixin(mf.ModelBase):
     unique_key = fields.IntField(required=True)
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class Chassis(NbDbModelBase):
+    table_name = 'chassis'
+
+    ip = df_fields.IpAddressField(required=True)
+    tunnel_type = df_fields.EnumField(('vxlan', 'gre', 'geneve'),
+                                      required=True)
