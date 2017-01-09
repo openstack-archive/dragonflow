@@ -34,6 +34,7 @@ class TenantDbStore(object):
         self.publishers = {}
         self.qos_policies = {}
         self.activeports = {}
+
         self.lock = threading.Lock()
         self._table_name_mapping = {
             models.LogicalSwitch.table_name: self.lswitchs,
@@ -44,7 +45,7 @@ class TenantDbStore(object):
             models.SecurityGroup.table_name: self.secgroups,
             models.Publisher.table_name: self.publishers,
             models.QosPolicy.table_name: self.qos_policies,
-            models.AllowedAddressPairsActivePort.table_name: self.activeports
+            models.AllowedAddressPairsActivePort.table_name: self.activeports,
         }
 
     def _get_table_by_name(self, table_name):
@@ -116,7 +117,10 @@ class DbStore(object):
 
     def set(self, table_name, key, value, topic):
         if not topic:
-            topic = value.get_topic()
+            try:
+                topic = value.get_topic()
+            except AttributeError:
+                pass
         self.tenant_dbs[topic].set(table_name, key, value)
 
     def delete(self, table_name, key, topic):
@@ -366,3 +370,32 @@ class DbStore(object):
                 tenant_db.clear()
         else:
             self.tenant_dbs[topic].clear()
+
+    # FIXME
+    @property
+    def new_api(self):
+        return NewDbStore(self)
+
+
+class NewDbStore(object):
+    def __init__(self, db_store):
+        self._db_store = db_store
+
+    def get(self, lean_obj):
+        model = type(lean_obj)
+        return self._db_store.get(
+            model.table_name,
+            lean_obj.id,
+            lean_obj.topic,
+        )
+
+    def get_all(self, model, topic=None):
+        return self._db_store.values(model.table_name, topic)
+
+    def update(self, obj):
+        model = type(obj)
+        return self._db_store.set(model.table_name, obj.id, obj, obj.topic)
+
+    def delete(self, lean_obj):
+        model = type(lean_obj)
+        self._db_store.delete(model.table_name, lean_obj.id, lean_obj.topic)
