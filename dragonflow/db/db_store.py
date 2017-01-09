@@ -20,6 +20,7 @@ import threading
 import six
 
 from dragonflow.db import models
+from dragonflow.db import models2
 
 
 class TenantDbStore(object):
@@ -34,6 +35,7 @@ class TenantDbStore(object):
         self.publishers = {}
         self.qos_policies = {}
         self.activeports = {}
+        self.chassis = {}
 
         self.lock = threading.Lock()
         self._table_name_mapping = {
@@ -46,6 +48,7 @@ class TenantDbStore(object):
             models.Publisher.table_name: self.publishers,
             models.QosPolicy.table_name: self.qos_policies,
             models.AllowedAddressPairsActivePort.table_name: self.activeports,
+            models2.Chassis.table_name: self.chassis,
         }
 
     def _get_table_by_name(self, table_name):
@@ -328,15 +331,6 @@ class DbStore(object):
 
     def delete_publisher(self, uuid, topic=None):
         self.delete(models.Publisher.table_name, uuid, topic)
-
-    def update_chassis(self, chassis_id, chassis):
-        self.chassis[chassis_id] = chassis
-
-    def get_chassis(self, chassis_id):
-        return self.chassis.get(chassis_id)
-
-    def delete_chassis(self, chassis_id):
-        self.chassis.pop(chassis_id, None)
 
     def get_active_port(self, active_port_key, topic=None):
         return self.get(models.AllowedAddressPairsActivePort.table_name,
