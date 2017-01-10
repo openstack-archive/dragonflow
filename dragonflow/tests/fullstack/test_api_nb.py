@@ -11,12 +11,23 @@
 #    under the License.
 
 import copy
+import mock
 
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.unit import test_app_base
 
 
 class Test_API_NB(test_base.DFTestBase):
+
+    def setUp(self):
+        super(Test_API_NB, self).setUp()
+        # NOTE: In this test class, we make changes directly on nb_api. It
+        # tries to publish these changes. However, since this is not a
+        # neutron server, the publisher isn't initialised. That throws an
+        # (uninteresting) error
+        publisher = mock.patch.object(self.nb_api, 'publisher')
+        self.addCleanup(publisher.stop)
+        publisher.start()
 
     def test_create_lswitch(self):
         fake_lswitch = copy.deepcopy(
