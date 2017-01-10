@@ -128,7 +128,7 @@ class TestPubSub(PubSubTestBase):
         self.assertNotEqual(local_event_num, events_num)
         if cfg.CONF.df.enable_selective_topology_distribution:
             subscriber.unregister_topic(topic)
-        subscriber.stop()
+        subscriber.close()
         self.assertFalse(network.exists())
 
     def test_pub_sub_update_port(self):
@@ -179,7 +179,7 @@ class TestPubSub(PubSubTestBase):
         self.assertNotEqual(local_event_num, events_num)
         if cfg.CONF.df.enable_selective_topology_distribution:
             subscriber.unregister_topic(topic)
-        subscriber.stop()
+        subscriber.close()
         self.assertFalse(network.exists())
 
     def test_pub_sub_event_number_different_port(self):
@@ -215,7 +215,7 @@ class TestPubSub(PubSubTestBase):
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
 
         self.assertEqual(local_events_num + 100, ns.events_num)
-        subscriber.stop()
+        subscriber.close()
         self.stop_publisher(publisher)
 
     def test_pub_sub_add_topic(self):
@@ -261,7 +261,7 @@ class TestPubSub(PubSubTestBase):
         subscriber.unregister_topic(topic)
         publisher.send_event(update, topic)
         self.assertIsNone(self.events_action_t)
-        subscriber.stop()
+        subscriber.close()
         self.stop_publisher(publisher)
 
     def test_pub_sub_register_addr(self):
@@ -305,7 +305,7 @@ class TestPubSub(PubSubTestBase):
         publisher2.send_event(update)
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertEqual(ns.events_action, action)
-        subscriber.stop()
+        subscriber.close()
         self.stop_publisher(publisher)
         self.stop_publisher(publisher2)
 
@@ -328,7 +328,7 @@ class TestMultiprocPubSub(PubSubTestBase):
 
     def tearDown(self):
         if self.subscriber:
-            self.subscriber.stop()
+            self.subscriber.close()
         self.stop_publisher(self.publisher)
         super(TestMultiprocPubSub, self).tearDown()
 
@@ -357,6 +357,8 @@ class TestMultiprocPubSub(PubSubTestBase):
         self.subscriber.daemonize()
         publisher.send_event(self.event)
         test_utils.wait_until_true(lambda: self.event_received)
+        self.subscriber.close()
+        self.subscriber = None
 
 
 class TestDbTableMonitors(PubSubTestBase):
@@ -377,7 +379,7 @@ class TestDbTableMonitors(PubSubTestBase):
     def tearDown(self):
         if self.do_test:
             self.monitor.stop()
-            self.subscriber.stop()
+            self.subscriber.close()
         self.stop_publisher(self.publisher)
         super(TestDbTableMonitors, self).tearDown()
 

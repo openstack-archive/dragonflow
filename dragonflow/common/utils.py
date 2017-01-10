@@ -17,8 +17,6 @@ import os
 import sys
 import time
 
-import eventlet
-import greenlet
 from neutron_lib import constants as n_const
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -126,48 +124,6 @@ def is_port_owner_of_type(owner_type, type_list):
             return True
 
     return False
-
-
-class DFDaemon(object):
-
-    def __init__(self, is_not_light=False):
-        super(DFDaemon, self).__init__()
-        self.pool = eventlet.GreenPool()
-        self.is_daemonize = False
-        self.thread = None
-        self.is_not_light = is_not_light
-
-    def daemonize(self, run):
-        if self.is_daemonize:
-            LOG.error("already daemonized")
-            return
-        self.is_daemonize = True
-        if self.is_not_light:
-            self.thread = self.pool.spawn(run)
-        else:
-            self.thread = self.pool.spawn_n(run)
-        eventlet.sleep(0)
-        return self.thread
-
-    def stop(self):
-        if self.is_daemonize and self.thread:
-            eventlet.greenthread.kill(self.thread)
-            eventlet.sleep(0)
-            self.thread = None
-            self.is_daemonize = False
-
-    def wait(self, timeout=None, exception=None):
-        if not self.is_daemonize or not self.thread:
-            return False
-        if timeout and timeout > 0:
-            timeout_obj = eventlet.Timeout(timeout, exception)
-        try:
-            self.thread.wait()
-        except greenlet.GreenletExit:
-            return True  # Good news
-        finally:
-            if timeout_obj:
-                timeout_obj.cancel()
 
 
 class wrap_func_retry(object):

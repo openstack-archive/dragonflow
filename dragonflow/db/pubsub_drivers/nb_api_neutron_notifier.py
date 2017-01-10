@@ -16,6 +16,7 @@
 
 import os
 import random
+import threading
 import time
 
 from neutron_lib import constants as n_const
@@ -24,7 +25,6 @@ from neutron_lib.plugins import directory
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import models
 from dragonflow.db.models import core
@@ -133,13 +133,14 @@ class HeartBeatReporter(object):
     def __init__(self, api_nb, listener):
         self.api_nb = api_nb
         self.listener = listener
-        self._daemon = df_utils.DFDaemon()
+        self._daemon = threading.Thread(target=self.run)
+        self._event = threading.Event()
 
     def daemonize(self):
-        return self._daemon.daemonize(self.run)
+        return self._daemon.start()
 
     def stop(self):
-        return self._daemon.stop()
+        return self._event.set()
 
     def run(self):
         self.api_nb.create(self.listener)
@@ -147,7 +148,7 @@ class HeartBeatReporter(object):
         cfg_interval = cfg.CONF.df.neutron_listener_report_interval
         delay = cfg.CONF.df.neutron_listener_report_delay
 
-        while True:
+        while self._event.is_set():
             try:
                 # We delay a random time to avoid a periodical peak of network
                 # throughput and pressure for df-db in a big scale
