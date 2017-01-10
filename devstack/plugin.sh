@@ -461,7 +461,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         fi
 
         if is_service_enabled nova; then
-            create_nova_conf_neutron
+            configure_neutron_nova
         fi
 
         if is_service_enabled df-publisher-service; then
