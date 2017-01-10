@@ -460,10 +460,6 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
             PUB_SUB_MULTIPROC_DRIVER=${PUB_SUB_MULTIPROC_DRIVER:-$PUB_SUB_DRIVER}
         fi
 
-        if is_service_enabled nova; then
-            create_nova_conf_neutron
-        fi
-
         if is_service_enabled df-publisher-service; then
             start_pubsub_service
         fi
