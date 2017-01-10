@@ -14,7 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
+import time
+
+from eventlet import queue
 from jsonmodels import errors
 from oslo_config import cfg
 from oslo_log import log
@@ -51,7 +53,7 @@ class NbApi(object):
         super(NbApi, self).__init__()
         self.driver = db_driver
         self.controller = None
-        self._queue = eventlet.queue.PriorityQueue()
+        self._queue = queue.PriorityQueue()
         self.use_pubsub = use_pubsub
         self.publisher = None
         self.subscriber = None
@@ -161,7 +163,7 @@ class NbApi(object):
             topic = db_common.SEND_ALL_TOPIC
         update = db_common.DbUpdate(table, key, action, value, topic=topic)
         self.publisher.send_event(update)
-        eventlet.sleep(0)
+        time.sleep(0)
 
     def register_notification_callback(self, controller):
         self.controller = controller
@@ -190,7 +192,7 @@ class NbApi(object):
         update = db_common.DbUpdate(table, key, action, value, topic=topic)
         LOG.debug("Pushing Update to Queue: %s", update)
         self._queue.put(update)
-        eventlet.sleep(0)
+        time.sleep(0)
 
     def _read_db_changes_from_queue(self):
         sync_rate_limiter = df_utils.RateLimiter(

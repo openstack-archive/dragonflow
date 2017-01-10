@@ -12,7 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
+import time
+
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import redis
@@ -129,6 +130,7 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
         self.plugin_updates_port = ""
         self.pub_sub = None
         self.redis_mgt = None
+        self.is_closed = True
 
     def initialize(self, callback):
         # find a subscriber server node and run daemon
@@ -137,6 +139,7 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
             cfg.CONF.df.remote_db_ip,
             cfg.CONF.df.remote_db_port)
         self._update_client()
+        self.is_closed = False
 
     def process_ha(self):
         # None means that subscriber connection should be updated.
@@ -156,6 +159,12 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                 self.plugin_updates_port = ip_port[1]
                 self.pub_sub = self.client.pubsub()
 
+    def close(self):
+        self.redis_mgt = None
+        self.pub_sub.close()
+        self.pub_sub = None
+        self.is_closed = True
+
     def register_topic(self, topic):
         self.pub_sub.subscribe(topic)
 
@@ -172,8 +181,8 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
             LOG.warning("redis mgt is none")
 
     def run(self):
-        while True:
-            eventlet.sleep(0)
+        while not self.is_closed:
+            time.sleep(0)
             try:
                 if self.pub_sub is not None:
                     for data in self.pub_sub.listen():
@@ -204,7 +213,7 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                                 "%(port)s",
                                 {'ip': self.ip,
                                  'port': self.plugin_updates_port})
-                    eventlet.sleep(1)
+                    time.sleep(1)
 
             except Exception as e:
                 LOG.warning("subscriber listening task lost "

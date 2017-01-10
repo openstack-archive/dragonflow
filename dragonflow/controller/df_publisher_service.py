@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
 from eventlet import queue
 import sys
 import time
@@ -72,7 +71,7 @@ class PublisherService(object):
     def _append_event_to_queue(self, table, key, action, value, topic):
         event = db_common.DbUpdate(table, key, action, value, topic=topic)
         self._queue.put(event)
-        eventlet.sleep(0)
+        time.sleep(0)
 
     def run(self):
         if self.multiproc_subscriber:
@@ -85,7 +84,7 @@ class PublisherService(object):
                 self.publisher.send_event(event)
                 if event.table != core.Publisher.table_name:
                     self._update_timestamp_in_db()
-                eventlet.sleep(0)
+                time.sleep(0)
             except Exception as e:
                 LOG.warning("Exception in main loop: {}, {}").format(
                     e, traceback.format_exc())
