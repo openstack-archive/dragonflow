@@ -12,13 +12,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 import functools
-import time
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_service import loopingcall
 
-from dragonflow.common import utils as df_utils
 
 LOG = log.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class DBConsistencyManager(object):
         self.db_sync_time = cfg.CONF.df.db_sync_time
         if self.db_sync_time < MIN_SYNC_INTERVAL_TIME:
             self.db_sync_time = MIN_SYNC_INTERVAL_TIME
-        self._daemon = df_utils.DFDaemon()
+        self._loopingcall = loopingcall.FixedIntervalLoopingCall(self.run)
         self._handlers = []
 
     def add_handler(self, handler):
@@ -94,16 +94,15 @@ class DBConsistencyManager(object):
         self._process_db_tables_comparison(direct)
 
     def run(self):
-        while True:
-            time.sleep(self.db_sync_time)
-            self.nb_api.db_change_callback(None, None, "db_sync", "db_sync")
-            LOG.debug("Enter db consistent processing")
+        self.nb_api.db_change_callback(None, None, "db_sync", "db_sync")
+        LOG.debug("Enter db consistent processing")
 
     def daemonize(self):
-        return self._daemon.daemonize(self.run)
+        self._loopingcall.start(self.db_sync_time,
+                                initial_delay=self.db_sync_time)
 
     def stop(self):
-        return self._daemon.stop()
+        self._loopingcall.stop()
 
     def _process_db_tables_comparison(self, direct):
         """Do the comparison and sync according to the difference between

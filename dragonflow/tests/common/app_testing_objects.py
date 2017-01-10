@@ -14,10 +14,13 @@ import collections
 import fcntl
 import os
 import re
+import select
 import socket
 import threading
 import time
 
+import eventlet
+import greenlet
 import netaddr
 from neutron.agent.common import utils
 from neutron_lib import constants as n_const
@@ -32,7 +35,6 @@ from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.lib.packet import vlan
 
-from dragonflow.common import utils as d_utils
 from dragonflow import conf as cfg
 from dragonflow.tests.fullstack import test_objects as objects
 
@@ -379,6 +381,9 @@ class LogicalPortTap(object):
         full_args = ['ovs-vsctl', 'del-port', vswitch_name, tap_name]
         utils.execute(full_args, run_as_root=True, process_input=None)
 
+    def close(self):
+        self.tap.close()
+
     def delete(self):
         if self._is_deleted:
             return
@@ -414,6 +419,7 @@ class LogicalPortTap(object):
             buf = self.tap.read(self.tap.mtu)
         else:
             fd = self.tap.fileno()
+            rs, ws, xs = select.select((self.tap,), (), ())
             buf = os.read(fd, self.tap.mtu)
         LOG.info('receive: via {}: {}'.format(
             self.tap.name,
@@ -540,7 +546,7 @@ class Policy(object):
         for action in self.initial_actions:
             action(self, None, None, None)
 
-    def wait(self, timeout=None):
+    def wait(self, timeout):
         """Wait for all the threads listening on devices to finish. Threads are
         generally stopped via actions, and this command waits for the
         simulation to end.
@@ -1136,21 +1142,25 @@ class PortThread(object):
         """
         self.packet_handler = packet_handler
         self.port = port
-        self.daemon = d_utils.DFDaemon(is_not_light=True)
+        self.daemon = None
         self.is_working = False
         self.thread_id = None
 
     def start(self):
         self.is_working = True
-        self.daemon.daemonize(self.run)
+        self.daemon = eventlet.greenthread.spawn(self.run)
 
     def stop(self):
         self.is_working = False
         if self.thread_id != threading.current_thread().ident:
-            self.daemon.stop()
+            self.daemon.kill()
 
-    def wait(self, timeout=None, exception=None):
-        self.daemon.wait(timeout, exception)
+    def wait(self, timeout, exception):
+        with eventlet.Timeout(timeout, exception):
+            try:
+                self.daemon.wait()
+            except greenlet.GreenletExit:
+                return True
 
     def run(self):
         """Continuously read from the tap device, and send received data to the
