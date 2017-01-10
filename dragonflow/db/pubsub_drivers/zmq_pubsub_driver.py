@@ -163,6 +163,9 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
                 self.db_changes_callback(None, None, 'sync',
                                          None, None)
 
+    def close(self):
+        self.sub_socket.close()
+
 
 class ZMQSubscriberMultiprocAgent(ZMQSubscriberAgentBase):
     def connect(self):
