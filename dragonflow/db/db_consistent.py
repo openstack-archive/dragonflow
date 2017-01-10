@@ -13,13 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import threading
 import time
 
 from oslo_config import cfg
 from oslo_log import log
 
 from dragonflow._i18n import _LE, _LW
-from dragonflow.common import utils as df_utils
 from dragonflow.controller import df_db_objects_refresh as obj_refresh
 from dragonflow.db import models
 
@@ -62,7 +62,8 @@ class DBConsistencyManager(object):
         self.db_sync_time = cfg.CONF.df.db_sync_time
         if self.db_sync_time < MIN_SYNC_INTERVAL_TIME:
             self.db_sync_time = MIN_SYNC_INTERVAL_TIME
-        self._daemon = df_utils.DFDaemon()
+        self._daemon = threading.Thread(target=self.run)
+        self._event = threading.Event()
         self.cache_manager = CacheManager()
 
     def process(self, direct):
@@ -70,16 +71,17 @@ class DBConsistencyManager(object):
         self._process_db_tables_comparison(direct)
 
     def run(self):
-        while True:
-            time.sleep(self.db_sync_time)
+        time.sleep(self.db_sync_time)
+        while not self._event.is_set():
             self.nb_api.db_change_callback(None, None, "db_sync", "db_sync")
             LOG.debug("Enter db consistent processing")
+            self._event.wait(self.db_sync_time)
 
     def daemonize(self):
-        return self._daemon.daemonize(self.run)
+        return self._daemon.start()
 
     def stop(self):
-        return self._daemon.stop()
+        return self._event.set()
 
     def _process_db_tables_comparison(self, direct):
         """Do the comparison and sync according to the difference between

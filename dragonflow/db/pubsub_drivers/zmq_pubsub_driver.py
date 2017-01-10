@@ -174,13 +174,15 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
                     message['value'],
                     message['topic'],
                 )
-            except Exception as e:
-                LOG.warning(e)
+            except Exception:
+                LOG.exception(_LE("Receive failed"))
                 self.sub_socket.close()
                 self.sub_socket = self.connect()
                 self.db_changes_callback(None, None, 'sync',
                                          None, None)
 
+    def close(self):
+        self.sub_socket.close()
 
 class ZMQSubscriberMultiprocAgent(ZMQSubscriberAgentBase):
     def connect(self):

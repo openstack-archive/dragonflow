@@ -14,6 +14,7 @@ import ctypes
 import multiprocessing
 import random
 import string
+import threading
 
 import eventlet
 import msgpack
@@ -23,7 +24,6 @@ import redis
 import six
 
 from dragonflow._i18n import _LI, _LE, _LW
-from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db.drivers import redis_calckey
 
@@ -54,7 +54,7 @@ class RedisMgt(object):
         self.cluster_slots = None
         self.calc_key = redis_calckey.key2slot
         self.master_list = []
-        self.daemon = df_utils.DFDaemon()
+        self.daemon = threading.Thread(target=self.run)
         self.db_callback = None
         self.db_recover_callback = None
         self.subscriber = None
@@ -345,7 +345,7 @@ class RedisMgt(object):
         self.subscriber = sub
 
     def daemonize(self):
-        self.daemon.daemonize(self.run)
+        self.daemon.start()
 
     def _check_master_nodes_connection(self):
         try:
