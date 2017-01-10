@@ -12,10 +12,10 @@
 
 import abc
 import socket
+import threading
 import time
 import uuid
 
-import eventlet
 import msgpack
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
@@ -28,7 +28,6 @@ from dragonflow.db.models import core
 
 LOG = logging.getLogger(__name__)
 
-eventlet.monkey_patch(socket=False)
 
 MONITOR_TABLES = [core.Chassis.table_name, core.Publisher.table_name]
 
@@ -197,9 +196,8 @@ class SubscriberApi(object):
         """
 
     @abc.abstractmethod
-    def stop(self):
-        """Stop the Subscriber thread
-        """
+    def close(self):
+        """Close the subscriber. Release all used resources"""
 
     @abc.abstractmethod
     def register_topic(self, topic):
@@ -228,7 +226,8 @@ class SubscriberAgentBase(SubscriberApi):
 
     def initialize(self, callback):
         self.db_changes_callback = callback
-        self.daemon = df_utils.DFDaemon()
+        self.daemon = threading.Thread(target=self.run)
+        self.daemon.daemon = True
 
     def register_listen_address(self, uri):
         if uri not in self.uri_list:
@@ -240,14 +239,11 @@ class SubscriberAgentBase(SubscriberApi):
         self.uri_list.remove(topic)
 
     def daemonize(self):
-        self.daemon.daemonize(self.run)
+        self.daemon.start()
 
     @property
     def is_daemonize(self):
-        return self.daemon.is_daemonize
-
-    def stop(self):
-        self.daemon.stop()
+        return self.daemon.is_alive()
 
     def register_topic(self, topic):
         LOG.info('Register topic %s', topic)
@@ -286,24 +282,26 @@ class TableMonitor(object):
         self._driver = driver
         self._publisher = publisher
         self._polling_time = polling_time
-        self._daemon = df_utils.DFDaemon()
+        self._daemon = threading.Thread(target=self.run)
+        self._event = threading.Event()
         self._table_name = table_name
 
     def daemonize(self):
-        return self._daemon.daemonize(self.run)
+        return self._daemon.start()
 
     def stop(self):
-        return self._daemon.stop()
+        return self._event.set()
 
     def run(self):
         cache = {}
-        while True:
+        time.sleep(self._polling_time)
+        while self._event.is_set():
             try:
-                eventlet.sleep(self._polling_time)
                 cache = self._poll_once(cache)
             except Exception:
                 LOG.exception("Error when polling table %s",
                               self._table_name)
+            self._event.wait(self._polling_time)
 
     def _poll_once(self, old_cache):
         """Create a new cache and send events for changes from the old cache"""

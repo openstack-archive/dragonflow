@@ -14,15 +14,15 @@ import ctypes
 import multiprocessing
 import random
 import string
+import threading
+import time
 
-import eventlet
 import msgpack
 from oslo_log import log
 from oslo_serialization import jsonutils
 import redis
 import six
 
-from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db.drivers import redis_calckey
 
@@ -53,7 +53,7 @@ class RedisMgt(object):
         self.cluster_slots = None
         self.calc_key = redis_calckey.key2slot
         self.master_list = []
-        self.daemon = df_utils.DFDaemon()
+        self.daemon = threading.Thread(target=self.run)
         self.db_callback = None
         self.db_recover_callback = None
         self.subscriber = None
@@ -343,7 +343,7 @@ class RedisMgt(object):
         self.subscriber = sub
 
     def daemonize(self):
-        self.daemon.daemonize(self.run)
+        self.daemon.start()
 
     def _check_master_nodes_connection(self):
         try:
@@ -361,7 +361,7 @@ class RedisMgt(object):
     def run(self):
         while True:
             # fetch cluster topology info every 3 sec
-            eventlet.sleep(INTERVAL_TIME)
+            time.sleep(INTERVAL_TIME)
             try:
                 nodes = self.get_cluster_topology_by_all_nodes()
                 if len(nodes) > 0:
