@@ -60,6 +60,7 @@ Specs
     classification_app
     tap_as_a_service
     services_status
+    api
 
 Templates
 ---------
