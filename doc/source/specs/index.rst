@@ -61,6 +61,7 @@ Specs
     tap_as_a_service
     services_status
     vm_live_migration
+    api
 
 Templates
 ---------
