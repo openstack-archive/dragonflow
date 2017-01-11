@@ -156,9 +156,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             datapath=self.get_datapath(),
             table_id=controller_const.ARP_TABLE,
             match=arp_reply_match,
-            command=ofproto.OFPFC_DELETE,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY)
+            command=ofproto.OFPFC_DELETE)
 
         gratuitous_arp_match = self._get_match_gratuitous_arp(
             lport.get_external_value('ofport'),
@@ -168,9 +166,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             datapath=self.get_datapath(),
             table_id=controller_const.ARP_TABLE,
             match=gratuitous_arp_match,
-            command=ofproto.OFPFC_DELETE,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY)
+            command=ofproto.OFPFC_DELETE)
 
     def _if_old_active_port_need_update(self, old_port, ip, mac, found_lport):
         if (old_port.get_network_id() == found_lport.get_lswitch_id() and
