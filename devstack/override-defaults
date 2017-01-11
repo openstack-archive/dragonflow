@@ -37,3 +37,9 @@ PUBLIC_BRIDGE=${PUBLIC_BRIDGE:-br-ex}
 INTEGRATION_BRIDGE=${INTEGRATION_BRIDGE:-br-int}
 INTEGRATION_PEER_PORT=${INTEGRATION_PEER_PORT:-patch-ex}
 PUBLIC_PEER_PORT=${PUBLIC_PEER_PORT:-patch-int}
+
+if [[ "$ENABLE_DPDK" == "True" ]]; then
+    # By default, dragonflow uses OVS kernel datapath. If you want to use
+    # user space datapath powered by DPDK, please use 'netdev'.
+    OVS_DATAPATH_TYPE=netdev
+fi
