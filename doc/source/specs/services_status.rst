@@ -86,7 +86,7 @@ information regarding each service
   +------+-------------------+--------------------------------------------------+
   | 3.   |  binary           | Name of the service                              |
   +------+-------------------+--------------------------------------------------+
-  | 4.   |  disabled         | Represent whether explictly disabled or not      |
+  | 4.   |  disabled         | Represent whether explicitly disabled or not      |
   +------+-------------------+--------------------------------------------------+
   | 5.   |  disabled_reason  | Reason given when disabling the service          |
   +------+-------------------+--------------------------------------------------+
