@@ -62,6 +62,7 @@ Specs
     services_status
     vm_live_migration
     nb_api_refactor
+    api
 
 Templates
 ---------
