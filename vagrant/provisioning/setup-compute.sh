@@ -9,6 +9,7 @@ ipaddress=$(/sbin/ifconfig eth1 | grep 'inet addr' | awk -F' ' '{print $2}' | aw
 
 # Adjust some things in local.conf
 cat << DEVSTACKEOF >> devstack/local.conf
+[[local|localrc]]
 
 # Set this to the address of the main DevStack host running the rest of the
 # OpenStack services.

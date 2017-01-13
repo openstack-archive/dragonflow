@@ -6,6 +6,7 @@ ipaddress=$(/sbin/ifconfig eth1 | grep 'inet addr' | awk -F' ' '{print $2}' | aw
 
 # Adjust some things in local.conf
 cat << DEVSTACKEOF >> devstack/local.conf
+[[local|localrc]]
 
 # Adjust this in case we're running on a cloud which may use 10.0.0.x
 # for VM IP addresses
