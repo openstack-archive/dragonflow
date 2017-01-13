@@ -1,5 +1,5 @@
 ---
-box: "ubuntu/trusty64"
+box: "ubuntu/xenial64"
 devstack_controller:
   host_name: controller.devstack.dev
   ip: "192.168.33.101"
