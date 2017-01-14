@@ -35,7 +35,9 @@ def environment_setup():
     interface = cfg.CONF.df.metadata_interface
     if ip_lib.device_exists(interface):
         LOG.info(_LI("Device %s already exists"), interface)
-        return
+        # Destroy the environment when the device exists.
+        # We can re-initialize the environment correctly.
+        environment_destroy()
 
     cmd = ["ovs-vsctl", "add-port", bridge, interface,
         "--", "set", "Interface", interface, "type=internal"]
