@@ -136,7 +136,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
     def test_create_update_delete_subnet_network_revision(self):
         network = self._test_create_network_revision()
-        with self.subnet(network={'network': network}) as s:
+        with self.subnet(network={'network': network},
+                         set_context=True, tenant_id='test') as s:
             subnet_id = s['subnet']['id']
         new_network = self.driver.get_network(self.context, network['id'])
         self.assertGreater(new_network['revision_number'],
@@ -171,7 +172,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                          called_args.get('nw_version'))
 
     def test_create_update_subnet_dhcp(self):
-        with self.subnet(enable_dhcp=True) as subnet:
+        with self.subnet(enable_dhcp=True, set_context=True,
+                         tenant_id='test') as subnet:
             self.assertTrue(self.nb_api.add_subnet.called)
             called_args_dict = (
                 self.nb_api.add_subnet.call_args_list[0][1])
@@ -189,7 +191,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             self.assertIsNone(called_args_dict.get('dhcp_ip'))
 
     def test_create_update_subnet_gateway_ip(self):
-        with self.subnet() as subnet:
+        with self.subnet(set_context=True, tenant_id='test') as subnet:
             self.assertTrue(self.nb_api.add_subnet.called)
             called_args_dict = (
                 self.nb_api.add_subnet.call_args_list[0][1])
@@ -205,7 +207,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             self.assertIsNone(called_args_dict.get('gateway_ip'))
 
     def test_create_update_subnet_dnsnameserver(self):
-        with self.subnet(dns_nameservers=['1.1.1.1']) as subnet:
+        with self.subnet(dns_nameservers=['1.1.1.1'],
+                         set_context=True, tenant_id='test') as subnet:
             self.assertTrue(self.nb_api.add_subnet.called)
             called_args_dict = (
                 self.nb_api.add_subnet.call_args_list[0][1])
@@ -223,7 +226,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
     def test_create_update_subnet_hostroute(self):
         host_routes = [{'destination': '135.207.0.0/16', 'nexthop': '1.2.3.4'}]
-        with self.subnet(host_routes=host_routes) as subnet:
+        with self.subnet(host_routes=host_routes,
+                         set_context=True, tenant_id='test') as subnet:
             self.assertTrue(self.nb_api.add_subnet.called)
             called_args_dict = (
                 self.nb_api.add_subnet.call_args_list[0][1])
