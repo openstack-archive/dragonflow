@@ -490,7 +490,7 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
             df_utils.DF_NB_DB_DRIVER_NAMESPACE)
         self.nb_api = api_nb.NbApi(
             nb_driver,
-            use_pubsub=cfg.CONF.df.enable_df_pub_sub)
+            use_pubsub=False)
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
 
