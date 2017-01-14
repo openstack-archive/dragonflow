@@ -327,8 +327,6 @@ class DfLocalController(object):
                 self.open_flow_app.notify_remove_remote_port(lport)
             self.db_store.delete_port(lport.get_id(), False)
 
-        if lport.get_remote_vtep():
-            self._delete_remote_port_from_chassis(lport)
         self._notify_active_ports_updated_when_lport_removed(lport)
 
     def bridge_port_updated(self, lport):
