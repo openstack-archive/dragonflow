@@ -154,7 +154,8 @@ class DHCPApp(df_base_app.DFlowApp):
         host_routes = self._get_host_routes_list_bin(subnet, lport)
         dhcp_server_address = self._get_dhcp_server_address(subnet)
         netmask_bin = self._get_port_netmask(subnet).packed
-        domain_name_bin = struct.pack('!256s', self.domain_name)
+        domain_name_bin = struct.pack('!%ss' % len(self.domain_name),
+                                      self.domain_name)
         lease_time_bin = struct.pack('!I', self.lease_time)
         option_list = [
             dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, pkt_type_packed),
@@ -163,9 +164,7 @@ class DHCPApp(df_base_app.DFlowApp):
             dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT,
                         dhcp_server_address.packed),
             dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns),
-            dhcp.option(DHCP_DOMAIN_NAME_OPT,
-                    domain_name_bin,
-                    len(self.domain_name)),
+            dhcp.option(DHCP_DOMAIN_NAME_OPT, domain_name_bin),
             dhcp.option(DHCP_CLASSLESS_ROUTE_OPT, host_routes),
         ]
         gw_ip = self._get_port_gateway_address(subnet, lport)
