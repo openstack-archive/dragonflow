@@ -88,27 +88,6 @@ class UniqueKeyMixin(object):
 
 
 @register_model_class
-class Chassis(NbDbObject):
-
-    table_name = "chassis"
-
-    def get_ip(self):
-        return self.inner_obj.get('ip')
-
-    def get_tunnel_types(self):
-        return self.inner_obj.get('tunnel_types')
-
-    def get_topic(self):
-        return None
-
-    def get_name(self):
-        return self.get_id()
-
-    def get_version(self):
-        return None
-
-
-@register_model_class
 class LogicalSwitch(NbDbObject, UniqueKeyMixin):
 
     table_name = "lswitch"
