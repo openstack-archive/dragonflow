@@ -25,6 +25,7 @@ class TestDbStore(tests_base.BaseTestCase):
     def setUp(self):
         tests_base.BaseTestCase.setUp(self)
         self.db_store = db_store.DbStore()
+        self.db_store2 = db_store2.get()
 
     def test_lswitch(self):
         self.db_store.set_lswitch('id1', 'value1', 'topic1')
@@ -193,18 +194,22 @@ class TestDbStore(tests_base.BaseTestCase):
         self.assertIsNone(self.db_store.get_publisher('id3'))
 
     def test_chassis(self):
-        chassis1 = mock.Mock()
-        chassis1.get_id.return_value = "chassis1"
-        chassis2 = mock.Mock()
-        chassis2.get_id.return_value = "chassis2"
-        self.db_store.update_chassis('chassis1', chassis1)
-        self.db_store.update_chassis('chassis2', chassis2)
-        self.assertEqual(chassis1, self.db_store.get_chassis('chassis1'))
-        self.assertEqual(chassis2, self.db_store.get_chassis('chassis2'))
-        self.assertIsNone(self.db_store.get_chassis('chassis3'))
-
-        self.db_store.delete_chassis('chassis2')
-        self.assertIsNone(self.db_store.get_chassis('chassis2'))
+        chassis1 = models2.Chassis(id='chassis1')
+        chassis2 = models2.Chassis(id='chassis2')
+        self.db_store2.update(chassis1)
+        self.db_store2.update(chassis2)
+        self.assertEqual(
+            chassis1,
+            self.db_store2.get(models2.Chassis(id='chassis1'),)
+        )
+        self.assertEqual(
+            chassis2,
+            self.db_store2.get(models2.Chassis(id='chassis2'),)
+        )
+        self.db_store2.delete(models2.Chassis(id='chassis1'))
+        self.assertIsNone(self.db_store2.get(models2.Chassis(id='chassis1')))
+        self.db_store2.delete(models2.Chassis(id='chassis2'))
+        self.assertIsNone(self.db_store2.get(models2.Chassis(id='chassis2')))
 
 
 @model_framework.construct_nb_db_model(
