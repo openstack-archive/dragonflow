@@ -32,6 +32,8 @@ from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
 from dragonflow.db import db_store
+from dragonflow.db import db_store2
+from dragonflow.db.models2 import core_models
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -42,6 +44,8 @@ class DfLocalController(object):
 
     def __init__(self, chassis_name):
         self.db_store = db_store.DbStore()
+        self.db_store2 = db_store2.get_instance()
+
         self.chassis_name = chassis_name
         self.mgt_ip = cfg.CONF.df.management_ip
         self.ip = cfg.CONF.df.local_ip
@@ -147,8 +151,8 @@ class DfLocalController(object):
             LOG.exception(e)
 
     def update_chassis(self, chassis):
-        self.db_store.update_chassis(chassis.get_id(), chassis)
-        remote_chassis_name = chassis.get_id()
+        self.db_store2.update(chassis)
+        remote_chassis_name = chassis.id
         if self.chassis_name == remote_chassis_name:
             return
 
@@ -157,14 +161,14 @@ class DfLocalController(object):
         for port in remote_ports:
             self._logical_port_process(port, None)
 
-    def delete_chassis(self, chassis_id):
-        LOG.info(_LI("Deleting remote ports in remote chassis %s"), chassis_id)
+    def delete_chassis(self, chassis):
+        LOG.info(_LI("Deleting remote ports in remote chassis %s"), chassis.id)
         # Chassis is deleted, there is no reason to keep the remote port
         # in it.
-        remote_ports = self.db_store.get_ports_by_chassis(chassis_id)
+        remote_ports = self.db_store.get_ports_by_chassis(chassis.id)
         for port in remote_ports:
             self.delete_lport(port.get_id())
-        self.db_store.delete_chassis(chassis_id)
+        self.db_store2.delete(chassis)
 
     def update_lswitch(self, lswitch):
         old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
@@ -257,12 +261,13 @@ class DfLocalController(object):
                                          lport.get_chassis())
             else:
                 # Remote port that exists in current network pod.
-                remote_chassis = self.db_store.get_chassis(lport.get_chassis())
+                remote_chassis = self.db_store2.get_one(
+                    core_models.Chassis(id=lport.get_chassis()))
                 if not remote_chassis:
                     # chassis has not been online yet.
                     return
                 lport.set_external_value('peer_vtep_address',
-                                         remote_chassis.get_ip())
+                                         remote_chassis.ip)
 
             ofport = self.vswitch_api.get_vtp_ofport(
                 lport.get_external_value('network_type'))
@@ -385,29 +390,23 @@ class DfLocalController(object):
 
     def register_chassis(self):
         # Get all chassis from nb db to db store.
-        for c in self.nb_api.get_all_chassis():
-            self.db_store.update_chassis(c.get_id(), c)
+        for c in self.nb_api.get_all(core_models.Chassis):
+            self.db_store2.update(c)
 
-        chassis = self.db_store.get_chassis(self.chassis_name)
-        if chassis is None:
-            self.nb_api.add_chassis(self.chassis_name,
-                                    self.ip,
-                                    self.tunnel_types)
-        else:
-            kwargs = {}
-            old_tunnel_types = chassis.get_tunnel_types()
-            if (not isinstance(old_tunnel_types, list) or
-                    set(self.tunnel_types) != set(old_tunnel_types)):
-                # There are 2 cases that needs update tunnel type in
-                # chassis. 1) User changes tunnel types in conf file
-                # 2) An old controller support only one type tunnel switch
-                # to support virtual tunnel port.
-                kwargs['tunnel_types'] = self.tunnel_types
-            if self.ip != chassis.get_ip():
-                kwargs['ip'] = self.ip
+        old_chassis = self.db_store2.get_one(
+            core_models.Chassis(id=self.chassis_name))
 
-            if kwargs:
-                self.nb_api.update_chassis(self.chassis_name, **kwargs)
+        chassis = core_models.Chassis(
+            id=self.chassis_name,
+            ip=self.ip,
+            tunnel_types=self.tunnel_types,
+        )
+        self.db_store2.update(chassis)
+
+        if old_chassis is None:
+            self.nb_api.create(chassis)
+        elif old_chassis != chassis:
+            self.nb_api.update(chassis)
 
     def create_tunnels(self):
         tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
