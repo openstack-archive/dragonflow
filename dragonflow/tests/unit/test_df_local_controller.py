@@ -16,6 +16,8 @@ from dragonflow.common import utils
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
+from dragonflow.db import db_store2
+from dragonflow.db import models2
 from dragonflow.tests.unit import test_app_base
 
 
@@ -227,15 +229,15 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
     @mock.patch.object(df_local_controller.DfLocalController,
                        'delete_lport')
     @mock.patch.object(db_store.DbStore, 'get_ports_by_chassis')
-    @mock.patch.object(db_store.DbStore, 'delete_chassis')
-    def test_delete_chassis(self, mock_delete_chassis,
+    @mock.patch.object(db_store2.DbStore2, 'delete')
+    def test_delete_chassis(self, mock_db_store2_delete,
                             mock_get_ports, mock_delete_lport):
         lport_id = 'fake_lport_id'
-        chassis_id = 'fake_chassis_id'
+        chassis = models2.Chassis(id='fake_chassis_id')
         lport = mock.Mock()
         lport.get_id.return_value = lport_id
         mock_get_ports.return_value = [lport]
 
-        self.controller.delete_chassis(chassis_id)
+        self.controller.delete_chassis(chassis)
         mock_delete_lport.assert_called_once_with(lport_id)
-        mock_delete_chassis.assert_called_once_with(chassis_id)
+        mock_db_store2_delete.assert_called_once_with(chassis)
