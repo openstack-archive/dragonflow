@@ -20,6 +20,7 @@ import threading
 import six
 
 from dragonflow.db import models
+from dragonflow.db import models2
 
 
 class TenantDbStore(object):
@@ -383,19 +384,33 @@ class NewDbStore(object):
 
     def get(self, lean_obj):
         model = type(lean_obj)
-        return self._db_store.get(
-            model.table_name,
-            lean_obj.id,
-            lean_obj.topic,
-        )
+        if model == models2.Chassis:
+            return self._db_store.get_chassis(lean_obj.id)
+        else:
+            return self._db_store.get(
+                model.table_name,
+                lean_obj.id,
+                lean_obj.topic,
+            )
 
     def get_all(self, model, topic=None):
         return self._db_store.values(model.table_name, topic)
 
     def update(self, obj):
         model = type(obj)
-        return self._db_store.set(model.table_name, obj.id, obj, obj.topic)
+        if model == models2.Chassis:
+            self._db_store.update_chassis(obj.id, obj)
+        else:
+            return self._db_store.set(model.table_name,
+                                      obj.id,
+                                      obj,
+                                      obj.topic)
 
     def delete(self, lean_obj):
         model = type(lean_obj)
-        self._db_store.delete(model.table_name, lean_obj.id, lean_obj.topic)
+        if model == models2.Chassis:
+            self._db_store.delete_chassis(lean_obj.id)
+        else:
+            self._db_store.delete(model.table_name,
+                                  lean_obj.id,
+                                  lean_obj.topic)
