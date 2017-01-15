@@ -26,12 +26,13 @@ from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import models
+from dragonflow.db import models2
 
 LOG = logging.getLogger(__name__)
 
 eventlet.monkey_patch(socket=False)
 
-MONITOR_TABLES = [models.Chassis.table_name, models.Publisher.table_name]
+MONITOR_TABLES = [models2.Chassis.table_name, models.Publisher.table_name]
 
 
 def pack_message(message):
