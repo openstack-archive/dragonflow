@@ -11,7 +11,9 @@
 #    under the License.
 from jsonmodels import fields
 
+from dragonflow import conf
 from dragonflow.db import api_nb
+import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
 
 
@@ -46,3 +48,13 @@ class UniqueKeyMixin(mf.MixinBase):
         super(UniqueKeyMixin, self).on_create_pre()
         nb_api = api_nb.NbApi.get_instance(True)
         self.unique_key = nb_api.driver.allocate_unique_key(self.table_name)
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class Chassis(mf.ModelBase, BasicEventsMixin):
+    table_name = 'chassis'
+
+    ip = df_fields.IpAddressField(required=True)
+    tunnel_types = df_fields.EnumListField(conf.CONF.df.tunnel_types,
+                                           required=True)
