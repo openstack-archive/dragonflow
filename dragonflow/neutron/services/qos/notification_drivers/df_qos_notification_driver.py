@@ -43,7 +43,7 @@ class DFQosServiceNotificationDriver(
     @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS)
     def create_policy(self, context, policy):
         self.nb_api.create_qos_policy(policy['id'],
-                                      policy['tenant_id'],
+                                      policy['project_id'],
                                       name=policy['name'],
                                       rules=policy.get('rules', []),
                                       version=policy['revision_number'])
@@ -56,7 +56,7 @@ class DFQosServiceNotificationDriver(
         policy_neutron = self._plugin.get_policy(context, policy_id)
 
         self.nb_api.update_qos_policy(
-            policy_id, policy_neutron['tenant_id'],
+            policy_id, policy['project_id'],
             name=policy['name'], rules=policy_neutron['rules'],
             version=policy_neutron['revision_number'])
 
