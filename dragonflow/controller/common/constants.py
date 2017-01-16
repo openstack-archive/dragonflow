@@ -14,29 +14,44 @@
 #    under the License.
 
 # Pipline Table numbers
+# First table in the pipeline. All packets are landed here
 INGRESS_CLASSIFICATION_DISPATCH_TABLE = 0
-EGRESS_PORT_SECURITY_TABLE = 1
-EGRESS_CONNTRACK_TABLE = 3
-EGRESS_SECURITY_GROUP_TABLE = 6
-INGRESS_DESTINATION_PORT_LOOKUP_TABLE = 7
-SERVICES_CLASSIFICATION_TABLE = 9
-ARP_TABLE = 10
-DHCP_TABLE = 11
-METADATA_SERVICE_TABLE = 12
-METADATA_SERVICE_REPLY_TABLE = 13
-IPV6_ND_TABLE = 14
-INGRESS_NAT_TABLE = 15
-L2_LOOKUP_TABLE = 17
-L3_LOOKUP_TABLE = 20
-L3_PROACTIVE_LOOKUP_TABLE = 25
-EGRESS_NAT_TABLE = 30
-EGRESS_TABLE = 64
-EGRESS_EXTERNAL_TABLE = 66
+# All packets from unknown ovs ports are dropped here.
+EGRESS_PORT_SECURITY_TABLE = 5
+# Next 2 tables are related to connection tracking. Used for SG.
+EGRESS_CONNTRACK_TABLE = 10
+EGRESS_SECURITY_GROUP_TABLE = 15
+# Duplicate broadcast packets
+INGRESS_DESTINATION_PORT_LOOKUP_TABLE = 20
+# Table is used to filter dhcp, arp, etc... packets.
+SERVICES_CLASSIFICATION_TABLE = 25
+# All ARP packets are landed here. ARP responses are generated.
+ARP_TABLE = 30
+# DHCP requests are forwarded to controller at this table.
+DHCP_TABLE = 35
+# Metadata service related tables.
+METADATA_SERVICE_TABLE = 40
+METADATA_SERVICE_REPLY_TABLE = 45
+# ipv6 neighbor discovery table.
+IPV6_ND_TABLE = 50
+INGRESS_NAT_TABLE = 55
+# Forward packets to table L3_LOOKUP_TABLE if destination mac address is known.
+L2_LOOKUP_TABLE = 60
+# Filter packet based on destination IP address.
+L3_LOOKUP_TABLE = 70
+# Filter packet based on destination IP address in proactive way ;)
+L3_PROACTIVE_LOOKUP_TABLE = 75
+# Related to dnap app
+EGRESS_NAT_TABLE = 80
+EGRESS_TABLE = 85
+EGRESS_EXTERNAL_TABLE = 90
+# Pipeline Table numbers Ingress
+INGRESS_CONNTRACK_TABLE = 100
+INGRESS_SECURITY_GROUP_TABLE = 105
+INGRESS_DISPATCH_TABLE = 110
+# Table related to aging ?!
 CANARY_TABLE = 200
-# Pipeline Table numbers  Ingress
-INGRESS_CONNTRACK_TABLE = 72
-INGRESS_SECURITY_GROUP_TABLE = 77
-INGRESS_DISPATCH_TABLE = 78
+
 
 # Flow Priorities
 PRIORITY_DEFAULT = 1
