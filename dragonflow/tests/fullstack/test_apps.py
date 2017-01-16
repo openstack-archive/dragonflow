@@ -496,7 +496,8 @@ class TestDHCPApp(test_base.DFTestBase):
 
     def _check_dhcp_block_rule(self, flows, ofport=None):
         for flow in flows:
-            if flow['table'] == '11' and 'drop' in flow['actions']:
+            if (int(flow['table']) == constants.DHCP_TABLE and
+                'drop' in flow['actions']):
                 if ofport is None or 'inport=' + ofport in flow['match']:
                     return True
         return False
