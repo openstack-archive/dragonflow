@@ -58,7 +58,7 @@ An example flow, for a VM on ofport 3, with unique port ID 3, and network ID 1,
 is:
 
 ::
-    cookie=0x0, duration=498548.745s, table=0, n_packets=10, n_bytes=864, idle_age=65534, hard_age=65534, priority=100,in_port=3 actions=load:0x3->NXM_NX_REG6[],load:0x1->OXM_OF_METADATA[],resubmit(,1)
+    table=0, priority=100,in_port=3 actions=load:0x3->NXM_NX_REG6[],load:0x1->OXM_OF_METADATA[],resubmit(,1)
 
 The classification application removes the relevant flows upon the
 removal of a port, i.e. on the callback `remove_local_port`.
