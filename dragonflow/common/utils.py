@@ -43,6 +43,10 @@ def get_vhu_sockpath(sock_dir, port_id):
         (n_const.VHOST_USER_DEVICE_PREFIX + port_id)[:14])
 
 
+def set_bitmask(width):
+    return ~((-1 >> width) << width)
+
+
 def is_valid_version(old_obj, new_obj):
     if not old_obj:
         return True
