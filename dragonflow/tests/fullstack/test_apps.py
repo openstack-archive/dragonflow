@@ -211,7 +211,7 @@ class TestNeighAdvertiser(test_base.DFTestBase):
                     rules=[
                         app_testing_objects.PortPolicyRule(
                             # Detect advertisements
-                            app_testing_objects.RyuNeighbAdvertisementFilter(),
+                            app_testing_objects.RyuNeighborAdvertisementFilter(),
                             actions=[
                                 log_action,
                                 app_testing_objects.StopSimulationAction()

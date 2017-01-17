@@ -614,7 +614,7 @@ class RyuFilterIcmpv6ProtocolType(object):
         return pkt_protocol.type_ == self.type_
 
 
-class RyuNeighbAdvertisementFilter(RyuFilterIcmpv6ProtocolType):
+class RyuNeighborAdvertisementFilter(RyuFilterIcmpv6ProtocolType):
     """Use ryu to parse the packet and test if it's a Neighbor Advertisement"""
     type_ = icmpv6.ND_NEIGHBOR_ADVERT
 
