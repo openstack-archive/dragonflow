@@ -75,6 +75,11 @@ if is_service_enabled df-zookeeper ; then
     source $DEST/dragonflow/devstack/zookeeper_driver
     NB_DRIVER_CLASS="zookeeper_nb_db_driver"
 fi
+if is_service_enabled df-cassandra ; then
+    is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
+    source $DEST/dragonflow/devstack/cassandra_driver
+    NB_DRIVER_CLASS="cassandra_nb_db_driver"
+fi
 if is_service_enabled df-redis ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/redis_driver
@@ -242,7 +247,6 @@ function configure_df_plugin {
 
     iniset $DRAGONFLOW_CONF df enable_selective_topology_distribution \
                             "$DF_SELECTIVE_TOPO_DIST"
-
     configure_df_metadata_service
 }
 
@@ -260,7 +264,6 @@ function install_zeromq {
 }
 
 function install_df {
-
     install_zeromq
 
     if function_exists nb_db_driver_install_server; then
@@ -447,6 +450,10 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         configure_ovs
         configure_df_plugin
+        # configure nb db driver
+        if function_exists nb_db_driver_configure; then
+            nb_db_driver_configure
+        fi
         # initialize the nb db
         init_nb_db
 
@@ -475,7 +482,9 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "unstack" ]]; then
         stop_df_metadata_agent
         stop_df
-        nb_db_driver_clean
+        if function_exists nb_db_driver_clean; then
+            nb_db_driver_clean
+        fi
         cleanup_ovs
         stop_ovs
         uninstall_ovs
