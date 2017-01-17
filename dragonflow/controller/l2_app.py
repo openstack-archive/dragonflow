@@ -170,29 +170,12 @@ class L2App(df_base_app.DFlowApp):
         network_id = lport.get_external_value('local_network_id')
         network_type = lport.get_external_value('network_type')
         segmentation_id = lport.get_external_value('segmentation_id')
-        ofport = lport.get_external_value('ofport')
         port_key = lport.get_unique_key()
         topic = lport.get_topic()
         device_owner = lport.get_device_owner()
 
         parser = self.parser
         ofproto = self.ofproto
-
-        # Remove ingress classifier for port
-        match = parser.OFPMatch()
-        match.set_in_port(ofport)
-        self.mod_flow(
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-        match = parser.OFPMatch(reg7=port_key)
-        self.mod_flow(
-            table_id=const.INGRESS_DISPATCH_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
 
         # Remove destination classifier for port
         if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
@@ -408,37 +391,6 @@ class L2App(df_base_app.DFlowApp):
         parser = self.parser
         ofproto = self.ofproto
 
-        # Ingress classifier for port
-        match = parser.OFPMatch()
-        match.set_in_port(ofport)
-        actions = [parser.OFPActionSetField(reg6=port_key),
-                   parser.OFPActionSetField(metadata=network_id)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        goto_inst = parser.OFPInstructionGotoTable(
-            const.EGRESS_PORT_SECURITY_TABLE)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-        # Dispatch to local port according to unique tunnel_id
-        match = parser.OFPMatch(reg7=port_key)
-        actions = [parser.OFPActionOutput(ofport,
-                                          ofproto.OFPCML_NO_BUFFER)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [action_inst]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.INGRESS_DISPATCH_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-        # Router MAC's go to L3 table will be taken care by l3 app
         # REVISIT(xiaohhui): This check might be removed when l3-agent is
         # obsoleted.
         if lport.get_device_owner() != common_const.DEVICE_OWNER_ROUTER_INTF:
