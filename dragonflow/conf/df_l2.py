@@ -22,18 +22,7 @@ df_l2_app_opts = [
     cfg.BoolOpt(
         'l2_responder',
         default=True,
-        help=_('Install OVS flows to respond to ARP and ND requests.')),
-    cfg.ListOpt('bridge_mappings',
-                default=[],
-                help=_("Comma-separated list of <physical_network>:<bridge> "
-                       "tuples mapping physical network names to the "
-                       "dragonflow's node-specific Open vSwitch bridge names "
-                       "to be used for flat and VLAN networks. Each bridge "
-                       "must exist, and should have a physical network "
-                       "interface configured as a port. All physical "
-                       "networks configured on the server should have "
-                       "mappings to appropriate bridges on each dragonflow "
-                       "node.")),
+        help=_('Install OVS flows to respond to ARP and ND requests.'))
 ]
 
 
