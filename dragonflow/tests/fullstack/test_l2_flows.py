@@ -11,8 +11,10 @@
 #    under the License.
 
 import re
+import six
 
 from oslo_config import cfg
+
 
 import ConfigParser
 from dragonflow.controller.common import constants as const
@@ -21,8 +23,11 @@ from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
 ML2_CONF_INI = '/etc/neutron/plugins/ml2/ml2_conf.ini'
-L2_ML2_APP_NAME = 'l2_app.L2App'
+PROVIDER_NET_APP_NAME = 'provider_networks_app.ProviderNetworksApp'
+TUNNEL_NET_APP_NAME = 'tunneling_app.TunnelingApp'
 VLAN_MIN_DEFAULT = 2
+VLAN_TAG_BITS = 12
+VLAN_MASK = ~((1 >> VLAN_TAG_BITS) << VLAN_TAG_BITS)
 
 
 class TestL2FLows(test_base.DFTestBase):
@@ -44,7 +49,7 @@ class TestL2FLows(test_base.DFTestBase):
         return None
 
     def test_tunnel_network_flows(self):
-        if self._check_l2_ml2_app_enable() is False:
+        if self._check_tunneling_app_enable() is False:
             return
 
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
@@ -87,12 +92,13 @@ class TestL2FLows(test_base.DFTestBase):
                                      hex(segmentation_id),
                                      tunnel_key_hex,
                                      mac, ofport)
-        self.assertIsNotNone(r)
+        for key in six.iterkeys(r):
+            self.assertIsNotNone(r[key], key)
         vm.close()
         network.close()
 
     def test_vlan_network_flows(self):
-        if self._check_l2_ml2_app_enable() is False:
+        if not self._check_providers_net_app_enable():
             return
 
         physical_network, vlan_min = self._parse_network_vlan_ranges()
@@ -144,6 +150,9 @@ class TestL2FLows(test_base.DFTestBase):
                                    vlan_min,
                                    port_key_hex,
                                    mac)
+        for key in six.iterkeys(r):
+            self.assertIsNotNone(r[key], key)
+
         self.assertIsNotNone(r)
         vm.server.stop()
         vm.close()
@@ -189,12 +198,9 @@ class TestL2FLows(test_base.DFTestBase):
                     if ingress_action in flow['actions']:
                         ingress_check = True
 
-        if (l2_lookup_multicast_check is None or
-                l2_lookup_unicast_check is None or
-                ingress_check is None):
-            return None
-
-        return True
+        return {'l2_lookup_multicast_check': l2_lookup_multicast_check,
+                'l2_lookup_unicast_check': l2_lookup_unicast_check,
+                'ingress_check': ingress_check}
 
     def _check_vlan_flows(self, flows, metadtata, segmentation_id,
                           port_key_hex, mac):
@@ -217,14 +223,14 @@ class TestL2FLows(test_base.DFTestBase):
 
         egress_match = 'metadata=0x' + metadtata
         egress_action = 'push_vlan:0x8100,set_field:' + \
-                        str(int(segmentation_id) + 4096) + \
+                        str(segmentation_id & VLAN_MASK) + \
                         "->vlan_vid,goto_table:" + \
                         str(const.EGRESS_EXTERNAL_TABLE)
 
-        ingress_match = 'dl_vlan=' + str(segmentation_id)
+        ingress_match = 'dl_vlan=%s' % segmentation_id
         ingress_action = 'set_field:0x' + metadtata + '->metadata,' \
                                                       'pop_vlan,goto_table:' + \
-                         str(const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
+                         str(const.L2_LOOKUP_TABLE)
 
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
@@ -237,38 +243,40 @@ class TestL2FLows(test_base.DFTestBase):
                 if (l2_lookup_multicast_match in flow['match']):
                     if l2_lookup_multicast_action in flow['actions']:
                         l2_lookup_multicast_check = True
+                        continue
                 if (l2_lookup_unicast_match in flow['match']):
                     if l2_lookup_unicast_action in flow['actions']:
                         l2_lookup_unicast_check = True
+                        continue
                 if (l2_lookup_unknown_match in flow['match']):
                     if l2_lookup_unkown_action in flow['actions']:
                         l2_lookup_unkown_check = True
+                        continue
+
             if flow['table'] == str(const.EGRESS_TABLE):
                 if (egress_match in flow['match']):
                     if egress_action in flow['actions']:
                         egress_check = True
-
+                        continue
             if flow['table'] == str(
                     const.INGRESS_CLASSIFICATION_DISPATCH_TABLE):
                 if (ingress_match in flow['match']):
                     if ingress_action in flow['actions']:
                         ingress_check = True
+                        continue
 
-        if (l2_lookup_multicast_check is None or
-                l2_lookup_unicast_check is None or
-                l2_lookup_unkown_check is None or
-                egress_check is None or
-                ingress_check is None):
-
-            return None
-
-        return True
+        return {'l2_lookup_multicast_check': l2_lookup_multicast_check,
+                'l2_lookup_unicast_check': l2_lookup_unicast_check,
+                'l2_lookup_unkown_check': l2_lookup_unkown_check,
+                'egress_check': egress_check,
+                'ingress_check': ingress_check}
 
     def test_flat_network_flows(self):
-        if self._check_l2_ml2_app_enable() is False:
+        if not self._check_providers_net_app_enable():
             return
 
         physical_network = self._parse_flat_network()
+
         if not physical_network:
             self.assertIsNotNone(None)
             return
@@ -314,7 +322,9 @@ class TestL2FLows(test_base.DFTestBase):
         port_key_hex = hex(port_key)
         r = self._check_flat_flows(ovs.dump(self.integration_bridge),
                                    metadataid, port_key_hex, mac)
-        self.assertIsNotNone(r)
+        for key in six.iterkeys(r):
+            self.assertIsNotNone(r[key], key)
+
         vm.server.stop()
         vm.close()
         network.close()
@@ -345,7 +355,8 @@ class TestL2FLows(test_base.DFTestBase):
         ingress_match = 'vlan_tci=0x0000/0x1fff'
         ingress_action = 'set_field:0x' + metadtata + \
                          '->metadata,goto_table:' + \
-                         str(const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
+                         str(const.L2_LOOKUP_TABLE)
+
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
         l2_lookup_unkown_check = None
@@ -357,30 +368,32 @@ class TestL2FLows(test_base.DFTestBase):
                 if (l2_lookup_multicast_match in flow['match']):
                     if l2_lookup_multicast_action in flow['actions']:
                         l2_lookup_multicast_check = True
+                        continue
                 if (l2_lookup_unicast_match in flow['match']):
                     if l2_lookup_unicast_action in flow['actions']:
                         l2_lookup_unicast_check = True
+                        continue
                 if (l2_lookup_unkown_match in flow['match']):
                     if l2_lookup_unkown_action in flow['actions']:
                         l2_lookup_unkown_check = True
+                        continue
             if flow['table'] == str(const.EGRESS_TABLE):
                 if (egress_match in flow['match']):
                     if egress_action in flow['actions']:
                         egress_check = True
-
+                        continue
             if flow['table'] == str(
                     const.INGRESS_CLASSIFICATION_DISPATCH_TABLE):
                 if (ingress_match in flow['match']):
                     if ingress_action in flow['actions']:
                         ingress_check = True
+                        continue
 
-        if (l2_lookup_multicast_check is None or
-                l2_lookup_unicast_check is None or
-                l2_lookup_unkown_check is None or
-                egress_check is None or
-                ingress_check is None):
-            return None
-        return True
+        return {'l2_lookup_multicast_check': l2_lookup_multicast_check,
+                'l2_lookup_unicast_check': l2_lookup_unicast_check,
+                'l2_lookup_unkown_check': l2_lookup_unkown_check,
+                'egress_check': egress_check,
+                'ingress_check': ingress_check}
 
     def _get_config_values(self, section, key):
         readhandle = None
@@ -400,9 +413,14 @@ class TestL2FLows(test_base.DFTestBase):
                 return value
         return value
 
-    def _check_l2_ml2_app_enable(self):
-        apps_list = cfg.CONF.df.apps_list
-        if L2_ML2_APP_NAME in apps_list:
+    def _check_tunneling_app_enable(self):
+        return self._check_if_app_enabled(TUNNEL_NET_APP_NAME)
+
+    def _check_providers_net_app_enable(self):
+        return self._check_if_app_enabled(PROVIDER_NET_APP_NAME)
+
+    def _check_if_app_enabled(self, app_name):
+        if app_name in cfg.CONF.df.apps_list:
             return True
         return False
 
