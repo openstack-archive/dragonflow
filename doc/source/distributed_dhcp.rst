@@ -29,11 +29,18 @@ backbone implementation
 Distributed DHCP In Dragonflow
 ==============================
 Dragonflow distribute DHCP policy/configuration using the pluggable DB.
-Each controller read this DB and install hijacking OVS flows for DHCP traffic
-and send that traffic to the controller.
+Each local controller installs DHCP redirection openflow rules, to be
+handle by the local controller.
+Those rules are installed only for local ports that are
+attached to a virtual network with DHCP enabled.
 
-The controller dispatch this to the local DHCP application which answer with local
-DHCP acks.
+The controller set the flow metadata in the redirection rules
+to the local port unique key as a hint to allow fast port info lookup
+for the reactive DHCP packets handle by the DHCP application.
+
+The local DHCP application handle the redirected DHCP packets and answer as a DHCP
+server. DHCP traffic is handled directly at the compute node and never goes on
+the network.
 
 The following diagrams demonstrate this process:
 
