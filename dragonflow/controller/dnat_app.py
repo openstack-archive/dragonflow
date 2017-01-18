@@ -60,6 +60,8 @@ class DNATApp(df_base_app.DFlowApp):
 
         for key, floatingip in six.iteritems(self.local_floatingips):
             self._install_dnat_egress_rules(floatingip, mac)
+            self.update_floatingip_status(
+                floatingip, n_const.FLOATINGIP_STATUS_ACTIVE)
 
         self.external_bridge_mac = mac
 
@@ -211,8 +213,6 @@ class DNATApp(df_base_app.DFlowApp):
             table_id=const.EGRESS_NAT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
-        self.update_floatingip_status(
-            floatingip, n_const.FLOATINGIP_STATUS_ACTIVE)
 
     def _remove_dnat_egress_rules(self, floatingip):
         ofproto = self.get_datapath().ofproto
@@ -303,6 +303,8 @@ class DNATApp(df_base_app.DFlowApp):
         self.local_floatingips[floatingip.get_id()] = floatingip
         self._install_ingress_nat_rules(floatingip)
         self._install_egress_nat_rules(floatingip)
+        self.update_floatingip_status(
+            floatingip, n_const.FLOATINGIP_STATUS_ACTIVE)
 
     def disassociate_floatingip(self, floatingip):
         self.delete_floatingip(floatingip)
@@ -315,18 +317,7 @@ class DNATApp(df_base_app.DFlowApp):
             fip for fip in six.itervalues(self.local_floatingips)
             if fip.get_lport_id() == port_id]
         for floatingip in ips_to_disassociate:
-            self.delete_floatingip(floatingip)
-            self.update_floatingip_status(
-                floatingip, n_const.FLOATINGIP_STATUS_DOWN)
-
-    def add_local_port(self, lport):
-        port_id = lport.get_id()
-        ips_to_associate = [
-            fip for fip in six.itervalues(self.local_floatingips)
-            if fip.get_lport_id() == port_id]
-        for floatingip in ips_to_associate:
-            self._install_ingress_nat_rules(floatingip)
-            self._install_egress_nat_rules(floatingip)
+            self.disassociate_floatingip(floatingip)
 
     def delete_floatingip(self, floatingip):
         self.local_floatingips.pop(floatingip.get_id(), 0)
