@@ -253,3 +253,33 @@ class IntStringDictField(fields.BaseField):
 
     def get_default_value(self):
         return {}
+
+
+class PortRange(object):
+    def __init__(self, port_min, port_max):
+        self.min = port_min
+        self.max = port_max
+
+    @classmethod
+    def from_min_max(cls, port_min, port_max):
+        if port_min is not None and port_max is not None:
+            return cls(port_min, port_max)
+
+
+class PortRangeField(fields.BaseField):
+    types = (PortRange,)
+
+    def to_struct(self, value):
+        if value is None or value == [None, None]:
+            return
+
+        return [value.min, value.max]
+
+    def parse_value(self, value):
+        if value is not None:
+            if isinstance(value, PortRange):
+                return value
+            else:
+                # Raise an error if list in not of 2 values
+                port_min, port_max = value
+                return PortRange(port_min, port_max)
