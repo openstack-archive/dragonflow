@@ -18,4 +18,5 @@ from dragonflow.db.models import migration  # noqa
 from dragonflow.db.models import qos  # noqa
 from dragonflow.db.models import secgroups  # noqa
 from dragonflow.db.models import service  # noqa
+from dragonflow.db.models import sfc  # noqa
 from dragonflow.db.models import trunk  # noqa
