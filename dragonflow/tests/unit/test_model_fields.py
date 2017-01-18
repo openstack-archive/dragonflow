@@ -34,6 +34,7 @@ class FieldTestModel(mf.ModelBase):
     ref = df_fields.ReferenceField(ReffedTestModel)
     ref_list = df_fields.ReferenceListField(ReffedTestModel)
     ip_list = df_fields.ListOfField(df_fields.IpAddressField())
+    port_range = df_fields.PortRangeField()
 
     def __init__(self, **kwargs):
         super(FieldTestModel, self).__init__(id='id1', **kwargs)
@@ -94,3 +95,9 @@ class TestFields(tests_base.BaseTestCase):
         self.assertEqual('2.2.2.2', m_struct['ip_list'][1])
         self.assertIsInstance(m_struct['ip_list'][0], six.string_types)
         self.assertIsInstance(m_struct['ip_list'][1], six.string_types)
+
+    def test_prot_range(self):
+        m = FieldTestModel(port_range=[100, 200])
+        self.assertEqual([100, 200], m.to_struct().get('port_range'))
+        self.assertEqual(100, m.port_range.min)
+        self.assertEqual(200, m.port_range.max)
