@@ -32,6 +32,7 @@ class FieldTestModel(mf.ModelBase):
     ipnetwork = df_fields.IpNetworkField()
     ref = df_fields.ReferenceField(ReffedTestModel)
     ref_list = df_fields.ReferenceListField(ReffedTestModel)
+    port_range = df_fields.PortRangeField()
 
     def __init__(self, **kwargs):
         super(FieldTestModel, self).__init__(id='id1', **kwargs)
@@ -80,3 +81,9 @@ class TestFields(tests_base.BaseTestCase):
         m.ref_list[1]._fetch_obj = mock.MagicMock(
             return_value=ReffedTestModel(id='id2', name='name2'))
         self.assertEqual('name2', m.ref_list[1].name)
+
+    def test_prot_range(self):
+        m = FieldTestModel(port_range=[100, 200])
+        self.assertEqual([100, 200], m.to_struct().get('port_range'))
+        self.assertEqual(100, m.port_range.min)
+        self.assertEqual(200, m.port_range.max)
