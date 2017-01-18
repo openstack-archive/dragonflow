@@ -126,3 +126,23 @@ class EnumListField(fields.ListField):
                         valid_values=', '.join(self._valid_values),
                     ),
                 )
+
+
+class PortRange(object):
+    def __init__(self, min, max):
+        self.min = min
+        self.max = max
+
+
+class PortRangeField(fields.BaseField):
+    types = (PortRange,)
+
+    def to_struct(self, value):
+        if value is None:
+            return
+
+        return [value.min, value.max]
+
+    def parse_value(self, value):
+        if value is not None:
+            return PortRange(value[0], value[1])
