@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.extensions import portbindings
+from neutron_lib.api.definitions import portbindings
 
 DF_SG_DEFAULT_NAME = 'no_sg_name'
 DF_SUBNET_DEFAULT_NAME = 'no_subnet_name'

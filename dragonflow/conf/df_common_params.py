@@ -10,10 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron_lib.api.definitions import portbindings
 from oslo_config import cfg
 
 from dragonflow._i18n import _
-from neutron.extensions import portbindings
 
 df_opts = [
     cfg.IPOpt('remote_db_ip',

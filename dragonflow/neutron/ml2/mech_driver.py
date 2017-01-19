@@ -16,11 +16,11 @@ from neutron.callbacks import resources
 from neutron import context as n_context
 from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import extra_dhcp_opt as edo_ext
-from neutron.extensions import portbindings
 from neutron.extensions import portsecurity as psec
 from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api
 from neutron.plugins.ml2 import models
+from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
 from neutron_lib import constants as n_const
 from neutron_lib import exceptions as n_exc
