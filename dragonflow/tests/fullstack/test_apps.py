@@ -168,10 +168,10 @@ class TestArpResponder(test_base.DFTestBase):
             raise self.policy.exceptions[0]
 
 
-class TestNeighAdvertiser(test_base.DFTestBase):
+class TestNeighborAdvertiser(test_base.DFTestBase):
 
     def setUp(self):
-        super(TestNeighAdvertiser, self).setUp()
+        super(TestNeighborAdvertiser, self).setUp()
         self.topology = None
         self.policy = None
         try:
@@ -206,12 +206,13 @@ class TestNeighAdvertiser(test_base.DFTestBase):
             ignore_action = app_testing_objects.IgnoreAction()
             log_action = app_testing_objects.LogAction()
             key1 = (subnet1.subnet_id, port1.port_id)
+            adv_filter = app_testing_objects.RyuNeighborAdvertisementFilter()
             port_policies = {
                 key1: app_testing_objects.PortPolicy(
                     rules=[
                         app_testing_objects.PortPolicyRule(
                             # Detect advertisements
-                            app_testing_objects.RyuNeighbAdvertisementFilter(),
+                            adv_filter,
                             actions=[
                                 log_action,
                                 app_testing_objects.StopSimulationAction()
@@ -265,7 +266,7 @@ class TestNeighAdvertiser(test_base.DFTestBase):
         return result.data
 
     def tearDown(self):
-        super(TestNeighAdvertiser, self).tearDown()
+        super(TestNeighborAdvertiser, self).tearDown()
         self.topology.close()
         self.policy.close()
         utils.execute(['sysctl', '-w', 'net.ipv6.conf.default.accept_dad={}'.
