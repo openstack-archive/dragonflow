@@ -711,7 +711,7 @@ class TestL3App(test_base.DFTestBase):
             key2: policy2,
         }
 
-    def _create_ping_packet(self, dst_ip):
+    def _create_ping_packet(self, dst_ip, ttl=255):
         router_interface = self.router.router_interfaces[
             self.subnet1.subnet_id
         ]
@@ -726,6 +726,7 @@ class TestL3App(test_base.DFTestBase):
         ip = ryu.lib.packet.ipv4.ipv4(
             src=self.port1.port.get_logical_port().get_ip(),
             dst=dst_ip,
+            ttl=ttl,
             proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
         )
         icmp = ryu.lib.packet.icmp.icmp(
@@ -733,6 +734,7 @@ class TestL3App(test_base.DFTestBase):
             data=ryu.lib.packet.icmp.echo(data=self._create_random_string())
         )
         self._ping = icmp
+        self._ip = ip
         result = ryu.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
         result.add_protocol(ip)
@@ -742,6 +744,9 @@ class TestL3App(test_base.DFTestBase):
 
     def _get_ping(self):
         return self._ping
+
+    def _get_ip(self):
+        return self._ip
 
     def _create_pong_packet(self, buf):
         pkt = ryu.lib.packet.packet.Packet(buf)
@@ -861,6 +866,56 @@ class TestL3App(test_base.DFTestBase):
         utils.execute(cmd, run_as_root=True)
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self._test_icmp_address(dst_ip)
+
+    def test_icmp_ttl_packet(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
+        rules = [
+            app_testing_objects.PortPolicyRule(
+                # Detect ICMP time exceed, end simulation
+                app_testing_objects.RyuICMPTimeExceedFilter(self._get_ip),
+                actions=[app_testing_objects.DisableRuleAction(),
+                         app_testing_objects.StopSimulationAction()]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore gratuitous ARP packets
+                app_testing_objects.RyuARPGratuitousFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 packets
+                app_testing_objects.RyuIPv6Filter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+        ]
+        policy = app_testing_objects.PortPolicy(
+            rules=rules,
+            default_action=raise_action
+        )
+        key = (self.subnet1.subnet_id, self.port1.port_id)
+        initial_packet = self._create_ping_packet(
+            self.port2.port.get_logical_port().get_ip(), ttl=1)
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    app_testing_objects.SendAction(
+                        self.subnet1.subnet_id,
+                        self.port1.port_id,
+                        str(initial_packet)
+                    ),
+                ],
+                port_policies={key: policy},
+                unknown_port_action=ignore_action
+            )
+        )
+        policy.start(self.topology)
+        policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
 
 
 class TestSGApp(test_base.DFTestBase):

@@ -14,12 +14,16 @@ import netaddr
 from neutron_lib import constants as common_const
 from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import icmp
+from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LI
+from dragonflow._i18n import _LI, _LW
 from dragonflow.common import exceptions
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import icmp_error_generator
 from dragonflow.controller.common import icmp_responder
 from dragonflow.controller import df_base_app
 from dragonflow.db import models
@@ -33,12 +37,37 @@ class L3ProactiveApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L3ProactiveApp, self).__init__(*args, **kwargs)
         self.route_cache = {}
+        self.router_port_rarp_cache = {}
+        self.api.register_table_handler(const.L3_LOOKUP_TABLE,
+            self.packet_in_handler)
 
     def switch_features_handler(self, ev):
         self.add_flow_go_to_table(self.get_datapath(),
                                   const.L3_LOOKUP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
+
+    def packet_in_handler(self, event):
+        msg = event.msg
+        datapath = self.get_datapath()
+        ofproto = datapath.ofproto
+        pkt = packet.Packet(msg.data)
+        e_pkt = pkt.get_protocol(ethernet.ethernet)
+
+        if msg.reason == ofproto.OFPR_INVALID_TTL:
+            LOG.debug("Get an invalid TTL packet at table %s",
+                      const.L3_LOOKUP_TABLE)
+            router_port_ip = self.router_port_rarp_cache.get(e_pkt.dst)
+            if router_port_ip:
+                icmp_ttl_pkt = icmp_error_generator.generate(
+                    icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE,
+                    msg.data, router_port_ip, pkt)
+                in_port = msg.match.get('in_port')
+                self._send_packet(datapath, in_port, icmp_ttl_pkt)
+            else:
+                LOG.warning(_LW("The invalid TTL packet's destination mac %s "
+                                "can't be recognized."), e_pkt.dst)
+            return
 
     def router_updated(self, router, original_router):
         if not original_router:
@@ -95,9 +124,12 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         mac = router_port.get_mac()
         tunnel_key = router_port.get_unique_key()
         dst_ip = router_port.get_ip()
+        is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
+
+        if is_ipv4:
+            self.router_port_rarp_cache[mac] = dst_ip
 
         # Add router ARP & ICMP responder for IPv4 Addresses
-        is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
         if is_ipv4:
             arp_responder.ArpResponder(self,
                                        local_network_id,
@@ -487,6 +519,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         self._delete_subnet_send_to_snat(local_network_id, mac)
 
         if netaddr.IPAddress(ip).version == 4:
+            self.router_port_rarp_cache.pop(mac, None)
+
             arp_responder.ArpResponder(self, local_network_id, ip).remove()
             icmp_responder.ICMPResponder(
                 self, ip, mac,

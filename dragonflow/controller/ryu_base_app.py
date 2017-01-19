@@ -199,7 +199,8 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
             handler = self.table_handlers[table_id]
             handler(event)
         else:
-            LOG.info(_LI("No handler for table id %s"), format(table_id))
+            LOG.info(_LI("No handler for table id %(table)s with message "
+                         "%(msg)"), {'table': table_id, 'msg': msg})
 
     @handler.set_ev_handler(ofp_event.EventOFPErrorMsg,
                             handler.MAIN_DISPATCHER)

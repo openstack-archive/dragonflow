@@ -26,6 +26,7 @@ from ryu.lib.packet import arp
 from ryu.lib.packet import dhcp
 from ryu.lib.packet import icmp
 from ryu.lib.packet import icmpv6
+from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 
@@ -755,6 +756,29 @@ class RyuICMPPongFilter(RyuICMPFilter):
             return False
         ping = self.get_ping()
         return super(RyuICMPPongFilter, self).is_same_icmp(icmp_prot, ping)
+
+
+class RyuICMPTimeExceedFilter(RyuICMPFilter):
+    """
+    A filter to detect ICMP time exceed messages.
+    :param get_ip:    Return an object contained the original IP header
+    :type get_ip:     Callable with no arguments.
+    """
+    def __init__(self, get_ip):
+        super(RyuICMPTimeExceedFilter, self).__init__()
+        self.get_ip = get_ip
+
+    def filter_icmp(self, pkt, icmp_prot):
+        if icmp_prot.type != icmp.ICMP_TIME_EXCEEDED:
+            return False
+        ip_pkt = self.get_ip()
+        embedded_ip_pkt, c, p = ipv4.ipv4.parser(icmp_prot.data.data)
+        if ip_pkt.src != embedded_ip_pkt.src:
+            return False
+        if ip_pkt.dst != embedded_ip_pkt.dst:
+            return False
+
+        return True
 
 
 class Action(object):
