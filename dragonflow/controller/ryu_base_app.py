@@ -168,7 +168,11 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         if version < RyuDFAdapter.OF_AUTO_PORT_DESC_STATS_REQ_VER:
             # Otherwise, this is done automatically by OFPHandler
             self._send_port_desc_stats_request(self.datapath)
+
+        self.get_sw_async_msg_config()
+
         self.dispatcher.dispatch('switch_features_handler', ev)
+
         if not self.first_connect:
             # For reconnecting to the ryu controller, df needs a full sync
             # in case any resource added during the disconnection.
@@ -213,3 +217,47 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
                           'message=%(msg)s'),
                       {'type': msg.type, 'code': msg.code,
                        'msg': utils.hex_array(msg.data)})
+
+    @handler.set_ev_cls(ofp_event.EventOFPGetAsyncReply,
+                        handler.MAIN_DISPATCHER)
+    def get_async_reply_handler(self, event):
+        msg = event.msg
+        LOG.debug('OFPGetAsyncReply received: packet_in_mask=0x%08x:0x%08x '
+                  'port_status_mask=0x%08x:0x%08x '
+                  'flow_removed_mask=0x%08x:0x%08x',
+                  msg.packet_in_mask[0], msg.packet_in_mask[1],
+                  msg.port_status_mask[0], msg.port_status_mask[1],
+                  msg.flow_removed_mask[0], msg.flow_removed_mask[1])
+        self.set_sw_async_msg_config_for_ttl(msg)
+
+    def get_sw_async_msg_config(self):
+        """Get the configuration of current switch"""
+        ofp_parser = self._datapath.ofproto_parser
+        req = ofp_parser.OFPGetAsyncRequest(self._datapath)
+        self._datapath.send_msg(req)
+
+    def set_sw_async_msg_config_for_ttl(self, cur_config):
+        """Configure switch for TTL
+
+        Configure the switch to packet-in TTL invalid packets to controller.
+        Note that this method only works in OFP 1.3, however, this ryu app
+        claims that it only supports ofproto_v1_3.OFP_VERSION. So, no check
+        will be made here.
+        """
+        dp = self._datapath
+        parser = dp.ofproto_parser
+        ofproto = dp.ofproto
+
+        if cur_config.packet_in_mask[0] & 1 << ofproto.OFPR_INVALID_TTL != 0:
+            LOG.info(_LI('SW config for TTL error packet in has already '
+                         'been set'))
+            return
+
+        packet_in_mask = (cur_config.packet_in_mask[0] |
+                          1 << ofproto.OFPR_INVALID_TTL)
+        m = parser.OFPSetAsync(
+            dp, [packet_in_mask, cur_config.packet_in_mask[1]],
+            [cur_config.port_status_mask[0], cur_config.port_status_mask[1]],
+            [cur_config.flow_removed_mask[0], cur_config.flow_removed_mask[1]])
+        dp.send_msg(m)
+        LOG.info(_LI('Set SW config for TTL error packet in.'))
