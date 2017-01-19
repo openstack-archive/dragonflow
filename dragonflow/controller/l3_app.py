@@ -147,9 +147,7 @@ class L3App(df_base_app.DFlowApp):
             echo.data = bytearray(echo.data)
             icmp_pkt.add_protocol(icmp.icmp(icmp.ICMP_ECHO_REPLY, data=echo))
 
-        self._send_packet(self.get_datapath(),
-                          msg.match.get('in_port'),
-                          icmp_pkt)
+        self.send_packet(msg.match.get('in_port'), icmp_pkt)
         icmp_responder.ICMPResponder(
             self, dst_ip, dst_mac,
             table_id=const.L3_LOOKUP_TABLE).add(

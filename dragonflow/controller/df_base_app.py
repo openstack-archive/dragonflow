@@ -98,17 +98,16 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
 
         datapath.send_msg(message)
 
-    def _send_packet(self, datapath, port, pkt):
+    def send_packet(self, port, pkt):
+        datapath = self.get_datapath()
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        pkt.serialize()
-        data = pkt.data
         actions = [parser.OFPActionOutput(port=port)]
         out = parser.OFPPacketOut(datapath=datapath,
                                   buffer_id=ofproto.OFP_NO_BUFFER,
                                   in_port=ofproto.OFPP_CONTROLLER,
                                   actions=actions,
-                                  data=data)
+                                  data=pkt)
         datapath.send_msg(out)
 
     def send_arp_request(self, src_mac, src_ip, dst_ip, port):
@@ -121,6 +120,5 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
                                     src_mac=src_mac,
                                     src_ip=src_ip,
                                     dst_ip=dst_ip))
-        arp_request_pkt.serialize()
 
-        self._send_packet(self.get_datapath(), port, arp_request_pkt)
+        self.send_packet(port, arp_request_pkt)
