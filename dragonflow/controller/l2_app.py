@@ -417,9 +417,6 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
     def add_local_port(self, lport):
-        if self.get_datapath() is None:
-            return
-
         lport_id = lport.get_id()
         mac = lport.get_mac()
         ofport = lport.get_external_value('ofport')
@@ -729,9 +726,6 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
     def add_remote_port(self, lport):
-        if self.get_datapath() is None:
-            return
-
         lport_id = lport.get_id()
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')

@@ -339,9 +339,6 @@ class PortSecApp(df_base_app.DFlowApp):
 
     def switch_features_handler(self, ev):
         datapath = self.get_datapath()
-        if datapath is None:
-            return
-
         parser = datapath.ofproto_parser
 
         # Ip default drop
@@ -357,8 +354,6 @@ class PortSecApp(df_base_app.DFlowApp):
 
     def add_local_port(self, lport):
         datapath = self.get_datapath()
-        if datapath is None:
-            return
 
         enable = lport.get_port_security_enable()
         if enable:
@@ -368,8 +363,6 @@ class PortSecApp(df_base_app.DFlowApp):
 
     def update_local_port(self, lport, original_lport):
         datapath = self.get_datapath()
-        if datapath is None:
-            return
 
         enable = lport.get_port_security_enable()
         original_enable = original_lport.get_port_security_enable()
@@ -389,8 +382,6 @@ class PortSecApp(df_base_app.DFlowApp):
 
     def remove_local_port(self, lport):
         datapath = self.get_datapath()
-        if datapath is None:
-            return
 
         enable = lport.get_port_security_enable()
         if enable:
