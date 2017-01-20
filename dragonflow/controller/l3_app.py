@@ -212,9 +212,6 @@ class L3App(df_base_app.DFlowApp):
         local_network_id = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())
         datapath = self.get_datapath()
-        if datapath is None:
-            return
-
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
 
