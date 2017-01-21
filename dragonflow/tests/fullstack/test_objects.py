@@ -15,11 +15,10 @@ import six
 import time
 
 from neutronclient.common import exceptions
-from novaclient import client as novaclient
-import os_client_config
 from oslo_log import log
 
 from dragonflow._i18n import _LW
+from dragonflow.tests.common import clients
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
 
@@ -207,13 +206,7 @@ class VMTestObj(object):
         self.closed = False
         self.parent = parent
         self.neutron = neutron
-        cloud = os_client_config.OpenStackConfig().get_one_cloud(
-                                                        cloud='devstack-admin')
-        creds = cloud.get_auth_args()
-        tenant_name = creds['project_name']
-        auth_url = creds['auth_url'] + "/v2.0"
-        self.nova = novaclient.Client('2', creds['username'],
-                        creds['password'], tenant_name, auth_url)
+        self.nova = clients.get_nova_client_from_cloud_config()
 
     def create(self, network=None, script=None, security_groups=None,
                net_address=None):

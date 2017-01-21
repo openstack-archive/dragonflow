@@ -14,11 +14,7 @@ import os
 import random
 import string
 
-from keystoneauth1 import identity
-from keystoneauth1 import session
 from neutron.common import config as common_config
-from neutronclient.v2_0 import client
-import os_client_config
 from oslo_log import log
 
 from dragonflow._i18n import _LE
@@ -26,50 +22,12 @@ from dragonflow import conf as cfg
 from dragonflow.db import api_nb
 from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
+from dragonflow.tests.common import clients
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
 
 
 LOG = log.getLogger(__name__)
-
-
-def get_cloud_config(cloud='devstack-admin'):
-    return os_client_config.OpenStackConfig().get_one_cloud(cloud=cloud)
-
-
-def credentials(cloud='devstack-admin'):
-    """Retrieves credentials to run functional tests"""
-    return get_cloud_config(cloud=cloud).get_auth_args()
-
-
-def get_neutron_client_from_cloud_config():
-    creds = credentials()
-    return get_neutron_client(
-        auth_url=creds['auth_url'] + '/v3',
-        username=creds['username'],
-        password=creds['password'],
-        project_name=creds['project_name'],
-        project_domain_id=creds['project_domain_id'],
-        user_domain_id=creds['user_domain_id'],
-    )
-
-
-def get_neutron_client_from_env():
-    return get_neutron_client(
-        auth_url=os.environ['OS_AUTH_URL'],
-        username=os.environ['OS_USERNAME'],
-        password=os.environ['OS_PASSWORD'],
-        project_name=os.environ['OS_PROJECT_NAME'],
-        project_domain_name=os.environ['OS_PROJECT_DOMAIN_NAME'],
-        user_domain_name=os.environ['OS_USER_DOMAIN_NAME'],
-    )
-
-
-def get_neutron_client(**kwargs):
-    auth = identity.Password(**kwargs)
-    sess = session.Session(auth=auth)
-    neutron = client.Client(session=sess)
-    return neutron
 
 
 class DFTestBase(base.BaseTestCase):
@@ -78,14 +36,14 @@ class DFTestBase(base.BaseTestCase):
         super(DFTestBase, self).setUp()
         if os.environ.get('DF_FULLSTACK_USE_ENV'):
             try:
-                self.neutron = get_neutron_client_from_env()
+                self.neutron = clients.get_neutron_client_from_env()
             except KeyError as e:
                 message = _LE('Cannot find environment variable %s. '
                            'Have you sourced openrc?')
                 LOG.error(message, e.args[0])
                 self.fail(message % e.args[0])
         else:
-            self.neutron = get_neutron_client_from_cloud_config()
+            self.neutron = clients.get_neutron_client_from_cloud_config()
         self.neutron.format = 'json'
 
         # NOTE: Each env can only have one default subnetpool for each
