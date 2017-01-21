@@ -14,6 +14,7 @@ import netaddr
 import six
 import time
 
+from neutron.agent.common import utils as agent_utils
 from neutronclient.common import exceptions
 from oslo_log import log
 
@@ -97,6 +98,11 @@ class RouterTestObj(object):
         if subnet_id:
             body['subnet_id'] = subnet_id
         return self.neutron.add_interface_router(self.router_id, body=body)
+
+    def set_gateway(self, external_net_id):
+        body = {}
+        body['network_id'] = external_net_id
+        return self.neutron.add_gateway_router(self.router_id, body)
 
 
 class SecGroupTestObj(object):
@@ -197,6 +203,54 @@ class NetworkTestObj(object):
         if netobj:
             return True
         return False
+
+
+class ExternalNetworkTestObj(NetworkTestObj):
+
+    GW_IP = "172.24.4.1/24"
+
+    GW_CIDR = "172.24.4.0/24"
+
+    def create(self, network={'name': 'public', 'router:external': True}):
+        net_id = super(ExternalNetworkTestObj, self).create(network)
+        subnet = SubnetTestObj(self.neutron, self.nb_api, net_id)
+        subnet.create({'cidr': self.GW_CIDR,
+                       'ip_version': 4,
+                       'enable_dhcp': False,
+                       'network_id': net_id})
+        # Hardcode the external bridge name here, as it is the
+        # only possibility after devstack script running-
+        br_ex_addr = agent_utils.execute("ip addr show dev br-ex".split(" "))
+        if self.GW_IP not in br_ex_addr:
+            agent_utils.execute(("ip addr add " + self.GW_IP +
+                                 " dev br-ex").split(" "),
+                                run_as_root=True)
+            agent_utils.execute("ip link set br-ex up".split(" "),
+                                run_as_root=True)
+        return net_id
+
+    def close(self):
+        if self.closed or self.network_id is None:
+            return
+        ports = self.neutron.list_ports(network_id=self.network_id)
+        ports = ports['ports']
+        for port in ports:
+            if port['device_owner'] == 'network:router_gateway':
+                self.neutron.remove_gateway_router(port['device_id'])
+            elif port['device_owner'] == 'network:floatingip':
+                self.neutron.delete_floatingip(port['device_id'])
+            else:
+                self.neutron.delete_port(port['id'])
+
+        self.neutron.delete_network(self.network_id)
+        self.closed = True
+        # Leave the br-ex as up, as it will not affect other tests.
+        agent_utils.execute(("ip addr del " + self.GW_IP +
+                             " dev br-ex").split(" "),
+                            run_as_root=True)
+
+    def get_gw_ip(self):
+        return self.GW_IP.split('/')[0]
 
 
 class VMTestObj(object):
