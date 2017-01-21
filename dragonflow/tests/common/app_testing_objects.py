@@ -101,6 +101,8 @@ class Topology(object):
         self.neutron = neutron
         self.nb_api = nb_api
         self.network = objects.NetworkTestObj(neutron, nb_api)
+        self.external_network = objects.ExternalNetworkTestObj(neutron, nb_api)
+        self.exist_external_net = False
         self.subnets = []
         self.routers = []
         self.network.create()
@@ -133,6 +135,8 @@ class Topology(object):
             subnet.delete()
         self.subnets = []
         self.network.close()
+        if not self.exist_external_net:
+            self.external_network.close()
         self.fake_default_security_group.close()
 
     def close(self):
@@ -140,14 +144,12 @@ class Topology(object):
             self._is_closed = True
             self.delete()
 
-    def create_subnet(self, cidr='192.168.0.0/24', **kwargs):
+    def create_subnet(self, **kwargs):
         """Create a subnet in this topology, with the given subnet address
         range.
-        :param cidr: The subnet's address range, in form <IP>/<mask len>
-        :type cidr:  String
         """
         subnet_id = len(self.subnets)
-        subnet = Subnet(self, subnet_id, cidr, **kwargs)
+        subnet = Subnet(self, subnet_id, **kwargs)
         self.subnets.append(subnet)
         return subnet
 
@@ -161,18 +163,34 @@ class Topology(object):
         self.routers.append(router)
         return router
 
+    def create_external_network(self, router_ids):
+        """Create external network in this topology, and use it as external
+        gateway to given routers.
+        """
+        external_net = objects.find_first_network(self.neutron,
+                                                  {'router:external': True})
+        if external_net:
+            self.exist_external_net = True
+            external_net_id = external_net['id']
+        else:
+            external_net_id = self.external_network.create()
+
+        for r in router_ids:
+            router = self.routers[r]
+            router.router.set_gateway(external_net_id)
+
+        return external_net_id
+
 
 class Subnet(object):
     """Represent a single subnet."""
-    def __init__(self, topology, subnet_id, cidr, **kwargs):
+    def __init__(self, topology, subnet_id, **kwargs):
         """Create the subnet under the given topology, with the given ID, and
         the given address range.
         :param topology:  The topology to which the subnet belongs
         :type topology:   Topology
         :param subnet_id: The subnet's ID in the topology. Created by topology
         :type subnet_id:  Number (Opaque)
-        :param cidr:      The address range for this subnet. Format IP/MaskLen
-        :type cidr:       String
         """
         self.topology = topology
         self.subnet_id = subnet_id
@@ -183,13 +201,17 @@ class Subnet(object):
             self.topology.network.network_id
         )
         enable_dhcp = kwargs.get('enable_dhcp', True)
-        ip_version = self._get_ip_version(cidr)
-        self.subnet.create(subnet={
-            'cidr': cidr,
-            'enable_dhcp': enable_dhcp,
-            'ip_version': ip_version,
-            'network_id': topology.network.network_id
-        })
+        cidr = kwargs.get('enable_dhcp', None)
+        if cidr:
+            ip_version = self._get_ip_version(cidr)
+            self.subnet.create(subnet={
+                'cidr': cidr,
+                'enable_dhcp': enable_dhcp,
+                'ip_version': ip_version,
+                'network_id': topology.network.network_id
+            })
+        else:
+            self.subnet.create()
 
     def update(self, updated_parameters):
         self.subnet.update(updated_parameters)

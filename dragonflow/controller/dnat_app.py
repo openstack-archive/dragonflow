@@ -17,14 +17,22 @@ import collections
 
 import netaddr
 from neutron_lib import constants as n_const
+from oslo_log import log
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import icmp
+from ryu.lib.packet import packet
 from ryu.ofproto import ether
 import six
 
+from dragonflow._i18n import _LW
 from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import icmp_error_generator
 from dragonflow.controller import df_base_app
 
+
+LOG = log.getLogger(__name__)
 
 FIP_GW_RESOLVING_STATUS = 'resolving'
 
@@ -41,12 +49,55 @@ class DNATApp(df_base_app.DFlowApp):
         self.ex_peer_patch_port = cfg.CONF.df_dnat_app.ex_peer_patch_port
         self.external_networks = collections.defaultdict(int)
         self.local_floatingips = collections.defaultdict(str)
+        # Map between fixed ip mac to floating ip
+        self.floatingip_rarp_cache = {}
+        self.api.register_table_handler(const.INGRESS_NAT_TABLE,
+            self.ingress_packet_in_handler)
+        self.api.register_table_handler(const.EGRESS_NAT_TABLE,
+            self.egress_packet_in_handler)
 
     def switch_features_handler(self, ev):
         self._init_external_bridge()
         self._install_output_to_physical_patch(self.external_ofport)
         self.external_networks.clear()
         self.local_floatingips.clear()
+        self.floatingip_rarp_cache.clear()
+
+    def ingress_packet_in_handler(self, event):
+        msg = event.msg
+        datapath = self.get_datapath()
+        ofproto = datapath.ofproto
+
+        if msg.reason == ofproto.OFPR_INVALID_TTL:
+            LOG.debug("Get an invalid TTL packet at table %s",
+                      const.INGRESS_NAT_TABLE)
+            icmp_ttl_pkt = icmp_error_generator.generate(
+                icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE, msg.data)
+            in_port = msg.match.get('in_port')
+            self.send_packet(in_port, icmp_ttl_pkt)
+            return
+
+    def egress_packet_in_handler(self, event):
+        msg = event.msg
+        datapath = self.get_datapath()
+        ofproto = datapath.ofproto
+        pkt = packet.Packet(msg.data)
+        e_pkt = pkt.get_protocol(ethernet.ethernet)
+
+        if msg.reason == ofproto.OFPR_INVALID_TTL:
+            LOG.debug("Get an invalid TTL packet at table %s",
+                      const.EGRESS_NAT_TABLE)
+            floatingip = self.floatingip_rarp_cache.get(e_pkt.src)
+            if floatingip:
+                icmp_ttl_pkt = icmp_error_generator.generate(
+                    icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE,
+                    msg.data, floatingip, pkt)
+                in_port = msg.match.get('in_port')
+                self.send_packet(in_port, icmp_ttl_pkt)
+            else:
+                LOG.warning(_LW("The invalid TTL packet's destination mac %s "
+                                "can't be recognized."), e_pkt.src)
+            return
 
     def ovs_port_updated(self, ovs_port):
         if ovs_port.get_name() != self.external_network_bridge:
@@ -151,9 +202,9 @@ class DNATApp(df_base_app.DFlowApp):
         if vm_gateway_mac is None:
             vm_gateway_mac = floatingip.get_mac_address()
         actions = [
+            parser.OFPActionDecNwTtl(),
             parser.OFPActionSetField(eth_src=vm_gateway_mac),
             parser.OFPActionSetField(eth_dst=vm_mac),
-            parser.OFPActionDecNwTtl(),
             parser.OFPActionSetField(ipv4_dst=vm_ip),
             parser.OFPActionSetField(reg7=vm_tunnel_key),
             parser.OFPActionSetField(metadata=local_network_id)
@@ -198,6 +249,7 @@ class DNATApp(df_base_app.DFlowApp):
         ofproto = self.get_datapath().ofproto
         match = self._get_dnat_egress_match(floatingip)
         actions = [
+            parser.OFPActionDecNwTtl(),
             parser.OFPActionSetField(eth_src=fip_mac),
             parser.OFPActionSetField(eth_dst=network_bridge_mac),
             parser.OFPActionSetField(ipv4_src=fip_ip)]
@@ -301,6 +353,9 @@ class DNATApp(df_base_app.DFlowApp):
 
     def associate_floatingip(self, floatingip):
         self.local_floatingips[floatingip.get_id()] = floatingip
+        lport = self.db_store.get_local_port(floatingip.get_lport_id())
+        mac = lport.get_mac()
+        self.floatingip_rarp_cache[mac] = floatingip.get_ip_address()
         self._install_ingress_nat_rules(floatingip)
         self._install_egress_nat_rules(floatingip)
         self.update_floatingip_status(
@@ -321,6 +376,9 @@ class DNATApp(df_base_app.DFlowApp):
 
     def delete_floatingip(self, floatingip):
         self.local_floatingips.pop(floatingip.get_id(), 0)
+        lport = self.db_store.get_local_port(floatingip.get_lport_id())
+        mac = lport.get_mac()
+        self.floatingip_rarp_cache.pop(mac, None)
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)
 
