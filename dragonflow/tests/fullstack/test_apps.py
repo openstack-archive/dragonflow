@@ -1771,14 +1771,14 @@ class TestDNATApp(test_base.DFTestBase):
                 self.topology.close()
             raise
 
-    def _create_ttl_test_port_policies(self):
+    def _create_icmp_test_port_policies(self, icmp_filter):
         ignore_action = app_testing_objects.IgnoreAction()
         raise_action = app_testing_objects.RaiseAction("Unexpected packet")
         key = (self.subnet.subnet_id, self.port.port_id)
         rules = [
             app_testing_objects.PortPolicyRule(
-                # Detect ICMP time exceed, end simulation
-                app_testing_objects.RyuICMPTimeExceedFilter(self._get_ip),
+                # Detect ICMP, end simulation
+                icmp_filter(self._get_ip),
                 actions=[app_testing_objects.DisableRuleAction(),
                          app_testing_objects.StopSimulationAction()]
             ),
@@ -1803,7 +1803,7 @@ class TestDNATApp(test_base.DFTestBase):
         )
         return {key: policy}
 
-    def _create_ping_packet(self, dst_ip, ttl=255):
+    def _create_packet(self, dst_ip, proto, ttl=255):
         router_interface = self.router.router_interfaces[
             self.subnet.subnet_id
         ]
@@ -1819,17 +1819,23 @@ class TestDNATApp(test_base.DFTestBase):
             src=self.port.port.get_logical_port().get_ip(),
             dst=dst_ip,
             ttl=ttl,
-            proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+            proto=proto,
         )
-        icmp = ryu.lib.packet.icmp.icmp(
-            type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
-            data=ryu.lib.packet.icmp.echo(data=self._create_random_string())
-        )
+        if proto == ryu.lib.packet.ipv4.inet.IPPROTO_ICMP:
+            ip_data = ryu.lib.packet.icmp.icmp(
+                type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
+                data=ryu.lib.packet.icmp.echo(
+                    data=self._create_random_string())
+            )
+        elif proto == ryu.lib.packet.ipv4.inet.IPPROTO_UDP:
+            ip_data = ryu.lib.packet.udp.udp(
+                dst_port=33534,
+            )
         self._ip = ip
         result = ryu.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
         result.add_protocol(ip)
-        result.add_protocol(icmp)
+        result.add_protocol(ip_data)
         result.serialize()
         return result.data
 
@@ -1838,8 +1844,10 @@ class TestDNATApp(test_base.DFTestBase):
 
     def test_icmp_ttl_packet(self):
         ignore_action = app_testing_objects.IgnoreAction()
-        initial_packet = self._create_ping_packet(
-            self.topology.external_network.get_gw_ip(), ttl=1)
+        initial_packet = self._create_packet(
+            self.topology.external_network.get_gw_ip(),
+            ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+            ttl=1)
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
@@ -1849,7 +1857,34 @@ class TestDNATApp(test_base.DFTestBase):
                         str(initial_packet)
                     ),
                 ],
-                port_policies=self._create_ttl_test_port_policies(),
+                port_policies=self._create_icmp_test_port_policies(
+                    app_testing_objects.RyuICMPTimeExceedFilter),
+                unknown_port_action=ignore_action
+            )
+        )
+        policy.start(self.topology)
+        policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
+
+    def test_nat_embedded_packet(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        self.port.port.update({"security_groups": []})
+
+        initial_packet = self._create_packet(
+            self.topology.external_network.get_gw_ip(),
+            ryu.lib.packet.ipv4.inet.IPPROTO_UDP)
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    app_testing_objects.SendAction(
+                        self.subnet.subnet_id,
+                        self.port.port_id,
+                        str(initial_packet)
+                    ),
+                ],
+                port_policies=self._create_icmp_test_port_policies(
+                    app_testing_objects.RyuICMPUnreachFilter),
                 unknown_port_action=ignore_action
             )
         )
