@@ -84,10 +84,7 @@ fake_logic_router1.inner_obj = {
                "lrouter": "fake_router_id",
                "id": "fake_router_port1"}]}
 
-
-fake_logic_switch1 = db_models.LogicalSwitch("{}")
-fake_logic_switch1.inner_obj = {
-    "subnets": [{"dhcp_ip": "10.0.0.2",
+fake_lswitch_default_subnets = [{"dhcp_ip": "10.0.0.2",
                  "name": "private-subnet",
                  "enable_dhcp": True,
                  "lswitch": "fake_switch1",
@@ -96,22 +93,47 @@ fake_logic_switch1.inner_obj = {
                  "gateway_ip": "10.0.0.1",
                  "host_routes": [],
                  "cidr": "10.0.0.0/24",
-                 "id": "fake_subnet1"}],
-    "name": "private",
-    "router_external": False,
-    'unique_key': 1,
-    "segmentation_id": 41,
-    "mtu": 1450,
-    "topic": "fake_tenant1",
-    "version": 2,
-    "network_type": "vxlan",
-    "id": "fake_switch1",
-    "unique_key": 1}
+                 "id": "fake_subnet1"}]
 
 
-fake_external_switch1 = db_models.LogicalSwitch("{}")
-fake_external_switch1.inner_obj = {
-    "subnets": [{"name": "public-subnet",
+def make_fake_logic_switch(
+        unique_key,
+        name,
+        router_external,
+        segmentation_id,
+        mtu,
+        topic,
+        id,
+        subnets=None,
+        network_type='vxlan',
+        version=2,
+        **kwargs):
+    fake_switch = db_models.LogicalSwitch("{}")
+    fake_switch.inner_obj = {
+            "subnets": subnets,
+            "name": name,
+            "router_external": router_external,
+            "segmentation_id": segmentation_id,
+            "mtu": mtu,
+            "topic": topic,
+            "version": version,
+            "network_type": network_type,
+            "id": id,
+            "unique_key": unique_key}
+    fake_switch.inner_obj.update(kwargs)
+    return fake_switch
+
+fake_logic_switch1 = make_fake_logic_switch(
+        subnets=fake_lswitch_default_subnets,
+        unique_key=1,
+        name='private',
+        router_external=False,
+        segmentation_id=41,
+        mtu=1450,
+        topic='fake_tenant1',
+        id='fake_switch1')
+
+external_switch1_subnets = [{"name": "public-subnet",
                  "enable_dhcp": False,
                  "lswitch": "fake_external_switch1",
                  "dns_nameservers": [],
@@ -119,49 +141,95 @@ fake_external_switch1.inner_obj = {
                  "gateway_ip": "172.24.4.1",
                  "host_routes": [],
                  "cidr": "172.24.4.0/24",
-                 "id": "fake_external_subnet1"}],
-    "name": "public",
-    "router_external": True,
-    'unique_key': 2,
-    "segmentation_id": 69,
-    "mtu": 1450,
-    "topic": "fake_tenant1",
-    "version": 2,
-    "network_type": "vxlan",
-    "id": "fake_external_switch1"}
+                 "id": "fake_external_subnet1"}]
 
 
-fake_local_port1 = db_models.LogicalPort("{}")
-fake_local_port1.inner_obj = {
-    'subnets': ['fake_subnet1'],
-    'binding_profile': {},
-    'macs': ['fa:16:3e:8c:2e:b3'],
-    'name': '',
-    'allowed_address_pairs': [],
-    'lswitch': 'fake_switch1',
-    'enabled': True,
-    'topic': 'fake_tenant1',
-    'ips': ['10.0.0.6'],
-    'device_owner': 'compute:None',
-    'chassis': 'fake_host',
-    'version': 2,
-    'unique_key': 2,
-    'port_security_enabled': True,
-    'binding_vnic_type': 'normal',
-    'id': 'fake_port1',
-    'security_groups': ['fake_security_group_id1'],
-    'device_id': 'fake_device_id',
-    'extra_dhcp_opts': [{'opt_value': "10.0.0.1",
-                         'opt_name': "3",
-                         'ip_version': 4},
-                        {'opt_value': "0.0.0.0/0,10.0.0.1",
-                         'opt_name': "121",
-                         'ip_version': 4}]}
-fake_local_port1.external_dict = {'is_local': True,
-                                  'segmentation_id': 41,
-                                  'ofport': 2,
-                                  'network_type': 'vxlan',
-                                  'local_network_id': 1}
+fake_external_switch1 = make_fake_logic_switch(
+        subnets=external_switch1_subnets,
+        unique_key=2,
+        name='public',
+        router_external=True,
+        segmentation_id=69,
+        mtu=1450,
+        topic='fake_tenant1',
+        id='fake_external_switch1')
+
+
+def make_fake_port(id=None,
+                   subnets=None,
+                   is_local=None,
+                   macs=('00:00:00:00:00:00'),
+                   ips=('0.0.0.0.0'),
+                   name='fake_local_port',
+                   lswitch='fake_switch1',
+                   enabled=True,
+                   topic='fake_tenant1',
+                   device_owner='compute:None',
+                   chassis='fake_host',
+                   version=2,
+                   tunnel_key=None,
+                   unique_key=2,
+                   port_security_enabled=True,
+                   network_type='flat',
+                   binding_vnic_type='normal',
+                   security_groups=['fake_security_group_id1'],
+                   device_id='fake_device_id',
+                   segmentation_id=42,
+                   ofport=1,
+                   local_network_id=11,
+                   extra_dhcp_opts=None):
+    fake_port = db_models.LogicalPort("{}")
+    fake_port.inner_obj = {
+        'subnets': subnets,
+        'binding_profile': {},
+        'macs': macs,
+        'name': name,
+        'allowed_address_pairs': [],
+        'lswitch': lswitch,
+        'enabled': True,
+        'topic': topic,
+        'ips': ips,
+        'device_owner': device_owner,
+        'tunnel_key': tunnel_key,
+        'chassis': chassis,
+        'version': version,
+        'unique_key': unique_key,
+        'port_security_enabled': port_security_enabled,
+        'binding_vnic_type': binding_vnic_type,
+        'id': "%s_%s%s" % (network_type, name, ofport) if not id else id,
+        'security_groups': security_groups,
+        'device_id': device_id,
+        'extra_dhcp_opts': extra_dhcp_opts}
+    fake_port.external_dict = {
+        'is_local': is_local,
+        'segmentation_id': segmentation_id,
+        'ofport': ofport,
+        'network_type': network_type,
+        'local_network_id': local_network_id}
+    return fake_port
+
+
+def make_fake_local_port(**kargs):
+    kargs['is_local'] = True
+    return make_fake_port(**kargs)
+
+
+fake_local_port1_dhcp_opts = [{
+    'opt_value': "10.0.0.1",
+    'opt_name': "3",
+    'ip_version': 4}, {
+    'opt_value': "0.0.0.0/0,10.0.0.1",
+    'opt_name': "121",
+    'ip_version': 4}]
+
+
+fake_local_port1 = make_fake_local_port(
+    macs=['fa:16:3e:8c:2e:b3'],
+    ips=['10.0.0.6'],
+    network_type='vxlan',
+    subnets=['fake_subnet1'],
+    id='fake_port1',
+    extra_dhcp_opts=fake_local_port1_dhcp_opts)
 
 
 fake_ovs_port1 = mock.Mock(name='fake_ovs_port1')
@@ -176,31 +244,16 @@ fake_ovs_port1.get_attached_mac.return_value = 'fa:16:3e:8c:2e:b3'
 fake_ovs_port1.get_tunnel_type.return_value = 'vxlan'
 
 
-fake_local_port2 = db_models.LogicalPort("{}")
-fake_local_port2.inner_obj = {
-    'subnets': ['fake_subnet1'],
-    'binding_profile': {},
-    'macs': ['fa:16:3e:8c:2e:b4'],
-    'name': '',
-    'allowed_address_pairs': [],
-    'lswitch': 'fake_switch1',
-    'enabled': True,
-    'topic': 'fake_tenant1',
-    'ips': ['10.0.0.7'],
-    'device_owner': 'compute:None',
-    'chassis': 'fake_host',
-    'version': 2,
-    'tunnel_key': 3,
-    'port_security_enabled': True,
-    'binding_vnic_type': 'normal',
-    'id': 'fake_port2',
-    'security_groups': ['fake_security_group_id1'],
-    'device_id': 'fake_device_id'}
-fake_local_port2.external_dict = {'is_local': True,
-                                  'segmentation_id': 41,
-                                  'ofport': 3,
-                                  'network_type': 'vxlan',
-                                  'local_network_id': 1}
+fake_local_port2 = make_fake_local_port(
+    macs=['fa:16:3e:8c:2e:b4'],
+    ips=['10.0.0.7'],
+    tunnel_key=3,
+    id='fake_port2',
+    segmentation_id=41,
+    ofport=3,
+    network_type='vxlan',
+    subnets=['fake_subnet1'],
+    local_network_id=1)
 
 
 fake_ovs_port2 = mock.Mock(name='fake_ovs_port2')
@@ -215,31 +268,23 @@ fake_ovs_port2.get_attached_mac.return_value = 'fa:16:3e:8c:2e:b4'
 fake_ovs_port2.get_tunnel_type.return_value = 'vxlan'
 
 
-fake_remote_port1 = db_models.LogicalPort("{}")
-fake_remote_port1.inner_obj = {
-    'subnets': ['fake_subnet1'],
-    'binding_profile': {},
-    'macs': ['fa:16:3e:8c:2e:af'],
-    'name': '',
-    'allowed_address_pairs': [],
-    'lswitch': 'fake_switch1',
-    'enabled': True,
-    'topic': 'fake_tenant1',
-    'ips': ['10.0.0.8'],
-    'device_owner': 'compute:None',
-    'chassis': 'fake_host2',
-    'version': 2,
-    'unique_key': 5,
-    'port_security_enabled': True,
-    'binding_vnic_type': 'normal',
-    'id': 'fake_remote_port',
-    'security_groups': ['fake_security_group_id1'],
-    'device_id': 'fake_device_id'}
-fake_remote_port1.external_dict = {'is_local': False,
-                                  'segmentation_id': 41,
-                                  'ofport': 1,
-                                  'network_type': 'vxlan',
-                                  'local_network_id': 1}
+def make_fake_remote_port(**kargs):
+    kargs['is_local'] = False
+    return make_fake_port(**kargs)
+
+
+fake_remote_port1 = make_fake_remote_port(
+    id='fake_remote_port',
+    macs=['fa:16:3e:8c:2e:af'],
+    name='fake_remote_port',
+    ips=['10.0.0.8'],
+    chassis='fake_host2',
+    unique_key=5,
+    segmentation_id=41,
+    ofport=1,
+    network_type='vxlan',
+    subnets=['fake_subnet1'],
+    local_network_id=1)
 
 
 fake_chassis1 = db_models.Chassis("{}")
