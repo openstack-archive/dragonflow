@@ -429,7 +429,7 @@ class DHCPApp(df_base_app.DFlowApp):
     def remove_logical_switch(self, lswitch):
         network_id = lswitch.get_unique_key()
         self._remove_dhcp_unicast_match_flow(network_id)
-        del self.switch_dhcp_ip_map[network_id]
+        self.switch_dhcp_ip_map.pop(network_id, None)
 
     def _remove_dhcp_unicast_match_flow(self, network_id, ip_addr=None):
         parser = self.get_datapath().ofproto_parser
