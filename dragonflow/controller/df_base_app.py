@@ -51,6 +51,18 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
     def get_datapath(self):
         return self.api.datapath
 
+    @property
+    def parser(self):
+        return self.get_datapath().ofproto_parser
+
+    @property
+    def ofproto(self):
+        return self.get_datapath().ofproto
+
+    @property
+    def local_ports(self):
+        return self.get_datapath().local_ports
+
     def add_flow_go_to_table(self, datapath,
                              table, priority, goto_table_id, match=None):
         inst = [datapath.ofproto_parser.OFPInstructionGotoTable(goto_table_id)]
