@@ -15,7 +15,6 @@
 
 import mock
 
-from dragonflow.controller.common import constants
 from dragonflow.tests.unit import test_app_base
 
 
@@ -26,33 +25,6 @@ class TestDNATApp(test_app_base.DFAppTestBase):
         super(TestDNATApp, self).setUp(enable_selective_topo_dist=True)
         self.dnat_app = self.open_flow_app.dispatcher.apps[0]
         self.dnat_app.external_ofport = 99
-
-    def test_add_local_port(self):
-        self.dnat_app.local_floatingips[
-            test_app_base.fake_floatingip1.get_id()] = (
-                test_app_base.fake_floatingip1)
-        self.controller.update_lport(test_app_base.fake_local_port1)
-
-        # Assert calls have been placed
-        self.arp_responder.assert_called_once_with(
-            self.dnat_app, None,
-            test_app_base.fake_floatingip1.get_ip_address(),
-            test_app_base.fake_floatingip1.get_mac_address(),
-            constants.INGRESS_NAT_TABLE)
-        self.dnat_app.add_flow_go_to_table.assert_has_calls(
-            [mock.call(self.datapath,
-                       constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                       constants.PRIORITY_DEFAULT,
-                       constants.INGRESS_NAT_TABLE,
-                       match=mock.ANY),
-             mock.call(self.datapath,
-                       constants.L3_LOOKUP_TABLE,
-                       constants.PRIORITY_MEDIUM,
-                       constants.EGRESS_NAT_TABLE,
-                       match=mock.ANY)])
-        self.dnat_app.mod_flow.assert_called_once_with(
-            self.datapath, inst=mock.ANY, table_id=constants.INGRESS_NAT_TABLE,
-            priority=constants.PRIORITY_MEDIUM, match=mock.ANY)
 
     def test_external_bridge_online(self):
         self.dnat_app.local_floatingips[
