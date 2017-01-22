@@ -803,6 +803,29 @@ class RyuICMPTimeExceedFilter(RyuICMPFilter):
         return True
 
 
+class RyuICMPUnreachFilter(RyuICMPFilter):
+    """
+    A filter to detect ICMP unreachable messages.
+    :param get_ip:    Return an object contained the original IP header
+    :type get_ip:     Callable with no arguments.
+    """
+    def __init__(self, get_ip):
+        super(RyuICMPPortUnreachFilter, self).__init__()
+        self.get_ip = get_ip
+
+    def filter_icmp(self, pkt, icmp_prot):
+        if icmp_prot.type != icmp.ICMP_DEST_UNREACH:
+            return False
+        ip_pkt = self.get_ip()
+        embedded_ip_pkt, c, p = ipv4.ipv4.parser(icmp_prot.data.data)
+        if ip_pkt.src != embedded_ip_pkt.src:
+            return False
+        if ip_pkt.dst != embedded_ip_pkt.dst:
+            return False
+
+        return True
+
+
 class Action(object):
     """Base class of actions to execute. Actions are executed on matched
     packets in policy rules (PortPolicyRule).
