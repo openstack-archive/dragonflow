@@ -16,6 +16,7 @@ import string
 
 from keystoneauth1 import identity
 from keystoneauth1 import session
+from neutron.agent.common import utils as agent_utils
 from neutron.common import config as common_config
 from neutronclient.v2_0 import client
 import os_client_config
@@ -28,6 +29,7 @@ from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
+from dragonflow.tests.fullstack import test_objects as objects
 
 
 LOG = log.getLogger(__name__)
@@ -93,6 +95,9 @@ class DFTestBase(base.BaseTestCase):
         if not self.get_default_subnetpool():
             self.create_default_subnetpool()
 
+        if not self.get_external_network():
+            self.create_external_network()
+
         common_config.init(['--config-file',
                             '/etc/neutron/dragonflow.ini',
                             '--config-file',
@@ -132,6 +137,29 @@ class DFTestBase(base.BaseTestCase):
                               'default_prefixlen': 24}
         self.neutron.create_subnetpool(
             body={'subnetpool': default_subnetpool})
+
+    def get_external_network(self):
+        external_net = objects.find_first_network(self.neutron,
+                                                  {'router:external': True})
+        return external_net
+
+    def create_external_network(self):
+        # We can create a "logical" external network, which can spawn
+        # floatingip in local host.
+        params = {'name': 'public', 'router:external': True}
+        self.neutron.create_network(body={'network': params})
+        network_id = self.get_external_network()['id']
+        external_subnet_para = {'cidr': '172.24.4.0/24',
+                                'ip_version': 4,
+                                'network_id': network_id,
+                                'enable_dhcp': False}
+        self.neutron.create_subnet(body={'subnet': external_subnet_para})
+        # The script for neutron l3 will create br-ex as external bridge,
+        # we need to assign the gw_ip to the bridge and bring it up.
+        agent_utils.execute("ip addr add 172.24.4.1/24 dev br-ex".split(" "),
+                            run_as_root=True)
+        agent_utils.execute("ip link set br-ex up".split(" "),
+                            run_as_root=True)
 
     def store(self, obj, close_func=None):
         close_func = close_func if close_func else obj.close
