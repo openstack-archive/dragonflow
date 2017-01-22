@@ -57,42 +57,9 @@ class L2App(df_base_app.DFlowApp):
         self.local_networks = collections.defaultdict(_LocalNetwork)
         self.integration_bridge = cfg.CONF.df.integration_bridge
         self.is_install_l2_responder = cfg.CONF.df_l2_app.l2_responder
-        self.bridge_mappings = self._parse_bridge_mappings(
-            cfg.CONF.df_l2_app.bridge_mappings)
-        self.int_ofports = {}
 
-    def _parse_bridge_mappings(self, bridge_mappings):
-        try:
-            return helpers.parse_mappings(bridge_mappings)
-        except ValueError as e:
-            raise ValueError(_("Parsing bridge_mappings failed: %s.") % e)
-
-    def setup_physical_bridges(self, bridge_mappings):
-        '''Setup the physical network bridges.
-
-        Creates physical network bridges and links them to the
-        integration bridge using veths or patch ports.
-
-        :param bridge_mappings: map physical network names to bridge names.
-        '''
-        for physical_network, bridge in six.iteritems(bridge_mappings):
-            LOG.info(_LI("Mapping physical network %(physical_network)s to "
-                         "bridge %(bridge)s"),
-                     {'physical_network': physical_network,
-                      'bridge': bridge})
-
-            int_ofport = self.vswitch_api.create_patch_port(
-                self.integration_bridge,
-                'int-' + bridge,
-                'phy-' + bridge)
-            self.vswitch_api.create_patch_port(
-                bridge,
-                'phy-' + bridge,
-                'int-' + bridge)
-            self.int_ofports[physical_network] = int_ofport
 
     def switch_features_handler(self, ev):
-        self.setup_physical_bridges(self.bridge_mappings)
         self.add_flow_go_to_table(self.get_datapath(),
                                   const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_DEFAULT,
@@ -524,12 +491,7 @@ class L2App(df_base_app.DFlowApp):
                      "is %(type)s, and segmentation ID is %(s_id)s."),
                  {'type': network_type, 's_id': segmentation_id})
 
-        if network_type == 'vlan':
-            self._del_network_flows_for_vlan(segmentation_id, local_network_id)
-        elif network_type == 'flat':
-            self._del_network_flows_for_flat(local_network_id)
-        else:
-            self._del_network_flows_for_tunnel(segmentation_id, network_type)
+        self._del_network_flows_for_tunnel(segmentation_id, network_type)
 
     def _del_network_flows_for_tunnel(self, segmentation_id, network_type):
         if segmentation_id is None:
@@ -788,17 +750,9 @@ class L2App(df_base_app.DFlowApp):
                      "is %(type)s, and segmentation ID is %(s_id)s."),
                  {'type': network_type, 's_id': segmentation_id})
 
-        if network_type == 'vlan':
-            self._install_network_flows_for_vlan(segmentation_id,
-                                                 physical_network,
-                                                 local_network_id)
-        elif network_type == 'flat':
-            self._install_network_flows_for_flat(physical_network,
-                                                 local_network_id)
-        else:
-            self._install_network_flows_for_tunnel(segmentation_id,
-                                                   network_type,
-                                                   local_network_id)
+        self._install_network_flows_for_tunnel(segmentation_id,
+                                               network_type,
+                                               local_network_id)
 
     """
     Install Ingress network flow for vxlan
@@ -836,153 +790,6 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    """
-    Install network flows for vlan
-    """
-    def _install_network_flows_for_vlan(self, segmentation_id,
-                                        physical_network, local_network_id):
-        # L2_LOOKUP for Remote ports
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
-        match = parser.OFPMatch()
-
-        addint = haddr_to_bin('00:00:00:00:00:00')
-        add_mask_int = haddr_to_bin('01:00:00:00:00:00')
-        match.set_dl_dst_masked(addint, add_mask_int)
-        match.set_metadata(local_network_id)
-        inst = [parser.OFPInstructionGotoTable(const.EGRESS_TABLE)]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-        # EGRESS for Remote ports
-        # Table=Egress
-        # Match: metadata=network_id
-        # Actions: mod_vlan, output:patch
-        match = parser.OFPMatch(metadata=local_network_id)
-        actions = [parser.OFPActionPushVlan(ether.ETH_TYPE_8021Q),
-                   parser.OFPActionSetField(
-                       vlan_vid=(segmentation_id & 0x1fff) | 0x1000)]
-
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_EXTERNAL_TABLE)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.EGRESS_TABLE,
-            priority=const.PRIORITY_LOW,
-            match=match)
-
-        # Add EGRESS port according to physical_network
-        self._install_output_to_physical_patch(physical_network,
-                                               local_network_id)
-
-        # Ingress
-        # Match: dl_vlan=vlan_id,
-        # Actions: metadata=network_id,
-        # goto 'Destination Port Classification'
-        match = parser.OFPMatch()
-        match.set_vlan_vid(segmentation_id)
-        actions = [parser.OFPActionSetField(metadata=local_network_id),
-                   parser.OFPActionPopVlan()]
-
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        goto_inst = parser.OFPInstructionGotoTable(
-            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
-
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=const.PRIORITY_LOW,
-            match=match)
-
-    def _install_network_flows_for_flat(self, physical_network,
-                                        local_network_id):
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
-        match = parser.OFPMatch()
-
-        addint = haddr_to_bin('00:00:00:00:00:00')
-        add_mask_int = haddr_to_bin('01:00:00:00:00:00')
-        match.set_dl_dst_masked(addint, add_mask_int)
-        match.set_metadata(local_network_id)
-        inst = [parser.OFPInstructionGotoTable(const.EGRESS_TABLE)]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-        # EGRESS for Remote ports
-        # Table=Egress
-        match = parser.OFPMatch(metadata=local_network_id)
-        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_EXTERNAL_TABLE)
-
-        inst = [goto_inst]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.EGRESS_TABLE,
-            priority=const.PRIORITY_LOW,
-            match=match)
-
-        # Add EGRESS port according to physical_network
-        self._install_output_to_physical_patch(physical_network,
-                                               local_network_id)
-
-        # Ingress
-        match = parser.OFPMatch(vlan_vid=0)
-        actions = [parser.OFPActionSetField(metadata=local_network_id)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        goto_inst = parser.OFPInstructionGotoTable(
-            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
-
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            datapath=datapath,
-            inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=const.PRIORITY_LOW,
-            match=match)
-
-    def _del_network_flows_for_vlan(self, segmentation_id, local_network_id):
-        if segmentation_id is None:
-            return
-
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
-        match = parser.OFPMatch()
-        match.set_vlan_vid(segmentation_id)
-        self.mod_flow(
-            datapath=datapath,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_LOW,
-            match=match)
-
-        match = parser.OFPMatch(metadata=local_network_id)
-        self.mod_flow(
-            datapath=datapath,
-            table_id=const.EGRESS_EXTERNAL_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_HIGH,
-            match=match)
-
     def _get_multicast_broadcast_match(self, network_id):
         match = self.get_datapath().\
             ofproto_parser.OFPMatch(eth_dst='01:00:00:00:00:00')
@@ -990,43 +797,3 @@ class L2App(df_base_app.DFlowApp):
         match.set_dl_dst_masked(addint, addint)
         match.set_metadata(network_id)
         return match
-
-    def _del_network_flows_for_flat(self, local_network_id):
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
-        match = parser.OFPMatch(vlan_vid=0)
-        self.mod_flow(
-            datapath=datapath,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_LOW,
-            match=match)
-
-        match = parser.OFPMatch(metadata=local_network_id)
-        self.mod_flow(
-            datapath=datapath,
-            table_id=const.EGRESS_EXTERNAL_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_HIGH,
-            match=match)
-
-    def _install_output_to_physical_patch(self, physical_network,
-                                          local_network_id):
-        if physical_network not in self.int_ofports:
-            LOG.error(_LE("Physical network %s unknown for dragonflow"),
-                      physical_network)
-            return
-
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
-        match = parser.OFPMatch(metadata=local_network_id)
-        ofport = self.int_ofports[physical_network]
-        actions = [parser.OFPActionOutput(ofport,
-                                          ofproto.OFPCML_NO_BUFFER)]
-        actions_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [actions_inst]
-        self.mod_flow(self.get_datapath(), inst=inst,
-                      table_id=const.EGRESS_EXTERNAL_TABLE,
-                      priority=const.PRIORITY_HIGH, match=match)
