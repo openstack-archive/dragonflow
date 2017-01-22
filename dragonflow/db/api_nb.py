@@ -59,9 +59,17 @@ class NbApi(object):
             self.pub_sub_use_multiproc = cfg.CONF.df.pub_sub_use_multiproc
 
     @staticmethod
-    def get_instance(is_neutron_server):
+    def get_instance(is_neutron_server=None):
+        """This function returns an instance of NbApi (or constructs one on
+        first call). The parameter is used only for initial construction of the
+        object, so after it was created it can be ommited.
+        """
         global _nb_api
         if _nb_api is None:
+            if is_neutron_server is None:
+                raise RuntimeError(
+                    _LE('NbApi was not initialized yet, cannot get instance'),
+                )
             nb_driver = df_utils.load_driver(
                 cfg.CONF.df.nb_db_class,
                 df_utils.DF_NB_DB_DRIVER_NAMESPACE)
