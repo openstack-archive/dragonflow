@@ -20,6 +20,8 @@ from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import icmp
+from ryu.lib.packet import in_proto
+from ryu.lib.packet import ipv4
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 import six
@@ -29,12 +31,17 @@ from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import icmp_error_generator
+from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
 
 
 LOG = log.getLogger(__name__)
 
 FIP_GW_RESOLVING_STATUS = 'resolving'
+
+EGRESS = 'egress'
+
+INGRESS = 'ingress'
 
 
 class DNATApp(df_base_app.DFlowApp):
@@ -76,6 +83,11 @@ class DNATApp(df_base_app.DFlowApp):
             self.send_packet(in_port, icmp_ttl_pkt)
             return
 
+        pkt = packet.Packet(msg.data)
+        reply_pkt = self._revert_nat_for_icmp_embedded_packet(pkt, INGRESS)
+        out_port = msg.match.get('reg7')
+        self.send_packet(out_port, reply_pkt)
+
     def egress_packet_in_handler(self, event):
         msg = event.msg
         ofproto = self.ofproto
@@ -96,6 +108,32 @@ class DNATApp(df_base_app.DFlowApp):
                 LOG.warning(_LW("The invalid TTL packet's destination mac %s "
                                 "can't be recognized."), e_pkt.src)
             return
+
+        if self.external_bridge_mac:
+            reply_pkt = self._revert_nat_for_icmp_embedded_packet(pkt, EGRESS)
+            self.send_packet(self.external_ofport, reply_pkt)
+
+    def _revert_nat_for_icmp_embedded_packet(self, pkt, direction):
+        e_pkt = pkt.get_protocol(ethernet.ethernet)
+        ipv4_pkt = pkt.get_protocol(ipv4.ipv4)
+        icmp_pkt = pkt.get_protocol(icmp.icmp)
+
+        embeded_ipv4_pkt, _, payload = ipv4.ipv4.parser(icmp_pkt.data.data)
+        if direction == EGRESS:
+            embeded_ipv4_pkt.dst = ipv4_pkt.src
+        else:
+            embeded_ipv4_pkt.src = ipv4_pkt.dst
+        embeded_data = embeded_ipv4_pkt.serialize(None, None) + payload
+        icmp_pkt.data = icmp.icmp._ICMP_TYPES[icmp_pkt.type](
+            data_len=len(embeded_data), data=embeded_data)
+        # Re-calculate when encoding
+        icmp_pkt.csum = 0
+
+        reply_pkt = packet.Packet()
+        reply_pkt.add_protocol(e_pkt)
+        reply_pkt.add_protocol(ipv4_pkt)
+        reply_pkt.add_protocol(icmp_pkt)
+        return reply_pkt
 
     def ovs_port_updated(self, ovs_port):
         if ovs_port.get_name() != self.external_network_bridge:
@@ -219,6 +257,31 @@ class DNATApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
+        # Add flows to packet-in icmp time exceed and icmp unreachable message
+        lport = self.db_store.get_local_port(floatingip.get_lport_id())
+        lport_ofport = lport.get_external_value('ofport')
+        actions = [
+            parser.OFPActionDecNwTtl(),
+            parser.OFPActionSetField(eth_src=vm_gateway_mac),
+            parser.OFPActionSetField(eth_dst=vm_mac),
+            parser.OFPActionSetField(ipv4_dst=vm_ip),
+            parser.OFPActionSetField(reg7=lport_ofport),
+            parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                   ofproto.OFPCML_NO_BUFFER)
+        ]
+        action_inst = [parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        for icmp_type in (icmp.ICMP_DEST_UNREACH, icmp.ICMP_TIME_EXCEEDED):
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                    ip_proto=in_proto.IPPROTO_ICMP,
+                                    icmpv4_type=icmp_type,
+                                    ipv4_dst=floatingip.get_ip_address())
+            self.mod_flow(
+                inst=action_inst,
+                table_id=const.INGRESS_NAT_TABLE,
+                priority=const.PRIORITY_HIGH,
+                match=match)
+
     def _remove_dnat_ingress_rules(self, floatingip):
         parser = self.parser
         ofproto = self.ofproto
@@ -233,9 +296,10 @@ class DNATApp(df_base_app.DFlowApp):
     def _get_dnat_egress_match(self, floatingip):
         _, vm_ip, _, local_network_id = self._get_vm_port_info(floatingip)
         parser = self.parser
-        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                metadata=local_network_id,
-                                ipv4_src=vm_ip)
+        match = parser.OFPMatch()
+        match.set_dl_type(ether.ETH_TYPE_IP)
+        match.set_metadata(local_network_id)
+        match.set_ipv4_src(utils.ipv4_text_to_int(vm_ip))
         return match
 
     def _install_dnat_egress_rules(self, floatingip, network_bridge_mac):
@@ -260,6 +324,21 @@ class DNATApp(df_base_app.DFlowApp):
             table_id=const.EGRESS_NAT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
+
+        # Add flows to packet-in icmp time exceed and icmp unreachable message
+        actions.append(parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                              ofproto.OFPCML_NO_BUFFER))
+        action_inst = [parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        for icmp_type in (icmp.ICMP_DEST_UNREACH, icmp.ICMP_TIME_EXCEEDED):
+            match = self._get_dnat_egress_match(floatingip)
+            match.set_ip_proto(in_proto.IPPROTO_ICMP)
+            match.set_icmpv4_type(icmp_type)
+            self.mod_flow(
+                inst=action_inst,
+                table_id=const.EGRESS_NAT_TABLE,
+                priority=const.PRIORITY_HIGH,
+                match=match)
 
     def _remove_dnat_egress_rules(self, floatingip):
         ofproto = self.ofproto
