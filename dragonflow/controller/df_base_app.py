@@ -18,6 +18,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
+from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_db_notifier
 
@@ -28,6 +29,11 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         self.db_store = db_store
         self.vswitch_api = vswitch_api
         self.nb_api = nb_api
+        """
+        A debug tag for the application. Values: 0-127.
+        When encoded on the flow cookie, shifted left by 1 (multiplied by 2).
+        """
+        self.app_tag = None
 
     def update_local_port(self, lport, original_lport):
         """override update_local_port method to default call add_local_port
@@ -69,6 +75,13 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         self.mod_flow(datapath, inst=inst, table_id=table,
                       priority=priority, match=match)
 
+    def _set_app_cookie(self, cookie, cookie_mask):
+        cookie = utils.set_aging_cookie_bits(cookie)
+        if (cookie_mask & const.APP_TAG_MASK) == 0:
+            cookie |= (self.app_tag << const.APP_TAG_SHIFT_LEVEL)
+            cookie_mask |= const.APP_TAG_MASK
+        return cookie, cookie_mask
+
     def mod_flow(self, datapath, cookie=0, cookie_mask=0, table_id=0,
                  command=None, idle_timeout=0, hard_timeout=0,
                  priority=0xff, buffer_id=0xffffffff, match=None,
@@ -93,7 +106,7 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         if out_group is None:
             out_group = datapath.ofproto.OFPG_ANY
 
-        cookie = utils.set_aging_cookie_bits(cookie)
+        cookie, cookie_mask = self._set_app_cookie(cookie, cookie_mask)
 
         message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
                                                      cookie_mask,
