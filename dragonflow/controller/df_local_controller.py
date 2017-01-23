@@ -579,6 +579,19 @@ class DfLocalController(object):
     def get_chassis_name(self):
         return self.chassis_name
 
+    def get_handler(self, table, action):
+        if action == 'delete':
+            method_name = 'delete_' + table
+            default = self.delete_model_object
+        else:
+            method_name = 'update_' + table
+            default = self.update_model_object
+        return getattr(self, method_name, default)
+
+    def process_object(self, table, action, obj):
+        handler = self.get_handler(table, action)
+        handler(obj)
+
 
 def init_ryu_config():
     ryu_cfg.CONF(project='ryu', args=[])

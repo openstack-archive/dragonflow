@@ -26,7 +26,6 @@ from oslo_serialization import jsonutils
 from dragonflow._i18n import _LI, _LW, _LE
 import dragonflow.common.exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
-from dragonflow.controller import df_db_objects_refresh as obj_refresh
 from dragonflow.db import db_common
 from dragonflow.db import model_framework as mf
 from dragonflow.db import models as db_models
@@ -242,16 +241,14 @@ class NbApi(object):
 
         if model_class:
             if action == 'delete':
-                obj_refresh.process_object(
-                    self.controller, table, action, key)
+                self.controller.process_object(table, action, key)
             else:
                 try:
                     nb_object = model_class.from_json(value)
                 except AttributeError:
                     nb_object = model_class(value)
 
-                obj_refresh.process_object(
-                    self.controller, table, action, nb_object)
+                self.controller.process_object(table, action, nb_object)
         elif 'ovsinterface' == table:
             if action == 'set' or action == 'create':
                 ovs_port = db_models.OvsPort(value)
