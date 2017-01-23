@@ -20,7 +20,6 @@ from oslo_log import log
 
 from dragonflow._i18n import _LE, _LW
 from dragonflow.common import utils as df_utils
-from dragonflow.controller import df_db_objects_refresh as obj_refresh
 from dragonflow.db import models
 
 LOG = log.getLogger(__name__)
@@ -125,22 +124,21 @@ class DBConsistencyManager(object):
         old_local_version = old_cache_obj.get_local_version()
         if action == 'create':
             if df_version >= old_df_version:
-                obj_refresh.process_object(
-                    self.controller, table, 'create', df_object)
+                self.controller.update(df_object)
                 self.cache_manager.remove(table, id)
             return
         elif action == 'update':
             if df_version < old_df_version:
                 return
             if local_version <= old_local_version:
-                obj_refresh.process_object(
-                    self.controller, table, 'update', df_object)
+                self.controller.update(df_object)
                 self.cache_manager.remove(table, id)
             else:
                 cache_obj = CacheObject(action, df_version, local_version)
                 self.cache_manager.set(table, id, cache_obj)
         elif action == 'delete':
-            obj_refresh.process_object(self.controller, table, 'delete', id)
+            model = models.table_class_mapping[table]
+            self.controller.delete_by_id(model, id)
             self.cache_manager.remove(table, id)
         else:
             LOG.warning(_LW('Unknown action %s in db consistent'), action)
@@ -196,14 +194,12 @@ class DBConsistencyManager(object):
                 if local_version is None:
                     LOG.debug("Version is None in local_object: %s",
                               local_object)
-                    obj_refresh.process_object(
-                        self.controller, table, 'update', df_object)
+                    self.controller.update(df_object)
                 elif df_version > local_version:
                     LOG.debug("Find a newer version df object: %s",
                               df_object)
                     if direct:
-                        obj_refresh.process_object(
-                            self.controller, table, 'update', df_object)
+                        self.controller.update(df_object)
                     else:
                         self._verify_object(
                                 table, df_id, 'update',
@@ -211,8 +207,7 @@ class DBConsistencyManager(object):
             else:
                 LOG.debug("Find an additional df object: %s", df_object)
                 if direct:
-                    obj_refresh.process_object(
-                        self.controller, table, 'create', df_object)
+                    self.controller.update(df_object)
                 else:
                     self._verify_object(table, df_id,
                                         'create', df_object)
@@ -220,8 +215,7 @@ class DBConsistencyManager(object):
         for local_object in local_object_map.values():
             LOG.debug("Find a redundant local object: %s", local_object)
             if direct:
-                obj_refresh.process_object(
-                    self.controller, table, 'delete', local_object.get_id())
+                self.controller.delete(local_object)
             else:
                 self._verify_object(
                         table, local_object.get_id(),
