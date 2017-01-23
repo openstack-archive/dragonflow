@@ -28,6 +28,11 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         self.db_store = db_store
         self.vswitch_api = vswitch_api
         self.nb_api = nb_api
+        """
+        A debug tag for the application. Values: 0-127.
+        When encoded on the flow cookie, shifted left by 1 (multiplied by 2).
+        """
+        self.app_tag = None
 
     def update_local_port(self, lport, original_lport):
         """override update_local_port method to default call add_local_port
