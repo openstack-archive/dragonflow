@@ -12,6 +12,7 @@
 
 import mock
 
+from dragonflow.controller import df_local_controller
 from dragonflow.db import db_consistent
 from dragonflow.db import models
 from dragonflow.tests import base as tests_base
@@ -21,10 +22,16 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
     def setUp(self):
         super(TestDBConsistent, self).setUp()
-        self.controller = mock.Mock()
+        self.controller = df_local_controller.DfLocalController('fake_host')
+        for attr_name in dir(self.controller):
+            if (
+                attr_name.startswith('delete_') or
+                attr_name.startswith('update_')
+            ):
+                setattr(self.controller, attr_name, mock.Mock())
         self.topology = self.controller.topology
-        self.nb_api = self.controller.nb_api
-        self.db_store = self.controller.db_store
+        self.nb_api = self.controller.nb_api = mock.Mock()
+        self.db_store = self.controller.db_store = mock.Mock()
 
         self.topic = '111-222-333'
         self.lport_id1 = '1'
