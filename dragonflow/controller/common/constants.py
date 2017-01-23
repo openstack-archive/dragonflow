@@ -74,6 +74,7 @@ could be overlapped for saving space of cookie.
 all cookie's mask should be kept here to avoid conflict.
 """
 GLOBAL_AGING_COOKIE_MASK = 0x1
+APP_TAG_MASK = 0xfe
 SECURITY_GROUP_RULE_COOKIE_MASK = 0x1fffffffe
 SECURITY_GROUP_RULE_COOKIE_SHIFT_LEN = 1
 GLOBAL_INIT_AGING_COOKIE = 0x1
