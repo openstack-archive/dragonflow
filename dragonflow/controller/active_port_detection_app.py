@@ -295,17 +295,11 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         self._periodic_send_arp_request()
 
     def add_local_port(self, lport):
-        if self.get_datapath() is None:
-            return
-
         ips = self._get_ips_in_allowed_address_pairs(lport)
         for target_ip in ips:
             self._add_target_ip(target_ip, lport)
 
     def update_local_port(self, lport, original_lport):
-        if self.get_datapath() is None:
-            return
-
         ips_set = self._get_ips_in_allowed_address_pairs(lport)
         original_ips_set = self._get_ips_in_allowed_address_pairs(
             original_lport)
@@ -317,9 +311,6 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             self._remove_target_ip(target_ip, original_lport)
 
     def remove_local_port(self, lport):
-        if self.get_datapath() is None:
-            return
-
         ips = self._get_ips_in_allowed_address_pairs(lport)
         if not ips:
             return

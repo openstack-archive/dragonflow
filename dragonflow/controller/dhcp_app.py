@@ -332,9 +332,6 @@ class DHCPApp(df_base_app.DFlowApp):
         return False
 
     def add_local_port(self, lport):
-        if self.get_datapath() is None:
-            return
-
         if not netaddr.valid_ipv4(lport.get_ip()):
             LOG.warning(_LW("No support for non IPv4 protocol"))
             return

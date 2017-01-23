@@ -772,9 +772,6 @@ class SGApp(df_base_app.DFlowApp):
              match=match)
 
     def switch_features_handler(self, ev):
-        if self.get_datapath() is None:
-            return
-
         self._install_env_init_flow_by_direction('ingress')
         self._install_env_init_flow_by_direction('egress')
         self.secgroup_associate_local_ports.clear()
@@ -957,10 +954,6 @@ class SGApp(df_base_app.DFlowApp):
         return added_secgroups, removed_secgroups, unchanged_secgroups
 
     def remove_local_port(self, lport):
-        if self.get_datapath() is None:
-            LOG.error(_LE("datapath is none"))
-            return
-
         if not netaddr.valid_ipv4(lport.get_ip()):
             LOG.warning(_LW("No support for non IPv4 protocol"))
             return
@@ -976,10 +969,6 @@ class SGApp(df_base_app.DFlowApp):
             self._remove_local_port_associating(lport, secgroup_id)
 
     def remove_remote_port(self, lport):
-        if self.get_datapath() is None:
-            LOG.error(_LE("datapath is none"))
-            return
-
         secgroups = lport.get_security_groups()
         if not secgroups:
             return
@@ -988,10 +977,6 @@ class SGApp(df_base_app.DFlowApp):
             self._remove_remote_port_associating(lport, secgroup_id)
 
     def update_local_port(self, lport, original_lport):
-        if self.get_datapath() is None:
-            LOG.error(_LE("datapath is none"))
-            return
-
         secgroups = lport.get_security_groups()
         original_secgroups = original_lport.get_security_groups()
 
@@ -1021,10 +1006,6 @@ class SGApp(df_base_app.DFlowApp):
             self._install_connection_track_flows(lport)
 
     def update_remote_port(self, lport, original_lport):
-        if self.get_datapath() is None:
-            LOG.error(_LE("datapath is none"))
-            return
-
         secgroups = lport.get_security_groups()
         original_secgroups = original_lport.get_security_groups()
 
@@ -1043,10 +1024,6 @@ class SGApp(df_base_app.DFlowApp):
                                                 secgroup_id)
 
     def add_local_port(self, lport):
-        if self.get_datapath() is None:
-            LOG.error(_LE("datapath is none"))
-            return
-
         secgroups = lport.get_security_groups()
         if not secgroups:
             return
@@ -1062,10 +1039,6 @@ class SGApp(df_base_app.DFlowApp):
         self._install_connection_track_flows(lport)
 
     def add_remote_port(self, lport):
-        if self.get_datapath() is None:
-            LOG.error(_LE("datapath is none"))
-            return
-
         secgroups = lport.get_security_groups()
         if not secgroups:
             return
@@ -1077,10 +1050,6 @@ class SGApp(df_base_app.DFlowApp):
         return self.secgroup_associate_local_ports.get(secgroup_id) is None
 
     def add_security_group_rule(self, secgroup, secgroup_rule):
-        if self.get_datapath() is None:
-            LOG.error(_LE("datapath is none"))
-            return
-
         secgroup_id = secgroup.get_id()
         if self._is_sg_not_associated_with_local_port(secgroup_id):
             LOG.debug("Security group %s wasn't associated with a local port",
@@ -1104,10 +1073,6 @@ class SGApp(df_base_app.DFlowApp):
         self._install_security_group_rule_flows(secgroup_id, secgroup_rule)
 
     def remove_security_group_rule(self, secgroup, secgroup_rule):
-        if self.get_datapath() is None:
-            LOG.error(_LE("datapath is none"))
-            return
-
         secgroup_id = secgroup.get_id()
         if self._is_sg_not_associated_with_local_port(secgroup_id):
             LOG.debug("Security group %s wasn't associated with a local port",
