@@ -148,13 +148,3 @@ def clear_local_cache(topics=None):
     else:
         for topic in topics:
             _delete_items(topic)
-
-
-def process_object(controller, table, action, argument):
-    if action == 'delete':
-        method_name = 'delete_' + table
-    else:
-        method_name = 'update_' + table
-    handler = getattr(controller, method_name, None)
-    if handler:
-        handler(argument)
