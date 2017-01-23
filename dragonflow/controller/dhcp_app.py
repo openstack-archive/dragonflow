@@ -137,7 +137,7 @@ class DHCPApp(df_base_app.DFlowApp):
             LOG.error(_LE("DHCP message type %d not handled"),
                 dhcp_message_type)
         if send_packet:
-            self._send_packet(self.get_datapath(), ofport, send_packet)
+            self.send_packet(ofport, send_packet)
 
     def _create_dhcp_packet(self, packet, dhcp_packet, pkt_type, lport):
         pkt_ipv4 = packet.get_protocol(ipv4.ipv4)
