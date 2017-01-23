@@ -32,6 +32,7 @@ from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
 from dragonflow.db import db_store
+from dragonflow.db import models
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -567,6 +568,34 @@ class DfLocalController(object):
     def notify_port_status(self, ovs_port, status):
         if self.port_status_notifier:
             self.port_status_notifier.notify_port_status(ovs_port, status)
+
+    def _get_delete_handler(self, table):
+        method_name = 'delete_{0}'.format(table)
+        return getattr(self, method_name)
+
+    def update(self, obj):
+        handler = getattr(
+            self,
+            'update_{0}'.format(obj.table_name),
+        )
+        return handler(obj)
+
+    def delete(self, obj):
+        handler = self._get_delete_handler(obj.table_name)
+
+        if isinstance(obj, models.NbDbObject):
+            return handler(obj.id)
+        else:
+            return handler(obj)
+
+    def delete_by_id(self, model, obj_id):
+        # FIXME (dimak) Probably won't be needed once we're done porting
+        handler = self._get_delete_handler(model.table_name)
+
+        if issubclass(model, models.NbObject):
+            return handler(obj_id)
+        else:
+            return handler(model(id=obj_id))
 
 
 def init_ryu_config():
