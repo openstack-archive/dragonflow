@@ -18,6 +18,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
+from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_db_notifier
 
@@ -28,6 +29,10 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         self.db_store = db_store
         self.vswitch_api = vswitch_api
         self.nb_api = nb_api
+        """ A member property to allow flow debug tagging
+            can be in range of 0 - 254 in steps of 2(0-127)*2
+        """
+        self.app_tag = None
 
     def update_local_port(self, lport, original_lport):
         """override update_local_port method to default call add_local_port
@@ -82,6 +87,9 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
             out_group = datapath.ofproto.OFPG_ANY
 
         cookie = utils.set_aging_cookie_bits(cookie)
+        if (cookie_mask & const.APP_TAG_MASK) == 0:
+            cookie |= (self.app_tag << const.APP_TAG_SHIFT_LEVEL )
+            cookie_mask |= const.APP_TAG_MASK
 
         message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
                                                      cookie_mask,

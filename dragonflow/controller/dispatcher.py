@@ -13,7 +13,7 @@
 from oslo_log import log
 from oslo_utils import importutils
 
-from dragonflow._i18n import _, _LE
+from dragonflow._i18n import _, _LI, _LE
 from dragonflow.common import exceptions
 
 LOG = log.getLogger(__name__)
@@ -27,11 +27,14 @@ class AppDispatcher(object):
         self.apps = []
 
     def load(self, *args, **kwargs):
-        for app in self.apps_list:
+        for tag, app in enumerate(self.apps_list):
             app_class_name = self.apps_location_prefix + "." + app
             try:
                 app_class = importutils.import_class(app_class_name)
                 app = app_class(*args, **kwargs)
+                app.app_tag = tag
+                LOG.info(_LI("Application %(app)s has tag %(tag)s"),
+                        {'app': app_class_name, 'tag': tag})
                 self.apps.append(app)
             except ImportError as e:
                 LOG.exception(_LE("Error loading application by class, %s"), e)
