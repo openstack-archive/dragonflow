@@ -569,6 +569,18 @@ class DfLocalController(object):
         if self.port_status_notifier:
             self.port_status_notifier.notify_port_status(ovs_port, status)
 
+    def get_handler(self, table, action):
+        if action == 'delete':
+            method_name = 'delete_' + table
+        else:
+            method_name = 'update_' + table
+        return getattr(self, method_name, None)
+
+    def process_object(self, table, action, obj):
+        handler = self.get_handler(table, action)
+        if handler:
+            handler(obj)
+
 
 def init_ryu_config():
     ryu_cfg.CONF(project='ryu', args=[])

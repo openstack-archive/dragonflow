@@ -26,7 +26,6 @@ from oslo_utils import excutils
 from dragonflow._i18n import _LI, _LW, _LE
 import dragonflow.common.exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
-from dragonflow.controller import df_db_objects_refresh as obj_refresh
 from dragonflow.db import db_common
 from dragonflow.db import model_framework as mf
 from dragonflow.db import models as db_models
@@ -285,7 +284,6 @@ class NbApi(object):
                 except TypeError:
                     # Old model
                     arg = key
-
             else:
                 try:
                     # New model
@@ -294,7 +292,7 @@ class NbApi(object):
                     # Old model
                     arg = model_class(value)
 
-            obj_refresh.process_object(self.controller, table, action, arg)
+            self.controller.process_object(table, action, arg)
             return
 
         if 'ovsinterface' == table:
