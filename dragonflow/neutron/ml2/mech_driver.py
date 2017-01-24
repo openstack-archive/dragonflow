@@ -523,7 +523,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         subnets = [ip['subnet_id'] for ip in port.get('fixed_ips', [])]
 
         # Router GW ports are not needed by dragonflow controller and
-        # they currently cause error as they couldnt be mapped to
+        # they currently cause error as they couldn't be mapped to
         # a valid ofport (or location)
         if port.get('device_owner') == n_const.DEVICE_OWNER_ROUTER_GW:
             chassis = None

@@ -26,7 +26,7 @@ from dragonflow.db import db_api
 
 LOG = log.getLogger(__name__)
 
-# Monkey patch urllib3 to close connections that time out.  Otherwise
+# Monkey patch urllib3 to close connections that time out.  Otherwise,
 # etcd will leak socket handles when we time out watches.
 
 ETCD_READ_TIMEOUT = 20
