@@ -150,12 +150,14 @@ class NbApi(object):
         return self.driver.support_publish_subscribe()
 
     def _send_db_change_event(self, table, key, action, value, topic):
-        if self.use_pubsub:
-            if not self.enable_selective_topo_dist:
-                topic = db_common.SEND_ALL_TOPIC
-            update = db_common.DbUpdate(table, key, action, value, topic=topic)
-            self.publisher.send_event(update)
-            eventlet.sleep(0)
+        if not self.use_pubsub:
+            return
+
+        if not self.enable_selective_topo_dist or topic is None:
+            topic = db_common.SEND_ALL_TOPIC
+        update = db_common.DbUpdate(table, key, action, value, topic=topic)
+        self.publisher.send_event(update)
+        eventlet.sleep(0)
 
     def get_all_port_status_keys(self):
         topics = self.driver.get_all_entries('portstats')
