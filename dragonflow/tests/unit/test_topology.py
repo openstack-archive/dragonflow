@@ -44,7 +44,7 @@ class TestTopology(test_app_base.DFAppTestBase):
 
     def _reset_refresher(self):
         df_db_objects_refresh.items = []
-        self.controller._register_old_model_refreshers()
+        self.controller._register_models()
 
     def test_vm_port_online_offline(self):
         self.nb_api.get_all_logical_switches.return_value = [
