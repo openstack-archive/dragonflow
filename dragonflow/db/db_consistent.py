@@ -91,7 +91,6 @@ class DBConsistencyManager(object):
                          comparisons.
         """
         self.controller.register_chassis()
-        self.controller.create_tunnels()
         topics = self.topology.topic_subscribed.keys()
         for table in self.cache_manager.get_tables():
             try:
