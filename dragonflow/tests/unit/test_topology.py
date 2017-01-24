@@ -54,7 +54,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         super(TestTopology, self).setUp(enable_selective_topo_dist=True)
         # By default, return empty value for all resources, each case can
         # customize the return value on their own.
-        self.controller._register_old_model_refreshers()
+        self.controller._register_models()
         self.nb_api.get_all_logical_switches.return_value = []
         self.nb_api.get_all_logical_ports.return_value = []
         self.nb_api.get_routers.return_value = []
