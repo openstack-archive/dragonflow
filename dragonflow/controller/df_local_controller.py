@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import functools
 import sys
 import time
 
@@ -33,6 +34,7 @@ from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db import db_store2
+from dragonflow.db import model_framework
 from dragonflow.db import models2
 from dragonflow.ovsdb import vswitch_impl
 
@@ -117,9 +119,26 @@ class DfLocalController(object):
             self.vswitch_api.set_controller_fail_mode(
                 self.integration_bridge, 'secure')
         self.open_flow_app.start()
+        self._register_models()
         self.create_tunnels()
         df_db_objects_refresh.initialize_object_refreshers(self)
         self.db_sync_loop()
+
+    def _register_models(self):
+        for model in model_framework.iter_models():
+            # FIXME do not register topicless models for now
+            if issubclass(model, models2.TopicMixin):
+                df_db_objects_refresh.add_refresher(
+                    df_db_objects_refresh.DfObjectRefresher(
+                        model.__name__,
+                        functools.partial(self.db_store2.get_keys_by_topic,
+                                          model),
+                        functools.partial(self.nb_api.get_all, model),
+                        self.get_handler(model.table_name, 'update'),
+                        self.get_handler(model.table_name, 'delete'),
+                    ),
+                )
+            # FIXME add db_consistency for new models here
 
     def db_sync_loop(self):
         while True:
@@ -556,6 +575,29 @@ class DfLocalController(object):
             if lport is not None:
                 self.open_flow_app.notify_remove_active_port(active_port)
 
+    def _is_newer(self, obj, cached_obj):
+        try:
+            return obj.is_newer_than(cached_obj)
+        except AttributeError:
+            return True
+
+    def update_model_object(self, obj):
+        original_obj = self.db_store2.get_one(obj)
+        if original_obj is None:
+            obj.emit_created()
+        elif self._is_newer(obj, original_obj):
+            obj.emit_updated(original_obj)
+        else:
+            return
+
+        self.db_store2.update(obj)
+
+    def delete_model_object(self, obj):
+        # Retrieve full object (in case we only got Model(id='id'))
+        obj = self.db_store2.get_one(obj)
+        obj.emit_deleted()
+        self.db_store2.delete(obj)
+
     def get_nb_api(self):
         return self.nb_api
 
@@ -574,14 +616,15 @@ class DfLocalController(object):
     def get_handler(self, table, action):
         if action == 'delete':
             method_name = 'delete_' + table
+            default = self.delete_model_object
         else:
             method_name = 'update_' + table
-        return getattr(self, method_name, None)
+            default = self.update_model_object
+        return getattr(self, method_name, default)
 
     def process_object(self, table, action, obj):
         handler = self.get_handler(table, action)
-        if handler:
-            handler(obj)
+        handler(obj)
 
 
 def init_ryu_config():
