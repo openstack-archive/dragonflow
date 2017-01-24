@@ -252,11 +252,11 @@ function configure_df_plugin {
 
 function install_zeromq {
     if is_fedora; then
-        install_package zeromq python-zmq
+        install_package zeromq
     elif is_ubuntu; then
-        install_package libzmq1 python-zmq
+        install_package libzmq1
     elif is_suse; then
-        install_package libzmq1 python-pyzmq
+        install_package libzmq1
     fi
     # Necessary directory for socket location.
     sudo mkdir -p /var/run/openstack
