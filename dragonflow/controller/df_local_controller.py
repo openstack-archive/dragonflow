@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import functools
 import sys
 import time
 
@@ -33,8 +34,10 @@ from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db import db_store2
+from dragonflow.db import model_framework
 from dragonflow.db import models
 from dragonflow.db.models import core_models
+from dragonflow.db.models import mixins
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -116,7 +119,7 @@ class DfLocalController(object):
                 self.integration_bridge, 'secure')
         self.open_flow_app.start()
         self.create_tunnels()
-        self._register_legacy_model_refreshers()
+        self._register_models()
         self.db_sync_loop()
 
     def _register_legacy_model_refreshers(self):
@@ -174,6 +177,24 @@ class DfLocalController(object):
 
         for refresher in refreshers:
             df_db_objects_refresh.add_refresher(refresher)
+
+    def _register_models(self):
+        self._register_legacy_model_refreshers()
+
+        for model in model_framework.iter_models():
+            # FIXME (dimak) do not register topicless models for now
+            if issubclass(model, mixins.Topic):
+                df_db_objects_refresh.add_refresher(
+                    df_db_objects_refresh.DfObjectRefresher(
+                        model.__name__,
+                        functools.partial(self.db_store2.get_keys_by_topic,
+                                          model),
+                        functools.partial(self.nb_api.get_all, model),
+                        self.update,
+                        functools.partial(self.delete_by_id, model),
+                    ),
+                )
+            # FIXME (dimak) add db_consistency for new models here
 
     def db_sync_loop(self):
         while True:
@@ -608,6 +629,35 @@ class DfLocalController(object):
             if lport is not None:
                 self.open_flow_app.notify_remove_active_port(active_port)
 
+    def _is_newer(self, obj, cached_obj):
+        '''Check wether obj is newer than cached_on.
+
+        If obj is a subtype of Version mixin we can use is_newer_than,
+        otherwise we assume that our NB-received object is always newer than
+        the cached copy.
+        '''
+        try:
+            return obj.is_newer_than(cached_obj)
+        except AttributeError:
+            return True
+
+    def update_model_object(self, obj):
+        original_obj = self.db_store2.get_one(obj)
+        if original_obj is None:
+            obj.emit_created()
+        elif self._is_newer(obj, original_obj):
+            obj.emit_updated(original_obj)
+        else:
+            return
+
+        self.db_store2.update(obj)
+
+    def delete_model_object(self, obj):
+        # Retrieve full object (in case we only got Model(id='id'))
+        obj = self.db_store2.get_one(obj)
+        obj.emit_deleted()
+        self.db_store2.delete(obj)
+
     def get_nb_api(self):
         return self.nb_api
 
@@ -626,12 +676,13 @@ class DfLocalController(object):
 
     def _get_delete_handler(self, table):
         method_name = 'delete_{0}'.format(table)
-        return getattr(self, method_name)
+        return getattr(self, method_name, self.delete_model_object)
 
     def update(self, obj):
         handler = getattr(
             self,
             'update_{0}'.format(obj.table_name),
+            self.update_model_object,
         )
         return handler(obj)
 
