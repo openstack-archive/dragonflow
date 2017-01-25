@@ -142,11 +142,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
-        # Add router ip match go to output table
-        self._install_flow_send_to_output_table(local_network_id,
-                                                tunnel_key,
-                                                dst_ip)
-
         #add dst_mac=gw_mac l2 goto l3 flow
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
@@ -373,31 +368,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         self._del_from_route_cache(ROUTE_ADDED, router.get_id(), route)
         self._del_from_route_cache(ROUTE_TO_ADD, router.get_id(), route)
 
-    def _install_flow_send_to_output_table(self, network_id,
-                                           tunnel_key, dst_ip):
-        parser = self.parser
-        ofproto = self.ofproto
-        if netaddr.IPAddress(dst_ip).version == 4:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    metadata=network_id,
-                                    ipv4_dst=dst_ip)
-        else:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
-                                    metadata=network_id,
-                                    ipv6_dst=dst_ip)
-
-        actions = []
-        actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
-            priority=const.PRIORITY_HIGH,
-            match=match)
-
     def _add_subnet_send_to_proactive_routing(self, network_id, dst_network,
                                               dst_netmask,
                                               dst_router_tunnel_key,
@@ -520,21 +490,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-        # Remove router port ip proactive flow
-        if netaddr.IPAddress(router_port.get_ip()).version == 4:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    metadata=local_network_id,
-                                    ipv4_dst=router_port.get_ip())
-        else:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
-                                    metadata=local_network_id,
-                                    ipv6_dst=router_port.get_ip())
-        self.mod_flow(
-            table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_HIGH,
             match=match)
 
     def add_local_port(self, lport):

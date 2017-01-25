@@ -46,12 +46,12 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
 
         # delete router
         self.controller.delete_lrouter(self.router.get_id())
-        self.assertEqual(5, self.mock_mod_flow.call_count)
+        self.assertEqual(4, self.mock_mod_flow.call_count)
 
         # add router
         self.mock_mod_flow.reset_mock()
         self.controller.update_lrouter(self.router)
-        self.assertEqual(4, self.mock_mod_flow.call_count)
+        self.assertEqual(3, self.mock_mod_flow.call_count)
         args, kwargs = self.mock_mod_flow.call_args
         self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])
         self.app._add_subnet_send_to_snat.assert_called_once_with(
