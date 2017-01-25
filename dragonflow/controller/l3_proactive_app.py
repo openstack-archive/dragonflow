@@ -34,12 +34,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         super(L3ProactiveApp, self).__init__(*args, **kwargs)
         self.route_cache = {}
 
-    def switch_features_handler(self, ev):
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.L3_LOOKUP_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.EGRESS_TABLE)
-
     def router_updated(self, router, original_router):
         if not original_router:
             LOG.info(_LI("Logical Router created = %s"), router)

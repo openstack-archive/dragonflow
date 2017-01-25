@@ -43,12 +43,6 @@ class L3App(df_base_app.DFlowApp):
         self.api.register_table_handler(const.L3_LOOKUP_TABLE,
                 self.packet_in_handler)
 
-    def switch_features_handler(self, ev):
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.L3_LOOKUP_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.EGRESS_TABLE)
-
     def router_updated(self, router, original_router):
         if not original_router:
             LOG.info(_LI("Logical Router created = %s"), router)
