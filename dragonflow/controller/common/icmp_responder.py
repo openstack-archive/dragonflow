@@ -58,6 +58,12 @@ class ICMPResponder(object):
                    parser.OFPActionSetField(eth_src=self.dst_mac),
                    parser.OFPActionSetField(ipv4_src=self.interface_ip),
                    parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
+
+        if self.table_id == const.L3_LOOKUP_TABLE:
+            # There is an implicit route if icmp responder is at
+            # L3_LOOKUP_TABLE. A route should consume 1 ttl.
+            actions.insert(0, parser.OFPActionDecNwTtl())
+
         instructions = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         return instructions

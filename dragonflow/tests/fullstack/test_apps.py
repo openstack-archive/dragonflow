@@ -869,7 +869,7 @@ class TestL3App(test_base.DFTestBase):
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self._test_icmp_address(dst_ip)
 
-    def test_icmp_ttl_packet(self):
+    def _test_icmp_ttl_packet(self, ip):
         ignore_action = app_testing_objects.IgnoreAction()
         raise_action = app_testing_objects.RaiseAction("Unexpected packet")
         rules = [
@@ -899,8 +899,7 @@ class TestL3App(test_base.DFTestBase):
             default_action=raise_action
         )
         key = (self.subnet1.subnet_id, self.port1.port_id)
-        initial_packet = self._create_ping_packet(
-            self.port2.port.get_logical_port().get_ip(), ttl=1)
+        initial_packet = self._create_ping_packet(ip, ttl=1)
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
@@ -918,6 +917,12 @@ class TestL3App(test_base.DFTestBase):
         policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(policy.exceptions) > 0:
             raise policy.exceptions[0]
+
+    def test_ttl_invalid_to_vm(self):
+        self._test_icmp_ttl_packet(self.port2.port.get_logical_port().get_ip())
+
+    def test_ttl_invalid_to_other_router_interface(self):
+        self._test_icmp_ttl_packet('192.168.13.1')
 
 
 class TestSGApp(test_base.DFTestBase):
