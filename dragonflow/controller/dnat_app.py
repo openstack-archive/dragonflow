@@ -232,7 +232,7 @@ class DNATApp(df_base_app.DFlowApp):
         match = self._get_dnat_egress_match(floatingip)
         self.add_flow_go_to_table(self.get_datapath(),
             const.L3_LOOKUP_TABLE,
-            const.PRIORITY_MEDIUM,
+            const.PRIORITY_LOW,
             const.EGRESS_NAT_TABLE,
             match=match)
         if self.external_bridge_mac:
@@ -250,7 +250,7 @@ class DNATApp(df_base_app.DFlowApp):
             self.get_datapath(),
             command=ofproto.OFPFC_DELETE,
             table_id=const.L3_LOOKUP_TABLE,
-            priority=const.PRIORITY_MEDIUM,
+            priority=const.PRIORITY_LOW,
             match=match)
 
         self._remove_dnat_egress_rules(floatingip)

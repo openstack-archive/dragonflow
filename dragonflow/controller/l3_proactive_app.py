@@ -457,7 +457,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             datapath,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
-            priority=const.PRIORITY_LOW,
+            priority=const.PRIORITY_VERY_LOW,
             match=match)
 
     def _delete_subnet_send_to_snat(self, network_id, mac):
@@ -469,7 +469,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             datapath,
             command=ofproto.OFPFC_DELETE_STRICT,
             table_id=const.L3_LOOKUP_TABLE,
-            priority=const.PRIORITY_LOW,
+            priority=const.PRIORITY_VERY_LOW,
             match=match)
 
     def _delete_router_port(self, router, router_port):
