@@ -23,7 +23,7 @@ correctly, including L2, L3, DNAT, etc. So, what this spec will do is to
 ensure the flows are updated correctly and fastly, to make sure the
 downtime of network as short as possible.
 
-For more infomation about VM live migration, refer to [#]_.
+For more information about VM live migration, refer to [#]_.
 
 .. [#] http://docs.openstack.org/admin-guide/compute-live-migration-usage.html
 
