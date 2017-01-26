@@ -65,6 +65,7 @@ Specs
     support_check_chassis_alive
     traceroute
     api
+    publish_subscribe_v2
 
 Templates
 ---------
