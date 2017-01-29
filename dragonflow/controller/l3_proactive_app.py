@@ -35,8 +35,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         self.route_cache = {}
 
     def switch_features_handler(self, ev):
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.L3_LOOKUP_TABLE,
+        self.add_flow_go_to_table(const.L3_LOOKUP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
 
@@ -88,9 +87,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                  router_port)
         local_network_id = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         mac = router_port.get_mac()
         tunnel_key = router_port.get_unique_key()
@@ -134,12 +132,11 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         actions = []
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_HIGH,
@@ -157,7 +154,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         goto_inst = parser.OFPInstructionGotoTable(const.L3_LOOKUP_TABLE)
         inst = [goto_inst]
         self.mod_flow(
-            self.get_datapath(),
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             priority=const.PRIORITY_HIGH,
@@ -261,9 +257,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                 self._add_to_route_cache(ROUTE_TO_ADD, router_id, route_dict)
 
     def _add_route_process(self, router, route):
-        datapath = self.get_datapath()
-        ofproto = self.get_datapath().ofproto
-        parser = datapath.ofproto_parser
+        ofproto = self.ofproto
+        parser = self.parser
 
         destination = route.get('destination')
         destination = netaddr.IPNetwork(destination)
@@ -299,7 +294,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         inst = [action_inst, goto_inst]
 
         self.mod_flow(
-            self.get_datapath(),
             cookie=tunnel_key,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
@@ -342,9 +336,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             self._add_to_route_cache(ROUTE_TO_ADD, router_id, route)
 
     def _delete_route_process(self, router, route):
-        datapath = self.get_datapath()
-        ofproto = self.get_datapath().ofproto
-        parser = datapath.ofproto_parser
+        ofproto = self.ofproto
+        parser = self.parser
 
         destination = route.get('destination')
         destination = netaddr.IPNetwork(destination)
@@ -365,7 +358,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                                         router_if_port)
 
         self.mod_flow(
-            self.get_datapath(),
             command=ofproto.OFPFC_DELETE_STRICT,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_VERY_HIGH,
@@ -383,8 +375,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
     def _install_flow_send_to_output_table(self, network_id,
                                            tunnel_key, dst_ip):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         if netaddr.IPAddress(dst_ip).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     metadata=network_id,
@@ -396,12 +388,11 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         actions = []
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            self.get_datapath(),
             inst=inst,
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
             priority=const.PRIORITY_HIGH,
@@ -412,8 +403,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                                               dst_router_tunnel_key,
                                               dst_network_id,
                                               dst_router_port_mac):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         if netaddr.IPAddress(dst_network).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -428,7 +419,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         actions.append(parser.OFPActionDecNwTtl())
         actions.append(parser.OFPActionSetField(metadata=dst_network_id))
         actions.append(parser.OFPActionSetField(eth_src=dst_router_port_mac))
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(
             const.L3_PROACTIVE_LOOKUP_TABLE)
@@ -436,7 +427,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         inst = [action_inst, goto_inst]
 
         self.mod_flow(
-            self.get_datapath(),
             cookie=dst_router_tunnel_key,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
@@ -444,9 +434,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             match=match)
 
     def _add_subnet_send_to_snat(self, network_id, mac, tunnel_key):
-        datapath = self.get_datapath()
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
+        ofproto = self.ofproto
+        parser = self.parser
         match = parser.OFPMatch(metadata=network_id, eth_dst=mac)
         actions = [parser.OFPActionSetField(reg7=tunnel_key)]
         inst = [
@@ -454,19 +443,16 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             parser.OFPInstructionGotoTable(const.EGRESS_TABLE),
         ]
         self.mod_flow(
-            datapath,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_LOW,
             match=match)
 
     def _delete_subnet_send_to_snat(self, network_id, mac):
-        datapath = self.get_datapath()
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
+        ofproto = self.ofproto
+        parser = self.parser
         match = parser.OFPMatch(metadata=network_id, eth_dst=mac)
         self.mod_flow(
-            datapath,
             command=ofproto.OFPFC_DELETE_STRICT,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_LOW,
@@ -478,8 +464,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         local_network_id = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         tunnel_key = router_port.get_unique_key()
         ip = router_port.get_ip()
         mac = router_port.get_mac()
@@ -512,7 +498,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -522,7 +507,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         match.set_metadata(local_network_id)
         match.set_dl_dst(haddr_to_bin(mac))
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
@@ -531,7 +515,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         match = parser.OFPMatch()
         cookie = tunnel_key
         self.mod_flow(
-            datapath=self.get_datapath(),
             cookie=cookie,
             cookie_mask=cookie,
             table_id=const.L3_LOOKUP_TABLE,
@@ -549,7 +532,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                                     metadata=local_network_id,
                                     ipv6_dst=router_port.get_ip())
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
@@ -577,8 +559,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
     def _add_port_process(self, dst_ip, dst_mac, network_id, tunnel_key,
                           priority=const.PRIORITY_HIGH):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         if netaddr.IPAddress(dst_ip).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -592,13 +574,12 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         actions = []
         actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
                 ofproto.OFPIT_APPLY_ACTIONS, actions)
 
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            self.get_datapath(),
             inst=inst,
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
             priority=const.PRIORITY_HIGH,
@@ -623,8 +604,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
     def _remove_port_process(self, dst_ip, network_id,
                              priority=const.PRIORITY_HIGH):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         if netaddr.IPAddress(dst_ip).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -636,7 +617,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                                     ipv6_dst=dst_ip)
 
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.L3_PROACTIVE_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,

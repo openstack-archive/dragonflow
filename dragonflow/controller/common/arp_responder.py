@@ -31,7 +31,7 @@ class ArpResponder(object):
     def __init__(self, app, network_id, interface_ip,
                  interface_mac=None, table_id=const.ARP_TABLE):
         self.app = app
-        self.datapath = app.get_datapath()
+        self.datapath = app.datapath
         self.network_id = network_id
         self.interface_ip = interface_ip
         self.mac_address = interface_mac
@@ -70,7 +70,6 @@ class ArpResponder(object):
         instructions = self._get_instructions()
         ofproto = self.datapath.ofproto
         self.app.mod_flow(
-                datapath=self.datapath,
                 table_id=self.table_id,
                 command=ofproto.OFPFC_ADD,
                 priority=const.PRIORITY_MEDIUM,
@@ -82,7 +81,6 @@ class ArpResponder(object):
         ofproto = self.datapath.ofproto
         match = self._get_match()
         self.app.mod_flow(
-                datapath=self.datapath,
                 table_id=self.table_id,
                 command=ofproto.OFPFC_DELETE,
                 priority=const.PRIORITY_MEDIUM,

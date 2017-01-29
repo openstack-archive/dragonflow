@@ -31,7 +31,7 @@ class NeighAdvertiser(object):
     def __init__(self, app, network_key, interface_ip,
                  interface_mac=None, table_id=const.IPV6_ND_TABLE):
         self.app = app
-        self.datapath = app.get_datapath()
+        self.datapath = app.datapath
         self.network_key = network_key
         self.interface_ip = interface_ip
         self.mac_address = interface_mac
@@ -70,8 +70,7 @@ class NeighAdvertiser(object):
         match = self._get_match()
         instructions = self._get_instructions()
         ofproto = self.datapath.ofproto
-        self.app.mod_flow(datapath=self.datapath,
-                          table_id=self.table_id,
+        self.app.mod_flow(table_id=self.table_id,
                           command=ofproto.OFPFC_ADD,
                           priority=const.PRIORITY_MEDIUM,
                           match=match,
@@ -81,8 +80,7 @@ class NeighAdvertiser(object):
     def remove(self):
         ofproto = self.datapath.ofproto
         match = self._get_match()
-        self.app.mod_flow(datapath=self.datapath,
-                          table_id=self.table_id,
+        self.app.mod_flow(table_id=self.table_id,
                           command=ofproto.OFPFC_DELETE,
                           priority=const.PRIORITY_MEDIUM,
                           match=match)

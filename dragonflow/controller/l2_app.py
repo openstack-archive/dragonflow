@@ -93,50 +93,42 @@ class L2App(df_base_app.DFlowApp):
 
     def switch_features_handler(self, ev):
         self.setup_physical_bridges(self.bridge_mappings)
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.SERVICES_CLASSIFICATION_TABLE,
+        self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.ARP_TABLE,
+        self.add_flow_go_to_table(const.ARP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.IPV6_ND_TABLE,
+        self.add_flow_go_to_table(const.IPV6_ND_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
 
         # ARP traffic => send to ARP table
-        match = self.get_datapath().ofproto_parser.OFPMatch(eth_type=0x0806)
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.SERVICES_CLASSIFICATION_TABLE,
+        match = self.parser.OFPMatch(eth_type=0x0806)
+        self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_MEDIUM,
                                   const.ARP_TABLE, match=match)
 
         # Neighbor Discovery traffic => send to ND table
-        match = self.get_datapath().ofproto_parser.OFPMatch()
+        match = self.parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IPV6)
         match.set_ip_proto(in_proto.IPPROTO_ICMPV6)
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.SERVICES_CLASSIFICATION_TABLE,
+        self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_MEDIUM,
                                   const.IPV6_ND_TABLE, match=match)
 
         # Default: traffic => send to connection track table
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.EGRESS_PORT_SECURITY_TABLE,
+        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_CONNTRACK_TABLE)
 
         # Default: traffic => send to service classification table
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.EGRESS_CONNTRACK_TABLE,
+        self.add_flow_go_to_table(const.EGRESS_CONNTRACK_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.SERVICES_CLASSIFICATION_TABLE)
 
         # Default: traffic => send to dispatch table
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.INGRESS_CONNTRACK_TABLE,
+        self.add_flow_go_to_table(const.INGRESS_CONNTRACK_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.INGRESS_DISPATCH_TABLE)
 
@@ -184,15 +176,13 @@ class L2App(df_base_app.DFlowApp):
         topic = lport.get_topic()
         device_owner = lport.get_device_owner()
 
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         # Remove ingress classifier for port
         match = parser.OFPMatch()
         match.set_in_port(ofport)
         self.mod_flow(
-            datapath=datapath,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -200,7 +190,6 @@ class L2App(df_base_app.DFlowApp):
 
         match = parser.OFPMatch(reg7=port_key)
         self.mod_flow(
-            datapath=datapath,
             table_id=const.INGRESS_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -213,7 +202,6 @@ class L2App(df_base_app.DFlowApp):
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=port_key)
         self.mod_flow(
-            datapath=datapath,
             table_id=const.EGRESS_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -231,16 +219,14 @@ class L2App(df_base_app.DFlowApp):
     def _remove_local_port(self, lport_id, mac, topic,
                            local_network_id, segmentation_id,
                            network_type):
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         # Remove ingress destination lookup for port
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
         match.set_dl_dst(haddr_to_bin(mac))
         self.mod_flow(
-            datapath=datapath,
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -279,14 +265,12 @@ class L2App(df_base_app.DFlowApp):
                 local_network_id)
 
     def _del_multicast_broadcast_flows_for_local(self, local_network_id):
-        datapath = self.get_datapath()
-        ofproto = datapath.ofproto
+        ofproto = self.ofproto
 
         # Ingress for broadcast and multicast
         match = self._get_multicast_broadcast_match(local_network_id)
 
         self.mod_flow(
-            datapath=datapath,
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
@@ -296,7 +280,6 @@ class L2App(df_base_app.DFlowApp):
         match = self._get_multicast_broadcast_match(local_network_id)
 
         self.mod_flow(
-            datapath=datapath,
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
@@ -304,9 +287,8 @@ class L2App(df_base_app.DFlowApp):
 
     def _update_multicast_broadcast_flows_for_local(self, local_ports, topic,
                                                     local_network_id):
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         command = ofproto.OFPFC_MODIFY
 
         # Ingress broadcast
@@ -335,7 +317,6 @@ class L2App(df_base_app.DFlowApp):
         egress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, egress)]
         self.mod_flow(
-            datapath=datapath,
             inst=egress_inst,
             table_id=const.L2_LOOKUP_TABLE,
             command=command,
@@ -347,7 +328,6 @@ class L2App(df_base_app.DFlowApp):
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
         self.mod_flow(
-            datapath=datapath,
             inst=ingress_inst,
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
             command=command,
@@ -362,9 +342,8 @@ class L2App(df_base_app.DFlowApp):
         segmentation_id = lport.get_external_value('segmentation_id')
         device_owner = lport.get_device_owner()
 
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         # Remove destination classifier for port
         if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
@@ -373,7 +352,6 @@ class L2App(df_base_app.DFlowApp):
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
         self.mod_flow(
-            datapath=datapath,
             table_id=const.EGRESS_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -384,9 +362,8 @@ class L2App(df_base_app.DFlowApp):
             lport_id, network_id, segmentation_id)
 
     def _add_dst_classifier_flow_for_port(self, network_id, mac, port_key):
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         match = parser.OFPMatch()
         match.set_metadata(network_id)
@@ -397,20 +374,18 @@ class L2App(df_base_app.DFlowApp):
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
     def _delete_dst_classifier_flow_for_port(self, network_id, mac):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         match = parser.OFPMatch()
         match.set_metadata(network_id)
         match.set_dl_dst(haddr_to_bin(mac))
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -431,9 +406,8 @@ class L2App(df_base_app.DFlowApp):
 
         topic = lport.get_topic()
 
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         # Ingress classifier for port
         match = parser.OFPMatch()
@@ -447,7 +421,6 @@ class L2App(df_base_app.DFlowApp):
             const.EGRESS_PORT_SECURITY_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -461,7 +434,6 @@ class L2App(df_base_app.DFlowApp):
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.INGRESS_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -484,7 +456,6 @@ class L2App(df_base_app.DFlowApp):
             const.INGRESS_CONNTRACK_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
             priority=const.PRIORITY_HIGH,
@@ -494,7 +465,6 @@ class L2App(df_base_app.DFlowApp):
         match = parser.OFPMatch(reg7=port_key)
         inst = [parser.OFPInstructionGotoTable(const.INGRESS_CONNTRACK_TABLE)]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -532,10 +502,9 @@ class L2App(df_base_app.DFlowApp):
         if segmentation_id is None:
             return
 
-        datapath = self.get_datapath()
+        parser = self.parser
+        ofproto = self.ofproto
 
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
         ofport = self.vswitch_api.get_vtp_ofport(network_type)
         if not ofport:
             return
@@ -544,7 +513,6 @@ class L2App(df_base_app.DFlowApp):
                                 in_port=ofport)
 
         self.mod_flow(
-            datapath=datapath,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,
@@ -555,9 +523,8 @@ class L2App(df_base_app.DFlowApp):
                                                          port_key,
                                                          network_id,
                                                          topic):
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         command = ofproto.OFPFC_MODIFY
 
         local_network = self.local_networks[network_id]
@@ -601,7 +568,6 @@ class L2App(df_base_app.DFlowApp):
         egress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, egress)]
         self.mod_flow(
-            datapath=datapath,
             inst=egress_inst,
             table_id=const.L2_LOOKUP_TABLE,
             command=command,
@@ -613,7 +579,6 @@ class L2App(df_base_app.DFlowApp):
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
         self.mod_flow(
-            datapath=datapath,
             inst=ingress_inst,
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
             command=command,
@@ -646,12 +611,10 @@ class L2App(df_base_app.DFlowApp):
                 network.remote_ports)
 
     def _del_multicast_broadcast_flows_for_remote(self, network_id):
-        datapath = self.get_datapath()
-        ofproto = datapath.ofproto
+        ofproto = self.ofproto
 
         match = self._get_multicast_broadcast_match(network_id)
         self.mod_flow(
-            datapath=datapath,
             command=ofproto.OFPFC_DELETE,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_LOW,
@@ -660,9 +623,8 @@ class L2App(df_base_app.DFlowApp):
     def _update_multicast_broadcast_flows_for_remote(
             self, network_id, segmentation_id, remote_ports,
             command=None):
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         if command is None:
             command = ofproto.OFPFC_MODIFY
@@ -687,7 +649,6 @@ class L2App(df_base_app.DFlowApp):
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                              actions)]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.EGRESS_TABLE,
             command=command,
@@ -701,7 +662,7 @@ class L2App(df_base_app.DFlowApp):
                                                           segmentation_id):
         LOG.debug("Add/update multicast and broadcast for remote port %s.",
                   lport_id)
-        ofproto = self.get_datapath().ofproto
+        ofproto = self.ofproto
         command = ofproto.OFPFC_MODIFY
 
         local_network = self.local_networks[network_id]
@@ -712,14 +673,12 @@ class L2App(df_base_app.DFlowApp):
             network_id, segmentation_id, local_network.remote_ports, command)
 
     def remove_logical_switch(self, lswitch):
-        datapath = self.get_datapath()
-        ofproto = datapath.ofproto
+        ofproto = self.ofproto
 
         network_id = lswitch.get_unique_key()
         match = self._get_multicast_broadcast_match(network_id)
 
         self.mod_flow(
-            datapath=datapath,
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
@@ -735,9 +694,8 @@ class L2App(df_base_app.DFlowApp):
         remote_ip = lport.get_external_value('peer_vtep_address')
         port_key = lport.get_unique_key()
 
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         # Router MAC's go to L3 table will be taken care by l3 app
         # REVISIT(xiaohhui): This check might be removed when l3-agent is
@@ -759,7 +717,6 @@ class L2App(df_base_app.DFlowApp):
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -805,9 +762,8 @@ class L2App(df_base_app.DFlowApp):
         if segmentation_id is None:
             return
 
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         ofport = self.vswitch_api.get_vtp_ofport(network_type)
         if not ofport:
             return
@@ -824,7 +780,6 @@ class L2App(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -836,9 +791,8 @@ class L2App(df_base_app.DFlowApp):
     def _install_network_flows_for_vlan(self, segmentation_id,
                                         physical_network, local_network_id):
         # L2_LOOKUP for Remote ports
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         match = parser.OFPMatch()
 
         addint = haddr_to_bin('00:00:00:00:00:00')
@@ -847,7 +801,6 @@ class L2App(df_base_app.DFlowApp):
         match.set_metadata(local_network_id)
         inst = [parser.OFPInstructionGotoTable(const.EGRESS_TABLE)]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -867,7 +820,6 @@ class L2App(df_base_app.DFlowApp):
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_EXTERNAL_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_LOW,
@@ -894,7 +846,6 @@ class L2App(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_LOW,
@@ -902,9 +853,8 @@ class L2App(df_base_app.DFlowApp):
 
     def _install_network_flows_for_flat(self, physical_network,
                                         local_network_id):
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         match = parser.OFPMatch()
 
         addint = haddr_to_bin('00:00:00:00:00:00')
@@ -913,7 +863,6 @@ class L2App(df_base_app.DFlowApp):
         match.set_metadata(local_network_id)
         inst = [parser.OFPInstructionGotoTable(const.EGRESS_TABLE)]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -926,7 +875,6 @@ class L2App(df_base_app.DFlowApp):
 
         inst = [goto_inst]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_LOW,
@@ -947,7 +895,6 @@ class L2App(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath=datapath,
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_LOW,
@@ -957,13 +904,11 @@ class L2App(df_base_app.DFlowApp):
         if segmentation_id is None:
             return
 
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         match = parser.OFPMatch()
         match.set_vlan_vid(segmentation_id)
         self.mod_flow(
-            datapath=datapath,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,
@@ -971,27 +916,23 @@ class L2App(df_base_app.DFlowApp):
 
         match = parser.OFPMatch(metadata=local_network_id)
         self.mod_flow(
-            datapath=datapath,
             table_id=const.EGRESS_EXTERNAL_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
             match=match)
 
     def _get_multicast_broadcast_match(self, network_id):
-        match = self.get_datapath().\
-            ofproto_parser.OFPMatch(eth_dst='01:00:00:00:00:00')
+        match = self.parser.OFPMatch(eth_dst='01:00:00:00:00:00')
         addint = haddr_to_bin('01:00:00:00:00:00')
         match.set_dl_dst_masked(addint, addint)
         match.set_metadata(network_id)
         return match
 
     def _del_network_flows_for_flat(self, local_network_id):
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         match = parser.OFPMatch(vlan_vid=0)
         self.mod_flow(
-            datapath=datapath,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,
@@ -999,7 +940,6 @@ class L2App(df_base_app.DFlowApp):
 
         match = parser.OFPMatch(metadata=local_network_id)
         self.mod_flow(
-            datapath=datapath,
             table_id=const.EGRESS_EXTERNAL_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
@@ -1012,8 +952,8 @@ class L2App(df_base_app.DFlowApp):
                       physical_network)
             return
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         match = parser.OFPMatch(metadata=local_network_id)
         ofport = self.int_ofports[physical_network]
         actions = [parser.OFPActionOutput(ofport,
@@ -1021,6 +961,6 @@ class L2App(df_base_app.DFlowApp):
         actions_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [actions_inst]
-        self.mod_flow(self.get_datapath(), inst=inst,
+        self.mod_flow(inst=inst,
                       table_id=const.EGRESS_EXTERNAL_TABLE,
                       priority=const.PRIORITY_HIGH, match=match)

@@ -140,8 +140,8 @@ class DNATApp(df_base_app.DFlowApp):
         return None
 
     def _install_dnat_ingress_rules(self, floatingip):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                 ipv4_dst=floatingip.get_ip_address())
 
@@ -165,19 +165,17 @@ class DNATApp(df_base_app.DFlowApp):
         inst = [action_inst, goto_inst]
 
         self.mod_flow(
-            self.get_datapath(),
             inst=inst,
             table_id=const.INGRESS_NAT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
     def _remove_dnat_ingress_rules(self, floatingip):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                 ipv4_dst=floatingip.get_ip_address())
         self.mod_flow(
-            self.get_datapath(),
             command=ofproto.OFPFC_DELETE,
             table_id=const.INGRESS_NAT_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -185,7 +183,7 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _get_dnat_egress_match(self, floatingip):
         _, vm_ip, _, local_network_id = self._get_vm_port_info(floatingip)
-        parser = self.get_datapath().ofproto_parser
+        parser = self.parser
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                 metadata=local_network_id,
                                 ipv4_src=vm_ip)
@@ -194,8 +192,8 @@ class DNATApp(df_base_app.DFlowApp):
     def _install_dnat_egress_rules(self, floatingip, network_bridge_mac):
         fip_mac = floatingip.get_mac_address()
         fip_ip = floatingip.get_ip_address()
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         match = self._get_dnat_egress_match(floatingip)
         actions = [
             parser.OFPActionSetField(eth_src=fip_mac),
@@ -208,17 +206,15 @@ class DNATApp(df_base_app.DFlowApp):
         inst = [action_inst, goto_inst]
 
         self.mod_flow(
-            self.get_datapath(),
             inst=inst,
             table_id=const.EGRESS_NAT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
     def _remove_dnat_egress_rules(self, floatingip):
-        ofproto = self.get_datapath().ofproto
+        ofproto = self.ofproto
         match = self._get_dnat_egress_match(floatingip)
         self.mod_flow(
-            self.get_datapath(),
             command=ofproto.OFPFC_DELETE,
             table_id=const.EGRESS_NAT_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -230,7 +226,7 @@ class DNATApp(df_base_app.DFlowApp):
             return
 
         match = self._get_dnat_egress_match(floatingip)
-        self.add_flow_go_to_table(self.get_datapath(),
+        self.add_flow_go_to_table(
             const.L3_LOOKUP_TABLE,
             const.PRIORITY_MEDIUM,
             const.EGRESS_NAT_TABLE,
@@ -244,10 +240,9 @@ class DNATApp(df_base_app.DFlowApp):
         if net.version != 4:
             return
 
-        ofproto = self.get_datapath().ofproto
+        ofproto = self.ofproto
         match = self._get_dnat_egress_match(floatingip)
         self.mod_flow(
-            self.get_datapath(),
             command=ofproto.OFPFC_DELETE,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -261,10 +256,10 @@ class DNATApp(df_base_app.DFlowApp):
         if self._is_first_external_network(network_id):
             # if it is the first floating ip on this node, then
             # install the common goto flow rule.
-            parser = self.get_datapath().ofproto_parser
+            parser = self.parser
             match = parser.OFPMatch()
             match.set_in_port(self.external_ofport)
-            self.add_flow_go_to_table(self.get_datapath(),
+            self.add_flow_go_to_table(
                 const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
                 const.PRIORITY_DEFAULT,
                 const.INGRESS_NAT_TABLE,
@@ -278,12 +273,11 @@ class DNATApp(df_base_app.DFlowApp):
         if self._is_last_external_network(network_id):
             # if it is the last floating ip on this node, then
             # remove the common goto flow rule.
-            parser = self.get_datapath().ofproto_parser
-            ofproto = self.get_datapath().ofproto
+            parser = self.parser
+            ofproto = self.ofproto
             match = parser.OFPMatch()
             match.set_in_port(self.external_ofport)
             self.mod_flow(
-                self.get_datapath(),
                 command=ofproto.OFPFC_DELETE,
                 table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
                 priority=const.PRIORITY_DEFAULT,
@@ -339,13 +333,13 @@ class DNATApp(df_base_app.DFlowApp):
                 external_gateway_ip=fip.get_external_gateway_ip())
 
     def _install_output_to_physical_patch(self, ofport):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         actions = [parser.OFPActionOutput(ofport,
                                           ofproto.OFPCML_NO_BUFFER)]
         actions_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [actions_inst]
-        self.mod_flow(self.get_datapath(), inst=inst,
+        self.mod_flow(inst=inst,
                       table_id=const.EGRESS_EXTERNAL_TABLE,
                       priority=const.PRIORITY_MEDIUM, match=None)

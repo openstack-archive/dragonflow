@@ -44,8 +44,7 @@ class L3App(df_base_app.DFlowApp):
                 self.packet_in_handler)
 
     def switch_features_handler(self, ev):
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.L3_LOOKUP_TABLE,
+        self.add_flow_go_to_table(const.L3_LOOKUP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.EGRESS_TABLE)
 
@@ -161,8 +160,8 @@ class L3App(df_base_app.DFlowApp):
         src_mac = dst_router_port.get_mac()
         dst_mac = dst_port.get_mac()
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         if netaddr.IPAddress(dst_ip).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -178,14 +177,13 @@ class L3App(df_base_app.DFlowApp):
         actions.append(parser.OFPActionSetField(eth_src=src_mac))
         actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
         actions.append(parser.OFPActionSetField(reg7=reg7))
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
                 ofproto.OFPIT_APPLY_ACTIONS, actions)
 
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
 
         self.mod_flow(
-            self.get_datapath(),
             cookie=dst_router_port.get_unique_key(),
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
@@ -197,21 +195,20 @@ class L3App(df_base_app.DFlowApp):
         in_port = msg.match.get('in_port')
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
             data = msg.data
-        out = parser.OFPPacketOut(datapath=self.get_datapath(),
+        out = parser.OFPPacketOut(datapath=self.datapath,
                 buffer_id=msg.buffer_id,
                 in_port=in_port,
                 actions=actions,
                 data=data)
-        self.get_datapath().send_msg(out)
+        self.datapath.send_msg(out)
 
     def _add_new_router_port(self, router, router_port):
         LOG.info(_LI("Adding new logical router interface = %s"),
                  router_port)
         local_network_id = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         mac = router_port.get_mac()
         tunnel_key = router_port.get_unique_key()
@@ -236,12 +233,11 @@ class L3App(df_base_app.DFlowApp):
 
         actions = []
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_HIGH,
@@ -254,7 +250,6 @@ class L3App(df_base_app.DFlowApp):
         goto_inst = parser.OFPInstructionGotoTable(const.L3_LOOKUP_TABLE)
         inst = [goto_inst]
         self.mod_flow(
-            self.get_datapath(),
             inst=inst,
             table_id=const.L2_LOOKUP_TABLE,
             priority=const.PRIORITY_HIGH,
@@ -282,8 +277,8 @@ class L3App(df_base_app.DFlowApp):
         dst_ip = router_port.get_ip()
         tunnel_key = router_port.get_unique_key()
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         if netaddr.IPAddress(dst_ip).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     metadata=network_id,
@@ -295,12 +290,11 @@ class L3App(df_base_app.DFlowApp):
 
         actions = []
         actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            self.get_datapath(),
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_HIGH,
@@ -310,8 +304,8 @@ class L3App(df_base_app.DFlowApp):
 
     def _add_subnet_send_to_controller(self, network_id, dst_network,
                                        dst_netmask, dst_router_tunnel_key):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         if netaddr.IPAddress(dst_network).version == 4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -324,11 +318,10 @@ class L3App(df_base_app.DFlowApp):
 
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
-        inst = [self.get_datapath().ofproto_parser.OFPInstructionActions(
+        inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
         self.mod_flow(
-            self.get_datapath(),
             cookie=dst_router_tunnel_key,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
@@ -340,8 +333,8 @@ class L3App(df_base_app.DFlowApp):
                  router_port)
         local_network_id = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         tunnel_key = router_port.get_unique_key()
         ip = router_port.get_ip()
         mac = router_port.get_mac()
@@ -354,7 +347,6 @@ class L3App(df_base_app.DFlowApp):
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -364,7 +356,6 @@ class L3App(df_base_app.DFlowApp):
         match.set_metadata(local_network_id)
         match.set_dl_dst(haddr_to_bin(mac))
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
@@ -373,7 +364,6 @@ class L3App(df_base_app.DFlowApp):
         match = parser.OFPMatch()
         cookie = tunnel_key
         self.mod_flow(
-            datapath=self.get_datapath(),
             cookie=cookie,
             cookie_mask=cookie,
             table_id=const.L3_LOOKUP_TABLE,
