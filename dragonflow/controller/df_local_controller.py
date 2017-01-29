@@ -114,6 +114,7 @@ class DfLocalController(object):
             self.vswitch_api.set_controller_fail_mode(
                 self.integration_bridge, 'secure')
         self.open_flow_app.start()
+        self.create_tunnels()
         df_db_objects_refresh.initialize_object_refreshers(self)
         self.db_sync_loop()
 
@@ -140,7 +141,6 @@ class DfLocalController(object):
     def run_db_poll(self):
         try:
             self.register_chassis()
-            self.create_tunnels()
 
             topics = self.topology.get_subscribed_topics()
             df_db_objects_refresh.sync_local_cache_from_nb_db(topics)
