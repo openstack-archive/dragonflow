@@ -10,6 +10,7 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from neutron_lib import constants as n_const
 
 DRAGONFLOW_VIRTUAL_PORT = "DragonflowVirtualPort"
 OVS_INTERFACE = "ovsinterface"
@@ -21,3 +22,26 @@ OVS_UNKNOWN_INTERFACE = "unknown"
 
 PORT_STATUS_UP = "up"
 PORT_STATUS_DOWN = "down"
+
+DEVICE_OWNER_LOCAL_GW = (
+            n_const.DEVICE_OWNER_NETWORK_PREFIX + "local_router_gateway")
+
+DATA_DEVICE_OWNER = [
+    n_const.DEVICE_OWNER_COMPUTE_PREFIX
+]
+
+LGW_DEVICE_OWNER = [
+    DEVICE_OWNER_LOCAL_GW
+]
+
+GW_DEVICE_OWNER = [
+    n_const.DEVICE_OWNER_ROUTER_GW
+]
+
+
+def is_port_owner_of_type(owner_type, type_list):
+    for sub_type in type_list:
+        if sub_type in owner_type:
+            return True
+
+    return False

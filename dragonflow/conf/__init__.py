@@ -15,6 +15,7 @@ from oslo_config import cfg
 from dragonflow.conf import df_active_port_detection
 from dragonflow.conf import df_cassandra
 from dragonflow.conf import df_common_params
+from dragonflow.conf import df_connector
 from dragonflow.conf import df_dhcp
 from dragonflow.conf import df_dnat
 from dragonflow.conf import df_l2
@@ -28,6 +29,7 @@ CONF = cfg.CONF
 
 df_cassandra.register_opts()
 df_common_params.register_opts()
+df_connector.register_opts()
 df_dhcp.register_opts()
 df_metadata_service.register_opts()
 df_active_port_detection.register_opts()
