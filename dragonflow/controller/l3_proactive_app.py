@@ -256,7 +256,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                 if port_ip != route[1]:
                     continue
                 route_dict = dict(zip(['destination', 'nexthop'], route))
-                self._remove_router_route(router, route_dict)
+                self._delete_router_route(router, route_dict)
                 self._del_from_route_cache(ROUTE_ADDED, router_id, route_dict)
                 self._add_to_route_cache(ROUTE_TO_ADD, router_id, route_dict)
 
