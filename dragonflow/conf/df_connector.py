@@ -17,19 +17,22 @@ from oslo_config import cfg
 
 from dragonflow._i18n import _
 
-df_snat_app_opts = [
-    cfg.StrOpt('external_host_ip',
-               default='172.24.4.100',
-               help=_("Compute node external IP")),
-    cfg.StrOpt('external_host_mac',
-               default='91:92:93:94:95:96',
-               help=_("Compute node mac address for external interface")),
+df_connector_app_opts = [
+    cfg.StrOpt('external_network_bridge',
+               default='br-ex',
+               help=_("Name of bridge used for external network traffic")),
+    cfg.StrOpt('int_peer_patch_port', default='patch-ex',
+               help=_("Peer patch port in integration bridge for external "
+                      "bridge.")),
+    cfg.StrOpt('ex_peer_patch_port', default='patch-int',
+               help=_("Peer patch port in external bridge for integration "
+                      "bridge.")),
 ]
 
 
 def register_opts():
-    cfg.CONF.register_opts(df_snat_app_opts, group='df_snat_app')
+    cfg.CONF.register_opts(df_connector_app_opts, group='df_connector_app')
 
 
 def list_opts():
-    return {'df_snat_app': df_snat_app_opts}
+    return {'df_connector_app': df_connector_app_opts}

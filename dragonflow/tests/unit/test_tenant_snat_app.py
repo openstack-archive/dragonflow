@@ -19,11 +19,11 @@ from dragonflow.controller.common import constants
 from dragonflow.tests.unit import test_app_base
 
 
-class TestSNATApp(test_app_base.DFAppTestBase):
-    apps_list = "snat_app.SNATApp"
+class TestTenantSNATApp(test_app_base.DFAppTestBase):
+    apps_list = "tenant_snat_app.TenantSNATApp"
 
     def setUp(self):
-        super(TestSNATApp, self).setUp()
+        super(TestTenantSNATApp, self).setUp()
         self.SNAT_app = self.open_flow_app.dispatcher.apps[0]
         self.SNAT_app.external_ofport = 99
 
@@ -50,17 +50,17 @@ class TestSNATApp(test_app_base.DFAppTestBase):
                    match=mock.ANY),
               mock.call(
                    inst=mock.ANY,
+                   table_id=constants.INGRESS_NAT2_TABLE,
+                   priority=constants.PRIORITY_LOW,
+                   match=mock.ANY),
+              mock.call(
+                   inst=mock.ANY,
                    table_id=constants.EGRESS_NAT_TABLE,
                    priority=constants.PRIORITY_LOW,
                    match=mock.ANY),
               mock.call(
                    inst=mock.ANY,
                    table_id=constants.EGRESS_NAT2_TABLE,
-                   priority=constants.PRIORITY_LOW,
-                   match=mock.ANY),
-              mock.call(
-                   inst=mock.ANY,
-                   table_id=constants.INGRESS_NAT2_TABLE,
                    priority=constants.PRIORITY_LOW,
                    match=mock.ANY)])
 
@@ -74,11 +74,23 @@ class TestSNATApp(test_app_base.DFAppTestBase):
                    inst=mock.ANY,
                    table_id=constants.INGRESS_NAT2_TABLE,
                    priority=constants.PRIORITY_LOW,
+                   match=mock.ANY),
+             mock.call(
+                   inst=mock.ANY,
+                   table_id=constants.EGRESS_NAT_TABLE,
+                   priority=constants.PRIORITY_LOW,
+                   match=mock.ANY),
+            mock.call(
+                   inst=mock.ANY,
+                   table_id=constants.EGRESS_NAT2_TABLE,
+                   priority=constants.PRIORITY_LOW,
                    match=mock.ANY)])
 
     def test_remove_not_last_local_port(self):
         # mockup not last VM port is being removed
         self.SNAT_app.count = 2
+        tenant_id = test_app_base.fake_local_port1.get_topic()
+        self.SNAT_app.tenant_info[tenant_id] = 2
 
         self.controller.open_flow_app.notify_remove_local_port(
             test_app_base.fake_local_port1)
@@ -88,11 +100,23 @@ class TestSNATApp(test_app_base.DFAppTestBase):
                    command=mock.ANY,
                    table_id=constants.INGRESS_NAT2_TABLE,
                    priority=constants.PRIORITY_LOW,
+                   match=mock.ANY),
+             mock.call(
+                   command=mock.ANY,
+                   table_id=constants.EGRESS_NAT_TABLE,
+                   priority=constants.PRIORITY_LOW,
+                   match=mock.ANY),
+            mock.call(
+                   command=mock.ANY,
+                   table_id=constants.EGRESS_NAT2_TABLE,
+                   priority=constants.PRIORITY_LOW,
                    match=mock.ANY)])
 
     def test_remove_last_local_port(self):
         # mockup last VM port is being removed
         self.SNAT_app.count = 1
+        tenant_id = test_app_base.fake_local_port1.get_topic()
+        self.SNAT_app.tenant_info[tenant_id] = 1
 
         self.controller.open_flow_app.notify_remove_local_port(
             test_app_base.fake_local_port1)
@@ -115,16 +139,16 @@ class TestSNATApp(test_app_base.DFAppTestBase):
                    match=mock.ANY),
              mock.call(
                    command=mock.ANY,
+                   table_id=constants.INGRESS_NAT2_TABLE,
+                   priority=constants.PRIORITY_LOW,
+                   match=mock.ANY),
+             mock.call(
+                   command=mock.ANY,
                    table_id=constants.EGRESS_NAT_TABLE,
                    priority=constants.PRIORITY_LOW,
                    match=mock.ANY),
              mock.call(
                    command=mock.ANY,
                    table_id=constants.EGRESS_NAT2_TABLE,
-                   priority=constants.PRIORITY_LOW,
-                   match=mock.ANY),
-             mock.call(
-                   command=mock.ANY,
-                   table_id=constants.INGRESS_NAT2_TABLE,
                    priority=constants.PRIORITY_LOW,
                    match=mock.ANY)])
