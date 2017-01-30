@@ -29,6 +29,12 @@ ROUTE_ADDED = 'route_added'
 LOG = log.getLogger(__name__)
 
 
+def _cookie(val):
+    result = ((val << const.L3_PROACTIVE_TUNNEL_COOKIE_SHIFT) &
+              const.L3_PROACTIVE_TUNNEL_COOKIE_MASK)
+    return result, const.L3_PROACTIVE_TUNNEL_COOKIE_MASK
+
+
 class L3ProactiveApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L3ProactiveApp, self).__init__(*args, **kwargs)
@@ -298,9 +304,11 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
 
+        cookie, cookie_mask = _cookie(tunnel_key)
         self.mod_flow(
             self.get_datapath(),
-            cookie=tunnel_key,
+            cookie=cookie,
+            cookie_mask=cookie_mask,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_VERY_HIGH,
@@ -435,9 +443,11 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
 
+        cookie, cookie_mask = _cookie(dst_router_tunnel_key)
         self.mod_flow(
             self.get_datapath(),
-            cookie=dst_router_tunnel_key,
+            cookie=cookie,
+            cookie_mask=cookie_mask,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,
