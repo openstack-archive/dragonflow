@@ -29,6 +29,7 @@ _aging_cookie = 0
 ACTIVE_PORT_DETECTION_APP = \
     "active_port_detection_app.ActivePortDetectionApp"
 
+ip_version_convertor = {"IPv4": 4, "IPv6": 6}
 
 AGING_COOKIE_NAME = 'aging'
 AGING_COOKIE_LEN = 1
@@ -95,3 +96,11 @@ def delete_conntrack_entries_by_filter(ethertype='IPv4', protocol=None,
         LOG.debug("Successfully executed conntrack command %s", cmd)
     except RuntimeError:
         LOG.exception(_LE("Failed execute conntrack command %s"), cmd)
+
+
+def ethertype_to_ip_version(ethertype):
+    if ethertype == "IPv4":
+        return 4
+    if ethertype == "IPv6":
+        return 6
+    raise exceptions.InvalidEtherTypeException(ethertype=ethertype)
