@@ -21,12 +21,18 @@ from ryu.lib import addrconv
 from dragonflow._i18n import _LE
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import cookies
 
 LOG = log.getLogger(__name__)
 
 _aging_cookie = 0
 ACTIVE_PORT_DETECTION_APP = \
     "active_port_detection_app.ActivePortDetectionApp"
+
+
+AGING_COOKIE_NAME = 'aging'
+AGING_COOKIE_LEN = 1
+cookies.register_cookie_bits(AGING_COOKIE_NAME, AGING_COOKIE_LEN)
 
 
 def ipv4_text_to_int(ip_text):
@@ -54,11 +60,9 @@ def get_aging_cookie():
     return _aging_cookie
 
 
-def set_aging_cookie_bits(cookie):
-    # clear aging bits before using
-    c = cookie & (~const.GLOBAL_AGING_COOKIE_MASK)
-    c |= (_aging_cookie & const.GLOBAL_AGING_COOKIE_MASK)
-    return c
+def set_aging_cookie_bits(old_cookie, old_cookie_mask):
+    return cookies.get_cookie(AGING_COOKIE_NAME, _aging_cookie,
+                              old_cookie, old_cookie_mask)
 
 
 def get_xor_cookie(cookie):
