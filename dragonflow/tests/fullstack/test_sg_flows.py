@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
 import time
 
 from neutron_lib import constants as n_const
@@ -194,6 +195,160 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
                     return port
         return None
 
+    def _test_associating_flows(self, subnet_info):
+
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create()
+        self.assertTrue(network.exists())
+
+        subnet_info['network_id'] = network_id
+        subnet = self.store(objects.SubnetTestObj(self.neutron,
+                                                  self.nb_api,
+                                                  network_id=network_id))
+        subnet.create(subnet_info)
+        self.assertTrue(subnet.exists())
+
+        security_group = self.store(objects.SecGroupTestObj(
+            self.neutron,
+            self.nb_api))
+        security_group_id = security_group.create()
+        self.assertTrue(security_group.exists())
+
+        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm.create(network=network, security_groups=[security_group_id])
+
+        addresses = vm.server.addresses['mynetwork']
+        self.assertIsNotNone(addresses)
+        ip = addresses[0]['addr']
+        self.assertIsNotNone(ip)
+        mac = addresses[0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(mac)
+        port = utils.wait_until_is_and_return(
+            lambda: self._get_vm_port(ip, mac),
+            exception=Exception('No port assigned to VM')
+        )
+        tunnel_key = port.get_unique_key()
+        tunnel_key_hex = hex(tunnel_key)
+
+        of_port = self.vswitch_api.get_port_ofport_by_id(port.get_id())
+        self.assertIsNotNone(of_port)
+
+        ovs = utils.OvsFlowsParser()
+        flows_after_change = ovs.dump(self.integration_bridge)
+
+        # Check if the associating flows were installed.
+        ingress_associating_flow, egress_associating_flow = \
+            self._find_associating_flows(flows_after_change, tunnel_key_hex)
+
+        LOG.info("flows after associating a port and a security group"
+                 " are: %s",
+                 ovs.get_ovs_flows(self.integration_bridge))
+
+        self.assertIsNotNone(ingress_associating_flow)
+        self.assertIsNotNone(egress_associating_flow)
+
+        vm.close()
+
+        time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        flows_after_update = ovs.dump(self.integration_bridge)
+
+        # Check if the associating flows were removed.
+        ingress_associating_flow, egress_associating_flow = \
+            self._find_associating_flows(flows_after_update, tunnel_key_hex)
+
+        self.assertIsNone(ingress_associating_flow)
+        self.assertIsNone(egress_associating_flow)
+
+    def _test_rule_flows(self, subnet_info):
+
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create()
+        self.assertTrue(network.exists())
+
+        cidr = subnet_info['cidr']
+        network_obj = netaddr.IPNetwork(cidr)
+        ethertype = utils.ip_version_to_ethertype(subnet_info['ip_version'])
+        gateway_ip = network_obj[1]
+
+        subnet_info['gateway_ip'] = gateway_ip
+        subnet_info['network_id'] = network_id
+        subnet = self.store(objects.SubnetTestObj(self.neutron,
+                                                  self.nb_api,
+                                                  network_id=network_id))
+        subnet.create(subnet_info)
+
+        security_group = self.store(objects.SecGroupTestObj(
+            self.neutron,
+            self.nb_api))
+        security_group_id = security_group.create()
+        self.assertTrue(security_group.exists())
+
+        ingress_rule_info = {'ethertype': ethertype,
+                             'direction': 'ingress',
+                             'protocol': 'tcp',
+                             'port_range_min': '80',
+                             'port_range_max': '81',
+                             'remote_ip_prefix': cidr}
+        ingress_rule_id = security_group.rule_create(secrule=ingress_rule_info)
+        self.assertTrue(security_group.rule_exists(ingress_rule_id))
+
+        egress_rule_info = {'ethertype': ethertype,
+                            'direction': 'egress',
+                            'protocol': str(n_const.PROTO_NUM_UDP),
+                            'port_range_min': '53',
+                            'port_range_max': '53',
+                            'remote_group_id': security_group_id}
+        egress_rule_id = security_group.rule_create(secrule=egress_rule_info)
+        self.assertTrue(security_group.rule_exists(egress_rule_id))
+
+        # Get addresses for VMs
+        vm1_ip = network_obj[4]
+        vm2_ip = network_obj[5]
+        vm1 = self.store(objects.VMTestObj(self, self.neutron))
+        vm1.create(network=network, security_groups=[security_group_id],
+                   net_address=vm1_ip)
+        vm2 = self.store(objects.VMTestObj(self, self.neutron))
+        vm2.create(network=network, security_groups=[security_group_id],
+                   net_address=vm2_ip)
+
+        time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
+
+        ovs = utils.OvsFlowsParser()
+        flows = ovs.dump(self.integration_bridge)
+
+        LOG.info("flows after adding rules are: %s",
+                 ovs.get_ovs_flows(self.integration_bridge))
+
+        # Check if the rule flows were installed.
+        if ethertype == "IPv4":
+            expected_ingress_match = "tcp,nw_src={}".format(network_obj)
+        elif ethertype == "IPv6":
+            expected_ingress_match = "tcp6,ipv6_src={}".format(network_obj)
+        expected_ingress_match += ",tp_dst=0x50/0xfffe"
+
+        # Calculate vm1, vm2 network
+        vms_ip_set = netaddr.IPSet([vm1_ip, vm2_ip])
+        vms_ip_set.compact()
+        if ethertype == "IPv4":
+            expected_egress_match = "udp,nw_dst={}".format(vms_ip_set.pop())
+        elif ethertype == "IPv6":
+            expected_egress_match = "udp6,ipv6_dst={}".format(vms_ip_set.pop())
+        expected_egress_match += ",tp_dst=53"
+        self._check_rule_flows(flows, expected_ingress_match,
+                               expected_egress_match, True)
+
+        vm1.close()
+        vm2.close()
+
+        # We can't guarantee that all rule flows have been deleted because
+        # those rule flows may be installed in other test cases for all
+        # test cases are running synchronously.
+
+        # time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        # flows_after_update = ovs.dump(self.integration_bridge)
+        # self._check_rule_flows(flows_after_update,
+        #                        expected_ingress_rule_match,
+        #                        expected_egress_rule_match, False)
     def test_default_flows(self):
         found_ingress_skip_flow = False
         found_egress_skip_flow = False
@@ -260,148 +415,36 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         self.assertTrue(found_ingress_conntrack_invalied_drop_flow)
         self.assertTrue(found_egress_conntrack_invalied_drop_flow)
 
-    def test_associating_flows(self):
+    def test_associating_ipv4_flows(self):
 
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create()
-        self.assertTrue(network.exists())
-
-        subnet_info = {'network_id': network_id,
-                       'cidr': '192.168.123.0/24',
+        subnet_info = {'cidr': '192.168.123.0/24',
                        'gateway_ip': '192.168.123.1',
                        'ip_version': 4,
                        'name': 'test_subnet1',
                        'enable_dhcp': True}
-        subnet = self.store(objects.SubnetTestObj(self.neutron,
-                                                  self.nb_api,
-                                                  network_id=network_id))
-        subnet.create(subnet_info)
-        self.assertTrue(subnet.exists())
+        self._test_associating_flows(subnet_info=subnet_info)
 
-        security_group = self.store(objects.SecGroupTestObj(
-            self.neutron,
-            self.nb_api))
-        security_group_id = security_group.create()
-        self.assertTrue(security_group.exists())
+    def test_associating_ipv6_flows(self):
 
-        vm = self.store(objects.VMTestObj(self, self.neutron))
-        vm.create(network=network, security_groups=[security_group_id])
+        subnet_info = {'cidr': '1111:1111::/64',
+                       'gateway_ip': '1111:1111::1',
+                       'ip_version': 6,
+                       'name': 'test_subnet1',
+                       'enable_dhcp': True}
+        self._test_associating_flows(subnet_info=subnet_info)
 
-        addresses = vm.server.addresses['mynetwork']
-        self.assertIsNotNone(addresses)
-        ip = addresses[0]['addr']
-        self.assertIsNotNone(ip)
-        mac = addresses[0]['OS-EXT-IPS-MAC:mac_addr']
-        self.assertIsNotNone(mac)
-        port = utils.wait_until_is_and_return(
-            lambda: self._get_vm_port(ip, mac),
-            exception=Exception('No port assigned to VM')
-        )
-        unique_key = port.get_unique_key()
-        unique_key_hex = hex(unique_key)
+    def test_rule_ipv4_flows(self):
 
-        of_port = self.vswitch_api.get_port_ofport_by_id(port.get_id())
-        self.assertIsNotNone(of_port)
-
-        ovs = utils.OvsFlowsParser()
-        flows_after_change = ovs.dump(self.integration_bridge)
-
-        # Check if the associating flows were installed.
-        ingress_associating_flow, egress_associating_flow = \
-            self._find_associating_flows(flows_after_change, unique_key_hex)
-
-        LOG.info("flows after associating a port and a security group"
-                 " are: %s",
-                 ovs.get_ovs_flows(self.integration_bridge))
-
-        self.assertIsNotNone(ingress_associating_flow)
-        self.assertIsNotNone(egress_associating_flow)
-
-        vm.close()
-
-        time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        flows_after_update = ovs.dump(self.integration_bridge)
-
-        # Check if the associating flows were removed.
-        ingress_associating_flow, egress_associating_flow = \
-            self._find_associating_flows(flows_after_update, unique_key_hex)
-
-        self.assertIsNone(ingress_associating_flow)
-        self.assertIsNone(egress_associating_flow)
-
-    def test_rule_flows(self):
-
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create()
-        self.assertTrue(network.exists())
-
-        subnet_info = {'network_id': network_id,
+        subnet_info = {'ip_version': 4,
                        'cidr': '192.168.124.0/24',
-                       'gateway_ip': '192.168.124.1',
-                       'ip_version': 4,
                        'name': 'test_subnet4',
                        'enable_dhcp': True}
-        subnet = self.store(objects.SubnetTestObj(self.neutron,
-                                                  self.nb_api,
-                                                  network_id=network_id))
-        subnet.create(subnet_info)
+        self._test_rule_flows(subnet_info)
 
-        security_group = self.store(objects.SecGroupTestObj(
-            self.neutron,
-            self.nb_api))
-        security_group_id = security_group.create()
-        self.assertTrue(security_group.exists())
+    def test_rule_ipv6_flows(self):
 
-        ingress_rule_info = {'ethertype': 'IPv4',
-                             'direction': 'ingress',
-                             'protocol': 'tcp',
-                             'port_range_min': '80',
-                             'port_range_max': '81',
-                             'remote_ip_prefix': '192.168.124.0/24'}
-        ingress_rule_id = security_group.rule_create(secrule=ingress_rule_info)
-        self.assertTrue(security_group.rule_exists(ingress_rule_id))
-
-        egress_rule_info = {'ethertype': 'IPv4',
-                            'direction': 'egress',
-                            'protocol': str(n_const.PROTO_NUM_UDP),
-                            'port_range_min': '53',
-                            'port_range_max': '53',
-                            'remote_group_id': security_group_id}
-        egress_rule_id = security_group.rule_create(secrule=egress_rule_info)
-        self.assertTrue(security_group.rule_exists(egress_rule_id))
-
-        vm1 = self.store(objects.VMTestObj(self, self.neutron))
-        vm1.create(network=network, security_groups=[security_group_id],
-                   net_address='192.168.124.8')
-        vm2 = self.store(objects.VMTestObj(self, self.neutron))
-        vm2.create(network=network, security_groups=[security_group_id],
-                   net_address='192.168.124.9')
-
-        time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
-
-        ovs = utils.OvsFlowsParser()
-        flows = ovs.dump(self.integration_bridge)
-
-        LOG.info("flows after adding rules are: %s",
-                 ovs.get_ovs_flows(self.integration_bridge))
-
-        # Check if the rule flows were installed.
-        expected_ingress_rule_match = \
-            "tcp,nw_src=192.168.124.0/24,tp_dst=0x50/0xfffe"
-        expected_egress_rule_match = \
-            "udp,nw_dst=192.168.124.8/31,tp_dst=53"
-        self._check_rule_flows(flows, expected_ingress_rule_match,
-                               expected_egress_rule_match, True)
-
-        vm1.close()
-        vm2.close()
-
-        # We can't guarantee that all rule flows have been deleted because
-        # those rule flows may be installed in other test cases for all
-        # test cases are running synchronously.
-
-        # time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        # flows_after_update = ovs.dump(self.integration_bridge)
-        # self._check_rule_flows(flows_after_update,
-        #                        expected_ingress_rule_match,
-        #                        expected_egress_rule_match, False)
+        subnet_info = {'ip_version': 6,
+                       'cidr': '1111::/64',
+                       'name': 'test_subnet5',
+                       'enable_dhcp': True}
+        self._test_rule_flows(subnet_info)
