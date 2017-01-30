@@ -25,7 +25,6 @@ LOG = log.getLogger(__name__)
 
 _aging_cookie = 0
 
-
 AGING_COOKIE_NAME = 'aging'
 AGING_COOKIE_LEN = 1
 
@@ -38,8 +37,6 @@ def ipv4_text_to_int(ip_text):
 
 
 def ipv6_text_to_short(ip_text):
-    if isinstance(ip_text, unicode):
-        ip_text = ip_text.encode('ascii', 'ignore')
     try:
         return list(struct.unpack('!8H', addrconv.ipv6.text_to_bin(ip_text)))
     except Exception:
@@ -83,3 +80,11 @@ def delete_conntrack_entries_by_filter(ethertype='IPv4', protocol=None,
         LOG.debug("Successfully executed conntrack command %s", cmd)
     except RuntimeError:
         LOG.exception("Failed execute conntrack command %s", cmd)
+
+
+def ethertype_to_ip_version(ethertype):
+    if ethertype == "IPv4":
+        return 4
+    if ethertype == "IPv6":
+        return 6
+    raise exceptions.InvalidEtherTypeException(ethertype=ethertype)
