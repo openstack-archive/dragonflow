@@ -10,8 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
 import sys
 import time
+import traceback as tr_p
 
 from neutron.agent.common import utils
 from oslo_log import log
@@ -415,11 +417,9 @@ class TestDHCPApp(test_base.DFTestBase):
         ignore_action = app_testing_objects.IgnoreAction()
         key1 = (self.subnet1.subnet_id, self.port1.port_id)
         actions = [
-                app_testing_objects.SendAction(
-                    self.subnet1.subnet_id,
-                    self.port1.port_id,
-                    self._create_dhcp_request
-                )]
+            app_testing_objects.SendAction(self.subnet1.subnet_id,
+                                           self.port1.port_id,
+                                           self._create_dhcp_request)]
         if disable_rule:
             actions.append(app_testing_objects.DisableRuleAction())
 
@@ -1062,23 +1062,23 @@ class TestSGApp(test_base.DFTestBase):
         self.topology = None
         self.policy = None
         try:
-            security_group = self.store(objects.SecGroupTestObj(
+            self.security_group = self.store(objects.SecGroupTestObj(
                 self.neutron,
                 self.nb_api))
-            security_group_id = security_group.create()
-            self.assertTrue(security_group.exists())
+            security_group_id = self.security_group.create()
+            self.assertTrue(self.security_group.exists())
 
-            security_group2 = self.store(objects.SecGroupTestObj(
+            self.security_group2 = self.store(objects.SecGroupTestObj(
                 self.neutron,
                 self.nb_api))
-            security_group_id2 = security_group2.create()
-            self.assertTrue(security_group2.exists())
+            security_group_id2 = self.security_group2.create()
+            self.assertTrue(self.security_group2.exists())
 
-            security_group3 = self.store(objects.SecGroupTestObj(
+            self.security_group3 = self.store(objects.SecGroupTestObj(
                 self.neutron,
                 self.nb_api))
-            security_group_id3 = security_group3.create()
-            self.assertTrue(security_group3.exists())
+            security_group_id3 = self.security_group3.create()
+            self.assertTrue(self.security_group3.exists())
 
             self.topology = self.store(
                 app_testing_objects.Topology(
@@ -1087,77 +1087,86 @@ class TestSGApp(test_base.DFTestBase):
                 )
             )
 
-            self.subnet = self.topology.create_subnet(cidr='192.168.14.0/24')
-            self.port1 = self.subnet.create_port()
-            self.port2 = self.subnet.create_port()
-            self.port3 = self.subnet.create_port([security_group_id])
-            self.port4 = self.subnet.create_port()
-
-            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-
-            self.port4.update(
-                {'allowed_address_pairs': [{'ip_address': '192.168.14.200'}]})
-
-            port1_lport = self.port1.port.get_logical_port()
-            self.assertIsNotNone(port1_lport)
-            port1_fixed_ip = port1_lport.get_ip()
-
-            port2_lport = self.port2.port.get_logical_port()
-            self.assertIsNotNone(port2_lport)
-            port2_fixed_ip = port2_lport.get_ip()
-
-            egress_rule_info = {'ethertype': 'IPv4',
-                                'direction': 'egress',
-                                'protocol': 'icmp'}
-            egress_rule_id = security_group.rule_create(
-                secrule=egress_rule_info)
-            self.assertTrue(security_group.rule_exists(egress_rule_id))
-            egress_rule_id2 = security_group2.rule_create(
-                secrule=egress_rule_info)
-            self.assertTrue(security_group2.rule_exists(egress_rule_id2))
-
-            ingress_rule_info = {'ethertype': 'IPv4',
-                                 'direction': 'ingress',
-                                 'protocol': 'icmp',
-                                 'remote_ip_prefix': port1_fixed_ip + "/32"}
-            ingress_rule_id = security_group.rule_create(
-                secrule=ingress_rule_info)
-            self.assertTrue(security_group.rule_exists(ingress_rule_id))
-
-            ingress_rule_info2 = {'ethertype': 'IPv4',
-                                  'direction': 'ingress',
-                                  'protocol': 'icmp',
-                                  'remote_ip_prefix': port2_fixed_ip + "/32"}
-            ingress_rule_id2 = security_group2.rule_create(
-                secrule=ingress_rule_info2)
-            self.assertTrue(security_group2.rule_exists(ingress_rule_id2))
-
-            ingress_rule_info3 = {
-                'ethertype': 'IPv4',
-                'direction': 'ingress',
-                'protocol': 'icmp',
-                'remote_group_id':
-                    self.topology.fake_default_security_group.secgroup_id}
-            ingress_rule_id3 = security_group3.rule_create(
-                secrule=ingress_rule_info3)
-            self.assertTrue(security_group3.rule_exists(ingress_rule_id3))
-
             self.active_security_group_id = security_group_id
             self.inactive_security_group_id = security_group_id2
-            self.permit_port_id = self.port1.port_id
-            self.no_permit_port_id = self.port2.port_id
-            self.permit_icmp_request = self._get_icmp_request1
-            self.no_permit_icmp_request = self._get_icmp_request2
             self.allowed_address_pairs_security_group_id = security_group_id3
 
-            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+            self.permit_icmp_request = self._get_icmp_request1
+            self.no_permit_icmp_request = self._get_icmp_request2
 
-            self._update_policy()
-            self._create_allowed_address_pairs_policy()
         except Exception:
             if self.topology:
                 self.topology.close()
             raise
+
+    def _setup_subnet(self, cidr):
+        network = netaddr.IPNetwork(cidr)
+
+        self.port1 = self.subnet.create_port()
+        self.port2 = self.subnet.create_port()
+        self.port3 = self.subnet.create_port([self.active_security_group_id])
+        self.port4 = self.subnet.create_port()
+
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+
+        self.port4.update(
+            {'allowed_address_pairs': [{'ip_address': network[100]}]})
+
+        port1_lport = self.port1.port.get_logical_port()
+        self.assertIsNotNone(port1_lport)
+
+        port2_lport = self.port2.port.get_logical_port()
+        self.assertIsNotNone(port2_lport)
+
+    def _setup_groups_rules(self, cidr):
+        if self.ethertype == "IPv4":
+            icmp_type = 'icmp'
+        else:
+            icmp_type = 'icmpv6'
+        egress_rule_info = {'ethertype': self.ethertype,
+                            'direction': 'egress',
+                            'protocol': icmp_type}
+        egress_rule_id = self.security_group.rule_create(
+            secrule=egress_rule_info)
+        self.assertTrue(self.security_group.rule_exists(egress_rule_id))
+        egress_rule_id2 = self.security_group2.rule_create(
+            secrule=egress_rule_info)
+        self.assertTrue(self.security_group2.rule_exists(egress_rule_id2))
+
+        # Get lports
+        port1_lport = self.port1.port.get_logical_port()
+        port1_fixed_ip = port1_lport.get_ip()
+        port2_lport = self.port2.port.get_logical_port()
+        port2_fixed_ip = port2_lport.get_ip()
+        ingress_rule_info = {
+            'ethertype': self.ethertype,
+            'direction': 'ingress',
+            'protocol': icmp_type,
+            'remote_ip_prefix': str(netaddr.IPNetwork(port1_fixed_ip))}
+        ingress_rule_id = self.security_group.rule_create(
+            secrule=ingress_rule_info)
+        self.assertTrue(self.security_group.rule_exists(ingress_rule_id))
+
+        ingress_rule_info2 = {
+            'ethertype': self.ethertype,
+            'direction': 'ingress',
+            'protocol': icmp_type,
+            'remote_ip_prefix': str(netaddr.IPNetwork(port2_fixed_ip))}
+        ingress_rule_id2 = self.security_group2.rule_create(
+            secrule=ingress_rule_info2)
+        self.assertTrue(self.security_group2.rule_exists(ingress_rule_id2))
+
+        ingress_rule_info3 = {
+            'ethertype': self.ethertype,
+            'direction': 'ingress',
+            'protocol': icmp_type,
+            'remote_group_id':
+                self.topology.fake_default_security_group.secgroup_id}
+        ingress_rule_id3 = self.security_group3.rule_create(
+            secrule=ingress_rule_info3)
+        self.assertTrue(self.security_group3.rule_exists(ingress_rule_id3))
+
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
     def _update_policy(self):
         packet1, self.icmp_request1 = \
@@ -1215,21 +1224,9 @@ class TestSGApp(test_base.DFTestBase):
     def _get_allowed_address_pairs_icmp_request(self):
         return self.allowed_address_pairs_icmp_request
 
-    def _create_port_policies(self):
-
+    def _get_filtering_rules(self):
         ignore_action = app_testing_objects.IgnoreAction()
-        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
-        key1 = (self.subnet.subnet_id, self.permit_port_id)
-        rules1 = [
-            app_testing_objects.PortPolicyRule(
-                # Detect pong, end simulation
-                app_testing_objects.RyuICMPPongFilter(
-                    self.permit_icmp_request),
-                actions=[
-                    app_testing_objects.DisableRuleAction(),
-                    app_testing_objects.StopSimulationAction(),
-                ]
-            ),
+        rules = [
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
                 app_testing_objects.RyuARPGratuitousFilter(),
@@ -1242,6 +1239,22 @@ class TestSGApp(test_base.DFTestBase):
                 app_testing_objects.RyuIPv6Filter(),
                 actions=[
                     ignore_action
+                ]
+            )
+        ]
+        return rules
+
+    def _create_port_policies(self):
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
+        key1 = (self.subnet.subnet_id, self.permit_port_id)
+        rules1 = [
+            app_testing_objects.PortPolicyRule(
+                # Detect pong, end simulation
+                app_testing_objects.RyuICMPPongFilter(
+                    self.permit_icmp_request, ethertype=self.ethertype),
+                actions=[
+                    app_testing_objects.DisableRuleAction(),
+                    app_testing_objects.StopSimulationAction(),
                 ]
             ),
         ]
@@ -1250,23 +1263,10 @@ class TestSGApp(test_base.DFTestBase):
             app_testing_objects.PortPolicyRule(
                 # Detect pong, raise unexpected packet exception
                 app_testing_objects.RyuICMPPongFilter(
-                    self.no_permit_icmp_request),
+                    self.no_permit_icmp_request,
+                    self.ethertype),
                 actions=[
                     raise_action
-                ]
-            ),
-            app_testing_objects.PortPolicyRule(
-                # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
-                actions=[
-                    ignore_action
-                ]
-            ),
-            app_testing_objects.PortPolicyRule(
-                # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
-                actions=[
-                    ignore_action
                 ]
             ),
         ]
@@ -1275,7 +1275,8 @@ class TestSGApp(test_base.DFTestBase):
             app_testing_objects.PortPolicyRule(
                 # Detect ping from port1, reply with pong
                 app_testing_objects.RyuICMPPingFilter(
-                    self.permit_icmp_request),
+                    self.permit_icmp_request,
+                    self.ethertype),
                 actions=[
                     app_testing_objects.SendAction(
                         self.subnet.subnet_id,
@@ -1288,26 +1289,18 @@ class TestSGApp(test_base.DFTestBase):
             app_testing_objects.PortPolicyRule(
                 # Detect ping from port2, raise unexpected packet exception
                 app_testing_objects.RyuICMPPingFilter(
-                    self.no_permit_icmp_request),
+                    self.no_permit_icmp_request,
+                    self.ethertype),
                 actions=[
                     raise_action
                 ]
-            ),
-            app_testing_objects.PortPolicyRule(
-                # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
-                actions=[
-                    ignore_action
-                ]
-            ),
-            app_testing_objects.PortPolicyRule(
-                # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
-                actions=[
-                    ignore_action
-                ]
-            ),
+            )
         ]
+        filtering_rules = self._get_filtering_rules()
+        rules1 += filtering_rules
+        rules3 += filtering_rules
+        rules2 += filtering_rules
+
         policy1 = app_testing_objects.PortPolicy(
             rules=rules1,
             default_action=raise_action
@@ -1327,34 +1320,22 @@ class TestSGApp(test_base.DFTestBase):
         }
 
     def _create_allowed_address_pairs_port_policies(self):
-        ignore_action = app_testing_objects.IgnoreAction()
         raise_action = app_testing_objects.RaiseAction("Unexpected packet")
         key = (self.subnet.subnet_id, self.port3.port_id)
         rules = [
             app_testing_objects.PortPolicyRule(
                 # Detect ping from port4, end the test
                 app_testing_objects.RyuICMPPingFilter(
-                    self._get_allowed_address_pairs_icmp_request),
+                    self._get_allowed_address_pairs_icmp_request,
+                    self.ethertype),
                 actions=[
                     app_testing_objects.DisableRuleAction(),
                     app_testing_objects.StopSimulationAction()
                 ]
             ),
-            app_testing_objects.PortPolicyRule(
-                # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
-                actions=[
-                    ignore_action
-                ]
-            ),
-            app_testing_objects.PortPolicyRule(
-                # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
-                actions=[
-                    ignore_action
-                ]
-            ),
         ]
+        filtering_rules = self._get_filtering_rules()
+        rules += filtering_rules
         policy1 = app_testing_objects.PortPolicy(
             rules=rules,
             default_action=raise_action
@@ -1362,6 +1343,20 @@ class TestSGApp(test_base.DFTestBase):
         return {
             key: policy1,
         }
+
+    def _create_packet_protocol(self, src_ip, dst_ip):
+        if self.ethertype == "IPv4":
+            ip = ryu.lib.packet.ipv4.ipv4(
+                src=src_ip,
+                dst=dst_ip,
+                proto=self.icmp_type
+            )
+        else:
+            ip = ryu.lib.packet.ipv6.ipv6(
+                src=src_ip,
+                dst=dst_ip,
+                nxt=self.icmp_type)
+        return ip
 
     def _create_ping_packet(self, src_port, dst_port):
         allowed_address_pairs = \
@@ -1376,20 +1371,18 @@ class TestSGApp(test_base.DFTestBase):
         ethernet = ryu.lib.packet.ethernet.ethernet(
             src=src_mac,
             dst=dst_port.port.get_logical_port().get_mac(),
-            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+            ethertype=self.ethtype,
         )
-        ip = ryu.lib.packet.ipv4.ipv4(
-            src=src_ip,
-            dst=dst_port.port.get_logical_port().get_ip(),
-            proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
-        )
+        dst_ip = dst_port.port.get_logical_port().get_ip()
+        ip = self._create_packet_protocol(src_ip, dst_ip)
+
         icmp_id = int(time.mktime(time.gmtime())) & 0xffff
         icmp_seq = 0
-        icmp = ryu.lib.packet.icmp.icmp(
-            type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
-            data=ryu.lib.packet.icmp.echo(id_=icmp_id,
-                                          seq=icmp_seq,
-                                          data=self._create_random_string())
+        icmp = self.icmp_class(
+            type_=self.icmp_echo_request,
+            data=self.icmp_echo_class(id_=icmp_id,
+                                      seq=icmp_seq,
+                                      data=self._create_random_string())
         )
         result = ryu.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
@@ -1401,8 +1394,8 @@ class TestSGApp(test_base.DFTestBase):
     def _create_pong_packet(self, buf):
         pkt = ryu.lib.packet.packet.Packet(buf)
         ether = pkt.get_protocol(ryu.lib.packet.ethernet.ethernet)
-        ip = pkt.get_protocol(ryu.lib.packet.ipv4.ipv4)
-        icmp = pkt.get_protocol(ryu.lib.packet.icmp.icmp)
+        ip = pkt.get_protocol(self.ip_class)
+        icmp = pkt.get_protocol(self.icmp_class)
 
         src_mac = ether.dst
         dst_mac = ether.src
@@ -1430,7 +1423,10 @@ class TestSGApp(test_base.DFTestBase):
             self.port1.port.get_logical_port().get_ip()
         )
 
-        icmp.type = ryu.lib.packet.icmp.ICMP_ECHO_REPLY
+        if self.ethertype == "IPv4":
+            icmp.type = self.icmp_echo_reply
+        else:
+            icmp.type_ = self.icmp_echo_reply
         icmp.csum = 0
         result = ryu.lib.packet.packet.Packet()
         result.add_protocol(ether)
@@ -1460,9 +1456,12 @@ class TestSGApp(test_base.DFTestBase):
                 self.topology.close()
             raise
 
-    def test_icmp_ping_pong(self):
+    def _icmp_ping_pong(self):
         # the rules of the initial security group associated with port3
         # only let icmp echo requests from port1 pass.
+
+        self._update_policy()
+        self._create_allowed_address_pairs_policy()
         self.policy.start(self.topology)
         self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
@@ -1498,6 +1497,134 @@ class TestSGApp(test_base.DFTestBase):
 
         if len(self.allowed_address_pairs_policy.exceptions) > 0:
             raise self.allowed_address_pairs_policy.exceptions[0]
+
+
+class TestSGAppIpv4(TestSGApp):
+    def setUp(self):
+        super(TestSGAppIpv4, self).setUp()
+        try:
+            # Add IPv4 Network
+            self.ethertype = "IPv4"
+            cidr_ipv4 = '192.168.14.0/24'
+            self.subnet = self.topology.create_subnet(cidr=cidr_ipv4)
+            self._setup_subnet(cidr=cidr_ipv4)
+
+            # Add IPv4 group rules
+            self._setup_groups_rules(cidr=cidr_ipv4)
+
+            # the rules of the initial security group associated with port3
+            self.permit_port_id = self.port1.port_id
+            self.no_permit_port_id = self.port2.port_id
+
+            self.ip_class = ryu.lib.packet.ipv4.ipv4
+            self.icmp_class = ryu.lib.packet.icmp.icmp
+            self.icmp_echo_class = ryu.lib.packet.icmp.echo
+            self.icmp_type = ryu.lib.packet.ipv4.inet.IPPROTO_ICMP
+            self.icmp_echo_request = ryu.lib.packet.icmp.ICMP_ECHO_REQUEST
+            self.icmp_echo_reply = ryu.lib.packet.icmp.ICMP_ECHO_REPLY
+            self.ethtype = ryu.lib.packet.ethernet.ether.ETH_TYPE_IP
+
+            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+
+        except Exception:
+            if self.topology:
+                self.topology.close()
+            raise
+
+    def test_icmp_ping_pong(self):
+        self._icmp_ping_pong()
+
+
+class TestSGAppIpv6(TestSGApp):
+    def setUp(self):
+
+        # Disable Duplicate Address Detection requests from the interface
+        # self.dad_conf = utils.execute(['sysctl', '-n',
+        #                               'net.ipv6.conf.default.accept_dad'])
+        # utils.execute(['sysctl', '-w',
+        #               'net.ipv6.conf.default.accept_dad=0'],
+        #               run_as_root=True)
+        # # Disable Router Solicitation requests from the interface
+        # self.router_solicit_conf = utils.execute(
+        #    ['sysctl', '-n', 'net.ipv6.conf.default.router_solicitations'])
+        # utils.execute(['sysctl', '-w',
+        #               'net.ipv6.conf.default.router_solicitations=0'],
+        #               run_as_root=True)
+        super(TestSGAppIpv6, self).setUp()
+        try:
+            # Add IPv6 nodes
+            cidr_ipv6 = '1111::/64'
+            self.ethertype = "IPv6"
+            self.subnet = self.topology.create_subnet(cidr=cidr_ipv6)
+            self._setup_subnet(cidr=cidr_ipv6)
+
+            # Add IPv6 group rules
+            self._setup_groups_rules(cidr=cidr_ipv6)
+
+            # the rules of the initial security group associated with port3
+            self.permit_port_id = self.port1.port_id
+            self.no_permit_port_id = self.port2.port_id
+
+            self.ip_class = ryu.lib.packet.ipv6.ipv6
+            self.icmp_class = ryu.lib.packet.icmpv6.icmpv6
+            self.icmp_echo_class = ryu.lib.packet.icmpv6.echo
+            self.icmp_type = ryu.lib.packet.ipv6.inet.IPPROTO_ICMPV6
+            self.icmp_echo_request = ryu.lib.packet.icmpv6.ICMPV6_ECHO_REQUEST
+            self.icmp_echo_reply = ryu.lib.packet.icmpv6.ICMPV6_ECHO_REPLY
+            self.ethtype = ryu.lib.packet.ethernet.ether.ETH_TYPE_IPV6
+            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+
+        except Exception:
+            if self.topology:
+                self.topology.close()
+            raise
+
+    # def tearDown(self):
+    #     super(TestSGAppIpv6, self).tearDown()
+    #     self.topology.close()
+    #     self.policy.close()
+    #     utils.execute(['sysctl', '-w', 'net.ipv6.conf.default.accept_dad={}'.
+    #                    format(self.dad_conf)], run_as_root=True)
+    #     utils.execute(['sysctl', '-w',
+    #                    'net.ipv6.conf.default.router_solicitations={}'.
+    #                    format(self.router_solicit_conf)], run_as_root=True)
+
+    def _get_filtering_rules(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        rules = [
+            app_testing_objects.PortPolicyRule(
+                # Ignore gratuitous ARP packets
+                app_testing_objects.RyuARPGratuitousFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore Neighbor Advertisements
+                app_testing_objects.RyuNeighborSolicitationFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore Neighbor Advertisements
+                app_testing_objects.RyuNeighborAdvertisementFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 multicast
+                app_testing_objects.RyuIpv6MulticastFilter(),
+                actions=[
+                    ignore_action
+                ]
+            )
+        ]
+        return rules
+
+    def test_icmp_ping_pong(self):
+        self._icmp_ping_pong()
 
 
 class TestPortSecApp(test_base.DFTestBase):

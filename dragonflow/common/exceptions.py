@@ -110,3 +110,7 @@ class MaskOverlapException(DragonflowException):
 class CookieOverflowExcpetion(DragonflowException):
     message = _('Cookie overflow: '
                 'Value: %(cookie)s Offset: %(offset)s Mask: %(mask)s')
+
+
+class InvalidEtherTypeException(DragonflowException):
+    message = _('Unsupported ethertype: %(ethertype)')
