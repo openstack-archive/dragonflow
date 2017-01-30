@@ -94,6 +94,14 @@ def get_vm_port(nb_api, ip=None, mac=None):
     return None
 
 
+def ip_version_to_ethertype(ip_version):
+    if ip_version == 4:
+        return "IPv4"
+    if ip_version == 6:
+        return "IPv6"
+    raise exceptions.InvalidEtherTypeException(ethertype=ip_version)
+
+
 class OvsFlowsParser(object):
 
     def get_ovs_flows(self, integration_bridge):
