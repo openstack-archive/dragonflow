@@ -651,9 +651,19 @@ class RyuFilterIcmpv6ProtocolType(object):
         return pkt_protocol.type_ == self.type_
 
 
+class RyuNeighborSolicitationFilter(RyuFilterIcmpv6ProtocolType):
+    """Use ryu to parse the packet and test if it's a Neighbor Solicitaion"""
+    type_ = icmpv6.ND_NEIGHBOR_SOLICIT
+
+
 class RyuNeighborAdvertisementFilter(RyuFilterIcmpv6ProtocolType):
     """Use ryu to parse the packet and test if it's a Neighbor Advertisement"""
     type_ = icmpv6.ND_NEIGHBOR_ADVERT
+
+
+class RyuRouterSolicitationFilter(RyuFilterIcmpv6ProtocolType):
+    """Use ryu to parse the packet and test if it's a Router Solicitation"""
+    type_ = icmpv6.ND_ROUTER_SOLICIT
 
 
 class RyuIpv6MulticastFilter(RyuFilterIcmpv6ProtocolType):
@@ -670,7 +680,7 @@ class RyuARPRequestFilter(object):
         pkt = packet.Packet(buf)
         pkt_arp_protocol = pkt.get_protocol(arp.arp)
         if (not pkt_arp_protocol) or (
-                    pkt_arp_protocol.opcode != arp.ARP_REQUEST):
+                pkt_arp_protocol.opcode != arp.ARP_REQUEST):
             return False
         if self.arp_tpa is not None:
             return pkt_arp_protocol.dst_ip == self.arp_tpa
@@ -737,9 +747,16 @@ class RyuDHCPAckFilter(RyuDHCPPacketTypeFilter):
 
 
 class RyuICMPFilter(object):
+    def __init__(self, ethertype="IPv4"):
+        super(RyuICMPFilter, self).__init__()
+        self.ethertype = ethertype
+
     def __call__(self, buf):
         pkt = packet.Packet(buf)
-        pkt_icmp_protocol = pkt.get_protocol(icmp.icmp)
+        if self.ethertype == "IPv4":
+            pkt_icmp_protocol = pkt.get_protocol(icmp.icmp)
+        else:
+            pkt_icmp_protocol = pkt.get_protocol(icmpv6.icmpv6)
         if not pkt_icmp_protocol:
             return False
         return self.filter_icmp(pkt, pkt_icmp_protocol)
@@ -763,12 +780,20 @@ class RyuICMPPingFilter(RyuICMPFilter):
     :param get_ping:    Return an object contained the original echo request
     :type get_ping:     Callable with no arguments.
     """
-    def __init__(self, get_ping=None):
+    def __init__(self, get_ping=None, ethertype="IPv4"):
         super(RyuICMPPingFilter, self).__init__()
         self.get_ping = get_ping
+        self.ethertype = ethertype
 
     def filter_icmp(self, pkt, proto):
-        if proto.type != icmp.ICMP_ECHO_REQUEST:
+        if self.ethertype == "IPv4":
+            icmp_req = icmp.ICMP_ECHO_REQUEST
+            proto_type = proto.type
+        else:
+            icmp_req = icmpv6.ICMPV6_ECHO_REQUEST
+            proto_type = proto.type_
+
+        if proto_type != icmp_req:
             return False
         result = True
         if self.get_ping is not None:
@@ -783,12 +808,20 @@ class RyuICMPPongFilter(RyuICMPFilter):
     :param get_ping:    Return an object contained the original echo request
     :type get_ping:     Callable with no arguments.
     """
-    def __init__(self, get_ping):
+    def __init__(self, get_ping, ethertype="IPv4"):
         super(RyuICMPPongFilter, self).__init__()
         self.get_ping = get_ping
+        self.ethertype = ethertype
 
     def filter_icmp(self, pkt, icmp_prot):
-        if icmp_prot.type != icmp.ICMP_ECHO_REPLY:
+        if self.ethertype == "IPv4":
+            icmp_req = icmp.ICMP_ECHO_REPLY
+            proto_type = icmp_prot.type
+        else:
+            icmp_req = icmpv6.ICMPV6_ECHO_REPLY
+            proto_type = icmp_prot.type_
+
+        if proto_type != icmp_req:
             return False
         ping = self.get_ping()
         return super(RyuICMPPongFilter, self).is_same_icmp(icmp_prot, ping)
