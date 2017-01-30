@@ -21,6 +21,7 @@ import six
 
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import cookies
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
 from dragonflow.db import models
@@ -30,8 +31,8 @@ LOG = log.getLogger(__name__)
 
 SG_CT_STATE_MASK = const.CT_STATE_NEW | const.CT_STATE_EST | \
                    const.CT_STATE_REL | const.CT_STATE_INV | const.CT_STATE_TRK
-COOKIE_FULLMASK = 0xffffffffffffffff
 SG_PRIORITY_OFFSET = 2
+COOKIE_NAME = 'sg rule'
 
 DEST_FIELD_NAME_BY_PROTOCOL_NUMBER = {
     n_const.PROTO_NUM_TCP: 'tcp_dst',
@@ -76,6 +77,8 @@ class SGApp(df_base_app.DFlowApp):
             netaddr.IPSet
         )
         self.secgroup_ip_refs = collections.defaultdict(set)
+        cookies.register_cookie_bits(COOKIE_NAME, 32,
+                                     is_local=True, app_name=SGApp.__name__)
 
     @staticmethod
     def _get_cidr_difference(cidr_set, new_cidr_set):
@@ -180,10 +183,9 @@ class SGApp(df_base_app.DFlowApp):
                 results.append(result)
         return results
 
-    @staticmethod
-    def _get_rule_cookie(rule_id):
-        rule_cookie = rule_id << const.SECURITY_GROUP_RULE_COOKIE_SHIFT_LEN
-        return rule_cookie & const.SECURITY_GROUP_RULE_COOKIE_MASK
+    def _get_rule_cookie(self, rule_id):
+        return cookies.get_cookie(COOKIE_NAME, rule_id,
+                                  is_local=True, app_name=SGApp.__name__)
 
     def _inc_ip_reference_and_check(self, secgroup_id, ip, lport_id):
         """
@@ -571,9 +573,10 @@ class SGApp(df_base_app.DFlowApp):
                 parameters_merge[ipv4_match_item] = \
                     SGApp._get_network_and_mask(added_cidr_item)
                 match = parser.OFPMatch(**parameters_merge)
+                cookie, cookie_mask = self._get_rule_cookie(rule_id)
                 self.mod_flow(
-                    cookie=SGApp._get_rule_cookie(rule_id),
-                    cookie_mask=COOKIE_FULLMASK,
+                    cookie=cookie,
+                    cookie_mask=cookie_mask,
                     inst=inst,
                     table_id=table_id,
                     priority=priority,
@@ -645,9 +648,10 @@ class SGApp(df_base_app.DFlowApp):
                     parameters_merge = match_item.copy()
                     parameters_merge.update(address_item)
                     match = parser.OFPMatch(**parameters_merge)
+                    cookie, cookie_mask = self._get_rule_cookie(rule_id)
                     self.mod_flow(
-                        cookie=SGApp._get_rule_cookie(rule_id),
-                        cookie_mask=COOKIE_FULLMASK,
+                        cookie=cookie,
+                        cookie_mask=cookie_mask,
                         inst=inst,
                         table_id=table_id,
                         priority=priority,
@@ -674,9 +678,10 @@ class SGApp(df_base_app.DFlowApp):
                       rule_id)
             return
 
+        cookie, cookie_mask = self._get_rule_cookie(rule_id)
         self.mod_flow(
-            cookie=SGApp._get_rule_cookie(rule_id),
-            cookie_mask=const.SECURITY_GROUP_RULE_COOKIE_MASK,
+            cookie=cookie,
+            cookie_mask=cookie_mask,
             table_id=table_id,
             command=ofproto.OFPFC_DELETE)
 

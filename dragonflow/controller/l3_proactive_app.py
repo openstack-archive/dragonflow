@@ -20,12 +20,14 @@ from dragonflow._i18n import _LI
 from dragonflow.common import exceptions
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import cookies
 from dragonflow.controller.common import icmp_responder
 from dragonflow.controller import df_base_app
 from dragonflow.db import models
 
 ROUTE_TO_ADD = 'route_to_add'
 ROUTE_ADDED = 'route_added'
+COOKIE_NAME = 'l3_proactive_tunnel'
 LOG = log.getLogger(__name__)
 
 
@@ -33,6 +35,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L3ProactiveApp, self).__init__(*args, **kwargs)
         self.route_cache = {}
+        cookies.register_cookie_bits(COOKIE_NAME, 24,
+                                     True, L3ProactiveApp.__name__)
 
     def switch_features_handler(self, ev):
         self.add_flow_go_to_table(const.L3_LOOKUP_TABLE,
@@ -293,8 +297,12 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
 
+        cookie, cookie_mask = cookies.get_cookie(COOKIE_NAME, tunnel_key,
+            is_local=True,
+            app_name=L3ProactiveApp.__name__)
         self.mod_flow(
-            cookie=tunnel_key,
+            cookie=cookie,
+            cookie_mask=cookie_mask,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_VERY_HIGH,
@@ -426,8 +434,13 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
 
+        cookie, cookie_mask = cookies.get_cookie(COOKIE_NAME,
+            dst_router_tunnel_key,
+            is_local=True,
+            app_name=L3ProactiveApp.__name__)
         self.mod_flow(
-            cookie=dst_router_tunnel_key,
+            cookie=cookie,
+            cookie_mask=cookie_mask,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -513,10 +526,13 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             match=match)
 
         match = parser.OFPMatch()
-        cookie = tunnel_key
+        cookie, cookie_mask = cookies.get_cookie(COOKIE_NAME,
+            tunnel_key,
+            is_local=True,
+            app_name=L3ProactiveApp.__name__)
         self.mod_flow(
             cookie=cookie,
-            cookie_mask=cookie,
+            cookie_mask=cookie_mask,
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,

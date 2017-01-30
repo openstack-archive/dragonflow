@@ -97,3 +97,7 @@ class UnknownResourceException(DragonflowException):
 
 class InvalidDBHostConfiguration(DragonflowException):
     message = _('The DB host string %(host)s is invalid.')
+
+
+class OutOfCookieSpaceException(DragonflowException):
+    message = _('Out of cookie space.')

@@ -101,7 +101,7 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         if out_group is None:
             out_group = datapath.ofproto.OFPG_ANY
 
-        cookie = utils.set_aging_cookie_bits(cookie)
+        cookie, cookie_mask = utils.set_aging_cookie_bits(cookie, cookie_mask)
 
         message = datapath.ofproto_parser.OFPFlowMod(datapath, cookie,
                                                      cookie_mask,
