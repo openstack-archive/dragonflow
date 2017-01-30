@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+from neutron_lib import constants as n_const
 from oslo_config import cfg
 
 from dragonflow.controller import df_local_controller
@@ -229,7 +230,7 @@ fake_local_port1_dhcp_opts = [{
 
 fake_local_port1 = make_fake_local_port(
     macs=['fa:16:3e:8c:2e:b3'],
-    ips=['10.0.0.6'],
+    ips=['10.0.0.6', '2222:2222::3'],
     network_type='vxlan',
     subnets=['fake_subnet1'],
     id='fake_port1',
@@ -333,7 +334,7 @@ fake_security_group.inner_obj = {
     "id": "fake_security_group_id1",
     "rules": [{"direction": "egress",
                "security_group_id": "fake_security_group_id1",
-               "ethertype": "IPv4",
+               "ethertype": n_const.IPv4,
                "topic": "fake_tenant1",
                "port_range_max": 53,
                "port_range_min": 53,
@@ -343,11 +344,31 @@ fake_security_group.inner_obj = {
                "id": "fake_security_group_rule_1"},
               {"direction": "ingress",
                "security_group_id": "fake_security_group_id1",
-               "ethertype": "IPv4",
+               "ethertype": n_const.IPv4,
                "topic": "fake_tenant1",
                "port_range_max": None,
                "port_range_min": None,
                "protocol": None,
                "remote_group_id": "fake_security_group_id1",
                "remote_ip_prefix": None,
-               "id": "fake_security_group_rule_2"}]}
+               "id": "fake_security_group_rule_2"},
+              {"direction": "egress",
+               "security_group_id": "fake_security_group_id1",
+               "ethertype": n_const.IPv6,
+               "topic": "fake_tenant1",
+               "port_range_max": 53,
+               "port_range_min": 53,
+               "protocol": "udp",
+               "remote_group_id": None,
+               "remote_ip_prefix": "1111::/64",
+               "id": "fake_security_group_rule_3"},
+              {"direction": "ingress",
+               "security_group_id": "fake_security_group_id1",
+               "ethertype": n_const.IPv6,
+               "topic": "fake_tenant1",
+               "port_range_max": None,
+               "port_range_min": None,
+               "protocol": None,
+               "remote_group_id": "fake_security_group_id1",
+               "remote_ip_prefix": None,
+               "id": "fake_security_group_rule_4"}]}
