@@ -97,3 +97,16 @@ class UnknownResourceException(DragonflowException):
 
 class InvalidDBHostConfiguration(DragonflowException):
     message = _('The DB host string %(host)s is invalid.')
+
+
+class OutOfCookieSpaceException(DragonflowException):
+    message = _('Out of cookie space.')
+
+
+class MaskOverlapException(DragonflowException):
+    message = _('Cookie mask overlap for cookie %(app_name)s/%(name)s')
+
+
+class CookieOverflowExcpetion(DragonflowException):
+    message = _('Cookie overflow: '
+                'Value: %(cookie)s Offset: %(offset)s Mask: %(mask)s')

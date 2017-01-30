@@ -26,6 +26,7 @@ from dragonflow.db import models
 
 ROUTE_TO_ADD = 'route_to_add'
 ROUTE_ADDED = 'route_added'
+COOKIE_NAME = 'l3_proactive_tunnel'
 LOG = log.getLogger(__name__)
 
 
@@ -33,6 +34,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L3ProactiveApp, self).__init__(*args, **kwargs)
         self.route_cache = {}
+        self.register_local_cookie_bits(COOKIE_NAME, 24)
 
     def switch_features_handler(self, ev):
         self.add_flow_go_to_table(const.L3_LOOKUP_TABLE,
@@ -293,8 +295,10 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
 
+        cookie, cookie_mask = self.get_local_cookie(COOKIE_NAME, tunnel_key)
         self.mod_flow(
-            cookie=tunnel_key,
+            cookie=cookie,
+            cookie_mask=cookie_mask,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_VERY_HIGH,
@@ -426,8 +430,11 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
 
+        cookie, cookie_mask = self.get_local_cookie(COOKIE_NAME,
+                                                    dst_router_tunnel_key)
         self.mod_flow(
-            cookie=dst_router_tunnel_key,
+            cookie=cookie,
+            cookie_mask=cookie_mask,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -513,10 +520,10 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             match=match)
 
         match = parser.OFPMatch()
-        cookie = tunnel_key
+        cookie, cookie_mask = self.get_local_cookie(COOKIE_NAME, tunnel_key)
         self.mod_flow(
             cookie=cookie,
-            cookie_mask=cookie,
+            cookie_mask=cookie_mask,
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
