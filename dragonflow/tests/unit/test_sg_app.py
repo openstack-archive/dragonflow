@@ -41,6 +41,16 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.datapath.ofproto.OFPFC_DELETE_STRICT = COMMAND_DELETE
         self.datapath.ofproto.OFPFC_DELETE = COMMAND_DELETE
 
+    def _get_ip_prefix(self, is_ipv6):
+        if is_ipv6:
+            return "1111::/64"
+        return "192.168.0.0/16"
+
+    def _get_ether_type(self, is_ipv6):
+        if is_ipv6:
+            return "IPv6"
+        return "IPv4"
+
     def _get_another_local_lport(self):
         fake_local_port = db_models.LogicalPort("{}")
         fake_local_port.inner_obj = {
@@ -52,7 +62,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
             'lswitch': 'fake_switch1',
             'enabled': True,
             'topic': 'fake_tenant1',
-            'ips': ['10.0.0.10'],
+            'ips': ['10.0.0.10', '2222:2222::2'],
             'device_owner': 'compute:None',
             'chassis': 'fake_host',
             'version': 2,
@@ -69,7 +79,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
                                          'local_network_id': 1}
         return fake_local_port
 
-    def _get_another_security_group(self):
+    def _get_another_security_group(self, is_ipv6=False):
         fake_security_group = db_models.SecurityGroup("{}")
         fake_security_group.inner_obj = {
             "description": "",
@@ -80,24 +90,24 @@ class TestSGApp(test_app_base.DFAppTestBase):
             "id": "fake_security_group_id2",
             "rules": [{"direction": "egress",
                        "security_group_id": "fake_security_group_id2",
-                       "ethertype": "IPv4",
+                       "ethertype": self._get_ether_type(is_ipv6),
                        "topic": "fake_tenant1",
                        "protocol": "tcp",
                        "port_range_max": None,
                        "port_range_min": None,
                        "remote_group_id": None,
-                       "remote_ip_prefix": "192.168.0.0/16",
-                       "id": "fake_security_group_rule_3"},
+                       "remote_ip_prefix": self._get_ip_prefix(is_ipv6),
+                       "id": "fake_security_group_rule_5"},
                       {"direction": "ingress",
                        "security_group_id": "fake_security_group_id2",
-                       "ethertype": "IPv4",
+                       "ethertype": self._get_ether_type(is_ipv6),
                        "topic": "fake_tenant1",
                        "port_range_max": None,
                        "port_range_min": None,
                        "protocol": None,
                        "remote_group_id": "fake_security_group_id2",
                        "remote_ip_prefix": None,
-                       "id": "fake_security_group_rule_4"}]}
+                       "id": "fake_security_group_rule_6"}]}
         return fake_security_group
 
     def _get_call_count_of_del_flow(self):
@@ -147,40 +157,54 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # add local port one
         self.controller.update_lport(self.fake_local_lport)
         # add flows:
-        # 1. a flow in ingress conntrack table
-        # 2. a associating flow in ingress secgroup table
-        # 3. a flow in egress conntrack table
-        # 4. a associating flow in egress secgroup table
-        # 5. a ingress rule flow in ingress secgroup table
-        # 6. the permit flow in ingress secgroup table
-        # 7. a egress rule flow in egress secgroup table
-        # 8. the permit flow in egress secgroup table
-        self.assertEqual(8, self._get_call_count_of_add_flow())
+        # 1. a flow in ingress conntrack table (ipv4)
+        # 2. a flow in ingress conntrack table (ipv6)
+        # 3. a associating flow (conjunction) in ingress secgroup table (ipv4)
+        # 4. a associating flow (conjunction) in ingress secgroup table (ipv6)
+        # 5. a flow in egress conntrack table (ipv4)
+        # 6. a flow in egress conntrack table (ipv6)
+        # 7. a associating flow (conjunction) in egress secgroup table (ipv4)
+        # 8. a associating flow (conjunction) in egress secgroup table (ipv6)
+        # 9. a ingress rule flow (ipv4) in ingress secgroup table
+        # 10. a ingress rule flow (ipv6) in ingress secgroup table
+        # 11. the permit flow in ingress secgroup table
+        # 12. a egress rule flow (ipv4) in egress secgroup table
+        # 13. a egress rule flow (ipv6) in egress secgroup table
+        # 14. the permit flow in egress secgroup table
+
+        self.assertEqual(14, self._get_call_count_of_add_flow())
         self.mock_mod_flow.reset_mock()
 
         # add local port two
         fake_local_lport2 = self._get_another_local_lport()
+
         self.controller.update_lport(fake_local_lport2)
         # add flows:
-        # 1. a flow in ingress conntrack table
-        # 2. a associating flow in ingress secgroup table
-        # 3. a flow in egress conntrack table
-        # 4. a associating flow in egress secgroup table
-        # 5. a ingress rule flow (caused by IP addresses represent
+        # 1. a flow in ingress conntrack table (ipv4)
+        # 2. a flow in ingress conntrack table (ipv6)
+        # 3. a associating flow in ingress secgroup table
+        # 4. a flow in egress conntrack table (ipv4)
+        # 5. a flow in egress conntrack table (ipv6)
+        # 6. a associating flow in egress secgroup table
+        # 7-8. a ingress rule flow (caused by IP addresses represent
         #    remote_group_id changed) in ingress secgroup table
-        self.assertEqual(5, self._get_call_count_of_add_flow())
+
+        self.assertEqual(8, self._get_call_count_of_add_flow())
         self.mock_mod_flow.reset_mock()
 
         # remove local port two
         self.controller.delete_lport(fake_local_lport2.get_id())
         # remove flows:
-        # 1. a flow in ingress conntrack table
-        # 2. a associating flow in ingress secgroup table
-        # 3. a flow in egress conntrack table
-        # 4. a associating flow in egress secgroup table
-        # 5. a ingress rule flow (caused by IP addresses represent
-        #    remote_group_id changed) in ingress secgroup table
-        self.assertEqual(5, self._get_call_count_of_del_flow())
+        # 1. a flow in ingress conntrack table (ipv4)
+        # 2. a flow in ingress conntrack table (ipv6)
+        # 3. a associating flow in ingress secgroup table
+        # 4. a flow in egress conntrack table (ipv4)
+        # 5. a flow in egress conntrack table (ipv6)
+        # 6. a associating flow in egress secgroup table (ipv4)
+        # 7. a associating flow in egress secgroup table (ipv6)
+        # 8. a ingress rule flow (caused by IP addresses represent
+        #    remote_group_id changed) in ingress secgroup table (ipv4 only)
+        self.assertEqual(8, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
         expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
             ethertype='IPv4', protocol='udp', nw_src='10.0.0.10',
@@ -191,9 +215,23 @@ class TestSGApp(test_app_base.DFAppTestBase):
         expected_conntrack_cmd3 = self._get_expected_conntrack_cmd(
             ethertype='IPv4', protocol=None, nw_src='10.0.0.10',
             nw_dst='10.0.0.6', zone=1)
+
+        expected_conntrack_cmd4 = self._get_expected_conntrack_cmd(
+            ethertype='IPv6', protocol='udp', nw_src='2222:2222::2',
+            nw_dst=None, zone=1)
+
+        expected_conntrack_cmd5 = self._get_expected_conntrack_cmd(
+            ethertype='IPv6', protocol=None, nw_src=None,
+            nw_dst='2222:2222::2', zone=1)
+        expected_conntrack_cmd6 = self._get_expected_conntrack_cmd(
+            ethertype='IPv6', protocol=None, nw_src='2222:2222::2',
+            nw_dst='2222:2222::3', zone=1)
         self.mock_execute.assert_has_calls([expected_conntrack_cmd1,
                                             expected_conntrack_cmd2,
-                                            expected_conntrack_cmd3],
+                                            expected_conntrack_cmd3,
+                                            expected_conntrack_cmd4,
+                                            expected_conntrack_cmd5,
+                                            expected_conntrack_cmd6],
                                            any_order=True)
         self.mock_execute.reset_mock()
 
@@ -222,17 +260,24 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # remove local port one
         self.controller.delete_lport(self.fake_local_lport.get_id())
         # remove flows:
-        # 1. a flow in ingress conntrack table
-        # 2. a associating flow in ingress secgroup table
-        # 3. a flow in egress conntrack table
-        # 4. a associating flow in egress secgroup table
-        # 5. a ingress rule flow (caused by IP addresses represent
+        # 1. a flow in ingress conntrack table (ipv4)
+        # 2. a flow in ingress conntrack table(ipv6)
+        # 3. a associating flow (conjunction) in ingress secgroup table (ipv4)
+        # 4. a associating flow (conjunction) in ingress secgroup table (ipv6)
+        # 5. a flow in egress conntrack table (ipv4)
+        # 6. a flow in egress conntrack table (ipv6)
+        # 7. a associating flow in egress secgroup table (ipv4)
+        # 8. a associating flow in egress secgroup table (ipv6)
+        # 9. a ingress rule flow (caused by IP addresses represent
         #    remote_group_id changed) in ingress secgroup table
-        # 6. ingress rules deleted by cookie in ingress secgroup table
-        # 7. egress rules deleted by cookie in egress secgroup table
-        # 8. the permit flow in ingress secgroup table
-        # 9. the permit flow in egress secgroup table
-        self.assertEqual(9, self._get_call_count_of_del_flow())
+        # 10-11. ingress rules deleted by cookie in ingress secgroup table
+        #    (ipv4, ipv6)
+        # 12-13. egress rules deleted by cookie in egress secgroup table (ipv4,
+        #    ipv6)
+        # 14. the permit flow (ipv4) in ingress secgroup table
+        # 15. the permit flow (ipv6) in ingress secgroup table
+        # 16. the permit flow in egress secgroup table
+        self.assertEqual(16, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
         expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
             ethertype='IPv4', protocol='udp', nw_src='10.0.0.6',
@@ -240,8 +285,16 @@ class TestSGApp(test_app_base.DFAppTestBase):
         expected_conntrack_cmd2 = self._get_expected_conntrack_cmd(
             ethertype='IPv4', protocol=None, nw_src=None,
             nw_dst='10.0.0.6', zone=1)
+        expected_conntrack_cmd3 = self._get_expected_conntrack_cmd(
+            ethertype='IPv6', protocol='udp', nw_src='2222:2222::3',
+            nw_dst=None, zone=1)
+        expected_conntrack_cmd4 = self._get_expected_conntrack_cmd(
+            ethertype='IPv6', protocol=None, nw_src=None,
+            nw_dst='2222:2222::3', zone=1)
         self.mock_execute.assert_has_calls([expected_conntrack_cmd1,
-                                            expected_conntrack_cmd2],
+                                            expected_conntrack_cmd2,
+                                            expected_conntrack_cmd3,
+                                            expected_conntrack_cmd4],
                                            any_order=True)
         self.mock_execute.reset_mock()
 
@@ -260,7 +313,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # create another fake security group
-        fake_security_group2 = self._get_another_security_group()
+        fake_security_group2 = self._get_another_security_group(True)
         self.controller.update_secgroup(fake_security_group2)
 
         # update the association of the lport to a new security group
@@ -271,23 +324,25 @@ class TestSGApp(test_app_base.DFAppTestBase):
         fake_local_lport.inner_obj['version'] = fake_local_lport_version
         self.controller.update_lport(fake_local_lport)
         # add flows:
-        # 1. a associating flow in ingress secgroup table
-        # 2. a associating flow in egress secgroup table
-        # 3. a ingress rule flow in ingress secgroup table
-        # 4. the permit flow in ingress secgroup table
-        # 5. a egress rule flow in egress secgroup table
-        # 6. the permit flow in egress secgroup table
+        # 1. a associating flow (conjunction) in ingress secgroup table (ipv4)
+        # 2. a associating flow (conjunction) in ingress secgroup table (ipv6)
+        # 3. a associating flow in egress secgroup table (ipv4)
+        # 4. a associating flow in egress secgroup table (ipv6)
+        # 5. a ingress rule flow in ingress secgroup table
+        # 6. the permit flow in ingress secgroup table (new ipv6 rule)
+        # 7. a egress rule flow in egress secgroup table
+        # 8. the permit flow in egress secgroup table (new ipv6 rule)
         # remove flows:
-        # 1. a associating flow in ingress secgroup table
-        # 2. a associating flow in egress secgroup table
-        # 3. a ingress rule flow (caused by IP addresses represent
-        #    remote_group_id changed) in ingress secgroup table
-        # 4. ingress rules deleted by cookie in ingress secgroup table
-        # 5. egress rules deleted by cookie in egress secgroup table
-        # 6. the permit flow in ingress secgroup table
-        # 7. the permit flow in egress secgroup table
-        self.assertEqual(6, self._get_call_count_of_add_flow())
-        self.assertEqual(7, self._get_call_count_of_del_flow())
+        # 1-2. a associating flow in ingress secgroup table (ipv4, ipv6)
+        # 3-4. a associating flow in egress secgroup table (ipv4, ipv6)
+        # 5-6. a ingress rule flow (caused by IP addresses represent
+        #    remote_group_id changed) in ingress secgroup table (ipv4, ipv6)
+        # 7-8. ingress rules deleted by cookie in ingress secgroup table
+        # 9-10. egress rules deleted by cookie in egress secgroup table
+        # 11. the permit flow in ingress secgroup table
+        # 12. the permit flow in egress secgroup table
+        self.assertEqual(8, self._get_call_count_of_add_flow())
+        self.assertEqual(12, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
         expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
             ethertype='IPv4', protocol='udp', nw_src='10.0.0.10',
@@ -307,24 +362,27 @@ class TestSGApp(test_app_base.DFAppTestBase):
         fake_local_lport.inner_obj['version'] = fake_local_lport_version
         self.controller.update_lport(fake_local_lport)
         # remove flows:
-        # 1. a flow in ingress conntrack table
-        # 2. a associating flow in ingress secgroup table
-        # 3. a flow in egress conntrack table
-        # 4. a associating flow in egress secgroup table
-        # 5. a ingress rule flow (caused by IP addresses represent
+        # 1-2. a flow in ingress conntrack table (ipv4, ipv6)
+        # 3-4. a associating flow in ingress secgroup table (ipv4, ipv6)
+        # 5-6. a flow in egress conntrack table (ipv4, ipv6)
+        # 7-8. a associating flow in egress secgroup table (ipv4, ipv6)
+        # 9. a ingress rule flow (caused by IP addresses represent
         #    remote_group_id changed) in ingress secgroup table
-        # 6. ingress rules deleted by cookie in ingress secgroup table
-        # 7. egress rules deleted by cookie in egress secgroup table
-        # 8. the permit flow in ingress secgroup table
-        # 9. the permit flow in egress secgroup table
-        self.assertEqual(9, self._get_call_count_of_del_flow())
+        # 10. ingress rule deleted by cookie in ingress secgroup table
+        # 11. egress rule deleted by cookie in egress secgroup table
+        # 12. the permit flow in ingress secgroup table
+        # 13. the permit flow in egress secgroup table
+        self.assertEqual(13, self._get_call_count_of_del_flow())
+
         self.mock_mod_flow.reset_mock()
+        # Only IPv6 rules were deleted
         expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
-            ethertype='IPv4', protocol='tcp', nw_src='10.0.0.10',
+            ethertype='IPv6', protocol='tcp', nw_src='2222:2222::2',
             nw_dst=None, zone=1)
         expected_conntrack_cmd2 = self._get_expected_conntrack_cmd(
-            ethertype='IPv4', protocol=None, nw_src=None,
-            nw_dst='10.0.0.10', zone=1)
+            ethertype='IPv6', protocol=None, nw_src=None,
+            nw_dst='2222:2222::2', zone=1)
+
         self.mock_execute.assert_has_calls([expected_conntrack_cmd1,
                                             expected_conntrack_cmd2],
                                            any_order=True)
@@ -408,17 +466,18 @@ class TestSGApp(test_app_base.DFAppTestBase):
         fake_local_lport_version = fake_local_lport.inner_obj['version']
         self.controller.update_lport(fake_local_lport)
         # add flows:
-        # 1. a flow in ingress conntrack table
-        # 2. a associating flow in ingress secgroup table
-        # 3. a flow in egress conntrack table
-        # 4. a associating flow in egress secgroup table
-        # 5. a ingress rule flow in ingress secgroup table(using fixed ip)
-        # 6. a ingress rule flow in ingress secgroup table(using ip in allowed
+        # 1-2. a flow in ingress conntrack table (ipv4, ipv6)
+        # 3-4. a associating flow in ingress secgroup table (ipv4, ipv6)
+        # 5-6. a flow in egress conntrack table (ipv4, ipv6)
+        # 7-8. a associating flow in egress secgroup table (ipv4, ipv6)
+        # 9-10. a ingress rule flow in ingress secgroup table(using fixed ip:
+        #      ipv4, ipv6)
+        # 11. a ingress rule flow in ingress secgroup table(using ip in allowed
         #    address pairs)
-        # 7. the permit flow in ingress secgroup table
-        # 8. a egress rule flow in egress secgroup table
-        # 9. the permit flow in egress secgroup table
-        self.assertEqual(9, self._get_call_count_of_add_flow())
+        # 12. the permit flow in ingress secgroup table
+        # 13-14. a egress rule flow in egress secgroup table (ipv4, ipv6)
+        # 15. the permit flow in egress secgroup table
+        self.assertEqual(15, self._get_call_count_of_add_flow())
         self.mock_mod_flow.reset_mock()
 
         # update allowed address pairs of the lport
@@ -443,17 +502,21 @@ class TestSGApp(test_app_base.DFAppTestBase):
         # remove local port
         self.controller.delete_lport(fake_local_lport.get_id())
         # remove flows:
-        # 1. a flow in ingress conntrack table
-        # 2. a associating flow in ingress secgroup table
-        # 3. a flow in egress conntrack table
-        # 4. a associating flow in egress secgroup table
-        # 5-6. two ingress rule flow (caused by IP addresses represent
-        #    remote_group_id changed) in ingress secgroup table
-        # 7. ingress rules deleted by cookie in ingress secgroup table
-        # 8. egress rules deleted by cookie in egress secgroup table
-        # 9. the permit flow in ingress secgroup table
-        # 10. the permit flow in egress secgroup table
-        self.assertEqual(10, self._get_call_count_of_del_flow())
+        # 1-2. a flow in ingress conntrack table (ipv4, ipv6)
+        # 3-4. a associating flow in ingress secgroup table (ipv4, ipv6)
+        # 5-6. a flow in egress conntrack table (ipv4, ipv6)
+        # 7-8. a associating flow in egress secgroup table (ipv4, ipv6)
+        # 9-10. two ingress rule flow (caused by IP addresses represent
+        #    remote_group_id changed) in ingress secgroup table (fixed ips)
+        # 11. a ingress rule flow (caused by IP addresses represent
+        #    remote_group_id changed) in ingress secgroup table (allowes pairs)
+        # 12. ingress rules deleted by cookie in ingress secgroup table (ipv4)
+        # 13. ingress rules deleted by cookie in ingress secgroup table (ipv6)
+        # 14. egress rules deleted by cookie in egress secgroup table (ipv4)
+        # 15. egress rules deleted by cookie in egress secgroup table (ipv6)
+        # 16. the permit flow in ingress secgroup table
+        # 17. the permit flow in egress secgroup table
+        self.assertEqual(17, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
 
         # delete fake security group
