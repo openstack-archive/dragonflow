@@ -20,7 +20,7 @@ from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LI, _LW, _LE
+from dragonflow._i18n import _LI, _LE
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
@@ -124,11 +124,7 @@ class SGApp(df_base_app.DFlowApp):
         if ethertype == n_const.IPv4:
             result_base['eth_type'] = ether.ETH_TYPE_IP
         elif ethertype == n_const.IPv6:
-            LOG.warning(
-                _LW("IPv6 in security group rules is not yet supported")
-            )
             result_base['eth_type'] = ether.ETH_TYPE_IPV6
-            return [result_base]
         protocol_name = secgroup_rule.get_protocol()
         if not protocol_name:
             return [result_base]
@@ -138,9 +134,15 @@ class SGApp(df_base_app.DFlowApp):
         port_range_max = secgroup_rule.get_port_range_max()
         if protocol == n_const.PROTO_NUM_ICMP:
             if port_range_min:
-                result_base['icmpv4_type'] = int(port_range_min)
+                if ethertype == n_const.IPv4:
+                    result_base['icmpv4_type'] = int(port_range_min)
+                else:
+                    result_base['icmpv6_type'] = int(port_range_min)
             if port_range_max:
-                result_base['icmpv4_code'] = int(port_range_max)
+                if ethertype == n_const.IPv4:
+                    result_base['icmpv4_code'] = int(port_range_max)
+                else:
+                    result_base['icmpv6_code'] = int(port_range_max)
             results = [result_base]
         elif ((not port_range_min and not port_range_max) or
               (int(port_range_min) == const.MIN_PORT and
@@ -198,27 +200,13 @@ class SGApp(df_base_app.DFlowApp):
         Get all IP addresses which were bound with this lport as fixed IP
         address or a IP address in allowed address pairs.
         """
-        ips = set()
-        fixed_ip = lport.get_ip()
-        if netaddr.IPNetwork(fixed_ip).version == 4:
-            ips.add(fixed_ip)
-        else:
-            LOG.warning(_LW("No support for non IPv4 protocol, the IP"
-                            "address %(ip)s of %(lport)s was ignored."),
-                        {'ip': fixed_ip, 'lport': lport.get_id()})
+        ips = set(lport.get_ip_list())
 
         allowed_address_pairs = lport.get_allowed_address_pairs()
         if allowed_address_pairs is not None:
             for pair in allowed_address_pairs:
                 ip = pair["ip_address"]
-                if netaddr.IPNetwork(ip).version == 4:
-                    ips.add(ip)
-                else:
-                    LOG.warning(
-                        _LW("No support for non IPv4 protocol, the address "
-                            "%(ip)s in allowed address pairs of lport "
-                            "%(lport)s was ignored."),
-                        {'ip': ip, 'lport': lport.get_id()})
+                ips.add(ip)
         return ips
 
     def _get_lport_added_ips_for_secgroup(self, secgroup_id, lport):
@@ -275,6 +263,102 @@ class SGApp(df_base_app.DFlowApp):
 
         return added_ips, removed_ips
 
+    @classmethod
+    def _get_security_rule_by_addresses_match_item(self,
+                                                   ethertype,
+                                                   flow_direction):
+        """
+        Returns the match_item that should be matched in the flow
+
+        :param ethertype: The ethernet type relevant to the flow {IPv4 | IPv6}
+        :param flow_direction: The fidirection of the flow {ingress | egress}
+        """
+        match_items = {
+            (n_const.IPv4, 'ingress'): 'ipv4_src',
+            (n_const.IPv4, 'egress'): 'ipv4_dst',
+            (n_const.IPv6, 'ingress'): 'ipv6_src',
+            (n_const.IPv6, 'egress'): 'ipv6_dst'
+        }
+        return match_items.get((ethertype, flow_direction))
+
+    def _install_ipv4_ipv6_rules(self, table_id, match_items, priority=0xff,
+                                 command=None, inst=None):
+        """
+        Install identical flows for both IPv4 and IPv6.
+
+        :param table_id:    the table in which the flows will be installed
+        :param match_items: a dictionary of fields names and values,
+                            to be matched in the flows
+        :param priority:    priority level of the flows entries
+        :param command:     the flows' command {OFPFC_ADD | OFPFC_MODIFY
+                                                | OFPFC_MODIFY_STRICT
+                                                | OFPFC_DELETE
+                                                | OFPFC_DELETE_STRICT}
+        :param inst:        an OFPInstructionActions object, with the
+                            requested actions.
+        """
+        parser = self.parser
+        match_v4 = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                   **match_items)
+        match_v6 = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                   **match_items)
+        self.mod_flow(
+            inst=inst,
+            table_id=table_id,
+            priority=priority,
+            match=match_v4,
+            command=command)
+
+        self.mod_flow(
+            inst=inst,
+            table_id=table_id,
+            priority=priority,
+            match=match_v6,
+            command=command)
+
+    def _install_flows_from_address_list(self, addresses_list, ethertype,
+                                         table_id, match_list, rule_id,
+                                         ip_match_item, priority=0xff,
+                                         inst=None, command=None):
+        """
+        Installs rule's flows for each relevant IP address
+
+        :param address_list: a list of IPs ehich should be filtered by the rule
+        :param ethertype:    the rule's ethertype {IPv4 | IPv6}
+        :param table_id:     the table in which the flows will be installed
+        :param match_list:   a list of fields names and values,
+                             to be matched in the flows
+        :param rule_id:      rule's id
+        :param ip_match_item:the field that the flow should be filtered by it
+        :param priority:     priority level of the flows entries
+        :param inst:         an OFPInstructionActions object, with the
+                             requested actions.
+        :param command:      the flow's command {OFPFC_ADD | OFPFC_MODIFY
+                                                |OFPFC_MODIFY_STRICT
+                                                |OFPFC_DELETE
+                                                |OFPFC_DELETE_STRICT}
+        """
+        parser = self.parser
+        for cidr_item in addresses_list:
+            if ((cidr_item is "") or netaddr.IPNetwork(cidr_item).version ==
+                    utils.ethertype_to_ip_version(ethertype)):
+                for match_item in match_list:
+                    parameters_merge = match_item.copy()
+                    if (cidr_item is not ""):
+                        parameters_merge[ip_match_item] = \
+                            SGApp._get_network_and_mask(cidr_item)
+                    match = parser.OFPMatch(**parameters_merge)
+                    cookie, cookie_mask = self._get_rule_cookie(rule_id)
+
+                    self.mod_flow(
+                        cookie=cookie,
+                        cookie_mask=cookie_mask,
+                        inst=inst,
+                        table_id=table_id,
+                        priority=priority,
+                        match=match,
+                        command=command)
+
     def _install_security_group_permit_flow_by_direction(self,
                                                          security_group_id,
                                                          direction):
@@ -294,7 +378,6 @@ class SGApp(df_base_app.DFlowApp):
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(security_group_id)
 
-        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP, conj_id=conj_id)
         actions = [parser.NXActionCT(actions=[],
                                      alg=0,
                                      flags=const.CT_FLAG_COMMIT,
@@ -304,11 +387,10 @@ class SGApp(df_base_app.DFlowApp):
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
-        self.mod_flow(
-            inst=inst,
-            table_id=table_id,
-            priority=priority,
-            match=match)
+        self._install_ipv4_ipv6_rules(table_id=table_id,
+                                      match_items={'conj_id': conj_id},
+                                      priority=priority,
+                                      inst=inst)
 
     def _install_security_group_flows(self, security_group_id):
         self._install_security_group_permit_flow_by_direction(
@@ -332,17 +414,14 @@ class SGApp(df_base_app.DFlowApp):
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
 
-        parser = self.parser
         ofproto = self.ofproto
 
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(security_group_id)
 
-        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP, conj_id=conj_id)
-        self.mod_flow(
-            table_id=table_id,
-            match=match,
-            command=ofproto.OFPFC_DELETE)
+        self._install_ipv4_ipv6_rules(table_id=table_id,
+                                      match_items={'conj_id': conj_id},
+                                      command=ofproto.OFPFC_DELETE)
 
     def _uninstall_security_group_flow(self, security_group_id):
         self._uninstall_security_group_permit_flow_by_direction(
@@ -451,25 +530,23 @@ class SGApp(df_base_app.DFlowApp):
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
             lport_classify_match = {"reg6": unique_key}
 
-        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                **lport_classify_match)
         actions = [parser.NXActionCT(actions=[],
                                      alg=0,
                                      flags=0,
                                      recirc_table=table_id,
                                      zone_ofs_nbits=15,
                                      zone_src=const.METADATA_REG)]
+
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
-        self.mod_flow(
-            inst=inst,
-            table_id=pre_table_id,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
+
+        self._install_ipv4_ipv6_rules(table_id=pre_table_id,
+                                      match_items=lport_classify_match,
+                                      priority=const.PRIORITY_MEDIUM,
+                                      inst=inst)
 
     def _uninstall_connection_track_flow_by_direction(self, lport, direction):
-        parser = self.parser
         ofproto = self.ofproto
         unique_key = lport.get_unique_key()
 
@@ -481,13 +558,9 @@ class SGApp(df_base_app.DFlowApp):
             pre_table_id = const.EGRESS_CONNTRACK_TABLE
             lport_classify_match = {"reg6": unique_key}
 
-        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                **lport_classify_match)
-
-        self.mod_flow(
-            table_id=pre_table_id,
-            match=match,
-            command=ofproto.OFPFC_DELETE)
+        self._install_ipv4_ipv6_rules(table_id=pre_table_id,
+                                      match_items=lport_classify_match,
+                                      command=ofproto.OFPFC_DELETE)
 
     def _install_connection_track_flows(self, lport):
         self._install_connection_track_flow_by_direction(lport, 'ingress')
@@ -511,22 +584,20 @@ class SGApp(df_base_app.DFlowApp):
         parser = self.parser
         ofproto = self.ofproto
         rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
+        ethertype = secgroup_rule.get_ethertype()
 
         match_list = \
             self._get_rule_flows_match_except_net_addresses(secgroup_rule)
 
-        if secgroup_rule.get_ethertype() == n_const.IPv4:
-            if secgroup_rule.get_direction() == 'ingress':
-                table_id = const.INGRESS_SECURITY_GROUP_TABLE
-                ipv4_match_item = "ipv4_src"
-            else:
-                table_id = const.EGRESS_SECURITY_GROUP_TABLE
-                ipv4_match_item = "ipv4_dst"
-        elif secgroup_rule.get_ethertype() == n_const.IPv6:
-            # not support yet
-            LOG.info(_LI("IPv6 rules are not supported yet"))
-            return
+        if secgroup_rule.get_direction() == 'ingress':
+            table_id = const.INGRESS_SECURITY_GROUP_TABLE
         else:
+            table_id = const.EGRESS_SECURITY_GROUP_TABLE
+
+        ip_match_item = self._get_security_rule_by_addresses_match_item(
+                                ethertype,
+                                secgroup_rule.get_direction())
+        if not ip_match_item:
             LOG.error(_LE("wrong ethernet type"))
             return
 
@@ -537,32 +608,25 @@ class SGApp(df_base_app.DFlowApp):
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
 
-        for added_cidr_item in added_cidr:
-            for match_item in match_list:
-                parameters_merge = match_item.copy()
-                parameters_merge[ipv4_match_item] = \
-                    SGApp._get_network_and_mask(added_cidr_item)
-                match = parser.OFPMatch(**parameters_merge)
-                cookie, cookie_mask = self._get_rule_cookie(rule_id)
-                self.mod_flow(
-                    cookie=cookie,
-                    cookie_mask=cookie_mask,
-                    inst=inst,
-                    table_id=table_id,
-                    priority=priority,
-                    match=match)
+        self._install_flows_from_address_list(
+                addresses_list=added_cidr,
+                ethertype=ethertype,
+                inst=inst,
+                table_id=table_id,
+                priority=priority,
+                rule_id=rule_id,
+                ip_match_item=ip_match_item,
+                match_list=match_list)
 
-        for removed_cidr_item in removed_cidr:
-            for match_item in match_list:
-                parameters_merge = match_item.copy()
-                parameters_merge[ipv4_match_item] = \
-                    SGApp._get_network_and_mask(removed_cidr_item)
-                match = parser.OFPMatch(**parameters_merge)
-                self.mod_flow(
-                    table_id=table_id,
-                    priority=priority,
-                    match=match,
-                    command=ofproto.OFPFC_DELETE_STRICT)
+        self._install_flows_from_address_list(
+                addresses_list=removed_cidr,
+                ethertype=ethertype,
+                table_id=table_id,
+                priority=priority,
+                rule_id=rule_id,
+                ip_match_item=ip_match_item,
+                match_list=match_list,
+                command=ofproto.OFPFC_DELETE_STRICT)
 
     def _install_security_group_rule_flows(self, secgroup_id, secgroup_rule):
         conj_id, priority = self._get_secgroup_conj_id_and_priority(
@@ -577,10 +641,16 @@ class SGApp(df_base_app.DFlowApp):
 
         if secgroup_rule.get_direction() == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            ipv4_match_item = "ipv4_src"
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            ipv4_match_item = "ipv4_dst"
+
+        ip_match_item = self._get_security_rule_by_addresses_match_item(
+                                ethertype,
+                                secgroup_rule.get_direction())
+
+        if not ip_match_item:
+            LOG.error(_LE("wrong ethernet type"))
+            return
 
         match_list = \
             self._get_rule_flows_match_except_net_addresses(secgroup_rule)
@@ -592,45 +662,30 @@ class SGApp(df_base_app.DFlowApp):
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
 
-        if ethertype == n_const.IPv4:
-            addresses_list = [{}]
-            if remote_group_id is not None:
-                aggregate_addresses_range = \
-                    self.secgroup_aggregate_addresses.get(remote_group_id)
-                addresses_list = []
-                if aggregate_addresses_range is not None:
-                    cidr_list = aggregate_addresses_range.iter_cidrs()
-                    for aggregate_address in cidr_list:
-                        addresses_list.append({
-                            ipv4_match_item: SGApp._get_network_and_mask(
-                                aggregate_address
-                            )
-                        })
-            elif remote_ip_prefix is not None:
-                addresses_list = [{
-                    ipv4_match_item: SGApp._get_network_and_mask(
-                        remote_ip_prefix
-                    )
-                }]
+        addresses_list = [""]
+        if remote_group_id is not None:
+            addresses_list = []
+            aggregate_addresses_range = \
+                self.secgroup_aggregate_addresses.get(remote_group_id)
+            if aggregate_addresses_range is not None:
+                cidr_list = aggregate_addresses_range.iter_cidrs()
+                for aggregate_address in cidr_list:
+                    if netaddr.IPNetwork(aggregate_address).version == \
+                            utils.ethertype_to_ip_version(ethertype):
+                        addresses_list.append(aggregate_address)
+        elif remote_ip_prefix is not None:
+            if netaddr.IPNetwork(remote_ip_prefix).version == \
+                    utils.ethertype_to_ip_version(ethertype):
+                addresses_list = [remote_ip_prefix]
 
-            for address_item in addresses_list:
-                for match_item in match_list:
-                    parameters_merge = match_item.copy()
-                    parameters_merge.update(address_item)
-                    match = parser.OFPMatch(**parameters_merge)
-                    cookie, cookie_mask = self._get_rule_cookie(rule_id)
-                    self.mod_flow(
-                        cookie=cookie,
-                        cookie_mask=cookie_mask,
-                        inst=inst,
-                        table_id=table_id,
-                        priority=priority,
-                        match=match)
-        elif ethertype == n_const.IPv6:
-            # not support yet
-            LOG.info(_LI("IPv6 rules are not supported yet"))
-        else:
-            LOG.error(_LE("wrong ethernet type"))
+        self._install_flows_from_address_list(addresses_list=addresses_list,
+                                              ethertype=ethertype,
+                                              inst=inst,
+                                              table_id=table_id,
+                                              priority=priority,
+                                              rule_id=rule_id,
+                                              ip_match_item=ip_match_item,
+                                              match_list=match_list)
 
     def _uninstall_security_group_rule_flows(self, secgroup_rule):
         # uninstall rule flows by its cookie
@@ -711,11 +766,13 @@ class SGApp(df_base_app.DFlowApp):
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
-        self.mod_flow(
-             inst=inst,
-             table_id=table_id,
-             priority=const.PRIORITY_CT_STATE,
-             match=match)
+
+        self._install_ipv4_ipv6_rules(table_id=table_id,
+                                      inst=inst,
+                                      match_items={'ct_state':
+                                                   (ct_related_new_flag,
+                                                    ct_related_mask)},
+                                      priority=const.PRIORITY_CT_STATE)
 
         # inv state, drop
         invalid_ct_state_flag = const.CT_STATE_TRK | const.CT_STATE_INV
@@ -910,10 +967,6 @@ class SGApp(df_base_app.DFlowApp):
         return added_secgroups, removed_secgroups, unchanged_secgroups
 
     def remove_local_port(self, lport):
-        if not netaddr.valid_ipv4(lport.get_ip()):
-            LOG.warning(_LW("No support for non IPv4 protocol"))
-            return
-
         secgroups = lport.get_security_groups()
         if not secgroups:
             return
@@ -982,10 +1035,6 @@ class SGApp(df_base_app.DFlowApp):
     def add_local_port(self, lport):
         secgroups = lport.get_security_groups()
         if not secgroups:
-            return
-
-        if not netaddr.valid_ipv4(lport.get_ip()):
-            LOG.warning(_LW("No support for non IPv4 protocol"))
             return
 
         for secgroup_id in secgroups:
@@ -1066,22 +1115,24 @@ class SGApp(df_base_app.DFlowApp):
             nw_match_mark = 'nw_src'
             remote_match_mark = 'nw_dst'
         for port_ip in port_info['removed_ips']:
-            entries_filter = {
-                'ethertype': ethertype,
-                nw_match_mark: port_ip,
-                'zone': port_info['zone_id']
-            }
-            protocol = rule.get_protocol()
-            if protocol:
-                entries_filter['protocol'] = protocol
-            if remote_address_list:
-                for remote_address in remote_address_list:
-                    entries_filter_tmp = entries_filter.copy()
-                    entries_filter_tmp[remote_match_mark] = remote_address
-                    utils.delete_conntrack_entries_by_filter(
-                        **entries_filter_tmp)
-            else:
-                utils.delete_conntrack_entries_by_filter(**entries_filter)
+            if netaddr.IPNetwork(port_ip).version == \
+                    utils.ethertype_to_ip_version(ethertype):
+                entries_filter = {
+                    'ethertype': ethertype,
+                    nw_match_mark: port_ip,
+                    'zone': port_info['zone_id']
+                }
+                protocol = rule.get_protocol()
+                if protocol:
+                    entries_filter['protocol'] = protocol
+                if remote_address_list:
+                    for remote_address in remote_address_list:
+                        entries_filter_tmp = entries_filter.copy()
+                        entries_filter_tmp[remote_match_mark] = remote_address
+                        utils.delete_conntrack_entries_by_filter(
+                            **entries_filter_tmp)
+                else:
+                    utils.delete_conntrack_entries_by_filter(**entries_filter)
 
     def _delete_conntrack_entries_by_rule(self, rule, filter_port_info=None,
                                           filter_remote_addresses=None):
@@ -1096,10 +1147,6 @@ class SGApp(df_base_app.DFlowApp):
                                          with the remote group of the rule
         :type filter_remote_addresses:  a list of IP addresses
         """
-        if rule.get_ethertype() == n_const.IPv6:
-            # Not support IPv6 yet. Because the controller has already printed
-            # logs in other methods, there is no need to print extra logs here.
-            return
 
         if filter_remote_addresses:
             remote_address_list = filter_remote_addresses
