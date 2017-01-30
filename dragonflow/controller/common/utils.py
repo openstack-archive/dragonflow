@@ -29,6 +29,7 @@ _aging_cookie = 0
 ACTIVE_PORT_DETECTION_APP = \
     "active_port_detection_app.ActivePortDetectionApp"
 
+ip_version_convertor = {"IPv4": 4, "IPv6": 6}
 
 AGING_COOKIE_NAME = 'aging'
 AGING_COOKIE_LEN = 1
