@@ -48,32 +48,40 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         """
         self.add_remote_port(lport)
 
-    def get_datapath(self):
+    @property
+    def datapath(self):
         return self.api.datapath
 
     @property
     def parser(self):
-        return self.get_datapath().ofproto_parser
+        return self.datapath.ofproto_parser
 
     @property
     def ofproto(self):
-        return self.get_datapath().ofproto
+        return self.datapath.ofproto
 
     @property
     def local_ports(self):
-        return self.get_datapath().local_ports
+        return self.datapath.local_ports
 
-    def add_flow_go_to_table(self, datapath,
-                             table, priority, goto_table_id, match=None):
+    def add_flow_go_to_table(self, table, priority, goto_table_id,
+                             datapath=None, match=None):
+
+        if datapath is None:
+            datapath = self.datapath
+
         inst = [datapath.ofproto_parser.OFPInstructionGotoTable(goto_table_id)]
         self.mod_flow(datapath, inst=inst, table_id=table,
                       priority=priority, match=match)
 
-    def mod_flow(self, datapath, cookie=0, cookie_mask=0, table_id=0,
+    def mod_flow(self, datapath=None, cookie=0, cookie_mask=0, table_id=0,
                  command=None, idle_timeout=0, hard_timeout=0,
                  priority=0xff, buffer_id=0xffffffff, match=None,
                  actions=None, inst_type=None, out_port=None,
                  out_group=None, flags=0, inst=None):
+
+        if datapath is None:
+            datapath = self.datapath
 
         if command is None:
             command = datapath.ofproto.OFPFC_ADD
@@ -111,7 +119,7 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         datapath.send_msg(message)
 
     def send_packet(self, port, pkt):
-        datapath = self.get_datapath()
+        datapath = self.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         actions = [parser.OFPActionOutput(port=port)]

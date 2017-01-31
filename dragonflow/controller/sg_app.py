@@ -313,8 +313,8 @@ class SGApp(df_base_app.DFlowApp):
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
             recirc_table = const.SERVICES_CLASSIFICATION_TABLE
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(security_group_id)
@@ -326,11 +326,10 @@ class SGApp(df_base_app.DFlowApp):
                                      recirc_table=recirc_table,
                                      zone_ofs_nbits=15,
                                      zone_src=const.CT_ZONE_REG)]
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
         self.mod_flow(
-            self.get_datapath(),
             inst=inst,
             table_id=table_id,
             priority=priority,
@@ -358,15 +357,14 @@ class SGApp(df_base_app.DFlowApp):
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(security_group_id)
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP, conj_id=conj_id)
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=table_id,
             match=match,
             command=ofproto.OFPFC_DELETE)
@@ -387,8 +385,8 @@ class SGApp(df_base_app.DFlowApp):
         if self._is_sg_not_associated_with_local_port(security_group_id):
             return
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
@@ -409,13 +407,11 @@ class SGApp(df_base_app.DFlowApp):
         actions = [parser.NXActionConjunction(clause=0,
                                               n_clauses=2,
                                               id_=conj_id)]
-        action_inst = self.get_datapath(). \
-            ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
 
         inst = [action_inst]
         self.mod_flow(
-            self.get_datapath(),
             inst=inst,
             table_id=table_id,
             priority=priority,
@@ -426,8 +422,8 @@ class SGApp(df_base_app.DFlowApp):
         if self._is_sg_not_associated_with_local_port(security_group_id):
             return
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
@@ -447,7 +443,6 @@ class SGApp(df_base_app.DFlowApp):
                                 **lport_classify_match)
 
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=table_id,
             priority=priority,
             match=match,
@@ -470,8 +465,8 @@ class SGApp(df_base_app.DFlowApp):
                                                       'egress')
 
     def _install_connection_track_flow_by_direction(self, lport, direction):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         if direction == 'ingress':
             pre_table_id = const.INGRESS_CONNTRACK_TABLE
@@ -492,19 +487,18 @@ class SGApp(df_base_app.DFlowApp):
                                      recirc_table=table_id,
                                      zone_ofs_nbits=15,
                                      zone_src=const.METADATA_REG)]
-        action_inst = self.get_datapath().ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
         self.mod_flow(
-            self.get_datapath(),
             inst=inst,
             table_id=pre_table_id,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
     def _uninstall_connection_track_flow_by_direction(self, lport, direction):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         if direction == 'ingress':
             pre_table_id = const.INGRESS_CONNTRACK_TABLE
@@ -519,7 +513,6 @@ class SGApp(df_base_app.DFlowApp):
                                 **lport_classify_match)
 
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=pre_table_id,
             match=match,
             command=ofproto.OFPFC_DELETE)
@@ -543,8 +536,8 @@ class SGApp(df_base_app.DFlowApp):
         conj_id, priority = self._get_secgroup_conj_id_and_priority(
             secgroup_id)
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
 
         match_list = \
@@ -568,8 +561,7 @@ class SGApp(df_base_app.DFlowApp):
         actions = [parser.NXActionConjunction(clause=1,
                                               n_clauses=2,
                                               id_=conj_id)]
-        action_inst = self.get_datapath(). \
-            ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
 
@@ -580,7 +572,6 @@ class SGApp(df_base_app.DFlowApp):
                     SGApp._get_network_and_mask(added_cidr_item)
                 match = parser.OFPMatch(**parameters_merge)
                 self.mod_flow(
-                    self.get_datapath(),
                     cookie=SGApp._get_rule_cookie(rule_id),
                     cookie_mask=COOKIE_FULLMASK,
                     inst=inst,
@@ -595,7 +586,6 @@ class SGApp(df_base_app.DFlowApp):
                     SGApp._get_network_and_mask(removed_cidr_item)
                 match = parser.OFPMatch(**parameters_merge)
                 self.mod_flow(
-                    datapath=self.get_datapath(),
                     table_id=table_id,
                     priority=priority,
                     match=match,
@@ -605,8 +595,8 @@ class SGApp(df_base_app.DFlowApp):
         conj_id, priority = self._get_secgroup_conj_id_and_priority(
             secgroup_id)
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
         remote_group_id = secgroup_rule.get_remote_group_id()
         remote_ip_prefix = secgroup_rule.get_remote_ip_prefix()
@@ -625,8 +615,7 @@ class SGApp(df_base_app.DFlowApp):
         actions = [parser.NXActionConjunction(clause=1,
                                               n_clauses=2,
                                               id_=conj_id)]
-        action_inst = self.get_datapath(). \
-            ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
 
@@ -657,7 +646,6 @@ class SGApp(df_base_app.DFlowApp):
                     parameters_merge.update(address_item)
                     match = parser.OFPMatch(**parameters_merge)
                     self.mod_flow(
-                        self.get_datapath(),
                         cookie=SGApp._get_rule_cookie(rule_id),
                         cookie_mask=COOKIE_FULLMASK,
                         inst=inst,
@@ -672,7 +660,7 @@ class SGApp(df_base_app.DFlowApp):
 
     def _uninstall_security_group_rule_flows(self, secgroup_rule):
         # uninstall rule flows by its cookie
-        ofproto = self.get_datapath().ofproto
+        ofproto = self.ofproto
 
         direction = secgroup_rule.get_direction()
         if direction == 'ingress':
@@ -687,7 +675,6 @@ class SGApp(df_base_app.DFlowApp):
             return
 
         self.mod_flow(
-            datapath=self.get_datapath(),
             cookie=SGApp._get_rule_cookie(rule_id),
             cookie_mask=const.SECURITY_GROUP_RULE_COOKIE_MASK,
             table_id=table_id,
@@ -701,13 +688,12 @@ class SGApp(df_base_app.DFlowApp):
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
             goto_table_id = const.SERVICES_CLASSIFICATION_TABLE
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         # defaults of sg-table to drop packet
         drop_inst = None
         self.mod_flow(
-             self.get_datapath(),
              inst=drop_inst,
              table_id=table_id,
              priority=const.PRIORITY_DEFAULT)
@@ -719,7 +705,6 @@ class SGApp(df_base_app.DFlowApp):
 
         goto_inst = [parser.OFPInstructionGotoTable(goto_table_id)]
         self.mod_flow(
-             self.get_datapath(),
              inst=goto_inst,
              table_id=table_id,
              priority=const.PRIORITY_CT_STATE,
@@ -732,7 +717,6 @@ class SGApp(df_base_app.DFlowApp):
         match = parser.OFPMatch(ct_state=(ct_related_not_new_flag,
                                           ct_related_mask))
         self.mod_flow(
-             self.get_datapath(),
              inst=goto_inst,
              table_id=table_id,
              priority=const.PRIORITY_CT_STATE,
@@ -749,12 +733,10 @@ class SGApp(df_base_app.DFlowApp):
                                      recirc_table=goto_table_id,
                                      zone_ofs_nbits=15,
                                      zone_src=const.CT_ZONE_REG)]
-        action_inst = self.get_datapath(). \
-            ofproto_parser.OFPInstructionActions(
+        action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
         self.mod_flow(
-             self.get_datapath(),
              inst=inst,
              table_id=table_id,
              priority=const.PRIORITY_CT_STATE,
@@ -765,7 +747,6 @@ class SGApp(df_base_app.DFlowApp):
         match = parser.OFPMatch(ct_state=(invalid_ct_state_flag,
                                           invalid_ct_state_flag))
         self.mod_flow(
-             self.get_datapath(),
              inst=drop_inst,
              table_id=table_id,
              priority=const.PRIORITY_CT_STATE,

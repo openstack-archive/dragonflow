@@ -66,8 +66,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def switch_features_handler(self, ev):
         self._install_dhcp_broadcast_match_flow()
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.DHCP_TABLE,
+        self.add_flow_go_to_table(const.DHCP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
         self.ofport_to_dhcp_app_port_data.clear()
@@ -314,14 +313,11 @@ class DHCPApp(df_base_app.DFlowApp):
         """Uninstall dhcp flow in DHCP_TABLE for a port of vm."""
 
         ofport = lport.get_external_value('ofport')
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
-        match = parser.OFPMatch()
+        match = self.parser.OFPMatch()
         match.set_in_port(ofport)
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.DHCP_TABLE,
-            command=ofproto.OFPFC_DELETE,
+            command=self.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
@@ -358,16 +354,14 @@ class DHCPApp(df_base_app.DFlowApp):
 
         LOG.info(_LI("Register VM as DHCP client::port <%s>"), lport.get_id())
 
-        datapath = self.get_datapath()
-        parser = datapath.ofproto_parser
-        ofproto = datapath.ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         match = parser.OFPMatch(in_port=ofport)
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                              actions)]
         self.mod_flow(
-            datapath,
             inst=inst,
             table_id=const.DHCP_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -429,8 +423,8 @@ class DHCPApp(df_base_app.DFlowApp):
         del self.switch_dhcp_ip_map[network_id]
 
     def _remove_dhcp_unicast_match_flow(self, network_id, ip_addr=None):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
         if ip_addr:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                             ipv4_dst=ip_addr,
@@ -441,14 +435,13 @@ class DHCPApp(df_base_app.DFlowApp):
         else:
             match = parser.OFPMatch(metadata=network_id)
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.SERVICES_CLASSIFICATION_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
     def _install_dhcp_broadcast_match_flow(self):
-        parser = self.get_datapath().ofproto_parser
+        parser = self.parser
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                             eth_dst=const.BROADCAST_MAC,
@@ -456,13 +449,12 @@ class DHCPApp(df_base_app.DFlowApp):
                             udp_src=const.DHCP_CLIENT_PORT,
                             udp_dst=const.DHCP_SERVER_PORT)
 
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.SERVICES_CLASSIFICATION_TABLE,
+        self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_MEDIUM,
                                   const.DHCP_TABLE, match=match)
 
     def _install_dhcp_unicast_match_flow(self, ip_addr, network_id):
-        parser = self.get_datapath().ofproto_parser
+        parser = self.parser
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                             ipv4_dst=ip_addr,
                             ip_proto=n_const.PROTO_NUM_UDP,
@@ -470,8 +462,7 @@ class DHCPApp(df_base_app.DFlowApp):
                             udp_dst=const.DHCP_SERVER_PORT,
                             metadata=network_id)
 
-        self.add_flow_go_to_table(self.get_datapath(),
-                                  const.SERVICES_CLASSIFICATION_TABLE,
+        self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_MEDIUM,
                                   const.DHCP_TABLE, match=match)
 
@@ -496,12 +487,10 @@ class DHCPApp(df_base_app.DFlowApp):
             return False
 
     def _block_port_dhcp_traffic(self, ofport_num, hard_timeout):
-        parser = self.get_datapath().ofproto_parser
-        match = parser.OFPMatch()
+        match = self.parser.OFPMatch()
         match.set_in_port(ofport_num)
         drop_inst = None
         self.mod_flow(
-             self.get_datapath(),
              inst=drop_inst,
              priority=const.PRIORITY_VERY_HIGH,
              hard_timeout=hard_timeout,

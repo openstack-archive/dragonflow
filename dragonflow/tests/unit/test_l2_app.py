@@ -31,7 +31,6 @@ class TestL2App(test_app_base.DFAppTestBase):
         self.controller.update_lport(test_app_base.fake_remote_port1)
         # The multicast flow will be added to EGRESS_TABLE with priority low
         self.app.mod_flow.assert_called_with(
-            datapath=self.datapath,
             inst=mock.ANY,
             table_id=const.EGRESS_TABLE,
             command=self.datapath.ofproto.OFPFC_ADD,
@@ -44,7 +43,6 @@ class TestL2App(test_app_base.DFAppTestBase):
         self.controller.update_lport(remote_port2)
         # The multicast flow will be modified to EGRESS_TABLE with priority low
         self.app.mod_flow.assert_called_with(
-            datapath=self.datapath,
             inst=mock.ANY,
             table_id=const.EGRESS_TABLE,
             command=self.datapath.ofproto.OFPFC_MODIFY,
@@ -55,7 +53,6 @@ class TestL2App(test_app_base.DFAppTestBase):
         self.controller.delete_lport('fake_remote_port2')
         # The multicast flow will be modified to EGRESS_TABLE with priority low
         self.app.mod_flow.assert_called_with(
-            datapath=self.datapath,
             inst=mock.ANY,
             table_id=const.EGRESS_TABLE,
             command=self.datapath.ofproto.OFPFC_MODIFY,
@@ -67,7 +64,6 @@ class TestL2App(test_app_base.DFAppTestBase):
             test_app_base.fake_remote_port1.get_id())
         # The multicast flow will be deleted to EGRESS_TABLE with priority low
         self.app.mod_flow.assert_called_with(
-            datapath=self.datapath,
             table_id=const.EGRESS_TABLE,
             command=self.datapath.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,

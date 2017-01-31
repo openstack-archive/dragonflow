@@ -100,11 +100,10 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         if not self._ofport:
             return
 
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
@@ -122,9 +121,8 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         Packets from the OVS port are detected and sent for classification.
         """
         self._ofport = ofport
-        datapath = self.get_datapath()
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
+        ofproto = self.ofproto
+        parser = self.parser
         self._add_incoming_flows()
         # Regular packet
         match = parser.OFPMatch(eth_type=ethernet.ether.ETH_TYPE_IP)
@@ -134,7 +132,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             actions,
         )]
         self.mod_flow(
-            datapath=datapath,
             table_id=const.METADATA_SERVICE_TABLE,
             command=ofproto.OFPFC_ADD,
             priority=const.PRIORITY_MEDIUM,
@@ -154,7 +151,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             learn_actions,
         )]
         self.mod_flow(
-            datapath=datapath,
             table_id=const.METADATA_SERVICE_TABLE,
             command=ofproto.OFPFC_ADD,
             priority=const.PRIORITY_HIGH,
@@ -175,7 +171,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             parser.OFPInstructionGotoTable(const.METADATA_SERVICE_REPLY_TABLE),
         ]
         self.mod_flow(
-            datapath=datapath,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_ADD,
             priority=const.PRIORITY_MEDIUM,
@@ -185,9 +180,8 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         self._create_arp_responder(mac)
 
     def _add_incoming_flows(self):
-        datapath = self.get_datapath()
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
+        ofproto = self.ofproto
+        parser = self.parser
 
         match = parser.OFPMatch(
             eth_type=ethernet.ether.ETH_TYPE_IP,
@@ -199,7 +193,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             const.SERVICES_CLASSIFICATION_TABLE)]
         # Bypass the security group check for metadata request.
         self.mod_flow(
-            datapath=datapath,
             table_id=const.EGRESS_PORT_SECURITY_TABLE,
             command=ofproto.OFPFC_ADD,
             priority=const.PRIORITY_VERY_HIGH,
@@ -208,7 +201,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
 
         inst = self._get_incoming_flow_instructions(ofproto, parser)
         self.mod_flow(
-            datapath=datapath,
             table_id=const.SERVICES_CLASSIFICATION_TABLE,
             command=ofproto.OFPFC_ADD,
             priority=const.PRIORITY_MEDIUM,

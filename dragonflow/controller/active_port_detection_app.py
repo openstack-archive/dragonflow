@@ -85,8 +85,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         return ips
 
     def _get_match_arp_reply(self, in_port, network_id, ip):
-        parser = self.get_datapath().ofproto_parser
-        match = parser.OFPMatch()
+        match = self.parser.OFPMatch()
         match.set_in_port(in_port)
         match.set_dl_type(ether.ETH_TYPE_ARP)
         match.set_arp_spa(utils.ipv4_text_to_int(str(ip)))
@@ -97,8 +96,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
     def _get_match_gratuitous_arp(self, in_port, network_id, ip):
         target_ip = utils.ipv4_text_to_int(str(ip))
-        parser = self.get_datapath().ofproto_parser
-        match = parser.OFPMatch()
+        match = self.parser.OFPMatch()
         match.set_in_port(in_port)
         match.set_dl_type(ether.ETH_TYPE_ARP)
         match.set_arp_spa(target_ip)
@@ -108,8 +106,8 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         return match
 
     def _get_instructions_packet_in(self):
-        parser = self.get_datapath().ofproto_parser
-        ofproto = self.get_datapath().ofproto
+        parser = self.parser
+        ofproto = self.ofproto
 
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
@@ -128,7 +126,6 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             lport.get_external_value('local_network_id'),
             ip)
         self.mod_flow(
-            self.get_datapath(),
             inst=instructions,
             table_id=controller_const.ARP_TABLE,
             priority=controller_const.PRIORITY_MEDIUM,
@@ -139,21 +136,19 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             lport.get_external_value('local_network_id'),
             ip)
         self.mod_flow(
-            self.get_datapath(),
             inst=instructions,
             table_id=controller_const.ARP_TABLE,
             priority=controller_const.PRIORITY_MEDIUM,
             match=gratuitous_arp_match)
 
     def _uninstall_flows_for_target_ip(self, ip, lport):
-        ofproto = self.get_datapath().ofproto
+        ofproto = self.ofproto
 
         arp_reply_match = self._get_match_arp_reply(
             lport.get_external_value('ofport'),
             lport.get_external_value('local_network_id'),
             ip)
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=controller_const.ARP_TABLE,
             match=arp_reply_match,
             command=ofproto.OFPFC_DELETE)
@@ -163,7 +158,6 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             lport.get_external_value('local_network_id'),
             ip)
         self.mod_flow(
-            datapath=self.get_datapath(),
             table_id=controller_const.ARP_TABLE,
             match=gratuitous_arp_match,
             command=ofproto.OFPFC_DELETE)

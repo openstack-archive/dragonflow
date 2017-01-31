@@ -29,7 +29,7 @@ class ICMPResponder(object):
     def __init__(self, app, interface_ip, dst_mac,
                  table_id=const.L2_LOOKUP_TABLE):
         self.app = app
-        self.datapath = app.get_datapath()
+        self.datapath = app.datapath
         self.interface_ip = interface_ip
         self.dst_mac = dst_mac
         self.table_id = table_id
@@ -67,7 +67,6 @@ class ICMPResponder(object):
         instructions = self._get_instructions()
         ofproto = self.datapath.ofproto
         self.app.mod_flow(
-            datapath=self.datapath,
             table_id=self.table_id,
             command=ofproto.OFPFC_ADD,
             priority=const.PRIORITY_VERY_HIGH,
@@ -79,7 +78,6 @@ class ICMPResponder(object):
         ofproto = self.datapath.ofproto
         match = self._get_match()
         self.app.mod_flow(
-            datapath=self.datapath,
             table_id=self.table_id,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_VERY_HIGH,
