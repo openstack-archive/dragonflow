@@ -133,6 +133,31 @@ def get_cookie(name, value, old_cookie=0, old_mask=0,
     return result | (old_cookie & ~pair.mask), pair.mask | old_mask
 
 
+def extract_value_from_cookie(name, cookie_value,
+                              is_local=False, app_name=None):
+    """This method is the inverse of get_cookie. i.e. if cookie_value was
+    encoded with get_cookie, this method extracts the value encoded in it.
+    :param name:       The name of the 'task'
+    :type name:        string
+    :param cookie_value: The value of the cookie to encode
+    :type cookie_value: int
+    :param is_local:   The cookie space is local, as defined in
+                       register_cookie_bits
+    :type is_local:    bool
+    :param app_name:   Owner application of the cookie (None for global)
+    :type app_name:    string
+    """
+    if not is_local:
+        app_name = GLOBAL_APP_NAME
+    else:
+        if not app_name:
+            raise TypeError(_("app_name must be provided if is_local is True"))
+    pair = _cookies[(app_name, name)]
+    masked_value = (cookie_value & pair.mask)
+    extracted_value = masked_value >> pair.offset
+    return extracted_value
+
+
 def add_global_cookie_modifier(name, length, modifier):
     """Allocate `length` global cookie bits, and add a modifier function
     that sets these cookie bits for all applications. The modifier
