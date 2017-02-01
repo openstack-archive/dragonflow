@@ -19,6 +19,7 @@ import time
 
 from neutron.common import config as common_config
 from oslo_log import log
+from ryu.app.ofctl import service as of_service
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
@@ -69,6 +70,8 @@ class DfLocalController(object):
             vswitch_api=self.vswitch_api,
             neutron_server_notifier=self.neutron_notifier,
         )
+        # The OfctlService is needed to support the 'get_flows' method
+        self.open_flow_service = app_mgr.instantiate(of_service.OfctlService)
         self.topology = None
         self.db_consistency_manager = None
         self.enable_db_consistency = cfg.CONF.df.enable_df_db_consistency
@@ -103,6 +106,7 @@ class DfLocalController(object):
         if not is_fail_mode_set:
             self.vswitch_api.set_controller_fail_mode(
                 integration_bridge, 'secure')
+        self.open_flow_service.start()
         self.open_flow_app.start()
         self.create_tunnels()
         self._register_models()
