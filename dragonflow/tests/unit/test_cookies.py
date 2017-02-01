@@ -105,3 +105,20 @@ class TestCookies(tests_base.BaseTestCase):
                                                              None)
         self.assertEqual(2 << 32 | 3 << 4 | 6, cookie)
         self.assertEqual(0x3 << 32 | 0x7 << 4 | 0xf, mask)
+
+    @mock.patch.object(cookies, '_cookies_used_bits',
+                       collections.defaultdict(int))
+    @mock.patch.object(cookies, '_cookies', {})
+    @mock.patch.object(cookies, '_cookie_modifiers', {})
+    def test_extract_value_from_cookie(self):
+        cookie_value_1 = 17
+        cookie_value_2 = 20
+        cookies.register_cookie_bits('test1', 5)
+        cookies.register_cookie_bits('test2', 5)
+        cookie, mask = cookies.get_cookie('test1', cookie_value_1)
+        cookie, mask = cookies.get_cookie('test2', cookie_value_2,
+                                          old_cookie=cookie, old_mask=mask)
+        self.assertEqual(cookie_value_1,
+                         cookies.extract_value_from_cookie('test1', cookie))
+        self.assertEqual(cookie_value_2,
+                         cookies.extract_value_from_cookie('test2', cookie))
