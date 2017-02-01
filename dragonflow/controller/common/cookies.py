@@ -38,6 +38,8 @@ _cookie_mask_all = ~((-1 >> _cookie_max_bits) << _cookie_max_bits)
 _cookie_max_bits_local = _cookie_max_bits - _cookie_max_bits_global
 # Number of allocated bits for a given application (including global)
 _cookies_used_bits = collections.defaultdict(int)
+# Global cookie modifiers, which modify the global cookie space automatically
+_cookie_modifiers = {}
 
 
 # A class holding the cookie's offset and bit-mask
@@ -112,3 +114,34 @@ def get_cookie(name, value, old_cookie=0, old_mask=0,
     assert result == result_unmasked, "cookie overflow from cookie mask"
     assert ((old_mask & pair.mask) == 0), "cookie mask overlap"
     return result | (old_cookie & ~pair.mask), pair.mask | old_mask
+
+
+def add_global_cookie_modifier(name, length, modifier):
+    """Allocate `length` global cookie bits, and add a modifier function
+    that sets these cookie bits for all applications. The modifier
+    accepts an opaque value (passed to global_modify_cookie below),
+    and should return the cookie value it wants set.
+    :param name:    The name of the global cookie bits
+    :type name:     string
+    :param length:  The number of global cookie bits to allocate
+    :type length:   int
+    :name modifier: A function returning the cookie value
+    :type modifier: function, accepting opaque, returning int
+    """
+    register_cookie_bits(name, length)
+    _cookie_modifiers[name] = modifier
+
+def global_modify_cookie(cookie, mask, opaque):
+    """For each modifier registered with `add_global_cookie_modifier` above,
+    get the value, and encode it onto the cookie.
+    :param cookie:  The current cookie value
+    :type cookie:   int
+    :param mask:    The current cookie's mask
+    :type mask:     int
+    :param opaque:  parameter to pass to the modifier
+
+    """
+    for name, modifier in _cookie_modifiers.items():
+        value = modifier(opaque)
+        cookie, mask = get_cookie(name, value, cookie, mask)
+    return cookie, mask

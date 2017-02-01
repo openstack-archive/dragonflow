@@ -90,3 +90,14 @@ class TestCookies(tests_base.BaseTestCase):
                           cookies.get_cookie, 'test1', 9)
         self.assertRaises(AssertionError,
                           cookies.get_cookie, 'test2', 9, 0, 0x8)
+
+    @mock.patch.object(cookies, '_cookies_used_bits',
+                       collections.defaultdict(int))
+    @mock.patch.object(cookies, '_cookies', {})
+    @mock.patch.object(cookies, '_cookie_modifiers', {})
+    def test_global_modify_cookies(self):
+        cookies.add_global_cookie_modifier('t1', 4, lambda x: 6)
+        cookies.add_global_cookie_modifier('t2', 3, lambda x: 3)
+        cookie, mask = cookies.global_modify_cookie(2 << 32, 3 << 32, None)
+        self.assertEqual(cookie, 2 << 32 | 3 << 4 | 6)
+        self.assertEqual(mask, 0x3 << 32 | 0x7 << 4 | 0xf)
