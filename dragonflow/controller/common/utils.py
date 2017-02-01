@@ -24,7 +24,6 @@ from dragonflow.controller.common import constants as const
 
 LOG = log.getLogger(__name__)
 
-UINT32_MAX = 0xffffffff
 _aging_cookie = 0
 ACTIVE_PORT_DETECTION_APP = \
     "active_port_detection_app.ActivePortDetectionApp"
