@@ -13,6 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
+from oslo_log import log
+from ryu.app.ofctl import api as ofctl_api
 from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
@@ -22,6 +25,11 @@ from dragonflow._i18n import _
 from dragonflow.controller.common import constants
 from dragonflow.controller.common import cookies
 from dragonflow.db import db_store
+
+
+# TODO(heshan) This timeout constant should be configured in cfg file
+DEFAULT_GET_FLOWS_TIMEOUT = 20
+LOG = log.getLogger(__name__)
 
 
 class DFlowApp(object):
@@ -131,6 +139,32 @@ class DFlowApp(object):
                                                      inst)
 
         datapath.send_msg(message)
+
+    def get_flows(self, datapath=None, table_id=None, timeout=None):
+        if datapath is None:
+            datapath = self.datapath
+        if table_id is None:
+            table_id = datapath.ofproto.OFPTT_ALL
+        if not timeout:
+            timeout = DEFAULT_GET_FLOWS_TIMEOUT
+        parser = datapath.ofproto_parser
+        msg = parser.OFPFlowStatsRequest(datapath, table_id=table_id)
+        try:
+            with eventlet.timeout.Timeout(seconds=timeout):
+                replies = ofctl_api.send_msg(
+                    self.api,
+                    msg,
+                    reply_cls=parser.OFPFlowStatsReply,
+                    reply_multi=True)
+        except BaseException:
+            LOG.exception("Failed to get flows")
+            return []
+        if replies is None:
+            LOG.error("No reply for get flows")
+            return []
+        flows = [body for reply in replies for body in reply.body]
+        LOG.debug("Got the following flows: %s", flows)
+        return flows
 
     def add_group(self, group_id, group_type, buckets):
         """Add an entry to the groups table:
