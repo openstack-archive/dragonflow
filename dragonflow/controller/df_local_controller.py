@@ -19,6 +19,7 @@ import time
 from neutron.agent.common import config
 from neutron.common import config as common_config
 from oslo_log import log
+from ryu.app.ofctl import service
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
@@ -73,6 +74,7 @@ class DfLocalController(object):
         app_mgr = app_manager.AppManager.get_instance()
         self.open_flow_app = app_mgr.instantiate(ryu_base_app.RyuDFAdapter,
                                                  **kwargs)
+        self.open_flow_service = app_mgr.instantiate(service.OfctlService)
         self.topology = None
         self.db_consistency_manager = None
         self.enable_db_consistency = cfg.CONF.df.enable_df_db_consistency
@@ -109,6 +111,7 @@ class DfLocalController(object):
         if not is_fail_mode_set:
             self.vswitch_api.set_controller_fail_mode(
                 self.integration_bridge, 'secure')
+        self.open_flow_service.start()
         self.open_flow_app.start()
         self.create_tunnels()
         df_db_objects_refresh.initialize_object_refreshers(self)
