@@ -79,7 +79,6 @@ class TunnelingApp(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
         self.mod_flow(
-            datapath=self.get_datapath(),
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -88,7 +87,6 @@ class TunnelingApp(df_base_app.DFlowApp):
     def _remove_network_flow(self, lport, network_id, network_type):
         match = self._make_network_match(lport, network_id, network_type)
         self.mod_flow(
-                datapath=self.get_datapath(),
                 command=self.ofproto.OFPFC_DELETE,
                 table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
                 priority=const.PRIORITY_LOW,
@@ -101,7 +99,7 @@ class TunnelingApp(df_base_app.DFlowApp):
                                     in_port=ofport)
 
     def add_remote_port(self, lport):
-        if self.get_datapath() is None:
+        if self.datapath is None:
             return
         network_type = lport.get_external_value('network_type')
         if network_type not in self.tunnel_types:
@@ -140,12 +138,11 @@ class TunnelingApp(df_base_app.DFlowApp):
                 self.parser.OFPActionSetField(tun_ipv4_dst=remote_ip),
                 self.parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
                 self.parser.OFPActionOutput(port=ofport)]
-        ofproto = self.get_datapath().ofproto
+        ofproto = self.ofproto
         action_inst = self.parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]
         self.mod_flow(
-            datapath=self.get_datapath(),
             inst=inst,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -154,7 +151,6 @@ class TunnelingApp(df_base_app.DFlowApp):
     def _remove_egress_dispatch_flow(self, lport):
         match = self.parser.OFPMatch(reg7=lport.get_unique_key())
         self.mod_flow(
-            datapath=self.get_datapath(),
             command=self.ofproto.OFPFC_DELETE,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -182,7 +178,6 @@ class TunnelingApp(df_base_app.DFlowApp):
             break
 
         self.mod_flow(
-            datapath=self.get_datapath(),
             inst=inst,
             table_id=const.EGRESS_TABLE,
             command=command,
