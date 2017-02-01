@@ -13,13 +13,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
+from oslo_log import log
+from ryu.app.ofctl import api as ofctl_api
 from ryu.lib.packet import arp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
+from dragonflow._i18n import _LE
 from dragonflow.controller.common import cookies
 from dragonflow.controller import df_db_notifier
+
+
+LOG = log.getLogger(__name__)
 
 
 class DFlowApp(df_db_notifier.DBNotifyInterface):
@@ -118,6 +125,31 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
                                                      inst)
 
         datapath.send_msg(message)
+
+    def get_flows(self, datapath=None, table_id=None, timeout=20):
+        # TODO(heshan) should be configured in cfg file
+        if datapath is None:
+            datapath = self.datapath
+        if table_id is None:
+            table_id = datapath.ofproto.OFPTT_ALL
+        parser = datapath.ofproto_parser
+        msg = parser.OFPFlowStatsRequest(datapath, table_id=table_id)
+        try:
+            with eventlet.timeout.Timeout(seconds=timeout):
+                replies = ofctl_api.send_msg(
+                    self.api,
+                    msg,
+                    reply_cls=parser.OFPFlowStatsReply,
+                    reply_multi=True)
+        except BaseException:
+            LOG.exception(_LE("Failed to get flows"))
+            return []
+        if replies is None:
+            LOG.error(_LE("No reply for get flows"))
+            return []
+        flows = [body for reply in replies for body in reply.body]
+        LOG.debug("Got the following flows: %s", flows)
+        return flows
 
     def send_packet(self, port, pkt):
         datapath = self.datapath
