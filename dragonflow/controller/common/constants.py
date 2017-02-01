@@ -105,10 +105,6 @@ MIN_PORT = 1
 MAX_PORT = 65535
 NAT_TRACKING_ZONE = 65534
 
-# TODO(oanson) Remove once Aging app is fully updated to use cookie framework
-GLOBAL_AGING_COOKIE_MASK = 0x1
-GLOBAL_INIT_AGING_COOKIE = 0x1
-
 # These two globals are constant, as defined by the metadata service API. VMs
 # contact 169.254.169.254:80, despite of where we actually listen to the
 # service. This will be modified by flows.

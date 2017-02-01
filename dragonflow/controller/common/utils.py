@@ -21,15 +21,8 @@ from ryu.lib import addrconv
 from ryu.ofproto import ether
 
 from dragonflow.common import exceptions
-from dragonflow.controller.common import constants as const
-from dragonflow.controller.common import cookies
 
 LOG = log.getLogger(__name__)
-
-_aging_cookie = 0
-
-AGING_COOKIE_NAME = 'aging'
-AGING_COOKIE_LEN = 1
 
 
 def ipv4_text_to_int(ip_text):
@@ -44,24 +37,6 @@ def ipv6_text_to_short(ip_text):
         return list(struct.unpack('!8H', addrconv.ipv6.text_to_bin(ip_text)))
     except Exception:
         raise exceptions.InvalidIPAddressException(key=ip_text)
-
-
-def set_aging_cookie(c):
-    global _aging_cookie
-    _aging_cookie = c
-
-
-def get_aging_cookie():
-    return _aging_cookie
-
-
-def set_aging_cookie_bits(old_cookie, old_cookie_mask):
-    return cookies.get_cookie(AGING_COOKIE_NAME, _aging_cookie,
-                              old_cookie, old_cookie_mask)
-
-
-def get_xor_cookie(cookie):
-    return cookie ^ const.GLOBAL_INIT_AGING_COOKIE
 
 
 def delete_conntrack_entries_by_filter(ethertype='IPv4', protocol=None,
