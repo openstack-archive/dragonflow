@@ -32,7 +32,6 @@ ACTIVE_PORT_DETECTION_APP = \
 
 AGING_COOKIE_NAME = 'aging'
 AGING_COOKIE_LEN = 1
-cookies.register_cookie_bits(AGING_COOKIE_NAME, AGING_COOKIE_LEN)
 
 
 def ipv4_text_to_int(ip_text):
