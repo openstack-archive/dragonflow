@@ -137,18 +137,18 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         try:
             with eventlet.timeout.Timeout(seconds=timeout):
                 replies = ofctl_api.send_msg(
-                    self.app,
+                    self.api,
                     msg,
                     reply_cls=parser.OFPFlowStatsReply,
                     reply_multi=True)
         except BaseException:
-            LOG.exceptions(_LE("Failed to get flows"))
+            LOG.exception(_LE("Failed to get flows"))
             return []
         if replies is None:
             LOG.error(_LE("No reply for get flows"))
             return []
-        flows = [reply.body for reply in replies]
-        LOG.debug("flows are: %s", flows)
+        flows = [body for reply in replies for body in reply.body]
+        LOG.debug("Got the following flows: %s", flows)
         return flows
 
     def send_packet(self, port, pkt):

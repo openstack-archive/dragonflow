@@ -20,7 +20,6 @@ from dragonflow._i18n import _LI
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import cookies
 from dragonflow.controller import df_base_app
-from dragonflow.controller import ofswitch
 
 LOG = log.getLogger(__name__)
 
@@ -28,11 +27,10 @@ LOG = log.getLogger(__name__)
 AGING_COOKIE_NAME = 'aging'
 
 
-class Aging(df_base_app.DFlowApp, ofswitch.OpenFlowSwitchMixin):
+class Aging(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
-        df_base_app.DFlowApp.__init__(self, *args, **kwargs)
-        ofswitch.OpenFlowSwitchMixin.__init__(self, args[0])
+        super(Aging, self).__init__(*args, **kwargs)
         self.do_aging = True
         self._aging_cookie = 0
         cookies.add_global_cookie_modifier(AGING_COOKIE_NAME, 1,
@@ -49,7 +47,7 @@ class Aging(df_base_app.DFlowApp, ofswitch.OpenFlowSwitchMixin):
     after all apps flushed flows with new cookie, ovs_sync_finished() will
     be called
     """
-    def switch_features_handler(self, ev):
+    def ovs_sync_started(self):
         LOG.info(_LI("start aging"))
         canary_flow = self._get_canary_flow()
         if not canary_flow:
@@ -76,7 +74,7 @@ class Aging(df_base_app.DFlowApp, ofswitch.OpenFlowSwitchMixin):
             LOG.info(_LI("Scheduled aged flows deletion"))
 
     def _invert_cookie(self, cookie):
-        return 1 - cookie
+        return 1 ^ cookie
 
     def _start_aging(self):
         inverted_cookie = self._invert_cookie(self._aging_cookie)
