@@ -46,7 +46,6 @@ class ProviderApp(df_base_app.DFlowApp):
         self.reverse_bridge_mappings = {
             v: k for (k, v) in self.bridge_mappings.items()
         }
-        self.int_ofports = {}
         self.bridge_macs = {}
 
     def _parse_bridge_mappings(self, bridge_mappings):
@@ -69,16 +68,12 @@ class ProviderApp(df_base_app.DFlowApp):
                      "bridge %(bridge)s",
                      {'physical_network': physical_network,
                       'bridge': bridge})
-            int_ofport = self.vswitch_api.create_patch_port(
-                self.integration_bridge,
-                'int-' + bridge,
-                'phy-' + bridge)
-            self.vswitch_api.create_patch_port(
-                bridge,
-                'phy-' + bridge,
-                'int-' + bridge)
-            self.int_ofports[physical_network] = int_ofport
-
+            mappings = self.vswitch_api.create_patch_pair(
+                    self.integration_bridge,
+                    bridge)
+            self.vswitch_api.map_patch_to_network(
+                physical_network,
+                mappings[self.integration_bridge])
             mac = self.vswitch_api.get_port_mac_in_use(bridge)
             self.bridge_macs[physical_network] = mac
 
@@ -146,10 +141,11 @@ class ProviderApp(df_base_app.DFlowApp):
         elif network_type == NET_FLAT:
             vlan_vid = 0
 
+        in_port = self.vswitch_api.get_phy_network_ofport(
+            lport.lswitch.physical_network)
         match = self.parser.OFPMatch(
-            in_port=self.int_ofports[lport.lswitch.physical_network],
-            vlan_vid=vlan_vid,
-        )
+            in_port=in_port,
+            vlan_vid=vlan_vid)
 
         return match, actions
 
@@ -208,7 +204,7 @@ class ProviderApp(df_base_app.DFlowApp):
                   {'net_id': network_id})
 
         physical_network = lport.lswitch.physical_network
-        ofport = self.int_ofports[physical_network]
+        ofport = self.vswitch_api.get_phy_network_ofport(physical_network)
 
         # Output without updating MAC:
         self.mod_flow(
@@ -235,7 +231,7 @@ class ProviderApp(df_base_app.DFlowApp):
         # If dest MAC is the placeholder, update it to bridge MAC
         network_id = lport.lswitch.unique_key
         physical_network = lport.lswitch.physical_network
-        ofport = self.int_ofports[physical_network]
+        ofport = self.vswitch_api.get_phy_network_ofport(physical_network)
 
         self.mod_flow(
             table_id=const.EGRESS_EXTERNAL_TABLE,

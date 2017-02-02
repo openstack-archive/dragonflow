@@ -45,14 +45,14 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
     def test_provider_vlan_port(self):
         fake_local_vlan_port1 = make_fake_local_port(
                 lswitch='fake_vlan_switch1')
-        self.app.int_ofports['phynet'] = 1
+        int_ofports = 1
         self.app.bridge_macs['phynet'] = '00:12:23:34:45:56'
         self.app.mod_flow.reset_mock()
         self.controller.update(fake_local_vlan_port1)
         match = self.app.parser.OFPMatch(metadata=21)
         actions = [
                 self.app.parser.OFPActionOutput(
-                    self.app.int_ofports['phynet'],
+                    int_ofports,
                     self.app.ofproto.OFPCML_NO_BUFFER)]
         inst = [self.app.parser.OFPInstructionActions(
                 self.app.ofproto.OFPIT_APPLY_ACTIONS, actions)]

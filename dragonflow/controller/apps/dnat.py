@@ -40,6 +40,7 @@ from dragonflow.db.models import ovs
 LOG = log.getLogger(__name__)
 
 FIP_GW_RESOLVING_STATUS = 'resolving'
+ZERO_MAC = '00:00:00:00:00:00'
 
 EGRESS = 'egress'
 
@@ -57,13 +58,10 @@ class DNATApp(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
         super(DNATApp, self).__init__(*args, **kwargs)
-        self.external_network_bridge = \
-            cfg.CONF.df_dnat_app.external_network_bridge
+        self.conf = cfg.CONF.df_dnat_app
+        self.external_network_bridge = self.conf.external_network_bridge
         self.external_bridge_mac = ""
         self.integration_bridge = cfg.CONF.df.integration_bridge
-        self.conf = cfg.CONF.df_dnat_app
-        self.int_peer_patch_port = self.conf.int_peer_patch_port
-        self.ex_peer_patch_port = self.conf.ex_peer_patch_port
         self.external_networks = collections.defaultdict(int)
         self.local_floatingips = collections.defaultdict(str)
         # Map between fixed ip mac to floating ip
@@ -218,7 +216,7 @@ class DNATApp(df_base_app.DFlowApp):
         mac = ovs_port.mac_in_use
         if (self.external_bridge_mac == mac
                 or not mac
-                or mac == '00:00:00:00:00:00'):
+                or mac == ZERO_MAC):
             return
 
         for key, floatingip in self.local_floatingips.items():
@@ -229,14 +227,14 @@ class DNATApp(df_base_app.DFlowApp):
         self.external_bridge_mac = mac
 
     def _init_external_bridge(self):
-        self.external_ofport = self.vswitch_api.create_patch_port(
-            self.integration_bridge,
-            self.ex_peer_patch_port,
-            self.int_peer_patch_port)
-        self.vswitch_api.create_patch_port(
-            self.external_network_bridge,
-            self.int_peer_patch_port,
-            self.ex_peer_patch_port)
+        mapping = self.vswitch_api.create_patch_pair(
+                self.integration_bridge,
+                self.external_network_bridge)
+        self.vswitch_api.map_patch_to_network(
+                'public',
+                mapping[self.integration_bridge])
+        self.external_ofport = self.vswitch_api.get_phy_network_ofport(
+            'public')
 
     def _increase_external_network_count(self, network_id):
         self.external_networks[network_id] += 1

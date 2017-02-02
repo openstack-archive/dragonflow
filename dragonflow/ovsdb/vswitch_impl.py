@@ -32,6 +32,7 @@ OVS_LOG_FILE_NAME = 'df-ovs.log'
 
 
 class OvsApi(object):
+    bridge_mapping = dict()
     """The interface of openvswitch
 
     Consumers use this class to set openvswitch or get results from
@@ -164,13 +165,65 @@ class OvsApi(object):
 
             return iface['name']
 
-    def create_patch_port(self, bridge, port, remote_name):
+    def _gen_link_mapping(self, bridge1, bridge2,
+                          bridge1_link_name=None,
+                          bridge2_link_name=None):
+        if bridge1_link_name is None:
+            bridge1_link_name = "%s-patch" % bridge2
+        if bridge2_link_name is None:
+            bridge2_link_name = "%s-patch" % bridge1
+        mapping = {bridge1: bridge1_link_name,
+                   bridge2: bridge2_link_name}
+        LOG.debug('genrated mappings {%(bridge1)s: %(link1)s,'
+                  ' %(bridge2)s: %(link2)s}',
+                  {'bridge1': bridge1,
+                   'link1': bridge1_link_name,
+                   'bridge2': bridge2,
+                   'link2': bridge2_link_name})
+        return mapping
+
+    def map_patch_to_network(self, network, patch_name):
+        self.bridge_mapping[network] = patch_name
+
+    def get_phy_network_ofport(self, network):
+        patch_name = self.bridge_mapping.get(network)
+        if patch_name:
+            return self.get_port_ofport(patch_name)
+        return None
+
+    def create_patch_pair(self, local_bridge, peer_bridge,
+                          local_link_name=None, peer_link_name=None):
+        links = self._gen_link_mapping(
+                    local_bridge,
+                    peer_bridge,
+                    local_link_name,
+                    peer_link_name)
+        local_bridge_mapping = self._create_patch_port(
+                    local_bridge,
+                    links[local_bridge],
+                    peer_bridge,
+                    links[peer_bridge])
+        peer_bridge_mapping = self._create_patch_port(
+                    peer_bridge,
+                    links[peer_bridge],
+                    local_bridge,
+                    links[local_bridge])
+        LOG.info("created patch ports "
+                 "{%(bridge1)s: %(link1)s,"
+                 " %(bridge2)s: %(link2)s}",
+                 {'bridge1': local_bridge,
+                  'link1': local_bridge_mapping,
+                  'bridge2': peer_bridge,
+                  'link2': peer_bridge_mapping})
+        return links
+
+    def _create_patch_port(self, bridge, port, peer, peer_port):
         if cfg.CONF.df.enable_dpdk:
             self.ovsdb.add_br(bridge, datapath_type='netdev').execute()
         else:
             self.ovsdb.add_br(bridge, datapath_type='system').execute()
         if not self.patch_port_exist(port):
-            self.ovsdb.add_patch_port(bridge, port, remote_name).execute()
+            self.ovsdb.add_patch_port(bridge, port, peer, peer_port).execute()
         return self.get_port_ofport(port)
 
     def patch_port_exist(self, port):

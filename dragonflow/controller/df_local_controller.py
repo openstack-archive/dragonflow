@@ -191,11 +191,14 @@ class DfLocalController(object):
             if not lport.ofport:
                 # Not attached to the switch. Maybe it's a subport?
                 lport.ofport = self._get_trunk_subport_ofport(lport)
-        else:
+        elif lswitch.network_type in self.tunnel_types:
             lport.peer_vtep_address = (chassis.id if lport.remote_vtep else
                                        chassis.ip)
             lport.ofport = self.vswitch_api.get_vtp_ofport(
                     lswitch.network_type)
+        else:
+            lport.ofport = self.vswitch_api.get_phy_network_ofport(
+                   lswitch.network_type)
 
         if not lport.ofport:
             # The tunnel port online event will update the remote logical

@@ -16,6 +16,7 @@ from neutron_lib.api.definitions import port_security as psec
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
 
+from dragonflow._i18n import _
 from dragonflow.db.models import l2
 from dragonflow.neutron.common import constants as df_const
 
