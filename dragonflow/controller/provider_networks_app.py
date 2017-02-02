@@ -17,6 +17,7 @@ from neutron_lib.utils import helpers
 from oslo_log import log
 from ryu.lib import mac as mac_api
 
+from dragonflow.common import helpers as df_helpers
 from dragonflow.common import utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as const
@@ -63,14 +64,11 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                      "bridge %(bridge)s",
                      {'physical_network': physical_network,
                       'bridge': bridge})
-            int_ofport = self.vswitch_api.create_patch_port(
-                self.integration_bridge,
-                'int-' + bridge,
-                'phy-' + bridge)
-            self.vswitch_api.create_patch_port(
-                bridge,
-                'phy-' + bridge,
-                'int-' + bridge)
+            mappings = df_helpers.generate_mapping(
+                    self.integration_bridge,
+                    bridge,
+                    self.vswitch_api.create_patch_port)
+            int_ofport = mappings[self.integration_bridge]
             self.int_ofports[physical_network] = int_ofport
 
     def switch_features_handler(self, ev):
