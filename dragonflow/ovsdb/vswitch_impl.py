@@ -21,6 +21,7 @@ from ovs import vlog
 
 from dragonflow.ovsdb import impl_idl
 from dragonflow.ovsdb import objects
+from dragonflow.ovsdb import patch_mapping as mapping
 
 LOG = log.getLogger(__name__)
 
@@ -31,6 +32,7 @@ OVS_LOG_FILE_NAME = 'df-ovs.log'
 
 
 class OvsApi(object):
+    bridge_mapping = dict()
     """The interface of openvswitch
 
     Consumers use this class to set openvswitch or get results from
@@ -160,6 +162,44 @@ class OvsApi(object):
                 continue
 
             return iface['name']
+
+    def create_patch_pair(self, local_bridge, peer_bridge,
+                          local_link_name=None, peer_link_name=None):
+        link_mapping = mapping.Mapping(local_bridge, peer_bridge)
+        links = link_mapping.gen_link_mapping(
+                    local_link_name,
+                    peer_link_name)
+        local_bridge_mapping = self.create_patch_port(
+                    local_bridge,
+                    links[local_bridge],
+                    links[peer_bridge])
+        peer_bridge_mapping = self.create_patch_port(
+                    peer_bridge,
+                    links[peer_bridge],
+                    links[local_bridge])
+        LOG.info("created patch ports "
+                 "{%(bridge1)s: %(link1)s,"
+                 " %(bridge2)s: %(link2)s}",
+                 {'bridge1': local_bridge,
+                  'link1': local_bridge_mapping,
+                  'bridge2': peer_bridge,
+                  'link2': peer_bridge_mapping})
+        return {local_bridge: local_bridge_mapping,
+                peer_bridge: peer_bridge_mapping}
+
+    def create_unique_patch_pair(self, local_bridge, peer_bridge,
+                                 local_link_name=None, peer_link_name=None):
+        link_mapping = mapping.Mapping(local_bridge, peer_bridge)
+        patch_links = self.bridge_mapping.get(link_mapping)
+        if patch_links:
+            return patch_links
+        patch_links = self.create_patch_pair(
+                local_bridge,
+                peer_bridge,
+                local_link_name,
+                peer_link_name)
+        self.bridge_mapping[link_mapping] = patch_links
+        return patch_links
 
     def create_patch_port(self, bridge, port, remote_name):
         if cfg.CONF.df.enable_dpdk:
