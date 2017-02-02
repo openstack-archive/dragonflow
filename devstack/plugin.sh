@@ -17,7 +17,7 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.6}
 EXTERNAL_HOST_IP=${EXTERNAL_HOST_IP:-}
 
 DEFAULT_TUNNEL_TYPE="geneve"
-DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
+DEFAULT_APPS_LIST="aging_app.Aging,l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp,"\
 "portqos_app.PortQosApp,classifier_app.ClassifierApp,tunneling_app.TunnelingApp,"\
 "provider_networks_app.ProviderNetworksApp"
