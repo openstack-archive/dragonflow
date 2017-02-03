@@ -13,30 +13,66 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-# Pipline Table numbers
+# Pipline Table numbers.
+# In general each time packet is forwarded from one table to another
+# as it goes in the pipeline, table id is increased.
+
+# First table in the pipeline. All packets are landed here.
+# In case packet is originated from local port, it is forwarded
+# to EGRESS_PORT_SECURITY_TABLE.
+# In case packet is comming from outside with a fip, it is
+# forwarded to table INGRESS_NAT_TABLE for translation.
+# In case the packet is comming with a tunnel id, it is
+# translated to network id and the packet is forwarded to
+# INGRESS_DESTINATION_PORT_LOOKUP_TABLE.
 INGRESS_CLASSIFICATION_DISPATCH_TABLE = 0
-EGRESS_PORT_SECURITY_TABLE = 1
-EGRESS_CONNTRACK_TABLE = 3
-EGRESS_SECURITY_GROUP_TABLE = 6
-INGRESS_DESTINATION_PORT_LOOKUP_TABLE = 7
-SERVICES_CLASSIFICATION_TABLE = 9
-ARP_TABLE = 10
-DHCP_TABLE = 11
-METADATA_SERVICE_TABLE = 12
-METADATA_SERVICE_REPLY_TABLE = 13
-IPV6_ND_TABLE = 14
-INGRESS_NAT_TABLE = 15
-L2_LOOKUP_TABLE = 17
-L3_LOOKUP_TABLE = 20
-L3_PROACTIVE_LOOKUP_TABLE = 25
-EGRESS_NAT_TABLE = 30
-EGRESS_TABLE = 64
-EGRESS_EXTERNAL_TABLE = 66
+# All packets from unknown ovs ports are dropped here. Other packets
+# are forwarded to table EGRESS_CONNTRACK_TABLE.
+EGRESS_PORT_SECURITY_TABLE = 5
+# Next 2 tables are related to connection tracking and packet filtering.
+# Used for SG.
+EGRESS_CONNTRACK_TABLE = 10
+EGRESS_SECURITY_GROUP_TABLE = 15
+# Table is used to filter dhcp, arp, etc... packets.
+SERVICES_CLASSIFICATION_TABLE = 20
+# All ARP packets are landed here. ARP responses are generated.
+ARP_TABLE = 25
+# DHCP requests are forwarded to controller at this table.
+DHCP_TABLE = 30
+# Metadata service related tables.
+METADATA_SERVICE_TABLE = 35
+METADATA_SERVICE_REPLY_TABLE = 40
+# ipv6 neighbor discovery table.
+IPV6_ND_TABLE = 45
+# Handle fip
+INGRESS_NAT_TABLE = 50
+# Translate destination mac and port key to reg7 and forward packet to table
+# L3_LOOKUP_TABLE. Duplicate broadcase packets.
+L2_LOOKUP_TABLE = 55
+# Filter packet based on destination IP address.
+L3_LOOKUP_TABLE = 60
+# Filter packet based on destination IP address in proactive way ;)
+L3_PROACTIVE_LOOKUP_TABLE = 65
+# Related to dnap app
+EGRESS_NAT_TABLE = 70
+# Depending on reg7, packet is pushed localy to EGRESS_EXTERNAL_TABLE or
+# translated to tunnel.
+EGRESS_TABLE = 75
+# Push packet to local ovs port.
+EGRESS_EXTERNAL_TABLE = 80
+# All packets that come from remote host will go through this table
+# and then go to INGRESS_CONNTRACK_TABLE. Broadcast packets are
+# duplicated here.
+INGRESS_DESTINATION_PORT_LOOKUP_TABLE = 100
+# The next 2 tables are related to connection tracking and packet filtering.
+# Used for SG.
+INGRESS_CONNTRACK_TABLE = 105
+INGRESS_SECURITY_GROUP_TABLE = 110
+# Send packets to target local ovs ports.
+INGRESS_DISPATCH_TABLE = 115
+# Table used by aging app.
 CANARY_TABLE = 200
-# Pipeline Table numbers  Ingress
-INGRESS_CONNTRACK_TABLE = 72
-INGRESS_SECURITY_GROUP_TABLE = 77
-INGRESS_DISPATCH_TABLE = 78
+
 
 # Flow Priorities
 PRIORITY_DEFAULT = 1
