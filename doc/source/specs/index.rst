@@ -65,6 +65,7 @@ Specs
     support_check_chassis_alive
     traceroute
     api
+    bgp_dynamic_routing
 
 Templates
 ---------
