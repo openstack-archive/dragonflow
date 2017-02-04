@@ -62,6 +62,7 @@ Specs
     services_status
     vm_live_migration
     nb_api_refactor
+    bgp_dynamic_routing
 
 Templates
 ---------
