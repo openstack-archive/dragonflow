@@ -64,6 +64,7 @@ Specs
     nb_api_refactor
     support_check_chassis_alive
     traceroute
+    bgp_dynamic_routing
 
 Templates
 ---------
