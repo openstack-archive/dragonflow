@@ -68,6 +68,7 @@ Specs
     publish_subscribe_v2
     vlan_aware_vms
     fwaas
+    bgp_dynamic_routing
 
 Templates
 ---------
