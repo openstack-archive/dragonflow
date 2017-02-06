@@ -49,6 +49,7 @@ INGRESS_NAT_TABLE = 50
 # Translate destination mac and port key to reg7 and forward packet to table
 # L3_LOOKUP_TABLE. Duplicate broadcase packets.
 L2_LOOKUP_TABLE = 55
+L2_LOOKUP_CONT_TABLE = 56
 # Filter packet based on destination IP address.
 L3_LOOKUP_TABLE = 60
 # Filter packet based on destination IP address in proactive way ;)
@@ -58,6 +59,7 @@ EGRESS_NAT_TABLE = 70
 # Depending on reg7, packet is pushed localy to EGRESS_EXTERNAL_TABLE or
 # translated to tunnel.
 EGRESS_TABLE = 75
+EGRESS_CONT_TABLE = 76
 # Push packet to local ovs port.
 EGRESS_EXTERNAL_TABLE = 80
 # All packets that come from remote host will go through this table
