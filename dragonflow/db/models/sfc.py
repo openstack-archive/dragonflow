@@ -59,8 +59,8 @@ class PortPairGroup(mf.ModelBase,
 @mf.register_model
 @mf.construct_nb_db_model(
     indexes={
-        'source_port': 'source_port',
-        'dest_port': 'dest_port',
+        'source_port': 'source_port.id',
+        'dest_port': 'dest_port.id',
     },
 )
 class FlowClassifier(mf.ModelBase,
@@ -140,7 +140,7 @@ class FlowClassifier(mf.ModelBase,
 @mf.register_model
 @mf.construct_nb_db_model(
     indexes={
-        'flow_classifiers': 'flow_classifiers',
+        'flow_classifiers': 'flow_classifiers.id',
         'port_pair_groups': 'port_pair_groups',
     },
 )
