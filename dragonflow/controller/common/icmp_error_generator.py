@@ -50,9 +50,8 @@ def generate(icmp_type, icmp_code, msg_data, src_ip=None, pkt=None):
     if length_modulus:
         data_len += 1
         ip_datagram += bytearray([0] * (4 - length_modulus))
-    # The only possibility now.
-    icmp_data = icmp.TimeExceeded(data_len=data_len,
-                                  data=ip_datagram)
+
+    icmp_data = _create_icmp_data(icmp_type, data_len, ip_datagram)
     ic_pkt = icmp.icmp(icmp_type, icmp_code, 0, data=icmp_data)
 
     # Create IPv4 data
@@ -74,3 +73,14 @@ def generate(icmp_type, icmp_code, msg_data, src_ip=None, pkt=None):
     pkt_reply.add_protocol(ipv4_pkt)
     pkt_reply.add_protocol(ic_pkt)
     return pkt_reply
+
+
+def _create_icmp_data(icmp_type, data_len, data):
+    if icmp_type == icmp.ICMP_DEST_UNREACH:
+        icmp_data = icmp.dest_unreach(data_len=data_len, data=data)
+    elif icmp_type == icmp.ICMP_TIME_EXCEEDED:
+        icmp_data = icmp.TimeExceeded(data_len=data_len, data=data)
+    else:
+        icmp_data = None
+
+    return icmp_data
