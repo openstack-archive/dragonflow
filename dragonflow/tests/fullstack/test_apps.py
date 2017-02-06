@@ -713,7 +713,7 @@ class TestL3App(test_base.DFTestBase):
             key2: policy2,
         }
 
-    def _create_ping_packet(self, dst_ip, ttl=255):
+    def _create_packet(self, dst_ip, proto, ttl=255):
         router_interface = self.router.router_interfaces[
             self.subnet1.subnet_id
         ]
@@ -729,18 +729,24 @@ class TestL3App(test_base.DFTestBase):
             src=self.port1.port.get_logical_port().get_ip(),
             dst=dst_ip,
             ttl=ttl,
-            proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+            proto=proto,
         )
-        icmp = ryu.lib.packet.icmp.icmp(
-            type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
-            data=ryu.lib.packet.icmp.echo(data=self._create_random_string())
-        )
-        self._ping = icmp
+        if proto == ryu.lib.packet.ipv4.inet.IPPROTO_ICMP:
+            ip_data = ryu.lib.packet.icmp.icmp(
+                type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
+                data=ryu.lib.packet.icmp.echo(
+                    data=self._create_random_string())
+            )
+            self._ping = ip_data
+        elif proto == ryu.lib.packet.ipv4.inet.IPPROTO_UDP:
+            ip_data = ryu.lib.packet.udp.udp(
+                dst_port=33534,
+            )
         self._ip = ip
         result = ryu.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
         result.add_protocol(ip)
-        result.add_protocol(icmp)
+        result.add_protocol(ip_data)
         result.serialize()
         return result.data
 
@@ -800,7 +806,8 @@ class TestL3App(test_base.DFTestBase):
 
     def _test_icmp_address(self, dst_ip):
         port_policies = self._create_port_policies()
-        initial_packet = self._create_ping_packet(dst_ip)
+        initial_packet = self._create_packet(
+            dst_ip, ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
@@ -837,7 +844,8 @@ class TestL3App(test_base.DFTestBase):
 
         dst_ip = self.port2.port.get_logical_port().get_ip()
         port_policies = self._create_port_policies(connected=False)
-        initial_packet = self._create_ping_packet(dst_ip)
+        initial_packet = self._create_packet(
+            dst_ip, ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
@@ -869,13 +877,13 @@ class TestL3App(test_base.DFTestBase):
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self._test_icmp_address(dst_ip)
 
-    def test_icmp_ttl_packet(self):
+    def _create_icmp_test_port_policies(self, icmp_filter):
         ignore_action = app_testing_objects.IgnoreAction()
         raise_action = app_testing_objects.RaiseAction("Unexpected packet")
         rules = [
             app_testing_objects.PortPolicyRule(
-                # Detect ICMP time exceed, end simulation
-                app_testing_objects.RyuICMPTimeExceedFilter(self._get_ip),
+                # Detect ICMP, end simulation
+                icmp_filter(self._get_ip),
                 actions=[app_testing_objects.DisableRuleAction(),
                          app_testing_objects.StopSimulationAction()]
             ),
@@ -899,8 +907,16 @@ class TestL3App(test_base.DFTestBase):
             default_action=raise_action
         )
         key = (self.subnet1.subnet_id, self.port1.port_id)
-        initial_packet = self._create_ping_packet(
-            self.port2.port.get_logical_port().get_ip(), ttl=1)
+        return {key: policy}
+
+    def test_icmp_ttl_packet(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        port_policy = self._create_icmp_test_port_policies(
+            app_testing_objects.RyuICMPTimeExceedFilter)
+        initial_packet = self._create_packet(
+            self.port2.port.get_logical_port().get_ip(),
+            ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+            ttl=1)
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
@@ -910,7 +926,7 @@ class TestL3App(test_base.DFTestBase):
                         str(initial_packet)
                     ),
                 ],
-                port_policies={key: policy},
+                port_policies=port_policy,
                 unknown_port_action=ignore_action
             )
         )
@@ -918,6 +934,57 @@ class TestL3App(test_base.DFTestBase):
         policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(policy.exceptions) > 0:
             raise policy.exceptions[0]
+
+    def _test_udp_router_interface(self):
+        self.port1.port.update({"security_groups": []})
+        ignore_action = app_testing_objects.IgnoreAction()
+        port_policy = self._create_icmp_test_port_policies(
+            app_testing_objects.RyuICMPUnreachFilter)
+        initial_packet = self._create_packet(
+            "192.168.12.1", ryu.lib.packet.ipv4.inet.IPPROTO_UDP)
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    app_testing_objects.SendAction(
+                        self.subnet1.subnet_id,
+                        self.port1.port_id,
+                        str(initial_packet)
+                    ),
+                ],
+                port_policies=port_policy,
+                unknown_port_action=ignore_action
+            )
+        )
+        policy.start(self.topology)
+        policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
+
+    def test_udp_concrete_router_interface(self):
+        # By default, fullstack will start l3 agent. So there will be concrete
+        # router interface.
+        self._test_udp_router_interface()
+
+    def test_udp_virtual_router_interface(self):
+        # Delete the concrete router interface.
+        router_port_id = self.router.router_interfaces[
+            self.subnet1.subnet_id]['port_id']
+        topic = self.router.router_interfaces[
+            self.subnet1.subnet_id]['tenant_id']
+        lrouter = self.nb_api.get_router(self.router.router.router_id, topic)
+        router_version = lrouter.get_version()
+        self.nb_api.delete_lport(router_port_id, topic)
+        router_version += 1
+        self.nb_api.delete_lrouter_port(router_port_id,
+                                        self.router.router.router_id,
+                                        topic,
+                                        router_version=router_version)
+        # Update router with virtual router interface.
+        lrouter.inner_obj['version'] = router_version + 1
+        self.nb_api.update_lrouter(**lrouter.inner_obj)
+
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+        self._test_udp_router_interface()
 
 
 class TestSGApp(test_base.DFTestBase):
