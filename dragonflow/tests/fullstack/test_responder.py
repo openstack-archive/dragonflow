@@ -116,16 +116,16 @@ class ICMPResponderTest(test_base.DFTestBase):
             return flow
         return None
 
-    def _get_l2_lookup_table_flows(self):
+    def _get_l3_lookup_table_flows(self):
         ovs_flows_parser = test_utils.OvsFlowsParser()
         flows = ovs_flows_parser.dump(self.integration_bridge)
         flows = [flow for flow in flows
-                 if flow['table'] == str(const.L2_LOOKUP_TABLE)]
+                 if flow['table'] == str(const.L3_LOOKUP_TABLE)]
         return flows
 
     def _check_icmp_flow_removal(self, ip):
-        l2_flows = self._get_l2_lookup_table_flows()
-        flow = self._find_icmp_responder_flow_by_ip(l2_flows, ip)
+        l3_flows = self._get_l3_lookup_table_flows()
+        flow = self._find_icmp_responder_flow_by_ip(l3_flows, ip)
         if not flow:
             return True
         return False
@@ -150,7 +150,7 @@ class ICMPResponderTest(test_base.DFTestBase):
                   'enable_dhcp': True}
         subnet_id = subnet_obj.create(subnet)
 
-        flows_before = self._get_l2_lookup_table_flows()
+        flows_before = self._get_l3_lookup_table_flows()
 
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
         router_id = router.create()
@@ -170,7 +170,7 @@ class ICMPResponderTest(test_base.DFTestBase):
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
 
-        flows_middle = self._get_l2_lookup_table_flows()
+        flows_middle = self._get_l3_lookup_table_flows()
 
         vm.close()
         router.close()
