@@ -162,7 +162,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         inst = [action_inst]
         self.mod_flow(
             inst=inst,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
@@ -170,7 +170,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         match = self.parser.OFPMatch(reg7=lport.get_unique_key())
         self.mod_flow(
             command=self.ofproto.OFPFC_DELETE,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
@@ -204,7 +204,7 @@ class TunnelingApp(df_base_app.DFlowApp):
                 network_id, segmentation_id, port_count, command)
         self.mod_flow(
             inst=inst,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             command=command,
             priority=const.PRIORITY_LOW,
             match=match)
