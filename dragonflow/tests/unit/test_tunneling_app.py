@@ -101,7 +101,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
         self.app.mod_flow.assert_called_with(
             inst=inst,
             command=self.datapath.ofproto.OFPFC_ADD,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             priority=const.PRIORITY_LOW,
             match=match)
         self.app.mod_flow.reset_mock()
@@ -120,7 +120,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
         # The multicast flow will be modified to EGRESS_TABLE with priority low
         self.app.mod_flow.assert_called_with(
             inst=inst,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             command=self.datapath.ofproto.OFPFC_MODIFY,
             priority=const.PRIORITY_LOW,
             match=match)
@@ -132,7 +132,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
         # The multicast flow will be modified to EGRESS_TABLE with priority low
         self.app.mod_flow.assert_called_with(
             inst=inst,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             command=self.datapath.ofproto.OFPFC_MODIFY,
             priority=const.PRIORITY_LOW,
             match=match)
@@ -142,7 +142,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
         # The multicast flow will be deleted to EGRESS_TABLE with priority low
         self.app.mod_flow.assert_called_with(
             inst=None,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             command=self.datapath.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,
             match=match)
