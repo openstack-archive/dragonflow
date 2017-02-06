@@ -185,7 +185,7 @@ class L3AppMixin(object):
         dst_ip = router_port.get_ip()
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
 
-        # Add rule for making packets go from L2_LOOKUP_TABLE
+        # Add rule for making packets go from L2_LOOKUP_CONT_TABLE
         # to L3_LOOKUP_TABLE
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
@@ -197,7 +197,7 @@ class L3AppMixin(object):
         inst = [action_inst, goto_inst]
         self.mod_flow(
             inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             priority=const.PRIORITY_HIGH,
             match=match)
 
@@ -251,13 +251,13 @@ class L3AppMixin(object):
         ip = router_port.get_ip()
         mac = router_port.get_mac()
 
-        # Delete rule for making packets go from L2_LOOKUP_TABLE
+        # Delete rule for making packets go from L2_LOOKUP_CONT_TABLE
         # to L3_LOOKUP_TABLE
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
         match.set_dl_dst(ryu_mac_lib.haddr_to_bin(mac))
         self.mod_flow(
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
             match=match)
