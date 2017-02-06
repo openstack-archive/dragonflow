@@ -17,6 +17,8 @@ from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import icmp
 from ryu.lib.packet import packet
+from ryu.lib.packet import tcp
+from ryu.lib.packet import udp
 from ryu.ofproto import ether
 
 from dragonflow._i18n import _LI, _LW
@@ -65,6 +67,16 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                                 "can't be recognized."), e_pkt.dst)
             return
 
+        # The packet's IP destination is router interface.
+        tcp_pkt = pkt.get_protocol(tcp.tcp)
+        udp_pkt = pkt.get_protocol(udp.udp)
+        if tcp_pkt or udp_pkt:
+            icmp_dst_unreach = icmp_error_generator.generate(
+                icmp.ICMP_DEST_UNREACH, icmp.ICMP_PORT_UNREACH_CODE,
+                msg.data, pkt=pkt)
+            in_port = msg.match.get('in_port')
+            self.send_packet(in_port, icmp_dst_unreach)
+
     def router_updated(self, router, original_router):
         if not original_router:
             LOG.info(_LI("Logical Router created = %s"), router)
@@ -108,6 +120,16 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         for route in lrouter.get_routes():
             self._add_router_route(lrouter, route)
 
+    def _get_router_interface_match(self, router_unique_key, rif_ip):
+        if netaddr.IPAddress(rif_ip).version == 4:
+            return self.parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                        reg5=router_unique_key,
+                                        ipv4_dst=rif_ip)
+
+        return self.parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                    reg5=router_unique_key,
+                                    ipv6_dst=rif_ip)
+
     def _add_new_router_port(self, router, router_port):
         LOG.info(_LI("Adding new logical router interface = %s"),
                  router_port)
@@ -117,6 +139,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         ofproto = self.ofproto
 
         mac = router_port.get_mac()
+        router_unique_key = router.get_unique_key()
         tunnel_key = router_port.get_unique_key()
         dst_ip = router_port.get_ip()
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
@@ -149,30 +172,26 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                     self, port.get_ip(), mac,
                     table_id=const.L3_LOOKUP_TABLE).add()
 
-        # If router interface IP, send to output table
-        if is_ipv4:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    metadata=local_network_id,
-                                    ipv4_dst=dst_ip)
+        # If router interface is not concrete, send to local controller. local
+        # controller will create icmp unreachable mesage. A virtual router
+        # interface will not be in local cache, as it doesn't have chassis
+        # information.
+        lport = self.db_store.get_port(router_port.get_id())
+        if not lport:
+            match = self._get_router_interface_match(router_unique_key, dst_ip)
+            actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                              ofproto.OFPCML_NO_BUFFER)]
+            action_inst = parser.OFPInstructionActions(
+                ofproto.OFPIT_APPLY_ACTIONS, actions)
+            self.mod_flow(
+                inst=[action_inst],
+                table_id=const.L3_LOOKUP_TABLE,
+                priority=const.PRIORITY_HIGH,
+                match=match)
         else:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
-                                    metadata=local_network_id,
-                                    ipv6_dst=dst_ip)
-
-        actions = []
-        actions.append(parser.OFPActionSetField(reg7=tunnel_key))
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.L3_LOOKUP_TABLE,
-            priority=const.PRIORITY_HIGH,
-            match=match)
+            self._add_concrete_router_interface(router, lport)
 
         #add dst_mac=gw_mac l2 goto l3 flow
-        router_unique_key = router.get_unique_key()
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
         match.set_dl_dst(haddr_to_bin(mac))
@@ -469,6 +488,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         parser = self.parser
         ofproto = self.ofproto
+        router_unique_key = router.get_unique_key()
         tunnel_key = router_port.get_unique_key()
         ip = router_port.get_ip()
         mac = router_port.get_mac()
@@ -500,12 +520,12 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                     self, port.get_ip(), mac,
                     table_id=const.L3_LOOKUP_TABLE).remove()
 
-        match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
+        # Delete router interface IP rules
+        match = self._get_router_interface_match(router_unique_key, ip)
         self.mod_flow(
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
+            priority=const.PRIORITY_HIGH,
             match=match)
 
         match = parser.OFPMatch()
@@ -535,8 +555,32 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         LOG.debug('add remote port: %s', lport)
         self._add_port(lport)
 
+    def _add_concrete_router_interface(self, router, lport):
+        router_unique_key = router.get_unique_key()
+        port_unique_key = lport.get_unique_key()
+        match = self._get_router_interface_match(router_unique_key,
+                                                 lport.get_ip())
+        actions = [self.parser.OFPActionSetField(reg7=port_unique_key)]
+        action_inst = self.parser.OFPInstructionActions(
+            self.ofproto.OFPIT_APPLY_ACTIONS, actions)
+        goto_inst = self.parser.OFPInstructionGotoTable(
+            const.EGRESS_TABLE)
+        inst = [action_inst, goto_inst]
+        self.mod_flow(
+            inst=inst,
+            table_id=const.L3_LOOKUP_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=match)
+
     def _add_port(self, lport):
         if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
+            # The router interace is concrete, direct the packets to the real
+            # port of router interface. The flow here will overwrite
+            # the flow that packet-in the packets to local controller.
+            router = self.db_store.get_router(lport.get_device_id())
+            if router:
+                self._add_concrete_router_interface(router, lport)
+
             return
 
         dst_ip = lport.get_ip()
@@ -585,7 +629,10 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
     def _remove_port(self, lport):
         if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
+            # Let the router update process to delete flows for router
+            # interface.
             return
+
         dst_ip = lport.get_ip()
         network_id = lport.get_external_value('local_network_id')
 
