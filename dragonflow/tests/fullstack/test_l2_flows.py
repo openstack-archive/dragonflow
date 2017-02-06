@@ -173,7 +173,7 @@ class TestL2FLows(test_base.DFTestBase):
         ingress_check = None
 
         for flow in flows:
-            if flow['table'] == str(const.L2_LOOKUP_TABLE):
+            if flow['table'] == str(const.L2_LOOKUP_CONT_TABLE):
                 if (l2_lookup_multicast_match in flow['match']):
                     if l2_lookup_multicast_action in flow['actions']:
                         l2_lookup_multicast_check = True
@@ -228,7 +228,7 @@ class TestL2FLows(test_base.DFTestBase):
         ingress_check = None
 
         for flow in flows:
-            if flow['table'] == str(const.L2_LOOKUP_TABLE):
+            if flow['table'] == str(const.L2_LOOKUP_CONT_TABLE):
                 if (l2_lookup_multicast_match in flow['match']):
                     if l2_lookup_multicast_action in flow['actions']:
                         l2_lookup_multicast_check = True
@@ -242,7 +242,7 @@ class TestL2FLows(test_base.DFTestBase):
                         l2_lookup_unkown_check = True
                         continue
 
-            if flow['table'] == str(const.EGRESS_TABLE):
+            if flow['table'] == str(const.EGRESS_CONT_TABLE):
                 if (egress_match in flow['match']):
                     if egress_action in flow['actions']:
                         egress_check = True
@@ -353,7 +353,7 @@ class TestL2FLows(test_base.DFTestBase):
         egress_check = None
 
         for flow in flows:
-            if flow['table'] == str(const.L2_LOOKUP_TABLE):
+            if flow['table'] == str(const.L2_LOOKUP_CONT_TABLE):
                 if (l2_lookup_multicast_match in flow['match']):
                     if l2_lookup_multicast_action in flow['actions']:
                         l2_lookup_multicast_check = True
@@ -366,7 +366,7 @@ class TestL2FLows(test_base.DFTestBase):
                     if l2_lookup_unkown_action in flow['actions']:
                         l2_lookup_unkown_check = True
                         continue
-            if flow['table'] == str(const.EGRESS_TABLE):
+            if flow['table'] == str(const.EGRESS_CONT_TABLE):
                 if (egress_match in flow['match']):
                     if egress_action in flow['actions']:
                         egress_check = True
@@ -465,7 +465,7 @@ class TestL2FLows(test_base.DFTestBase):
         check = 'set_field:' + tunnel_key_hex + '->reg7,resubmit(,' + \
                 str(const.EGRESS_TABLE) + ')'
         for flow in flows:
-            if flow['table'] == str(const.L2_LOOKUP_TABLE):
+            if flow['table'] == str(const.L2_LOOKUP_CONT_TABLE):
                 if ('dl_dst=01:00:00:00:00:00/01:00:00:00:00:00' in
                         flow['match']):
                     if 'metadata=0x' + metadataid in flow['match']:
