@@ -95,6 +95,7 @@ class L3App(df_base_app.DFlowApp):
         ip_addr = netaddr.IPAddress(pkt_ip.dst)
         router = self.db_store.get_router_by_router_interface_mac(
             pkt_ethernet.dst)
+        router_unique_key = router.get_unique_key()
         for router_port in router.get_ports():
             if ip_addr in netaddr.IPNetwork(router_port.get_network()):
                 if str(ip_addr) == router_port.get_ip():
@@ -102,7 +103,7 @@ class L3App(df_base_app.DFlowApp):
                             or pkt_ip.proto == in_proto.IPPROTO_ICMPV6):
                         self._install_icmp_responder(
                             pkt_ethernet.src, pkt_ethernet.dst,
-                            pkt_ip.src, pkt_ip.dst, msg)
+                            pkt_ip.src, pkt_ip.dst, router_unique_key, msg)
                     else:
                         self._install_flow_send_to_output_table(
                             network_id,
@@ -117,7 +118,8 @@ class L3App(df_base_app.DFlowApp):
                                               network_id)
                         return
 
-    def _install_icmp_responder(self, src_mac, dst_mac, src_ip, dst_ip, msg):
+    def _install_icmp_responder(self, src_mac, dst_mac, src_ip, dst_ip,
+                                router_unique_key, msg):
         icmp_pkt = packet.Packet()
         icmp_pkt.add_protocol(ethernet.ethernet(
             ethertype=ether.ETH_TYPE_IP,
@@ -141,10 +143,10 @@ class L3App(df_base_app.DFlowApp):
             echo.data = bytearray(echo.data)
             icmp_pkt.add_protocol(icmp.icmp(icmp.ICMP_ECHO_REPLY, data=echo))
 
+        # TODO(xiaohhui): Use buffer to send back the first packet.
         self.send_packet(msg.match.get('in_port'), icmp_pkt)
         icmp_responder.ICMPResponder(
-            self, dst_ip, dst_mac,
-            table_id=const.L3_LOOKUP_TABLE).add(
+            self, dst_ip, router_unique_key).add(
                 idle_timeout=self.idle_timeout,
                 hard_timeout=self.hard_timeout)
 
@@ -209,12 +211,11 @@ class L3App(df_base_app.DFlowApp):
         tunnel_key = router_port.get_unique_key()
         dst_ip = router_port.get_ip()
 
-        # Add router ARP & ICMP responder for IPv4 Addresses
+        # Add router ARP for IPv4 Addresses
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
         if is_ipv4:
             arp_responder.ArpResponder(
                 self, local_network_id, dst_ip, mac).add()
-            icmp_responder.ICMPResponder(self, dst_ip, mac).add()
 
         # If router interface IP, send to output table
         if is_ipv4:
@@ -341,7 +342,6 @@ class L3App(df_base_app.DFlowApp):
         if netaddr.IPAddress(ip).version == 4:
             arp_responder.ArpResponder(
                 self, local_network_id, ip).remove()
-            icmp_responder.ICMPResponder(self, ip, mac).remove()
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)

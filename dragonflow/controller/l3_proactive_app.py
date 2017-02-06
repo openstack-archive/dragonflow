@@ -117,6 +117,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         ofproto = self.ofproto
 
         mac = router_port.get_mac()
+        router_unique_key = router.get_unique_key()
         tunnel_key = router_port.get_unique_key()
         dst_ip = router_port.get_ip()
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
@@ -129,25 +130,9 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             arp_responder.ArpResponder(self,
                                        local_network_id,
                                        dst_ip, mac).add()
-            icmp_responder.ICMPResponder(self, dst_ip, mac,
-                                         table_id=const.L2_LOOKUP_TABLE).add()
-            for port in router.get_ports():
-                if netaddr.IPAddress(port.get_ip()).version != 4:
-                    continue
-
-                if port.get_id() == router_port.get_id():
-                    continue
-
-                # Add ICMP responder from every other router port to the
-                # new router port.
-                icmp_responder.ICMPResponder(
-                    self, dst_ip, port.get_mac(),
-                    table_id=const.L3_LOOKUP_TABLE).add()
-                # Add ICMP responder from new router port to other
-                # router port.
-                icmp_responder.ICMPResponder(
-                    self, port.get_ip(), mac,
-                    table_id=const.L3_LOOKUP_TABLE).add()
+            icmp_responder.ICMPResponder(self,
+                                         dst_ip,
+                                         router_unique_key).add()
 
         # If router interface IP, send to output table
         if is_ipv4:
@@ -172,7 +157,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             match=match)
 
         #add dst_mac=gw_mac l2 goto l3 flow
-        router_unique_key = router.get_unique_key()
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
         match.set_dl_dst(haddr_to_bin(mac))
@@ -469,6 +453,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         parser = self.parser
         ofproto = self.ofproto
+        router_unique_key = router.get_unique_key()
         tunnel_key = router_port.get_unique_key()
         ip = router_port.get_ip()
         mac = router_port.get_mac()
@@ -479,26 +464,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             self.router_port_rarp_cache.pop(mac, None)
 
             arp_responder.ArpResponder(self, local_network_id, ip).remove()
-            icmp_responder.ICMPResponder(
-                self, ip, mac,
-                table_id=const.L2_LOOKUP_TABLE).remove()
-            for port in router.get_ports():
-                if netaddr.IPAddress(port.get_ip()).version != 4:
-                    continue
-
-                if port.get_id() == router_port.get_id():
-                    continue
-
-                # Remove ICMP responder from every other router port to the
-                # new router port.
-                icmp_responder.ICMPResponder(
-                    self, ip, port.get_mac(),
-                    table_id=const.L3_LOOKUP_TABLE).remove()
-                # Remove ICMP responder from new router port to other
-                # router port.
-                icmp_responder.ICMPResponder(
-                    self, port.get_ip(), mac,
-                    table_id=const.L3_LOOKUP_TABLE).remove()
+            icmp_responder.ICMPResponder(self, ip, router_unique_key).remove()
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)

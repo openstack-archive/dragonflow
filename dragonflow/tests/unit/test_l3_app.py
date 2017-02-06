@@ -28,11 +28,19 @@ class TestL3App(test_app_base.DFAppTestBase):
         self.app.mod_flow = self.mock_mod_flow
         self.router = test_app_base.fake_logic_router1
 
+    def test_add_router_port_not_install_icmp_respondor(self):
+        dst_router_port = self.router.get_ports()[0]
+        with mock.patch("dragonflow.controller.common"
+                        ".icmp_responder.ICMPResponder") as icmp:
+            self.app._add_new_router_port(self.router, dst_router_port)
+            # ICMP responder will be installed by local controller
+            self.assertFalse(icmp.called)
+
     def test_add_del_router(self):
         self.controller.delete_lrouter(self.router.get_id())
-        self.assertEqual(4, self.mock_mod_flow.call_count)
+        self.assertEqual(3, self.mock_mod_flow.call_count)
         self.mock_mod_flow.reset_mock()
         self.controller.update_lrouter(self.router)
-        self.assertEqual(3, self.mock_mod_flow.call_count)
+        self.assertEqual(2, self.mock_mod_flow.call_count)
         args, kwargs = self.mock_mod_flow.call_args
         self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])

@@ -81,3 +81,18 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
             test_app_base.fake_logic_switch1.get_unique_key(),
             self.router.get_ports()[0].get_mac(),
         )
+
+    def test_n_icmp_responder_for_n_router_interface(self):
+        router_port1 = {"network": "20.0.0.1/24",
+                        "lswitch": "fake_switch2",
+                        "topic": "fake_tenant1",
+                        "mac": "fa:16:3e:50:96:fe",
+                        "unique_key": 15,
+                        "lrouter": "fake_router_id",
+                        "id": "fake_router_port2"}
+        self.router.inner_obj['ports'].append(router_port1)
+        dst_router_port = self.router.get_ports()[0]
+        with mock.patch("dragonflow.controller.common"
+                        ".icmp_responder.ICMPResponder") as icmp:
+            self.app._add_new_router_port(self.router, dst_router_port)
+            self.assertEqual(1, icmp.call_count)

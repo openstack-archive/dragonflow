@@ -22,42 +22,54 @@ from dragonflow.controller.common import constants as const
 
 class ICMPResponder(object):
     """
-    A class for creating and removing ICMP responders.
-    @param interface_ip The port's IPv4 address
-    @param dst_mac The destination MAC address of packet
+    A class for creating and removing ICMP responders. ICMP responder usually
+    works for router interfaces. VM port should use normal path for ICMP echo.
+    @param app The application that initiates this class.
+    @param interface_ip The port's IPv4 address.
+    @param router_key The unique key of router.
+    @param table_id Where the respondor will be installed.
     """
-    def __init__(self, app, interface_ip, dst_mac,
-                 table_id=const.L2_LOOKUP_TABLE):
+    def __init__(self, app, interface_ip, router_key,
+                 table_id=const.L3_LOOKUP_TABLE):
         self.app = app
         self.datapath = app.datapath
         self.interface_ip = interface_ip
-        self.dst_mac = dst_mac
+        self.router_key = router_key
         self.table_id = table_id
 
     def _get_match(self):
         parser = self.datapath.ofproto_parser
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                eth_dst=self.dst_mac,
+                                reg5=self.router_key,
                                 ip_proto=in_proto.IPPROTO_ICMP,
                                 ipv4_dst=self.interface_ip,
                                 icmpv4_type=icmp.ICMP_ECHO_REQUEST)
+
         return match
 
     def _get_instructions(self):
         ofproto = self.datapath.ofproto
         parser = self.datapath.ofproto_parser
-        actions = [parser.NXActionRegMove(src_field='eth_src',
+        # Switch eth_dst and eth_src
+        actions = [parser.NXActionRegMove(src_field='eth_dst',
+                                          dst_field='metadata',
+                                          n_bits=48),
+                   parser.NXActionRegMove(src_field='eth_src',
                                           dst_field='eth_dst',
                                           n_bits=48),
-                   parser.NXActionRegMove(src_field='ipv4_src',
-                                          dst_field='ipv4_dst',
-                                          n_bits=32),
-                   parser.OFPActionSetField(icmpv4_type=icmp.ICMP_ECHO_REPLY),
-                   parser.OFPActionSetField(
-                       icmpv4_code=icmp.ICMP_ECHO_REPLY_CODE),
-                   parser.OFPActionSetField(eth_src=self.dst_mac),
-                   parser.OFPActionSetField(ipv4_src=self.interface_ip),
-                   parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
+                   parser.NXActionRegMove(src_field='metadata',
+                                          dst_field='eth_src',
+                                          n_bits=48)]
+        actions += [parser.NXActionRegMove(src_field='ipv4_src',
+                                           dst_field='ipv4_dst',
+                                           n_bits=32),
+                    parser.OFPActionSetField(ipv4_src=self.interface_ip),
+                    # Refresh the ttl of reply packet.
+                    parser.OFPActionSetNwTtl(64),
+                    parser.OFPActionSetField(icmpv4_type=icmp.ICMP_ECHO_REPLY),
+                    parser.OFPActionSetField(
+                        icmpv4_code=icmp.ICMP_ECHO_REPLY_CODE),
+                    parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
         instructions = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
         return instructions
