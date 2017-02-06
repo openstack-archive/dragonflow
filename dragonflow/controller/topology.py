@@ -12,7 +12,6 @@
 
 from oslo_config import cfg
 from oslo_log import log
-import six
 
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import constants
@@ -301,7 +300,7 @@ class Topology(object):
         new_ovs_to_lport_mapping = {}
         add_ovs_to_lport_mapping = {}
         delete_ovs_to_lport_mapping = self.ovs_to_lport_mapping
-        for key, ovs_port in six.iteritems(self.ovs_ports):
+        for key, ovs_port in self.ovs_ports.items():
             if ovs_port.get_type() == db_models.OvsPort.TYPE_VM:
                 lport_id = ovs_port.get_iface_id()
                 lport = self._get_lport(lport_id)

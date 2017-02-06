@@ -86,7 +86,7 @@ def keys_and_vals_to_strs(dictionary):
             return str(k_or_v)
         else:
             return k_or_v
-    return dict((to_str(k), to_str(v)) for k, v in six.iteritems(dictionary))
+    return dict((to_str(k), to_str(v)) for k, v in dictionary.items())
 
 
 def _format_field_name(attr):
@@ -135,7 +135,7 @@ def print_dict(dct, dict_property="Property", wrap=0):
     """
     pt = prettytable.PrettyTable([dict_property, 'Value'])
     pt.align = 'l'
-    for k, v in six.iteritems(dct):
+    for k, v in dct.items():
         # convert dict to str to check length
         if isinstance(v, dict):
             v = six.text_type(keys_and_vals_to_strs(v))

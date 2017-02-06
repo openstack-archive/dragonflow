@@ -17,8 +17,6 @@ import collections
 import copy
 import threading
 
-import six
-
 from dragonflow.db import models
 
 
@@ -93,7 +91,7 @@ class DbStore(object):
     def get(self, table_name, key, topic):
         if topic:
             return self.tenant_dbs[topic].get(table_name, key)
-        for tenant_db in six.itervalues(self.tenant_dbs):
+        for tenant_db in self.tenant_dbs.values():
             value = tenant_db.get(table_name, key)
             if value:
                 return value
@@ -102,7 +100,7 @@ class DbStore(object):
         if topic:
             return self.tenant_dbs[topic].keys(table_name)
         result = []
-        for tenant_db in six.itervalues(self.tenant_dbs):
+        for tenant_db in self.tenant_dbs.values():
             result.extend(tenant_db.keys(table_name))
         return result
 
@@ -110,7 +108,7 @@ class DbStore(object):
         if topic:
             return self.tenant_dbs[topic].values(table_name)
         result = []
-        for tenant_db in six.itervalues(self.tenant_dbs):
+        for tenant_db in self.tenant_dbs.values():
             result.extend(tenant_db.values(table_name))
         return result
 
@@ -123,7 +121,7 @@ class DbStore(object):
         if topic:
             self.tenant_dbs[topic].pop(table_name, key)
         else:
-            for tenant_db in six.itervalues(self.tenant_dbs):
+            for tenant_db in self.tenant_dbs.values():
                 if tenant_db.pop(table_name, key):
                     break
 
@@ -362,7 +360,7 @@ class DbStore(object):
 
     def clear(self, topic=None):
         if not topic:
-            for tenant_db in six.itervalues(self.tenant_dbs):
+            for tenant_db in self.tenant_dbs.values():
                 tenant_db.clear()
         else:
             self.tenant_dbs[topic].clear()

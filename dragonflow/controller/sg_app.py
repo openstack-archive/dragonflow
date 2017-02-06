@@ -17,7 +17,6 @@ import netaddr
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
-import six
 
 from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.controller.common import constants as const
@@ -792,7 +791,7 @@ class SGApp(df_base_app.DFlowApp):
         # of remote group.
         secrules = self.remote_secgroup_ref.get(secgroup_id)
         if secrules:
-            for rule_info in six.itervalues(secrules):
+            for rule_info in secrules.values():
                 self._update_security_group_rule_flows_by_addresses(
                     rule_info.get_security_group_id(),
                     rule_info,
@@ -822,7 +821,7 @@ class SGApp(df_base_app.DFlowApp):
             # parameter of remote group.
             secrules = self.remote_secgroup_ref.get(secgroup_id)
             if secrules:
-                for rule_info in six.itervalues(secrules):
+                for rule_info in secrules.values():
                     self._update_security_group_rule_flows_by_addresses(
                         rule_info.get_security_group_id(),
                         rule_info,
