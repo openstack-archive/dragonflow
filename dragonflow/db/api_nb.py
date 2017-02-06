@@ -540,6 +540,8 @@ class NbApi(object):
         lrouter = {}
         lrouter['id'] = id
         lrouter['topic'] = topic
+        lrouter[db_models.UNIQUE_KEY] = self.driver.allocate_unique_key(
+            db_models.LogicalRouter.table_name)
         for col, val in columns.items():
             lrouter[col] = val
         lrouter_json = jsonutils.dumps(lrouter)
