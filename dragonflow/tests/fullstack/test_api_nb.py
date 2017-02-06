@@ -76,3 +76,26 @@ class Test_API_NB(test_base.DFTestBase):
 
         self.assertNotEqual(lport.get_unique_key(),
                             lport1.get_unique_key())
+
+    def test_create_lrouter(self):
+        fake_lrouter = copy.deepcopy(
+            test_app_base.fake_logic_router1.inner_obj)
+        fake_lrouter.pop('unique_key', None)
+        self.nb_api.create_lrouter(**fake_lrouter)
+        self.addCleanup(self.nb_api.delete_lrouter,
+                        fake_lrouter['id'], fake_lrouter['topic'])
+        lrouter = self.nb_api.get_router(fake_lrouter['id'],
+                                         fake_lrouter['topic'])
+        self.assertIsNotNone(lrouter.get_unique_key())
+
+        fake_lrouter1 = copy.deepcopy(fake_lrouter)
+        fake_lrouter1['id'] = 'other_id'
+        self.nb_api.create_lrouter(**fake_lrouter1)
+        self.addCleanup(self.nb_api.delete_lrouter,
+                        fake_lrouter1['id'], fake_lrouter1['topic'])
+        lrouter1 = self.nb_api.get_router(fake_lrouter1['id'],
+                                          fake_lrouter1['topic'])
+        self.assertIsNotNone(lrouter1.get_unique_key())
+
+        self.assertNotEqual(lrouter.get_unique_key(),
+                            lrouter1.get_unique_key())
