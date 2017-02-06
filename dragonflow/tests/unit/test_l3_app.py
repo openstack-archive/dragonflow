@@ -36,7 +36,7 @@ class TestL3App(test_app_base.DFAppTestBase):
         self.controller.update_lrouter(self.router)
         self.assertEqual(3, self.mock_mod_flow.call_count)
         args, kwargs = self.mock_mod_flow.call_args
-        self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])
+        self.assertEqual(const.L2_LOOKUP_CONT_TABLE, kwargs['table_id'])
 
     def test_install_l3_flow_set_metadata(self):
         dst_router_port = self.router.get_ports()[0]

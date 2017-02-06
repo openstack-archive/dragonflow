@@ -131,6 +131,16 @@ class L2App(df_base_app.DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.INGRESS_DISPATCH_TABLE)
 
+        # Default: L2 => send to L2 cont
+        self.add_flow_go_to_table(const.L2_LOOKUP_TABLE,
+                                  const.PRIORITY_DEFAULT,
+                                  const.L2_LOOKUP_CONT_TABLE)
+
+        # Default: Egress => send to Egress cont
+        self.add_flow_go_to_table(const.EGRESS_TABLE,
+                                  const.PRIORITY_DEFAULT,
+                                  const.EGRESS_CONT_TABLE)
+
         # Clear local networks cache so the multicast/broadcast flows
         # are installed correctly
         self.local_networks.clear()
@@ -184,7 +194,7 @@ class L2App(df_base_app.DFlowApp):
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=port_key)
         self.mod_flow(
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
@@ -253,7 +263,7 @@ class L2App(df_base_app.DFlowApp):
         match = self._get_multicast_broadcast_match(local_network_id)
 
         self.mod_flow(
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
             match=match)
@@ -300,7 +310,7 @@ class L2App(df_base_app.DFlowApp):
             ofproto.OFPIT_APPLY_ACTIONS, egress)]
         self.mod_flow(
             inst=egress_inst,
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             command=command,
             priority=const.PRIORITY_HIGH,
             match=match)
@@ -334,7 +344,7 @@ class L2App(df_base_app.DFlowApp):
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=tunnel_key)
         self.mod_flow(
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
@@ -357,7 +367,7 @@ class L2App(df_base_app.DFlowApp):
         inst = [action_inst, goto_inst]
         self.mod_flow(
             inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
@@ -368,7 +378,7 @@ class L2App(df_base_app.DFlowApp):
         match.set_metadata(network_id)
         match.set_dl_dst(haddr_to_bin(mac))
         self.mod_flow(
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
@@ -417,7 +427,7 @@ class L2App(df_base_app.DFlowApp):
         inst = [parser.OFPInstructionGotoTable(const.INGRESS_CONNTRACK_TABLE)]
         self.mod_flow(
             inst=inst,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
         self._install_network_flows_on_first_port_up(segmentation_id,
@@ -520,7 +530,7 @@ class L2App(df_base_app.DFlowApp):
             ofproto.OFPIT_APPLY_ACTIONS, egress)]
         self.mod_flow(
             inst=egress_inst,
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             command=command,
             priority=const.PRIORITY_MEDIUM,
             match=match)
@@ -567,7 +577,7 @@ class L2App(df_base_app.DFlowApp):
         match = self._get_multicast_broadcast_match(network_id)
         self.mod_flow(
             command=ofproto.OFPFC_DELETE,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             priority=const.PRIORITY_LOW,
             match=match)
 
@@ -601,7 +611,7 @@ class L2App(df_base_app.DFlowApp):
                                              actions)]
         self.mod_flow(
             inst=inst,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             command=command,
             priority=const.PRIORITY_LOW,
             match=match)
@@ -630,7 +640,7 @@ class L2App(df_base_app.DFlowApp):
         match = self._get_multicast_broadcast_match(network_id)
 
         self.mod_flow(
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
             match=match)
@@ -669,7 +679,7 @@ class L2App(df_base_app.DFlowApp):
         inst = [action_inst]
         self.mod_flow(
             inst=inst,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
         self._add_multicast_broadcast_handling_for_remote_port(lport_id,
@@ -753,7 +763,7 @@ class L2App(df_base_app.DFlowApp):
         inst = [parser.OFPInstructionGotoTable(const.EGRESS_TABLE)]
         self.mod_flow(
             inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
@@ -772,7 +782,7 @@ class L2App(df_base_app.DFlowApp):
         inst = [action_inst, goto_inst]
         self.mod_flow(
             inst=inst,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             priority=const.PRIORITY_LOW,
             match=match)
 
@@ -815,7 +825,7 @@ class L2App(df_base_app.DFlowApp):
         inst = [parser.OFPInstructionGotoTable(const.EGRESS_TABLE)]
         self.mod_flow(
             inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
+            table_id=const.L2_LOOKUP_CONT_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
@@ -827,7 +837,7 @@ class L2App(df_base_app.DFlowApp):
         inst = [goto_inst]
         self.mod_flow(
             inst=inst,
-            table_id=const.EGRESS_TABLE,
+            table_id=const.EGRESS_CONT_TABLE,
             priority=const.PRIORITY_LOW,
             match=match)
 
