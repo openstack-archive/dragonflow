@@ -42,9 +42,6 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             self.packet_in_handler)
 
     def switch_features_handler(self, ev):
-        self.add_flow_go_to_table(const.L3_LOOKUP_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.EGRESS_TABLE)
         self.router_port_rarp_cache.clear()
 
     def packet_in_handler(self, event):
