@@ -32,7 +32,7 @@ Proposed Change
 
 To support VM live migration, we must understand the interaction between
 nova and neutron during migration, and in general there are three points
-we shoud pay attention to.
+we should pay attention to.
 
 1 VIF plugged in destination node.
 
