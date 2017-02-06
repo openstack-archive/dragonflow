@@ -154,25 +154,9 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             arp_responder.ArpResponder(self,
                                        local_network_id,
                                        dst_ip, mac).add()
-            icmp_responder.ICMPResponder(self, dst_ip, mac,
-                                         table_id=const.L2_LOOKUP_TABLE).add()
-            for port in router.get_ports():
-                if netaddr.IPAddress(port.get_ip()).version != 4:
-                    continue
-
-                if port.get_id() == router_port.get_id():
-                    continue
-
-                # Add ICMP responder from every other router port to the
-                # new router port.
-                icmp_responder.ICMPResponder(
-                    self, dst_ip, port.get_mac(),
-                    table_id=const.L3_LOOKUP_TABLE).add()
-                # Add ICMP responder from new router port to other
-                # router port.
-                icmp_responder.ICMPResponder(
-                    self, port.get_ip(), mac,
-                    table_id=const.L3_LOOKUP_TABLE).add()
+            icmp_responder.ICMPResponder(self,
+                                         dst_ip,
+                                         router_unique_key).add()
 
         # If router interface is not concrete, send to local controller. local
         # controller will create icmp unreachable mesage. A virtual router
@@ -506,26 +490,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             self.router_port_rarp_cache.pop(mac, None)
 
             arp_responder.ArpResponder(self, local_network_id, ip).remove()
-            icmp_responder.ICMPResponder(
-                self, ip, mac,
-                table_id=const.L2_LOOKUP_TABLE).remove()
-            for port in router.get_ports():
-                if netaddr.IPAddress(port.get_ip()).version != 4:
-                    continue
-
-                if port.get_id() == router_port.get_id():
-                    continue
-
-                # Remove ICMP responder from every other router port to the
-                # new router port.
-                icmp_responder.ICMPResponder(
-                    self, ip, port.get_mac(),
-                    table_id=const.L3_LOOKUP_TABLE).remove()
-                # Remove ICMP responder from new router port to other
-                # router port.
-                icmp_responder.ICMPResponder(
-                    self, port.get_ip(), mac,
-                    table_id=const.L3_LOOKUP_TABLE).remove()
+            icmp_responder.ICMPResponder(self, ip, router_unique_key).remove()
 
         # Delete router interface IP rules
         match = self._get_router_interface_match(router_unique_key, ip)

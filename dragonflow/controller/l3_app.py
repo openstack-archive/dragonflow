@@ -18,7 +18,6 @@ from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import icmp
-from ryu.lib.packet import icmpv6
 from ryu.lib.packet import in_proto
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
@@ -135,14 +134,14 @@ class L3App(df_base_app.DFlowApp):
         ip_addr = netaddr.IPAddress(pkt_ip.dst)
         router = self.db_store.get_router_by_router_interface_mac(
             pkt_ethernet.dst)
+        router_unique_key = router.get_unique_key()
         for router_port in router.get_ports():
             if ip_addr in netaddr.IPNetwork(router_port.get_network()):
                 if str(ip_addr) == router_port.get_ip():
                     if (pkt_ip.proto == in_proto.IPPROTO_ICMP
                             or pkt_ip.proto == in_proto.IPPROTO_ICMPV6):
                         self._install_icmp_responder(
-                            pkt_ethernet.src, pkt_ethernet.dst,
-                            pkt_ip.src, pkt_ip.dst, msg)
+                            pkt_ip.dst, router_unique_key, msg)
                     else:
                         self._install_flow_send_to_output_table(
                             network_id,
@@ -157,34 +156,10 @@ class L3App(df_base_app.DFlowApp):
                                               network_id)
                         return
 
-    def _install_icmp_responder(self, src_mac, dst_mac, src_ip, dst_ip, msg):
-        icmp_pkt = packet.Packet()
-        icmp_pkt.add_protocol(ethernet.ethernet(
-            ethertype=ether.ETH_TYPE_IP,
-            src=dst_mac, dst=src_mac))
-        pkt = packet.Packet(msg.data)
-        icmp_request = pkt.get_protocol(icmp.icmp)
-        if not icmp_request:
-            icmp_request = pkt.get_protocol(icmpv6.icmpv6)
-            icmp_pkt.add_protocol(ipv6.ipv6(
-                proto=in_proto.IPPROTO_ICMPV6,
-                src=dst_ip, dst=src_ip))
-            echo = icmp_request.data
-            echo.data = bytearray(echo.data)
-            icmp_pkt.add_protocol(icmpv6.icmpv6(
-                icmpv6.ICMPV6_ECHO_REPLY, data=echo))
-        else:
-            icmp_pkt.add_protocol(ipv4.ipv4(
-                proto=in_proto.IPPROTO_ICMP,
-                src=dst_ip, dst=src_ip))
-            echo = icmp_request.data
-            echo.data = bytearray(echo.data)
-            icmp_pkt.add_protocol(icmp.icmp(icmp.ICMP_ECHO_REPLY, data=echo))
-
-        self.send_packet(msg.match.get('in_port'), icmp_pkt)
+    def _install_icmp_responder(self, dst_ip, router_unique_key, msg):
         icmp_responder.ICMPResponder(
-            self, dst_ip, dst_mac,
-            table_id=const.L3_LOOKUP_TABLE).add(
+            self, dst_ip, router_unique_key).add(
+                buffer_id=msg.buffer_id,
                 idle_timeout=self.idle_timeout,
                 hard_timeout=self.hard_timeout)
 
@@ -244,13 +219,12 @@ class L3App(df_base_app.DFlowApp):
         tunnel_key = router_port.get_unique_key()
         dst_ip = router_port.get_ip()
 
-        # Add router ARP & ICMP responder for IPv4 Addresses
+        # Add router ARP for IPv4 Addresses
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
         if is_ipv4:
             self.router_port_rarp_cache[mac] = dst_ip
             arp_responder.ArpResponder(
                 self, local_network_id, dst_ip, mac).add()
-            icmp_responder.ICMPResponder(self, dst_ip, mac).add()
 
         # If router interface IP, send to output table
         if is_ipv4:
@@ -378,7 +352,6 @@ class L3App(df_base_app.DFlowApp):
             self.router_port_rarp_cache.pop(mac, None)
             arp_responder.ArpResponder(
                 self, local_network_id, ip).remove()
-            icmp_responder.ICMPResponder(self, ip, mac).remove()
 
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
