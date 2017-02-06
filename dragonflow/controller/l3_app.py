@@ -244,9 +244,14 @@ class L3App(df_base_app.DFlowApp):
             match=match)
 
         #add dst_mac=gw_mac l2 goto l3 flow
+        router_unique_key = router.get_unique_key()
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
         match.set_dl_dst(haddr_to_bin(mac))
+        actions = [parser.OFPActionSetField(reg5=router_unique_key)]
+        action_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        inst = [action_inst, goto_inst]
         goto_inst = parser.OFPInstructionGotoTable(const.L3_LOOKUP_TABLE)
         inst = [goto_inst]
         self.mod_flow(
