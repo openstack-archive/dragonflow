@@ -66,7 +66,7 @@ class TestRemotePort(test_base.DFTestBase):
         ovs = utils.OvsFlowsParser()
         matched = False
         for flow in ovs.dump(self.integration_bridge):
-            if flow['table'] == str(const.EGRESS_TABLE):
+            if flow['table'] == str(const.EGRESS_CONT_TABLE):
                 if match in flow['match']:
                     matched = True
                     self.assertEqual(action, flow['actions'])
