@@ -75,6 +75,9 @@ INGRESS_DISPATCH_TABLE = 115
 # Table used by aging app.
 CANARY_TABLE = 200
 
+# SFC tables
+SFC_ENCAP_TABLE = 79
+SFC_END_OF_CHAIN_TABLE = 90
 
 # Flow Priorities
 PRIORITY_DEFAULT = 1
