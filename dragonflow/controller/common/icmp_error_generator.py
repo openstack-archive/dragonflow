@@ -20,7 +20,7 @@ from ryu.lib.packet import packet
 from ryu.ofproto import inet
 
 
-def generate(icmp_type, icmp_code, msg_data, src_ip, pkt):
+def generate(icmp_type, icmp_code, msg_data, src_ip=None, pkt=None):
     """Generate ICMP error message
 
     :param icmp_type: The icmp type of packet
@@ -30,9 +30,13 @@ def generate(icmp_type, icmp_code, msg_data, src_ip, pkt):
     :param pkt: The original packet that cause this ICMP error
     :returns: An ryu.lib.packet.packet.Packet instance, which is an ICMP packet
     """
+    if not pkt:
+        pkt = packet.Packet(msg_data)
 
     e_pkt = pkt.get_protocol(ethernet.ethernet)
     ipv4_pkt = pkt.get_protocol(ipv4.ipv4)
+    if not src_ip:
+        src_ip = ipv4_pkt.dst
 
     # Create ICMP data
     offset = ethernet.ethernet._MIN_LEN

@@ -1741,3 +1741,120 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
 
         # check if the active port was removed from DF DB
         self.assertFalse(self._if_the_expected_active_port_exists())
+
+
+class TestDNATApp(test_base.DFTestBase):
+    def setUp(self):
+        super(TestDNATApp, self).setUp()
+
+        self.topology = None
+        try:
+            self.topology = self.store(
+                app_testing_objects.Topology(
+                    self.neutron,
+                    self.nb_api
+                )
+            )
+            self.subnet = self.topology.create_subnet()
+            self.port = self.subnet.create_port()
+            self.router = self.topology.create_router([
+                self.subnet.subnet_id
+            ])
+            ext_net_id = self.topology.create_external_network([
+                self.router.router_id
+            ])
+            self.fip = self.store(
+                objects.FloatingipTestObj(self.neutron, self.nb_api))
+            self.fip.create({'floating_network_id': ext_net_id,
+                             'port_id': self.port.port.port_id})
+        except Exception:
+            if self.topology:
+                self.topology.close()
+            raise
+
+    def _create_ttl_test_port_policies(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
+        key = (self.subnet.subnet_id, self.port.port_id)
+        rules = [
+            app_testing_objects.PortPolicyRule(
+                # Detect ICMP time exceed, end simulation
+                app_testing_objects.RyuICMPTimeExceedFilter(self._get_ip),
+                actions=[app_testing_objects.DisableRuleAction(),
+                         app_testing_objects.StopSimulationAction()]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore gratuitous ARP packets
+                app_testing_objects.RyuARPGratuitousFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 packets
+                app_testing_objects.RyuIPv6Filter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+        ]
+        policy = app_testing_objects.PortPolicy(
+            rules=rules,
+            default_action=raise_action
+        )
+        return {key: policy}
+
+    def _create_ping_packet(self, dst_ip, ttl=255):
+        router_interface = self.router.router_interfaces[
+            self.subnet.subnet_id
+        ]
+        router_interface_port = self.neutron.show_port(
+            router_interface['port_id']
+        )
+        ethernet = ryu.lib.packet.ethernet.ethernet(
+            src=self.port.port.get_logical_port().get_mac(),
+            dst=router_interface_port['port']['mac_address'],
+            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+        )
+        ip = ryu.lib.packet.ipv4.ipv4(
+            src=self.port.port.get_logical_port().get_ip(),
+            dst=dst_ip,
+            ttl=ttl,
+            proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+        )
+        icmp = ryu.lib.packet.icmp.icmp(
+            type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
+            data=ryu.lib.packet.icmp.echo(data=self._create_random_string())
+        )
+        self._ip = ip
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ethernet)
+        result.add_protocol(ip)
+        result.add_protocol(icmp)
+        result.serialize()
+        return result.data
+
+    def _get_ip(self):
+        return self._ip
+
+    def test_icmp_ttl_packet(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        initial_packet = self._create_ping_packet(
+            self.topology.external_network.get_gw_ip(), ttl=1)
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    app_testing_objects.SendAction(
+                        self.subnet.subnet_id,
+                        self.port.port_id,
+                        str(initial_packet)
+                    ),
+                ],
+                port_policies=self._create_ttl_test_port_policies(),
+                unknown_port_action=ignore_action
+            )
+        )
+        policy.start(self.topology)
+        policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
