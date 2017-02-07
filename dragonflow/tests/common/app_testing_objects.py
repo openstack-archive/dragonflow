@@ -33,7 +33,6 @@ from ryu.lib.packet import packet
 
 from dragonflow.common import utils as d_utils
 from dragonflow import conf as cfg
-from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_objects as objects
 
 
@@ -983,14 +982,57 @@ class SimulateAndSendAction(SendAction):
 
     def _simulate(self, port_number, packet):
         packet_str = packet_raw_data_to_hex(packet)
-        args = [
-            'ovs-appctl',
-            'ofproto/trace',
-            self.integration_bridge,
-            'in_port:{}'.format(port_number),
-            packet_str,
-        ]
-        test_utils.print_command(args, True)
+        extra_args = []
+
+        while True:
+            extra_args.append('in_port:{}'.format(port_number))
+            args = [
+                'ovs-appctl',
+                'ofproto/trace',
+                self.integration_bridge,
+                ','.join(extra_args),
+                packet_str,
+            ]
+
+            appctl_output = utils.execute(
+                args,
+                run_as_root=True,
+                process_input=None,
+            )
+
+            print(appctl_output)
+
+            dp_actions = re.findall(
+                r'^\s*Datapath actions:\s*(.*)$',
+                appctl_output,
+                re.MULTILINE,
+            )[0]
+
+            # Reset extra args
+            extra_args = []
+            recirc = False
+
+            for action in re.findall(r'\w*(?:\(.*?\))?', dp_actions):
+                # If recirc(ID) action added, we need to trace again with
+                # provided ID.
+                if action.startswith('recirc'):
+                    extra_args.append(
+                        'recirc_id={0}'.format(
+                            re.findall(r'recirc\((.*)\)', action)[0],
+                        )
+                    )
+                    recirc = True
+
+                # If we're traversing through conntrack, add flags and zone.
+                elif action.startswith('ct'):
+                    params = re.findall(r'ct\((.*)\)', action)[0].split(',')
+                    for p in params:
+                        if p.startswith('zone='):
+                            extra_args.append('ct_zone={0}'.format(p[5:]))
+                    extra_args.append('ct_state=new|trk')
+
+            if not recirc:
+                break
 
 
 class RaiseAction(Action):
