@@ -135,7 +135,7 @@ The changes will affect mostly on the conversion of the IP to integer,
 and building the flow with IPv6 fields.
 
 
-Timeframe
+Time　frame
 =========
 Neighbor Discovery, DHCPv6 and the Security Groups are planned to be
 completed by the end of Ocata.
