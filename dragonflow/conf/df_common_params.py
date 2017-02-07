@@ -160,7 +160,12 @@ df_opts = [
     cfg.StrOpt(
         'metadata_interface',
         default='tap-metadata',
-        help=_('The name of the interface to bind the metadata service proxy'),
+        help=_('The name of the interface to bind the metadata service proxy')),
+    cfg.BoolOpt('enable_addr_alloc_for_snat',
+                default=False,
+                help=_('When enabled, local controller will create local '
+                       'gateway port to use its ip/mac addresses in snat '
+                       'traffic')
     )
 ]
 
