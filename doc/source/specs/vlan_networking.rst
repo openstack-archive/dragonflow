@@ -61,7 +61,7 @@ Two bridges per host
 --------------------
 VMs are connected to br-int,
 overlay tunnels connected to br-int, physical nic connected to br-1,
-Vlan Packets are transmited to/from br-1.
+Vlan Packets are transmitted to/from br-1.
 
 Port updated
 ------------
