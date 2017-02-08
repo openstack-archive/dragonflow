@@ -22,7 +22,6 @@ from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import in_proto
 from ryu.ofproto import ether
-import six
 
 from dragonflow._i18n import _, _LI, _LE
 from dragonflow import conf as cfg
@@ -75,7 +74,7 @@ class L2App(df_base_app.DFlowApp):
 
         :param bridge_mappings: map physical network names to bridge names.
         '''
-        for physical_network, bridge in six.iteritems(bridge_mappings):
+        for physical_network, bridge in bridge_mappings.items():
             LOG.info(_LI("Mapping physical network %(physical_network)s to "
                          "bridge %(bridge)s"),
                      {'physical_network': physical_network,

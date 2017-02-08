@@ -16,7 +16,6 @@ from neutron.agent.ovsdb import impl_idl
 from neutron.agent.ovsdb.native import connection
 from oslo_config import cfg
 from ovs.db import idl
-import six
 
 from dragonflow.common import constants
 from dragonflow.ovsdb import commands
@@ -108,7 +107,7 @@ class DFConnection(connection.Connection):
     """
     def update_schema_helper(self, helper):
         tables = ovsdb_monitor_table_filter_default
-        for table_name, columns in six.iteritems(tables):
+        for table_name, columns in tables.items():
             if columns == 'all':
                 helper.register_table(table_name)
             else:

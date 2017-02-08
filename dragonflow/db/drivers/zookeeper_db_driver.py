@@ -32,7 +32,7 @@ def _parse_hosts(hosts):
         return hosts.strip()
     if isinstance(hosts, (dict)):
         host_ports = []
-        for (k, v) in six.iteritems(hosts):
+        for (k, v) in hosts.items():
             host_ports.append("%s:%s" % (k, v))
         hosts = host_ports
     if isinstance(hosts, (list, set, tuple)):

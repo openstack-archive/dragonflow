@@ -10,8 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
-
 from neutron.agent.ovsdb.native import commands
 from neutron.agent.ovsdb.native import idlutils
 from oslo_config import cfg
@@ -138,7 +136,7 @@ class DeleteQos(commands.BaseCommand):
         conditions = [('external_ids', '=', {'iface-id': self.port_id})]
         rows_to_delete = []
         for table in ['QoS', 'Queue']:
-            for r in six.itervalues(self.api._tables[table].rows):
+            for r in self.api._tables[table].rows.values():
                 if idlutils.row_match(r, conditions):
                     rows_to_delete.append(r)
 
@@ -155,7 +153,7 @@ class UpdateQos(commands.BaseCommand):
     def run_idl(self, txn):
         conditions = [('external_ids', '=', {'iface-id': self.port_id})]
         queue_table = self.api._tables['Queue']
-        for r in six.itervalues(queue_table.rows):
+        for r in queue_table.rows.values():
             if idlutils.row_match(r, conditions):
                 dscp = self.qos.get_dscp_marking()
                 dscp = dscp if dscp else []
@@ -169,7 +167,7 @@ class UpdateQos(commands.BaseCommand):
                 setattr(r, 'other_config', other_config)
 
         qos_table = self.api._tables['QoS']
-        for r in six.itervalues(qos_table.rows):
+        for r in qos_table.rows.values():
             if idlutils.row_match(r, conditions):
                 external_ids = getattr(r, 'external_ids', {})
                 external_ids['version'] = str(self.qos.get_version())
