@@ -118,7 +118,7 @@ GLOBAL_INIT_AGING_COOKIE = 0x1
 # contact 169.254.169.254:80, despite of where we actually listen to the
 # service. This will be modified by flows.
 METADATA_SERVICE_IP = '169.254.169.254'
-HTTP_PORT = 80
+METADATA_HTTP_PORT = 80
 
 DHCP_CLIENT_PORT = 68
 DHCP_SERVER_PORT = 67

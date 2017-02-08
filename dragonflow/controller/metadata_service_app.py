@@ -187,7 +187,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             eth_type=ethernet.ether.ETH_TYPE_IP,
             ipv4_dst=const.METADATA_SERVICE_IP,
             ip_proto=ipv4.inet.IPPROTO_TCP,
-            tcp_dst=const.HTTP_PORT,
+            tcp_dst=const.METADATA_HTTP_PORT,
         )
         inst = [parser.OFPInstructionGotoTable(
             const.SERVICES_CLASSIFICATION_TABLE)]
@@ -226,7 +226,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         actions = []
         if self._ip != const.METADATA_SERVICE_IP:
             actions.append(parser.OFPActionSetField(ipv4_dst=self._ip))
-        if self._port != const.HTTP_PORT:
+        if self._port != const.METADATA_HTTP_PORT:
             actions.append(parser.OFPActionSetField(tcp_dst=self._port))
         actions.append(parser.OFPActionSetField(reg7=self._ofport))
         return actions
@@ -300,7 +300,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
                         n_bits=32,
                     ),
                     parser.NXFlowSpecLoad(
-                        src=const.HTTP_PORT,
+                        src=const.METADATA_HTTP_PORT,
                         dst=('tcp_src', 0),
                         n_bits=16,
                     ),
