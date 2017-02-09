@@ -62,3 +62,6 @@ ChangeLog
 
 # Configurations
 etc/*.sample
+
+# Releasenotes
+releasenotes/build
