@@ -181,7 +181,8 @@ def make_fake_port(id=None,
     fake_port = db_models.LogicalPort("{}")
     fake_port.inner_obj = {
         'subnets': subnets,
-        'binding_profile': {},
+        'binding_profile': {'external_host_ip': '172.24.4.101',
+                            'external_host_mac': '11:12:13:14:15:16'},
         'macs': macs,
         'name': name,
         'allowed_address_pairs': [],
