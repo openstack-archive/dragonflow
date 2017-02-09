@@ -442,6 +442,12 @@ class Router(object):
         self.router.close()
 
 
+class TimeoutException(Exception):
+
+    def __init__(self):
+        super(TimeoutException, self).__init__('Timeout')
+
+
 class Policy(object):
     """Represent a policy, i.e. the expected packets on each port in the
     topology, and the actions to take in each case.
@@ -513,7 +519,7 @@ class Policy(object):
         :param timeout: After this many seconds, throw an exception
         :type timeout:  Number
         """
-        exception = Exception('Timeout')
+        exception = TimeoutException()
         if timeout is not None:
             entry_time = time.time()
         for thread in self.threads:
