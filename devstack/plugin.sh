@@ -164,6 +164,18 @@ function configure_qos {
     iniset $NEUTRON_CONF qos notification_drivers "$NOTIFICATION_DRIVER"
 }
 
+function init_neutron_sample_config {
+    # NOTE: We must make sure that neutron config file exists before
+    # going further with ovs setup
+    if [ ! -f $NEUTRON_CONF ] ; then
+        sudo install -d -o $STACK_USER $NEUTRON_CONF_DIR
+        pushd $NEUTRON_DIR
+        tools/generate_config_file_samples.sh
+        popd
+        cp $NEUTRON_DIR/etc/neutron.conf.sample $NEUTRON_CONF
+    fi
+}
+
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
@@ -208,16 +220,6 @@ function configure_df_plugin {
             iniset $NEUTRON_CONF quotas quota_security_group_rule "-1"
         fi
 
-    else
-        _create_neutron_conf_dir
-        # NOTE: We need to manually generate the neutron.conf file here. This
-        #       is normally done by a call to _configure_neutron_common in
-        #       neutron-lib, but we don't call that for compute nodes here.
-        # Uses oslo config generator to generate core sample configuration files
-        pushd $NEUTRON_DIR
-        tools/generate_config_file_samples.sh
-        popd
-        cp $NEUTRON_DIR/etc/neutron.conf.sample $NEUTRON_CONF
     fi
 
     iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
@@ -448,6 +450,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         fi
         disable_libvirt_apparmor
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
+        init_neutron_sample_config
         configure_ovs
         configure_df_plugin
         # configure nb db driver
