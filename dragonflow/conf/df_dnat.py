@@ -27,6 +27,11 @@ df_dnat_app_opts = [
     cfg.StrOpt('ex_peer_patch_port', default='patch-int',
                help=_("Peer patch port in external bridge for integration "
                       "bridge.")),
+    cfg.IntOpt('dnat_ttl_invalid_max_rate', default=3,
+               help=_('Max rate to reply ICMP time exceeded message per '
+                      'second.')),
+    cfg.IntOpt('dnat_icmp_error_max_rate', default=3,
+               help=_('Max rate to handle ICMP error message per second.')),
 ]
 
 
