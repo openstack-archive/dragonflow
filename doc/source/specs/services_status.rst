@@ -75,7 +75,9 @@ NB Data Model Impact
 --------------------
 
 A service table will be added in Dragonflow NB database, which contains following
-information regarding each service
+information regarding each service.
+
+::
 
   +------+-------------------+--------------------------------------------------+
   | S.No |   field           |  Description                                     |
@@ -86,72 +88,72 @@ information regarding each service
   +------+-------------------+--------------------------------------------------+
   | 3.   |  binary           | Name of the service                              |
   +------+-------------------+--------------------------------------------------+
-  | 4.   |  disabled         | Represent whether explicitly disabled or not      |
+  | 4.   |  disabled         | Represent whether explicitly disabled or not     |
   +------+-------------------+--------------------------------------------------+
   | 5.   |  disabled_reason  | Reason given when disabling the service          |
   +------+-------------------+--------------------------------------------------+
   | 6.   |  last_seen_up     | Last time stamp reported by the service          |
   +------+-------------------+--------------------------------------------------+
 
-Plan is to store information on following bassis, if possible
+Plan is to store information on following bassis, if possible.
 
-{
-  "binary1": {
-    "chassis1":
-      {
-        "id": UUID,
-        "chassis": hostname,
-        "binary": service_name,
-        "disabled": True/False,
-        "disabled_reason": reason,
-        "last_seen_up": timestamp,
-        "report_count": count(int)"
-      },
-    "chassis2":
-      {
-        "id": UUID,
-        "chassis": hostname,
-        "binary": service_name,
-        "disabled": True/False,
-        "disabled_reason": reason,
-        "last_seen_up": timestamp,
-        "report_count": count(int)"
-      },
-      -
-      -
-      -
-  },
-  "binary2": {
-    "chassis1":
-      {
-        "id": UUID,
-        "chassis": hostname,
-        "binary": service_name,
-        "disabled": True/False,
-        "disabled_reason": reason,
-        "last_seen_up": timestamp,
-        "report_count": count(int)"
-      },
-    "chassis2":
-      {
-        "id": UUID,
-        "chassis": hostname,
-        "binary": service_name,
-        "disabled": True/False,
-        "disabled_reason": reason,
-        "last_seen_up": timestamp,
-        "report_count": count(int)"
-      },
-      -
-      -
-      -
-  },
+::
 
-  -
-  -
-  -
-}
-
+  {
+    "binary1": {
+      "chassis1":
+        {
+          "id": UUID,
+          "chassis": hostname,
+          "binary": service_name,
+          "disabled": True/False,
+          "disabled_reason": reason,
+          "last_seen_up": timestamp,
+          "report_count": count(int)"
+        },
+      "chassis2":
+        {
+          "id": UUID,
+          "chassis": hostname,
+          "binary": service_name,
+          "disabled": True/False,
+          "disabled_reason": reason,
+          "last_seen_up": timestamp,
+          "report_count": count(int)"
+        },
+        -
+        -
+        -
+    },
+    "binary2": {
+      "chassis1":
+        {
+          "id": UUID,
+          "chassis": hostname,
+          "binary": service_name,
+          "disabled": True/False,
+          "disabled_reason": reason,
+          "last_seen_up": timestamp,
+          "report_count": count(int)"
+        },
+      "chassis2":
+        {
+          "id": UUID,
+          "chassis": hostname,
+          "binary": service_name,
+          "disabled": True/False,
+          "disabled_reason": reason,
+          "last_seen_up": timestamp,
+          "report_count": count(int)"
+        },
+        -
+        -
+        -
+    },
+    -
+    -
+    -
+  }
 
 The assumption for the above data management is, there can be only one instance of
 a service on a node that has to be registered.
@@ -170,7 +172,9 @@ Dragonflow controller should silently ignore all the updates on the new table.
 Dragonflow DB CLI Impact
 ------------------------
 
-df-db utility will provide following commands to the administrator
+df-db utility will provide following commands to the administrator.
+
+::
 
   +------+------------------+----------------------------------------------------+
   | S.No | command          | Description                                        |
