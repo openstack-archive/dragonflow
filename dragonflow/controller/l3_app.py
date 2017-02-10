@@ -35,6 +35,11 @@ from dragonflow.db import models
 LOG = log.getLogger(__name__)
 
 
+# REVIST(xiaohhui): This is a randomly chosen number. Should this be unique
+# for each router port?
+ROUTER_PORT_BUFFER_ID = 0xff12
+
+
 class L3App(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(L3App, self).__init__(*args, **kwargs)
@@ -180,24 +185,17 @@ class L3App(df_base_app.DFlowApp):
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
         inst = [action_inst, goto_inst]
 
+        # Since we are using buffer, set buffer id to make the new OpenFlow
+        # rule carry on handling original packet.
         self.mod_flow(
             cookie=dst_router_port.get_unique_key(),
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_VERY_HIGH,
             match=match,
+            buffer_id=msg.buffer_id,
             idle_timeout=self.idle_timeout,
             hard_timeout=self.hard_timeout)
-
-        in_port = msg.match.get('in_port')
-        if msg.buffer_id == ofproto.OFP_NO_BUFFER:
-            data = msg.data
-        out = parser.OFPPacketOut(datapath=self.datapath,
-                buffer_id=msg.buffer_id,
-                in_port=in_port,
-                actions=actions,
-                data=data)
-        self.datapath.send_msg(out)
 
     def _add_new_router_port(self, router, router_port):
         LOG.info(_LI("Adding new logical router interface = %s"),
@@ -314,7 +312,7 @@ class L3App(df_base_app.DFlowApp):
                                     ipv6_dst=(dst_network, dst_netmask))
 
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER)]
+                                          ROUTER_PORT_BUFFER_ID)]
         inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
