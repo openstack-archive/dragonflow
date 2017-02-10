@@ -18,6 +18,7 @@ from dragonflow.conf import df_common_params
 from dragonflow.conf import df_dhcp
 from dragonflow.conf import df_dnat
 from dragonflow.conf import df_l2
+from dragonflow.conf import df_l3
 from dragonflow.conf import df_metadata_service
 from dragonflow.conf import df_ryu
 
@@ -31,5 +32,6 @@ df_dhcp.register_opts()
 df_metadata_service.register_opts()
 df_active_port_detection.register_opts()
 df_l2.register_opts()
+df_l3.register_opts()
 df_dnat.register_opts()
 df_ryu.register_opts()
