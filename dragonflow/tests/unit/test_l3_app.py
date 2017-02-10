@@ -36,3 +36,14 @@ class TestL3App(test_app_base.DFAppTestBase):
         self.assertEqual(3, self.mock_mod_flow.call_count)
         args, kwargs = self.mock_mod_flow.call_args
         self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])
+
+    def test_install_l3_flow_set_metadata(self):
+        dst_router_port = self.router.get_ports()[0]
+        dst_port = test_app_base.fake_local_port1
+        dst_metadata = dst_port.get_external_value('local_network_id')
+        mock_msg = mock.Mock()
+        mock_msg.buffer_id = self.app.ofproto.OFP_NO_BUFFER
+        self.app._install_l3_flow(dst_router_port, dst_port,
+                                  mock_msg, mock.ANY)
+        self.app.parser.OFPActionSetField.assert_any_call(
+            metadata=dst_metadata)
