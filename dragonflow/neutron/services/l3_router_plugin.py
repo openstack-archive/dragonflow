@@ -147,7 +147,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 gateway=gw_info
             )
         except df_exceptions.DBKeyNotFound:
-            LOG.debug("router %s is not found in DF DB" % router_id)
+            LOG.debug("router %s is not found in DF DB", router_id)
 
         return router
 
@@ -160,7 +160,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             self.nb_api.delete_lrouter(id=router_id,
                                        topic=router['tenant_id'])
         except df_exceptions.DBKeyNotFound:
-            LOG.debug("router %s is not found in DF DB" % router_id)
+            LOG.debug("router %s is not found in DF DB", router_id)
         return ret_val
 
     def _get_floatingip_port(self, context, floatingip_id):
@@ -252,7 +252,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             self.nb_api.delete_floatingip(id=id,
                                           topic=floatingip['tenant_id'])
         except df_exceptions.DBKeyNotFound:
-            LOG.exception(_LE("floatingip %s is not found in DF DB") % id)
+            LOG.exception(_LE("floatingip %s is not found in DF DB"), id)
 
     def get_floatingip(self, context, id, fields=None):
         with context.session.begin(subtransactions=True):
@@ -302,5 +302,5 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         except df_exceptions.DBKeyNotFound:
             LOG.exception(_LE("logical router %s is not found in DF DB, "
                               "suppressing delete_lrouter_port "
-                              "exception") % router_id)
+                              "exception"), router_id)
         return router_port_info
