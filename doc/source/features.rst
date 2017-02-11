@@ -28,7 +28,7 @@ Dragonflow offers the following virtual network services:
 
 * DPDK
 
-  -TODO- Dragonflow shall work to support using OVS DPDK as the
+  Dragonflow shall work to support using OVS DPDK as the
   datapath alternative, this depends on the supported features
   in OVS DPDK and the VIF binding script support in Neutron
   plugin.
@@ -44,19 +44,15 @@ The following Neutron API extensions will be supported:
 +----------------------------------+---------------------------+-------------+
 | Availability Zone                | availability_zone         | Done        |
 +----------------------------------+---------------------------+-------------+
-| DHCP Agent Scheduler             | dhcp_agent_scheduler      | Done        |
-+----------------------------------+---------------------------+-------------+
 | HA Router extension *            | l3-ha                     | Done        |
 +----------------------------------+---------------------------+-------------+
 | L3 Agent Scheduler *             | l3_agent_scheduler        | Done        |
-+----------------------------------+---------------------------+-------------+
-| Network Availability Zone        | network_availability_zone | In Process  |
 +----------------------------------+---------------------------+-------------+
 | Neutron external network         | external-net              | Done        |
 +----------------------------------+---------------------------+-------------+
 | Neutron Extra DHCP opts          | extra_dhcp_opt            | Done        |
 +----------------------------------+---------------------------+-------------+
-| Neutron Extra Route              | extraroute                | In Process  |
+| Neutron Extra Route              | extraroute                | Done        |
 +----------------------------------+---------------------------+-------------+
 | Neutron L3 Router                | router                    | Done        |
 +----------------------------------+---------------------------+-------------+
@@ -64,9 +60,9 @@ The following Neutron API extensions will be supported:
 +----------------------------------+---------------------------+-------------+
 | Port Binding                     | binding                   | Done        |
 +----------------------------------+---------------------------+-------------+
-| Provider Network                 | provider                  | In Process  |
+| Provider Network                 | provider                  | Done        |
 +----------------------------------+---------------------------+-------------+
-| Quality of Service               | qos                       | In Process  |
+| Quality of Service               | qos                       | Done        |
 +----------------------------------+---------------------------+-------------+
 | Quota management support         | quotas                    | Done        |
 +----------------------------------+---------------------------+-------------+
@@ -75,6 +71,14 @@ The following Neutron API extensions will be supported:
 | Security Group                   | security-group            | Done        |
 +----------------------------------+---------------------------+-------------+
 | Subnet Allocation                | subnet_allocation         | Done        |
++----------------------------------+---------------------------+-------------+
+| Tap as a Service                 | taas                      | In Progress |
++----------------------------------+---------------------------+-------------+
+| Service Function Chaining        | sfc                       | In Progress |
++----------------------------------+---------------------------+-------------+
+| BGP dynamic routing              | bgp                       | In Progress |
++----------------------------------+---------------------------+-------------+
+| Firewall service v2              | fwaas_v2                  | In Progress |
 +----------------------------------+---------------------------+-------------+
 
 (\*) Only applicable when conventional layer-3 agent enabled.
