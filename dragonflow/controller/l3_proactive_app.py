@@ -417,8 +417,8 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         return
 
     def _delete_router_route(self, router, route):
-        LOG.debug('Delete extra route %(route)s from router %(router)s' %
-                 {'route': route, 'router': str(router)})
+        LOG.debug('Delete extra route %(route)s from router %(router)s',
+                 {'route': route, 'router': router})
 
         self._delete_route_process(router, route)
         self._del_from_route_cache(ROUTE_ADDED, router.get_id(), route)
