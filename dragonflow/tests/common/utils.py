@@ -72,11 +72,11 @@ def check_dhcp_ip_rule(flows, dhcp_ip):
 
 
 def print_command(full_args, run_as_root=False):
-    print '{}'.format(agent_utils.execute(
+    print ('{}'.format(agent_utils.execute(
         full_args,
         run_as_root=run_as_root,
         process_input=None,
-    ))
+    )))
 
 
 class OvsFlowsParser(object):
