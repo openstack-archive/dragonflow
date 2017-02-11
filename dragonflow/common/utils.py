@@ -68,9 +68,9 @@ def load_driver(driver_cfg, namespace):
         try:
             class_to_load = importutils.import_class(driver_cfg)
         except (ImportError, ValueError):
-            LOG.error(_LE("Error loading class %(class)s by alias e: %(e)s")
-                    % {'class': driver_cfg, 'e': e1_info},
-                    exc_info=e1_info)
+            LOG.error(_LE("Error loading class %(class)s by alias e: %(e)s"),
+                      {'class': driver_cfg, 'e': e1_info},
+                      exc_info=e1_info)
             LOG.error(_LE("Error loading class by class name"),
                       exc_info=True)
             raise ImportError(_("Class not found."))
