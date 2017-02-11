@@ -96,10 +96,10 @@ class DHCPApp(df_base_app.DFlowApp):
             self._block_port_dhcp_traffic(
                     ofport,
                     self.block_hard_timeout)
-            LOG.warning(_LW("pass rate limit for %(port_id)s blocking DHCP"
-                " traffic for %(time)s sec") %
-                    {'port_id': lport.get_id(),
-                    'time': self.block_hard_timeout})
+            LOG.warning(_LW("pass rate limit for %(port_id)s blocking DHCP "
+                            "traffic for %(time)s sec"),
+                        {'port_id': lport.get_id(),
+                         'time': self.block_hard_timeout})
             return
         if not self.db_store.get_port(lport.get_id()):
             LOG.error(_LE("Port %s no longer found."), lport.get_id())
@@ -119,19 +119,19 @@ class DHCPApp(df_base_app.DFlowApp):
                                 dhcp_packet,
                                 dhcp.DHCP_OFFER,
                                 lport)
-            LOG.info(_LI("sending DHCP offer for port IP %(port_ip)s"
-                " port id %(port_id)s")
-                     % {'port_ip': lport.get_ip(), 'port_id': lport.get_id()})
+            LOG.info(_LI("sending DHCP offer for port IP %(port_ip)s "
+                         "port id %(port_id)s"),
+                     {'port_ip': lport.get_ip(), 'port_id': lport.get_id()})
         elif dhcp_message_type == dhcp.DHCP_REQUEST:
             send_packet = self._create_dhcp_packet(
                                 packet,
                                 dhcp_packet,
                                 dhcp.DHCP_ACK,
                                 lport)
-            LOG.info(_LI("sending DHCP ACK for port IP %(port_ip)s"
-                        " port id %(tunnel_id)s")
-                        % {'port_ip': lport.get_ip(),
-                        'tunnel_id': lport.get_id()})
+            LOG.info(_LI("sending DHCP ACK for port IP %(port_ip)s "
+                         "port id %(tunnel_id)s"),
+                     {'port_ip': lport.get_ip(),
+                      'tunnel_id': lport.get_id()})
         else:
             LOG.error(_LE("DHCP message type %d not handled"),
                 dhcp_message_type)
@@ -144,8 +144,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
         subnet = self._get_subnet_by_port(lport)
         if subnet is None:
-            LOG.error(_LE("No subnet found for port <%s>") %
-                      lport.get_id())
+            LOG.error(_LE("No subnet found for port <%s>"), lport.get_id())
             return
 
         pkt_type_packed = struct.pack('!B', pkt_type)
