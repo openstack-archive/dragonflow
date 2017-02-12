@@ -130,14 +130,14 @@ class DbStore(object):
         if table_item:
             return table_item.get_unique_key()
 
-    def set_lswitch(self, id, lswitch, topic=None):
-        self.set(models.LogicalSwitch.table_name, id, lswitch, topic)
+    def set_lswitch(self, uuid, lswitch, topic=None):
+        self.set(models.LogicalSwitch.table_name, uuid, lswitch, topic)
 
-    def get_lswitch(self, id, topic=None):
-        return self.get(models.LogicalSwitch.table_name, id, topic)
+    def get_lswitch(self, uuid, topic=None):
+        return self.get(models.LogicalSwitch.table_name, uuid, topic)
 
-    def del_lswitch(self, id, topic=None):
-        self.delete(models.LogicalSwitch.table_name, id, topic)
+    def del_lswitch(self, uuid, topic=None):
+        self.delete(models.LogicalSwitch.table_name, uuid, topic)
 
     def get_port_keys(self, topic=None):
         return self.keys(models.LogicalPort.table_name, topic)
@@ -209,8 +209,8 @@ class DbStore(object):
     def update_router(self, router_id, router, topic=None):
         self.set(models.LogicalRouter.table_name, router_id, router, topic)
 
-    def delete_router(self, id, topic=None):
-        self.delete(models.LogicalRouter.table_name, id, topic)
+    def delete_router(self, uuid, topic=None):
+        self.delete(models.LogicalRouter.table_name, uuid, topic)
 
     def get_router(self, router_id, topic=None):
         return self.get(models.LogicalRouter.table_name, router_id, topic)
@@ -232,8 +232,8 @@ class DbStore(object):
     def update_security_group(self, secgroup_id, secgroup, topic=None):
         self.set(models.SecurityGroup.table_name, secgroup_id, secgroup, topic)
 
-    def delete_security_group(self, id, topic=None):
-        self.delete(models.SecurityGroup.table_name, id, topic)
+    def delete_security_group(self, uuid, topic=None):
+        self.delete(models.SecurityGroup.table_name, uuid, topic)
 
     def get_security_group(self, secgroup_id, topic=None):
         return self.get(models.SecurityGroup.table_name, secgroup_id, topic)
