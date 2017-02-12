@@ -17,7 +17,7 @@ DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp,"\
 "portqos_app.PortQosApp,classifier_app.ClassifierApp,tunneling_app.TunnelingApp,"\
-"provider_networks_app.ProviderNetworksApp"
+"provider_networks_app.ProviderNetworksApp,chassis_snat_app.ChassisSNATApp"
 
 if is_service_enabled df-metadata ; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,metadata_service_app.MetadataServiceApp"
@@ -50,6 +50,9 @@ ENABLE_PORT_STATUS_NOTIFIER=${ENABLE_PORT_STATUS_NOTIFIER:-"False"}
 
 # Set value of TUNNEL_ENDPOINT_IP if unset
 TUNNEL_ENDPOINT_IP=${TUNNEL_ENDPOINT_IP:-$HOST_IP}
+
+#Set empty SNAT_HOST_IP
+SNAT_HOST_IP=${SNAT_HOST_IP:-}
 
 ACTION=$1
 STAGE=$2
@@ -244,6 +247,9 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
     iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
     iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
+    if [[ ! -z ${SNAT_HOST_IP} ]]; then
+        iniset $DRAGONFLOW_CONF df_snat_app external_host_ip "$SNAT_HOST_IP"
+    fi
 
     if [[ "$DF_PUB_SUB" == "True" ]]; then
         DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
