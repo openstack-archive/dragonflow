@@ -572,16 +572,15 @@ class TestDHCPApp(test_base.DFTestBase):
             )
         )
         policy.start(self.topology)
-        try:
-            policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        except Exception:
-            # Since there is no dhcp response, we are expecting timeout
-            # exception here.
-            pass
-        finally:
-            policy.stop()
-            if len(policy.exceptions) > 0:
-                raise policy.exceptions[0]
+        # Since there is no dhcp response, we are expecting timeout
+        # exception here.
+        self.assertRaises(
+            app_testing_objects.TimeoutException,
+            policy.wait,
+            const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        policy.stop()
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
 
     def _test_enable_dhcp(self):
         # Create policy
@@ -852,16 +851,15 @@ class TestL3App(test_base.DFTestBase):
             )
         )
         policy.start(self.topology)
-        try:
-            policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        except Exception:
-            # Since there is no OpenFlow in vswitch, we are expecting timeout
-            # exception here.
-            pass
-        finally:
-            policy.stop()
-            if len(policy.exceptions) > 0:
-                raise policy.exceptions[0]
+        # Since there is no OpenFlow in vswitch, we are expecting timeout
+        # exception here.
+        self.assertRaises(
+            app_testing_objects.TimeoutException,
+            policy.wait,
+            const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        policy.stop()
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
 
         cmd[1] = "set-controller"
         cmd.append(controller)
@@ -1868,6 +1866,72 @@ class TestDNATApp(test_base.DFTestBase):
         if len(policy.exceptions) > 0:
             raise policy.exceptions[0]
 
+    def _create_rate_limit_port_policies(self, rate, icmp_filter):
+        ignore_action = app_testing_objects.IgnoreAction()
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
+        # Disable port policy rule, so that any further packets will hit the
+        # default action, which is raise_action in this case.
+        count_action = app_testing_objects.CountAction(
+            rate, app_testing_objects.DisableRuleAction())
+
+        key = (self.subnet.subnet_id, self.port.port_id)
+        rules = [
+            app_testing_objects.PortPolicyRule(
+                # Detect ICMP, end simulation
+                icmp_filter(self._get_ip),
+                actions=[count_action]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore gratuitous ARP packets
+                app_testing_objects.RyuARPGratuitousFilter(),
+                actions=[ignore_action]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 packets
+                app_testing_objects.RyuIPv6Filter(),
+                actions=[ignore_action]
+            ),
+        ]
+        policy = app_testing_objects.PortPolicy(
+            rules=rules,
+            default_action=raise_action
+        )
+        return {key: policy}
+
+    def test_ttl_packet_rate_limit(self):
+        initial_packet = self._create_packet(
+            self.topology.external_network.get_gw_ip(),
+            ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+            ttl=1)
+        send_action = app_testing_objects.SendAction(
+            self.subnet.subnet_id,
+            self.port.port_id,
+            str(initial_packet))
+        ignore_action = app_testing_objects.IgnoreAction()
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    send_action,
+                    send_action,
+                    send_action,
+                    send_action,
+                ],
+                port_policies=self._create_rate_limit_port_policies(
+                    cfg.CONF.df_dnat_app.dnat_ttl_invalid_max_rate,
+                    app_testing_objects.RyuICMPTimeExceedFilter),
+                unknown_port_action=ignore_action
+            )
+        )
+        policy.start(self.topology)
+        # Since the rate limit, we expect timeout to wait for 4th packet hit
+        # the policy.
+        self.assertRaises(
+            app_testing_objects.TimeoutException,
+            policy.wait,
+            const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
+
     def test_nat_embedded_packet(self):
         ignore_action = app_testing_objects.IgnoreAction()
         self.port.port.update({"security_groups": []})
@@ -1891,5 +1955,39 @@ class TestDNATApp(test_base.DFTestBase):
         )
         policy.start(self.topology)
         policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
+
+    def test_nat_embedded_rate_limit(self):
+        self.port.port.update({"security_groups": []})
+        initial_packet = self._create_packet(
+            self.topology.external_network.get_gw_ip(),
+            ryu.lib.packet.ipv4.inet.IPPROTO_UDP)
+        send_action = app_testing_objects.SendAction(
+            self.subnet.subnet_id,
+            self.port.port_id,
+            str(initial_packet))
+        ignore_action = app_testing_objects.IgnoreAction()
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    send_action,
+                    send_action,
+                    send_action,
+                    send_action,
+                ],
+                port_policies=self._create_rate_limit_port_policies(
+                    cfg.CONF.df_dnat_app.dnat_icmp_error_max_rate,
+                    app_testing_objects.RyuICMPUnreachFilter),
+                unknown_port_action=ignore_action
+            )
+        )
+        policy.start(self.topology)
+        # Since the rate limit, we expect timeout to wait for 4th packet hit
+        # the policy.
+        self.assertRaises(
+            app_testing_objects.TimeoutException,
+            policy.wait,
+            const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(policy.exceptions) > 0:
             raise policy.exceptions[0]
