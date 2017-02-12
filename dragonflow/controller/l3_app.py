@@ -274,7 +274,7 @@ class L3App(df_base_app.DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
-        #add dst_mac=gw_mac l2 goto l3 flow
+        # add dst_mac=gw_mac l2 goto l3 flow
         router_unique_key = router.get_unique_key()
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
