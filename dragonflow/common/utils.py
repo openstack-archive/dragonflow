@@ -77,6 +77,23 @@ def load_driver(driver_cfg, namespace):
     return class_to_load()
 
 
+def is_port_owner_of_type(owner_type, type_list):
+    """return true if given owner_type is a part of type list
+
+    Approved list may include owners prefix or/and full owner names
+    :param owner_type - port owner type
+    :type string
+    :param type_list - list of approved owners to use
+    :type list
+    :return Boolean true/false
+    """
+    for sub_type in type_list:
+        if sub_type in owner_type:
+            return True
+
+    return False
+
+
 class DFDaemon(object):
 
     def __init__(self, is_not_light=False):
