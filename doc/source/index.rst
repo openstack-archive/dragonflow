@@ -29,7 +29,7 @@ Contents:
    releasenotes
 
 Dragonflow Specs
-=================
+================
 
 .. toctree::
    :maxdepth: 1
