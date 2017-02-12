@@ -50,6 +50,11 @@ ENABLE_PORT_STATUS_NOTIFIER=${ENABLE_PORT_STATUS_NOTIFIER:-"False"}
 # Set value of TUNNEL_ENDPOINT_IP if unset
 TUNNEL_ENDPOINT_IP=${TUNNEL_ENDPOINT_IP:-$HOST_IP}
 
+#Set empty SNAT_HOST_IP
+SNAT_HOST_IP=${SNAT_HOST_IP:-}
+
+
+
 ACTION=$1
 STAGE=$2
 
@@ -243,6 +248,9 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
     iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
     iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
+    if [[ ! -z ${SNAT_HOST_IP} ]]; then
+	iniset $DRAGONFLOW_CONF df_snat_app external_host_ip "$SNAT_HOST_IP"
+    fi
 
     if [[ "$DF_PUB_SUB" == "True" ]]; then
         DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
