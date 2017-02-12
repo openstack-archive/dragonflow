@@ -12,6 +12,7 @@
 from jsonmodels import fields
 import mock
 
+from dragonflow.controller import df_base_app
 import dragonflow.db.model_framework as mf
 from dragonflow.tests import base as tests_base
 
@@ -190,3 +191,22 @@ class TestModelFramework(tests_base.BaseTestCase):
         self.assertFalse(m.field_is_set('field1'))
         self.assertTrue(m.field_is_set('field2'))
         self.assertTrue(m.field_is_set('field3'))
+
+    def test_app_delayed_register(self):
+        m = mock.MagicMock()
+
+        class TestApp(df_base_app.DFlowApp):
+            @df_base_app.register_event(ModelTest, 'created')
+            def test_created_callback(self, origin, *args, **kwargs):
+                m(origin, *args, **kwargs)
+
+        TestApp(
+            api=mock.MagicMock(),
+            db_store=mock.MagicMock(),
+            vswitch_api=mock.MagicMock(),
+            nb_api=mock.MagicMock(),
+        )
+
+        o = ModelTest()
+        o.emit_created()
+        m.assert_called_once_with(o)
