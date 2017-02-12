@@ -187,14 +187,14 @@ class ZookeeperDbDriver(db_api.DbApi):
         return self._allocate_unique_key(table)
 
     def register_notification_callback(self, callback):
-        #NOTE(nick-ma-z): The pub-sub mechanism is not initially supported.
-        #                 The watcher function of Zookeeper only supports
-        #                 one-time trigger. You have to continuously register
-        #                 watchers for each children. Moreover, the delay
-        #                 between trigger and registration causes lose of
-        #                 events. The DataWatch of Kazoo is also not that
-        #                 stable and easy to use. Thanks to build-in pub-sub
-        #                 of dragonflow, we don't need to work hard on zk side.
+        # NOTE(nick-ma-z): The pub-sub mechanism is not initially supported.
+        #                  The watcher function of Zookeeper only supports
+        #                  one-time trigger. You have to continuously register
+        #                  watchers for each children. Moreover, the delay
+        #                  between trigger and registration causes lose of
+        #                  events. The DataWatch of Kazoo is also not that
+        #                  stable and easy to use. Thanks to build-in pub-sub
+        #                  of dragonflow, we don't need to work hard on zk side
         return
 
     def register_topic_for_notification(self, topic):

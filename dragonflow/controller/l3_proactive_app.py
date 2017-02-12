@@ -193,7 +193,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         else:
             self._add_concrete_router_interface(router, lport)
 
-        #add dst_mac=gw_mac l2 goto l3 flow
+        # add dst_mac=gw_mac l2 goto l3 flow
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
         match.set_dl_dst(haddr_to_bin(mac))
