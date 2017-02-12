@@ -12,7 +12,6 @@
 
 from oslo_config import cfg
 from oslo_log import log
-
 from neutron.agent.common import utils
 from neutron.agent.linux import ip_lib
 

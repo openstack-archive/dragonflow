@@ -11,8 +11,8 @@
 #    under the License.
 
 from socket import timeout as SocketTimeout
-
 from contextlib import contextmanager
+
 import etcd
 import eventlet
 from oslo_log import log

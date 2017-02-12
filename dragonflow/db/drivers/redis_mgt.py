@@ -11,12 +11,12 @@
 #    under the License.
 
 import ctypes
-import msgpack
 import multiprocessing
 import random
 import string
 
 import eventlet
+import msgpack
 from oslo_log import log
 from oslo_serialization import jsonutils
 import redis
