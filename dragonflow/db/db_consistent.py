@@ -187,7 +187,7 @@ class DBConsistencyManager(object):
         for df_object in df_objects[:]:
             df_id = df_object.get_id()
             df_version = df_object.get_version()
-            if not df_version:
+            if df_version is None:
                 LOG.error(_LE("Version is None in df_object: %s"), df_object)
                 continue
             local_object = local_object_map.pop(df_id, None)
