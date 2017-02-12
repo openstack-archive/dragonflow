@@ -18,6 +18,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
+from dragonflow._i18n import _LE
 from dragonflow.controller.common import cookies
 from dragonflow.controller import df_db_notifier
 
@@ -28,6 +29,18 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         self.db_store = db_store
         self.vswitch_api = vswitch_api
         self.nb_api = nb_api
+        self._register_events()
+
+    def _register_events(self):
+        for attr_name in dir(self):
+            try:
+                attr = getattr(self, attr_name)
+                args = list(attr._register_args)
+            except (AttributeError, TypeError):
+                continue
+
+            for model, event in args:
+                model.register(event, attr)
 
     def update_local_port(self, lport, original_lport):
         """override update_local_port method to default call add_local_port
@@ -153,3 +166,17 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
                                   old_cookie=old_cookie, old_mask=old_mask,
                                   is_local=True,
                                   app_name=self.__class__.__name__)
+
+
+def register_event(model, event):
+    if event not in model.get_events():
+        raise RuntimeError(
+            _LE('{0} is not an event of {1}').format(event, model),
+        )
+
+    def decorator(func):
+        if not hasattr(func, '_register_args'):
+            func._register_args = []
+        func._register_args.append((model, event))
+        return func
+    return decorator
