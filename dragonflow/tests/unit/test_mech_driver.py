@@ -70,7 +70,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.assertGreater(sg['revision_number'], 0)
 
         self.nb_api.create_security_group.assert_called_with(
-            id=sg['id'], topic=sg['tenant_id'],
+            uuid=sg['id'], topic=sg['tenant_id'],
             name=sg['name'], rules=sg['security_group_rules'],
             version=sg['revision_number'])
         return sg
@@ -86,7 +86,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.assertGreater(new_sg['revision_number'], sg['revision_number'])
 
         self.nb_api.update_security_group.assert_called_with(
-            id=sg['id'], topic=sg['tenant_id'],
+            uuid=sg['id'], topic=sg['tenant_id'],
             name='updated', rules=new_sg['security_group_rules'],
             version=new_sg['revision_number'])
 
@@ -120,7 +120,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             network = n['network']
             self.assertGreater(network['revision_number'], 0)
             self.nb_api.create_lswitch.assert_called_with(
-                id=network['id'], topic=network['tenant_id'],
+                uuid=network['id'], topic=network['tenant_id'],
                 name=network['name'],
                 network_type=network['provider:network_type'],
                 segmentation_id=network['provider:segmentation_id'],
@@ -338,7 +338,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         req = self.new_delete_request('networks', network['id'])
         req.get_response(self.api)
         self.nb_api.delete_lswitch.assert_called_with(
-            id=network['id'], topic=network['tenant_id'])
+            uuid=network['id'], topic=network['tenant_id'])
 
     def test_create_update_remote_port(self):
         profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
@@ -373,7 +373,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         req = self.new_delete_request('ports', port['id'])
         req.get_response(self.api)
         self.nb_api.delete_lport.assert_called_with(
-            id=port['id'], topic=port['tenant_id'])
+            uuid=port['id'], topic=port['tenant_id'])
 
     def test_delete_security_group(self):
         sg = self._test_create_security_group_revision()
