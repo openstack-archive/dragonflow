@@ -10,9 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from contextlib import contextmanager
 from socket import timeout as SocketTimeout
 
-from contextlib import contextmanager
 import etcd
 import eventlet
 from oslo_log import log

@@ -16,9 +16,8 @@
 
 import mock
 import testtools
-
-from neutron import context as nctx
 from neutron_lib.plugins import directory
+from neutron import context as nctx
 
 from dragonflow.tests.unit import test_mech_driver
 

@@ -10,11 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_config import cfg
-from oslo_log import log
-
 from neutron.agent.common import utils
 from neutron.agent.linux import ip_lib
+from oslo_config import cfg
+from oslo_log import log
 
 from dragonflow._i18n import _LE
 from dragonflow.cmd.eventlet import df_metadata_service

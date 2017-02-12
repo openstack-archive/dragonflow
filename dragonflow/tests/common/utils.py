@@ -10,9 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import re
+
 from neutron.agent.common import utils as agent_utils
 from neutron.common import utils as n_utils
-import re
 
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as df_const

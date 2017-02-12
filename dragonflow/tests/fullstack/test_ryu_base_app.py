@@ -13,10 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+
 import mock
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
-import time
 
 from dragonflow import conf as cfg
 from dragonflow.controller import ryu_base_app

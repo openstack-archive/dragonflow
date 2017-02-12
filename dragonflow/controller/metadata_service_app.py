@@ -15,14 +15,18 @@
 
 import hashlib
 import hmac
+
 import httplib2
 import netaddr
+from oslo_log import log
+from oslo_utils import encodeutils
+from ryu.lib.packet import arp
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import ipv4
+from ryu.ofproto import nicira_ext
 import six
 import six.moves.urllib.parse as urlparse
 import webob
-
-from oslo_log import log
-from oslo_utils import encodeutils
 
 from dragonflow._i18n import _, _LW, _LE
 from dragonflow.common import exceptions
@@ -32,11 +36,6 @@ from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.db import api_nb
-
-from ryu.lib.packet import arp
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import ipv4
-from ryu.ofproto import nicira_ext
 
 
 LOG = log.getLogger(__name__)
