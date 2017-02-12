@@ -170,37 +170,37 @@ def _generate_session_id():
                            inc_retry_interval=True,
                            max_retry_interval=LOCK_MAX_RETRY_INTERVAL,
                            retry_on_deadlock=True)
-def _test_and_create_object(id):
+def _test_and_create_object(uuid):
     try:
         session = db_api.get_session()
         with session.begin():
             row = session.query(models.DFLockedObjects).filter_by(
-                object_uuid=id).one()
+                object_uuid=uuid).one()
             # test ttl
             if row.lock and timeutils.is_older_than(row.created_at,
                                        cfg.CONF.df.distributed_lock_ttl):
                 # reset the lock if it is timeout
                 LOG.warning(_LW('The lock for object %(id)s is reset '
-                                'due to timeout.'), {'id': id})
-                _lock_free_update(session, id, lock_state=True,
+                                'due to timeout.'), {'id': uuid})
+                _lock_free_update(session, uuid, lock_state=True,
                                   session_id=row.session_id)
     except orm_exc.NoResultFound:
         try:
             session = db_api.get_session()
             with session.begin():
-                _create_db_row(session, oid=id)
+                _create_db_row(session, oid=uuid)
         except db_exc.DBDuplicateEntry:
             # the lock is concurrently created.
             pass
 
 
-def _lock_free_update(session, id, lock_state=False, session_id=0):
+def _lock_free_update(session, uuid, lock_state=False, session_id=0):
     """Implement lock-free atomic update for the distributed lock
 
     :param session:    the db session
     :type session:     DB Session object
-    :param id:         the lock uuid
-    :type id:          string
+    :param uuid:         the lock uuid
+    :type uuid:          string
     :param lock_state: the lock state to update
     :type lock_state:  boolean
     :param session_id: the API session ID to update
@@ -209,11 +209,11 @@ def _lock_free_update(session, id, lock_state=False, session_id=0):
     """
     if not lock_state:
         # acquire lock
-        search_params = {'object_uuid': id, 'lock': lock_state}
+        search_params = {'object_uuid': uuid, 'lock': lock_state}
         update_params = {'lock': not lock_state, 'session_id': session_id}
     else:
         # release or reset lock
-        search_params = {'object_uuid': id, 'lock': lock_state,
+        search_params = {'object_uuid': uuid, 'lock': lock_state,
                          'session_id': session_id}
         update_params = {'lock': not lock_state, 'session_id': 0}
 
@@ -223,9 +223,10 @@ def _lock_free_update(session, id, lock_state=False, session_id=0):
 
     if not rows_update:
         LOG.debug('The lock for object %(id)s in session '
-                  '%(sid)s cannot be updated.', {'id': id,
+                  '%(sid)s cannot be updated.', {'id': uuid,
                                                  'sid': session_id})
-        raise db_exc.RetryRequest(df_exc.DBLockFailed(oid=id, sid=session_id))
+        raise db_exc.RetryRequest(df_exc.DBLockFailed(oid=uuid,
+                                                      sid=session_id))
 
 
 def _create_db_row(session, oid):

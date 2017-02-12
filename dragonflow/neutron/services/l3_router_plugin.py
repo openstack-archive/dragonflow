@@ -157,7 +157,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         ret_val = super(DFL3RouterPlugin, self).delete_router(context,
                                                               router_id)
         try:
-            self.nb_api.delete_lrouter(id=router_id,
+            self.nb_api.delete_lrouter(uuid=router_id,
                                        topic=router['tenant_id'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("router %s is not found in DF DB" % router_id)
@@ -210,7 +210,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                     pass
 
         self.nb_api.create_floatingip(
-                id=floatingip_dict['id'],
+                uuid=floatingip_dict['id'],
                 topic=floatingip_dict['tenant_id'],
                 name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
                 floating_ip_address=floatingip_dict['floating_ip_address'],
@@ -228,13 +228,13 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         return floatingip_dict
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
-    def update_floatingip(self, context, id, floatingip):
+    def update_floatingip(self, context, uuid, floatingip):
         floatingip_dict = super(DFL3RouterPlugin, self).update_floatingip(
-            context, id, floatingip)
+            context, uuid, floatingip)
         fip_version = floatingip_dict['revision_number']
 
         self.nb_api.update_floatingip(
-            id=floatingip_dict['id'],
+            uuid=floatingip_dict['id'],
             topic=floatingip_dict['tenant_id'],
             notify=True,
             name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
@@ -245,20 +245,20 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         return floatingip_dict
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
-    def delete_floatingip(self, context, id):
-        floatingip = self.get_floatingip(context, id)
-        super(DFL3RouterPlugin, self).delete_floatingip(context, id)
+    def delete_floatingip(self, context, uuid):
+        floatingip = self.get_floatingip(context, uuid)
+        super(DFL3RouterPlugin, self).delete_floatingip(context, uuid)
         try:
-            self.nb_api.delete_floatingip(id=id,
+            self.nb_api.delete_floatingip(uuid=uuid,
                                           topic=floatingip['tenant_id'])
         except df_exceptions.DBKeyNotFound:
-            LOG.exception(_LE("floatingip %s is not found in DF DB") % id)
+            LOG.exception(_LE("floatingip %s is not found in DF DB") % uuid)
 
-    def get_floatingip(self, context, id, fields=None):
+    def get_floatingip(self, context, uuid, fields=None):
         with context.session.begin(subtransactions=True):
-            fip = super(DFL3RouterPlugin, self).get_floatingip(context, id,
+            fip = super(DFL3RouterPlugin, self).get_floatingip(context, uuid,
                                                                fields)
-            fip['status'] = self.nb_api.get_floatingip(id).get_status()
+            fip['status'] = self.nb_api.get_floatingip(uuid).get_status()
             return fip
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
