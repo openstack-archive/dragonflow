@@ -12,6 +12,8 @@
 
 import time
 
+from oslo_serialization import jsonutils
+
 from dragonflow.controller.common import constants as const
 from dragonflow.db import db_consistent
 from dragonflow.db import models
@@ -19,8 +21,6 @@ from dragonflow.tests.common import constants
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-
-from oslo_serialization import jsonutils
 
 
 class TestDbConsistent(test_base.DFTestBase):

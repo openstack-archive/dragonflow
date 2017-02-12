@@ -14,17 +14,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-import numpy
 import signal
 import sys
 import time
 import uuid
 
+import mock
+from neutron.common import config as common_config
+import numpy
 from oslo_log import log
 from oslo_utils import importutils
-
-from neutron.common import config as common_config
 
 from dragonflow._i18n import _, _LE
 from dragonflow import conf as cfg

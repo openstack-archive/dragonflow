@@ -11,11 +11,11 @@
 #    under the License.
 
 import random
-import six
 import time
 
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+import six
 
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common

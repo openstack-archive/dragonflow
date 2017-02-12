@@ -14,8 +14,8 @@
 #    under the License.
 
 import copy
-import mock
 
+import mock
 from oslo_config import cfg
 from ryu.lib import addrconv
 from ryu.lib.packet import dhcp

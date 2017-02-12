@@ -12,12 +12,13 @@
 
 import time
 
+from ryu.lib.packet import arp
+
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import constants as test_const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
-from ryu.lib.packet import arp
 
 
 class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):

@@ -14,6 +14,7 @@
 #    under the License.
 
 import copy
+
 import mock
 
 from dragonflow.controller.common import constants as const
