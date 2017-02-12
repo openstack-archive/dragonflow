@@ -46,6 +46,7 @@ METADATA_SERVICE_REPLY_TABLE = 40
 IPV6_ND_TABLE = 45
 # Handle fip
 INGRESS_NAT_TABLE = 50
+INGRESS_SNAT_TABLE = 51
 # Translate destination mac and port key to reg7 and forward packet to table
 # L3_LOOKUP_TABLE. Duplicate broadcast packets.
 L2_LOOKUP_TABLE = 55
@@ -53,8 +54,9 @@ L2_LOOKUP_TABLE = 55
 L3_LOOKUP_TABLE = 60
 # Filter packet based on destination IP address in proactive way ;)
 L3_PROACTIVE_LOOKUP_TABLE = 65
-# Related to dnap app
+# Related to dnap app/snat_app
 EGRESS_NAT_TABLE = 70
+EGRESS_SNAT_TABLE = 71
 # Depending on reg7, packet is pushed locally to EGRESS_EXTERNAL_TABLE or
 # translated to tunnel.
 EGRESS_TABLE = 75
@@ -78,6 +80,7 @@ CANARY_TABLE = 200
 PRIORITY_DEFAULT = 1
 PRIORITY_VERY_LOW = 20
 PRIORITY_LOW = 50
+PRIORITY_MEDIUM_LOW = 70
 PRIORITY_MEDIUM = 100
 PRIORITY_HIGH = 200
 PRIORITY_VERY_HIGH = 300
@@ -100,6 +103,7 @@ CT_ZONE_REG = 0x1d402
 # Ports
 MIN_PORT = 1
 MAX_PORT = 65535
+NAT_TRACKING_ZONE = 65534
 
 # TODO(oanson) Remove once Aging app is fully updated to use cookie framework
 GLOBAL_AGING_COOKIE_MASK = 0x1
@@ -114,5 +118,7 @@ METADATA_HTTP_PORT = 80
 DHCP_CLIENT_PORT = 68
 DHCP_SERVER_PORT = 67
 
+EMPTY_MAC = '00:00:00:00:00:00'
 BROADCAST_MAC = 'ff:ff:ff:ff:ff:ff'
 BROADCAST_IP = '255.255.255.255'
+CHASSIS_MAC_PREFIX = '91:92:'
