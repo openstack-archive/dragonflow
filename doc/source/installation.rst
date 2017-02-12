@@ -17,9 +17,9 @@ Copy one of the following as your local.conf to your devstack folder
   ready to move packets.  You can see `Testing and Debugging
   <testing_and_debugging.rst>`_ to test and troubleshoot the deployment.
 
-============================================
- Automated setup using Vagrant + Virtualbox
-============================================
+==========================================
+Automated setup using Vagrant + Virtualbox
+==========================================
 
 This will create a 3 node devstack (controller + two computes), where Dragonflow is used as
 the Open vSwitch backend.
