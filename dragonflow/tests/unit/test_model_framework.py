@@ -14,15 +14,16 @@ import copy
 from jsonmodels import fields
 import mock
 
+from dragonflow.controller import df_base_app
 import dragonflow.db.model_framework as mf
+from dragonflow.db.models import constants
+from dragonflow.db.models import mixins
 from dragonflow.tests import base as tests_base
 
 
 @mf.register_model
-@mf.construct_nb_db_model(
-    events={'created', 'updated', 'deleted'},
-)
-class ModelTest(mf.ModelBase):
+@mf.construct_nb_db_model
+class ModelTest(mf.ModelBase, mixins.BasicEvents):
     table_name = 'table1'
 
     field1 = fields.StringField()
@@ -225,3 +226,22 @@ class TestModelFramework(tests_base.BaseTestCase):
         instance_str = repr(instance)
         self.assertIn(instance_str, {"ModelTest(id='id', field1='a')",
                                      "ModelTest(field1='a', id='id')"})
+
+    def test_app_delayed_register(self):
+        m = mock.MagicMock()
+
+        class TestApp(df_base_app.DFlowApp):
+            @df_base_app.register_event(ModelTest, constants.EVENT_CREATED)
+            def test_created_callback(self, origin, *args, **kwargs):
+                m(origin, *args, **kwargs)
+
+        TestApp(
+            api=mock.MagicMock(),
+            db_store=mock.MagicMock(),
+            vswitch_api=mock.MagicMock(),
+            nb_api=mock.MagicMock(),
+        )
+
+        o = ModelTest()
+        o.emit_created()
+        m.assert_called_once_with(o)

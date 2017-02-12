@@ -13,6 +13,7 @@ from jsonmodels import fields
 
 from dragonflow.db import api_nb
 import dragonflow.db.model_framework as mf
+from dragonflow.db.models import constants
 
 
 @mf.construct_nb_db_model(indexes={'topic': 'topic'})
@@ -20,16 +21,11 @@ class Topic(mf.MixinBase):
     topic = fields.StringField(required=True)
 
 
-EVENT_CREATED = 'created'
-EVENT_UPDATED = 'updated'
-EVENT_DELETED = 'deleted'
-
-
 @mf.construct_nb_db_model(
     events={
-        EVENT_CREATED,
-        EVENT_UPDATED,
-        EVENT_DELETED,
+        constants.EVENT_CREATED,
+        constants.EVENT_UPDATED,
+        constants.EVENT_DELETED,
     },
 )
 class BasicEvents(mf.MixinBase):

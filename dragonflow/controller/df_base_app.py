@@ -18,6 +18,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
+from dragonflow._i18n import _LE
 from dragonflow.controller.common import constants
 from dragonflow.controller.common import cookies
 
@@ -31,6 +32,31 @@ class DFlowApp(object):
         # Though there is nothing to initialize in super class, call it
         # will make the multi-inheritence work.
         super(DFlowApp, self).__init__()
+        self._register_events()
+
+    def _register_events(self):
+        '''Iterate all methods we decorated with @register_event and register
+        them to the requested models.
+        '''
+        for attr_name in dir(self):
+            try:
+                attr = getattr(self, attr_name)
+                # NOTE (dimak) list() is needed here because sometimes we have
+                # attributes that are mocks (during tests), who will have the
+                # _register_events attribute (and any other attribute too).
+                # list(mock.Mock()) yields an empty list so this works out
+                # with little effort.
+                args = list(attr._register_events)
+            except (AttributeError, TypeError):
+                # * AttributeError is OK because we stumbled upon an attribute
+                #   with no _register_events
+                # * TypeError is fine too because we have an attribute that has
+                #   _register_events but its not iterable (for instance we have
+                #   a _register_events method on an object we hold).
+                continue
+
+            for model, event in args:
+                model.register(event, attr)
 
     def update_local_port(self, lport, original_lport):
         """override update_local_port method to default call add_local_port
@@ -170,3 +196,24 @@ class DFlowApp(object):
                                   old_cookie=old_cookie, old_mask=old_mask,
                                   is_local=True,
                                   app_name=self.__class__.__name__)
+
+
+def register_event(model, event):
+    '''The decorator marks the method to be registered to the specified event
+
+    :param model: Model holding the event
+    :type model: Class
+    :param event: Event name that method well be registerd to
+    :type event: String
+    '''
+    if event not in model.get_events():
+        raise RuntimeError(
+            _LE('{0} is not an event of {1}').format(event, model),
+        )
+
+    def decorator(func):
+        if not hasattr(func, '_register_events'):
+            func._register_events = []
+        func._register_events.append((model, event))
+        return func
+    return decorator
