@@ -62,6 +62,8 @@ Specs
     services_status
     vm_live_migration
     nb_api_refactor
+    support_check_chassis_alive
+    traceroute
 
 Templates
 ---------
