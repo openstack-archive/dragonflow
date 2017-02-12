@@ -9,7 +9,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
+import netaddr
 from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
@@ -79,6 +79,11 @@ class DFMechDriver(driver_api.MechanismDriver):
                                             sub=self.nb_api.subscriber,
                                             is_neutron_server=True)
             self.port_status = None
+
+        # this parameter controls local ip allocation from
+        #   external subnet
+        self.enable_addr_alloc_for_snat = (
+            cfg.CONF.df.enable_addr_alloc_for_snat)
 
     def subscribe_registries(self):
         registry.subscribe(self.post_fork_initialize,
@@ -599,9 +604,15 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         # Here we do not want port status update to trigger
         # sending event to other compute node.
+        is_data_owner = df_utils.is_port_owner_of_type(
+            updated_port.get('device_owner'),
+            df_common_const.DATA_DEVICE_OWNER)
+        is_gw_owner = df_utils.is_port_owner_of_type(
+            updated_port.get('device_owner'),
+            df_common_const.GW_DEVICE_OWNER)
+
         if (cfg.CONF.df.enable_port_status_notifier and
-                n_const.DEVICE_OWNER_COMPUTE_PREFIX
-                in updated_port['device_owner'] and
+                is_data_owner and
                 context.status != context.original_status and
                 (context.status == n_const.PORT_STATUS_DOWN or
                 context.status == n_const.PORT_STATUS_ACTIVE)):
@@ -620,7 +631,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldnt be mapped to
         # a valid ofport (or location)
-        if updated_port.get('device_owner') == n_const.DEVICE_OWNER_ROUTER_GW:
+        if is_gw_owner:
             chassis = None
         else:
             chassis = updated_port.get('binding:host_id') or None
@@ -643,6 +654,24 @@ class DFMechDriver(driver_api.MechanismDriver):
         filtered_allowed_adress_pairs = \
             self._filter_unsupported_allowed_address_pairs(
                 updated_port.get(addr_pair.ADDRESS_PAIRS, []))
+
+        # prevent recursive calls on local gw port & update binding profile
+        # this code block allows support for tenant based local sNAT
+        # internal methods create local gateway port and extract its
+        #    ip,mac addresses for further wire sNAT DF flows
+        if (self.enable_addr_alloc_for_snat and is_data_owner):
+
+            original_port = context.original
+            original_profile = original_port.get('binding:profile')
+            if 'external_host_ip' not in original_profile:
+                external_host_ip, external_host_mac = \
+                    self._extract_local_bind_info(context, updated_port)
+
+                if external_host_ip is not None:
+                    binding_profile.update(
+                                    {'external_host_ip': external_host_ip,
+                                    'external_host_mac': external_host_mac})
+                    updated_port['binding:profile'] = binding_profile
 
         ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
         subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
@@ -674,8 +703,13 @@ class DFMechDriver(driver_api.MechanismDriver):
     def delete_port_postcommit(self, context):
         port = context.current
         port_id = port['id']
-
+        is_data_owner = df_utils.is_port_owner_of_type(
+            port.get('device_owner'),
+            df_common_const.DATA_DEVICE_OWNER)
         try:
+            if is_data_owner:
+                self._delete_local_gw_port(context, port)
+
             topic = port['tenant_id']
             self.nb_api.delete_lport(id=port_id, topic=topic)
         except df_exceptions.DBKeyNotFound:
@@ -730,3 +764,93 @@ class DFMechDriver(driver_api.MechanismDriver):
         self.core_plugin.update_port_status(n_context.get_admin_context(),
                                             port_id,
                                             n_const.PORT_STATUS_DOWN)
+
+    def _extract_local_bind_info(self, context, port):
+        external_host_ip = None
+        external_host_mac = None
+        plugin_context = context._plugin_context
+
+        # exclude_self parameter is false due to the fact that port_postcommit
+        # called more then once at port bounding operation
+        existing_port = self._find_local_tenant_port(port,
+                                 df_common_const.DATA_DEVICE_OWNER, False)
+        if existing_port is None:
+            network_id, subnets = self._find_external_subnet_by_port(port)
+            if network_id is not None:
+                gw_port = {'port': {'tenant_id': port['tenant_id'],
+                     'network_id': network_id, 'name': '',
+                     'binding:host_id': port['binding:host_id'],
+                     'admin_state_up': True, 'device_id': '',
+                     'device_owner': df_common_const.DEVICE_OWNER_LOCAL_GW,
+                     'mac_address': n_const.ATTR_NOT_SPECIFIED,
+                     'fixed_ips': subnets}}
+                gw_port = self.core_plugin.create_port(plugin_context, gw_port)
+
+                ips = [ip['ip_address'] for ip in gw_port.get('fixed_ips', [])]
+                for tmp_ip in ips:
+                    if netaddr.IPAddress(tmp_ip).version == 4:
+                        external_host_ip = tmp_ip
+                        external_host_mac = gw_port.get('mac_address')
+                        LOG.info(_LI("Created %(ip)s, %(mac)s"),
+                                 {'ip': external_host_ip,
+                                  'mac': external_host_mac})
+                        break
+        else:
+            binding_profile = existing_port.get_binding_profile()
+            if binding_profile and binding_profile.get('external_host_ip'):
+                external_host_ip = binding_profile.get('external_host_ip')
+                external_host_mac = binding_profile.get('external_host_mac')
+                LOG.info(_LI("Found %(ip)s, %(mac)s"),
+                         {'ip': external_host_ip, 'mac': external_host_mac})
+
+        return external_host_ip, external_host_mac
+
+    def _find_local_tenant_port(self, port,
+                         owner_list_name,
+                         exclude_self=False):
+        LOG.debug("Search port with owner in list: '%s'", owner_list_name)
+        tenant_ports = self.nb_api.get_all_logical_ports(port['tenant_id'])
+        for lport in tenant_ports:
+            if exclude_self is True and lport.get_id() == port['id']:
+                continue
+            if (lport.get_chassis() == port.get('binding:host_id') and
+                    df_common_const.is_port_owner_of_type(
+                        lport.get_device_owner(),
+                        owner_list_name)):
+                LOG.debug("Found reference port")
+                return lport
+
+        return None
+
+    def _find_external_subnet_by_port(self, port):
+        LOG.debug("Search external subnet by port to create local GW")
+        routers = self.nb_api.get_routers(port['tenant_id'])
+        network_id = None
+        subnets = None
+        for router in routers:
+            gw_obj = router.get_external_gateway()
+            if 'port_id' in gw_obj:
+                subnet_list = gw_obj.get('external_fixed_ips')
+                subnets = \
+                    [{'subnet_id': ip['subnet_id']} for ip in subnet_list]
+                network_id = gw_obj.get('network_id')
+                break
+
+        LOG.info(_LI("Found external network: %(network_id)s, "
+             "with subnets: %(subnets)s"),
+                 {'network_id': network_id, 'subnets': subnets})
+        return network_id, subnets
+
+    def _delete_local_gw_port(self, context, port):
+        plugin_context = context._plugin_context
+
+        other_port = self._find_local_tenant_port(port,
+                                      df_common_const.DATA_DEVICE_OWNER,
+                                      True)
+        if other_port is None:
+            gw_port = self._find_local_tenant_port(port,
+                                      df_common_const.LGW_DEVICE_OWNER)
+            #delete from neutron database
+            if gw_port is not None:
+                LOG.info(_LI("Found local GW port, now deleting it"))
+                self.core_plugin.delete_port(plugin_context, gw_port.get_id())
