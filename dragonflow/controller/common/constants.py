@@ -101,7 +101,7 @@ CT_ZONE_REG = 0x1d402
 MIN_PORT = 1
 MAX_PORT = 65535
 
-#TODO(oanson) Remove once Aging app is fully updated to use cookie framework
+# TODO(oanson) Remove once Aging app is fully updated to use cookie framework
 GLOBAL_AGING_COOKIE_MASK = 0x1
 GLOBAL_INIT_AGING_COOKIE = 0x1
 
