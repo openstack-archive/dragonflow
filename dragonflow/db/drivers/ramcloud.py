@@ -217,15 +217,15 @@ def _ctype_copy(addr, var, width):
     return addr + width
 
 
-def get_key(id):
-    if type(id) is int:
-        return str(id)
+def get_key(key):
+    if type(key) is int:
+        return str(key)
     else:
-        return id
+        return key
 
 
-def get_keyLength(id):
-    return len(str(id))
+def get_keyLength(key):
+    return len(str(key))
 
 
 class RCException(Exception):
@@ -311,25 +311,25 @@ class RAMCloud(object):
     def enumerate_table_finalize(self, enumeration_state):
         so.rc_enumerateTableFinalize(enumeration_state)
 
-    def create(self, table_id, id, data):
+    def create(self, table_id, key, data):
         reject_rules = RejectRules(object_exists=True)
-        return self.write_rr(table_id, id, data, reject_rules)
+        return self.write_rr(table_id, key, data, reject_rules)
 
     def create_table(self, name, serverSpan=1):
         s = so.rc_createTable(self.client, name, serverSpan)
         self.handle_error(s)
 
-    def delete(self, table_id, id, want_version=None):
+    def delete(self, table_id, key, want_version=None):
         if want_version:
             reject_rules = RejectRules.exactly(want_version)
         else:
             reject_rules = RejectRules(object_doesnt_exist=True)
-        return self.delete_rr(table_id, id, reject_rules)
+        return self.delete_rr(table_id, key, reject_rules)
 
-    def delete_rr(self, table_id, id, reject_rules):
+    def delete_rr(self, table_id, key, reject_rules):
         got_version = ctypes.c_uint64()
         self.hook()
-        s = so.rc_remove(self.client, table_id, get_key(id), get_keyLength(id),
+        s = so.rc_remove(self.client, table_id, get_key(key), get_keyLength(key),
                          ctypes.byref(reject_rules), ctypes.byref(got_version))
         self.handle_error(s, got_version.value)
         return got_version.value
@@ -351,76 +351,76 @@ class RAMCloud(object):
         self.handle_error(s)
         return result
 
-    def read(self, table_id, id, want_version=None):
+    def read(self, table_id, key, want_version=None):
         if want_version:
             reject_rules = RejectRules.exactly(want_version)
         else:
             reject_rules = RejectRules(object_doesnt_exist=True)
-        return self.read_rr(table_id, id, reject_rules)
+        return self.read_rr(table_id, key, reject_rules)
 
-    def read_rr(self, table_id, id, reject_rules):
+    def read_rr(self, table_id, key, reject_rules):
         max_length = 1024 * 1024 * 2
         buf = ctypes.create_string_buffer(max_length)
         actual_length = ctypes.c_uint32()
         got_version = ctypes.c_uint64()
         reject_rules.object_doesnt_exist = False
         self.hook()
-        s = so.rc_read(self.client, table_id, get_key(id), get_keyLength(id),
+        s = so.rc_read(self.client, table_id, get_key(key), get_keyLength(key),
                        ctypes.byref(reject_rules),
                        ctypes.byref(got_version), ctypes.byref(buf),
                        max_length, ctypes.byref(actual_length))
         self.handle_error(s, got_version.value)
         return (buf.raw[0:actual_length.value], got_version.value)
 
-    def update(self, table_id, id, data, want_version=None):
+    def update(self, table_id, key, data, want_version=None):
         if want_version:
             reject_rules = RejectRules.exactly(want_version)
         else:
             reject_rules = RejectRules(object_doesnt_exist=True)
-        return self.write_rr(table_id, id, data, reject_rules)
+        return self.write_rr(table_id, key, data, reject_rules)
 
-    def write(self, table_id, id, data, want_version=None):
+    def write(self, table_id, key, data, want_version=None):
         if want_version:
             reject_rules = RejectRules(version_gt_given=True,
                                        given_version=want_version)
         else:
             reject_rules = RejectRules()
-        return self.write_rr(table_id, id, data, reject_rules)
+        return self.write_rr(table_id, key, data, reject_rules)
 
-    def write_rr(self, table_id, id, data, reject_rules):
+    def write_rr(self, table_id, key, data, reject_rules):
         got_version = ctypes.c_uint64()
         self.hook()
-        s = so.rc_write(self.client, table_id, get_key(id), get_keyLength(id),
+        s = so.rc_write(self.client, table_id, get_key(key), get_keyLength(key),
                         data, len(data),
                         ctypes.byref(reject_rules), ctypes.byref(got_version))
         self.handle_error(s, got_version.value)
         return got_version.value
 
-    def testing_kill(self, table_id, id):
+    def testing_kill(self, table_id, key):
         s = so.rc_testing_kill(self.client, table_id,
-                               get_key(id), get_keyLength(id))
+                               get_key(key), get_keyLength(key))
         self.handle_error(s)
 
-    def testing_fill(self, table_id, id, object_count, object_size):
+    def testing_fill(self, table_id, key, object_count, object_size):
         s = so.rc_testing_fill(self.client, table_id,
-                               get_key(id), get_keyLength(id),
+                               get_key(key), get_keyLength(key),
                                object_count, object_size)
         self.handle_error(s)
 
-    def testing_get_server_id(self, table_id, id):
+    def testing_get_server_id(self, table_id, key):
         cserver_id = ctypes.c_uint64()
-        s = so.rc_testing_get_server_id(self.client, table_id, get_key(id),
-                                        get_keyLength(id),
+        s = so.rc_testing_get_server_id(self.client, table_id, get_key(key),
+                                        get_keyLength(key),
                                         ctypes.byref(cserver_id))
         self.handle_error(s)
         return cserver_id.value
 
-    def testing_get_service_locator(self, table_id, id):
+    def testing_get_service_locator(self, table_id, key):
         max_len = 128
         buffer = ctypes.create_string_buffer(max_len)
         s = so.rc_testing_get_service_locator(self.client,
-                                              table_id, get_key(id),
-                                              get_keyLength(id),
+                                              table_id, get_key(key),
+                                              get_keyLength(key),
                                               buffer, max_len)
         self.handle_error(s)
         return buffer.value

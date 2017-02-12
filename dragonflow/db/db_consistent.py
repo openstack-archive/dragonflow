@@ -99,7 +99,8 @@ class DBConsistencyManager(object):
                 LOG.exception(_LE("Exception occurred when"
                               "handling db comparison: %s"), e)
 
-    def _verify_object(self, table, id, action, df_object, local_object=None):
+    def _verify_object(self, table, uuid, action,
+                       df_object, local_object=None):
         """Verify the object status and judge whether to create/update/delete
         the object or not, we'll use twice comparison to verify the status,
         first comparison result will be stored in the cache and if second
@@ -107,7 +108,7 @@ class DBConsistencyManager(object):
         sure the object status
 
         :param table:  Resource object type
-        :param id:  Resource object id
+        :param uuid:  Resource object uuid
         :param action:  Operate action(create/update/delete)
         :param df_object:  Object from df db
         :param local_object:  Object from local cache
@@ -115,10 +116,10 @@ class DBConsistencyManager(object):
         df_version = df_object.get_version() if df_object else None
         local_version = local_object.get_version() if local_object else None
 
-        old_cache_obj = self.cache_manager.get(table, id)
+        old_cache_obj = self.cache_manager.get(table, uuid)
         if not old_cache_obj or old_cache_obj.get_action() != action:
             cache_obj = CacheObject(action, df_version, local_version)
-            self.cache_manager.set(table, id, cache_obj)
+            self.cache_manager.set(table, uuid, cache_obj)
             return
 
         old_df_version = old_cache_obj.get_df_version()
@@ -127,7 +128,7 @@ class DBConsistencyManager(object):
             if df_version >= old_df_version:
                 obj_refresh.process_object(
                     self.controller, table, 'create', df_object)
-                self.cache_manager.remove(table, id)
+                self.cache_manager.remove(table, uuid)
             return
         elif action == 'update':
             if df_version < old_df_version:
@@ -135,13 +136,13 @@ class DBConsistencyManager(object):
             if local_version <= old_local_version:
                 obj_refresh.process_object(
                     self.controller, table, 'update', df_object)
-                self.cache_manager.remove(table, id)
+                self.cache_manager.remove(table, uuid)
             else:
                 cache_obj = CacheObject(action, df_version, local_version)
-                self.cache_manager.set(table, id, cache_obj)
+                self.cache_manager.set(table, uuid, cache_obj)
         elif action == 'delete':
-            obj_refresh.process_object(self.controller, table, 'delete', id)
-            self.cache_manager.remove(table, id)
+            obj_refresh.process_object(self.controller, table, 'delete', uuid)
+            self.cache_manager.remove(table, uuid)
         else:
             LOG.warning(_LW('Unknown action %s in db consistent'), action)
 

@@ -103,7 +103,7 @@ def make_fake_logic_switch(
         segmentation_id,
         mtu,
         topic,
-        id,
+        uuid,
         subnets=None,
         network_type='vxlan',
         version=2,
@@ -118,7 +118,7 @@ def make_fake_logic_switch(
             "topic": topic,
             "version": version,
             "network_type": network_type,
-            "id": id,
+            "id": uuid,
             "unique_key": unique_key}
     fake_switch.inner_obj.update(kwargs)
     return fake_switch
@@ -131,7 +131,7 @@ fake_logic_switch1 = make_fake_logic_switch(
         segmentation_id=41,
         mtu=1450,
         topic='fake_tenant1',
-        id='fake_switch1')
+        uuid='fake_switch1')
 
 external_switch1_subnets = [{"name": "public-subnet",
                  "enable_dhcp": False,
@@ -152,10 +152,10 @@ fake_external_switch1 = make_fake_logic_switch(
         segmentation_id=69,
         mtu=1450,
         topic='fake_tenant1',
-        id='fake_external_switch1')
+        uuid='fake_external_switch1')
 
 
-def make_fake_port(id=None,
+def make_fake_port(uuid=None,
                    subnets=None,
                    is_local=None,
                    macs=('00:00:00:00:00:00'),
@@ -196,7 +196,7 @@ def make_fake_port(id=None,
         'unique_key': unique_key,
         'port_security_enabled': port_security_enabled,
         'binding_vnic_type': binding_vnic_type,
-        'id': "%s_%s%s" % (network_type, name, ofport) if not id else id,
+        'id': "%s_%s%s" % (network_type, name, ofport) if not uuid else uuid,
         'security_groups': security_groups,
         'device_id': device_id,
         'extra_dhcp_opts': extra_dhcp_opts}
@@ -228,7 +228,7 @@ fake_local_port1 = make_fake_local_port(
     ips=['10.0.0.6'],
     network_type='vxlan',
     subnets=['fake_subnet1'],
-    id='fake_port1',
+    uuid='fake_port1',
     extra_dhcp_opts=fake_local_port1_dhcp_opts)
 
 
@@ -248,7 +248,7 @@ fake_local_port2 = make_fake_local_port(
     macs=['fa:16:3e:8c:2e:b4'],
     ips=['10.0.0.7'],
     tunnel_key=3,
-    id='fake_port2',
+    uuid='fake_port2',
     segmentation_id=41,
     ofport=3,
     network_type='vxlan',
@@ -274,7 +274,7 @@ def make_fake_remote_port(**kargs):
 
 
 fake_remote_port1 = make_fake_remote_port(
-    id='fake_remote_port',
+    uuid='fake_remote_port',
     macs=['fa:16:3e:8c:2e:af'],
     name='fake_remote_port',
     ips=['10.0.0.8'],
