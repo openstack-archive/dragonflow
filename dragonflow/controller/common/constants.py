@@ -101,17 +101,8 @@ CT_ZONE_REG = 0x1d402
 MIN_PORT = 1
 MAX_PORT = 65535
 
-"""
-Cookie Mask
-global cookie is used by flows of all table, but local cookie is used
-by flows of a small part of table. In order to avoid conflict,
-global cookies should not overlapped with each other, but local cookies
-could be overlapped for saving space of cookie.
-all cookie's mask should be kept here to avoid conflict.
-"""
+#TODO(oanson) Remove once Aging app is fully updated to use cookie framework
 GLOBAL_AGING_COOKIE_MASK = 0x1
-SECURITY_GROUP_RULE_COOKIE_MASK = 0x1fffffffe
-SECURITY_GROUP_RULE_COOKIE_SHIFT_LEN = 1
 GLOBAL_INIT_AGING_COOKIE = 0x1
 
 # These two globals are constant, as defined by the metadata service API. VMs
