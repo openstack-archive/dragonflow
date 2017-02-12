@@ -21,6 +21,7 @@ from dragonflow.conf import df_l2
 from dragonflow.conf import df_l3
 from dragonflow.conf import df_metadata_service
 from dragonflow.conf import df_ryu
+from dragonflow.conf import df_snat
 
 
 CONF = cfg.CONF
@@ -35,3 +36,4 @@ df_l2.register_opts()
 df_l3.register_opts()
 df_dnat.register_opts()
 df_ryu.register_opts()
+df_snat.register_opts()
