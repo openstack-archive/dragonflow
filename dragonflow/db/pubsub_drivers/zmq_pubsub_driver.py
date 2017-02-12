@@ -197,7 +197,7 @@ class ZMQSubscriberAgent(ZMQSubscriberAgentBase):
         context = zmq.Context()
         socket = context.socket(zmq.SUB)
         for uri in self.uri_list:
-            #TODO(gampel) handle exp zmq.EINVAL,zmq.EPROTONOSUPPORT
+            # TODO(gampel) handle exp zmq.EINVAL,zmq.EPROTONOSUPPORT
             LOG.debug("about to connect to network publisher at %s" % uri)
             socket.connect(uri)
         for topic in self.topic_list:
