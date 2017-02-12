@@ -196,13 +196,13 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
                      {'ip': ip, 'mac': mac, 'lport_id': found_lport_id})
             if old_active_port:
                 self.nb_api.update_active_port(
-                    id=key,
+                    uuid=key,
                     topic=topic,
                     detected_mac=mac,
                     detected_lport_id=found_lport_id)
             else:
                 self.nb_api.create_active_port(
-                    id=key,
+                    uuid=key,
                     topic=topic,
                     network_id=network_id,
                     ip=ip,

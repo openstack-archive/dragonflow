@@ -408,8 +408,8 @@ class AllowedAddressPairsActivePort(NbDbObject):
     table_name = "activeport"
 
     def get_id(self):
-        id = self.inner_obj.get('network_id') + self.inner_obj.get('ip')
-        return id
+        uuid = self.inner_obj.get('network_id') + self.inner_obj.get('ip')
+        return uuid
 
     def get_ip(self):
         return self.inner_obj.get('ip')

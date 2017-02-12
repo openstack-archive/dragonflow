@@ -28,7 +28,7 @@ class TestClassifierApp(test_app_base.DFAppTestBase):
         fake_vlan_switch1 = make_fake_logic_switch(
                 subnets=test_app_base.fake_lswitch_default_subnets,
                 network_type='vlan',
-                id='fake_vlan_switch1', mtu=1500,
+                uuid='fake_vlan_switch1', mtu=1500,
                 router_external=False, segmentation_id=41,
                 topic='fake_tenant1', unique_key=2,
                 name='private')

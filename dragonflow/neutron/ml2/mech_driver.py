@@ -155,12 +155,12 @@ class DFMechDriver(driver_api.MechanismDriver):
             rule['topic'] = rule.get('tenant_id')
             del rule['tenant_id']
         if event == events.AFTER_CREATE:
-            self.nb_api.create_security_group(id=sg_id, topic=tenant_id,
+            self.nb_api.create_security_group(uuid=sg_id, topic=tenant_id,
                                               name=sg_name, rules=rules,
                                               version=sg_version)
             LOG.info(_LI("DFMechDriver: create security group %s"), sg_name)
         elif event == events.AFTER_UPDATE:
-            self.nb_api.update_security_group(id=sg_id, topic=tenant_id,
+            self.nb_api.update_security_group(uuid=sg_id, topic=tenant_id,
                                               name=sg_name, rules=rules,
                                               version=sg_version)
             LOG.info(_LI("DFMechDriver: update security group %s"), sg_name)
@@ -221,7 +221,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         network = context.current
 
         self.nb_api.create_lswitch(
-            id=network['id'],
+            uuid=network['id'],
             topic=network['tenant_id'],
             name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
             network_type=network.get('provider:network_type'),
@@ -243,7 +243,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         tenant_id = network['tenant_id']
 
         try:
-            self.nb_api.delete_lswitch(id=network_id,
+            self.nb_api.delete_lswitch(uuid=network_id,
                                        topic=tenant_id)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
@@ -257,7 +257,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         network = context.current
 
         self.nb_api.update_lswitch(
-            id=network['id'],
+            uuid=network['id'],
             topic=network['tenant_id'],
             name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
             network_type=network.get('provider:network_type'),
@@ -544,7 +544,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                 port.get(addr_pair.ADDRESS_PAIRS, []))
 
         self.nb_api.create_lport(
-            id=port['id'],
+            uuid=port['id'],
             lswitch_id=port['network_id'],
             topic=port['tenant_id'],
             macs=[port['mac_address']], ips=ips,
@@ -648,7 +648,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
 
         self.nb_api.update_lport(
-            id=updated_port['id'],
+            uuid=updated_port['id'],
             topic=updated_port['tenant_id'],
             macs=[updated_port['mac_address']],
             ips=ips,
@@ -677,7 +677,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         try:
             topic = port['tenant_id']
-            self.nb_api.delete_lport(id=port_id, topic=topic)
+            self.nb_api.delete_lport(uuid=port_id, topic=topic)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("port %s is not found in DF DB, might have "
                       "been deleted concurrently", port_id)
