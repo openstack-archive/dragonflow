@@ -11,11 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import os
 import sys
 import time
 
-import collections
 import eventlet
 import greenlet
 from neutron_lib import constants as n_const

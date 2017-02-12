@@ -13,7 +13,6 @@
 from cassandra import cluster
 from cassandra import policies
 from cassandra import query
-
 from oslo_log import log
 
 from dragonflow._i18n import _LE
