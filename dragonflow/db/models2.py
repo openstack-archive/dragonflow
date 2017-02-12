@@ -11,6 +11,7 @@
 #    under the License.
 from jsonmodels import fields
 
+from dragonflow import conf
 from dragonflow.db import api_nb
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
@@ -55,6 +56,5 @@ class Chassis(mf.ModelBase, BasicEventsMixin):
     table_name = 'chassis'
 
     ip = df_fields.IpAddressField(required=True)
-    # FIXME move enum values to config
-    tunnel_types = df_fields.EnumListField(('vxlan', 'gre', 'geneve'),
+    tunnel_types = df_fields.EnumListField(conf.CONF.df.tunnel_types,
                                            required=True)
