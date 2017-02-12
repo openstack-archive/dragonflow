@@ -91,6 +91,5 @@ VMs mentioned above was detected.
 
 References
 ==========
-[1] http://specs.openstack.org/openstack/neutron-specs/specs/api/allowed_addr
-ess_pairs.html
+[1] http://specs.openstack.org/openstack/neutron-specs/specs/api/allowed_address_pairs.html
 [2] http://www.ietf.org/rfc/rfc3768.txt
