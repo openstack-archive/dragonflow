@@ -10,6 +10,7 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from neutron_lib import constants as n_const
 
 DRAGONFLOW_VIRTUAL_PORT = "DragonflowVirtualPort"
 OVS_INTERFACE = "ovsinterface"
@@ -21,3 +22,10 @@ OVS_UNKNOWN_INTERFACE = "unknown"
 
 PORT_STATUS_UP = "up"
 PORT_STATUS_DOWN = "down"
+
+DEVICE_OWNER_LOCAL_GW = (
+            n_const.DEVICE_OWNER_NETWORK_PREFIX + "local_router_gateway")
+
+DATA_DEVICE_OWNER = [
+    n_const.DEVICE_OWNER_COMPUTE_PREFIX
+]
