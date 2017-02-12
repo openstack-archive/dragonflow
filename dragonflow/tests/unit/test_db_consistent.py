@@ -93,8 +93,8 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
 class FakeDfLocalObj(object):
     """To generate df_obj or local_obj for testing purposes only."""
-    def __init__(self, id, version):
-        self.id = id
+    def __init__(self, uuid, version):
+        self.id = uuid
         self.version = version
 
     def get_id(self):
