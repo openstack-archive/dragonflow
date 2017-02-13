@@ -71,7 +71,7 @@ class TestRetryFunc(tests_base.BaseTestCase):
         # wrapped function), then that exception is reraised but not logged.
 
         @utils.wrap_func_retry(max_retries=5,
-                           _errors=[ValueError])
+                               _errors=[ValueError])
         def some_method():
             raise AttributeError('test')
 

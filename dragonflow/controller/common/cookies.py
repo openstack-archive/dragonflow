@@ -126,6 +126,6 @@ def get_cookie(name, value, old_cookie=0, old_mask=0,
     result_unmasked = (value << pair.offset)
     result = (result_unmasked & pair.mask)
     if result != result_unmasked:
-        raise exceptions.CookieOverflowExcpetion(cookie=value,
-                                      offset=pair.offset, mask=pair.mask)
+        raise exceptions.CookieOverflowExcpetion(
+            cookie=value, offset=pair.offset, mask=pair.mask)
     return result | (old_cookie & ~pair.mask), pair.mask | old_mask

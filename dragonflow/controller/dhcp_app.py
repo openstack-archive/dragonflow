@@ -60,7 +60,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
         self.ofport_to_dhcp_app_port_data = {}
         self.api.register_table_handler(const.DHCP_TABLE,
-                self.packet_in_handler)
+                                        self.packet_in_handler)
         self.switch_dhcp_ip_map = collections.defaultdict(dict)
         self.subnet_vm_port_map = collections.defaultdict(set)
 
@@ -134,7 +134,7 @@ class DHCPApp(df_base_app.DFlowApp):
                       'tunnel_id': lport.get_id()})
         else:
             LOG.error(_LE("DHCP message type %d not handled"),
-                dhcp_message_type)
+                      dhcp_message_type)
         if send_packet:
             self.send_packet(ofport, send_packet)
 
@@ -181,8 +181,8 @@ class DHCPApp(df_base_app.DFlowApp):
                                                 dst=pkt_ethernet.src,
                                                 src=pkt_ethernet.dst))
         dhcp_pkt.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
-                                  src=dhcp_server_address,
-                                  proto=pkt_ipv4.proto))
+                                        src=dhcp_server_address,
+                                        proto=pkt_ipv4.proto))
         dhcp_pkt.add_protocol(udp.udp(src_port=const.DHCP_SERVER_PORT,
                                       dst_port=const.DHCP_CLIENT_PORT))
         dhcp_pkt.add_protocol(dhcp.dhcp(op=dhcp.DHCP_BOOT_REPLY,
@@ -426,11 +426,11 @@ class DHCPApp(df_base_app.DFlowApp):
         ofproto = self.ofproto
         if ip_addr:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                            ipv4_dst=ip_addr,
-                            ip_proto=n_const.PROTO_NUM_UDP,
-                            udp_src=const.DHCP_CLIENT_PORT,
-                            udp_dst=const.DHCP_SERVER_PORT,
-                            metadata=network_id)
+                                    ipv4_dst=ip_addr,
+                                    ip_proto=n_const.PROTO_NUM_UDP,
+                                    udp_src=const.DHCP_CLIENT_PORT,
+                                    udp_dst=const.DHCP_SERVER_PORT,
+                                    metadata=network_id)
         else:
             match = parser.OFPMatch(metadata=network_id)
         self.mod_flow(
@@ -443,10 +443,10 @@ class DHCPApp(df_base_app.DFlowApp):
         parser = self.parser
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                            eth_dst=const.BROADCAST_MAC,
-                            ip_proto=n_const.PROTO_NUM_UDP,
-                            udp_src=const.DHCP_CLIENT_PORT,
-                            udp_dst=const.DHCP_SERVER_PORT)
+                                eth_dst=const.BROADCAST_MAC,
+                                ip_proto=n_const.PROTO_NUM_UDP,
+                                udp_src=const.DHCP_CLIENT_PORT,
+                                udp_dst=const.DHCP_SERVER_PORT)
 
         self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_MEDIUM,
@@ -455,11 +455,11 @@ class DHCPApp(df_base_app.DFlowApp):
     def _install_dhcp_unicast_match_flow(self, ip_addr, network_id):
         parser = self.parser
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                            ipv4_dst=ip_addr,
-                            ip_proto=n_const.PROTO_NUM_UDP,
-                            udp_src=const.DHCP_CLIENT_PORT,
-                            udp_dst=const.DHCP_SERVER_PORT,
-                            metadata=network_id)
+                                ipv4_dst=ip_addr,
+                                ip_proto=n_const.PROTO_NUM_UDP,
+                                udp_src=const.DHCP_CLIENT_PORT,
+                                udp_dst=const.DHCP_SERVER_PORT,
+                                metadata=network_id)
 
         self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
                                   const.PRIORITY_MEDIUM,

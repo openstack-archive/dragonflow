@@ -54,7 +54,7 @@ class L3App(df_base_app.DFlowApp):
             max_rate=self.conf.router_ttl_invalid_max_rate,
             time_unit=1)
         self.api.register_table_handler(const.L3_LOOKUP_TABLE,
-                self.packet_in_handler)
+                                        self.packet_in_handler)
 
     def switch_features_handler(self, ev):
         self.router_port_rarp_cache.clear()
@@ -111,7 +111,7 @@ class L3App(df_base_app.DFlowApp):
                 self.send_packet(in_port, icmp_ttl_pkt)
             else:
                 LOG.warning(_LW("The invalid TTL packet's destination mac %s "
-                               "can't be recognized."), e_pkt.dst)
+                                "can't be recognized."), e_pkt.dst)
             return
 
         pkt = packet.Packet(msg.data)

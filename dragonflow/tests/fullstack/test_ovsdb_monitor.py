@@ -105,11 +105,11 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
                                                   network_id))
         subnet_body = {'network_id': network_id,
-            'cidr': '10.10.0.0/24',
-            'gateway_ip': '10.10.0.1',
-            'ip_version': 4,
-            'name': 'private',
-            'enable_dhcp': True}
+                       'cidr': '10.10.0.0/24',
+                       'gateway_ip': '10.10.0.1',
+                       'ip_version': 4,
+                       'name': 'private',
+                       'enable_dhcp': True}
         subnet.create(subnet=subnet_body)
         self.assertTrue(network.exists())
         self.assertTrue(subnet.exists())
@@ -145,11 +145,11 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
                                                   network_id))
         subnet_body = {'network_id': network_id,
-            'cidr': '10.20.0.0/24',
-            'gateway_ip': '10.20.0.1',
-            'ip_version': 4,
-            'name': 'private',
-            'enable_dhcp': True}
+                       'cidr': '10.20.0.0/24',
+                       'gateway_ip': '10.20.0.1',
+                       'ip_version': 4,
+                       'name': 'private',
+                       'enable_dhcp': True}
         subnet.create(subnet=subnet_body)
         self.assertTrue(network.exists())
         self.assertTrue(subnet.exists())

@@ -177,8 +177,8 @@ def _test_and_create_object(id):
             row = session.query(models.DFLockedObjects).filter_by(
                 object_uuid=id).one()
             # test ttl
-            if row.lock and timeutils.is_older_than(row.created_at,
-                                       cfg.CONF.df.distributed_lock_ttl):
+            if row.lock and timeutils.is_older_than(
+                    row.created_at, cfg.CONF.df.distributed_lock_ttl):
                 # reset the lock if it is timeout
                 LOG.warning(_LW('The lock for object %(id)s is reset '
                                 'due to timeout.'), {'id': id})
