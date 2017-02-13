@@ -220,7 +220,7 @@ class LogicalPort(NbDbObject, UniqueKeyMixin):
 
 
 @register_model_class
-class LogicalRouter(NbDbObject):
+class LogicalRouter(NbDbObject, UniqueKeyMixin):
 
     table_name = "lrouter"
 
