@@ -58,7 +58,13 @@ An example flow, for a VM on ofport 3, with unique port ID 3, and network ID 1,
 is:
 
 ::
-    table=0, priority=100,in_port=3 actions=load:0x3->NXM_NX_REG6[],load:0x1->OXM_OF_METADATA[],resubmit(,1)
+    table=0, priority=100,in_port=3 actions=load:0x3->NXM_NX_REG6[],load:0x1->OXM_OF_METADATA[],resubmit(,5)
+
+The classification will also install the common ingress dispatch flow
+
+::
+
+    table=115, priority=100,reg7=0x3,output:3
 
 The classification application removes the relevant flows upon the
 removal of a port, i.e. on the callback `remove_local_port`.
