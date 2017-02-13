@@ -32,7 +32,7 @@ that deals only with classification.
 Reusability can be further pushed forwards by extracting common methods
 to a common locations and libraries.
 
-This change will allow appling classification at different points of packet
+This change will allow applying classification at different points of packet
 processing in the future, for example to support NSH use cases.
 
 Proposed Change

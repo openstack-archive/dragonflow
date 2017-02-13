@@ -36,7 +36,7 @@ we should pay attention to.
 
 1 VIF plugged in destination node.
 
-2 VIF unplugged in souce node.
+2 VIF unplugged in source node.
 
 3 Nova calls Neuron API(update_port) to update port host ID information.
 
