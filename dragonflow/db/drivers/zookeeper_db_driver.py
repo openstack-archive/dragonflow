@@ -59,12 +59,12 @@ class ZookeeperDbDriver(db_api.DbApi):
             hosts = _parse_hosts(self.config.remote_db_hosts)
             _handler = eventlet.SequentialEventletHandler()
             _retry = retry.KazooRetry(max_tries=CLIENT_CONNECTION_RETRIES,
-                                delay=0.5,
-                                backoff=2,
-                                sleep_func=_handler.sleep_func)
+                                      delay=0.5,
+                                      backoff=2,
+                                      sleep_func=_handler.sleep_func)
             self.client = client.KazooClient(hosts=hosts,
-                                      handler=_handler,
-                                      connection_retry=_retry)
+                                             handler=_handler,
+                                             connection_retry=_retry)
             self.client.start()
             self.client.ensure_path(ROOT_NS)
 

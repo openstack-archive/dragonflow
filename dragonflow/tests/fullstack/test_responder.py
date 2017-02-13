@@ -40,7 +40,7 @@ class ArpResponderTest(test_base.DFTestBase):
         ovs_flows_parser = test_utils.OvsFlowsParser()
         flows = ovs_flows_parser.dump(self.integration_bridge)
         flows = [flow for flow in flows
-                if flow['table'] == str(const.ARP_TABLE)]
+                 if flow['table'] == str(const.ARP_TABLE)]
         return flows
 
     def _check_arp_flow_removal(self, ip):
@@ -63,11 +63,11 @@ class ArpResponderTest(test_base.DFTestBase):
         ))
 
         subnet = {'network_id': network_id,
-            'cidr': '10.10.10.0/24',
-            'gateway_ip': '10.10.10.1',
-            'ip_version': 4,
-            'name': 'arp_responder_test',
-            'enable_dhcp': True}
+                  'cidr': '10.10.10.0/24',
+                  'gateway_ip': '10.10.10.1',
+                  'ip_version': 4,
+                  'name': 'arp_responder_test',
+                  'enable_dhcp': True}
         subnet = subnet_obj.create(subnet)
 
         flows_before = self._get_arp_table_flows()
@@ -81,7 +81,7 @@ class ArpResponderTest(test_base.DFTestBase):
         vm.close()
         time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
         flows_delta = [flow for flow in flows_middle
-                if flow not in flows_before]
+                       if flow not in flows_before]
         self.assertIsNotNone(
             self._find_arp_responder_flow_by_ip(flows_delta, ip)
         )
@@ -120,7 +120,7 @@ class ICMPResponderTest(test_base.DFTestBase):
         ovs_flows_parser = test_utils.OvsFlowsParser()
         flows = ovs_flows_parser.dump(self.integration_bridge)
         flows = [flow for flow in flows
-                if flow['table'] == str(const.L2_LOOKUP_TABLE)]
+                 if flow['table'] == str(const.L2_LOOKUP_TABLE)]
         return flows
 
     def _check_icmp_flow_removal(self, ip):
@@ -143,11 +143,11 @@ class ICMPResponderTest(test_base.DFTestBase):
         ))
 
         subnet = {'network_id': network_id,
-            'cidr': '10.10.10.0/24',
-            'gateway_ip': '10.10.10.1',
-            'ip_version': 4,
-            'name': 'arp_responder_test',
-            'enable_dhcp': True}
+                  'cidr': '10.10.10.0/24',
+                  'gateway_ip': '10.10.10.1',
+                  'ip_version': 4,
+                  'name': 'arp_responder_test',
+                  'enable_dhcp': True}
         subnet_id = subnet_obj.create(subnet)
 
         flows_before = self._get_l2_lookup_table_flows()
@@ -177,7 +177,7 @@ class ICMPResponderTest(test_base.DFTestBase):
         time.sleep(test_const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         flows_delta = [flow for flow in flows_middle
-                if flow not in flows_before]
+                       if flow not in flows_before]
 
         self.assertIsNotNone(
             self._find_icmp_responder_flow_by_ip(flows_delta, router_ip)

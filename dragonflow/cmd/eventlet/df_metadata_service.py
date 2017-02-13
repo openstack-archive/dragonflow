@@ -40,7 +40,7 @@ def environment_setup():
         environment_destroy()
 
     cmd = ["ovs-vsctl", "add-port", bridge, interface,
-        "--", "set", "Interface", interface, "type=internal"]
+           "--", "set", "Interface", interface, "type=internal"]
     utils.execute(cmd, run_as_root=True)
 
     ip = cfg.CONF.df_metadata.ip

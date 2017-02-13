@@ -33,7 +33,7 @@ class ZMQPubSub(pub_sub_api.PubSubApi):
         transport = cfg.CONF.df.publisher_transport
         if transport not in SUPPORTED_TRANSPORTS:
             message = _LE("zmq_pub_sub: Unsupported publisher_transport value "
-                "%(transport)s, expected %(expected)s")
+                          "%(transport)s, expected %(expected)s")
             LOG.error(message, {
                 'transport': transport,
                 'expected': SUPPORTED_TRANSPORTS
@@ -161,7 +161,7 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
     def run(self):
         self.sub_socket = self.connect()
         LOG.info(_LI("Starting Subscriber on ports %(endpoints)s"),
-                {'endpoints': self.uri_list})
+                 {'endpoints': self.uri_list})
         while True:
             try:
                 eventlet.sleep(0)

@@ -87,10 +87,10 @@ class DfLocalController(object):
         self.vswitch_api.initialize(self.nb_api)
         if cfg.CONF.df.enable_port_status_notifier:
             self.port_status_notifier.initialize(mech_driver=None,
-                                             nb_api=self.nb_api,
-                                             pub=self.nb_api.publisher,
-                                             sub=None,
-                                             is_neutron_server=False)
+                                                 nb_api=self.nb_api,
+                                                 pub=self.nb_api.publisher,
+                                                 sub=None,
+                                                 is_neutron_server=False)
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)
         if self.enable_db_consistency:
@@ -104,7 +104,7 @@ class DfLocalController(object):
         # if yes, don't set controller and don't delete controller.
         # if no, set controller
         targets = ('tcp:' + cfg.CONF.df_ryu.of_listen_address + ':' +
-            str(cfg.CONF.df_ryu.of_listen_port))
+                   str(cfg.CONF.df_ryu.of_listen_port))
         is_controller_set = self.vswitch_api.check_controller(targets)
         if not is_controller_set:
             self.vswitch_api.set_controller(self.integration_bridge, [targets])
