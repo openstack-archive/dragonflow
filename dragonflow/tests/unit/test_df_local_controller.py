@@ -223,3 +223,19 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         lport.get_remote_vtep.return_value = False
         self.controller.update_lport(lport)
         lport.set_external_value.assert_not_called()
+
+    @mock.patch.object(df_local_controller.DfLocalController,
+                       'delete_lport')
+    @mock.patch.object(db_store.DbStore, 'get_ports_by_chassis')
+    @mock.patch.object(db_store.DbStore, 'delete_chassis')
+    def test_delete_chassis(self, mock_delete_chassis,
+                            mock_get_ports, mock_delete_lport):
+        lport_id = 'fake_lport_id'
+        chassis_id = 'fake_chassis_id'
+        lport = mock.Mock()
+        lport.get_id.return_value = lport_id
+        mock_get_ports.return_value = [lport]
+
+        self.controller.delete_chassis(chassis_id)
+        mock_delete_lport.assert_called_once_with(lport_id)
+        mock_delete_chassis.assert_called_once_with(chassis_id)
