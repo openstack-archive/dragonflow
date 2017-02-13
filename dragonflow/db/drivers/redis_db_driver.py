@@ -73,8 +73,8 @@ class RedisDbDriver(db_api.DbApi):
         self._update_server_list()
 
         if local_key is not None:
-            LOG.exception(_LE("update server list, key: %(key)s")
-                          % {'key': local_key})
+            LOG.exception(_LE("update server list, key: %(key)s"),
+                          {'key': local_key})
 
     def _sync_master_list(self):
         if self.is_neutron_server:
@@ -105,8 +105,8 @@ class RedisDbDriver(db_api.DbApi):
 
     def _execute_cmd(self, oper, local_key, value=None):
         if not self._is_oper_valid(oper):
-            LOG.warning(_LW("invalid oper: %(oper)s")
-                        % {'oper': oper})
+            LOG.warning(_LW("invalid oper: %(oper)s"),
+                        {'oper': oper})
             return None
 
         ip_port = self.redis_mgt.get_ip_by_key(local_key)
@@ -134,7 +134,7 @@ class RedisDbDriver(db_api.DbApi):
                     continue
                 self._handle_db_conn_error(ip_port, local_key)
                 LOG.exception(_LE("connection error while sending "
-                                  "request to db: %(e)s") % {'e': e})
+                                  "request to db: %(e)s"), {'e': e})
                 raise e
             except exceptions.ResponseError as e:
                 if not alreadysync:
@@ -155,12 +155,12 @@ class RedisDbDriver(db_api.DbApi):
                         # maybe there is a fast failover
                         self._handle_db_conn_error(ip_port, local_key)
                         LOG.exception(_LE("no client available: "
-                                          "%(ip_port)s, %(e)s")
-                                      % {'ip_port': resp[2], 'e': e})
+                                          "%(ip_port)s, %(e)s"),
+                                      {'ip_port': resp[2], 'e': e})
                         raise e
                 else:
-                    LOG.exception(_LE("error not handled: %(e)s")
-                                  % {'e': e})
+                    LOG.exception(_LE("error not handled: %(e)s"),
+                                  {'e': e})
                     raise e
             except Exception as e:
                 if not alreadysync:
@@ -169,7 +169,7 @@ class RedisDbDriver(db_api.DbApi):
                     continue
                 self._handle_db_conn_error(ip_port, local_key)
                 LOG.exception(_LE("exception while sending request to "
-                                  "db: %(e)s") % {'e': e})
+                                  "db: %(e)s"), {'e': e})
                 raise e
 
     def get_key(self, table, key, topic=None):
@@ -182,8 +182,8 @@ class RedisDbDriver(db_api.DbApi):
                     if len(local_keys) == 1:
                         return self._execute_cmd("GET", local_keys[0])
             except Exception:
-                LOG.exception(_LE("exception when get_key: %(key)s ")
-                              % {'key': local_key})
+                LOG.exception(_LE("exception when get_key: %(key)s"),
+                              {'key': local_key})
 
         else:
             local_key = self._uuid_to_key(table, key, topic)
@@ -191,8 +191,8 @@ class RedisDbDriver(db_api.DbApi):
                 # return nil if not found
                 return self._execute_cmd("GET", local_key)
             except Exception:
-                LOG.exception(_LE("exception when get_key: %(key)s ")
-                              % {'key': local_key})
+                LOG.exception(_LE("exception when get_key: %(key)s"),
+                              {'key': local_key})
 
     def set_key(self, table, key, value, topic=None):
         local_key = self._uuid_to_key(table, key, topic)
@@ -204,8 +204,8 @@ class RedisDbDriver(db_api.DbApi):
 
             return res
         except Exception:
-            LOG.exception(_LE("exception when set_key: %(key)s ")
-                          % {'key': local_key})
+            LOG.exception(_LE("exception when set_key: %(key)s"),
+                          {'key': local_key})
 
     def create_key(self, table, key, value, topic=None):
         return self.set_key(table, key, value, topic)
@@ -221,8 +221,8 @@ class RedisDbDriver(db_api.DbApi):
 
             return res
         except Exception:
-            LOG.exception(_LE("exception when delete_key: %(key)s ")
-                          % {'key': local_key})
+            LOG.exception(_LE("exception when delete_key: %(key)s"),
+                          {'key': local_key})
 
     def get_all_entries(self, table, topic=None):
         res = []
@@ -239,8 +239,8 @@ class RedisDbDriver(db_api.DbApi):
                 return res
             except Exception:
                 LOG.exception(_LE("exception when get_all_entries: "
-                                  "%(key)s ")
-                              % {'key': local_key})
+                                  "%(key)s"),
+                              {'key': local_key})
 
         else:
             local_key = self._uuid_to_key(table, '*', topic)
@@ -256,8 +256,8 @@ class RedisDbDriver(db_api.DbApi):
                 return res
             except Exception as e:
                 self._handle_db_conn_error(ip_port, local_key)
-                LOG.exception(_LE("exception when mget: %(key)s, %(e)s")
-                              % {'key': local_key, 'e': e})
+                LOG.exception(_LE("exception when mget: %(key)s, %(e)s"),
+                              {'key': local_key, 'e': e})
 
     def get_all_keys(self, table, topic=None):
         res = []
@@ -273,8 +273,8 @@ class RedisDbDriver(db_api.DbApi):
             except Exception as e:
                 self._handle_db_conn_error(ip_port, local_key)
                 LOG.exception(_LE("exception when get_all_keys: "
-                                  "%(key)s, %(e)s")
-                              % {'key': local_key, 'e': e})
+                                  "%(key)s, %(e)s"),
+                              {'key': local_key, 'e': e})
 
         else:
             local_key = self._uuid_to_key(table, '*', topic)
@@ -290,8 +290,8 @@ class RedisDbDriver(db_api.DbApi):
             except Exception as e:
                 self._handle_db_conn_error(ip_port, local_key)
                 LOG.exception(_LE("exception when get_all_keys: "
-                                  "%(key)s, %(e)s")
-                              % {'key': local_key, 'e': e})
+                                  "%(key)s, %(e)s"),
+                              {'key': local_key, 'e': e})
 
     def _strip_table_name_from_key(self, key):
         regex = '^{.*}\\.(.*)$'
@@ -308,15 +308,15 @@ class RedisDbDriver(db_api.DbApi):
             return client.incr(local_key)
         except Exception as e:
             self._handle_db_conn_error(ip_port, local_key)
-            LOG.exception(_LE("exception when incr: %(key)s, %(e)s")
-                          % {'key': local_key, 'e': e})
+            LOG.exception(_LE("exception when incr: %(key)s, %(e)s"),
+                          {'key': local_key, 'e': e})
 
     def allocate_unique_key(self, table):
         try:
             return self._allocate_unique_key(table)
         except Exception as e:
-            LOG.error(_LE("allocate_unique_key exception: %(e)s")
-                      % {'e': e})
+            LOG.error(_LE("allocate_unique_key exception: %(e)s"),
+                      {'e': e})
             return
 
     def register_notification_callback(self, callback, topics=None):

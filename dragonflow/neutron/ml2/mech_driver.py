@@ -174,7 +174,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         tenant_id = sg['tenant_id']
 
         self.nb_api.delete_security_group(sg_id, topic=tenant_id)
-        LOG.info(_LI("DFMechDriver: delete security group %s") % sg_id)
+        LOG.info(_LI("DFMechDriver: delete security group %s"), sg_id)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE)
     def create_security_group_rule(self, resource, event, trigger, **kwargs):
@@ -247,7 +247,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                                        topic=tenant_id)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
-                      "been deleted concurrently" % network_id)
+                      "been deleted concurrently", network_id)
             return
 
         LOG.info(_LI("DFMechDriver: delete network %s"), network_id)
@@ -492,7 +492,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                                       nw_version=network['revision_number'])
         except df_exceptions.DBKeyNotFound:
             LOG.debug("network %s is not found in DB, might have "
-                      "been deleted concurrently" % net_id)
+                      "been deleted concurrently", net_id)
             return
 
         LOG.info(_LI("DFMechDriver: delete subnet %s"), subnet_id)
@@ -680,7 +680,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             self.nb_api.delete_lport(id=port_id, topic=topic)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("port %s is not found in DF DB, might have "
-                      "been deleted concurrently" % port_id)
+                      "been deleted concurrently", port_id)
             return
 
         LOG.info(_LI("DFMechDriver: delete port %s"), port_id)

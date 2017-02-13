@@ -34,7 +34,7 @@ def find_first_network(nclient, params):
     if networks_count > 1:
         message = _LW("More than one network (%(count)d) found matching: "
             "%(args)s")
-        LOG.warning(message % {'args': params, 'count': networks_count})
+        LOG.warning(message, {'args': params, 'count': networks_count})
     return networks[0]
 
 
