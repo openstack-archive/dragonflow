@@ -5,7 +5,7 @@ Distributed DHCP
 Current Neutron Reference Implementation
 ========================================
 The DHCP server is implemented using the Dnsmasq server
-running in a namespace on the newtork-node per tenant subnet
+running in a namespace on the network-node per tenant subnet
 that is configured with DHCP enabled.
 
 Currently High availability is achieved by running multiple Dnsmasq
@@ -29,7 +29,7 @@ backbone implementation
 Distributed DHCP In Dragonflow
 ==============================
 Dragonflow distribute DHCP policy/configuration using the pluggable DB.
-Each local controller installs DHCP redirection openflow rules, to be
+Each local controller installs DHCP redirection Openflow rules, to be
 handle by the local controller.
 Those rules are installed only for local ports that are
 attached to a virtual network with DHCP enabled.
