@@ -12,13 +12,13 @@
 
 import collections
 import fcntl
-import netaddr
 import os
 import re
 import socket
 import threading
 import time
 
+import netaddr
 from neutron.agent.common import utils
 from oslo_log import log
 import pytun

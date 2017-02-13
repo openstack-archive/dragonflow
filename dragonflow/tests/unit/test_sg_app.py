@@ -15,7 +15,6 @@
 
 import mock
 import netaddr
-
 from neutron.agent.common import utils
 
 from dragonflow.db import models as db_models

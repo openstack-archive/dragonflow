@@ -15,12 +15,6 @@
 #    under the License.
 
 import netaddr
-
-from oslo_config import cfg
-from oslo_log import log
-from oslo_utils import excutils
-from oslo_utils import importutils
-
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import l3_rpc
 from neutron.common import exceptions as n_common_exc
@@ -36,6 +30,10 @@ from neutron.services import service_base
 from neutron_lib import constants as const
 from neutron_lib import exceptions as n_exc
 from neutron_lib.plugins import directory
+from oslo_config import cfg
+from oslo_log import log
+from oslo_utils import excutils
+from oslo_utils import importutils
 
 from dragonflow._i18n import _LE
 from dragonflow.common import exceptions as df_exceptions

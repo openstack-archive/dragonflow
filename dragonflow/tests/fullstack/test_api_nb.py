@@ -11,6 +11,7 @@
 #    under the License.
 
 import copy
+
 import mock
 
 from dragonflow.tests.fullstack import test_base

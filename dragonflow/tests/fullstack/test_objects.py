@@ -10,9 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import netaddr
 import time
 
+import netaddr
 from neutron.agent.common import utils as agent_utils
 from neutronclient.common import exceptions
 from oslo_log import log
