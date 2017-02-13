@@ -27,6 +27,7 @@ class TestDBConsistent(tests_base.BaseTestCase):
         self.db_store = self.controller.db_store
 
         self.topic = '111-222-333'
+        self.lport_id1 = '0'
         self.lport_id1 = '1'
         self.lport_id2 = '2'
         self.lport_id3 = '3'
@@ -34,30 +35,35 @@ class TestDBConsistent(tests_base.BaseTestCase):
                 self.controller)
 
     def test_db_comparison(self):
+        df_obj0 = FakeDfLocalObj(self.lport_id0, 0)
         df_obj1 = FakeDfLocalObj(self.lport_id1, 1)
         df_obj2 = FakeDfLocalObj(self.lport_id2, 2)
 
         local_obj1 = FakeDfLocalObj(self.lport_id2, 1)
         local_obj2 = FakeDfLocalObj(self.lport_id3, 1)
 
-        self.nb_api.get_all_logical_switches.return_value = [df_obj1, df_obj2]
+        self.nb_api.get_all_logical_switches.return_value = \
+            [df_obj0, df_obj1, df_obj2]
         self.db_store.get_lswitchs.return_value = [local_obj1, local_obj2]
 
-        self.nb_api.get_all_logical_ports.return_value = [df_obj1, df_obj2]
+        self.nb_api.get_all_logical_ports.return_value = \
+            [df_obj0, df_obj1, df_obj2]
         self.db_store.get_ports.return_value = [local_obj1, local_obj2]
 
-        self.nb_api.get_routers.return_value = [df_obj1, df_obj2]
+        self.nb_api.get_routers.return_value = [df_obj0, df_obj1, df_obj2]
         self.db_store.get_routers.return_value = [local_obj1, local_obj2]
 
-        self.nb_api.get_security_groups.return_value = [df_obj1, df_obj2]
+        self.nb_api.get_security_groups.return_value = \
+            [df_obj0, df_obj1, df_obj2]
         self.db_store.get_security_groups.return_value = [
             local_obj1, local_obj2]
 
-        self.nb_api.get_floatingips.return_value = [df_obj1, df_obj2]
+        self.nb_api.get_floatingips.return_value = [df_obj0, df_obj1, df_obj2]
         self.db_store.get_floatingips.return_value = [local_obj1, local_obj2]
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.LogicalSwitch.table_name, True)
+        self.controller.update_lswitch.assert_any_call(df_obj0)
         self.controller.update_lswitch.assert_any_call(df_obj1)
         self.controller.update_lswitch.assert_any_call(df_obj2)
         self.controller.delete_lswitch.assert_any_call(
@@ -65,6 +71,7 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.LogicalPort.table_name, True)
+        self.controller.update_lport.assert_any_call(df_obj0)
         self.controller.update_lport.assert_any_call(df_obj1)
         self.controller.update_lport.assert_any_call(df_obj2)
         self.controller.delete_lport.assert_any_call(
@@ -72,12 +79,14 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.LogicalRouter.table_name, True)
+        self.controller.update_lrouter.assert_any_call(df_obj0)
         self.controller.update_lrouter.assert_any_call(df_obj1)
         self.controller.update_lrouter.assert_any_call(df_obj2)
         self.controller.delete_lrouter.assert_any_call(self.lport_id3)
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.SecurityGroup.table_name, True)
+        self.controller.update_secgroup.assert_any_call(df_obj0)
         self.controller.update_secgroup.assert_any_call(df_obj1)
         self.controller.update_secgroup.assert_any_call(df_obj2)
         self.controller.delete_secgroup.assert_any_call(
@@ -85,6 +94,7 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
         self.db_consistent.handle_data_comparison(
                 [self.topic], models.Floatingip.table_name, True)
+        self.controller.update_floatingip.assert_any_call(df_obj0)
         self.controller.update_floatingip.assert_any_call(df_obj1)
         self.controller.update_floatingip.assert_any_call(df_obj2)
         self.controller.delete_floatingip.assert_any_call(
