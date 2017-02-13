@@ -11,7 +11,7 @@ Allowed address pairs
 https://blueprints.launchpad.net/dragonflow/+spec/allowed-address-pairs
 
 This blueprint describes how to support allowed address pairs for
-dragonflow.
+Dragonflow.
 
 Problem Description
 ===================
@@ -76,7 +76,7 @@ this is a more common usage of allowed address pairs (for example, VRRP),
 we only support this situation in Dragonflow as the first step.
 
 In Dragonflow, we propose to support both the first "broadcast way" and the
-latter "detectation way", and add an option in the configuration for users to
+latter "detection way", and add an option in the configuration for users to
 choose one of them.
 
 ARP Responder

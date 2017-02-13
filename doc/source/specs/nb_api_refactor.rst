@@ -76,7 +76,7 @@ We would like to find a new mechanism, with the following requirements:
 * Simple, localised changes when adding new models (e.g. for TAPaaS,
   FWaaS, SFC)
 
-* Similar API for NBApi and DBStore (mostly for simplicity, readibility)
+* Similar API for NBApi and DBStore (mostly for simplicity, readability)
 
 * Uniform call to NbApi's and DBStore's get. e.g. to allow a call to DBStore's
   get to fall through to NbApi if the object doesn't exist in the DBStore.

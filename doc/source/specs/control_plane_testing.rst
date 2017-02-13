@@ -9,7 +9,7 @@ Dragonflow control plane test
 =============================
 
 New Dragonflow version has asynchronous architecture. On each object creation command,
-happends the following:
+happens the following:
 
 In Neutron:
 1. Neutron receives an API call to create an object (network, subnet, port, etc...)
@@ -20,7 +20,7 @@ In Neutron:
 In Dragonflow controller
 1. DF controller receives a message from MQ Pub/Sub with an object id
 2. DF controller fetches full object records from NoSQL db
-3. DF controller, if required, creates nessesary OpenFlow rules.
+3. DF controller, if required, creates necessary OpenFlow rules.
 
 Now a new object is basically transferred to the actual OpenFlow rules.
 
@@ -103,7 +103,7 @@ Generate comparison table.
 
 2. Message Publish Subscribe Test Plan
 ======================================
-Message publish/subscribe test plan is intended to test Dragonflow PUB/SUB mechanizm.
+Message publish/subscribe test plan is intended to test Dragonflow PUB/SUB mechanism.
 This test measures the aggregate throughput of a MQ layer.
 
 This test will cover the following:
@@ -163,7 +163,7 @@ Multiple tenants
 ----------------
 As Dragonflow addresses different tenants as different pub/sub channels,
 notification on object created in forwarded to one of another channel.
-So, the results, when using one tenant and multiple tennants will be
+So, the results, when using one tenant and multiple tenants will be
 different.
 
 Heavy usage of the system (at single box)
@@ -177,7 +177,7 @@ What we are going to test
 1. We will measure time to create one or group of objects
 2. We will measure CPU usage
 
-Now we will be able to perfom regression tests and compare results with
+Now we will be able to perform regression tests and compare results with
 new and old Dragonflow versions. In addition, we can run similar tests
 against the Neutron OVN deployment and compare results with the Neutron
 Dragonflow deployment.
