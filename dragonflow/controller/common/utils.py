@@ -13,6 +13,7 @@
 
 import struct
 
+import netaddr
 from neutron.agent.common import utils
 from oslo_config import cfg
 from oslo_log import log
@@ -94,3 +95,13 @@ def delete_conntrack_entries_by_filter(ethertype='IPv4', protocol=None,
         LOG.debug("Successfully executed conntrack command %s", cmd)
     except RuntimeError:
         LOG.exception(_LE("Failed execute conntrack command %s"), cmd)
+
+
+def get_port_match_list_from_port_range(port_range_min, port_range_max):
+    port_range = netaddr.IPRange(port_range_min, port_range_max)
+    ports_match_list = []
+    for cidr in port_range.cidrs():
+        port_num = int(cidr.network) & 0xffff
+        mask = int(cidr.netmask) & 0xffff
+        ports_match_list.append((port_num, mask))
+    return ports_match_list

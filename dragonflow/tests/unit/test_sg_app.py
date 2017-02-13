@@ -495,14 +495,3 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.assertEqual(new_cidr_set, expected_new_cidr_set)
         self.assertEqual(added_cidr, expected_added_cidr)
         self.assertEqual(deleted_cidr, expected_deleted_cidr)
-
-    def test_aggregating_flows_for_port_range(self):
-        # compute port match list
-        port_range_min = 20
-        port_range_max = 30
-        port_match_list = self.app._get_port_match_list_from_port_range(
-                port_range_min, port_range_max)
-        expected_port_match_list = [(20, 0xfffc), (24, 0xfffc), (28, 0xfffe),
-                                    (30, 0xffff)]
-
-        self.assertItemsEqual(port_match_list, expected_port_match_list)
