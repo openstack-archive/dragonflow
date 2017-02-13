@@ -113,7 +113,7 @@ Subscriber may receive redundant event and store additional topology it will nev
 use.
 
 One topic per vpc or router
-"""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""
 Every vpc or router has its own topic. For isolated networks which don't connect
 to any routers, they also have their own topics. Changes in topology are published
 to the corresponding topics.
