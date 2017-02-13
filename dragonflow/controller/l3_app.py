@@ -25,9 +25,12 @@ from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LE, _LI
+from dragonflow._i18n import _LE, _LI, _LW
+from dragonflow.common import utils as df_utils
+from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import icmp_error_generator
 from dragonflow.controller.common import icmp_responder
 from dragonflow.controller import df_base_app
 from dragonflow.db import models
@@ -45,8 +48,16 @@ class L3App(df_base_app.DFlowApp):
         super(L3App, self).__init__(*args, **kwargs)
         self.idle_timeout = 30
         self.hard_timeout = 0
+        self.router_port_rarp_cache = {}
+        self.conf = cfg.CONF.df_l3_app
+        self.ttl_invalid_handler_rate_limit = df_utils.RateLimiter(
+            max_rate=self.conf.router_ttl_invalid_max_rate,
+            time_unit=1)
         self.api.register_table_handler(const.L3_LOOKUP_TABLE,
                 self.packet_in_handler)
+
+    def switch_features_handler(self, ev):
+        self.router_port_rarp_cache.clear()
 
     def router_updated(self, router, original_router):
         if not original_router:
@@ -78,6 +89,30 @@ class L3App(df_base_app.DFlowApp):
 
     def packet_in_handler(self, event):
         msg = event.msg
+        if msg.reason == self.ofproto.OFPR_INVALID_TTL:
+            LOG.debug("Get an invalid TTL packet at table %s",
+                      const.L3_LOOKUP_TABLE)
+            if self.ttl_invalid_handler_rate_limit():
+                LOG.warning(
+                    _LW("Get more than %(rate)s TTL invalid "
+                        "packets per second at table %(table)s"),
+                    {'rate': self.conf.router_ttl_invalid_max_rate,
+                     'table': const.L3_LOOKUP_TABLE})
+                return
+
+            pkt = packet.Packet(msg.data)
+            e_pkt = pkt.get_protocol(ethernet.ethernet)
+            router_port_ip = self.router_port_rarp_cache.get(e_pkt.dst)
+            if router_port_ip:
+                icmp_ttl_pkt = icmp_error_generator.generate(
+                    icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE,
+                    msg.data, router_port_ip, pkt)
+                in_port = msg.match.get('in_port')
+                self.send_packet(in_port, icmp_ttl_pkt)
+            else:
+                LOG.warning(_LW("The invalid TTL packet's destination mac %s "
+                               "can't be recognized."), e_pkt.dst)
+            return
 
         pkt = packet.Packet(msg.data)
         pkt_ip = pkt.get_protocol(ipv4.ipv4)
@@ -212,6 +247,7 @@ class L3App(df_base_app.DFlowApp):
         # Add router ARP & ICMP responder for IPv4 Addresses
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
         if is_ipv4:
+            self.router_port_rarp_cache[mac] = dst_ip
             arp_responder.ArpResponder(
                 self, local_network_id, dst_ip, mac).add()
             icmp_responder.ICMPResponder(self, dst_ip, mac).add()
@@ -335,6 +371,7 @@ class L3App(df_base_app.DFlowApp):
         mac = router_port.get_mac()
 
         if netaddr.IPAddress(ip).version == 4:
+            self.router_port_rarp_cache.pop(mac, None)
             arp_responder.ArpResponder(
                 self, local_network_id, ip).remove()
             icmp_responder.ICMPResponder(self, ip, mac).remove()
