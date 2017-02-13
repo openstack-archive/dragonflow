@@ -177,15 +177,16 @@ class TestNeighborAdvertiser(test_base.DFTestBase):
         try:
             # Disable Duplicate Address Detection requests from the interface
             self.dad_conf = utils.execute(['sysctl', '-n',
-                'net.ipv6.conf.default.accept_dad'])
+                                           'net.ipv6.conf.default.accept_dad'])
             utils.execute(['sysctl', '-w',
-                'net.ipv6.conf.default.accept_dad=0'], run_as_root=True)
+                           'net.ipv6.conf.default.accept_dad=0'],
+                          run_as_root=True)
             # Disable Router Solicitation requests from the interface
-            self.router_solicit_conf = utils.execute(['sysctl', '-n',
-                'net.ipv6.conf.default.router_solicitations'])
+            self.router_solicit_conf = utils.execute(
+                ['sysctl', '-n', 'net.ipv6.conf.default.router_solicitations'])
             utils.execute(['sysctl', '-w',
-                'net.ipv6.conf.default.router_solicitations=0'],
-                run_as_root=True)
+                           'net.ipv6.conf.default.router_solicitations=0'],
+                          run_as_root=True)
             self.topology = app_testing_objects.Topology(
                 self.neutron,
                 self.nb_api)
@@ -270,10 +271,10 @@ class TestNeighborAdvertiser(test_base.DFTestBase):
         self.topology.close()
         self.policy.close()
         utils.execute(['sysctl', '-w', 'net.ipv6.conf.default.accept_dad={}'.
-            format(self.dad_conf)], run_as_root=True)
+                       format(self.dad_conf)], run_as_root=True)
         utils.execute(['sysctl', '-w',
-            'net.ipv6.conf.default.router_solicitations={}'.
-            format(self.router_solicit_conf)], run_as_root=True)
+                       'net.ipv6.conf.default.router_solicitations={}'.
+                       format(self.router_solicit_conf)], run_as_root=True)
 
     def test_simple_response(self):
         """
@@ -312,9 +313,9 @@ class TestDHCPApp(test_base.DFTestBase):
             raise
 
     def _create_udp_packet_for_dhcp(self,
-            dst_mac=constants.BROADCAST_MAC,
-            src_ip='0.0.0.0',
-            dst_ip=constants.BROADCAST_IP):
+                                    dst_mac=constants.BROADCAST_MAC,
+                                    src_ip='0.0.0.0',
+                                    dst_ip=constants.BROADCAST_IP):
         ethernet = ryu.lib.packet.ethernet.ethernet(
             src=self.port1.port.get_logical_port().get_mac(),
             dst=dst_mac,
@@ -520,9 +521,9 @@ class TestDHCPApp(test_base.DFTestBase):
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[send_dhcp_offer,
-                                send_dhcp_offer,
-                                send_dhcp_offer,
-                                send_dhcp_offer],
+                                 send_dhcp_offer,
+                                 send_dhcp_offer,
+                                 send_dhcp_offer],
                 port_policies=port_policies,
                 unknown_port_action=app_testing_objects.IgnoreAction()
             )

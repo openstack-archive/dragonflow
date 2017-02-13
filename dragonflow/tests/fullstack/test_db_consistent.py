@@ -49,11 +49,11 @@ class TestDbConsistent(test_base.DFTestBase):
         subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
                                                   network_id))
         subnet_body = {'network_id': network_id,
-            'cidr': '10.50.0.0/24',
-            'gateway_ip': '10.50.0.1',
-            'ip_version': 4,
-            'name': 'private',
-            'enable_dhcp': True}
+                       'cidr': '10.50.0.0/24',
+                       'gateway_ip': '10.50.0.1',
+                       'ip_version': 4,
+                       'name': 'private',
+                       'enable_dhcp': True}
         subnet.create(subnet=subnet_body)
         time.sleep(constants.DEFAULT_RESOURCE_READY_TIMEOUT)
         self.assertTrue(network.exists())

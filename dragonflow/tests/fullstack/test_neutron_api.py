@@ -49,11 +49,11 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network_id = network.create()
         self.assertTrue(network.exists())
         subnet = {'network_id': network_id,
-            'cidr': '10.1.0.0/24',
-            'gateway_ip': '10.1.0.1',
-            'ip_version': 4,
-            'name': 'subnet-test',
-            'enable_dhcp': True}
+                  'cidr': '10.1.0.0/24',
+                  'gateway_ip': '10.1.0.1',
+                  'ip_version': 4,
+                  'name': 'subnet-test',
+                  'enable_dhcp': True}
         self.neutron.create_subnet({'subnet': subnet})
         ports = utils.wait_until_is_and_return(
             lambda: self.nb_api.get_all_logical_ports(),
@@ -165,7 +165,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network_id = network.create()
         self.assertTrue(network.exists())
         port = self.store(objects.PortTestObj(self.neutron,
-                                  self.nb_api, network_id))
+                                              self.nb_api, network_id))
         port.create()
         self.assertTrue(port.exists())
         self.assertEqual(network_id, port.get_logical_port().get_lswitch_id())
@@ -331,7 +331,8 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                 external_network_id,
             ))
             external_subnet_para = {'cidr': '192.168.199.0/24',
-                      'ip_version': 4, 'network_id': external_network_id}
+                                    'ip_version': 4,
+                                    'network_id': external_network_id}
             ext_subnet.create(external_subnet_para)
             self.assertTrue(ext_subnet.exists())
         else:
@@ -355,8 +356,9 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             fip = self.store(
                 objects.FloatingipTestObj(self.neutron, self.nb_api))
 
-            router_para = {'name': 'myrouter1', 'admin_state_up': True,
-                 'external_gateway_info': {"network_id": external_network_id}}
+            router_para = {
+                'name': 'myrouter1', 'admin_state_up': True,
+                'external_gateway_info': {"network_id": external_network_id}}
             router.create(router=router_para)
             self.assertTrue(router.exists())
 
@@ -374,7 +376,8 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                 private_network_id,
             ))
             private_subnet_para = {'cidr': '10.0.0.0/24',
-                  'ip_version': 4, 'network_id': private_network_id}
+                                   'ip_version': 4,
+                                   'network_id': private_network_id}
             priv_subnet_id = priv_subnet.create(private_subnet_para)
             self.assertTrue(priv_subnet.exists())
             router_interface = router.add_interface(subnet_id=priv_subnet_id)
@@ -384,7 +387,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
 
             port = self.store(
                 objects.PortTestObj(self.neutron,
-                                self.nb_api, private_network_id))
+                                    self.nb_api, private_network_id))
             port_id = port.create()
             self.assertIsNotNone(port.get_logical_port())
 
@@ -415,8 +418,9 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             fip = self.store(
                 objects.FloatingipTestObj(self.neutron, self.nb_api))
 
-            router_para = {'name': 'myrouter1', 'admin_state_up': True,
-                 'external_gateway_info': {"network_id": external_network_id}}
+            router_para = {
+                'name': 'myrouter1', 'admin_state_up': True,
+                'external_gateway_info': {"network_id": external_network_id}}
             router.create(router=router_para)
             self.assertTrue(router.exists())
 
@@ -433,7 +437,8 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                 private_network_id,
             ))
             private_subnet_para = {'cidr': '10.0.0.0/24',
-                  'ip_version': 4, 'network_id': private_network_id}
+                                   'ip_version': 4,
+                                   'network_id': private_network_id}
             priv_subnet_id = priv_subnet.create(private_subnet_para)
             self.assertTrue(priv_subnet.exists())
             router_interface = router.add_interface(subnet_id=priv_subnet_id)
@@ -443,12 +448,12 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
 
             port = self.store(
                 objects.PortTestObj(self.neutron,
-                                self.nb_api, private_network_id))
+                                    self.nb_api, private_network_id))
             port_id = port.create()
             self.assertIsNotNone(port.get_logical_port())
 
             fip_para = {'floating_network_id': external_network_id,
-                'port_id': port_id}
+                        'port_id': port_id}
             # create
             fip.create(fip_para)
             self.assertTrue(fip.exists())

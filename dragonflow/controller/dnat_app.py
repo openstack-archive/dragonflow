@@ -72,9 +72,9 @@ class DNATApp(df_base_app.DFlowApp):
             max_rate=self.conf.dnat_icmp_error_max_rate,
             time_unit=1)
         self.api.register_table_handler(const.INGRESS_NAT_TABLE,
-            self.ingress_packet_in_handler)
+                                        self.ingress_packet_in_handler)
         self.api.register_table_handler(const.EGRESS_NAT_TABLE,
-            self.egress_packet_in_handler)
+                                        self.egress_packet_in_handler)
 
     def switch_features_handler(self, ev):
         self._init_external_bridge()
@@ -235,20 +235,20 @@ class DNATApp(df_base_app.DFlowApp):
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
         arp_responder.ArpResponder(self,
-             None,
-             floatingip.get_ip_address(),
-             floatingip.get_mac_address(),
-             const.INGRESS_NAT_TABLE).add()
+                                   None,
+                                   floatingip.get_ip_address(),
+                                   floatingip.get_mac_address(),
+                                   const.INGRESS_NAT_TABLE).add()
 
     def _remove_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
         if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
             return
         arp_responder.ArpResponder(self,
-             None,
-             floatingip.get_ip_address(),
-             floatingip.get_mac_address(),
-             const.INGRESS_NAT_TABLE).remove()
+                                   None,
+                                   floatingip.get_ip_address(),
+                                   floatingip.get_mac_address(),
+                                   const.INGRESS_NAT_TABLE).remove()
 
     def _get_vm_port_info(self, floatingip):
         lport = self.db_store.get_local_port(floatingip.get_lport_id())

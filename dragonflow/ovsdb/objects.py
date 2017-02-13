@@ -107,15 +107,15 @@ class LocalInterface(object):
                 "iface_id:%s, peer:%s, "
                 "attached_mac:%s, mac_in_use:%s, "
                 "tunnel_type:%s" % (self.uuid,
-                    self.ofport,
-                    self.name,
-                    self.admin_state,
-                    self.type,
-                    self.iface_id,
-                    self.peer,
-                    self.attached_mac,
-                    self.mac_in_use,
-                    self.tunnel_type))
+                                    self.ofport,
+                                    self.name,
+                                    self.admin_state,
+                                    self.type,
+                                    self.iface_id,
+                                    self.peer,
+                                    self.attached_mac,
+                                    self.mac_in_use,
+                                    self.tunnel_type))
 
 
 class OvsdbPort(object):

@@ -130,8 +130,8 @@ df_opts = [
         )
     ),
     cfg.FloatOpt('monitor_table_poll_time',
-                default=30,
-                help=_('Poll monitored tables every this number of seconds')),
+                 default=30,
+                 help=_('Poll monitored tables every this number of seconds')),
     cfg.BoolOpt('enable_selective_topology_distribution',
                 default=False,
                 help=_('When enabled, each controller will get only the part '

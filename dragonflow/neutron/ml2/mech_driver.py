@@ -75,9 +75,9 @@ class DFMechDriver(driver_api.MechanismDriver):
                 df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
             self.port_status_notifier = port_status_notifier
             self.port_status_notifier.initialize(self, self.nb_api,
-                                            pub=None,
-                                            sub=self.nb_api.subscriber,
-                                            is_neutron_server=True)
+                                                 pub=None,
+                                                 sub=self.nb_api.subscriber,
+                                                 is_neutron_server=True)
             self.port_status = None
 
     def subscribe_registries(self):
@@ -604,7 +604,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                 in updated_port['device_owner'] and
                 context.status != context.original_status and
                 (context.status == n_const.PORT_STATUS_DOWN or
-                context.status == n_const.PORT_STATUS_ACTIVE)):
+                 context.status == n_const.PORT_STATUS_ACTIVE)):
             return None
 
         # If a subnet enabled dhcp, the DFMechDriver will create a dhcp server

@@ -37,7 +37,7 @@ class TestRyuBaseApp(test_base.DFTestBase):
         self.addCleanup(app_mgr.uninstantiate, self.open_flow_app.name)
 
         test_controller = ('tcp:' + cfg.CONF.df_ryu.of_listen_address + ':' +
-            str(cfg.CONF.df_ryu.of_listen_port + 1))
+                           str(cfg.CONF.df_ryu.of_listen_port + 1))
         self.vswitch_api = vswitch_impl.OvsApi(self.mgt_ip)
         self.vswitch_api.initialize(self.nb_api)
         cur_controllers = self.vswitch_api.ovsdb.get_controller(

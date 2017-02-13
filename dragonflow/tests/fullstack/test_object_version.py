@@ -159,7 +159,8 @@ class TestObjectVersion(test_base.DFTestBase):
                 external_network_id,
             ))
             external_subnet_para = {'cidr': '192.168.199.0/24',
-                      'ip_version': 4, 'network_id': external_network_id}
+                                    'ip_version': 4,
+                                    'network_id': external_network_id}
             ext_subnet.create(external_subnet_para)
             self.assertTrue(ext_subnet.exists())
         else:
@@ -192,17 +193,19 @@ class TestObjectVersion(test_base.DFTestBase):
                 objects.RouterTestObj(self.neutron, self.nb_api))
             port = self.store(
                 objects.PortTestObj(self.neutron,
-                                self.nb_api, private_network_id))
+                                    self.nb_api, private_network_id))
             fip = self.store(
                 objects.FloatingipTestObj(self.neutron, self.nb_api))
 
-            router_para = {'name': 'myrouter1', 'admin_state_up': True,
-                 'external_gateway_info': {"network_id": external_network_id}}
+            router_para = {
+                'name': 'myrouter1', 'admin_state_up': True,
+                'external_gateway_info': {"network_id": external_network_id}}
             router.create(router=router_para)
             self.assertTrue(router.exists())
 
             private_subnet_para = {'cidr': '10.0.0.0/24',
-                  'ip_version': 4, 'network_id': private_network_id}
+                                   'ip_version': 4,
+                                   'network_id': private_network_id}
             priv_subnet_id = priv_subnet.create(private_subnet_para)
             self.assertTrue(priv_subnet.exists())
             router_interface = router.add_interface(subnet_id=priv_subnet_id)
