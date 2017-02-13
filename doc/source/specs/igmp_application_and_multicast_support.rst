@@ -132,7 +132,7 @@ Example
 ^^^^^^^
 
 The following flows can be installed by the IGMP Agent application into the
-Dragonflow pipline *classification* table, in order to classify IGMP packets
+Dragonflow pipeline *classification* table, in order to classify IGMP packets
 and resubmit them to the *IGMP Handler* table, where they will be handled by
 the IGMP Agent application in the controller.
 

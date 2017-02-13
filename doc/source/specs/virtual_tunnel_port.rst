@@ -58,7 +58,7 @@ Proposed Change
 
 Create one virtual tunnel port for each supported tunnel type. So, no matter
 how many Dragonflow nodes are there in the OpenStack cloud, each node will only
-need to create and maitain several tunnel ports. These tunnel ports will be
+need to create and maintain several tunnel ports. These tunnel ports will be
 created at the Dragonflow controller's first startup.
 
 For example, the tunnel port will be:
@@ -85,7 +85,7 @@ the supported tunnel types, the tunnel port will be deleted when restart
 Dragonflow controller.
 
 The ofport of each tunnel type will be recorded as global variable across
-the lifecyle of Dragonflow controller. If there are any changes to the tunnel
+the lifecycle of Dragonflow controller. If there are any changes to the tunnel
 port, the OpenVSwitch DB monitor will update the ofport of each tunnel type.
 
 The tunnel_type field of chassis will be changed from a string to a list
@@ -95,8 +95,8 @@ The chassis will be added to local cache. So that a remote port can find the
 chassis type and chassis IP address quickly.
 
 A remote port might not be in current OpenStack cloud, but be in another
-OpenStack cloud that connects to current cloud. The old implementaion of remote
-port will create a tunnel port for each remote chassis, and maintain a
+OpenStack cloud that connects to current cloud. The old implementation of
+remote port will create a tunnel port for each remote chassis, and maintain a
 relationship of remote port and remote chassis in the cache of Dragonflow
 controller. If there is no remote port in the remote chassis, the tunnel port
 for remote chassis will be deleted. By using the virtual tunnel port, there is
@@ -109,7 +109,7 @@ implementation. The OpenFlow will designate the destination IP address,
 according to the information of remote port's binding_profile. When the remote
 port is deleted, only the related OpenFlows needs to be deleted.
 
-The chassis update event from northbound DB will be notified to dragonflow
+The chassis update event from northbound DB will be notified to Dragonflow
 applications. So that the OpenFlow can be updated when chassis updates, for
 example, its IP address.
 
@@ -133,7 +133,7 @@ for each tunnel network:
 
 Where T is the segmentation ID of the network, I is the ofport of virtual
 tunnel port of the network type, and N is the local network ID of network in
-current dragonflow controller.
+current Dragonflow controller.
 
 The following flow is installed in the egress table for each remote port:
 

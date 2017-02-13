@@ -11,12 +11,12 @@ Configuration Refactoring and Generation
 https://blueprints.launchpad.net/dragonflow/+spec/oslo-config-generator
 
 This spec refactors the configurations and introduces oslo config generator
-to auto-generate all the options for dragonflow.
+to auto-generate all the options for Dragonflow.
 
 Problem Description
 ===================
 
-Currently dragonflow has many options for different modules. They are all
+Currently Dragonflow has many options for different modules. They are all
 distributed and imported case by case. As more and more modules are going
 to be introduced, we need to make them managed and centralized.
 
