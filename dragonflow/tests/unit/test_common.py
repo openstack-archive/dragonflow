@@ -15,6 +15,7 @@ import testtools
 
 from dragonflow.common import exceptions as df_exc
 from dragonflow.common import utils
+from dragonflow.controller.common import utils as controller_utils
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.tests import base as tests_base
 
@@ -84,3 +85,16 @@ class TestLockedobjectsDB(tests_base.BaseTestCase):
     def test__get_lock_id_by_resource_type(self):
         with testtools.ExpectedException(df_exc.UnknownResourceException):
             lock_db._get_lock_id_by_resource_type("nobody")
+
+
+class TestControllerCommonUtils(tests_base.BaseTestCase):
+    def test_aggregating_flows_for_port_range(self):
+        # compute port match list
+        port_range_min = 20
+        port_range_max = 30
+        port_match_list = controller_utils.get_port_match_list_from_port_range(
+                port_range_min, port_range_max)
+        expected_port_match_list = [(20, 0xfffc), (24, 0xfffc), (28, 0xfffe),
+                                    (30, 0xffff)]
+
+        self.assertItemsEqual(port_match_list, expected_port_match_list)
