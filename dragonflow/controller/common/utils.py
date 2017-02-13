@@ -13,6 +13,7 @@
 
 import struct
 
+import netaddr
 from neutron.agent.common import utils
 from neutron_lib import constants as n_const
 from oslo_log import log
@@ -89,3 +90,13 @@ def ethertype_to_ip_version(ethertype):
     if ethertype == n_const.IPv6:
         return n_const.IP_VERSION_6
     raise exceptions.InvalidEtherTypeException(ethertype=ethertype)
+
+
+def get_port_match_list_from_port_range(port_range_min, port_range_max):
+    port_range = netaddr.IPRange(port_range_min, port_range_max)
+    ports_match_list = []
+    for cidr in port_range.cidrs():
+        port_num = int(cidr.network) & 0xffff
+        mask = int(cidr.netmask) & 0xffff
+        ports_match_list.append((port_num, mask))
+    return ports_match_list
