@@ -97,16 +97,6 @@ class SGApp(df_base_app.DFlowApp):
         return new_cidr_set, added_cidr, removed_cidr
 
     @staticmethod
-    def _get_port_match_list_from_port_range(port_range_min, port_range_max):
-        port_range = netaddr.IPRange(port_range_min, port_range_max)
-        ports_match_list = []
-        for cidr in port_range.cidrs():
-            port_num = int(cidr.network) & 0xffff
-            mask = int(cidr.netmask) & 0xffff
-            ports_match_list.append((port_num, mask))
-        return ports_match_list
-
-    @staticmethod
     def _get_network_and_mask(cidr):
         result = netaddr.IPNetwork(cidr)
         return (int(result.network), int(result.netmask))
@@ -147,7 +137,7 @@ class SGApp(df_base_app.DFlowApp):
                int(port_range_max) == const.MAX_PORT)):
             results = [result_base]
         else:
-            port_match_list = SGApp._get_port_match_list_from_port_range(
+            port_match_list = utils.get_port_match_list_from_port_range(
                 port_range_min, port_range_max)
             key = DEST_FIELD_NAME_BY_PROTOCOL_NUMBER[protocol]
             results = []
