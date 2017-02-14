@@ -322,7 +322,9 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         if not external_net:
             network = self.store(
                 objects.NetworkTestObj(self.neutron, self.nb_api))
-            external_net_para = {'name': 'public', 'router:external': True}
+            external_net_para = {'name': 'public', 'router:external': True,
+                                 "provider:network_type": "vlan",
+                                 'provider:physical_network': 'myphynetwork'}
             external_network_id = network.create(network=external_net_para)
             self.assertTrue(network.exists())
             ext_subnet = self.store(objects.SubnetTestObj(
@@ -363,8 +365,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             # private network
             private_network = self.store(
                 objects.NetworkTestObj(self.neutron, self.nb_api))
-            private_network_id = private_network.create(
-                network={'name': 'private'})
+            private_network_id = private_network.create()
             self.assertTrue(private_network.exists())
 
             # private subnet
@@ -423,8 +424,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             # private network
             private_network = self.store(
                 objects.NetworkTestObj(self.neutron, self.nb_api))
-            private_network_id = private_network.create(
-                network={'name': 'private'})
+            private_network_id = private_network.create()
             self.assertTrue(private_network.exists())
             # private subnet
             priv_subnet = self.store(objects.SubnetTestObj(
@@ -474,9 +474,12 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
 
         network2 = self.store(objects.NetworkTestObj(self.neutron,
                                                      self.nb_api))
-        network_id2 = network2.create({'name': 'mynetwork1',
-                                       'admin_state_up': True,
-                                       'port_security_enabled': False})
+        network_id2 = network2.create(
+            {'name': 'mynetwork1',
+             'admin_state_up': True,
+             "provider:network_type": "vxlan",
+             'provider:physical_network': 'myphynetwork',
+             'port_security_enabled': False})
         self.assertTrue(network2.exists())
 
         subnet = self.store(objects.SubnetTestObj(

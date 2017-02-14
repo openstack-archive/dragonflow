@@ -80,7 +80,7 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
         flows is there.
         """
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'aap_test'})
+        network_id = network.create()
         subnet_obj = self.store(objects.SubnetTestObj(
             self.neutron,
             self.nb_api,
