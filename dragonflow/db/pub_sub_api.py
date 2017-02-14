@@ -87,16 +87,11 @@ class PubSubApi(object):
 class PublisherApi(object):
 
     @abc.abstractmethod
-    def initialize(self):
-        """Initialize the DB client
-
-        :param endpoint: ip:port
-        :type endpoint: string
-        :param trasport_proto: protocol to use tcp:epgm ...
-        :type trasport_proto: string
-        :param args: Additional args
-        :type args:        dictionary of <string, object>
-        :returns:          None
+    def initialize(self, **kwargs):
+        """Initialize the publisher API
+        :param kwargs: Additional args
+        :type kwargs:  dictionary of <string, object>
+        :returns:      None
         """
 
     @abc.abstractmethod
@@ -128,8 +123,8 @@ class PublisherApi(object):
 class SubscriberApi(object):
 
     @abc.abstractmethod
-    def initialize(self, callback):
-        """Initialize the DB client
+    def initialize(self, callback, **kwargs):
+        """Initialize the Subscriber API
 
         :param callback:  callback method to call for every db change
         :type callback :  callback method of type:
@@ -139,8 +134,8 @@ class SubscriberApi(object):
                           action = 'create' / 'set' / 'delete' / 'sync'
                           value = new object value
                           topic - the topic with which the event was received
-        :param args:       Additional args
-        :type args:        dictionary of <string, object>
+        :param kwargs:    Additional args
+        :type kwargs:     dictionary of <string, object>
         :returns:          None
         """
 
@@ -197,13 +192,12 @@ class SubscriberApi(object):
 
 
 class SubscriberAgentBase(SubscriberApi):
-
     def __init__(self):
         super(SubscriberAgentBase, self).__init__()
         self.topic_list = []
         self.uri_list = []
 
-    def initialize(self, callback):
+    def initialize(self, callback, **kwargs):
         self.db_changes_callback = callback
         self.daemon = df_utils.DFDaemon()
 
@@ -248,7 +242,6 @@ class SubscriberAgentBase(SubscriberApi):
 
 
 class TableMonitor(object):
-
     def __init__(self, table_name, driver, publisher, polling_time=10):
         self._driver = driver
         self._publisher = publisher
@@ -302,7 +295,6 @@ class TableMonitor(object):
 
 
 class StalePublisherMonitor(TableMonitor):
-
     def __init__(self, driver, publisher, timeout, polling_time=10):
         super(StalePublisherMonitor, self).__init__(
             models.Publisher.table_name,

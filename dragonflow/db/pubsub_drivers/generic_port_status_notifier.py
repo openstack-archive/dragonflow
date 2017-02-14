@@ -27,10 +27,9 @@ from dragonflow.db import port_status_api
 LOG = log.getLogger(__name__)
 
 
-class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
+class GenericPortStatusNotifier(port_status_api.PortStatusDriver):
     # PortStatusNotifier implements port status update
-    # southbound notification mechanism based on redis
-    # pub/sub driver at present.
+    # southbound notification mechanism.
 
     def __init__(self):
         self.mech_driver = None
@@ -44,8 +43,9 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         self.nb_api = nb_api
         self.pub = pub
         self.sub = sub
+        self.is_neutron_server = is_neutron_server
 
-        if is_neutron_server:
+        if self.is_neutron_server:
             self.start_subscriber()
         else:
             # for pub/sub design, local controller will send
@@ -84,4 +84,6 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         self.sub.daemonize()
 
     def start_publisher(self):
-        self.pub.initialize()
+        self.pub.initialize(
+            bind_address=cfg.CONF.controller.publisher_bind_address,
+            port=cfg.CONF.controller.publisher_port)
