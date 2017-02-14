@@ -32,10 +32,10 @@ from dragonflow.db import port_status_api
 LOG = log.getLogger(__name__)
 
 
-class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
+class GenericPortStatusNotifier(port_status_api.PortStatusDriver):
     # PortStatusNotifier implements port status update
-    # southbound notification mechanism based on redis
-    # pub/sub driver at present.
+    # southbound notification mechanism.
+
     def __init__(self):
         self.nb_api = None
 
@@ -48,7 +48,6 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
                 LOG.warning(_LW("RedisPortStatusNotifier cannot "
                                 "work when enable_df_pub_sub is disabled"))
                 return
-            self.nb_api.publisher.initialize()
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_NEUTRON_LISTENER)
     def create_heart_beat_reporter(self, host):
