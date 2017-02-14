@@ -121,9 +121,8 @@ class DfLocalController(object):
     def db_sync_loop(self):
         while True:
             time.sleep(1)
-            self.run_db_poll()
-            if self.sync_finished and (
-                    self.nb_api.support_publish_subscribe()):
+            self.nb_api.db_change_callback(None, None, 'sync')
+            if self.nb_api.support_publish_subscribe():
                 self.nb_api.register_notification_callback(self)
 
     def run_sync(self, mode=None):
@@ -135,8 +134,6 @@ class DfLocalController(object):
         while True:
             time.sleep(1)
             self.run_db_poll()
-            if self.sync_finished:
-                return
 
     def run_db_poll(self):
         try:
@@ -144,9 +141,7 @@ class DfLocalController(object):
 
             topics = self.topology.get_subscribed_topics()
             df_db_objects_refresh.sync_local_cache_from_nb_db(topics)
-            self.sync_finished = True
         except Exception as e:
-            self.sync_finished = False
             LOG.warning(_LW("run_db_poll - suppressing exception"))
             LOG.exception(e)
 
