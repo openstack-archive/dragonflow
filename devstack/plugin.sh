@@ -113,7 +113,7 @@ fi
 if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
     DF_PUB_SUB="True"
     DF_PUB_SUB_USE_MULTIPROC="False"
-    PORT_STATUS_NOTIFIER="redis_port_status_notifier_driver"
+    PORT_STATUS_NOTIFIER="generic_port_status_notifier_driver"
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
 
@@ -239,7 +239,6 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df apps_list "$DF_APPS_LIST"
     iniset $DRAGONFLOW_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
     iniset $DRAGONFLOW_CONF df enable_df_pub_sub "$DF_PUB_SUB"
-    iniset $DRAGONFLOW_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
     iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
     iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
     iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
