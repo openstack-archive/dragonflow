@@ -1,0 +1,13 @@
+---
+prelude: >
+    Traceroute support.
+features:
+  - As a Openflow based SDN, traceroute and its back-end network
+    functionalities are not naturally supported. Dragonflow supports traceroute
+    base on RFC792, RFC4884, RFC1812 and RFC5508. Traceroute in Dragonflow
+    cluster works for virtual router and NAT device.
+security:
+  - To prevent DDoS, the rate of responding ICMP error message is controlled by
+    several configuration options. They are 'dnat_ttl_invalid_max_rate',
+    'dnat_icmp_error_max_rate', 'router_ttl_invalid_max_rate' and
+    'router_port_unreach_max_rate'.
