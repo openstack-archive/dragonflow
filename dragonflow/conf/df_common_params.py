@@ -60,78 +60,20 @@ df_opts = [
     cfg.BoolOpt('use_centralized_ipv6_DHCP',
                 default=False,
                 help=_("Enable IPv6 DHCP by using DHCP agent")),
-    cfg.BoolOpt('enable_df_pub_sub',
-                default=False,
-                help=_("Enable use of Dragonflow built-in pub/sub")),
     cfg.BoolOpt('enable_df_db_consistency',
                 default=True,
                 help=_("Enable use of Dragonflow db consistency")),
-    cfg.StrOpt('pub_sub_driver',
-               default='zmq_pubsub_driver',
-               help=_('Drivers to use for the Dragonflow pub/sub')),
-    cfg.StrOpt('pub_sub_multiproc_driver',
-               default='zmq_pubsub_multiproc_driver',
-               help=_('Drivers to use for the Dragonflow pub/sub')),
     cfg.BoolOpt('enable_port_status_notifier',
                 default=False,
                 help=_('Enable notifier for the Dragonflow port status')),
     cfg.StrOpt('port_status_notifier',
-               default='redis_port_status_notifier_driver',
+               default='generic_port_status_notifier_driver',
                help=_('Notifier for the Dragonflow port status')),
-    cfg.ListOpt('publishers_ips',
-                default=['$local_ip'],
-                help=_('List of the Neutron Server Publisher IPs.')),
-    cfg.PortOpt('publisher_port',
-                default=8866,
-                help=_('Neutron Server Publishers port')),
-    cfg.StrOpt('publisher_transport',
-               default='tcp',
-               help=_('Neutron Server Publishers transport protocol')),
-    cfg.StrOpt('publisher_bind_address',
-               default='*',
-               help=_('Neutron Server Publishers bind address')),
-    cfg.BoolOpt(
-        'pub_sub_use_multiproc',
-        default=True,
-        help=_(
-            'Use inter-process publish/subscribe. '
-            'Publishers send events via the publisher service.'
-        )
-    ),
-    cfg.StrOpt(
-        'publisher_multiproc_socket',
-        default='/var/run/zmq_pubsub/zmq-publisher-socket',
-        help=_('Neutron Server Publisher inter-process socket address')
-    ),
-    cfg.IntOpt(
-        'publisher_timeout',
-        default=300,
-        help=_('Publisher idle timeout before it is removed from the table')
-    ),
     cfg.IntOpt(
         'db_sync_time',
         default=120,
         help=_('Min periodically db comparison time')
     ),
-    cfg.IntOpt(
-        'publisher_rate_limit_timeout',
-        default=180,
-        help=_(
-            'Limit update of publishers\' table timestamp to '
-            '$publisher_rate_limit_count per this many seconds.'
-        )
-    ),
-    cfg.IntOpt(
-        'publisher_rate_limit_count',
-        default=1,
-        help=_(
-            'Limit update of publishers\' table timestamp to '
-            'this many times per $publisher_rate_limit_timeout seconds.'
-        )
-    ),
-    cfg.FloatOpt('monitor_table_poll_time',
-                 default=30,
-                 help=_('Poll monitored tables every this number of seconds')),
     cfg.BoolOpt('enable_selective_topology_distribution',
                 default=False,
                 help=_('When enabled, each controller will get only the part '
@@ -172,6 +114,47 @@ df_opts = [
                help=_('The max delay in seconds for Neutron to report heart'
                       'beat to df-db'))
 ]
+
+df_common_pub_sub_opts = [
+    cfg.BoolOpt('enable_df_pub_sub',
+                default=False,
+                help=_("Enable use of Dragonflow built-in pub/sub")),
+    cfg.StrOpt('pub_sub_driver',
+               default='zmq_pubsub_driver',
+               help=_('Drivers to use for the Dragonflow pub/sub')),
+    cfg.StrOpt('pub_sub_multiproc_driver',
+               default='zmq_pubsub_multiproc_driver',
+               help=_('Drivers to use for the Dragonflow pub/sub')),
+    cfg.StrOpt('publisher_transport',
+               default='tcp',
+               help=_('Neutron Server Publishers transport protocol')),
+    cfg.IntOpt(
+        'publisher_timeout',
+        default=300,
+        help=_('Publisher idle timeout before it is removed from the table')
+    ),
+    cfg.IntOpt(
+        'publisher_rate_limit_timeout',
+        default=180,
+        help=_(
+            'Limit update of publishers\' table timestamp to '
+            '$publisher_rate_limit_count per this many seconds.'
+        )
+    ),
+    cfg.IntOpt(
+        'publisher_rate_limit_count',
+        default=1,
+        help=_(
+            'Limit update of publishers\' table timestamp to '
+            'this many times per $publisher_rate_limit_timeout seconds.'
+        )
+    ),
+    cfg.FloatOpt(
+        'monitor_table_poll_time',
+        default=30,
+        help=_('Poll monitored tables every this number of seconds')),
+]
+df_opts.extend(df_common_pub_sub_opts)
 
 
 def register_opts():
