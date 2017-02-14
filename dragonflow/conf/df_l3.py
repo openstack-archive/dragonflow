@@ -21,6 +21,9 @@ df_l3_app_opts = [
     cfg.IntOpt('router_ttl_invalid_max_rate', default=3,
                help=_('Max rate to reply ICMP time exceeded message per '
                       'second.')),
+    cfg.IntOpt('router_port_unreach_max_rate', default=3,
+               help=_('Max rate to reply ICMP unreachable message per '
+                      'second for router port.')),
 ]
 
 
