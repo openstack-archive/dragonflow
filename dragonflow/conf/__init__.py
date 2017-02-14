@@ -21,6 +21,7 @@ from dragonflow.conf import df_l2
 from dragonflow.conf import df_l3
 from dragonflow.conf import df_metadata_service
 from dragonflow.conf import df_provider_networks
+from dragonflow.conf import df_pub_sub
 from dragonflow.conf import df_ryu
 
 
@@ -35,5 +36,6 @@ df_active_port_detection.register_opts()
 df_l2.register_opts()
 df_l3.register_opts()
 df_dnat.register_opts()
+df_pub_sub.register_opts()
 df_ryu.register_opts()
 df_provider_networks.register_opts()

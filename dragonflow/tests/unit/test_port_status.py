@@ -22,15 +22,15 @@ from dragonflow.tests import base as tests_base
 from dragonflow.tests.common import utils
 
 
-class TestRedisPortStatus(tests_base.BaseTestCase):
+class TestPortStatus(tests_base.BaseTestCase):
 
     def setUp(self):
         cfg.CONF.set_override('port_status_notifier',
-                              'redis_port_status_notifier_driver',
+                              'generic_port_status_notifier_driver',
                               group='df')
         mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
                    side_effect=utils.empty_wrapper).start()
-        super(TestRedisPortStatus, self).setUp()
+        super(TestPortStatus, self).setUp()
         self.notifier = df_utils.load_driver(
                                     cfg.CONF.df.port_status_notifier,
                                     df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
