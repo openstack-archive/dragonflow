@@ -908,33 +908,76 @@ class TestL3App(test_base.DFTestBase):
         key = (self.subnet1.subnet_id, self.port1.port_id)
         return {key: policy}
 
-    def test_icmp_ttl_packet(self):
+    def _create_rate_limit_port_policies(self, rate, icmp_filter):
         ignore_action = app_testing_objects.IgnoreAction()
-        port_policy = self._create_icmp_test_port_policies(
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
+        # Disable port policy rule, so that any further packets will hit the
+        # default action, which is raise_action in this case.
+        count_action = app_testing_objects.CountAction(
+            rate, app_testing_objects.DisableRuleAction())
+
+        key = (self.subnet1.subnet_id, self.port1.port_id)
+        rules = [
+            app_testing_objects.PortPolicyRule(
+                # Detect ICMP, end simulation
+                icmp_filter(self._get_ip),
+                actions=[count_action]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore gratuitous ARP packets
+                app_testing_objects.RyuARPGratuitousFilter(),
+                actions=[ignore_action]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 packets
+                app_testing_objects.RyuIPv6Filter(),
+                actions=[ignore_action]
+            ),
+        ]
+        policy = app_testing_objects.PortPolicy(
+            rules=rules,
+            default_action=raise_action
+        )
+        return {key: policy}
+
+    def test_icmp_ttl_packet_with_rate_limit(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        port_policy = self._create_rate_limit_port_policies(
+            cfg.CONF.df_l3_app.router_ttl_invalid_max_rate,
             app_testing_objects.RyuICMPTimeExceedFilter)
         initial_packet = self._create_packet(
             self.port2.port.get_logical_port().get_ip(),
             ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
             ttl=1)
+        send_action = app_testing_objects.SendAction(
+            self.subnet1.subnet_id,
+            self.port1.port_id,
+            str(initial_packet))
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet1.subnet_id,
-                        self.port1.port_id,
-                        str(initial_packet)
-                    ),
+                    send_action,
+                    send_action,
+                    send_action,
+                    send_action
                 ],
                 port_policies=port_policy,
                 unknown_port_action=ignore_action
             )
         )
         policy.start(self.topology)
-        policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        # Since the rate limit, we expect timeout to wait for 4th packet hit
+        # the policy.
+        self.assertRaises(
+            app_testing_objects.TimeoutException,
+            policy.wait,
+            const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(policy.exceptions) > 0:
             raise policy.exceptions[0]
 
-    def _test_udp_router_interface(self):
+    def test_udp_concrete_router_interface(self):
+        # By default, fullstack will start l3 agent. So there will be concrete
+        # router interface.
         self.port1.port.update({"security_groups": []})
         ignore_action = app_testing_objects.IgnoreAction()
         port_policy = self._create_icmp_test_port_policies(
@@ -959,12 +1002,7 @@ class TestL3App(test_base.DFTestBase):
         if len(policy.exceptions) > 0:
             raise policy.exceptions[0]
 
-    def test_udp_concrete_router_interface(self):
-        # By default, fullstack will start l3 agent. So there will be concrete
-        # router interface.
-        self._test_udp_router_interface()
-
-    def test_udp_virtual_router_interface(self):
+    def test_udp_virtual_router_interface_with_rate_limit(self):
         # Delete the concrete router interface.
         router_port_id = self.router.router_interfaces[
             self.subnet1.subnet_id]['port_id']
@@ -983,7 +1021,39 @@ class TestL3App(test_base.DFTestBase):
         self.nb_api.update_lrouter(**lrouter.inner_obj)
 
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
-        self._test_udp_router_interface()
+        self.port1.port.update({"security_groups": []})
+        ignore_action = app_testing_objects.IgnoreAction()
+        port_policy = self._create_rate_limit_port_policies(
+            cfg.CONF.df_l3_app.router_port_unreach_max_rate,
+            app_testing_objects.RyuICMPUnreachFilter)
+        initial_packet = self._create_packet(
+            "192.168.12.1", ryu.lib.packet.ipv4.inet.IPPROTO_UDP)
+        send_action = app_testing_objects.SendAction(
+            self.subnet1.subnet_id,
+            self.port1.port_id,
+            str(initial_packet))
+
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    send_action,
+                    send_action,
+                    send_action,
+                    send_action
+                ],
+                port_policies=port_policy,
+                unknown_port_action=ignore_action
+            )
+        )
+        policy.start(self.topology)
+        # Since the rate limit, we expect timeout to wait for 4th packet hit
+        # the policy.
+        self.assertRaises(
+            app_testing_objects.TimeoutException,
+            policy.wait,
+            const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
 
 
 class TestSGApp(test_base.DFTestBase):
