@@ -13,6 +13,9 @@
 """Unit testing for dragonflow mechanism driver."""
 
 import mock
+
+from neutron.callbacks import resources
+from neutron.db import provisioning_blocks
 from neutron.plugins.ml2 import config
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
@@ -413,6 +416,21 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 self.assertTrue(self.nb_api.update_lport.called)
                 called_args = self.nb_api.update_lport.call_args_list[0][1]
                 self.assertEqual([], called_args.get("extra_dhcp_opts"))
+
+    def test_set_port_status_up(self):
+        with self.network(set_context=True, tenant_id='test') as net1, \
+            self.subnet(network=net1) as subnet1, \
+            self.port(subnet=subnet1, set_context=True,
+                      tenant_id='test') as port1, \
+            mock.patch('neutron.db.provisioning_blocks.'
+                       'provisioning_complete') as pc:
+                self.mech_driver.set_port_status_up(port1['port']['id'])
+                pc.assert_called_once_with(
+                    mock.ANY,
+                    port1['port']['id'],
+                    resources.PORT,
+                    provisioning_blocks.L2_AGENT_ENTITY
+                )
 
 
 class TestDFMechansimDriverAllowedAddressPairs(
