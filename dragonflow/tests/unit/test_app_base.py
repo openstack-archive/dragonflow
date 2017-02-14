@@ -85,15 +85,15 @@ fake_logic_router1.inner_obj = {
                "id": "fake_router_port1"}]}
 
 fake_lswitch_default_subnets = [{"dhcp_ip": "10.0.0.2",
-                 "name": "private-subnet",
-                 "enable_dhcp": True,
-                 "lswitch": "fake_switch1",
-                 "dns_nameservers": [],
-                 "topic": "fake_tenant1",
-                 "gateway_ip": "10.0.0.1",
-                 "host_routes": [],
-                 "cidr": "10.0.0.0/24",
-                 "id": "fake_subnet1"}]
+                                 "name": "private-subnet",
+                                 "enable_dhcp": True,
+                                 "lswitch": "fake_switch1",
+                                 "dns_nameservers": [],
+                                 "topic": "fake_tenant1",
+                                 "gateway_ip": "10.0.0.1",
+                                 "host_routes": [],
+                                 "cidr": "10.0.0.0/24",
+                                 "id": "fake_subnet1"}]
 
 
 def make_fake_logic_switch(
@@ -134,14 +134,14 @@ fake_logic_switch1 = make_fake_logic_switch(
         id='fake_switch1')
 
 external_switch1_subnets = [{"name": "public-subnet",
-                 "enable_dhcp": False,
-                 "lswitch": "fake_external_switch1",
-                 "dns_nameservers": [],
-                 "topic": "fake_tenant1",
-                 "gateway_ip": "172.24.4.1",
-                 "host_routes": [],
-                 "cidr": "172.24.4.0/24",
-                 "id": "fake_external_subnet1"}]
+                             "enable_dhcp": False,
+                             "lswitch": "fake_external_switch1",
+                             "dns_nameservers": [],
+                             "topic": "fake_tenant1",
+                             "gateway_ip": "172.24.4.1",
+                             "host_routes": [],
+                             "cidr": "172.24.4.0/24",
+                             "id": "fake_external_subnet1"}]
 
 
 fake_external_switch1 = make_fake_logic_switch(

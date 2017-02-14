@@ -48,7 +48,7 @@ class Test_API_NB(test_base.DFTestBase):
         self.addCleanup(self.nb_api.delete_lswitch,
                         fake_lswitch1['id'], fake_lswitch1['topic'])
         lswitch1 = self.nb_api.get_lswitch(fake_lswitch1['id'],
-                                          fake_lswitch1['topic'])
+                                           fake_lswitch1['topic'])
         self.assertIsNotNone(lswitch1.get_unique_key())
 
         self.assertNotEqual(lswitch.get_unique_key(),

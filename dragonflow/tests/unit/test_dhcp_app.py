@@ -94,13 +94,13 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         fake_dhcp_packet = mock.Mock()
         fake_dhcp_packet.options.option_list = (
             [Option(dhcp.DHCP_MESSAGE_TYPE_OPT, 'a'),
-            Option(dhcp.DHCP_HOST_NAME_OPT, 'b')])
+             Option(dhcp.DHCP_HOST_NAME_OPT, 'b')])
         a_unicode = ord('a')
         opt_value = self.app._get_dhcp_message_type_opt(fake_dhcp_packet)
         self.assertEqual(a_unicode, opt_value)
         fake_dhcp_packet.options.option_list = (
             [Option(dhcp.DHCP_END_OPT, 'a'),
-            Option(dhcp.DHCP_HOST_NAME_OPT, 'b')])
+             Option(dhcp.DHCP_HOST_NAME_OPT, 'b')])
         opt_value2 = self.app._get_dhcp_message_type_opt(fake_dhcp_packet)
         self.assertIsNone(opt_value2)
 
@@ -132,7 +132,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         # test case: lport has valid ip
         self.app.remove_local_port(fake_lport)
         self.assertNotIn(fake_lport.get_id(),
-            self.app.subnet_vm_port_map[subnet])
+                         self.app.subnet_vm_port_map[subnet])
         self.app._uninstall_dhcp_flow_for_vm_port.assert_called_once()
 
     def test_remove_logical_switch(self):

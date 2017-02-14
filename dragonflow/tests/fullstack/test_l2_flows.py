@@ -52,11 +52,11 @@ class TestL2FLows(test_base.DFTestBase):
         network_params = network.get_network()
         segmentation_id = network_params['network']['provider:segmentation_id']
         subnet = {'network_id': network_id,
-            'cidr': '10.200.0.0/24',
-            'gateway_ip': '10.200.0.1',
-            'ip_version': 4,
-            'name': 'private',
-            'enable_dhcp': True}
+                  'cidr': '10.200.0.0/24',
+                  'gateway_ip': '10.200.0.1',
+                  'ip_version': 4,
+                  'name': 'private',
+                  'enable_dhcp': True}
         subnet = self.neutron.create_subnet({'subnet': subnet})
         self.assertIsNotNone(subnet)
 

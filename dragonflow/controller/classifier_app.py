@@ -39,7 +39,7 @@ class ClassifierApp(df_base_app.DFlowApp):
         LOG.debug("match reg7=%(reg7)s for ingress dispatch of %(lport)s",
                   {'reg7': port_key, 'lport': lport})
         actions = [self.parser.OFPActionOutput(ofport,
-                                          self.ofproto.OFPCML_NO_BUFFER)]
+                                               self.ofproto.OFPCML_NO_BUFFER)]
         action_inst = self.parser.OFPInstructionActions(
             self.ofproto.OFPIT_APPLY_ACTIONS, actions)
         inst = [action_inst]

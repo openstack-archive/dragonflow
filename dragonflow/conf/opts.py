@@ -52,7 +52,7 @@ def _import_modules():
         if not hasattr(mod, LIST_OPTS_FUNC_NAME):
             msg = _i18("The module '%s' should have a '%s' function which "
                        "returns the config options." % (mod.__name__,
-                       LIST_OPTS_FUNC_NAME))
+                                                        LIST_OPTS_FUNC_NAME))
             raise Exception(msg)
         else:
             imported_modules.append(mod)

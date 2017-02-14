@@ -42,7 +42,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         self.route_cache = {}
         self.router_port_rarp_cache = {}
         self.api.register_table_handler(const.L3_LOOKUP_TABLE,
-            self.packet_in_handler)
+                                        self.packet_in_handler)
         self.register_local_cookie_bits(COOKIE_NAME, 24)
 
     def switch_features_handler(self, ev):
@@ -418,7 +418,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
     def _delete_router_route(self, router, route):
         LOG.debug('Delete extra route %(route)s from router %(router)s',
-                 {'route': route, 'router': router})
+                  {'route': route, 'router': router})
 
         self._delete_route_process(router, route)
         self._del_from_route_cache(ROUTE_ADDED, router.get_id(), route)

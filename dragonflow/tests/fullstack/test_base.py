@@ -39,7 +39,7 @@ class DFTestBase(base.BaseTestCase):
                 self.neutron = clients.get_neutron_client_from_env()
             except KeyError as e:
                 message = _LE('Cannot find environment variable %s. '
-                           'Have you sourced openrc?')
+                              'Have you sourced openrc?')
                 LOG.error(message, e.args[0])
                 self.fail(message % e.args[0])
         else:

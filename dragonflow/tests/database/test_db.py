@@ -157,7 +157,7 @@ def main():
         is_server = True
     elif sys.argv[1] != 'client':
         raise Exception('Bad parameter #1: Expected \'server\' or \'client\','
-                ' found: %s' % sys.argv[1])
+                        ' found: %s' % sys.argv[1])
     nb_api = api_nb.NbApi(
         nb_driver_class(),
         use_pubsub=cfg.CONF.df.enable_df_pub_sub,
