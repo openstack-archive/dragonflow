@@ -167,7 +167,7 @@ class DfLocalController(object):
         # in it.
         remote_ports = self.db_store.get_ports_by_chassis(chassis_id)
         for port in remote_ports:
-            self.logical_port_deleted(port.get_id())
+            self.delete_lport(port.get_id())
         self.db_store.delete_chassis(chassis_id)
 
     def update_lswitch(self, lswitch):
