@@ -44,9 +44,9 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
                      ',tp_dst=' + str(constants.DHCP_SERVER_PORT)
         for flow in flows:
             if (flow['table'] == str(constants.SERVICES_CLASSIFICATION_TABLE)
-                and flow['actions'] == goto_dhcp):
+                    and flow['actions'] == goto_dhcp):
                 if ('udp,dl_dst=' + constants.BROADCAST_MAC + dhcp_ports
-                    in flow['match']):
+                        in flow['match']):
                     found_dhcp_cast_flow = True
                     break
         self.assertTrue(found_dhcp_cast_flow)
