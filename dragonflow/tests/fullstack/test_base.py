@@ -58,6 +58,10 @@ class DFTestBase(base.BaseTestCase):
         self.conf = cfg.CONF.df
         self.integration_bridge = self.conf.integration_bridge
 
+        cfg.CONF.set_override(
+            'publisher_port', 8868, group='neutron')
+        cfg.CONF.set_override(
+            'publisher_port', 8869, group='controller')
         self.nb_api = api_nb.NbApi.get_instance(False)
 
         self.mgt_ip = self.conf.management_ip
