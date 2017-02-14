@@ -65,7 +65,7 @@ class NbApi(object):
         self.pub_sub_use_multiproc = False
         if self.is_neutron_server:
             # multiproc pub/sub is only supported in neutron server
-            self.pub_sub_use_multiproc = cfg.CONF.df.pub_sub_use_multiproc
+            self.pub_sub_use_multiproc = cfg.CONF.neutron.pub_sub_use_multiproc
 
     @staticmethod
     def get_instance(is_neutron_server):
@@ -89,7 +89,10 @@ class NbApi(object):
             self.publisher = self._get_publisher()
             self.subscriber = self._get_subscriber()
             if self.is_neutron_server:
-                self.publisher.initialize()
+                self.publisher.initialize(
+                    bind_address=cfg.CONF.neutron.publisher_bind_address,
+                    port=cfg.CONF.neutron.publisher_port)
+
                 # Start a thread to detect DB failover in Plugin
                 self.publisher.set_publisher_for_failover(
                     self.publisher,
@@ -97,11 +100,15 @@ class NbApi(object):
                 self.publisher.start_detect_for_failover()
                 self.driver.set_neutron_server(True)
             else:
-                # FIXME(nick-ma-z): if active-detection is enabled,
-                # we initialize the publisher here. Make sure it
-                # only supports redis-based pub/sub driver.
-                if "ActivePortDetectionApp" in cfg.CONF.df.apps_list:
-                    self.publisher.initialize()
+                self.publisher.initialize(
+                    bind_address=cfg.CONF.controller.publisher_bind_address,
+                    port=cfg.CONF.controller.publisher_port)
+                # Start a thread to detect DB failover in Plugin
+                self.publisher.set_publisher_for_failover(
+                    self.publisher,
+                    self.db_recover_callback)
+                self.publisher.start_detect_for_failover()
+                self.driver.set_neutron_server(False)
 
                 # NOTE(gampel) we want to start queuing event as soon
                 # as possible
@@ -140,13 +147,30 @@ class NbApi(object):
         return pub_sub_driver.get_subscriber()
 
     def _start_subscriber(self):
-        self.subscriber.initialize(self.db_change_callback)
+        if self.pub_sub_use_multiproc and self.is_neutron_server:
+            self.subscriber.initialize(
+                self.db_change_callback,
+                bind_address=cfg.CONF.neutron.publisher_multiproc_socket)
+        elif self.pub_sub_use_multiproc and not self.is_neutron_server:
+            self.subscriber.initialize(
+                self.db_change_callback,
+                bind_address=cfg.CONF.controller.publisher_multiproc_socket)
+        else:
+            self.subscriber.initialize(self.db_change_callback)
         self.subscriber.register_topic(db_common.SEND_ALL_TOPIC)
-        publishers_ips = cfg.CONF.df.publishers_ips
+
+        # TODO(nick-ma-z): Implement dynamic registration
+        if self.is_neutron_server:
+            publishers_ips = cfg.CONF.controller.publishers_ips
+            port = cfg.CONF.controller.publisher_port
+        else:
+            publishers_ips = cfg.CONF.neutron.publishers_ips
+            port = cfg.CONF.neutron.publisher_port
+
+        transport = cfg.CONF.df.publisher_transport
         uris = {'%s://%s:%s' % (
-                cfg.CONF.df.publisher_transport,
-                ip,
-                cfg.CONF.df.publisher_port) for ip in publishers_ips}
+                transport, ip, port) for ip in publishers_ips}
+
         publishers = self.get_publishers()
         uris |= {publisher.get_uri() for publisher in publishers}
         for uri in uris:
@@ -223,6 +247,14 @@ class NbApi(object):
             return
         self.subscriber.initialize(cb)
         self.subscriber.register_topic(topic)
+        # TODO(nick-ma-z): Implement dynamic registration
+        publishers_ips = cfg.CONF.controller.publishers_ips
+        port = cfg.CONF.controller.publisher_port
+        transport = cfg.CONF.df.publisher_transport
+        uris = {'%s://%s:%s' % (
+                transport, ip, port) for ip in publishers_ips}
+        for uri in uris:
+            self.subscriber.register_listen_address(uri)
         self.subscriber.daemonize()
 
     def db_change_callback(self, table, key, action, value, topic=None):
