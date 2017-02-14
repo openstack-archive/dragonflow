@@ -65,7 +65,7 @@ def check_dhcp_ip_rule(flows, dhcp_ip):
                  ',tp_dst=' + str(df_const.DHCP_SERVER_PORT)
     for flow in flows:
         if (flow['table'] == str(df_const.SERVICES_CLASSIFICATION_TABLE)
-            and flow['actions'] == goto_dhcp):
+                and flow['actions'] == goto_dhcp):
             if ('nw_dst=' + dhcp_ip + dhcp_ports in flow['match']):
                 return True
     return False
