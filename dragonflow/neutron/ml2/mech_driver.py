@@ -14,6 +14,7 @@ from neutron.callbacks import events
 from neutron.callbacks import registry
 from neutron.callbacks import resources
 from neutron import context as n_context
+from neutron.db import provisioning_blocks
 from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import extra_dhcp_opt as edo_ext
 from neutron.extensions import portsecurity as psec
@@ -514,11 +515,33 @@ class DFMechDriver(driver_api.MechanismDriver):
         supported_allowed_address_pairs = list(allowed_address_pairs)
         return supported_allowed_address_pairs
 
+    def _insert_port_provision_block(self, port):
+        vnic_type = port.get(portbindings.VNIC_TYPE, portbindings.VNIC_NORMAL)
+
+        if vnic_type not in self.supported_vnic_types:
+            LOG.error(_LE("No provisioning block due to unspported"
+                          "vnic_type: %(type)s in %(types)s"),
+                      {'type': vnic_type,
+                       'types': self.supported_vnic_types})
+            return
+
+        # Insert a provisioning block to prevent the port from
+        # transitioning to active until DF reports back that
+        # the port is up
+        if port['status'] != n_const.PORT_STATUS_ACTIVE:
+            provisioning_blocks.add_provisioning_component(
+                n_context.get_admin_context,
+                port['id'], resources.PORT,
+                provisioning_blocks.L2_AGENT_ENTITY)
+
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
     def create_port_postcommit(self, context):
         port = context.current
         ips = [ip['ip_address'] for ip in port.get('fixed_ips', [])]
         subnets = [ip['subnet_id'] for ip in port.get('fixed_ips', [])]
+
+        if cfg.CONF.df.enable_port_status_notifier:
+            self._insert_port_provisioning_block(port)
 
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldn't be mapped to
@@ -719,9 +742,11 @@ class DFMechDriver(driver_api.MechanismDriver):
 
     def set_port_status_up(self, port_id):
         LOG.debug("DF reports status up for port: %s", port_id)
-        self.core_plugin.update_port_status(n_context.get_admin_context(),
-                                            port_id,
-                                            n_const.PORT_STATUS_ACTIVE)
+        provisioning_blocks.provisioning_complete(
+            n_context.get_admin_context(),
+            port_id,
+            resources.PORT,
+            provisioning_blocks.L2_AGENT_ENTITY)
 
     def set_port_status_down(self, port_id):
         LOG.debug("DF reports status down for port: %s", port_id)
