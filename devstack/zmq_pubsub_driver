@@ -1,6 +1,7 @@
 #!/bin/bash
 
-ZMQ_IPC_SOCKET=${ZMQ_IPC_SOCKET:-"/var/run/zmq_pubsub/zmq-publisher-socket"}
+ZMQ_NEUTRON_IPC_SOCKET=${ZMQ_NEUTRON_IPC_SOCKET:-"/var/run/zmq_pubsub/zmq-neutron-publisher-socket"}
+ZMQ_CTRL_IPC_SOCKET=${ZMQ_CTRL_IPC_SOCKET:-"/var/run/zmq_pubsub/zmq-ctrl-publisher-socket"}
 
 function configure_pubsub_service_plugin {
     NEUTRON_CONF=${NEUTRON_CONF:-"/etc/neutron/neutron.conf"}
@@ -8,9 +9,16 @@ function configure_pubsub_service_plugin {
     PUB_SUB_MULTIPROC_DRIVER=${PUB_SUB_MULTIPROC_DRIVER:-"zmq_pubsub_multiproc_driver"}
     iniset $DRAGONFLOW_CONF df pub_sub_driver $PUB_SUB_DRIVER
     iniset $DRAGONFLOW_CONF df pub_sub_multiproc_driver $PUB_SUB_MULTIPROC_DRIVER
-    iniset $DRAGONFLOW_CONF df publisher_multiproc_socket $ZMQ_IPC_SOCKET
 
-    ZMQ_IPC_SOCKET_DIR=`dirname $ZMQ_IPC_SOCKET`
-    sudo mkdir -p $ZMQ_IPC_SOCKET_DIR
-    sudo chown $STACK_USER $ZMQ_IPC_SOCKET_DIR
+    iniset $DRAGONFLOW_CONF neutron publisher_multiproc_socket $ZMQ_NEUTRON_IPC_SOCKET
+    iniset $DRAGONFLOW_CONF neutron publishers_ips $HOST_IP
+    ZMQ_NEUTRON_IPC_SOCKET_DIR=`dirname $ZMQ_NEUTRON_IPC_SOCKET`
+    sudo mkdir -p $ZMQ_NEUTRON_IPC_SOCKET_DIR
+    sudo chown $STACK_USER $ZMQ_NEUTRON_IPC_SOCKET_DIR
+
+    iniset $DRAGONFLOW_CONF controller publisher_multiproc_socket $ZMQ_CTRL_IPC_SOCKET
+    iniset $DRAGONFLOW_CONF controller publishers_ips $HOST_IP
+    ZMQ_CTRL_IPC_SOCKET_DIR=`dirname $ZMQ_CTRL_IPC_SOCKET`
+    sudo mkdir -p $ZMQ_CTRL_IPC_SOCKET_DIR
+    sudo chown $STACK_USER $ZMQ_CTRL_IPC_SOCKET_DIR
 }
