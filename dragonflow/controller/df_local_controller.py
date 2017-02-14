@@ -218,7 +218,7 @@ class DfLocalController(object):
             LOG.warning(_LW("Could not find lswitch for lport: %s"),
                         lport.get_id())
             return
-        lport.set_external_value('local_network_id',
+        lport.set_external_value('lswitch_unique_key',
                                  lswitch.get_unique_key())
         network_type = lswitch.get_network_type()
         segment_id = lswitch.get_segment_id()

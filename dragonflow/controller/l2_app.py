@@ -139,7 +139,7 @@ class L2App(df_base_app.DFlowApp):
         if not self.is_install_l2_responder:
             return
         ips = lport.get_ip_list()
-        network_id = lport.get_external_value('local_network_id')
+        network_id = lport.get_external_value('lswitch_unique_key')
         mac = lport.get_mac()
         for ip in ips:
             ip_version = netaddr.IPAddress(ip).version
@@ -154,7 +154,7 @@ class L2App(df_base_app.DFlowApp):
         if not self.is_install_l2_responder:
             return
         ips = lport.get_ip_list()
-        network_id = lport.get_external_value('local_network_id')
+        network_id = lport.get_external_value('lswitch_unique_key')
         for ip in ips:
             ip_version = netaddr.IPAddress(ip).version
             if ip_version == 4:
@@ -167,7 +167,7 @@ class L2App(df_base_app.DFlowApp):
     def remove_local_port(self, lport):
         lport_id = lport.get_id()
         mac = lport.get_mac()
-        network_id = lport.get_external_value('local_network_id')
+        network_id = lport.get_external_value('lswitch_unique_key')
         network_type = lport.get_external_value('network_type')
         segmentation_id = lport.get_external_value('segmentation_id')
         port_key = lport.get_unique_key()
@@ -199,14 +199,14 @@ class L2App(df_base_app.DFlowApp):
                                 network_type)
 
     def _remove_local_port(self, lport_id, mac, topic,
-                           local_network_id, segmentation_id,
+                           lswitch_unique_key, segmentation_id,
                            network_type):
         parser = self.parser
         ofproto = self.ofproto
 
         # Remove ingress destination lookup for port
         match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
+        match.set_metadata(lswitch_unique_key)
         match.set_dl_dst(haddr_to_bin(mac))
         self.mod_flow(
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
@@ -217,17 +217,17 @@ class L2App(df_base_app.DFlowApp):
         # Update multicast and broadcast
         self._del_multicast_broadcast_handling_for_local(lport_id,
                                                          topic,
-                                                         local_network_id)
-        self._del_network_flows_on_last_port_down(local_network_id,
+                                                         lswitch_unique_key)
+        self._del_network_flows_on_last_port_down(lswitch_unique_key,
                                                   segmentation_id,
                                                   network_type)
 
     def _del_multicast_broadcast_handling_for_local(self,
                                                     lport_id,
                                                     topic,
-                                                    local_network_id):
+                                                    lswitch_unique_key):
         # update local ports
-        network = self.local_networks.get(local_network_id)
+        network = self.local_networks.get(lswitch_unique_key)
         if network is None:
             return
 
@@ -237,20 +237,20 @@ class L2App(df_base_app.DFlowApp):
         del network.local_ports[lport_id]
 
         if not network.local_ports:
-            self._del_multicast_broadcast_flows_for_local(local_network_id)
+            self._del_multicast_broadcast_flows_for_local(lswitch_unique_key)
             if network.is_empty():
-                del self.local_networks[local_network_id]
+                del self.local_networks[lswitch_unique_key]
         else:
             self._update_multicast_broadcast_flows_for_local(
                 network.local_ports,
                 topic,
-                local_network_id)
+                lswitch_unique_key)
 
-    def _del_multicast_broadcast_flows_for_local(self, local_network_id):
+    def _del_multicast_broadcast_flows_for_local(self, lswitch_unique_key):
         ofproto = self.ofproto
 
         # Ingress for broadcast and multicast
-        match = self._get_multicast_broadcast_match(local_network_id)
+        match = self._get_multicast_broadcast_match(lswitch_unique_key)
 
         self.mod_flow(
             table_id=const.L2_LOOKUP_TABLE,
@@ -259,7 +259,7 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
         # Egress for broadcast and multicast
-        match = self._get_multicast_broadcast_match(local_network_id)
+        match = self._get_multicast_broadcast_match(lswitch_unique_key)
 
         self.mod_flow(
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
@@ -268,7 +268,7 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
     def _update_multicast_broadcast_flows_for_local(self, local_ports, topic,
-                                                    local_network_id):
+                                                    lswitch_unique_key):
         parser = self.parser
         ofproto = self.ofproto
         command = ofproto.OFPFC_MODIFY
@@ -295,7 +295,7 @@ class L2App(df_base_app.DFlowApp):
         egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
                                                    const.EGRESS_TABLE))
         # Egress broadcast
-        match = self._get_multicast_broadcast_match(local_network_id)
+        match = self._get_multicast_broadcast_match(lswitch_unique_key)
         egress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, egress)]
         self.mod_flow(
@@ -306,7 +306,7 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
         # Ingress broadcast
-        match = self._get_multicast_broadcast_match(local_network_id)
+        match = self._get_multicast_broadcast_match(lswitch_unique_key)
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
         self.mod_flow(
@@ -319,7 +319,7 @@ class L2App(df_base_app.DFlowApp):
     def remove_remote_port(self, lport):
         lport_id = lport.get_id()
         mac = lport.get_mac()
-        network_id = lport.get_external_value('local_network_id')
+        network_id = lport.get_external_value('lswitch_unique_key')
         tunnel_key = lport.get_unique_key()
         segmentation_id = lport.get_external_value('segmentation_id')
         device_owner = lport.get_device_owner()
@@ -378,7 +378,7 @@ class L2App(df_base_app.DFlowApp):
         mac = lport.get_mac()
         ofport = lport.get_external_value('ofport')
         port_key = lport.get_unique_key()
-        network_id = lport.get_external_value('local_network_id')
+        network_id = lport.get_external_value('lswitch_unique_key')
         network_type = lport.get_external_value('network_type')
         physical_network = lport.get_external_value('physical_network')
         segmentation_id = lport.get_external_value('segmentation_id')
@@ -431,10 +431,10 @@ class L2App(df_base_app.DFlowApp):
         self._add_l2_responders(lport)
 
     def _del_network_flows_on_last_port_down(self,
-                                             local_network_id,
+                                             lswitch_unique_key,
                                              segmentation_id,
                                              network_type):
-        network = self.local_networks.get(local_network_id)
+        network = self.local_networks.get(lswitch_unique_key)
         if network and network.local_ports:
             return
 
@@ -443,9 +443,10 @@ class L2App(df_base_app.DFlowApp):
                  {'type': network_type, 's_id': segmentation_id})
 
         if network_type == 'vlan':
-            self._del_network_flows_for_vlan(segmentation_id, local_network_id)
+            self._del_network_flows_for_vlan(
+                segmentation_id, lswitch_unique_key)
         elif network_type == 'flat':
-            self._del_network_flows_for_flat(local_network_id)
+            self._del_network_flows_for_flat(lswitch_unique_key)
         else:
             self._del_network_flows_for_tunnel(segmentation_id, network_type)
 
@@ -638,7 +639,7 @@ class L2App(df_base_app.DFlowApp):
     def add_remote_port(self, lport):
         lport_id = lport.get_id()
         mac = lport.get_mac()
-        network_id = lport.get_external_value('local_network_id')
+        network_id = lport.get_external_value('lswitch_unique_key')
         network_type = lport.get_external_value('network_type')
         segmentation_id = lport.get_external_value('segmentation_id')
         ofport = lport.get_external_value('ofport')
@@ -681,8 +682,8 @@ class L2App(df_base_app.DFlowApp):
                                                 segmentation_id,
                                                 physical_network,
                                                 network_type,
-                                                local_network_id):
-        network = self.local_networks.get(local_network_id)
+                                                lswitch_unique_key):
+        network = self.local_networks.get(lswitch_unique_key)
         if network and network.local_ports:
             return
 
@@ -693,14 +694,14 @@ class L2App(df_base_app.DFlowApp):
         if network_type == 'vlan':
             self._install_network_flows_for_vlan(segmentation_id,
                                                  physical_network,
-                                                 local_network_id)
+                                                 lswitch_unique_key)
         elif network_type == 'flat':
             self._install_network_flows_for_flat(physical_network,
-                                                 local_network_id)
+                                                 lswitch_unique_key)
         else:
             self._install_network_flows_for_tunnel(segmentation_id,
                                                    network_type,
-                                                   local_network_id)
+                                                   lswitch_unique_key)
 
     """
     Install Ingress network flow for vxlan
@@ -709,7 +710,7 @@ class L2App(df_base_app.DFlowApp):
     Actions: metadata=network_id, goto:INGRESS_DESTIANTION_PORT_LOOKUP_TABLE
     """
     def _install_network_flows_for_tunnel(self, segmentation_id, network_type,
-                                          local_network_id):
+                                          lswitch_unique_key):
         if segmentation_id is None:
             return
 
@@ -722,7 +723,7 @@ class L2App(df_base_app.DFlowApp):
         match = parser.OFPMatch(tunnel_id_nxm=segmentation_id,
                                 in_port=ofport)
 
-        actions = [parser.OFPActionSetField(metadata=local_network_id)]
+        actions = [parser.OFPActionSetField(metadata=lswitch_unique_key)]
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
 
@@ -740,7 +741,7 @@ class L2App(df_base_app.DFlowApp):
     Install network flows for vlan
     """
     def _install_network_flows_for_vlan(self, segmentation_id,
-                                        physical_network, local_network_id):
+                                        physical_network, lswitch_unique_key):
         # L2_LOOKUP for Remote ports
         parser = self.parser
         ofproto = self.ofproto
@@ -749,7 +750,7 @@ class L2App(df_base_app.DFlowApp):
         addint = haddr_to_bin('00:00:00:00:00:00')
         add_mask_int = haddr_to_bin('01:00:00:00:00:00')
         match.set_dl_dst_masked(addint, add_mask_int)
-        match.set_metadata(local_network_id)
+        match.set_metadata(lswitch_unique_key)
         inst = [parser.OFPInstructionGotoTable(const.EGRESS_TABLE)]
         self.mod_flow(
             inst=inst,
@@ -761,7 +762,7 @@ class L2App(df_base_app.DFlowApp):
         # Table=Egress
         # Match: metadata=network_id
         # Actions: mod_vlan, output:patch
-        match = parser.OFPMatch(metadata=local_network_id)
+        match = parser.OFPMatch(metadata=lswitch_unique_key)
         actions = [parser.OFPActionPushVlan(ether.ETH_TYPE_8021Q),
                    parser.OFPActionSetField(
                        vlan_vid=(segmentation_id & 0x1fff) | 0x1000)]
@@ -778,7 +779,7 @@ class L2App(df_base_app.DFlowApp):
 
         # Add EGRESS port according to physical_network
         self._install_output_to_physical_patch(physical_network,
-                                               local_network_id)
+                                               lswitch_unique_key)
 
         # Ingress
         # Match: dl_vlan=vlan_id,
@@ -786,7 +787,7 @@ class L2App(df_base_app.DFlowApp):
         # goto 'Destination Port Classification'
         match = parser.OFPMatch()
         match.set_vlan_vid(segmentation_id)
-        actions = [parser.OFPActionSetField(metadata=local_network_id),
+        actions = [parser.OFPActionSetField(metadata=lswitch_unique_key),
                    parser.OFPActionPopVlan()]
 
         action_inst = parser.OFPInstructionActions(
@@ -803,7 +804,7 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
     def _install_network_flows_for_flat(self, physical_network,
-                                        local_network_id):
+                                        lswitch_unique_key):
         parser = self.parser
         ofproto = self.ofproto
         match = parser.OFPMatch()
@@ -811,7 +812,7 @@ class L2App(df_base_app.DFlowApp):
         addint = haddr_to_bin('00:00:00:00:00:00')
         add_mask_int = haddr_to_bin('01:00:00:00:00:00')
         match.set_dl_dst_masked(addint, add_mask_int)
-        match.set_metadata(local_network_id)
+        match.set_metadata(lswitch_unique_key)
         inst = [parser.OFPInstructionGotoTable(const.EGRESS_TABLE)]
         self.mod_flow(
             inst=inst,
@@ -821,7 +822,7 @@ class L2App(df_base_app.DFlowApp):
 
         # EGRESS for Remote ports
         # Table=Egress
-        match = parser.OFPMatch(metadata=local_network_id)
+        match = parser.OFPMatch(metadata=lswitch_unique_key)
         goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_EXTERNAL_TABLE)
 
         inst = [goto_inst]
@@ -833,11 +834,11 @@ class L2App(df_base_app.DFlowApp):
 
         # Add EGRESS port according to physical_network
         self._install_output_to_physical_patch(physical_network,
-                                               local_network_id)
+                                               lswitch_unique_key)
 
         # Ingress
         match = parser.OFPMatch(vlan_vid=0)
-        actions = [parser.OFPActionSetField(metadata=local_network_id)]
+        actions = [parser.OFPActionSetField(metadata=lswitch_unique_key)]
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
 
@@ -851,7 +852,7 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
-    def _del_network_flows_for_vlan(self, segmentation_id, local_network_id):
+    def _del_network_flows_for_vlan(self, segmentation_id, lswitch_unique_key):
         if segmentation_id is None:
             return
 
@@ -865,7 +866,7 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
-        match = parser.OFPMatch(metadata=local_network_id)
+        match = parser.OFPMatch(metadata=lswitch_unique_key)
         self.mod_flow(
             table_id=const.EGRESS_EXTERNAL_TABLE,
             command=ofproto.OFPFC_DELETE,
@@ -879,7 +880,7 @@ class L2App(df_base_app.DFlowApp):
         match.set_metadata(network_id)
         return match
 
-    def _del_network_flows_for_flat(self, local_network_id):
+    def _del_network_flows_for_flat(self, lswitch_unique_key):
         parser = self.parser
         ofproto = self.ofproto
         match = parser.OFPMatch(vlan_vid=0)
@@ -889,7 +890,7 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
-        match = parser.OFPMatch(metadata=local_network_id)
+        match = parser.OFPMatch(metadata=lswitch_unique_key)
         self.mod_flow(
             table_id=const.EGRESS_EXTERNAL_TABLE,
             command=ofproto.OFPFC_DELETE,
@@ -897,7 +898,7 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
     def _install_output_to_physical_patch(self, physical_network,
-                                          local_network_id):
+                                          lswitch_unique_key):
         if physical_network not in self.int_ofports:
             LOG.error(_LE("Physical network %s unknown for dragonflow"),
                       physical_network)
@@ -905,7 +906,7 @@ class L2App(df_base_app.DFlowApp):
 
         parser = self.parser
         ofproto = self.ofproto
-        match = parser.OFPMatch(metadata=local_network_id)
+        match = parser.OFPMatch(metadata=lswitch_unique_key)
         ofport = self.int_ofports[physical_network]
         actions = [parser.OFPActionOutput(ofport,
                                           ofproto.OFPCML_NO_BUFFER)]

@@ -194,7 +194,7 @@ class L3App(df_base_app.DFlowApp):
         dst_ip = dst_port.get_ip()
         src_mac = dst_router_port.get_mac()
         dst_mac = dst_port.get_mac()
-        dst_network_id = dst_port.get_external_value('local_network_id')
+        dst_network_id = dst_port.get_external_value('lswitch_unique_key')
 
         parser = self.parser
         ofproto = self.ofproto
@@ -235,7 +235,7 @@ class L3App(df_base_app.DFlowApp):
     def _add_new_router_port(self, router, router_port):
         LOG.info(_LI("Adding new logical router interface = %s"),
                  router_port)
-        local_network_id = self.db_store.get_unique_key_by_id(
+        lswitch_unique_key = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())
         parser = self.parser
         ofproto = self.ofproto
@@ -249,17 +249,17 @@ class L3App(df_base_app.DFlowApp):
         if is_ipv4:
             self.router_port_rarp_cache[mac] = dst_ip
             arp_responder.ArpResponder(
-                self, local_network_id, dst_ip, mac).add()
+                self, lswitch_unique_key, dst_ip, mac).add()
             icmp_responder.ICMPResponder(self, dst_ip, mac).add()
 
         # If router interface IP, send to output table
         if is_ipv4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    metadata=local_network_id,
+                                    metadata=lswitch_unique_key,
                                     ipv4_dst=dst_ip)
         else:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
-                                    metadata=local_network_id,
+                                    metadata=lswitch_unique_key,
                                     ipv6_dst=dst_ip)
 
         actions = []
@@ -277,7 +277,7 @@ class L3App(df_base_app.DFlowApp):
         #add dst_mac=gw_mac l2 goto l3 flow
         router_unique_key = router.get_unique_key()
         match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
+        match.set_metadata(lswitch_unique_key)
         match.set_dl_dst(haddr_to_bin(mac))
         actions = [parser.OFPActionSetField(reg5=router_unique_key)]
         action_inst = parser.OFPInstructionActions(
@@ -294,7 +294,7 @@ class L3App(df_base_app.DFlowApp):
         for port in router.get_ports():
             if port.get_id() != router_port.get_id():
                 # From this router interface to all other interfaces
-                self._add_subnet_send_to_controller(local_network_id,
+                self._add_subnet_send_to_controller(lswitch_unique_key,
                                                     port.get_cidr_network(),
                                                     port.get_cidr_netmask(),
                                                     port.get_unique_key())
@@ -366,7 +366,7 @@ class L3App(df_base_app.DFlowApp):
     def _delete_router_port(self, router_port):
         LOG.info(_LI("Removing logical router interface = %s"),
                  router_port)
-        local_network_id = self.db_store.get_unique_key_by_id(
+        lswitch_unique_key = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())
         parser = self.parser
         ofproto = self.ofproto
@@ -377,11 +377,11 @@ class L3App(df_base_app.DFlowApp):
         if netaddr.IPAddress(ip).version == 4:
             self.router_port_rarp_cache.pop(mac, None)
             arp_responder.ArpResponder(
-                self, local_network_id, ip).remove()
+                self, lswitch_unique_key, ip).remove()
             icmp_responder.ICMPResponder(self, ip, mac).remove()
 
         match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
+        match.set_metadata(lswitch_unique_key)
         self.mod_flow(
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
@@ -389,7 +389,7 @@ class L3App(df_base_app.DFlowApp):
             match=match)
 
         match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
+        match.set_metadata(lswitch_unique_key)
         match.set_dl_dst(haddr_to_bin(mac))
         self.mod_flow(
             table_id=const.L2_LOOKUP_TABLE,

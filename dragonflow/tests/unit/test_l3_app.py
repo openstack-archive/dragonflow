@@ -41,7 +41,7 @@ class TestL3App(test_app_base.DFAppTestBase):
     def test_install_l3_flow_set_metadata(self):
         dst_router_port = self.router.get_ports()[0]
         dst_port = test_app_base.fake_local_port1
-        dst_metadata = dst_port.get_external_value('local_network_id')
+        dst_metadata = dst_port.get_external_value('lswitch_unique_key')
         mock_msg = mock.Mock()
         self.app._install_l3_flow(dst_router_port, dst_port,
                                   mock_msg, mock.ANY)

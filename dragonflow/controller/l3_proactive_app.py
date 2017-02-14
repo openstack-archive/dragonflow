@@ -135,7 +135,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
     def _add_new_router_port(self, router, router_port):
         LOG.info(_LI("Adding new logical router interface = %s"),
                  router_port)
-        local_network_id = self.db_store.get_unique_key_by_id(
+        lswitch_unique_key = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())
         parser = self.parser
         ofproto = self.ofproto
@@ -152,7 +152,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         # Add router ARP & ICMP responder for IPv4 Addresses
         if is_ipv4:
             arp_responder.ArpResponder(self,
-                                       local_network_id,
+                                       lswitch_unique_key,
                                        dst_ip, mac).add()
             icmp_responder.ICMPResponder(self, dst_ip, mac,
                                          table_id=const.L2_LOOKUP_TABLE).add()
@@ -195,7 +195,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         #add dst_mac=gw_mac l2 goto l3 flow
         match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
+        match.set_metadata(lswitch_unique_key)
         match.set_dl_dst(haddr_to_bin(mac))
         actions = [parser.OFPActionSetField(reg5=router_unique_key)]
         action_inst = parser.OFPInstructionActions(
@@ -217,7 +217,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
                 # From this router interface to all other interfaces
                 self._add_subnet_send_to_proactive_routing(
-                    local_network_id,
+                    lswitch_unique_key,
                     port.get_cidr_network(),
                     port.get_cidr_netmask(),
                     port.get_unique_key(),
@@ -230,11 +230,11 @@ class L3ProactiveApp(df_base_app.DFlowApp):
                     router_port.get_cidr_network(),
                     router_port.get_cidr_netmask(),
                     tunnel_key,
-                    local_network_id,
+                    lswitch_unique_key,
                     mac)
 
         # Fall through to sNAT
-        self._add_subnet_send_to_snat(local_network_id, mac, tunnel_key)
+        self._add_subnet_send_to_snat(lswitch_unique_key, mac, tunnel_key)
 
     def _get_port(self, ip, lswitch_id, topic):
         ports = self.db_store.get_ports(topic)
@@ -356,7 +356,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
     def _generate_l3_match(self, parser, destination, nexthop_port,
                            router_if_port):
         router_if_mac = router_if_port.get_mac()
-        network_id = nexthop_port.get_external_value('local_network_id')
+        network_id = nexthop_port.get_external_value('lswitch_unique_key')
         src_network = router_if_port.get_cidr_network()
         src_netmask = router_if_port.get_cidr_netmask()
         dst_network = destination.network
@@ -490,7 +490,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
     def _delete_router_port(self, router, router_port):
         LOG.info(_LI("Removing logical router interface = %s"),
                  router_port)
-        local_network_id = self.db_store.get_unique_key_by_id(
+        lswitch_unique_key = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())
 
         parser = self.parser
@@ -500,12 +500,12 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         ip = router_port.get_ip()
         mac = router_port.get_mac()
 
-        self._delete_subnet_send_to_snat(local_network_id, mac)
+        self._delete_subnet_send_to_snat(lswitch_unique_key, mac)
 
         if netaddr.IPAddress(ip).version == 4:
             self.router_port_rarp_cache.pop(mac, None)
 
-            arp_responder.ArpResponder(self, local_network_id, ip).remove()
+            arp_responder.ArpResponder(self, lswitch_unique_key, ip).remove()
             icmp_responder.ICMPResponder(
                 self, ip, mac,
                 table_id=const.L2_LOOKUP_TABLE).remove()
@@ -536,7 +536,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             match=match)
 
         match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
+        match.set_metadata(lswitch_unique_key)
         match.set_dl_dst(haddr_to_bin(mac))
         self.mod_flow(
             table_id=const.L2_LOOKUP_TABLE,
@@ -592,7 +592,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         dst_ip = lport.get_ip()
         dst_mac = lport.get_mac()
-        network_id = lport.get_external_value('local_network_id')
+        network_id = lport.get_external_value('lswitch_unique_key')
         tunnel_key = lport.get_unique_key()
 
         self._add_port_process(dst_ip, dst_mac, network_id, tunnel_key)
@@ -641,7 +641,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             return
 
         dst_ip = lport.get_ip()
-        network_id = lport.get_external_value('local_network_id')
+        network_id = lport.get_external_value('lswitch_unique_key')
 
         self._remove_port_process(dst_ip, network_id)
         self._reprocess_to_del_route(lport.get_topic(), dst_ip)

@@ -255,9 +255,9 @@ class DNATApp(df_base_app.DFlowApp):
         mac = lport.get_mac()
         ip = lport.get_ip()
         tunnel_key = lport.get_unique_key()
-        local_network_id = lport.get_external_value('local_network_id')
+        lswitch_unique_key = lport.get_external_value('lswitch_unique_key')
 
-        return mac, ip, tunnel_key, local_network_id
+        return mac, ip, tunnel_key, lswitch_unique_key
 
     def _get_vm_gateway_info(self, floatingip):
         lport = self.db_store.get_local_port(floatingip.get_lport_id())
@@ -273,7 +273,7 @@ class DNATApp(df_base_app.DFlowApp):
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                 ipv4_dst=floatingip.get_ip_address())
 
-        vm_mac, vm_ip, vm_tunnel_key, local_network_id = \
+        vm_mac, vm_ip, vm_tunnel_key, lswitch_unique_key = \
             self._get_vm_port_info(floatingip)
         vm_gateway_mac = self._get_vm_gateway_info(floatingip)
         if vm_gateway_mac is None:
@@ -284,7 +284,7 @@ class DNATApp(df_base_app.DFlowApp):
             parser.OFPActionSetField(eth_dst=vm_mac),
             parser.OFPActionSetField(ipv4_dst=vm_ip),
             parser.OFPActionSetField(reg7=vm_tunnel_key),
-            parser.OFPActionSetField(metadata=local_network_id)
+            parser.OFPActionSetField(metadata=lswitch_unique_key)
         ]
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
@@ -335,11 +335,11 @@ class DNATApp(df_base_app.DFlowApp):
             match=match)
 
     def _get_dnat_egress_match(self, floatingip):
-        _, vm_ip, _, local_network_id = self._get_vm_port_info(floatingip)
+        _, vm_ip, _, lswitch_unique_key = self._get_vm_port_info(floatingip)
         parser = self.parser
         match = parser.OFPMatch()
         match.set_dl_type(ether.ETH_TYPE_IP)
-        match.set_metadata(local_network_id)
+        match.set_metadata(lswitch_unique_key)
         match.set_ipv4_src(utils.ipv4_text_to_int(vm_ip))
         return match
 

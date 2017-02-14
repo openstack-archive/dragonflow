@@ -51,7 +51,7 @@ class ClassifierApp(df_base_app.DFlowApp):
 
     def _make_ingress_classification_flow(self, lport, ofport):
         match = self.parser.OFPMatch(in_port=ofport)
-        network_id = lport.get_external_value('local_network_id')
+        network_id = lport.get_external_value('lswitch_unique_key')
         LOG.debug("match in_port=%(in_port)s for ingress classification "
                   "of %(lport)s in network %(network)s",
                   {'in_port': ofport, 'lport': lport, 'network': network_id})

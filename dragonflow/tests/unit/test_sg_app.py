@@ -66,7 +66,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
                                          'segmentation_id': 23,
                                          'ofport': 20,
                                          'network_type': 'vxlan',
-                                         'local_network_id': 1}
+                                         'lswitch_unique_key': 1}
         return fake_local_port
 
     def _get_another_security_group(self):

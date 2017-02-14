@@ -176,7 +176,7 @@ def make_fake_port(id=None,
                    device_id='fake_device_id',
                    segmentation_id=42,
                    ofport=1,
-                   local_network_id=11,
+                   lswitch_unique_key=11,
                    extra_dhcp_opts=None):
     fake_port = db_models.LogicalPort("{}")
     fake_port.inner_obj = {
@@ -205,7 +205,7 @@ def make_fake_port(id=None,
         'segmentation_id': segmentation_id,
         'ofport': ofport,
         'network_type': network_type,
-        'local_network_id': local_network_id}
+        'lswitch_unique_key': lswitch_unique_key}
     return fake_port
 
 
@@ -253,7 +253,7 @@ fake_local_port2 = make_fake_local_port(
     ofport=3,
     network_type='vxlan',
     subnets=['fake_subnet1'],
-    local_network_id=1)
+    lswitch_unique_key=1)
 
 
 fake_ovs_port2 = mock.Mock(name='fake_ovs_port2')
@@ -284,7 +284,7 @@ fake_remote_port1 = make_fake_remote_port(
     ofport=1,
     network_type='vxlan',
     subnets=['fake_subnet1'],
-    local_network_id=1)
+    lswitch_unique_key=1)
 
 
 fake_chassis1 = db_models.Chassis("{}")
