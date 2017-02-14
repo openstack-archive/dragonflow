@@ -58,7 +58,7 @@ class PublisherService(object):
         Return the subscriber for inter-process communication. If multi-proc
         communication is not use (i.e. disabled from config), return None.
         """
-        if not cfg.CONF.df.pub_sub_use_multiproc:
+        if not cfg.CONF.neutron.pub_sub_use_multiproc:
             return None
         pub_sub_driver = df_utils.load_driver(
                                     cfg.CONF.df.pub_sub_multiproc_driver,
@@ -67,8 +67,11 @@ class PublisherService(object):
 
     def initialize(self):
         if self.multiproc_subscriber:
-            self.multiproc_subscriber.initialize(self._append_event_to_queue)
-        self.publisher.initialize()
+            self.multiproc_subscriber.initialize(self._append_event_to_queue,
+                bind_address=cfg.CONF.neutron.publisher_multiproc_socket)
+        self.publisher.initialize(
+                bind_address=cfg.CONF.neutron.publisher_bind_address,
+                port=cfg.CONF.neutron.publisher_port)
 
     def _append_event_to_queue(self, table, key, action, value, topic):
         event = db_common.DbUpdate(table, key, action, value, topic=topic)
@@ -130,13 +133,13 @@ class PublisherService(object):
         )
 
     def _get_uri(self):
-        ip = cfg.CONF.df.publisher_bind_address
+        ip = cfg.CONF.neutron.publisher_bind_address
         if ip == '*' or ip == '127.0.0.1':
             ip = cfg.CONF.df.management_ip
         return "{}://{}:{}".format(
             cfg.CONF.df.publisher_transport,
             ip,
-            cfg.CONF.df.publisher_port,
+            cfg.CONF.neutron.publisher_port,
         )
 
     def _start_db_table_monitor(self, table_name):
