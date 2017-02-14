@@ -22,6 +22,7 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
     def setUp(self):
         super(TestDBConsistent, self).setUp()
+        mock.patch("dragonflow.db.api_nb.NbApi.get_instance").start()
         self.controller = df_local_controller.DfLocalController('fake_host')
         for attr_name in dir(self.controller):
             if (

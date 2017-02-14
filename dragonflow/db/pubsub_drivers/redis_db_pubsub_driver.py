@@ -50,9 +50,9 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
         self.client = None
         self.redis_mgt = None
 
-    def initialize(self):
+    def initialize(self, **kwargs):
         # find a publisher server node
-        super(RedisPublisherAgent, self).initialize()
+        super(RedisPublisherAgent, self).initialize(**kwargs)
         self.redis_mgt = redis_mgt.RedisMgt.get_instance(
             cfg.CONF.df.remote_db_ip,
             cfg.CONF.df.remote_db_port)
@@ -135,9 +135,9 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
         self.pub_sub = None
         self.redis_mgt = None
 
-    def initialize(self, callback):
+    def initialize(self, callback, **kwargs):
         # find a subscriber server node and run daemon
-        super(RedisSubscriberAgent, self).initialize(callback)
+        super(RedisSubscriberAgent, self).initialize(callback, **kwargs)
         self.redis_mgt = redis_mgt.RedisMgt.get_instance(
             cfg.CONF.df.remote_db_ip,
             cfg.CONF.df.remote_db_port)
@@ -166,6 +166,12 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
 
     def unregister_topic(self, topic):
         self.pub_sub.unsubscribe(topic)
+
+    def register_listen_address(self, uri):
+        pass
+
+    def unregister_listen_address(self, uri):
+        pass
 
     def set_subscriber_for_failover(self, sub, callback):
         self.redis_mgt.set_subscriber(sub, callback)
