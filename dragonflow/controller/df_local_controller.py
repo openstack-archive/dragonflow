@@ -584,7 +584,7 @@ def init_ryu_config():
 # python df_local_controller.py <chassis_unique_name>
 # <local ip address> <southbound_db_ip_address>
 def main():
-    chassis_name = socket.gethostname()
+    chassis_name = cfg.CONF.host
     common_config.init(sys.argv[1:])
     config.setup_logging()
     init_ryu_config()
