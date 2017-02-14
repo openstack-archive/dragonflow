@@ -39,19 +39,21 @@ class PubSubTestBase(test_base.DFTestBase):
             pubsub_driver_name,
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         publisher = pub_sub_driver.get_publisher()
-        publisher.initialize()
+        publisher.initialize(
+            binding_address=cfg.CONF.neutron.publisher_bind_address,
+            port=cfg.CONF.neutron.publisher_port)
         return publisher
 
     def get_publisher(self):
-        if cfg.CONF.df.pub_sub_use_multiproc:
+        if cfg.CONF.neutron.pub_sub_use_multiproc:
             pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
         else:
             pubsub_driver_name = cfg.CONF.df.pub_sub_driver
         return self._get_publisher(pubsub_driver_name)
 
     def get_server_publisher(self, bind_address="127.0.0.1", port=12345):
-        cfg.CONF.df.publisher_port = str(port)
-        cfg.CONF.df.publisher_bind_address = bind_address
+        cfg.CONF.neutron.publisher_port = str(port)
+        cfg.CONF.neutron.publisher_bind_address = bind_address
         return self._get_publisher(cfg.CONF.df.pub_sub_driver)
 
     def get_subscriber(self, callback):
@@ -59,7 +61,12 @@ class PubSubTestBase(test_base.DFTestBase):
             cfg.CONF.df.pub_sub_driver,
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         subscriber = pub_sub_driver.get_subscriber()
-        subscriber.initialize(callback)
+        if cfg.CONF.neutron.pub_sub_use_multiproc:
+            subscriber.initialize(
+                callback,
+                binding_address=cfg.CONF.neutron.publisher_multiproc_socket)
+        else:
+            subscriber.initialize(callback)
         subscriber.register_topic(db_common.SEND_ALL_TOPIC)
         uri = '%s://%s:%s' % (
             cfg.CONF.df.publisher_transport,
