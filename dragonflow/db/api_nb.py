@@ -551,7 +551,7 @@ class NbApi(object):
                                    id, 'create', lrouter_json, topic)
 
     def update_lrouter(self, id, topic, **columns):
-        #TODO(gampel) move the router ports to a separate table
+        # TODO(gampel) move the router ports to a separate table
         lrouter_json = self.driver.get_key(db_models.LogicalRouter.table_name,
                                            id, topic)
         lrouter = jsonutils.loads(lrouter_json)

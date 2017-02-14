@@ -150,7 +150,7 @@ def main():
     cfg.CONF.register_opts(df_db_test_opts, 'df_db_test')
     common_config.init(sys.argv[2:])
     # To enable logging, uncomment the following line:
-    #common_config.setup_logging()
+    # common_config.setup_logging()
     nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
     is_server = False
     if sys.argv[1] == 'server':

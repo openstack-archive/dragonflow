@@ -51,7 +51,7 @@ class TestRedisDB(tests_base.BaseTestCase):
         self.RedisDbDriver.redis_mgt = redis_mgt
         redis_mgt.get_ip_by_key.return_value = '0.0.0.0:1000'
 
-        #test get_key
+        # test get_key
         result = self.RedisDbDriver.get_key('table', 'key')
         self.assertEqual('value', result)
         redis_mgt.get_ip_by_key.assert_called_with('a')

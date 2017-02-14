@@ -291,7 +291,7 @@ class DHCPApp(df_base_app.DFlowApp):
         if tunnel_type == n_p_const.TYPE_VXLAN:
             return mtu - n_p_const.VXLAN_ENCAP_OVERHEAD if mtu else 0
         elif tunnel_type == n_p_const.TYPE_GENEVE:
-            #TODO(gampel) use max_header_size param when we move to ML2
+            # TODO(gampel) use max_header_size param when we move to ML2
             return mtu - n_p_const.GENEVE_ENCAP_MIN_OVERHEAD if mtu else 0
         elif tunnel_type == n_p_const.TYPE_GRE:
             return mtu - n_p_const.GRE_ENCAP_OVERHEAD if mtu else 0
