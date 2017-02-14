@@ -36,6 +36,14 @@ Dragonflow Specs
 
    specs/index
 
+Developer References
+====================
+
+.. toctree::
+   :maxdepth: 1
+
+   devrefs/index
+
 Indices and tables
 ==================
 
