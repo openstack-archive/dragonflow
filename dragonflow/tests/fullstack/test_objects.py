@@ -167,7 +167,8 @@ class NetworkTestObj(object):
     def get_network(self):
         return self.network
 
-    def create(self, network={'name': 'mynetwork1', 'admin_state_up': True}):
+    def create(self, network={'name': 'mynetwork1', 'admin_state_up': True,
+                              'provider:physical_network': 'myphynetwork'}):
         self.network = self.neutron.create_network({'network': network})
         self.network_id = self.network['network']['id']
         self.topic = self.network['network']['tenant_id']
@@ -210,7 +211,8 @@ class ExternalNetworkTestObj(NetworkTestObj):
 
     GW_CIDR = "172.24.4.0/24"
 
-    def create(self, network={'name': 'public', 'router:external': True}):
+    def create(self, network={'name': 'public', 'router:external': True,
+                              'provider:physical_network': 'myphynetwork'}):
         net_id = super(ExternalNetworkTestObj, self).create(network)
         subnet = SubnetTestObj(self.neutron, self.nb_api, net_id)
         subnet.create({'cidr': self.GW_CIDR,

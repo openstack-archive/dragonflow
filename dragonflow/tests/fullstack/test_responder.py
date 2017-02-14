@@ -55,7 +55,7 @@ class ArpResponderTest(test_base.DFTestBase):
         Add a VM. Verify it's ARP flow is there.
         """
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'arp_responder_test'})
+        network_id = network.create()
         subnet_obj = self.store(objects.SubnetTestObj(
             self.neutron,
             self.nb_api,
@@ -135,7 +135,7 @@ class ICMPResponderTest(test_base.DFTestBase):
         Add a VM. Verify the icmp flow is there.
         """
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'icmp_responder_test'})
+        network_id = network.create()
         subnet_obj = self.store(objects.SubnetTestObj(
             self.neutron,
             self.nb_api,

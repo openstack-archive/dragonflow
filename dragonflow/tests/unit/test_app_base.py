@@ -106,6 +106,7 @@ def make_fake_logic_switch(
         id,
         subnets=None,
         network_type='vxlan',
+        physical_network='fake_phy_net',
         version=2,
         **kwargs):
     fake_switch = db_models.LogicalSwitch("{}")
@@ -119,6 +120,7 @@ def make_fake_logic_switch(
             "version": version,
             "network_type": network_type,
             "id": id,
+            "physical_network": physical_network,
             "unique_key": unique_key}
     fake_switch.inner_obj.update(kwargs)
     return fake_switch

@@ -150,7 +150,8 @@ class TestObjectVersion(test_base.DFTestBase):
         if not external_net:
             network = self.store(
                 objects.NetworkTestObj(self.neutron, self.nb_api))
-            external_net_para = {'name': 'public', 'router:external': True}
+            external_net_para = {'name': 'public', 'router:external': True,
+                                 'provider:physical_network': 'myphynetwork'}
             external_network_id = network.create(network=external_net_para)
             self.assertTrue(network.exists())
             ext_subnet = self.store(objects.SubnetTestObj(
@@ -180,8 +181,7 @@ class TestObjectVersion(test_base.DFTestBase):
         with self._prepare_ext_net() as external_network_id:
             private_network = self.store(
                 objects.NetworkTestObj(self.neutron, self.nb_api))
-            private_network_id = private_network.create(
-                network={'name': 'private'})
+            private_network_id = private_network.create()
             self.assertTrue(private_network.exists())
             priv_subnet = self.store(objects.SubnetTestObj(
                 self.neutron,
