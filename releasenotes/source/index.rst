@@ -8,3 +8,5 @@
    README.rst
    unreleased
    mitaka
+   newton
+   ocata
