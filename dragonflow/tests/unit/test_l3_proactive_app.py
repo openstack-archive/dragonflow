@@ -91,8 +91,9 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
 
         # delete route
         self.mock_mod_flow.reset_mock()
-        self.router.inner_obj['routes'] = [{"destination": "10.100.0.0/16",
-                 "nexthop": "10.0.0.8"}]
+        self.router.inner_obj['routes'] = [
+            {"destination": "10.100.0.0/16",
+             "nexthop": "10.0.0.8"}]
         self.router.inner_obj['version'] += 2
         self.controller.delete_lport(
                 test_app_base.fake_remote_port1.get_id())
