@@ -29,7 +29,7 @@ class TestDbConsistent(test_base.DFTestBase):
         goto_egress = 'goto_table:' + str(const.EGRESS_TABLE)
         for flow in flows:
             if (flow['table'] == str(const.L2_LOOKUP_TABLE)
-                and goto_egress in flow['actions']):
+                    and goto_egress in flow['actions']):
                 if 'dl_dst=' + mac in flow['match']:
                     return True
         return False
