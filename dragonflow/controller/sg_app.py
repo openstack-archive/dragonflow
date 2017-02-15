@@ -20,6 +20,7 @@ from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
 
+from dragonflow.controller.common import cidr_list
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
@@ -48,57 +49,16 @@ class SGApp(df_base_app.DFlowApp):
         self.remote_secgroup_ref = {}
         self.secgroup_associate_local_ports = {}
         self.secgroup_aggregate_addresses = collections.defaultdict(
-            netaddr.IPSet
-        )
+            cidr_list.CIDRList)
         self.secgroup_ip_refs = collections.defaultdict(set)
         self.register_local_cookie_bits(COOKIE_NAME, 32)
 
     @staticmethod
-    def _get_cidr_difference(cidr_set, new_cidr_set):
-        new_cidr_list = new_cidr_set.iter_cidrs()
-        old_cidr_list = cidr_set.iter_cidrs()
-
-        added_cidr = set(new_cidr_list) - set(old_cidr_list)
-        removed_cidr = set(old_cidr_list) - set(new_cidr_list)
-        return added_cidr, removed_cidr
-
-    @staticmethod
-    def _get_cidr_changes_after_removing_addresses(cidr_set, address_list):
-        """cidr_set - IPSet
-           address_list - IPAddress or string list
-        """
-        new_cidr_set = cidr_set - netaddr.IPSet(address_list)
-        added_cidr, removed_cidr = SGApp._get_cidr_difference(cidr_set,
-                                                              new_cidr_set)
-        return new_cidr_set, added_cidr, removed_cidr
-
-    @staticmethod
-    def _get_cidr_changes_after_adding_addresses(cidr_set, address_list):
-        """cidr_set - IPSet
-           address_list - IPAddress or string list
-        """
-        new_cidr_set = cidr_set | netaddr.IPSet(address_list)
-        added_cidr, removed_cidr = SGApp._get_cidr_difference(cidr_set,
-                                                              new_cidr_set)
-        return new_cidr_set, added_cidr, removed_cidr
-
-    @staticmethod
-    def _get_cidr_changes_after_updating_addresses(cidr_set, addresses_to_add,
-                                                   addresses_to_remove):
-        """cidr_set - IPSet
-           addresses_to_add - IPAddress or string list
-           addresses_to_remove - IPAddress or string list
-        """
-        new_cidr_set = ((cidr_set | netaddr.IPSet(addresses_to_add)) -
-                        (netaddr.IPSet(addresses_to_remove)))
-        added_cidr, removed_cidr = SGApp._get_cidr_difference(cidr_set,
-                                                              new_cidr_set)
-        return new_cidr_set, added_cidr, removed_cidr
-
-    @staticmethod
     def _get_network_and_mask(cidr):
-        result = netaddr.IPNetwork(cidr)
-        return (int(result.network), int(result.netmask))
+        result = cidr
+        if not isinstance(result, netaddr.IPNetwork):
+            result = netaddr.IPNetwork(result)
+        return int(result.network), int(result.netmask)
 
     def _protocol_number_by_name(self, name):
         return n_const.IP_PROTOCOL_MAP.get(name) or int(name)
@@ -643,15 +603,14 @@ class SGApp(df_base_app.DFlowApp):
 
         addresses_list = [""]
         if remote_group_id is not None:
-            addresses_list = []
-            aggregate_addresses_range = \
+            aggregate_addresses = \
                 self.secgroup_aggregate_addresses.get(remote_group_id)
-            if aggregate_addresses_range is not None:
-                cidr_list = aggregate_addresses_range.iter_cidrs()
-                for aggregate_address in cidr_list:
-                    if netaddr.IPNetwork(aggregate_address).version == \
+            addresses_list = []
+            if aggregate_addresses is not None:
+                for address in aggregate_addresses.get_cidr_list():
+                    if netaddr.IPNetwork(address).version == \
                             utils.ethertype_to_ip_version(ethertype):
-                        addresses_list.append(aggregate_address)
+                        addresses_list.append(address)
         elif remote_ip_prefix is not None:
             if netaddr.IPNetwork(remote_ip_prefix).version == \
                     utils.ethertype_to_ip_version(ethertype):
@@ -790,14 +749,10 @@ class SGApp(df_base_app.DFlowApp):
     def _associate_secgroup_lport_addresses(self, secgroup_id, lport):
         # update the record of aggregate addresses of ports associated
         # with this security group.
-        addresses = self.secgroup_aggregate_addresses[secgroup_id]
+        aggregate_addresses = self.secgroup_aggregate_addresses[secgroup_id]
         added_ips = self._get_lport_added_ips_for_secgroup(secgroup_id, lport)
-        new_cidr_set, added_cidr, removed_cidr = \
-            SGApp._get_cidr_changes_after_adding_addresses(
-                addresses,
-                added_ips,
-            )
-        self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_set
+        added_cidr, removed_cidr = \
+            aggregate_addresses.add_addresses_and_get_changes(added_ips)
 
         # update the flows representing those rules each of which specifies
         #  this security group as its parameter
@@ -814,20 +769,16 @@ class SGApp(df_base_app.DFlowApp):
     def _disassociate_secgroup_lport_addresses(self, secgroup_id, lport):
         # update the record of aggregate addresses of ports associated
         # with this security group.
-        aggregate_addresses_range = \
+        aggregate_addresses = \
             self.secgroup_aggregate_addresses[secgroup_id]
-        if aggregate_addresses_range:
+        if aggregate_addresses:
             removed_ips = self._get_lport_removed_ips_for_secgroup(
                 secgroup_id, lport)
-            new_cidr_set, added_cidr, removed_cidr = \
-                SGApp._get_cidr_changes_after_removing_addresses(
-                    aggregate_addresses_range,
-                    removed_ips,
-                )
-            if not new_cidr_set:
-                del self.secgroup_aggregate_addresses[secgroup_id]
-            else:
-                self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_set
+            added_cidr, removed_cidr = \
+                aggregate_addresses.remove_addresses_and_get_changes(
+                    removed_ips)
+            if not aggregate_addresses.get_cidr_list():
+                self.secgroup_aggregate_addresses.pop(secgroup_id, None)
 
             # update the flows representing those rules each of which
             # specifies this security group as its
@@ -894,22 +845,16 @@ class SGApp(df_base_app.DFlowApp):
         """
         # update the record of aggregate addresses of ports associated
         # with this security group.
-        aggregate_addresses_range = \
-            self.secgroup_aggregate_addresses[secgroup_id]
+        aggregate_addresses = self.secgroup_aggregate_addresses[secgroup_id]
 
         added_ips, removed_ips = self._get_lport_updated_ips_for_secgroup(
             secgroup_id, lport, original_lport
         )
-        new_cidr_array, added_cidr, removed_cidr = \
-            self._get_cidr_changes_after_updating_addresses(
-                aggregate_addresses_range,
-                added_ips,
-                removed_ips
-            )
-        if len(new_cidr_array) == 0:
+        added_cidr, removed_cidr = \
+            aggregate_addresses.update_addresses_and_get_changes(
+                added_ips, removed_ips)
+        if not aggregate_addresses.get_cidr_list():
             self.secgroup_aggregate_addresses.pop(secgroup_id, None)
-        else:
-            self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_array
 
         # update the flows representing those rules each of which
         # specifies this security group as its

@@ -14,7 +14,7 @@
 #    under the License.
 
 import mock
-import netaddr
+
 from neutron.agent.common import utils
 from neutron_lib import constants as n_const
 
@@ -522,40 +522,3 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # delete fake security group
         self.controller.delete_secgroup(self.security_group.get_id())
-
-    def test_aggregating_flows_for_addresses(self):
-        # add one address
-        old_cidr_set = netaddr.IPSet(['192.168.10.6'])
-        new_cidr_set, added_cidr, deleted_cidr = \
-            self.app._get_cidr_changes_after_adding_addresses(
-                old_cidr_set, ['192.168.10.7'])
-        expected_new_cidr_set = netaddr.IPSet(['192.168.10.6/31'])
-        expected_added_cidr = {netaddr.IPNetwork('192.168.10.6/31')}
-        expected_deleted_cidr = {netaddr.IPNetwork('192.168.10.6/32')}
-        self.assertEqual(new_cidr_set, expected_new_cidr_set)
-        self.assertEqual(added_cidr, expected_added_cidr)
-        self.assertEqual(deleted_cidr, expected_deleted_cidr)
-
-        # remove one address
-        old_cidr_set = new_cidr_set
-        new_cidr_set, added_cidr, deleted_cidr = \
-            self.app._get_cidr_changes_after_removing_addresses(
-                old_cidr_set, ['192.168.10.7'])
-        expected_new_cidr_set = netaddr.IPSet(['192.168.10.6/32'])
-        expected_added_cidr = {netaddr.IPNetwork('192.168.10.6/32')}
-        expected_deleted_cidr = {netaddr.IPNetwork('192.168.10.6/31')}
-        self.assertEqual(new_cidr_set, expected_new_cidr_set)
-        self.assertEqual(added_cidr, expected_added_cidr)
-        self.assertEqual(deleted_cidr, expected_deleted_cidr)
-
-        # update addresses
-        old_cidr_set = new_cidr_set
-        new_cidr_set, added_cidr, deleted_cidr = \
-            self.app._get_cidr_changes_after_updating_addresses(
-                old_cidr_set, ['192.168.10.7'], ['192.168.10.6'])
-        expected_new_cidr_set = netaddr.IPSet(['192.168.10.7/32'])
-        expected_added_cidr = {netaddr.IPNetwork('192.168.10.7/32')}
-        expected_deleted_cidr = {netaddr.IPNetwork('192.168.10.6/32')}
-        self.assertEqual(new_cidr_set, expected_new_cidr_set)
-        self.assertEqual(added_cidr, expected_added_cidr)
-        self.assertEqual(deleted_cidr, expected_deleted_cidr)
