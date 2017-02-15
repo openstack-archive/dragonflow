@@ -154,6 +154,7 @@ class L3App(df_base_app.DFlowApp):
         dst_ip = dst_port.get_ip()
         src_mac = dst_router_port.get_mac()
         dst_mac = dst_port.get_mac()
+        dst_network_id = dst_port.get_external_value('local_network_id')
 
         parser = self.parser
         ofproto = self.ofproto
@@ -169,6 +170,7 @@ class L3App(df_base_app.DFlowApp):
 
         actions = []
         actions.append(parser.OFPActionDecNwTtl())
+        actions.append(parser.OFPActionSetField(metadata=dst_network_id))
         actions.append(parser.OFPActionSetField(eth_src=src_mac))
         actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
         actions.append(parser.OFPActionSetField(reg7=reg7))
