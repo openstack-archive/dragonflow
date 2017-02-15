@@ -42,8 +42,24 @@ class TestL3App(test_app_base.DFAppTestBase):
         dst_port = test_app_base.fake_local_port1
         dst_metadata = dst_port.get_external_value('local_network_id')
         mock_msg = mock.Mock()
-        mock_msg.buffer_id = self.app.ofproto.OFP_NO_BUFFER
         self.app._install_l3_flow(dst_router_port, dst_port,
                                   mock_msg, mock.ANY)
         self.app.parser.OFPActionSetField.assert_any_call(
             metadata=dst_metadata)
+
+    def test_install_l3_flow_use_buffer(self):
+        dst_router_port = self.router.get_ports()[0]
+        dst_port = test_app_base.fake_local_port1
+        mock_msg = mock.Mock()
+        mock_msg.buffer_id = mock.sentinel.buffer_id
+        self.app._install_l3_flow(dst_router_port, dst_port,
+                                  mock_msg, mock.ANY)
+        self.app.mod_flow.assert_called_once_with(
+            cookie=dst_router_port.get_unique_key(),
+            inst=mock.ANY,
+            table_id=const.L3_LOOKUP_TABLE,
+            priority=const.PRIORITY_VERY_HIGH,
+            match=mock.ANY,
+            buffer_id=mock.sentinel.buffer_id,
+            idle_timeout=self.app.idle_timeout,
+            hard_timeout=self.app.hard_timeout)
