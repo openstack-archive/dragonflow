@@ -98,14 +98,13 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
         vm = self.store(objects.VMTestObj(self, self.neutron))
         vm_id = vm.create(network=network)
 
-        ovsdb = utils.OvsDBParser()
-        vm_port_id = ovsdb.get_port_id_by_vm_id(vm_id)
+        vm_port_id = self.vswitch_api.get_port_id_by_vm_id(vm_id)
         self.assertIsNotNone(vm_port_id)
 
         vm_port = objects.PortTestObj(self.neutron, self.nb_api, network_id,
                                       vm_port_id)
 
-        of_port = ovsdb.get_ofport(vm_port_id)
+        of_port = self.vswitch_api.get_port_ofport_by_id(vm_port_id)
         self.assertIsNotNone(of_port)
         result = self._check_sending_arp_reply_to_controller_flows(of_port)
         self.assertFalse(result)

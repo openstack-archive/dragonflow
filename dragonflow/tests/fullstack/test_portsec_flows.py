@@ -208,8 +208,7 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
             exception=Exception('No port assigned to VM')
         )
 
-        ovsdb = utils.OvsDBParser()
-        of_port = ovsdb.get_ofport(port.get_id())
+        of_port = self.vswitch_api.get_port_ofport_by_id(port.get_id())
         self.assertIsNotNone(of_port)
 
         # Check if the associating flows were installed.

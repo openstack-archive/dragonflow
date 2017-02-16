@@ -195,10 +195,6 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
                     return port
         return None
 
-    def _get_of_port(self, port_id):
-        ovsdb = utils.OvsDBParser()
-        return ovsdb.get_ofport(port_id)
-
     def test_default_flows(self):
         found_ingress_skip_flow = False
         found_egress_skip_flow = False
@@ -305,7 +301,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         tunnel_key = port.get_unique_key()
         tunnel_key_hex = hex(tunnel_key)
 
-        of_port = self._get_of_port(port.get_id())
+        of_port =  self.vswitch_api.get_port_ofport_by_id(port.get_id())
         self.assertIsNotNone(of_port)
 
         ovs = utils.OvsFlowsParser()

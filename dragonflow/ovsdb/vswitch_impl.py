@@ -124,8 +124,8 @@ class OvsApi(object):
 
         return True
 
-    def _get_port_by_id_with_only_specified_columns(self, port_id,
-                                                    specified_columns):
+    def get_interface_by_id_with_specified_columns(self, port_id,
+                                                   specified_columns):
         columns = {'external_ids', 'name'}
         columns.update(specified_columns)
         ifaces = self.ovsdb.db_find(
@@ -141,13 +141,13 @@ class OvsApi(object):
             return iface
 
     def get_port_ofport_by_id(self, port_id):
-        iface = self._get_port_by_id_with_only_specified_columns(
+        iface = self.get_interface_by_id_with_specified_columns(
             port_id, {'name', 'ofport'})
         if iface and self._check_ofport(iface['name'], iface['ofport']):
             return iface['ofport']
 
     def get_local_port_mac_in_use(self, port_id):
-        iface = self._get_port_by_id_with_only_specified_columns(
+        iface = self.get_interface_by_id_with_specified_columns(
             port_id, {'mac_in_use'})
         if iface and netaddr.valid_mac(iface['mac_in_use']):
             return iface['mac_in_use']
@@ -238,3 +238,46 @@ class OvsApi(object):
 
     def get_vtp_ofport(self, tunnel_type):
         return self.get_port_ofport(tunnel_type + '-vtp')
+
+    def get_port_id_by_vm_id(self, vm_id):
+        columns = {'external_ids', 'name'}
+        interfaces = self.ovsdb.db_find(
+            'Interface', ('external_ids', '=', {'vm-id': vm_id}),
+            columns=columns).execute()
+
+        for interface in interfaces:
+            if (self.integration_bridge !=
+                    self._get_bridge_for_iface(interface['name'])):
+                # interfaces with the vm-id in its external_ids column might
+                # exists in different bridges
+                continue
+            return interface['external_ids'].get('iface-id')
+
+    def get_ovs_port_by_id_with_specified_columns(
+            self, port_id, specified_columns):
+        port_name = self._get_port_name_by_id(port_id)
+        if not port_name:
+            return
+
+        columns = {'name'}
+        columns.update(specified_columns)
+        ports = self.ovsdb.db_find(
+            'Port', ('name', '=', port_name), columns=columns).execute()
+        if ports:
+            return ports[0]
+
+    def get_qos_info_by_port_id(self, port_id):
+        columns = {'external_ids', 'queues', '_uuid'}
+        port_qoses = self.ovsdb.db_find(
+            'QoS', ('external_ids', '=', {'iface-id': port_id}),
+            columns=columns).execute()
+        if port_qoses:
+            return port_qoses[0]
+
+    def get_queue_info_by_port_id(self, port_id):
+        columns = {'external_ids', 'other_config', 'dscp', '_uuid'}
+        queues = self.ovsdb.db_find(
+            'Queue', ('external_ids', '=', {'iface-id': port_id}),
+            columns=columns).execute()
+        if queues:
+            return queues[0]
