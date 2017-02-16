@@ -167,7 +167,7 @@ class NetworkTestObj(object):
     def get_network(self):
         return self.network
 
-    def create(self, network={'name': 'mynetwork1', 'admin_state_up': True}):
+    def create(self, network={'name': 'mynetwork', 'admin_state_up': True}):
         self.network = self.neutron.create_network({'network': network})
         self.network_id = self.network['network']['id']
         self.topic = self.network['network']['tenant_id']
