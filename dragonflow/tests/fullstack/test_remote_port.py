@@ -53,11 +53,10 @@ class TestRemotePort(test_base.DFTestBase):
         self.assertTrue(port.exists())
 
         time.sleep(test_const.DEFAULT_CMD_TIMEOUT)
-        ovsdb = utils.OvsDBParser()
         network_obj = network.get_network()['network']
         network_type = network_obj['provider:network_type']
         segmentation_id = network_obj['provider:segmentation_id']
-        ofport = ovsdb.get_tunnel_ofport(network_type)
+        ofport = self.vswitch_api.get_vtp_ofport(network_type)
         port_unique_key = port.get_logical_port().get_unique_key()
 
         match = "reg7=" + str(hex(port_unique_key))

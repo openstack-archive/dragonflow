@@ -13,7 +13,6 @@
 import time
 
 from dragonflow.tests.common import constants as const
-from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
@@ -32,11 +31,10 @@ class TestPortQos(test_base.DFTestBase):
         vm = self.store(objects.VMTestObj(self, self.neutron))
         vm_id = vm.create(network=network)
 
-        ovsdb = utils.OvsDBParser()
-        vm_port_id = ovsdb.get_port_id_by_vm_id(vm_id)
+        vm_port_id = self.vswitch_api.get_port_id_by_vm_id(vm_id)
         self.assertIsNotNone(vm_port_id)
-        port = objects.PortTestObj(self.neutron, self.nb_api, network_id)
-        port.port_id = vm_port_id
+        port = objects.PortTestObj(self.neutron, self.nb_api, network_id,
+                                   vm_port_id)
 
         qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
                                                         self.nb_api))
@@ -55,33 +53,37 @@ class TestPortQos(test_base.DFTestBase):
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
 
         logical_port = port.get_logical_port()
-        ovsdb = utils.OvsDBParser()
         self.assertEqual(qos_policy_id, logical_port.get_qos_policy_id())
 
-        interface = ovsdb.get_interface_by_port_id(vm_port_id)
+        check_columns = {
+            'ingress_policing_rate', 'ingress_policing_burst'}
+        interface = \
+            self.vswitch_api.get_interface_by_id_with_specified_columns(
+                vm_port_id, check_columns)
         self.assertIsNotNone(interface)
-        self.assertEqual('1000', interface.get('ingress_policing_rate'))
-        self.assertEqual('100', interface.get('ingress_policing_burst'))
+        self.assertEqual(1000, interface.get('ingress_policing_rate'))
+        self.assertEqual(100, interface.get('ingress_policing_burst'))
 
-        queue = ovsdb.get_queue_by_port_id(vm_port_id)
+        queue = self.vswitch_api.get_queue_info_by_port_id(vm_port_id)
         self.assertIsNotNone(queue)
         self.assertEqual(queue['other_config']['max-rate'], '1024000')
         self.assertEqual(queue['other_config']['min-rate'], '1024000')
-        self.assertEqual(queue['dscp'], '10')
+        self.assertEqual(queue['dscp'], 10)
 
-        qos = ovsdb.get_qos_by_port_id(vm_port_id)
+        qos = self.vswitch_api.get_qos_info_by_port_id(vm_port_id)
         self.assertIsNotNone(qos)
-        self.assertEqual(qos['queues']['0'], queue['_uuid'])
+        self.assertEqual(qos['queues'][0].uuid, queue['_uuid'])
 
-        ovs_port = ovsdb.get_port_by_interface_id(interface.get('_uuid'))
+        ovs_port = self.vswitch_api.get_ovs_port_by_id_with_specified_columns(
+            vm_port_id, {'qos'})
         self.assertIsNotNone(ovs_port)
         self.assertEqual(ovs_port['qos'], qos['_uuid'])
 
         vm.close()
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
 
-        queue = ovsdb.get_queue_by_port_id(vm_port_id)
+        queue = self.vswitch_api.get_queue_info_by_port_id(vm_port_id)
         self.assertIsNone(queue)
 
-        qos = ovsdb.get_qos_by_port_id(vm_port_id)
+        qos = self.vswitch_api.get_qos_info_by_port_id(vm_port_id)
         self.assertIsNone(qos)
