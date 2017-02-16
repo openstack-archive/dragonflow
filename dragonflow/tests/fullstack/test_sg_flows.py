@@ -111,10 +111,10 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
     def _is_associating_flow(self, flow, direction, of_port, reg7):
         if direction == 'ingress':
-            match = 'reg7=' + reg7
+            match = 'reg7=' + str(reg7)
             table = const.INGRESS_SECURITY_GROUP_TABLE
         else:
-            match = 'in_port=' + of_port
+            match = 'in_port=' + str(of_port)
             table = const.EGRESS_SECURITY_GROUP_TABLE
 
         if (flow['table'] == str(table)) and \
@@ -194,10 +194,6 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
                 if port.get_ip() == ip and port.get_mac() == mac:
                     return port
         return None
-
-    def _get_of_port(self, port_id):
-        ovsdb = utils.OvsDBParser()
-        return ovsdb.get_ofport(port_id)
 
     def test_default_flows(self):
         found_ingress_skip_flow = False
@@ -305,7 +301,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         tunnel_key = port.get_unique_key()
         tunnel_key_hex = hex(tunnel_key)
 
-        of_port = self._get_of_port(port.get_id())
+        of_port = self.vswitch_api.get_port_ofport_by_id(port.get_id())
         self.assertIsNotNone(of_port)
 
         ovs = utils.OvsFlowsParser()
