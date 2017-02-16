@@ -80,8 +80,7 @@ class TestL2FLows(test_base.DFTestBase):
         tunnel_key = port.get_unique_key()
         tunnel_key_hex = hex(tunnel_key)
         n_type = network.get_network()['network']['provider:network_type']
-        ovsdb = utils.OvsDBParser()
-        ofport = ovsdb.get_tunnel_ofport(n_type)
+        ofport = self.vswitch_api.get_vtp_ofport(n_type)
         r = self._check_tunnel_flows(ovs.dump(self.integration_bridge),
                                      metadataid,
                                      hex(segmentation_id),
