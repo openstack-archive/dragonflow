@@ -181,8 +181,7 @@ class TestObjectVersion(test_base.DFTestBase):
         with self._prepare_ext_net() as external_network_id:
             private_network = self.store(
                 objects.NetworkTestObj(self.neutron, self.nb_api))
-            private_network_id = private_network.create(
-                network={'name': 'private'})
+            private_network_id = private_network.create()
             self.assertTrue(private_network.exists())
             priv_subnet = self.store(objects.SubnetTestObj(
                 self.neutron,
