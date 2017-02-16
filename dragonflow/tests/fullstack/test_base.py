@@ -20,6 +20,7 @@ from oslo_log import log
 from dragonflow._i18n import _LE
 from dragonflow import conf as cfg
 from dragonflow.db import api_nb
+from dragonflow.ovsdb import vswitch_impl
 from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
 from dragonflow.tests.common import clients
@@ -63,6 +64,9 @@ class DFTestBase(base.BaseTestCase):
         self.mgt_ip = self.conf.management_ip
         self.__objects_to_close = []
         self.addCleanup(self._close_stored_objects)
+
+        self.vswitch_api = utils.OvsTestApi(self.mgt_ip)
+        self.vswitch_api.initialize(self.nb_api)
 
         if cfg.CONF.df.enable_selective_topology_distribution:
             self.start_subscribing()
