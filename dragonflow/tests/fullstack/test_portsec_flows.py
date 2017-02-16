@@ -51,7 +51,7 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
     def _get_anti_spoof_expected_flows(self, ip, mac, of_port):
         expected_flow_list = []
 
-        in_port_match = "in_port=" + of_port
+        in_port_match = "in_port=" + str(of_port)
         dl_src_match = "dl_src=" + mac
         goto_conntrack_table_action = \
             "goto_table:" + str(const.EGRESS_CONNTRACK_TABLE)
@@ -208,8 +208,7 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
             exception=Exception('No port assigned to VM')
         )
 
-        ovsdb = utils.OvsDBParser()
-        of_port = ovsdb.get_ofport(port.get_id())
+        of_port = self.vswitch_api.get_port_ofport_by_id(port.get_id())
         self.assertIsNotNone(of_port)
 
         # Check if the associating flows were installed.

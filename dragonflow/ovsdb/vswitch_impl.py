@@ -124,8 +124,8 @@ class OvsApi(object):
 
         return True
 
-    def _get_port_by_id_with_only_specified_columns(self, port_id,
-                                                    specified_columns):
+    def get_interface_by_id_with_specified_columns(self, port_id,
+                                                   specified_columns):
         columns = {'external_ids', 'name'}
         columns.update(specified_columns)
         ifaces = self.ovsdb.db_find(
@@ -141,13 +141,13 @@ class OvsApi(object):
             return iface
 
     def get_port_ofport_by_id(self, port_id):
-        iface = self._get_port_by_id_with_only_specified_columns(
+        iface = self.get_interface_by_id_with_specified_columns(
             port_id, {'name', 'ofport'})
         if iface and self._check_ofport(iface['name'], iface['ofport']):
             return iface['ofport']
 
     def get_local_port_mac_in_use(self, port_id):
-        iface = self._get_port_by_id_with_only_specified_columns(
+        iface = self.get_interface_by_id_with_specified_columns(
             port_id, {'mac_in_use'})
         if iface and netaddr.valid_mac(iface['mac_in_use']):
             return iface['mac_in_use']
