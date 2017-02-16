@@ -211,25 +211,48 @@ class DfLocalController(object):
             return False
         return True
 
-    def _logical_port_process(self, lport, original_lport=None):
-        lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
+    def _set_lport_external_value_by_lswitch(self, lswitch, lport):
         if not lswitch:
             LOG.warning(_LW("Could not find lswitch for lport: %s"),
                         lport.get_id())
-            return
-        lport.set_external_value('local_network_id',
-                                 lswitch.get_unique_key())
+            return None
+        lswitch_unique_key = lswitch.get_unique_key()
         network_type = lswitch.get_network_type()
         segment_id = lswitch.get_segment_id()
         physical_network = lswitch.get_physical_network()
-
+        if not lswitch_unique_key or not network_type or \
+                not segment_id:
+            LOG.warning(_LW("There are invalid properties in lswitch: %s"),
+                        lswitch.get_id())
+            return None
+        lport.set_external_value('local_network_id', lswitch_unique_key)
         lport.set_external_value('network_type', network_type)
-        if segment_id is not None:
-            lport.set_external_value('segmentation_id',
-                                     int(segment_id))
+        lport.set_external_value('segmentation_id', int(segment_id))
         if physical_network:
             lport.set_external_value('physical_network', physical_network)
+        return lport
 
+    def _set_lport_peer_vtep_address(self, lport):
+        if lport.get_remote_vtep():
+            # Remote port that exists in other network pod.
+            lport.set_external_value('peer_vtep_address',
+                                     lport.get_chassis())
+        else:
+            # Remote port that exists in current network pod.
+            remote_chassis = self.db_store.get_chassis(lport.get_chassis())
+            if not remote_chassis:
+                # chassis has not been online yet.
+                LOG.warning(_LW("Could not find remote chassis by id: %s"),
+                            lport.get_chassis())
+                return None
+            lport.set_external_value('peer_vtep_address',
+                                     remote_chassis.get_ip())
+        return lport
+
+    def _logical_port_process(self, lport, original_lport=None):
+        lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
+        if not self._set_lport_external_value_by_lswitch(lswitch, lport):
+            return
         chassis = lport.get_chassis()
         if chassis == self.chassis_name:
             lport.set_external_value('is_local', True)
@@ -237,7 +260,7 @@ class DfLocalController(object):
             ofport = self.vswitch_api.get_port_ofport_by_id(lport.get_id())
             if ofport:
                 lport.set_external_value('ofport', ofport)
-                if original_lport is None:
+                if not original_lport:
                     LOG.info(_LI("Adding new local logical port = %s"), lport)
                     self.open_flow_app.notify_add_local_port(lport)
                 else:
@@ -254,24 +277,13 @@ class DfLocalController(object):
         else:
             lport.set_external_value('is_local', False)
             self.db_store.set_port(lport.get_id(), lport, False)
-            if lport.get_remote_vtep():
-                # Remote port that exists in other network pod.
-                lport.set_external_value('peer_vtep_address',
-                                         lport.get_chassis())
-            else:
-                # Remote port that exists in current network pod.
-                remote_chassis = self.db_store.get_chassis(lport.get_chassis())
-                if not remote_chassis:
-                    # chassis has not been online yet.
-                    return
-                lport.set_external_value('peer_vtep_address',
-                                         remote_chassis.get_ip())
-
+            if not self._set_lport_peer_vtep_address(lport):
+                return
             ofport = self.vswitch_api.get_vtp_ofport(
                 lport.get_external_value('network_type'))
             if ofport:
                 lport.set_external_value('ofport', ofport)
-                if original_lport is None:
+                if not original_lport:
                     LOG.info(_LI("Adding new remote logical port = %s"), lport)
                     self.open_flow_app.notify_add_remote_port(lport)
                 else:
@@ -288,7 +300,7 @@ class DfLocalController(object):
                             lport)
                 return
 
-        if original_lport is None:
+        if not original_lport:
             self._notify_active_ports_updated_when_lport_created(lport)
 
     def update_lport(self, lport):
