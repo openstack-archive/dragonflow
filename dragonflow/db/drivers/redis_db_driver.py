@@ -17,6 +17,7 @@ from redis import client as redis_client
 from redis import exceptions
 
 from dragonflow._i18n import _LE, _LW
+from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
 from dragonflow.db.drivers import redis_mgt
 
@@ -172,27 +173,31 @@ class RedisDbDriver(db_api.DbApi):
                                   "db: %(e)s"), {'e': e})
                 raise e
 
-    def get_key(self, table, key, topic=None):
-        if not topic:
-            local_key = self._uuid_to_key(table, key, '*')
-            self._sync_master_list()
-            try:
-                for host, client in self.clients.items():
-                    local_keys = client.keys(local_key)
-                    if len(local_keys) == 1:
-                        return self._execute_cmd("GET", local_keys[0])
-            except Exception:
-                LOG.exception(_LE("exception when get_key: %(key)s"),
-                              {'key': local_key})
+    def _find_topicless_key(self, table, key):
+        local_key = self._uuid_to_key(table, key, '*')
+        self._sync_master_list()
+        for client in self.clients.values():
+            local_keys = client.keys(local_key)
+            if len(local_keys) == 1:
+                return local_keys[0]
 
-        else:
+    def get_key(self, table, key, topic=None):
+        if topic is not None:
             local_key = self._uuid_to_key(table, key, topic)
-            try:
-                # return nil if not found
-                return self._execute_cmd("GET", local_key)
-            except Exception:
-                LOG.exception(_LE("exception when get_key: %(key)s"),
-                              {'key': local_key})
+        else:
+            local_key = self._find_topicless_key(table, key)
+            if local_key is None:
+                raise df_exceptions.DBKeyNotFound(key=key)
+
+        try:
+            res = self._execute_cmd("GET", local_key)
+            if res is not None:
+                return res
+        except Exception:
+            LOG.exception(_LE("exception when get_key: %(key)s"),
+                          {'key': local_key})
+
+        raise df_exceptions.DBKeyNotFound(key=key)
 
     def set_key(self, table, key, value, topic=None):
         local_key = self._uuid_to_key(table, key, topic)
