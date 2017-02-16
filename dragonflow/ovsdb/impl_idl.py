@@ -125,6 +125,7 @@ class DFOvsdbApi(impl_idl.OvsdbIdl):
 
     def __init__(self, context, nb_api, db_connection, timeout):
         self.context = context
+        self._nested_txn = None
         if DFOvsdbApi.ovsdb_connection is None:
             DFOvsdbApi.ovsdb_connection = DFConnection(
                 db_connection,
