@@ -76,7 +76,7 @@ class DNATApp(df_base_app.DFlowApp):
         self.api.register_table_handler(const.EGRESS_NAT_TABLE,
                                         self.egress_packet_in_handler)
 
-    def switch_features_handler(self, ev):
+    def switch_features_handler(self):
         self._init_external_bridge()
         self._install_output_to_physical_patch(self.external_ofport)
         self.external_networks.clear()
