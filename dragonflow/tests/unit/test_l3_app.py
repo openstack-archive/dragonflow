@@ -15,57 +15,20 @@
 import copy
 
 import mock
-from ryu.lib.packet import icmp
 
 from dragonflow.controller.common import constants as const
+from dragonflow.tests.unit import _test_l3
 from dragonflow.tests.unit import test_app_base
 
 
-class TestL3App(test_app_base.DFAppTestBase):
+class TestL3App(test_app_base.DFAppTestBase,
+                _test_l3.L3AppTestCaseMixin):
     apps_list = "l3_app.L3App"
 
     def setUp(self):
         super(TestL3App, self).setUp()
         self.app = self.open_flow_app.dispatcher.apps[0]
-        self.mock_mod_flow = mock.Mock(name='mod_flow')
-        self.app.mod_flow = self.mock_mod_flow
         self.router = copy.deepcopy(test_app_base.fake_logic_router1)
-
-    def _add_another_router_interface(self):
-        router_port1 = {"network": "20.0.0.1/24",
-                        "lswitch": "fake_switch2",
-                        "topic": "fake_tenant1",
-                        "mac": "fa:16:3e:50:96:fe",
-                        "unique_key": 15,
-                        "lrouter": "fake_router_id",
-                        "id": "fake_router_port2"}
-        self.router.inner_obj['ports'].append(router_port1)
-
-    def test_n_icmp_responder_for_n_router_interface(self):
-        self._add_another_router_interface()
-        dst_router_port = self.router.get_ports()[0]
-        with mock.patch("dragonflow.controller.common"
-                        ".icmp_responder.ICMPResponder") as icmp:
-            self.app._add_new_router_port(self.router, dst_router_port)
-            self.assertEqual(1, icmp.call_count)
-
-    def test_n_route_for_n_router_interface(self):
-        self._add_another_router_interface()
-        dst_router_port = self.router.get_ports()[0]
-        with mock.patch.object(self.app,
-                               "_add_subnet_send_to_controller") as method:
-            self.app._add_new_router_port(self.router, dst_router_port)
-            self.assertEqual(1, method.call_count)
-
-    def test_add_del_router(self):
-        self.controller.delete_lrouter(self.router.get_id())
-        # 5 mod flows, l2 -> l3, arp, icmp, router interface and route.
-        self.assertEqual(5, self.app.mod_flow.call_count)
-        self.app.mod_flow.reset_mock()
-        self.controller.update_lrouter(self.router)
-        self.assertEqual(5, self.app.mod_flow.call_count)
-        args, kwargs = self.app.mod_flow.call_args
-        self.assertEqual(const.L3_LOOKUP_TABLE, kwargs['table_id'])
 
     def test_install_l3_flow_set_metadata(self):
         dst_router_port = self.router.get_ports()[0]
@@ -93,45 +56,3 @@ class TestL3App(test_app_base.DFAppTestBase):
             buffer_id=mock.sentinel.buffer_id,
             idle_timeout=self.app.idle_timeout,
             hard_timeout=self.app.hard_timeout)
-
-    def test_reply_ttl_invalid_message_with_rate_limit(self):
-        event = mock.Mock()
-        event.msg.reason = self.app.ofproto.OFPR_INVALID_TTL
-        self.app.router_port_rarp_cache = mock.Mock()
-        self.app.router_port_rarp_cache.get = mock.Mock(
-            return_value="10.0.0.1")
-        with mock.patch("ryu.lib.packet.packet.Packet"):
-            with mock.patch("dragonflow.controller.common"
-                            ".icmp_error_generator.generate") as icmp_error:
-                self.app.packet_in_handler(event)
-                self.app.packet_in_handler(event)
-                self.app.packet_in_handler(event)
-                self.app.packet_in_handler(event)
-
-                self.assertEqual(self.app.conf.router_ttl_invalid_max_rate,
-                                 icmp_error.call_count)
-                icmp_error.assert_called_with(icmp.ICMP_TIME_EXCEEDED,
-                                              icmp.ICMP_TTL_EXPIRED_CODE,
-                                              mock.ANY, "10.0.0.1", mock.ANY)
-
-    def test_reply_icmp_unreachable_with_rate_limit(self):
-        self.app.router_port_rarp_cache = mock.Mock()
-        self.app.router_port_rarp_cache.values.return_value = ["10.0.0.1"]
-        event = mock.Mock()
-        fake_ip_pkt = mock.Mock()
-        fake_ip_pkt.dst = "10.0.0.1"
-        fake_pkt = mock.Mock()
-        fake_pkt.get_protocol.return_value = fake_ip_pkt
-        with mock.patch("ryu.lib.packet.packet.Packet", return_value=fake_pkt):
-            with mock.patch("dragonflow.controller.common"
-                            ".icmp_error_generator.generate") as icmp_error:
-                self.app.packet_in_handler(event)
-                self.app.packet_in_handler(event)
-                self.app.packet_in_handler(event)
-                self.app.packet_in_handler(event)
-
-                self.assertEqual(self.app.conf.router_port_unreach_max_rate,
-                                 icmp_error.call_count)
-                icmp_error.assert_called_with(icmp.ICMP_DEST_UNREACH,
-                                              icmp.ICMP_PORT_UNREACH_CODE,
-                                              mock.ANY, pkt=fake_pkt)
