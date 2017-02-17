@@ -19,15 +19,17 @@ from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
 from dragonflow.controller.common import cookies
-from dragonflow.controller import df_db_notifier
 
 
-class DFlowApp(df_db_notifier.DBNotifyInterface):
+class DFlowApp(object):
     def __init__(self, api, db_store=None, vswitch_api=None, nb_api=None):
         self.api = api
         self.db_store = db_store
         self.vswitch_api = vswitch_api
         self.nb_api = nb_api
+        # Though there is nothing to initialize in super class, call it
+        # will make the multi-inheritence work.
+        super(DFlowApp, self).__init__()
 
     def update_local_port(self, lport, original_lport):
         """override update_local_port method to default call add_local_port
