@@ -39,31 +39,6 @@ DEST_FIELD_NAME_BY_PROTOCOL_NUMBER = {
     n_const.PROTO_NUM_UDP: 'udp_dst',
 }
 
-PROTOCOL_NUMBER_BY_NAME = {
-    n_const.PROTO_NAME_AH: n_const.PROTO_NUM_AH,
-    n_const.PROTO_NAME_DCCP: n_const.PROTO_NUM_DCCP,
-    n_const.PROTO_NAME_EGP: n_const.PROTO_NUM_EGP,
-    n_const.PROTO_NAME_ESP: n_const.PROTO_NUM_ESP,
-    n_const.PROTO_NAME_GRE: n_const.PROTO_NUM_GRE,
-    n_const.PROTO_NAME_ICMP: n_const.PROTO_NUM_ICMP,
-    n_const.PROTO_NAME_IGMP: n_const.PROTO_NUM_IGMP,
-    n_const.PROTO_NAME_IPV6_ENCAP: n_const.PROTO_NUM_IPV6_ENCAP,
-    n_const.PROTO_NAME_IPV6_FRAG: n_const.PROTO_NUM_IPV6_FRAG,
-    n_const.PROTO_NAME_IPV6_ICMP: n_const.PROTO_NUM_IPV6_ICMP,
-    n_const.PROTO_NAME_IPV6_ICMP_LEGACY: n_const.PROTO_NUM_IPV6_ICMP,
-    n_const.PROTO_NAME_IPV6_NONXT: n_const.PROTO_NUM_IPV6_NONXT,
-    n_const.PROTO_NAME_IPV6_OPTS: n_const.PROTO_NUM_IPV6_OPTS,
-    n_const.PROTO_NAME_IPV6_ROUTE: n_const.PROTO_NUM_IPV6_ROUTE,
-    n_const.PROTO_NAME_OSPF: n_const.PROTO_NUM_OSPF,
-    n_const.PROTO_NAME_PGM: n_const.PROTO_NUM_PGM,
-    n_const.PROTO_NAME_RSVP: n_const.PROTO_NUM_RSVP,
-    n_const.PROTO_NAME_SCTP: n_const.PROTO_NUM_SCTP,
-    n_const.PROTO_NAME_TCP: n_const.PROTO_NUM_TCP,
-    n_const.PROTO_NAME_UDP: n_const.PROTO_NUM_UDP,
-    n_const.PROTO_NAME_UDPLITE: n_const.PROTO_NUM_UDPLITE,
-    n_const.PROTO_NAME_VRRP: n_const.PROTO_NUM_VRRP,
-}
-
 
 class SGApp(df_base_app.DFlowApp):
 
@@ -137,7 +112,7 @@ class SGApp(df_base_app.DFlowApp):
         return (int(result.network), int(result.netmask))
 
     def _protocol_number_by_name(self, name):
-        return PROTOCOL_NUMBER_BY_NAME.get(name) or int(name)
+        return n_const.IP_PROTOCOL_MAP.get(name) or int(name)
 
     def _get_rule_flows_match_except_net_addresses(self, secgroup_rule):
         """
