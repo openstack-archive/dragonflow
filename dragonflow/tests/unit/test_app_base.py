@@ -52,8 +52,6 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.controller.db_store.update_chassis('fake_host', fake_chassis1)
         self.controller.db_store.update_chassis('fake_host2', fake_chassis2)
 
-        self.arp_responder = mock.patch(
-            'dragonflow.controller.common.arp_responder.ArpResponder').start()
         mock.patch(
             'dragonflow.controller.df_base_app.DFlowApp.mod_flow').start()
         mock.patch('dragonflow.controller.df_base_app.DFlowApp.'

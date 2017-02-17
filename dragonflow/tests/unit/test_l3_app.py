@@ -31,7 +31,7 @@ class TestL3App(test_app_base.DFAppTestBase):
         self.app.mod_flow = self.mock_mod_flow
         self.router = copy.deepcopy(test_app_base.fake_logic_router1)
 
-    def test_n_icmp_responder_for_n_router_interface(self):
+    def _add_another_router_interface(self):
         router_port1 = {"network": "20.0.0.1/24",
                         "lswitch": "fake_switch2",
                         "topic": "fake_tenant1",
@@ -40,22 +40,32 @@ class TestL3App(test_app_base.DFAppTestBase):
                         "lrouter": "fake_router_id",
                         "id": "fake_router_port2"}
         self.router.inner_obj['ports'].append(router_port1)
+
+    def test_n_icmp_responder_for_n_router_interface(self):
+        self._add_another_router_interface()
         dst_router_port = self.router.get_ports()[0]
         with mock.patch("dragonflow.controller.common"
                         ".icmp_responder.ICMPResponder") as icmp:
             self.app._add_new_router_port(self.router, dst_router_port)
             self.assertEqual(1, icmp.call_count)
 
+    def test_n_route_for_n_router_interface(self):
+        self._add_another_router_interface()
+        dst_router_port = self.router.get_ports()[0]
+        with mock.patch.object(self.app,
+                               "_add_subnet_send_to_controller") as method:
+            self.app._add_new_router_port(self.router, dst_router_port)
+            self.assertEqual(1, method.call_count)
+
     def test_add_del_router(self):
         self.controller.delete_lrouter(self.router.get_id())
-        self.assertEqual(5, self.mock_mod_flow.call_count)
-        self.mock_mod_flow.reset_mock()
+        # 5 mod flows, l2 -> l3, arp, icmp, router interface and route.
+        self.assertEqual(5, self.app.mod_flow.call_count)
+        self.app.mod_flow.reset_mock()
         self.controller.update_lrouter(self.router)
-        # Since there is only one router interface in the fake router.
-        # Adding router will call mod_flow 2 times less than deleting router.
-        self.assertEqual(3, self.mock_mod_flow.call_count)
-        args, kwargs = self.mock_mod_flow.call_args
-        self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])
+        self.assertEqual(5, self.app.mod_flow.call_count)
+        args, kwargs = self.app.mod_flow.call_args
+        self.assertEqual(const.L3_LOOKUP_TABLE, kwargs['table_id'])
 
     def test_install_l3_flow_set_metadata(self):
         dst_router_port = self.router.get_ports()[0]

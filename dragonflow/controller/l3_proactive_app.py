@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 import netaddr
 from neutron_lib import constants as common_const
 from oslo_log import log
@@ -148,6 +150,21 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         for route in lrouter.get_routes():
             self._add_router_route(lrouter, route)
 
+    def _get_router_route_match(self, router_unique_key,
+                                dst_network, dst_netmask):
+        parser = self.parser
+
+        if netaddr.IPAddress(dst_network).version == 4:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                    reg5=router_unique_key,
+                                    ipv4_dst=(dst_network, dst_netmask))
+        else:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                    reg5=router_unique_key,
+                                    ipv6_dst=(dst_network, dst_netmask))
+
+        return match
+
     def _get_router_interface_match(self, router_unique_key, rif_ip):
         if netaddr.IPAddress(rif_ip).version == 4:
             return self.parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -172,11 +189,25 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         dst_ip = router_port.get_ip()
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
 
-        if is_ipv4:
-            self.router_port_rarp_cache[mac] = dst_ip
+        # Add rule for making packets go from L2_LOOKUP_TABLE
+        # to L3_LOOKUP_TABLE
+        match = parser.OFPMatch()
+        match.set_metadata(local_network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        actions = [parser.OFPActionSetField(reg5=router_unique_key)]
+        action_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        goto_inst = parser.OFPInstructionGotoTable(const.L3_LOOKUP_TABLE)
+        inst = [action_inst, goto_inst]
+        self.mod_flow(
+            inst=inst,
+            table_id=const.L2_LOOKUP_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=match)
 
         # Add router ARP & ICMP responder for IPv4 Addresses
         if is_ipv4:
+            self.router_port_rarp_cache[mac] = dst_ip
             arp_responder.ArpResponder(self,
                                        local_network_id,
                                        dst_ip, mac).add()
@@ -203,45 +234,13 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         else:
             self._add_concrete_router_interface(router, lport)
 
-        # add dst_mac=gw_mac l2 goto l3 flow
-        match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        actions = [parser.OFPActionSetField(reg5=router_unique_key)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(const.L3_LOOKUP_TABLE)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
-            priority=const.PRIORITY_HIGH,
-            match=match)
-
-        # Match all possible routeable traffic and send to proactive routing
-        for port in router.get_ports():
-            if port.get_id() != router_port.get_id():
-
-                port_net_id = self.db_store.get_unique_key_by_id(
-                    models.LogicalSwitch.table_name, port.get_lswitch_id())
-
-                # From this router interface to all other interfaces
-                self._add_subnet_send_to_proactive_routing(
-                    local_network_id,
-                    port.get_cidr_network(),
-                    port.get_cidr_netmask(),
-                    port.get_unique_key(),
-                    port_net_id,
-                    port.get_mac())
-
-                # From all the other interfaces to this new interface
-                self._add_subnet_send_to_proactive_routing(
-                    port_net_id,
-                    router_port.get_cidr_network(),
-                    router_port.get_cidr_netmask(),
-                    tunnel_key,
-                    local_network_id,
-                    mac)
+        # Add rule for routing packets to subnet of this router port
+        self._add_subnet_send_to_proactive_routing(
+            router_unique_key,
+            router_port.get_cidr_network(),
+            router_port.get_cidr_netmask(),
+            local_network_id,
+            mac)
 
         # Fall through to sNAT
         self._add_subnet_send_to_snat(local_network_id, mac, tunnel_key)
@@ -306,7 +305,9 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             cached_routes = self.route_cache.get(router_id)
             if cached_routes is None:
                 continue
-            routes_added = cached_routes.get(ROUTE_ADDED)
+            # Make a copy here, or else _del_from_route_cache will delete
+            # elements in routes_added inside the iteration.
+            routes_added = copy.deepcopy(cached_routes.get(ROUTE_ADDED))
             for route in routes_added:
                 if port_ip != route[1]:
                     continue
@@ -434,23 +435,15 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         self._del_from_route_cache(ROUTE_ADDED, router.get_id(), route)
         self._del_from_route_cache(ROUTE_TO_ADD, router.get_id(), route)
 
-    def _add_subnet_send_to_proactive_routing(self, network_id, dst_network,
-                                              dst_netmask,
-                                              dst_router_tunnel_key,
+    def _add_subnet_send_to_proactive_routing(self, router_unique_key,
+                                              dst_network, dst_netmask,
                                               dst_network_id,
                                               dst_router_port_mac):
         parser = self.parser
         ofproto = self.ofproto
 
-        if netaddr.IPAddress(dst_network).version == 4:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    metadata=network_id,
-                                    ipv4_dst=(dst_network, dst_netmask))
-        else:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
-                                    metadata=network_id,
-                                    ipv6_dst=(dst_network, dst_netmask))
-
+        match = self._get_router_route_match(router_unique_key,
+                                             dst_network, dst_netmask)
         actions = []
         actions.append(parser.OFPActionDecNwTtl())
         actions.append(parser.OFPActionSetField(metadata=dst_network_id))
@@ -462,11 +455,7 @@ class L3ProactiveApp(df_base_app.DFlowApp):
 
         inst = [action_inst, goto_inst]
 
-        cookie, cookie_mask = self.get_local_cookie(COOKIE_NAME,
-                                                    dst_router_tunnel_key)
         self.mod_flow(
-            cookie=cookie,
-            cookie_mask=cookie_mask,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -506,27 +495,11 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         parser = self.parser
         ofproto = self.ofproto
         router_unique_key = router.get_unique_key()
-        tunnel_key = router_port.get_unique_key()
         ip = router_port.get_ip()
         mac = router_port.get_mac()
 
-        self._delete_subnet_send_to_snat(local_network_id, mac)
-
-        if netaddr.IPAddress(ip).version == 4:
-            self.router_port_rarp_cache.pop(mac, None)
-
-            arp_responder.ArpResponder(self, local_network_id, ip).remove()
-            icmp_responder.ICMPResponder(self, ip,
-                                         router_key=router_unique_key).remove()
-
-        # Delete router interface IP rules
-        match = self._get_router_interface_match(router_unique_key, ip)
-        self.mod_flow(
-            table_id=const.L3_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_HIGH,
-            match=match)
-
+        # Delete rule for making packets go from L2_LOOKUP_TABLE
+        # to L3_LOOKUP_TABLE
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
         match.set_dl_dst(haddr_to_bin(mac))
@@ -536,15 +509,34 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
-        match = parser.OFPMatch()
-        cookie, cookie_mask = self.get_local_cookie(COOKIE_NAME, tunnel_key)
+        # Delete ARP & ICMP responder for router interface
+        if netaddr.IPAddress(ip).version == 4:
+            self.router_port_rarp_cache.pop(mac, None)
+
+            arp_responder.ArpResponder(self, local_network_id, ip).remove()
+            icmp_responder.ICMPResponder(self, ip,
+                                         router_key=router_unique_key).remove()
+
+        # Delete rule for packets whose destination is router interface.
+        match = self._get_router_interface_match(router_unique_key, ip)
         self.mod_flow(
-            cookie=cookie,
-            cookie_mask=cookie_mask,
+            table_id=const.L3_LOOKUP_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_HIGH,
+            match=match)
+
+        # Delete rule for routing packets to subnet of this router port
+        match = self._get_router_route_match(router_unique_key,
+                                             router_port.get_cidr_network(),
+                                             router_port.get_cidr_netmask())
+        self.mod_flow(
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
+
+        # Delete rule for SNAT
+        self._delete_subnet_send_to_snat(local_network_id, mac)
 
     def add_local_port(self, lport):
         LOG.debug('add local port: %s', lport)
