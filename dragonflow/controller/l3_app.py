@@ -232,6 +232,22 @@ class L3App(df_base_app.DFlowApp):
         tunnel_key = router_port.get_unique_key()
         dst_ip = router_port.get_ip()
 
+        # Add rule for making packets go from L2_LOOKUP_TABLE
+        # to L3_LOOKUP_TABLE
+        match = parser.OFPMatch()
+        match.set_metadata(local_network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        actions = [parser.OFPActionSetField(reg5=router_unique_key)]
+        action_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        goto_inst = parser.OFPInstructionGotoTable(const.L3_LOOKUP_TABLE)
+        inst = [action_inst, goto_inst]
+        self.mod_flow(
+            inst=inst,
+            table_id=const.L2_LOOKUP_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=match)
+
         # Add router ARP & ICMP responder for IPv4 Addresses
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
         if is_ipv4:
@@ -242,6 +258,7 @@ class L3App(df_base_app.DFlowApp):
                                          dst_ip,
                                          router_key=router_unique_key).add()
 
+        # Add rule for packets whose destination is router interface.
         # If router interface is concrete, it will be in local cache.
         lport = self.db_store.get_port(router_port.get_id())
         if lport:
@@ -259,60 +276,25 @@ class L3App(df_base_app.DFlowApp):
                 priority=const.PRIORITY_HIGH,
                 match=match)
 
-        # add dst_mac=gw_mac l2 goto l3 flow
-        match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        actions = [parser.OFPActionSetField(reg5=router_unique_key)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(const.L3_LOOKUP_TABLE)
-        inst = [action_inst, goto_inst]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
-            priority=const.PRIORITY_HIGH,
-            match=match)
+        # Add rule for routing packets to subnet of this router port
+        self._add_subnet_send_to_controller(
+            router_unique_key,
+            router_port.get_cidr_network(),
+            router_port.get_cidr_netmask())
 
-        # Match all possible routeable traffic and send to controller
-        for port in router.get_ports():
-            if port.get_id() != router_port.get_id():
-                # From this router interface to all other interfaces
-                self._add_subnet_send_to_controller(local_network_id,
-                                                    port.get_cidr_network(),
-                                                    port.get_cidr_netmask(),
-                                                    port.get_unique_key())
-
-                # From all the other interfaces to this new interface
-                router_port_net_id = self.db_store.get_unique_key_by_id(
-                    models.LogicalSwitch.table_name, port.get_lswitch_id())
-                self._add_subnet_send_to_controller(
-                    router_port_net_id,
-                    router_port.get_cidr_network(),
-                    router_port.get_cidr_netmask(),
-                    tunnel_key)
-
-    def _add_subnet_send_to_controller(self, network_id, dst_network,
-                                       dst_netmask, dst_router_tunnel_key):
+    def _add_subnet_send_to_controller(self, router_unique_key,
+                                       dst_network, dst_netmask):
         parser = self.parser
         ofproto = self.ofproto
 
-        if netaddr.IPAddress(dst_network).version == 4:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    metadata=network_id,
-                                    ipv4_dst=(dst_network, dst_netmask))
-        else:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
-                                    metadata=network_id,
-                                    ipv6_dst=(dst_network, dst_netmask))
-
+        match = self._get_router_route_match(router_unique_key,
+                                             dst_network, dst_netmask)
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ROUTER_PORT_BUFFER_ID)]
         inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
         self.mod_flow(
-            cookie=dst_router_tunnel_key,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_MEDIUM,
@@ -326,10 +308,21 @@ class L3App(df_base_app.DFlowApp):
         parser = self.parser
         ofproto = self.ofproto
         router_unique_key = router.get_unique_key()
-        tunnel_key = router_port.get_unique_key()
         ip = router_port.get_ip()
         mac = router_port.get_mac()
 
+        # Delete rule for making packets go from L2_LOOKUP_TABLE
+        # to L3_LOOKUP_TABLE
+        match = parser.OFPMatch()
+        match.set_metadata(local_network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        self.mod_flow(
+            table_id=const.L2_LOOKUP_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_HIGH,
+            match=match)
+
+        # Delete ARP & ICMP responder for router interface
         if netaddr.IPAddress(ip).version == 4:
             self.router_port_rarp_cache.pop(mac, None)
             arp_responder.ArpResponder(
@@ -346,35 +339,30 @@ class L3App(df_base_app.DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
-        match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
-        self.mod_flow(
-            table_id=const.L2_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_HIGH,
-            match=match)
-
-        # Delete the rules for the packets whose source is from
-        # the subnet of the router port.
-        match = parser.OFPMatch(metadata=local_network_id)
+        # Delete rule for routing packets to subnet of this router port
+        match = self._get_router_route_match(router_unique_key,
+                                             router_port.get_cidr_network(),
+                                             router_port.get_cidr_netmask())
         self.mod_flow(
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-        # Delete the rules for the packets whose destination is to
-        # the subnet of the router port.
-        match = parser.OFPMatch()
-        cookie = tunnel_key
-        self.mod_flow(
-            cookie=cookie,
-            cookie_mask=cookie,
-            table_id=const.L3_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
+    def _get_router_route_match(self, router_unique_key,
+                                dst_network, dst_netmask):
+        parser = self.parser
+
+        if netaddr.IPAddress(dst_network).version == 4:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                    reg5=router_unique_key,
+                                    ipv4_dst=(dst_network, dst_netmask))
+        else:
+            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                    reg5=router_unique_key,
+                                    ipv6_dst=(dst_network, dst_netmask))
+
+        return match
 
     def _get_router_interface_match(self, router_unique_key, rif_ip):
         if netaddr.IPAddress(rif_ip).version == 4:
