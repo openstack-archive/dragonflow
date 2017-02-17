@@ -17,11 +17,12 @@ import copy
 
 import mock
 
-from dragonflow.controller.common import constants as const
+from dragonflow.tests.unit import _test_l3
 from dragonflow.tests.unit import test_app_base
 
 
-class TestL3ProactiveApp(test_app_base.DFAppTestBase):
+class TestL3ProactiveApp(test_app_base.DFAppTestBase,
+                         _test_l3.L3AppTestCaseMixin):
     apps_list = "l3_proactive_app.L3ProactiveApp"
 
     def setUp(self):
@@ -32,41 +33,6 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         self.router = copy.deepcopy(test_app_base.fake_logic_router1)
 
     def test_add_del_route(self):
-        _add_subnet_send_to_snat = mock.patch.object(
-            self.app,
-            '_add_subnet_send_to_snat'
-        )
-        self.addCleanup(_add_subnet_send_to_snat.stop)
-        _add_subnet_send_to_snat.start()
-        _del_subnet_send_to_snat = mock.patch.object(
-            self.app,
-            '_delete_subnet_send_to_snat'
-        )
-        self.addCleanup(_del_subnet_send_to_snat.stop)
-        _del_subnet_send_to_snat.start()
-
-        # delete router
-        self.controller.delete_lrouter(self.router.get_id())
-        # 5 mod flows, l2 -> l3, arp, icmp, router interface and route.
-        self.assertEqual(5, self.app.mod_flow.call_count)
-        self.app._delete_subnet_send_to_snat.assert_called_once_with(
-            test_app_base.fake_logic_switch1.get_unique_key(),
-            self.router.get_ports()[0].get_mac(),
-        )
-
-        # add router
-        self.app.mod_flow.reset_mock()
-        self.controller.update_lrouter(self.router)
-        self.assertEqual(5, self.app.mod_flow.call_count)
-        args, kwargs = self.app.mod_flow.call_args
-        self.assertEqual(const.L3_LOOKUP_TABLE, kwargs['table_id'])
-        self.app._add_subnet_send_to_snat.assert_called_once_with(
-            test_app_base.fake_logic_switch1.get_unique_key(),
-            self.router.get_ports()[0].get_mac(),
-            self.router.get_ports()[0].get_unique_key()
-        )
-        self.app.mod_flow.reset_mock()
-
         # add route
         route = {"destination": "10.100.0.0/16",
                  "nexthop": "10.0.0.6"}
@@ -83,30 +49,3 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         self.router.inner_obj['version'] += 2
         self.controller.update_lrouter(self.router)
         self.assertEqual(1, self.app.mod_flow.call_count)
-
-    def _add_another_router_interface(self):
-        router_port1 = {"network": "20.0.0.1/24",
-                        "lswitch": "fake_switch2",
-                        "topic": "fake_tenant1",
-                        "mac": "fa:16:3e:50:96:fe",
-                        "unique_key": 15,
-                        "lrouter": "fake_router_id",
-                        "id": "fake_router_port2"}
-        self.router.inner_obj['ports'].append(router_port1)
-
-    def test_n_icmp_responder_for_n_router_interface(self):
-        self._add_another_router_interface()
-        dst_router_port = self.router.get_ports()[0]
-        with mock.patch("dragonflow.controller.common"
-                        ".icmp_responder.ICMPResponder") as icmp:
-            self.app._add_new_router_port(self.router, dst_router_port)
-            self.assertEqual(1, icmp.call_count)
-
-    def test_n_route_for_n_router_interface(self):
-        self._add_another_router_interface()
-        dst_router_port = self.router.get_ports()[0]
-        with mock.patch.object(
-                self.app,
-                "_add_subnet_send_to_proactive_routing") as method:
-            self.app._add_new_router_port(self.router, dst_router_port)
-            self.assertEqual(1, method.call_count)
