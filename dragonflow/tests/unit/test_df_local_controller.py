@@ -93,41 +93,37 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         floatingip.get_id.return_value = fip_id
         return floatingip
 
-    @mock.patch.object(df_local_controller.DfLocalController,
-                       '_update_floatingip')
     @mock.patch.object(utils, 'is_valid_version')
+    @mock.patch.object(ryu_base_app.RyuDFAdapter,
+                       'notify_disassociate_floatingip')
     @mock.patch.object(df_local_controller.DfLocalController,
-                       '_associate_floatingip')
+                       '_update_and_notify_fip')
+    @mock.patch.object(df_local_controller.DfLocalController,
+                       '_is_fip_ready')
     @mock.patch.object(db_store.DbStore, 'get_floatingip')
-    @mock.patch.object(db_store.DbStore, 'get_local_port')
-    def test_floatingip_updated(self, mock_get_lport, mock_get_fip,
-                                mock_assoc, mock_is_valid, mock_update):
+    def test_floatingip_updated(self, mock_get_fip, mock_ready,
+                                mock_notify, mock_diso, mock_is_valid):
         lport_id = 'fake_lport_id'
         fip_id = 'fake_fip_id'
         fip = self._get_mock_floatingip(lport_id, fip_id)
-        mock_get_lport.return_value = None
-        self.assertIsNone(self.controller.update_floatingip(fip))
-        mock_get_lport.assert_called_once_with(lport_id)
-
         mock_get_fip.return_value = None
-        fip.get_lport_id.return_value = None
-        self.assertIsNone(self.controller.update_floatingip(fip))
-        mock_get_fip.assert_called_once_with(fip_id)
-
-        mock_get_lport.return_value = mock.Mock()
-        fip.get_lport_id.return_value = lport_id
-        self.assertIsNone(self.controller.update_floatingip(fip))
-        mock_assoc.assert_called_once_with(fip)
-
-        old_fip = mock.Mock()
-        mock_get_fip.return_value = old_fip
         mock_is_valid.return_value = False
         self.assertIsNone(self.controller.update_floatingip(fip))
-        mock_is_valid.assert_called_once()
+        mock_notify.assert_not_called()
 
         mock_is_valid.return_value = True
-        self.controller.update_floatingip(fip)
-        mock_update.assert_called_once_with(old_fip, fip)
+        mock_ready.return_value = True
+        mock_get_fip.return_value = None
+        self.assertIsNone(self.controller.update_floatingip(fip))
+        mock_notify.assert_called_once_with(fip)
+
+        old_fip = mock.Mock()
+        old_fip.get_lport_id.return_value = 'fake_lport_id1'
+        mock_get_fip.return_value = old_fip
+        mock_notify.reset_mock()
+        self.assertIsNone(self.controller.update_floatingip(fip))
+        mock_diso.assert_called_once_with(old_fip)
+        mock_notify.assert_called_once_with(fip)
 
     @mock.patch.object(ryu_base_app.RyuDFAdapter,
                        'notify_delete_floatingip')
@@ -147,43 +143,6 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         publisher.get_uri.return_value = uri
         publisher.get_id.return_value = publisher_id
         return publisher
-
-    @mock.patch.object(ryu_base_app.RyuDFAdapter,
-                       'notify_associate_floatingip')
-    @mock.patch.object(db_store.DbStore, 'update_floatingip')
-    def test__associate_floatingip(self, mock_update, mock_notify):
-        lport_id = 'fake_lport_id'
-        fip_id = 'fake_fip_id'
-        fip = self._get_mock_floatingip(lport_id, fip_id)
-        self.controller._associate_floatingip(fip)
-        mock_update.assert_called_once_with(fip_id, fip)
-        mock_notify.assert_called_once_with(fip)
-
-    @mock.patch.object(ryu_base_app.RyuDFAdapter,
-                       'notify_disassociate_floatingip')
-    @mock.patch.object(db_store.DbStore, 'delete_floatingip')
-    def test__disassociate_floatingip(self, mock_delete, mock_notify):
-        lport_id = 'fake_lport_id'
-        fip_id = 'fake_fip_id'
-        fip = self._get_mock_floatingip(lport_id, fip_id)
-        self.controller._disassociate_floatingip(fip)
-        mock_delete.assert_called_once_with(fip_id)
-        mock_notify.assert_called_once_with(fip)
-
-    @mock.patch.object(df_local_controller.DfLocalController,
-                       '_associate_floatingip')
-    @mock.patch.object(df_local_controller.DfLocalController,
-                       '_disassociate_floatingip')
-    def test__update_floatingip(self, mock_disassoc, mock_assoc):
-        old_lport_id = 'fake_old_lport_id'
-        old_fip_id = 'fake_old_fip_id'
-        old_fip = self._get_mock_floatingip(old_lport_id, old_fip_id)
-        new_lport_id = 'fake_new_lport_id'
-        new_fip_id = 'fake_new_fip_id'
-        new_fip = self._get_mock_floatingip(new_lport_id, new_fip_id)
-        self.controller._update_floatingip(old_fip, new_fip)
-        mock_disassoc.called_once_with(old_fip)
-        mock_assoc.called_once_with(new_fip)
 
     @mock.patch.object(ryu_base_app.RyuDFAdapter, 'notify_ovs_sync_finished')
     def test_ovs_sync_finished(self, mock_notify):
