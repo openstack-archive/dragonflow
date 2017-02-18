@@ -239,3 +239,48 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.controller.delete_chassis(chassis_id)
         mock_delete_lport.assert_called_once_with(lport_id)
         mock_delete_chassis.assert_called_once_with(chassis_id)
+
+    @mock.patch.object(ryu_base_app.RyuDFAdapter,
+                       'notify_update_active_port')
+    @mock.patch.object(db_store.DbStore, 'update_active_port')
+    @mock.patch.object(db_store.DbStore, 'get_local_port')
+    @mock.patch.object(db_store.DbStore, 'get_active_port')
+    def test_update_activeport(self, mock_get_active, mock_get_local,
+                            mock_update, mock_notify):
+        active_port = mock.Mock()
+        active_port.get_id.return_value = 'fake_id'
+        active_port.get_topic.return_value = 'fake_topic'
+        active_port.get_detected_lport_id.return_value = 'fake_lport_id'
+        mock_get_active.return_value = None
+        mock_update.return_value = None
+
+        mock_get_local.return_value = None
+        self.assertIsNone(self.controller.update_activeport(active_port))
+        mock_notify.assert_not_called()
+
+        lport = mock.Mock()
+        mock_get_local.return_value = lport
+        self.assertIsNone(self.controller.update_activeport(active_port))
+        mock_notify.assert_called_once_with(active_port, None)
+
+    @mock.patch.object(ryu_base_app.RyuDFAdapter,
+                       'notify_remove_active_port')
+    @mock.patch.object(db_store.DbStore, 'delete_active_port')
+    @mock.patch.object(db_store.DbStore, 'get_local_port')
+    @mock.patch.object(db_store.DbStore, 'get_active_port')
+    def test_delete_activeport(self, mock_get_active, mock_get_local,
+                               mock_delete, mock_notify):
+        active_port = mock.Mock()
+        active_port.get_topic.return_value = 'fake_topic'
+        active_port.get_detected_lport_id.return_value = 'fake_lport_id'
+        mock_get_active.return_value = None
+
+        self.assertIsNone(self.controller.delete_activeport('fake_id'))
+        mock_notify.assert_not_called()
+
+        mock_get_active.return_value = active_port
+        mock_delete.return_value = None
+        lport = mock.Mock()
+        mock_get_local.return_value = lport
+        self.assertIsNone(self.controller.delete_activeport('fake_id'))
+        mock_notify.assert_called_once_with(active_port)
