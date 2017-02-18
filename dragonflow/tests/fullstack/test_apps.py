@@ -1659,11 +1659,11 @@ class TestPortSecApp(test_base.DFTestBase):
             raise self.policy.exceptions[0]
 
 
-class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
+class TestActivePortDetectionApp(test_base.DFTestBase):
 
     def _create_policy_to_reply_arp_request(self):
         ignore_action = app_testing_objects.IgnoreAction()
-        key1 = (self.subnet.subnet_id, self.port.port_id)
+        key1 = (self.subnet.subnet_id, self.port1.port_id)
         port_policies = {
             key1: app_testing_objects.PortPolicy(
                 rules=[
@@ -1675,7 +1675,7 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
                         actions=[
                             app_testing_objects.SendAction(
                                 self.subnet.subnet_id,
-                                self.port.port_id,
+                                self.port1.port_id,
                                 self._create_arp_response
                             ),
                             app_testing_objects.WaitAction(5),
@@ -1690,10 +1690,54 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
 
         return port_policies
 
+    def _create_policy_to_test_ping(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        key1 = (self.subnet.subnet_id, self.port1.port_id)
+        port_policies = {
+            key1: app_testing_objects.PortPolicy(
+                rules=[
+                    app_testing_objects.PortPolicyRule(
+                        # Detect arp requests
+                        app_testing_objects.RyuICMPPingFilter(self._get_ping),
+                        actions=[
+                            app_testing_objects.DisableRuleAction(),
+                            app_testing_objects.StopSimulationAction()
+                        ]
+                    )
+                ],
+                default_action=ignore_action
+            ),
+        }
+
+        return port_policies
+
+    def _create_policy_to_test_arp(self):
+        ignore_action = app_testing_objects.IgnoreAction()
+        key1 = (self.subnet.subnet_id, self.port2.port_id)
+        port_policies = {
+            key1: app_testing_objects.PortPolicy(
+                rules=[
+                    app_testing_objects.PortPolicyRule(
+                        # Detect arp requests
+                        app_testing_objects.RyuARPReplyFilter(
+                            self.allowed_address_pair_ip_address
+                        ),
+                        actions=[
+                            app_testing_objects.DisableRuleAction(),
+                            app_testing_objects.StopSimulationAction()
+                        ]
+                    )
+                ],
+                default_action=ignore_action
+            ),
+        }
+
+        return port_policies
+
     def setUp(self):
-        super(TestAllowedAddressPairsDetectActive, self).setUp()
+        super(TestActivePortDetectionApp, self).setUp()
         self.topology = None
-        self.policy = None
+        self.policy1 = None
         self.allowed_address_pair_ip_address = None
         self.allowed_address_pair_mac_address = None
         try:
@@ -1702,17 +1746,19 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
                 self.nb_api))
             subnet = self.topology.create_subnet(cidr='192.168.98.0/24')
             self.subnet = subnet
-            port = subnet.create_port()
-            self.port = port
+            port1 = subnet.create_port()
+            self.port1 = port1
+            port2 = subnet.create_port()
+            self.port2 = port2
 
             time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
-            port.update({'allowed_address_pairs': [{
+            port1.update({'allowed_address_pairs': [{
                 'ip_address': '192.168.98.100'}]})
 
             time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
-            port_lport = port.port.get_logical_port()
+            port_lport = port1.port.get_logical_port()
             self.assertIsNotNone(port_lport)
 
             allowed_address_pairs = port_lport.get_allowed_address_pairs()
@@ -1724,10 +1770,40 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
                 allowed_address_pairs[0]['mac_address']
 
             # Create policy to reply arp request sent from controller
-            self.policy = self.store(
+            self.policy1 = self.store(
                 app_testing_objects.Policy(
                     initial_actions=[],
                     port_policies=self._create_policy_to_reply_arp_request(),
+                    unknown_port_action=app_testing_objects.IgnoreAction()
+                )
+            )
+
+            # Create policy for test ping
+            self.policy2 = self.store(
+                app_testing_objects.Policy(
+                    initial_actions=[
+                        app_testing_objects.SendAction(
+                            self.subnet.subnet_id,
+                            self.port2.port_id,
+                            self._create_ping_request
+                        )
+                    ],
+                    port_policies=self._create_policy_to_test_ping(),
+                    unknown_port_action=app_testing_objects.IgnoreAction()
+                )
+            )
+
+            # Create policy for test arp request
+            self.policy3 = self.store(
+                app_testing_objects.Policy(
+                    initial_actions=[
+                        app_testing_objects.SendAction(
+                            self.subnet.subnet_id,
+                            self.port2.port_id,
+                            self._create_arp_request
+                        )
+                    ],
+                    port_policies=self._create_policy_to_test_arp(),
                     unknown_port_action=app_testing_objects.IgnoreAction()
                 )
             )
@@ -1767,7 +1843,7 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
         return result.data
 
     def _is_expected_active_port(self, active_port):
-        lport = self.port.port.get_logical_port()
+        lport = self.port1.port.get_logical_port()
         expected_id = (lport.get_lswitch_id() +
                        self.allowed_address_pair_ip_address)
         if expected_id != expected_id:
@@ -1792,17 +1868,77 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
                 return True
         return False
 
+    def _create_arp_request(self, buf):
+        lport = self.port2.port.get_logical_port()
+        ethernet = ryu.lib.packet.ethernet.ethernet(
+            src=lport.get_mac(),
+            dst="ff:ff:ff:ff:ff:ff",
+            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_ARP,
+        )
+        arp = ryu.lib.packet.arp.arp_ip(
+            opcode=ryu.lib.packet.arp.ARP_REQUEST,
+            src_mac=lport.get_mac(), src_ip=lport.get_ip(),
+            dst_mac='00:00:00:00:00:00',
+            dst_ip=self.allowed_address_pair_ip_address,
+        )
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ethernet)
+        result.add_protocol(arp)
+        result.serialize()
+        return result.data
+
+    def _create_ping_request(self, buf):
+        lport = self.port2.port.get_logical_port()
+        ethernet = ryu.lib.packet.ethernet.ethernet(
+            src=lport.get_mac(),
+            dst=self.allowed_address_pair_mac_address,
+            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+        )
+        ip = ryu.lib.packet.ipv4.ipv4(
+            src=lport.get_ip(),
+            dst=self.allowed_address_pair_ip_address,
+            proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+        )
+        icmp_id = 0x1234
+        icmp_seq = 0
+        icmp = ryu.lib.packet.icmp.icmp(
+            type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
+            data=ryu.lib.packet.icmp.echo(id_=icmp_id,
+                                          seq=icmp_seq,
+                                          data=self._create_random_string())
+        )
+        self.icmp = icmp
+        result = ryu.lib.packet.packet.Packet()
+        result.add_protocol(ethernet)
+        result.add_protocol(ip)
+        result.add_protocol(icmp)
+        result.serialize()
+        return result.data
+
+    def _get_ping(self):
+        return self.icmp
+
     def test_detected_active_port(self):
-        self.policy.start(self.topology)
-        self.policy.wait(30)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        self.policy1.start(self.topology)
+        self.policy1.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(self.policy1.exceptions) > 0:
+            raise self.policy1.exceptions[0]
 
         # check if the active port exists in DF DB
         self.assertTrue(self._if_the_expected_active_port_exists())
 
+        self.policy2.start(self.topology)
+        self.policy2.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(self.policy2.exceptions) > 0:
+            raise self.policy2.exceptions[0]
+
+        self.policy3.start(self.topology)
+        self.policy3.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(self.policy3.exceptions) > 0:
+            raise self.policy3.exceptions[0]
+
         # clear allowed address pairs configuration from the lport
-        self.port.update({'allowed_address_pairs': []})
+        self.port1.update({'allowed_address_pairs': []})
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         # check if the active port was removed from DF DB

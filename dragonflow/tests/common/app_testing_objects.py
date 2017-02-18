@@ -682,12 +682,20 @@ class RyuARPRequestFilter(object):
 
 class RyuARPReplyFilter(object):
     """Use ryu to parse the packet and test if it's an ARP reply."""
+    def __init__(self, arp_spa=None):
+        self.arp_spa = arp_spa
+
     def __call__(self, buf):
         pkt = packet.Packet(buf)
         pkt_arp_protocol = pkt.get_protocol(arp.arp)
         if not pkt_arp_protocol:
             return False
-        return pkt_arp_protocol.opcode == 2
+        if (not pkt_arp_protocol) or (
+                    pkt_arp_protocol.opcode != arp.ARP_REPLY):
+            return False
+        if self.arp_spa is not None:
+            return arp.src_ip == self.arp_spa
+        return True
 
 
 class RyuARPGratuitousFilter(object):
