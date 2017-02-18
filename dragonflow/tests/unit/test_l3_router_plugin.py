@@ -15,8 +15,8 @@
 #    under the License.
 
 import mock
-from neutron import context as nctx
 from neutron_lib.plugins import directory
+from neutron_lib import context as nctx
 import testtools
 
 from dragonflow.tests.unit import test_mech_driver
