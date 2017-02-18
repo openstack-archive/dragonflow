@@ -35,7 +35,7 @@ from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
 
-from dragonflow._i18n import _LE
+from dragonflow._i18n import _LE, _LI
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
@@ -302,3 +302,23 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                               "suppressing delete_lrouter_port "
                               "exception"), router_id)
         return router_port_info
+
+    def get_number_of_agents_for_scheduling(self, context):
+        """Return number of agents on which the router will be scheduled.
+        Taken from Neutron's L3_HA_NAT_db_mixin.
+        """
+
+        l3_agents_filters = {'agent_modes': [const.L3_AGENT_MODE_LEGACY,
+                                             const.L3_AGENT_MODE_DVR_SNAT]}
+        num_agents = len(self.get_l3_agents(context, active=True,
+                                            filters=l3_agents_filters))
+        max_agents = cfg.CONF.max_l3_agents_per_router
+        if max_agents:
+            if max_agents > num_agents:
+                LOG.info(_LI("Number of active agents lower than "
+                             "max_l3_agents_per_router. L3 agents "
+                             "available: %s"), num_agents)
+            else:
+                num_agents = max_agents
+
+        return num_agents
