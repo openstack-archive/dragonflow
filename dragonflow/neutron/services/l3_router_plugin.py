@@ -227,20 +227,28 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
     def update_floatingip(self, context, id, floatingip):
+        fip_db = self._get_floatingip(context, id)
+        ori_fip = self._make_floatingip_dict(fip_db)
+        ori_port_id = ori_fip.get('port_id')
         floatingip_dict = super(DFL3RouterPlugin, self).update_floatingip(
             context, id, floatingip)
         fip_version = floatingip_dict['revision_number']
 
-        self.nb_api.update_floatingip(
-            id=floatingip_dict['id'],
-            topic=floatingip_dict['tenant_id'],
-            notify=True,
-            name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
-            router_id=floatingip_dict['router_id'],
-            port_id=floatingip_dict['port_id'],
-            version=fip_version,
-            fixed_ip_address=floatingip_dict['fixed_ip_address'])
-        return floatingip_dict
+        new_port_id = floatingip_dict.get('port_id')
+        if ori_port_id and (ori_port_id != new_port_id or
+                            ori_fip['fixed_ip_address'] !=
+                            floatingip_dict['fixed_ip_address']):
+
+            self.nb_api.update_floatingip(
+                id=floatingip_dict['id'],
+                topic=floatingip_dict['tenant_id'],
+                notify=True,
+                name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
+                router_id=floatingip_dict['router_id'],
+                port_id=floatingip_dict['port_id'],
+                version=fip_version,
+                fixed_ip_address=floatingip_dict['fixed_ip_address'])
+            return floatingip_dict
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
     def delete_floatingip(self, context, id):
