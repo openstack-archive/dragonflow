@@ -1659,7 +1659,7 @@ class TestPortSecApp(test_base.DFTestBase):
             raise self.policy.exceptions[0]
 
 
-class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
+class TestActivePortDetectionApp(test_base.DFTestBase):
 
     def _create_policy_to_reply_arp_request(self):
         ignore_action = app_testing_objects.IgnoreAction()
@@ -1691,7 +1691,7 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
         return port_policies
 
     def setUp(self):
-        super(TestAllowedAddressPairsDetectActive, self).setUp()
+        super(TestActivePortDetectionApp, self).setUp()
         self.topology = None
         self.policy = None
         self.allowed_address_pair_ip_address = None
@@ -1794,7 +1794,7 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
 
     def test_detected_active_port(self):
         self.policy.start(self.topology)
-        self.policy.wait(30)
+        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(self.policy.exceptions) > 0:
             raise self.policy.exceptions[0]
 
