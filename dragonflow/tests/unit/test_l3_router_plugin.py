@@ -100,7 +100,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                     version=floatingip['revision_number'],
                     name=mock.ANY, floating_ip_address=mock.ANY,
                     floating_network_id=mock.ANY, router_id=mock.ANY,
-                    port_id=mock.ANY, fixed_ip_address=mock.ANY,
+                    port_id="port_id", fixed_ip_address=mock.ANY,
                     status=mock.ANY, floating_port_id=mock.ANY,
                     floating_mac_address=mock.ANY,
                     external_gateway_ip=mock.ANY,
@@ -111,6 +111,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
         floatingip = self._test_create_floatingip_revision()
         old_version = floatingip['revision_number']
         floatingip['tenant_id'] = 'another_tenant'
+        floatingip['port_id'] = "new_port_id"
         new_fip = self.l3p.update_floatingip(
             self.context, floatingip['id'], {'floatingip': floatingip})
         self.assertGreater(new_fip['revision_number'], old_version)
