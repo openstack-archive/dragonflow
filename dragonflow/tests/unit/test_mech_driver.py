@@ -13,23 +13,12 @@
 """Unit testing for dragonflow mechanism driver."""
 
 import mock
-import six
-
 from neutron.plugins.ml2 import config
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_plugin
 
-
-class empty_wrapper(object):
-    def __init__(self, type):
-        pass
-
-    def __call__(self, f):
-        @six.wraps(f)
-        def wrapped_f(*args, **kwargs):
-            return f(*args, **kwargs)
-        return wrapped_f
+from dragonflow.tests.common import utils
 
 
 class DFMechanismDriverTestCase(test_plugin.Ml2PluginV2TestCase):
@@ -47,7 +36,7 @@ class DFMechanismDriverTestCase(test_plugin.Ml2PluginV2TestCase):
                                      self._extension_drivers,
                                      group='ml2')
         mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
-                   side_effect=empty_wrapper).start()
+                   side_effect=utils.empty_wrapper).start()
         nbapi_instance = mock.patch('dragonflow.db.api_nb.NbApi').start()
         nbapi_instance.get_instance.return_value = mock.MagicMock()
         super(DFMechanismDriverTestCase, self).setUp()
