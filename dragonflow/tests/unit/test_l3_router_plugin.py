@@ -15,7 +15,7 @@
 #    under the License.
 
 import mock
-from neutron import context as nctx
+from neutron_lib import context as nctx
 from neutron_lib.plugins import directory
 import testtools
 
