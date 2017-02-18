@@ -225,16 +225,31 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
         return floatingip_dict
 
+    def _is_notify_fip_update(self, context, ori_fip, fip_dict):
+        ori_port_id = ori_fip.get('port_id')
+        new_port_id = fip_dict.get('port_id')
+
+        if ori_port_id and (ori_port_id != new_port_id or
+                            ori_fip['fixed_ip_address'] !=
+                            fip_dict['fixed_ip_address']):
+            return True
+        return False
+
     @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
     def update_floatingip(self, context, id, floatingip):
+        is_notify = False
+        ori_fip = self.get_floatingip(context, id)
         floatingip_dict = super(DFL3RouterPlugin, self).update_floatingip(
             context, id, floatingip)
         fip_version = floatingip_dict['revision_number']
 
+        if _is_notify_fip_update(context, ori_fip, floatingip_dict):
+            is_notify = True
+
         self.nb_api.update_floatingip(
             id=floatingip_dict['id'],
             topic=floatingip_dict['tenant_id'],
-            notify=True,
+            notify=is_notify,
             name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
             router_id=floatingip_dict['router_id'],
             port_id=floatingip_dict['port_id'],
