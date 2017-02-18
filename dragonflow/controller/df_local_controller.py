@@ -312,18 +312,18 @@ class DfLocalController(object):
         lport = self.db_store.get_port(lport_id)
         if lport is None:
             return
-        if lport.get_external_value('is_local'):
+        is_local_lport = lport.get_external_value('is_local')
+        if is_local_lport:
             LOG.info(_LI("Removing local logical port = %s"), lport)
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_local_port(lport)
-            self.db_store.delete_port(lport.get_id(), True)
         else:
             LOG.info(_LI("Removing remote logical port = %s"), lport)
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_remote_port(lport)
-            self.db_store.delete_port(lport.get_id(), False)
 
         self._notify_active_ports_updated_when_lport_removed(lport)
+        self.db_store.delete_port(lport.get_id(), is_local_lport)
 
     def bridge_port_updated(self, lport):
         self.open_flow_app.notify_update_bridge_port(lport)

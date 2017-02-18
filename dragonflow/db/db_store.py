@@ -356,7 +356,7 @@ class DbStore(object):
         activeports = self.values(
             models.AllowedAddressPairsActivePort.table_name, topic)
         return [activeport for activeport in activeports
-                if activeport.get_network_id() == network_id]
+                if activeport.get_lswitch_id() == network_id]
 
     def clear(self, topic=None):
         if not topic:

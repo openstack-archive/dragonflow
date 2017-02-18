@@ -28,6 +28,7 @@ from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import nd_advertisers
+from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
 
 
@@ -59,6 +60,9 @@ class L2App(df_base_app.DFlowApp):
         self.bridge_mappings = self._parse_bridge_mappings(
             cfg.CONF.df_l2_app.bridge_mappings)
         self.int_ofports = {}
+        self.allowed_address_pairs_mac_refs_list = {}
+        self.use_active_detection_for_allowed_address_pairs = \
+            utils.check_active_port_detection_app()
 
     def _parse_bridge_mappings(self, bridge_mappings):
         try:
@@ -135,6 +139,18 @@ class L2App(df_base_app.DFlowApp):
         # are installed correctly
         self.local_networks.clear()
 
+    def _install_flows_for_allowed_address_pairs(self, lport):
+        # TODO(yuan wei)
+        if not self.use_active_detection_for_allowed_address_pairs:
+            LOG.info(_LI("Only support to use active detection"
+                         "for allowed address pairs for now."))
+
+    def _uninstall_flows_for_allowed_address_pairs(self, lport):
+        # TODO(yuan wei)
+        if not self.use_active_detection_for_allowed_address_pairs:
+            LOG.info(_LI("Only support to use active detection"
+                         "for allowed address pairs for now."))
+
     def _add_l2_responders(self, lport):
         if not self.is_install_l2_responder:
             return
@@ -197,6 +213,8 @@ class L2App(df_base_app.DFlowApp):
                                 network_id,
                                 segmentation_id,
                                 network_type)
+
+        self._uninstall_flows_for_allowed_address_pairs(lport)
 
     def _remove_local_port(self, lport_id, mac, topic,
                            local_network_id, segmentation_id,
@@ -343,6 +361,8 @@ class L2App(df_base_app.DFlowApp):
         self._del_multicast_broadcast_handling_for_remote(
             lport_id, network_id, segmentation_id)
 
+        self._uninstall_flows_for_allowed_address_pairs(lport)
+
     def _add_dst_classifier_flow_for_port(self, network_id, mac, port_key):
         parser = self.parser
         ofproto = self.ofproto
@@ -429,6 +449,8 @@ class L2App(df_base_app.DFlowApp):
                                                               network_id,
                                                               topic)
         self._add_l2_responders(lport)
+
+        self._install_flows_for_allowed_address_pairs(lport)
 
     def _del_network_flows_on_last_port_down(self,
                                              local_network_id,
@@ -677,6 +699,8 @@ class L2App(df_base_app.DFlowApp):
                                                                network_id,
                                                                segmentation_id)
 
+        self._install_flows_for_allowed_address_pairs(lport)
+
     def _install_network_flows_on_first_port_up(self,
                                                 segmentation_id,
                                                 physical_network,
@@ -915,3 +939,133 @@ class L2App(df_base_app.DFlowApp):
         self.mod_flow(inst=inst,
                       table_id=const.EGRESS_EXTERNAL_TABLE,
                       priority=const.PRIORITY_HIGH, match=match)
+
+    def _install_flows_for_active_port(self, active_port):
+        lport_id = active_port.get_detected_lport_id()
+        lport = self.db_store.get_port(lport_id)
+        if lport is None:
+            return
+        mac = active_port.get_detected_mac()
+        ip = active_port.get_ip()
+        port_key = lport.get_unique_key()
+        network_id = lport.get_external_value('local_network_id')
+
+        if self.is_install_l2_responder:
+            arp_responder.ArpResponder(
+                self, network_id, ip, mac, const.ARP_TABLE, const.PRIORITY_LOW
+            ).add()
+
+        if mac == lport.get_mac():
+            return
+
+        key = (network_id, mac)
+        mac_refs = self.allowed_address_pairs_mac_refs_list.get(key)
+        is_new_mac = False
+        if mac_refs is None:
+            self.allowed_address_pairs_mac_refs_list[key] = [ip]
+            is_new_mac = True
+        elif ip not in mac_refs:
+            mac_refs.append(ip)
+
+        if not is_new_mac:
+            return
+
+        parser = self.parser
+        ofproto = self.ofproto
+
+        # Destination classifier for this active node
+        match = parser.OFPMatch()
+        match.set_metadata(network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        actions = [parser.OFPActionSetField(reg7=port_key)]
+        action_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
+        inst = [action_inst, goto_inst]
+        self.mod_flow(
+            inst=inst,
+            table_id=const.L2_LOOKUP_TABLE,
+            priority=const.PRIORITY_LOW,
+            match=match)
+
+        if lport.get_external_value('is_local'):
+            # Go to dispatch table according to unique metadata & mac
+            match = parser.OFPMatch()
+            match.set_metadata(network_id)
+            match.set_dl_dst(haddr_to_bin(mac))
+            actions = [parser.OFPActionSetField(reg7=port_key)]
+            action_inst = parser.OFPInstructionActions(
+                ofproto.OFPIT_APPLY_ACTIONS, actions)
+            goto_inst = parser.OFPInstructionGotoTable(
+                const.INGRESS_CONNTRACK_TABLE)
+            inst = [action_inst, goto_inst]
+            self.mod_flow(
+                inst=inst,
+                table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
+                priority=const.PRIORITY_SECOND_MEDIUM,
+                match=match)
+
+    def _uninstall_flows_for_active_port(self, active_port):
+        lport_id = active_port.get_detected_lport_id()
+        lport = self.db_store.get_port(lport_id)
+        if lport is None:
+            return
+        mac = active_port.get_detected_mac()
+        ip = active_port.get_ip()
+        network_id = lport.get_external_value('local_network_id')
+
+        if self.is_install_l2_responder:
+            arp_responder.ArpResponder(self, network_id, ip, const.ARP_TABLE,
+                                       const.PRIORITY_LOW).remove()
+
+        if mac == lport.get_mac():
+            return
+
+        key = (network_id, mac)
+        mac_refs = self.allowed_address_pairs_mac_refs_list.get(key)
+        is_last_ref = False
+        if (mac_refs is not None) and (ip in mac_refs):
+            mac_refs.remove(ip)
+            if len(mac_refs) == 0:
+                del self.allowed_address_pairs_mac_refs_list[key]
+                is_last_ref = True
+
+        if not is_last_ref:
+            return
+
+        parser = self.parser
+        ofproto = self.ofproto
+
+        # Remove destination classifier for this active node
+        match = parser.OFPMatch()
+        match.set_metadata(network_id)
+        match.set_dl_dst(haddr_to_bin(mac))
+        self.mod_flow(
+            table_id=const.L2_LOOKUP_TABLE,
+            command=ofproto.OFPFC_DELETE_STRICT,
+            priority=const.PRIORITY_LOW,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match)
+
+        if lport.get_external_value('is_local'):
+            # Go to dispatch table according to unique metadata & mac
+            match = parser.OFPMatch()
+            match.set_metadata(network_id)
+            match.set_dl_dst(haddr_to_bin(mac))
+            self.mod_flow(
+                table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
+                command=ofproto.OFPFC_DELETE_STRICT,
+                priority=const.PRIORITY_SECOND_MEDIUM,
+                out_port=ofproto.OFPP_ANY,
+                out_group=ofproto.OFPG_ANY,
+                match=match)
+
+    def update_active_port(self, active_port, old_active_port):
+        if old_active_port:
+            self._uninstall_flows_for_active_port(old_active_port)
+
+        self._install_flows_for_active_port(active_port)
+
+    def remove_active_port(self, active_port):
+        self._uninstall_flows_for_active_port(active_port)
