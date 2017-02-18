@@ -464,17 +464,12 @@ class DNATApp(df_base_app.DFlowApp):
                                       status=status)
 
     def associate_floatingip(self, floatingip):
-        self.local_floatingips[floatingip.get_id()] = floatingip
-        lport = self.db_store.get_local_port(floatingip.get_lport_id())
-        mac = lport.get_mac()
-        self.floatingip_rarp_cache[mac] = floatingip.get_ip_address()
-        self._install_ingress_nat_rules(floatingip)
-        self._install_egress_nat_rules(floatingip)
+        self._update_floatingip(floatingip)
         self.update_floatingip_status(
             floatingip, n_const.FLOATINGIP_STATUS_ACTIVE)
 
     def disassociate_floatingip(self, floatingip):
-        self.delete_floatingip(floatingip)
+        self._delete_floatingip(floatingip)
         self.update_floatingip_status(
             floatingip, n_const.FLOATINGIP_STATUS_DOWN)
 
@@ -487,6 +482,17 @@ class DNATApp(df_base_app.DFlowApp):
             self.disassociate_floatingip(floatingip)
 
     def delete_floatingip(self, floatingip):
+        self._delete_floatingip(floatingip)
+
+    def _update_floatingip(self, floatingip):
+        self.local_floatingips[floatingip.get_id()] = floatingip
+        lport = self.db_store.get_local_port(floatingip.get_lport_id())
+        mac = lport.get_mac()
+        self.floatingip_rarp_cache[mac] = floatingip.get_ip_address()
+        self._install_ingress_nat_rules(floatingip)
+        self._install_egress_nat_rules(floatingip)
+
+    def _delete_floatingip(self, floatingip):
         self.local_floatingips.pop(floatingip.get_id(), 0)
         lport = self.db_store.get_local_port(floatingip.get_lport_id())
         mac = lport.get_mac()
