@@ -161,12 +161,6 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                 self.plugin_updates_port = ip_port[1]
                 self.pub_sub = self.client.pubsub()
 
-    def register_listen_address(self, uri):
-        super(RedisSubscriberAgent, self).register_listen_address(uri)
-
-    def unregister_listen_address(self, uri):
-        super(RedisSubscriberAgent, self).unregister_listen_address(uri)
-
     def register_topic(self, topic):
         self.pub_sub.subscribe(topic)
 
