@@ -107,18 +107,23 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                     external_cidr=mock.ANY)
         return floatingip
 
+    @mock.patch('neutron.db.l3_db.L3_NAT_dbonly_mixin.get_floatingip')
     def test_create_update_floatingip_revision(self):
         floatingip = self._test_create_floatingip_revision()
         old_version = floatingip['revision_number']
         floatingip['tenant_id'] = 'another_tenant'
-        new_fip = self.l3p.update_floatingip(
-            self.context, floatingip['id'], {'floatingip': floatingip})
-        self.assertGreater(new_fip['revision_number'], old_version)
-        self.nb_api.update_floatingip.assert_called_once_with(
-            id=floatingip['id'], topic=new_fip['tenant_id'],
-            notify=True, name=mock.ANY, router_id=mock.ANY,
-            port_id=mock.ANY, version=new_fip['revision_number'],
-            fixed_ip_address=mock.ANY)
+        floatingip['port_id'] = 'new_port_id'
+        with mock.patch("neutron.db.l3_db.L3_NAT_dbonly_mixin."
+                        "get_floatingip") as get_floatingip:
+            get_floatingip.return_value = floatingip
+            new_fip = self.l3p.update_floatingip(
+                self.context, floatingip['id'], {'floatingip': floatingip})
+            self.assertGreater(new_fip['revision_number'], old_version)
+            self.nb_api.update_floatingip.assert_called_once_with(
+                id=floatingip['id'], topic=new_fip['tenant_id'],
+                notify=True, name=mock.ANY, router_id=mock.ANY,
+                port_id=mock.ANY, version=new_fip['revision_number'],
+                fixed_ip_address=mock.ANY)
 
     def test_create_floatingip_with_normal_user(self):
         normal_context = nctx.Context(is_admin=False, overwrite=False)
