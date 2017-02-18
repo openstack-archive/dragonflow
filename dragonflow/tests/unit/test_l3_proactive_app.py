@@ -82,3 +82,32 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
             test_app_base.fake_logic_switch1.get_unique_key(),
             self.router.get_ports()[0].get_mac(),
         )
+
+    def test_add_del_port(self):
+        # add local port
+        self.mock_mod_flow.reset_mock()
+        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.assertEqual(1, self.mock_mod_flow.call_count)
+        args, kwargs = self.mock_mod_flow.call_args
+        self.assertEqual(const.L3_PROACTIVE_LOOKUP_TABLE, kwargs['table_id'])
+
+        # del local port
+        self.mock_mod_flow.reset_mock()
+        self.controller.delete_lport(test_app_base.fake_local_port1.get_id())
+        self.assertEqual(1, self.mock_mod_flow.call_count)
+        args, kwargs = self.mock_mod_flow.call_args
+        self.assertEqual(const.L3_PROACTIVE_LOOKUP_TABLE, kwargs['table_id'])
+
+        # add remote port
+        self.mock_mod_flow.reset_mock()
+        self.controller.update_lport(test_app_base.fake_remote_port1)
+        self.assertEqual(1, self.mock_mod_flow.call_count)
+        args, kwargs = self.mock_mod_flow.call_args
+        self.assertEqual(const.L3_PROACTIVE_LOOKUP_TABLE, kwargs['table_id'])
+
+        # del remote port
+        self.mock_mod_flow.reset_mock()
+        self.controller.delete_lport(test_app_base.fake_remote_port1.get_id())
+        self.assertEqual(1, self.mock_mod_flow.call_count)
+        args, kwargs = self.mock_mod_flow.call_args
+        self.assertEqual(const.L3_PROACTIVE_LOOKUP_TABLE, kwargs['table_id'])
