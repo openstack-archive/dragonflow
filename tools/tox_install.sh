@@ -15,7 +15,7 @@
 
 ZUUL_CLONER=/usr/zuul-env/bin/zuul-cloner
 neutron_installed=$(echo "import neutron" | python 2>/dev/null ; echo $?)
-BRANCH_NAME=master
+BRANCH_NAME=stable/ocata
 
 set -ex
 
