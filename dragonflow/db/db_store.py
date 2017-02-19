@@ -291,11 +291,6 @@ class DbStore(object):
                     return (fip, old_fip)
         return None
 
-    def get_first_floatingip(self, network_id):
-        for fip in self.get_floatingips():
-            if fip.get_floating_network_id() == network_id:
-                return fip
-
     def set_qos_policy(self, qos_id, qos, topic=None):
         self.set(models.QosPolicy.table_name, qos_id, qos, topic)
 
