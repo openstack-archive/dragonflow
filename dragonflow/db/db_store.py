@@ -260,13 +260,6 @@ class DbStore(object):
     def get_floatingips(self, topic=None):
         return self.values(models.Floatingip.table_name, topic)
 
-    def get_floatingips_by_gateway(self, ip, topic=None):
-        fip_return = []
-        for fip in self.get_floatingips(topic):
-            if fip.get_external_gateway_ip() == ip:
-                fip_return.append(fip)
-        return fip_return
-
     def check_and_update_floatingips(self, lswitch, topic=None):
         fip_return = []
         if not lswitch.is_external():
@@ -290,11 +283,6 @@ class DbStore(object):
                     fip.set_external_gateway_ip(subnet.get_gateway_ip())
                     return (fip, old_fip)
         return None
-
-    def get_first_floatingip(self, network_id):
-        for fip in self.get_floatingips():
-            if fip.get_floating_network_id() == network_id:
-                return fip
 
     def set_qos_policy(self, qos_id, qos, topic=None):
         self.set(models.QosPolicy.table_name, qos_id, qos, topic)
