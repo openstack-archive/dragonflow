@@ -68,6 +68,10 @@ class _ModelProxyBase(object):
     def to_struct(self):
         return {'id': self._id}
 
+    @classmethod
+    def get_proxied_model(cls):
+        return cls._model
+
 
 def create_model_proxy(model):
     '''This creates a proxy class for a specific model type, this class can

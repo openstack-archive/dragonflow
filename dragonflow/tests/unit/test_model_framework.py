@@ -15,6 +15,7 @@ from jsonmodels import fields
 import mock
 
 from dragonflow.controller import df_base_app
+from dragonflow.db import field_types as df_fields
 import dragonflow.db.model_framework as mf
 from dragonflow.db.models import constants
 from dragonflow.db.models import mixins
@@ -83,6 +84,31 @@ class ModelWithIndexesMixin(ModelTestWithIndexes, IndexesMixin):
 class EmbeddingModel(mf.ModelBase):
     field1 = fields.StringField()
     embedded = fields.EmbeddedField(ModelTest)
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class ReffedModel(mf.ModelBase):
+    pass
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class ReffingModel(mf.ModelBase):
+    ref1 = df_fields.ReferenceField(ReffedModel)
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class ReffingModel2(mf.ModelBase):
+    ref1 = df_fields.ReferenceField(ReffedModel)
+    ref2 = df_fields.ReferenceField(ReffingModel)
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class ListReffingModel(mf.ModelBase):
+    ref2 = df_fields.ReferenceListField(ReffingModel)
 
 
 class TestModelFramework(tests_base.BaseTestCase):
@@ -245,3 +271,45 @@ class TestModelFramework(tests_base.BaseTestCase):
         o = ModelTest()
         o.emit_created()
         m.assert_called_once_with(o)
+
+    def test_topological_sort(self):
+        sorted_models = mf.iter_models_by_dependency_order()
+        self.assertLess(
+            sorted_models.index(ReffedModel),
+            sorted_models.index(ReffingModel)
+        )
+        self.assertLess(
+            sorted_models.index(ReffingModel),
+            sorted_models.index(ReffingModel2)
+        )
+        self.assertLess(
+            sorted_models.index(ReffingModel),
+            sorted_models.index(ListReffingModel)
+        )
+
+    def test_loop_detection(self):
+        try:
+            @mf.register_model
+            @mf.construct_nb_db_model
+            class LoopModel1(mf.ModelBase):
+                link = df_fields.ReferenceField('LoopModel2')
+
+            @mf.register_model
+            @mf.construct_nb_db_model
+            class LoopModel2(mf.ModelBase):
+                link = df_fields.ReferenceField('LoopModel3')
+
+            @mf.register_model
+            @mf.construct_nb_db_model
+            class LoopModel3(mf.ModelBase):
+                link = df_fields.ReferenceField(LoopModel1)
+
+            self.assertRaises(
+                RuntimeError,
+                mf.iter_models_by_dependency_order,
+            )
+
+        finally:
+            mf._lookup_by_class_name.pop('LoopModel1', None)
+            mf._lookup_by_class_name.pop('LoopModel2', None)
+            mf._lookup_by_class_name.pop('LoopModel3', None)
