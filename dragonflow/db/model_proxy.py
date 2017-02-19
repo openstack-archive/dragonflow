@@ -13,6 +13,14 @@ from dragonflow._i18n import _LE
 from dragonflow.db import db_store2
 
 
+class _classproperty(object):
+    def __init__(self, method):
+        self._method = method
+
+    def __get__(self, obj, objtype=None):
+        return self._method(objtype)
+
+
 class _ProxiedField(object):
     '''Descriptor for intercepting access to reference fields and relaying them
     to the actual object.
@@ -67,6 +75,10 @@ class _ModelProxyBase(object):
 
     def to_struct(self):
         return {'id': self._id}
+
+    @_classproperty
+    def proxied_model(cls):
+        return cls._model
 
 
 def create_model_proxy(model):
