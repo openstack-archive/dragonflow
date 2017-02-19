@@ -173,6 +173,23 @@ class _CommonBase(models.Base):
                   for name, _field in self.iterate_over_set_fields()}
         return self.__class__(**fields)
 
+    @classmethod
+    def dependencies(cls):
+        deps = []
+        for _, field in cls.iterate_over_fields():
+            if isinstance(field, fields.ListField):
+                types = field.items_types
+            else:
+                types = field.types
+
+            for field_type in types:
+                try:
+                    deps.append(field_type.proxied_model)
+                except AttributeError:
+                    pass
+
+        return set(deps)
+
 
 def _add_event_funcs(cls_, event):
     @classmethod
@@ -307,3 +324,39 @@ def iter_tables():
     '''Iterate over all table names any of the models define'''
     for model in iter_models():
         yield model.table_name
+
+
+def iter_models_by_dependency_order():
+    '''Iterate over all registered models
+
+       The models are returned in an order s.t. a model never preceeds its
+       dependencies.
+    '''
+    unsorted_models = {}
+    # Gather all models and their dependencies
+    for model in iter_models():
+        unsorted_models[model] = model.dependencies()
+
+    # Perform a topological sort
+    sorted_models = []
+    while unsorted_models:
+        # Split models to those that still depend on something and those
+        # that no more depend on models in unsorted_models
+        dependent_models = set(k for k, v in unsorted_models.items() if v)
+        independent_models = set(unsorted_models.keys()) - dependent_models
+
+        # If we still have unsorted models yet nothing is independent, we have
+        # dependency cycle
+        if not independent_models:
+            raise RuntimeError(_LE('Models form a dependency cycle'))
+
+        # Move independent models to sorted list
+        for model in independent_models:
+            sorted_models.append(model)
+            del unsorted_models[model]
+
+        # Remove indepndent models from remaining depndency lists
+        for model in dependent_models:
+            unsorted_models[model] -= independent_models
+
+    return sorted_models
