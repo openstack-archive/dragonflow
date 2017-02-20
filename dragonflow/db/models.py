@@ -34,6 +34,10 @@ class NbObject(object):
         """Return the ID of this object."""
         return self.inner_obj.get('id')
 
+    @property
+    def id(self):
+        return self.get_id()
+
     def get_topic(self):
         """
         Return the topic, i.e. ID of the tenant to which this object belongs.
@@ -66,6 +70,10 @@ class NbDbObject(NbObject):
 
     def get_version(self):
         return self.inner_obj.get('version')
+
+    @property
+    def version(self):
+        return self.get_version()
 
 
 class UniqueKeyMixin(object):
