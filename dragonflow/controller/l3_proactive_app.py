@@ -23,6 +23,8 @@ from ryu.ofproto import ether
 
 from dragonflow._i18n import _LI, _LW
 from dragonflow.common import exceptions
+from dragonflow.common import utils as df_utils
+from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import icmp_error_generator
@@ -43,6 +45,13 @@ class L3ProactiveApp(df_base_app.DFlowApp):
         self.router_port_rarp_cache = {}
         self.api.register_table_handler(const.L3_LOOKUP_TABLE,
                                         self.packet_in_handler)
+        self.conf = cfg.CONF.df_l3_app
+        self.ttl_invalid_handler_rate_limit = df_utils.RateLimiter(
+            max_rate=self.conf.router_ttl_invalid_max_rate,
+            time_unit=1)
+        self.port_icmp_unreach_respond_rate_limit = df_utils.RateLimiter(
+            max_rate=self.conf.router_port_unreach_max_rate,
+            time_unit=1)
         self.register_local_cookie_bits(COOKIE_NAME, 24)
 
     def switch_features_handler(self, ev):
@@ -51,12 +60,20 @@ class L3ProactiveApp(df_base_app.DFlowApp):
     def packet_in_handler(self, event):
         msg = event.msg
         ofproto = self.ofproto
-        pkt = packet.Packet(msg.data)
-        e_pkt = pkt.get_protocol(ethernet.ethernet)
 
         if msg.reason == ofproto.OFPR_INVALID_TTL:
             LOG.debug("Get an invalid TTL packet at table %s",
                       const.L3_LOOKUP_TABLE)
+            if self.ttl_invalid_handler_rate_limit():
+                LOG.warning(
+                    _LW("Get more than %(rate)s TTL invalid "
+                        "packets per second at table %(table)s"),
+                    {'rate': self.conf.router_ttl_invalid_max_rate,
+                     'table': const.L3_LOOKUP_TABLE})
+                return
+
+            pkt = packet.Packet(msg.data)
+            e_pkt = pkt.get_protocol(ethernet.ethernet)
             router_port_ip = self.router_port_rarp_cache.get(e_pkt.dst)
             if router_port_ip:
                 icmp_ttl_pkt = icmp_error_generator.generate(
@@ -70,6 +87,15 @@ class L3ProactiveApp(df_base_app.DFlowApp):
             return
 
         # The packet's IP destination is router interface.
+        if self.port_icmp_unreach_respond_rate_limit():
+            LOG.warning(
+                _LW("Get more than %(rate)s packets to router port "
+                    "per second at table %(table)s"),
+                {'rate': self.conf.router_port_unreach_max_rate,
+                 'table': const.L3_LOOKUP_TABLE})
+            return
+
+        pkt = packet.Packet(msg.data)
         tcp_pkt = pkt.get_protocol(tcp.tcp)
         udp_pkt = pkt.get_protocol(udp.udp)
         if tcp_pkt or udp_pkt:
