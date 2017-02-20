@@ -13,6 +13,7 @@
 #    under the License.
 
 import mock
+from ryu.lib.packet import icmp
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.unit import test_app_base
@@ -63,3 +64,23 @@ class TestL3App(test_app_base.DFAppTestBase):
             buffer_id=mock.sentinel.buffer_id,
             idle_timeout=self.app.idle_timeout,
             hard_timeout=self.app.hard_timeout)
+
+    def test_reply_ttl_invalid_message_with_rate_limit(self):
+        event = mock.Mock()
+        event.msg.reason = self.app.ofproto.OFPR_INVALID_TTL
+        self.app.router_port_rarp_cache = mock.Mock()
+        self.app.router_port_rarp_cache.get = mock.Mock(
+            return_value="10.0.0.1")
+        with mock.patch("ryu.lib.packet.packet.Packet"):
+            with mock.patch("dragonflow.controller.common"
+                            ".icmp_error_generator.generate") as icmp_error:
+                self.app.packet_in_handler(event)
+                self.app.packet_in_handler(event)
+                self.app.packet_in_handler(event)
+                self.app.packet_in_handler(event)
+
+                self.assertEqual(self.app.conf.router_ttl_invalid_max_rate,
+                                 icmp_error.call_count)
+                icmp_error.assert_called_with(icmp.ICMP_TIME_EXCEEDED,
+                                              icmp.ICMP_TTL_EXPIRED_CODE,
+                                              mock.ANY, "10.0.0.1", mock.ANY)
