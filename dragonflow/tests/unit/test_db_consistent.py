@@ -12,9 +12,7 @@
 
 import mock
 
-from dragonflow.controller import df_local_controller
 from dragonflow.db import db_consistent
-from dragonflow.db import models
 from dragonflow.tests import base as tests_base
 
 
@@ -22,16 +20,7 @@ class TestDBConsistent(tests_base.BaseTestCase):
 
     def setUp(self):
         super(TestDBConsistent, self).setUp()
-        self.controller = df_local_controller.DfLocalController('fake_host')
-        for attr_name in dir(self.controller):
-            if (
-                attr_name.startswith('delete_') or
-                attr_name.startswith('update_')
-            ):
-                setattr(self.controller, attr_name, mock.Mock())
-        self.topology = self.controller.topology
-        self.nb_api = self.controller.nb_api = mock.Mock()
-        self.db_store = self.controller.db_store = mock.Mock()
+        self.controller = mock.MagicMock()
 
         self.topic = '111-222-333'
         self.lport_id0 = '0'
@@ -52,73 +41,42 @@ class TestDBConsistent(tests_base.BaseTestCase):
         local_obj2 = FakeDfLocalObj(self.lport_id3, 1)
         local_obj3 = FakeDfLocalObj(self.lport_id4, 0)
 
-        df_obj_list = [df_obj0, df_obj1, df_obj2, df_obj3]
-        local_obj_list = [local_obj1, local_obj2, local_obj3]
+        handler = db_consistent.ModelHandler(
+            model=mock.MagicMock(),
+            db_store_func=mock.MagicMock(
+                return_value=[
+                    local_obj1,
+                    local_obj2,
+                    local_obj3,
+                ]
+            ),
+            nb_api_func=mock.MagicMock(
+                return_value=[
+                    df_obj0,
+                    df_obj1,
+                    df_obj2,
+                    df_obj3,
+                ],
+            ),
+            update_handler=mock.MagicMock(),
+            delete_handler=mock.MagicMock(),
+        )
 
-        self.nb_api.get_all_logical_switches.return_value = df_obj_list
-        self.db_store.get_lswitchs.return_value = local_obj_list
-
-        self.nb_api.get_all_logical_ports.return_value = df_obj_list
-        self.db_store.get_ports.return_value = local_obj_list
-
-        self.nb_api.get_routers.return_value = df_obj_list
-        self.db_store.get_routers.return_value = local_obj_list
-
-        self.nb_api.get_security_groups.return_value = df_obj_list
-        self.db_store.get_security_groups.return_value = local_obj_list
-
-        self.nb_api.get_floatingips.return_value = df_obj_list
-        self.db_store.get_floatingips.return_value = local_obj_list
-
-        FakeDfLocalObj.table_name = models.LogicalSwitch.table_name
-        self.db_consistent.handle_data_comparison(
-                [self.topic], models.LogicalSwitch.table_name, True)
-        self.controller.update_lswitch.assert_any_call(df_obj0)
-        self.controller.update_lswitch.assert_any_call(df_obj1)
-        self.controller.update_lswitch.assert_any_call(df_obj2)
-        self.controller.update_lswitch.assert_any_call(df_obj3)
-        self.controller.delete_lswitch.assert_any_call(self.lport_id3)
-
-        FakeDfLocalObj.table_name = models.LogicalPort.table_name
-        self.db_consistent.handle_data_comparison(
-                [self.topic], models.LogicalPort.table_name, True)
-        self.controller.update_lport.assert_any_call(df_obj0)
-        self.controller.update_lport.assert_any_call(df_obj1)
-        self.controller.update_lport.assert_any_call(df_obj2)
-        self.controller.update_lport.assert_any_call(df_obj3)
-        self.controller.delete_lport.assert_any_call(self.lport_id3)
-
-        FakeDfLocalObj.table_name = models.LogicalRouter.table_name
-        self.db_consistent.handle_data_comparison(
-                [self.topic], models.LogicalRouter.table_name, True)
-        self.controller.update_lrouter.assert_any_call(df_obj0)
-        self.controller.update_lrouter.assert_any_call(df_obj1)
-        self.controller.update_lrouter.assert_any_call(df_obj2)
-        self.controller.update_lrouter.assert_any_call(df_obj3)
-        self.controller.delete_lrouter.assert_any_call(self.lport_id3)
-
-        FakeDfLocalObj.table_name = models.SecurityGroup.table_name
-        self.db_consistent.handle_data_comparison(
-                [self.topic], models.SecurityGroup.table_name, True)
-        self.controller.update_secgroup.assert_any_call(df_obj0)
-        self.controller.update_secgroup.assert_any_call(df_obj1)
-        self.controller.update_secgroup.assert_any_call(df_obj2)
-        self.controller.update_secgroup.assert_any_call(df_obj3)
-        self.controller.delete_secgroup.assert_any_call(self.lport_id3)
-
-        FakeDfLocalObj.table_name = models.Floatingip.table_name
-        self.db_consistent.handle_data_comparison(
-                [self.topic], models.Floatingip.table_name, True)
-        self.controller.update_floatingip.assert_any_call(df_obj0)
-        self.controller.update_floatingip.assert_any_call(df_obj1)
-        self.controller.update_floatingip.assert_any_call(df_obj2)
-        self.controller.update_floatingip.assert_any_call(df_obj3)
-        self.controller.delete_floatingip.assert_any_call(self.lport_id3)
+        self.db_consistent.handle_data_comparison([self.topic], handler, True)
+        handler._db_store_func.assert_called()
+        handler._nb_api_func.assert_called()
+        handler._update_handler.assert_any_call(df_obj0)
+        handler._update_handler.assert_any_call(df_obj1)
+        handler._update_handler.assert_any_call(df_obj2)
+        handler._update_handler.assert_any_call(df_obj3)
+        handler._delete_handler.assert_any_call(
+            handler._model,
+            self.lport_id3,
+        )
 
 
-class FakeDfLocalObj(models.NbDbObject):
+class FakeDfLocalObj(object):
     """To generate df_obj or local_obj for testing purposes only."""
     def __init__(self, id, version):
-        super(FakeDfLocalObj, self).__init__('{}')
-        self.inner_obj['id'] = id
-        self.inner_obj['version'] = version
+        self.id = id
+        self.version = version
