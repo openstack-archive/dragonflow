@@ -46,8 +46,8 @@ LOG = log.getLogger(__name__)
 
 class DFL3RouterPlugin(service_base.ServicePluginBase,
                        common_db_mixin.CommonDbMixin,
-                       extraroute_db.ExtraRoute_db_mixin,
-                       l3_gwmode_db.L3_NAT_db_mixin,
+                       extraroute_db.ExtraRoute_dbonly_mixin,
+                       l3_gwmode_db.L3_NAT_dbonly_mixin,
                        l3_agentschedulers_db.L3AgentSchedulerDbMixin):
 
     """Implementation of the Dragonflow Neutron L3 Router Service Plugin.
