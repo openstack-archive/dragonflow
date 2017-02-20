@@ -117,7 +117,7 @@ class NbApi(object):
         self.publisher.process_ha()
         self.subscriber.process_ha()
         if self.db_consistency_manager and not self.is_neutron_server:
-            self.db_consistency_manager.process(True)
+            self.db_consistency_manager.process(direct=True)
 
     def _get_publisher(self):
         if self.pub_sub_use_multiproc:
@@ -267,7 +267,7 @@ class NbApi(object):
             self.db_recover_callback()
             return
         elif action == 'db_sync':
-            self.db_consistency_manager.process(False)
+            self.db_consistency_manager.process(direct=False)
             return
 
         try:
