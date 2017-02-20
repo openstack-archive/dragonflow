@@ -35,6 +35,7 @@ from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db import model_framework
+from dragonflow.db import models
 from dragonflow.db.models2 import core_models
 from dragonflow.db.models2 import mixins
 from dragonflow.ovsdb import vswitch_impl
@@ -136,7 +137,58 @@ class DfLocalController(object):
                         self.get_handler(model.table_name, 'delete'),
                     ),
                 )
-            # FIXME add db_consistency for new models here
+
+            handler = db_consistent.ModelHandler.create_using_controller(
+                model,
+                self,
+            )
+            self.db_consistency_manager.add_handler(handler)
+
+        for handler in [
+            db_consistent.LegacyModelHandler(
+                models.LogicalSwitch,
+                self.db_store.get_all_logical_switches,
+                self.nb_api.get_lswitchs,
+                update_handler=self.update_lswitch,
+                delete_handler=self.delete_lswitch,
+            ),
+            db_consistent.LegacyModelHandler(
+                models.LogicalPort,
+                self.db_store.get_ports,
+                self.nb_api.get_all_logical_ports,
+                update_handler=self.update_lport,
+                delete_handler=self.delete_lport,
+            ),
+            db_consistent.LegacyModelHandler(
+                models.LogicalRouter,
+                self.db_store.get_routers,
+                self.nb_api.get_routers,
+                update_handler=self.update_lrouter,
+                delete_handler=self.delete_lrouter,
+            ),
+            db_consistent.LegacyModelHandler(
+                models.SecurityGroup,
+                self.db_store.get_security_groups,
+                self.nb_api.get_security_groups,
+                update_handler=self.update_secgroup,
+                delete_handler=self.delete_secgroup,
+            ),
+            db_consistent.LegacyModelHandler(
+                models.Floatingip,
+                self.db_store.get_floatingips,
+                self.nb_api.get_floatingips,
+                update_handler=self.update_floatingip,
+                delete_handler=self.delete_floatingip,
+            ),
+            db_consistent.LegacyModelHandler(
+                models.QosPolicy,
+                self.db_store.get_qos_policies,
+                self.nb_api.get_qos_policies,
+                update_handler=self.update_qospolicy,
+                delete_handler=self.delete_qospolicy,
+            ),
+        ]:
+            self.db_consistency_manager.add_handler(handler)
 
     def db_sync_loop(self):
         while True:

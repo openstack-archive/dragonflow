@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
+import functools
 import time
 
 from oslo_config import cfg
@@ -20,35 +20,55 @@ from oslo_log import log
 
 from dragonflow._i18n import _LE, _LW
 from dragonflow.common import utils as df_utils
-from dragonflow.db import models
 
 LOG = log.getLogger(__name__)
 
 MIN_SYNC_INTERVAL_TIME = 60
 
 
-class CacheManager(object):
-    def __init__(self):
-        self._table_name_mapping = {
-            models.LogicalSwitch.table_name: {},
-            models.LogicalPort.table_name: {},
-            models.LogicalRouter.table_name: {},
-            models.Floatingip.table_name: {},
-            models.SecurityGroup.table_name: {},
-            models.QosPolicy.table_name: {},
-        }
+class ModelHandler(object):
+    def __init__(self, model, db_store_func, nb_api_func,
+                 update_handler, delete_handler):
+        self._model = model
+        self._db_store_func = db_store_func
+        self._nb_api_func = nb_api_func
+        self._update_handler = update_handler
+        self._delete_handler = delete_handler
+        self.cache = {}
 
-    def get(self, table, key):
-        return self._table_name_mapping[table].get(key)
+    def get_db_store_objects(self, topic):
+        return self._db_store_func(topic)
 
-    def set(self, table, key, value):
-        self._table_name_mapping[table][key] = value
+    def get_nb_db_objects(self, topic):
+        return self._nb_api_func(topic)
 
-    def remove(self, table, key):
-        del self._table_name_mapping[table][key]
+    def handle_update(self, obj):
+        self._update_handler(obj)
 
-    def get_tables(self):
-        return self._table_name_mapping.keys()
+    def handle_delete(self, obj_id):
+        obj = self._model(id=obj_id)
+        self._delete_handler(obj)
+
+    @classmethod
+    def create_using_controller(cls, model, controller):
+        return cls(
+            model=model,
+            db_store_func=functools.partial(
+                controller.db_store2.get_all_by_topic,
+                model,
+            ),
+            nb_api_func=functools.partial(
+                controller.nb_api.get_all,
+                model,
+            ),
+            update_handler=controller.get_handler(model.table_name, 'update'),
+            delete_handler=controller.get_handler(model.table_name, 'delete'),
+        )
+
+
+class LegacyModelHandler(ModelHandler):
+    def handle_delete(self, obj_id):
+        self._delete_handler(obj_id)
 
 
 class DBConsistencyManager(object):
@@ -62,7 +82,10 @@ class DBConsistencyManager(object):
         if self.db_sync_time < MIN_SYNC_INTERVAL_TIME:
             self.db_sync_time = MIN_SYNC_INTERVAL_TIME
         self._daemon = df_utils.DFDaemon()
-        self.cache_manager = CacheManager()
+        self._handlers = []
+
+    def add_handler(self, handler):
+        self._handlers.append(handler)
 
     def process(self, direct):
         self.topology.check_topology_info()
@@ -91,14 +114,14 @@ class DBConsistencyManager(object):
         """
         self.controller.register_chassis()
         topics = self.topology.topic_subscribed.keys()
-        for table in self.cache_manager.get_tables():
+        for handler in self._handlers:
             try:
-                self.handle_data_comparison(topics, table, direct)
+                self.handle_data_comparison(topics, handler, direct)
             except Exception as e:
                 LOG.exception(_LE("Exception occurred when"
                               "handling db comparison: %s"), e)
 
-    def _verify_object(self, table, id, action, df_object, local_object=None):
+    def _verify_object(self, handler, action, df_object, local_object=None):
         """Verify the object status and judge whether to create/update/delete
         the object or not, we'll use twice comparison to verify the status,
         first comparison result will be stored in the cache and if second
@@ -114,71 +137,54 @@ class DBConsistencyManager(object):
         df_version = df_object.version if df_object else None
         local_version = local_object.version if local_object else None
 
-        old_cache_obj = self.cache_manager.get(table, id)
+        if df_object is not None:
+            obj_id = df_object.id
+        else:
+            obj_id = local_object.id
+
+        old_cache_obj = handler.cache.get(obj_id)
         if not old_cache_obj or old_cache_obj.get_action() != action:
             cache_obj = CacheObject(action, df_version, local_version)
-            self.cache_manager.set(table, id, cache_obj)
+            handler.cache[obj_id] = cache_obj
             return
 
         old_df_version = old_cache_obj.get_df_version()
         old_local_version = old_cache_obj.get_local_version()
         if action == 'create':
             if df_version >= old_df_version:
-                self.controller.process_object(table, 'create', df_object)
-                self.cache_manager.remove(table, id)
+                handler.handle_update(df_object)
+                del handler.cache[obj_id]
             return
         elif action == 'update':
             if df_version < old_df_version:
                 return
             if local_version <= old_local_version:
-                self.controller.process_object(table, 'update', df_object)
-                self.cache_manager.remove(table, id)
+                handler.handle_update(df_object)
+                del handler.cache[obj_id]
             else:
                 cache_obj = CacheObject(action, df_version, local_version)
-                self.cache_manager.set(table, id, cache_obj)
+                handler.cache[obj_id] = cache_obj
         elif action == 'delete':
-            self.controller.process_object(table, 'delete', id)
-            self.cache_manager.remove(table, id)
+            handler.handle_delete(obj_id)
+            del handler.cache[obj_id]
         else:
             LOG.warning(_LW('Unknown action %s in db consistent'), action)
 
-    def _get_df_and_local_objects(self, topic, table):
-        df_objects = []
-        local_objects = []
-        if table == models.LogicalSwitch.table_name:
-            df_objects = self.nb_api.get_all_logical_switches(topic)
-            local_objects = self.db_store.get_lswitchs(topic)
-        elif table == models.LogicalPort.table_name:
-            df_objects = self.nb_api.get_all_logical_ports(topic)
-            local_objects = self.db_store.get_ports(topic)
-        elif table == models.LogicalRouter.table_name:
-            df_objects = self.nb_api.get_routers(topic)
-            local_objects = self.db_store.get_routers(topic)
-        elif table == models.SecurityGroup.table_name:
-            df_objects = self.nb_api.get_security_groups(topic)
-            local_objects = self.db_store.get_security_groups(topic)
-        elif table == models.Floatingip.table_name:
-            df_objects = self.nb_api.get_floatingips(topic)
-            local_objects = self.db_store.get_floatingips(topic)
-        elif table == models.QosPolicy.table_name:
-            df_objects = self.nb_api.get_qos_policies(topic)
-            local_objects = self.db_store.get_qos_policies(topic)
-        return df_objects, local_objects
-
-    def _compare_df_and_local_data(
-            self, table, df_objects, local_objects, direct):
+    def _compare_df_and_local_data(self, handler, topic, direct):
         """Compare specific resource type df objects and local objects
         one by one, we could judge whether to create/update/delete
         the corresponding object.
 
-        :param table:  Resource object type
-        :param df_object:  Object from df db
-        :param local_object:  Object from local cache
+        :param hander: model handler we're checking
+        :param topic:  topic whose objectes we're checking
         :param direct:  the process model, if True, we'll do the operation
         directly after this comparison, if False, we'll go into the verify
         process which need twice comparison to do the operation.
         """
-        local_object_map = {o.id: o for o in local_objects}
+        local_object_map = {
+            o.id: o for o in handler.get_db_store_objects(topic)
+        }
+        df_objects = handler.get_nb_db_objects(topic)
 
         for df_object in df_objects[:]:
             df_id = df_object.id
@@ -193,44 +199,31 @@ class DBConsistencyManager(object):
                 if local_version is None:
                     LOG.debug("Version is None in local_object: %s",
                               local_object)
-                    self.controller.process_object(table, 'update', df_object)
+                    handler.handle_update(df_object)
                 elif df_version > local_version:
-                    LOG.debug("Find a newer version df object: %s",
-                              df_object)
+                    LOG.debug("Find a newer version df object: %s", df_object)
                     if direct:
-                        self.controller.process_object(table, 'update',
-                                                       df_object)
+                        handler.handle_update(df_object)
                     else:
                         self._verify_object(
-                                table, df_id, 'update',
-                                df_object, local_object)
+                            handler, 'update', df_object, local_object)
             else:
                 LOG.debug("Find an additional df object: %s", df_object)
                 if direct:
-                    self.controller.process_object(table, 'create', df_object)
+                    handler.handle_update(df_object)
                 else:
-                    self._verify_object(table, df_id,
-                                        'create', df_object)
+                    self._verify_object(handler, 'create', df_object)
 
         for local_object in local_object_map.values():
             LOG.debug("Find a redundant local object: %s", local_object)
             if direct:
-                self.controller.process_object(table, 'delete',
-                                               local_object.id)
+                handler.handle_delete(local_object.id)
             else:
-                self._verify_object(
-                        table, local_object.id,
-                        'delete', None, local_object)
+                self._verify_object(handler, 'delete', None, local_object)
 
-    def _get_and_compare_df_and_local_data(self, table, direct, topic=None):
-        df_objects, local_objects = self._get_df_and_local_objects(
-                topic, table)
-        self._compare_df_and_local_data(
-                table, df_objects, local_objects, direct)
-
-    def handle_data_comparison(self, tenants, table, direct):
+    def handle_data_comparison(self, tenants, handler, direct):
         for topic in tenants:
-            self._get_and_compare_df_and_local_data(table, direct, topic)
+            self._compare_df_and_local_data(handler, topic, direct)
 
 
 class CacheObject(object):
