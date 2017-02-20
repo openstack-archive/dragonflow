@@ -51,6 +51,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         cfg.CONF.set_override('enable_selective_topology_distribution',
                               True, group='df')
         cfg.CONF.set_override('enable_port_status_notifier', False, group='df')
+        cfg.CONF.set_override('enable_df_db_consistency', False, group='df')
         super(TestTopology, self).setUp(enable_selective_topo_dist=True)
         # By default, return empty value for all resources, each case can
         # customize the return value on their own.
