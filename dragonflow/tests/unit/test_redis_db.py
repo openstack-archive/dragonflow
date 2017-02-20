@@ -15,6 +15,7 @@
 
 import mock
 
+from dragonflow.common import exceptions
 from dragonflow.db.drivers import redis_db_driver
 from dragonflow.tests import base as tests_base
 
@@ -64,6 +65,26 @@ class TestRedisDB(tests_base.BaseTestCase):
         self.assertEqual('value', result)
         local_key = '{table.topic}.key'
         redis_mgt.get_ip_by_key.assert_called_with(local_key)
+
+        with mock.patch(
+            'dragonflow.db.drivers.redis_db_driver.RedisDbDriver._execute_cmd',
+            return_value=None,
+        ):
+            self.assertRaises(
+                exceptions.DBKeyNotFound,
+                self.RedisDbDriver.get_key,
+                'table', 'key', 'topic',
+            )
+
+        with mock.patch(
+            'dragonflow.db.drivers.redis_db_driver.RedisDbDriver._execute_cmd',
+            side_effect=RuntimeError,
+        ):
+            self.assertRaises(
+                exceptions.DBKeyNotFound,
+                self.RedisDbDriver.get_key,
+                'table', 'key', 'topic',
+            )
 
         # test get_all_entries
         result = self.RedisDbDriver.get_all_entries('table')
