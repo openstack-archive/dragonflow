@@ -192,7 +192,58 @@ class DfLocalController(object):
                         functools.partial(self.delete_by_id, model),
                     ),
                 )
-            # FIXME add db_consistency for new models here
+
+            handler = db_consistent.ModelHandler.create_using_controller(
+                model,
+                self,
+            )
+            self.db_consistency_manager.add_handler(handler)
+
+        for handler in [
+            db_consistent.ModelHandler(
+                models.LogicalSwitch,
+                self.db_store.get_all_logical_switches,
+                self.nb_api.get_lswitchs,
+                self.update,
+                self.delete_by_id,
+            ),
+            db_consistent.ModelHandler(
+                models.LogicalPort,
+                self.db_store.get_ports,
+                self.nb_api.get_all_logical_ports,
+                self.update,
+                self.delete_by_id,
+            ),
+            db_consistent.ModelHandler(
+                models.LogicalRouter,
+                self.db_store.get_routers,
+                self.nb_api.get_routers,
+                self.update,
+                self.delete_by_id,
+            ),
+            db_consistent.ModelHandler(
+                models.SecurityGroup,
+                self.db_store.get_security_groups,
+                self.nb_api.get_security_groups,
+                self.update,
+                self.delete_by_id,
+            ),
+            db_consistent.ModelHandler(
+                models.Floatingip,
+                self.db_store.get_floatingips,
+                self.nb_api.get_floatingips,
+                self.update,
+                self.delete_by_id,
+            ),
+            db_consistent.ModelHandler(
+                models.QosPolicy,
+                self.db_store.get_qos_policies,
+                self.nb_api.get_qos_policies,
+                self.update,
+                self.delete_by_id,
+            ),
+        ]:
+            self.db_consistency_manager.add_handler(handler)
 
     def db_sync_loop(self):
         while True:
