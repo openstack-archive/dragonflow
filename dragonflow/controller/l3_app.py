@@ -238,9 +238,9 @@ class L3App(df_base_app.DFlowApp):
             self.router_port_rarp_cache[mac] = dst_ip
             arp_responder.ArpResponder(
                 self, local_network_id, dst_ip, mac).add()
-            # TODO(xiaohhui): Install icmp responder for each router interface,
-            # https://review.openstack.org/#/c/432724/ will do the job.
-            icmp_responder.ICMPResponder(self, dst_ip, mac).add()
+            icmp_responder.ICMPResponder(self,
+                                         dst_ip,
+                                         router_key=router_unique_key).add()
 
         # If router interface is concrete, it will be in local cache.
         lport = self.db_store.get_port(router_port.get_id())
@@ -334,7 +334,8 @@ class L3App(df_base_app.DFlowApp):
             self.router_port_rarp_cache.pop(mac, None)
             arp_responder.ArpResponder(
                 self, local_network_id, ip).remove()
-            icmp_responder.ICMPResponder(self, ip, mac).remove()
+            icmp_responder.ICMPResponder(self, ip,
+                                         router_key=router_unique_key).remove()
 
         # Delete rule for packets whose destination is router interface.
         # The rule might not exist, but deleting it anyway will work well.
