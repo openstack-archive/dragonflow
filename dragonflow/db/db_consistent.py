@@ -111,8 +111,8 @@ class DBConsistencyManager(object):
         :param df_object:  Object from df db
         :param local_object:  Object from local cache
         """
-        df_version = df_object.get_version() if df_object else None
-        local_version = local_object.get_version() if local_object else None
+        df_version = df_object.version if df_object else None
+        local_version = local_object.version if local_object else None
 
         old_cache_obj = self.cache_manager.get(table, id)
         if not old_cache_obj or old_cache_obj.get_action() != action:
@@ -179,18 +179,18 @@ class DBConsistencyManager(object):
         directly after this comparison, if False, we'll go into the verify
         process which need twice comparison to do the operation.
         """
-        local_object_map = {}
-        for local_object in local_objects:
-            local_object_map[local_object.get_id()] = local_object
+        local_object_map = {o.id: o for o in local_objects}
+
         for df_object in df_objects[:]:
-            df_id = df_object.get_id()
-            df_version = df_object.get_version()
+            df_id = df_object.id
+            df_version = df_object.version
+
             if df_version is None:
                 LOG.error(_LE("Version is None in df_object: %s"), df_object)
                 continue
             local_object = local_object_map.pop(df_id, None)
             if local_object:
-                local_version = local_object.get_version()
+                local_version = local_object.version
                 if local_version is None:
                     LOG.debug("Version is None in local_object: %s",
                               local_object)
@@ -218,7 +218,7 @@ class DBConsistencyManager(object):
                 self.controller.delete(local_object)
             else:
                 self._verify_object(
-                        table, local_object.get_id(),
+                        table, local_object.id,
                         'delete', None, local_object)
 
     def _get_and_compare_df_and_local_data(self, table, direct, topic=None):
