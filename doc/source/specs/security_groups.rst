@@ -36,7 +36,7 @@ ingress traffic are allowed to flow out regardless of egress rules, and vice
 versa. Current Neutron implementation adds a linux bridge in the path between
 each port (VM) and OVS bridge.
 This linux bridge is configured with IP table rules that implement security
-groups for this port. (This was done as iptables couldnt be configured on OVS
+groups for this port. (This was done as iptables couldn't be configured on OVS
 ports)
 
 The following diagram demonstrate how the data path looks like:
@@ -179,7 +179,7 @@ configuration.
    group, Dragonflow controller should install the OVS flows in the egress
    security group table to represent those associating relations, and each
    of those relations will be converted to one OVS flow. This flow carries a
-   matchs field contains a VM port identification match (input port number
+   match field contains a VM port identification match (input port number
    for egress side, while reg7 value for ingress side), and a actions field
    contains a conjunction action that uses the conjunction id of this security
    group and a mark to indicate it is the first part of the conjunction flows.

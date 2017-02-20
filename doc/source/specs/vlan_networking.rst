@@ -41,7 +41,7 @@ What does dragonflow need to do for vlan  L2 networks
 is similar to overlay networking.
 The difference between them is what flow items should be installed.
 
-When controller receives port updated messages from dragonflow plugin,
+When controller receives port updated messages from Dragonflow plugin,
 it will handle them just as what it does for vxlan, and install flows.
 
 When controller receives port online events from ovsdb monitor,
