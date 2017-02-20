@@ -4,9 +4,9 @@
 
 http://creativecommons.org/licenses/by/3.0/legalcode
 
-===================
+==================
 Port status update
-===================
+==================
 
 https://blueprints.launchpad.net/dragonflow/+spec/port-status-update
 
@@ -14,7 +14,7 @@ This blueprint describes how to support port status update for
 Dragonflow.
 
 Problem Description
-=====================
+===================
 Port status update feature will enable synchronization of port status
 between DF DB and neutron DB.
 

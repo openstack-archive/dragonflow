@@ -249,7 +249,7 @@ The IGMP-A may send periodic *Group-Specific Query* message to all local ports
 and synchronize its records.
 
 Synchronization across compute nodes
--------------------------------------
+------------------------------------
 
 The IGMP-A shares aggregated information with its peers (i.e. all multicast
 groups the compute node is registered to) by writing to the *Multicast* table

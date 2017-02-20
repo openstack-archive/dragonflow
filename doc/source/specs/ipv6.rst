@@ -86,7 +86,7 @@ a dedicated spec will be written as it was done in `IPv4 Metadata Service <metad
 
 
 Neighbor Discovery
--------------------
+------------------
 
 Neighbor Discovery [#]_ relates to different protocols and processes known
 from IPv4 that have been modified and expanded. It combines Address
