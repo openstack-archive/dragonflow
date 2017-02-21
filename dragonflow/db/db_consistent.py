@@ -193,7 +193,7 @@ class DBConsistencyManager(object):
             local_object = local_object_map.pop(df_id, None)
             if local_object:
                 local_version = local_object.get_version()
-                if not local_version:
+                if local_version is None:
                     LOG.debug("Version is None in local_object: %s",
                               local_object)
                     obj_refresh.process_object(
