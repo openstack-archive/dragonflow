@@ -44,7 +44,7 @@ class TestDbConsistent(test_base.DFTestBase):
         if self.db_sync_time < db_consistent.MIN_SYNC_INTERVAL_TIME:
             self.db_sync_time = db_consistent.MIN_SYNC_INTERVAL_TIME
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'private'})
+        network_id = network.create()
         topic = network.get_topic()
         subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
                                                   network_id))
@@ -61,8 +61,8 @@ class TestDbConsistent(test_base.DFTestBase):
 
         vm = self.store(objects.VMTestObj(self, self.neutron))
         vm.create(network=network)
-        self.assertIsNotNone(vm.server.addresses['private'])
-        mac = vm.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(vm.server.addresses['mynetwork'])
+        mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
 
         ovs = utils.OvsFlowsParser()
