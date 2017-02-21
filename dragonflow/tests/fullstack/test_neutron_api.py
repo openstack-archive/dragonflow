@@ -365,8 +365,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             # private network
             private_network = self.store(
                 objects.NetworkTestObj(self.neutron, self.nb_api))
-            private_network_id = private_network.create(
-                network={'name': 'private'})
+            private_network_id = private_network.create()
             self.assertTrue(private_network.exists())
 
             # private subnet
@@ -427,8 +426,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             # private network
             private_network = self.store(
                 objects.NetworkTestObj(self.neutron, self.nb_api))
-            private_network_id = private_network.create(
-                network={'name': 'private'})
+            private_network_id = private_network.create()
             self.assertTrue(private_network.exists())
             # private subnet
             priv_subnet = self.store(objects.SubnetTestObj(
