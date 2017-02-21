@@ -46,6 +46,9 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.topology = self.controller.topology = topology.Topology(
             self.controller, enable_selective_topo_dist)
 
+        self.controller.enable_db_consistency = False
+        self.controller._register_models()
+
         # Add basic network topology
         self.controller.update_lswitch(fake_logic_switch1)
         self.controller.update_lswitch(fake_external_switch1)
