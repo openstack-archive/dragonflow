@@ -13,6 +13,7 @@
 """Unit testing for dragonflow mechanism driver."""
 
 import mock
+from neutron import context
 from neutron.plugins.ml2 import config
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
@@ -139,7 +140,11 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         req = self.new_update_request('subnets', data, subnet_id)
         req.get_response(self.api)
         network = new_network
-        new_network = self.driver.get_network(self.context, network['id'])
+        # FIXME(xiaohhui): It seems to be a neutron issue to force using a
+        #                  new context here. See bug/1666749 for more details.
+        ctx = context.get_admin_context()
+        new_network = self.driver.get_network(ctx, network['id'])
+
         self.assertGreater(new_network['revision_number'],
                            network['revision_number'])
         self.assertTrue(self.nb_api.update_subnet.called)
