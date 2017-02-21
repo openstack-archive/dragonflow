@@ -65,47 +65,6 @@ class DfObjectRefresher(object):
 items = []
 
 
-def initialize_object_refreshers(df_controller):
-    db_store = df_controller.get_db_store()
-    nb_api = df_controller.get_nb_api()
-
-    items.append(DfObjectRefresher('QoS Policies',
-                                   db_store.get_qos_policy_keys,
-                                   nb_api.get_qos_policies,
-                                   df_controller.update_qospolicy,
-                                   df_controller.delete_qospolicy))
-    items.append(DfObjectRefresher('Switches',
-                                   db_store.get_lswitch_keys,
-                                   nb_api.get_all_logical_switches,
-                                   df_controller.update_lswitch,
-                                   df_controller.delete_lswitch))
-    items.append(DfObjectRefresher('Security Groups',
-                                   db_store.get_security_group_keys,
-                                   nb_api.get_security_groups,
-                                   df_controller.update_secgroup,
-                                   df_controller.delete_secgroup))
-    items.append(DfObjectRefresher('Ports',
-                                   db_store.get_port_keys,
-                                   nb_api.get_all_logical_ports,
-                                   df_controller.update_lport,
-                                   df_controller.delete_lport))
-    items.append(DfObjectRefresher('Routers',
-                                   db_store.get_router_keys,
-                                   nb_api.get_routers,
-                                   df_controller.update_lrouter,
-                                   df_controller.delete_lrouter))
-    items.append(DfObjectRefresher('Floating IPs',
-                                   db_store.get_floatingip_keys,
-                                   nb_api.get_floatingips,
-                                   df_controller.update_floatingip,
-                                   df_controller.delete_floatingip))
-    items.append(DfObjectRefresher('Active Ports',
-                                   db_store.get_active_port_keys,
-                                   nb_api.get_active_ports,
-                                   df_controller.update_activeport,
-                                   df_controller.delete_activeport))
-
-
 def add_refresher(refresher):
     items.append(refresher)
 
