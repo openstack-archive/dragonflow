@@ -239,3 +239,46 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.controller.delete_chassis(chassis_id)
         mock_delete_lport.assert_called_once_with(lport_id)
         mock_delete_chassis.assert_called_once_with(chassis_id)
+
+    def test_lport_lswitch_external(self):
+        lport = mock.Mock()
+        lport.get_id.return_value = 'fake_lport_id'
+        self.assertIsNone(self.controller._set_lport_external_value_by_lswitch(
+            None, lport))
+        lswitch = mock.Mock()
+        lswitch.get_id.return_value = 'fake_lswitch_id'
+        lswitch.get_unique_key.return_value = None
+        lswitch.get_network_type.return_value = None
+        lswitch.get_segment_id.return_value = None
+        lswitch.get_physical_network.return_value = None
+        self.assertIsNone(self.controller._set_lport_external_value_by_lswitch(
+            lswitch, lport))
+
+        lswitch.get_unique_key.return_value = '10'
+        lswitch.get_network_type.return_value = 'vxlan'
+        lswitch.get_segment_id.return_value = '5000'
+        lswitch.get_physical_network.return_value = 'phynet'
+        self.controller._set_lport_external_value_by_lswitch(lswitch, lport)
+        lport.set_external_value.assert_any_call('local_network_id', '10')
+        lport.set_external_value.assert_any_call('network_type', 'vxlan')
+        lport.set_external_value.assert_any_call('segmentation_id', 5000)
+        lport.set_external_value.assert_any_call(
+            'physical_network', 'phynet')
+
+    @mock.patch.object(db_store.DbStore, 'get_chassis')
+    def test_lport_vtep_external(self, mock_get_chassis):
+        lport = mock.Mock()
+        lport.get_remote_vtep.return_value = True
+        lport.get_chassis.return_value = 'fake_chassis_id'
+        self.controller._set_lport_peer_vtep_address(lport)
+        lport.set_external_value.assert_called_with(
+            'peer_vtep_address', 'fake_chassis_id')
+        mock_get_chassis.assert_not_called()
+
+        chassis = mock.Mock()
+        chassis.get_ip.return_value = 'chassis_ip'
+        lport.get_remote_vtep.return_value = False
+        mock_get_chassis.return_value = chassis
+        self.controller._set_lport_peer_vtep_address(lport)
+        lport.set_external_value.assert_called_with(
+            'peer_vtep_address', 'chassis_ip')
