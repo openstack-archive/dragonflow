@@ -29,7 +29,7 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         self.app = self.open_flow_app.dispatcher.apps[0]
         self.mock_mod_flow = mock.Mock(name='mod_flow')
         self.app.mod_flow = self.mock_mod_flow
-        self.router = test_app_base.fake_logic_router1
+        self.router = copy.deepcopy(test_app_base.fake_logic_router1)
 
     def test_add_del_route(self):
         _add_subnet_send_to_snat = mock.patch.object(

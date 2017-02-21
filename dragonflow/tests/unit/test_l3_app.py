@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 import mock
 from ryu.lib.packet import icmp
 
@@ -27,7 +29,7 @@ class TestL3App(test_app_base.DFAppTestBase):
         self.app = self.open_flow_app.dispatcher.apps[0]
         self.mock_mod_flow = mock.Mock(name='mod_flow')
         self.app.mod_flow = self.mock_mod_flow
-        self.router = test_app_base.fake_logic_router1
+        self.router = copy.deepcopy(test_app_base.fake_logic_router1)
 
     def test_n_icmp_responder_for_n_router_interface(self):
         router_port1 = {"network": "20.0.0.1/24",
