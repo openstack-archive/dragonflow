@@ -116,8 +116,62 @@ class DfLocalController(object):
                 self.integration_bridge, 'secure')
         self.open_flow_app.start()
         self.create_tunnels()
-        df_db_objects_refresh.initialize_object_refreshers(self)
+        self._register_old_model_refreshers()
         self.db_sync_loop()
+
+    def _register_old_model_refreshers(self):
+        for refresher in [
+            df_db_objects_refresh.DfObjectRefresher(
+                'QoS Policies',
+                self.db_store.get_qos_policy_keys,
+                self.nb_api.get_qos_policies,
+                self.update_qospolicy,
+                self.delete_qospolicy,
+            ),
+            df_db_objects_refresh.DfObjectRefresher(
+                'Switches',
+                self.db_store.get_lswitch_keys,
+                self.nb_api.get_all_logical_switches,
+                self.update_lswitch,
+                self.delete_lswitch,
+            ),
+            df_db_objects_refresh.DfObjectRefresher(
+                'Security Groups',
+                self.db_store.get_security_group_keys,
+                self.nb_api.get_security_groups,
+                self.update_secgroup,
+                self.delete_secgroup,
+            ),
+            df_db_objects_refresh.DfObjectRefresher(
+                'Ports',
+                self.db_store.get_port_keys,
+                self.nb_api.get_all_logical_ports,
+                self.update_lport,
+                self.delete_lport,
+            ),
+            df_db_objects_refresh.DfObjectRefresher(
+                'Routers',
+                self.db_store.get_router_keys,
+                self.nb_api.get_routers,
+                self.update_lrouter,
+                self.delete_lrouter,
+            ),
+            df_db_objects_refresh.DfObjectRefresher(
+                'Floating IPs',
+                self.db_store.get_floatingip_keys,
+                self.nb_api.get_floatingips,
+                self.update_floatingip,
+                self.delete_floatingip,
+            ),
+            df_db_objects_refresh.DfObjectRefresher(
+                'Active Ports',
+                self.db_store.get_active_port_keys,
+                self.nb_api.get_active_ports,
+                self.update_activeport,
+                self.delete_activeport,
+            ),
+        ]:
+            df_db_objects_refresh.add_refresher(refresher)
 
     def db_sync_loop(self):
         while True:
