@@ -122,6 +122,7 @@ In order to provide proper support for multi tenancy and role based access
 control (RBAC) Dragonflow API should reject the requesting user attempts to
 perform operations or access resources that it does not have permission to.
 Dragonflow API can start by servicing 3 types of users:
+
 - Admin - super user, has access to everything. In OpenStack environment, this
   user is usually the OpenStack cloud admin.
 
