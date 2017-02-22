@@ -102,8 +102,8 @@ class RedisMgt(object):
             self.default_node.connection_pool.reset()
         except Exception as e:
             LOG.exception(_LE("exception happened "
-                              "when release default node, %(e)s")
-                          % {'e': e})
+                              "when release default node, %(e)s"),
+                          {'e': e})
 
     def _release_node(self, node):
         node.connection_pool.get_connection(None, None).disconnect()
@@ -141,8 +141,8 @@ class RedisMgt(object):
             except Exception:
                 LOG.exception(_LE("exception happened "
                                   "when get cluster topology, %(ip)s:"
-                                  "%(port)s")
-                              % {'ip': ip_port[0], 'port': ip_port[1]})
+                                  "%(port)s"),
+                              {'ip': ip_port[0], 'port': ip_port[1]})
 
         return new_nodes
 
@@ -239,8 +239,8 @@ class RedisMgt(object):
         if ip_port is not None:
             # remove the node by ip_port
             LOG.info(_LI("remove node %(ip_port)s from "
-                         "redis master list")
-                     % {'ip_port': ip_port})
+                         "redis master list"),
+                     {'ip_port': ip_port})
             self.master_list = [node for node in self.master_list
                                 if node['ip_port'] != ip_port]
 
@@ -302,8 +302,8 @@ class RedisMgt(object):
             LOG.warning(_LW("redis cluster nodes less than local, "
                             "maybe there is a partition in db "
                             "cluster, nodes:%(new)s, "
-                            "local nodes:%(local)s")
-                        % {'new': new_nodes, 'local': old_nodes})
+                            "local nodes:%(local)s"),
+                        {'new': new_nodes, 'local': old_nodes})
 
         return changed
 
@@ -388,8 +388,8 @@ class RedisMgt(object):
                 local_list = msgpack.Unpacker(six.BytesIO(syncstring)).unpack()
                 if local_list:
                     self.master_list = local_list
-                    LOG.info(_LI("get new master from syncstring master=%s")
-                             % self.master_list)
+                    LOG.info(_LI("get new master from syncstring master=%s"),
+                             self.master_list)
                     return True
 
             return False

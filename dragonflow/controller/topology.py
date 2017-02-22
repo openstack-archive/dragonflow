@@ -56,7 +56,7 @@ class Topology(object):
         if ovs_port is None:
             LOG.error(_LE("ovs_port is None"))
             return
-        LOG.info(_LI("Ovs port updated: %s") % str(ovs_port))
+        LOG.info(_LI("Ovs port updated: %s"), ovs_port)
         port_id = ovs_port.get_id()
         old_port = self.ovs_ports.get(port_id)
         if old_port is None:
@@ -179,8 +179,8 @@ class Topology(object):
         lport_id = ovs_port.get_iface_id()
         lport = self._get_lport(lport_id)
         if lport is None:
-            LOG.warning(_LW("No logical port found for ovs port: %s")
-                        % str(ovs_port))
+            LOG.warning(_LW("No logical port found for ovs port: %s"),
+                        ovs_port)
             return
         topic = lport.get_topic()
         if not topic:
@@ -211,7 +211,7 @@ class Topology(object):
             self.controller.bridge_port_updated(ovs_port)
         except Exception:
             LOG.exception(_LE('Failed to process bridge port online '
-                              'event: %s') % str(ovs_port))
+                              'event: %s'), ovs_port)
 
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.get_id()
@@ -228,12 +228,12 @@ class Topology(object):
 
         topic = lport.get_topic()
 
-        LOG.info(_LI("The logical port(%s) is offline") % str(lport))
+        LOG.info(_LI("The logical port(%s) is offline"), lport)
         try:
             self.controller.delete_lport(lport_id)
         except Exception:
             LOG.exception(_LE(
-                'Failed to process logical port offline event %s') % lport_id)
+                'Failed to process logical port offline event %s'), lport_id)
         finally:
             # publish vm port down event.
             if cfg.CONF.df.enable_port_status_notifier:
@@ -248,7 +248,7 @@ class Topology(object):
             return
 
         if topic not in self.topic_subscribed:
-            LOG.info(_LI("Subscribe topic: %(topic)s by lport: %(id)s") %
+            LOG.info(_LI("Subscribe topic: %(topic)s by lport: %(id)s"),
                      {"topic": topic, "id": lport_id})
             self.nb_api.subscriber.register_topic(topic)
             self._pull_tenant_topology_from_db(topic)
@@ -262,7 +262,7 @@ class Topology(object):
         port_ids = self.topic_subscribed[topic]
         port_ids.remove(lport_id)
         if len(port_ids) == 0:
-            LOG.info(_LI("Unsubscribe topic: %(topic)s by lport: %(id)s") %
+            LOG.info(_LI("Unsubscribe topic: %(topic)s by lport: %(id)s"),
                      {"topic": topic, "id": lport_id})
             del self.topic_subscribed[topic]
             self.nb_api.subscriber.unregister_topic(topic)

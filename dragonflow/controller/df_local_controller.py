@@ -183,9 +183,9 @@ class DfLocalController(object):
 
     def delete_lswitch(self, lswitch_id):
         lswitch = self.db_store.get_lswitch(lswitch_id)
-        LOG.info(_LI("Removing Logical Switch = %s") % lswitch_id)
+        LOG.info(_LI("Removing Logical Switch = %s"), lswitch_id)
         if lswitch is None:
-            LOG.warning(_LW("Try to delete a nonexistent lswitch(%s)") %
+            LOG.warning(_LW("Try to delete a nonexistent lswitch(%s)"),
                         lswitch_id)
             return
         self.open_flow_app.notify_remove_logical_switch(lswitch)
@@ -239,19 +239,18 @@ class DfLocalController(object):
             if ofport:
                 lport.set_external_value('ofport', ofport)
                 if original_lport is None:
-                    LOG.info(_LI("Adding new local logical port = %s") %
-                             str(lport))
+                    LOG.info(_LI("Adding new local logical port = %s"), lport)
                     self.open_flow_app.notify_add_local_port(lport)
                 else:
                     LOG.info(_LI("Updating local logical port = %(port)s, "
-                                 "original port = %(original_port)s") %
-                             {'port': str(lport),
-                              'original_port': str(original_lport)})
+                                 "original port = %(original_port)s"),
+                             {'port': lport,
+                              'original_port': original_lport})
                     self.open_flow_app.notify_update_local_port(lport,
                                                                 original_lport)
             else:
-                LOG.info(_LI("Local logical port %s was not created yet") %
-                         str(lport))
+                LOG.info(_LI("Local logical port %s was not created yet"),
+                         lport)
                 return
         else:
             lport.set_external_value('is_local', False)
@@ -274,14 +273,13 @@ class DfLocalController(object):
             if ofport:
                 lport.set_external_value('ofport', ofport)
                 if original_lport is None:
-                    LOG.info(_LI("Adding new remote logical port = %s") %
-                             str(lport))
+                    LOG.info(_LI("Adding new remote logical port = %s"), lport)
                     self.open_flow_app.notify_add_remote_port(lport)
                 else:
                     LOG.info(_LI("Updating remote logical port = %(port)s, "
-                                 "original port = %(original_port)s") %
-                             {'port': str(lport),
-                              'original_port': str(original_lport)})
+                                 "original port = %(original_port)s"),
+                             {'port': lport,
+                              'original_port': original_lport})
                     self.open_flow_app.notify_update_remote_port(
                         lport, original_lport)
             else:
@@ -297,7 +295,7 @@ class DfLocalController(object):
     def update_lport(self, lport):
         chassis = lport.get_chassis()
         if not self._is_physical_chassis(chassis):
-            LOG.debug(("Port %s has not been bound or it is a vPort") %
+            LOG.debug(("Port %s has not been bound or it is a vPort"),
                       lport.get_id())
             return
         original_lport = self.db_store.get_port(lport.get_id())
@@ -315,14 +313,12 @@ class DfLocalController(object):
         if lport is None:
             return
         if lport.get_external_value('is_local'):
-            LOG.info(_LI("Removing local logical port = %s") %
-                     str(lport))
+            LOG.info(_LI("Removing local logical port = %s"), lport)
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_local_port(lport)
             self.db_store.delete_port(lport.get_id(), True)
         else:
-            LOG.info(_LI("Removing remote logical port = %s") %
-                     str(lport))
+            LOG.info(_LI("Removing remote logical port = %s"), lport)
             if lport.get_external_value('ofport') is not None:
                 self.open_flow_app.notify_remove_remote_port(lport)
             self.db_store.delete_port(lport.get_id(), False)
@@ -354,8 +350,7 @@ class DfLocalController(object):
     def update_secgroup(self, secgroup):
         old_secgroup = self.db_store.get_security_group(secgroup.get_id())
         if old_secgroup is None:
-            LOG.info(_LI("Security Group created = %s") %
-                     secgroup)
+            LOG.info(_LI("Security Group created = %s"), secgroup)
             self._add_new_security_group(secgroup)
             return
         if not df_utils.is_valid_version(
@@ -452,14 +447,12 @@ class DfLocalController(object):
         self.db_store.delete_security_group(secgroup.get_id())
 
     def _add_new_security_group_rule(self, secgroup, secgroup_rule):
-        LOG.info(_LI("Adding new secgroup rule = %s") %
-                 secgroup_rule)
+        LOG.info(_LI("Adding new secgroup rule = %s"), secgroup_rule)
         self.open_flow_app.notify_add_security_group_rule(
                  secgroup, secgroup_rule)
 
     def _delete_security_group_rule(self, secgroup, secgroup_rule):
-        LOG.info(_LI("Removing secgroup rule = %s") %
-                 secgroup_rule)
+        LOG.info(_LI("Removing secgroup rule = %s"), secgroup_rule)
         self.open_flow_app.notify_remove_security_group_rule(
                  secgroup, secgroup_rule)
 
@@ -487,8 +480,7 @@ class DfLocalController(object):
         if not floatingip:
             return
         self.open_flow_app.notify_delete_floatingip(floatingip)
-        LOG.info(_LI("Floatingip is deleted. Floatingip = %s") %
-                 str(floatingip))
+        LOG.info(_LI("Floatingip is deleted. Floatingip = %s"), floatingip)
         self.db_store.delete_floatingip(floatingip_id)
 
     def update_publisher(self, publisher):
@@ -508,14 +500,14 @@ class DfLocalController(object):
     def _associate_floatingip(self, floatingip):
         self.db_store.update_floatingip(floatingip.get_id(), floatingip)
         self.open_flow_app.notify_associate_floatingip(floatingip)
-        LOG.info(_LI("Floatingip is associated with port. Floatingip = %s") %
-                 str(floatingip))
+        LOG.info(_LI("Floatingip is associated with port. Floatingip = %s"),
+                 floatingip)
 
     def _disassociate_floatingip(self, floatingip):
         self.db_store.delete_floatingip(floatingip.get_id())
         self.open_flow_app.notify_disassociate_floatingip(floatingip)
-        LOG.info(_LI("Floatingip is disassociated from port."
-                 " Floatingip = %s") % str(floatingip))
+        LOG.info(_LI("Floatingip is disassociated from port. "
+                     "Floatingip = %s"), floatingip)
 
     def _update_floatingip(self, old_floatingip, new_floatingip):
         if new_floatingip.get_lport_id() != old_floatingip.get_lport_id():
