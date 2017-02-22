@@ -82,7 +82,7 @@ Metadata Service
 
 Currently Neutron Metadata service does not support IPv6 [#]_ [#]_.
 When the Neutron's specification and implementation will be completed,
-a dedicated spec will be written as it was done in `IPv4 Metadata Service <metadata_service.rst>`_.
+a dedicated spec will be written as it was done in :doc:`metadata_service`.
 
 
 Neighbor Discovery
