@@ -26,10 +26,10 @@ from neutron.db import l3_agentschedulers_db
 from neutron.db import l3_gwmode_db
 from neutron.db.models import l3 as l3_db
 from neutron.quota import resource_registry
-from neutron.services import service_base
 from neutron_lib import constants as const
 from neutron_lib import exceptions as n_exc
 from neutron_lib.plugins import directory
+from neutron_lib.services import base as service_base
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
