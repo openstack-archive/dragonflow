@@ -18,6 +18,7 @@ from oslo_log import log
 from dragonflow._i18n import _LE
 from dragonflow.controller.common import constants
 from dragonflow.controller import df_base_app
+from dragonflow.db import db_store2
 from dragonflow.db.models2 import sfc_models
 
 LOG = log.getLogger(__name__)
@@ -31,8 +32,19 @@ class SfcApp(df_base_app.DFlowApp):
     @log_helpers.log_method_call
     def initialize(self):
         self.mpls_driver = MplsDriver(self)
+        self.db_store2 = db_store2.get_instance()
+        self._local_ports = set()
+        self._active_fcs = set()
         self._pp_ingress_ports = collections.defaultdict(set)
         self._pp_egress_ports = collections.defaultdict(set)
+
+    def _get_portpair_by_egress_port(self, egress_port):
+        return self.db_store2.get_one(
+            sfc_models.PortPair(
+                egress_port=egress_port,
+            ),
+            index=sfc_models.PortPair.get_indexes()['egress'],
+        )
 
     @log_helpers.log_method_call
     def _get_portchain_driver(self, pc):
@@ -49,13 +61,19 @@ class SfcApp(df_base_app.DFlowApp):
     def sfc_portpairgroup_updated(self, ppg, old_ppg):
         pass
 
+    def _fc_is_local(self, fc):
+        lport_id = fc.source_port_id or fc.dest_port_id
+        return lport_id in self._local_ports
+
     @log_helpers.log_method_call
     @df_base_app.register_event(sfc_models.PortChain, 'created')
     def sfc_portchain_created(self, pc):
         driver = self._get_portchain_driver(pc)
 
         for fc in pc.flow_classifiers:
-            driver.install_encap_flows(pc, fc)
+            self._active_fcs.add(fc.id)
+            if self._fc_is_local(fc):
+                driver.install_encap_flows(pc, fc)
             driver.install_decap_flows(pc, fc)
 
         for ppg in pc.port_pair_groups:
@@ -65,8 +83,9 @@ class SfcApp(df_base_app.DFlowApp):
                 self._pp_ingress_ports[pp.ingress_port].add(pp)
                 self._pp_egress_ports[pp.egress_port].add(pp)
 
-                lport = self.db_store.get_port(pp.egress_port)
-                driver.install_sf_egress_flows(pc, ppg, pp, lport)
+                if pp.egress_port in self._local_ports:
+                    lport = self.db_store.get_port(pp.egress_port)
+                    driver.install_sf_egress_flows(pc, ppg, pp, lport)
 
     @log_helpers.log_method_call
     @df_base_app.register_event(sfc_models.PortChain, 'deleted')
@@ -74,7 +93,9 @@ class SfcApp(df_base_app.DFlowApp):
         driver = self._get_portchain_driver(pc)
 
         for fc in pc.flow_classifiers:
-            driver.uninstall_encap_flows(pc, fc)
+            self._active_fcs.remove(fc.id)
+            if self._fc_is_local(fc):
+                driver.uninstall_encap_flows(pc, fc)
             driver.uninstall_decap_flows(pc, fc)
 
         for ppg in pc.port_pair_groups:
@@ -82,7 +103,8 @@ class SfcApp(df_base_app.DFlowApp):
 
             for pp in ppg.port_pairs:
                 lport = self.db_store.get_port(pp.egress_port)
-                driver.uninstall_sf_egress_flows(pc, ppg, pp, lport)
+                if lport.get_external_value('is_local'):
+                    driver.uninstall_sf_egress_flows(pc, ppg, pp, lport)
 
     @log_helpers.log_method_call
     @df_base_app.register_event(sfc_models.PortChain, 'updated')
@@ -90,39 +112,60 @@ class SfcApp(df_base_app.DFlowApp):
         self.delete_portchain(old_pc)
         self.create_portchain(pc)
 
+    def _get_port_location(self, lport_id):
+        pass
+
     @log_helpers.log_method_call
     def add_local_port(self, lport):
-        lport_id = lport.get_id()
-        if lport_id in self._pp_ingress_ports:
-            # Modify PPG ingress flows
-            pass
-        if lport_id in self._pp_egress_ports:
-            # Add PP egress flows
-            pass
+        self._local_ports.add(lport.id)
+
+        pc, ppg, pp = self._get_port_location(lport.id)
+        if pc is None:
+            return
+
+        driver = self._get_portchain_driver(pc)
+
+        if lport.id == pp.egress_port:
+            driver.install_sf_egress_flows(pc, ppg, pp, lport)
+
+        if lport.id == pp.ingress_port:
+            driver.reinstall_dispatch_to_ppg_flows(pc, ppg)
 
     @log_helpers.log_method_call
     def add_remote_port(self, lport):
-        lport_id = lport.get_id()
-        if lport_id in self._pp_ingress_ports:
-            # Modify PPG ingress flows
-            pass
+        pc, ppg, pp = self._get_port_location(lport.id)
+        if pc is None:
+            return
+
+        if lport.id == pp.ingress_port:
+            driver = self._get_portchain_driver(pc)
+            driver.reinstall_dispatch_to_ppg_flows(pc, ppg)
 
     @log_helpers.log_method_call
     def remove_local_port(self, lport):
-        lport_id = lport.get_id()
-        if lport_id in self._pp_ingress_ports:
-            # Modify PPG ingress flows
-            pass
-        if lport_id in self._pp_egress_ports:
-            # Remove PP egress flows
-            pass
+        self._local_ports.remove(lport.id)
+
+        pc, ppg, pp = self._get_port_location(lport.id)
+        if pc is None:
+            return
+
+        driver = self._get_portchain_driver(pc)
+
+        if lport.id == pp.egress_port:
+            driver.uninstall_sf_egress_flows(pc, ppg, pp, lport)
+
+        if lport.id == pp.ingress_port:
+            driver.reinstall_dispatch_to_ppg_flows(pc, ppg)
 
     @log_helpers.log_method_call
     def remove_remote_port(self, lport):
-        lport_id = lport.get_id()
-        if lport_id in self._pp_ingress_ports:
-            # Modify PPG ingress flows
-            pass
+        pc, ppg, pp = self._get_port_location(lport.id)
+        if pc is None:
+            return
+
+        if lport.id == pp.ingress_port:
+            driver = self._get_portchain_driver(pc)
+            driver.reinstall_dispatch_to_ppg_flows(pc, ppg)
 
 
 class MplsDriver(object):
@@ -278,6 +321,11 @@ class MplsDriver(object):
                     mpls_label=self._get_ingress_label(pc, fc, ppg),
                 ),
             )
+
+    @log_helpers.log_method_call
+    def reinstall_dispatch_to_ppg_flows(self, pc, ppg):
+        self.uninstall_dispatch_to_ppg_flows(pc, ppg)
+        self.install_dispatch_to_ppg_flows(pc, ppg)
 
     @log_helpers.log_method_call
     def install_sf_egress_flows(self, pc, ppg, pp, lport):

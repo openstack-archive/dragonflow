@@ -53,29 +53,31 @@ class FcApp(df_base_app.DFlowApp):
 
     def _install_flow_classifier(self, fc):
         lport = self._get_fc_lport(fc)
-        lport_id = lport.get_id()
-        if lport_id not in self._local_ports:
-            return
-
         self._install_flows_for_lport(fc, lport)
 
-    def _install_flows_for_lport(self, fc, lport):
+    def _install_classification_flows(self, fc):
         # FIXME assume lport is a vm port for now
-
         for match in self._create_matches(fc):
-            # Classification
-            action_inst = self.parser.OFPInstructionActions(
-                self.ofproto.OFPIT_APPLY_ACTIONS,
-                [self.parser.OFPActionSetField(reg6=fc.unique_key)])
-            goto_inst = self.parser.OFPInstructionGotoTable(
-                constants.SFC_ENCAP_TABLE)
-
             self.mod_flow(
                 table_id=self._get_fc_origin_table(fc),
                 priority=constants.PRIORITY_HIGH,
                 match=match,
-                inst=[action_inst, goto_inst],
+                inst=[
+                    self.parser.OFPInstructionActions(
+                        self.ofproto.OFPIT_APPLY_ACTIONS,
+                        [
+                            self.parser.OFPActionSetField(reg6=fc.unique_key),
+                        ],
+                    ),
+                    self.parser.OFPInstructionGotoTable(
+                        constants.SFC_ENCAP_TABLE,
+                    ),
+                ],
             )
+
+    def _install_flows_for_lport(self, fc, lport):
+        if lport.get_external_value('is_local'):
+            self._install_classification_flows(fc, lport)
 
         # End-of-chain
         # 1) Restore network ID in metadata
@@ -117,17 +119,15 @@ class FcApp(df_base_app.DFlowApp):
         )
 
     def remove_local_port(self, lport):
-        lport_id = lport.get_id()
-        self._local_ports.remove(lport_id)
+        self._local_ports.remove(lport.id)
 
-        for fc_id in self._port_to_fc[lport_id]:
+        for fc_id in self._port_to_fc[lport.id]:
             fc = self._local_fcs[fc_id]
             self._uninstall_flow_classifier(fc)
 
     def _uninstall_flow_classifier(self, fc):
         lport = self._get_fc_lport(fc)
-        lport_id = lport.get_id()
-        if lport_id not in self._local_ports:
+        if lport.id not in self._local_ports:
             return
 
         # FIXME assume lport is a vm port for now
