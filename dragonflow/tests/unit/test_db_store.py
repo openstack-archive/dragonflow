@@ -11,10 +11,12 @@
 #    under the License.
 
 from jsonmodels import fields
+from jsonmodels import models
 import mock
 
 from dragonflow.db import db_store
 from dragonflow.db import db_store2
+from dragonflow.db import field_types as df_fields
 from dragonflow.db import model_framework
 from dragonflow.tests import base as tests_base
 
@@ -191,11 +193,33 @@ class TestDbStore(tests_base.BaseTestCase):
         self.assertIsNone(self.db_store.get_publisher('id3'))
 
 
-@model_framework.construct_nb_db_model(indexes={'id': 'id', 'topic': 'topic'})
+class NestedNestedModel(models.Base):
+    name = fields.StringField()
+
+
+class NestedModel(models.Base):
+    submodel2 = fields.EmbeddedField(NestedNestedModel)
+
+
+@model_framework.construct_nb_db_model
+class ReffedModel(model_framework.ModelBase):
+    name = fields.StringField()
+
+
+@model_framework.construct_nb_db_model(
+    indexes={
+        'id': 'id',
+        'topic': 'topic',
+        'twicenested': 'submodel1.submodel2.name',
+        'refnested': 'ref1.id',
+    },
+)
 class ModelTest(model_framework.ModelBase):
     id = fields.StringField()
     topic = fields.StringField()
     extra_field = fields.StringField()
+    submodel1 = fields.EmbeddedField(NestedModel)
+    ref1 = df_fields.ReferenceField(ReffedModel)
 
 
 class TestDbStore2(tests_base.BaseTestCase):
@@ -308,3 +332,66 @@ class TestDbStore2(tests_base.BaseTestCase):
             (),
             self.db_store.get_keys_by_topic(ModelTest, topic='topic'),
         )
+
+    def test_nested_keys(self):
+        self.db_store.update(
+            ModelTest(
+                id='id1',
+                submodel1=NestedModel(
+                    submodel2=NestedNestedModel(
+                        name='name1',
+                    ),
+                ),
+            ),
+        )
+        self.db_store.update(
+            ModelTest(
+                id='id2',
+                submodel1=NestedModel(
+                    submodel2=NestedNestedModel(
+                        name='name2',
+                    ),
+                ),
+            ),
+        )
+
+        self.assertItemsEqual(
+            ('id1',),
+            self.db_store.get_keys(
+                ModelTest(
+                    submodel1=NestedModel(
+                        submodel2=NestedNestedModel(name='name1'),
+                    ),
+                ),
+                index=ModelTest.get_indexes()['twicenested'],
+            ),
+        )
+
+        self.assertItemsEqual(
+            ('id2',),
+            self.db_store.get_keys(
+                ModelTest(
+                    submodel1=NestedModel(
+                        submodel2=NestedNestedModel(name='name2'),
+                    ),
+                ),
+                index=ModelTest.get_indexes()['twicenested'],
+            ),
+        )
+
+    def test_reffed_nested_keys(self):
+        with mock.patch(
+            'dragonflow.db.db_store2.get_instance',
+            return_value=self.db_store,
+        ):
+            self.db_store.update(ReffedModel(id='id1', name='name1'))
+            self.db_store.update(ModelTest(id='id2', ref1='id1'))
+            self.db_store.update(ReffedModel(id='id3', name='name2'))
+            self.db_store.update(ModelTest(id='id4', ref1='id3'))
+            self.assertItemsEqual(
+                ('id2',),
+                self.db_store.get_keys(
+                    ModelTest(ref1=ReffedModel(id='id1')),
+                    index=ModelTest.get_indexes()['refnested'],
+                ),
+            )
