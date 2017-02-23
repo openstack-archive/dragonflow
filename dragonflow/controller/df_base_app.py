@@ -18,6 +18,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
+from dragonflow.controller.common import constants
 from dragonflow.controller.common import cookies
 from dragonflow.controller import df_db_notifier
 
@@ -124,6 +125,20 @@ class DFlowApp(df_db_notifier.DBNotifyInterface):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         actions = [parser.OFPActionOutput(port=port)]
+        out = parser.OFPPacketOut(datapath=datapath,
+                                  buffer_id=ofproto.OFP_NO_BUFFER,
+                                  in_port=ofproto.OFPP_CONTROLLER,
+                                  actions=actions,
+                                  data=pkt)
+        datapath.send_msg(out)
+
+    def dispatch_packet(self, pkt, unique_key):
+        datapath = self.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        actions = [parser.OFPActionSetField(reg7=unique_key),
+                   parser.NXActionResubmitTable(
+                       table_id=constants.INGRESS_DISPATCH_TABLE)]
         out = parser.OFPPacketOut(datapath=datapath,
                                   buffer_id=ofproto.OFP_NO_BUFFER,
                                   in_port=ofproto.OFPP_CONTROLLER,
