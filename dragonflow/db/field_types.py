@@ -19,6 +19,20 @@ from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
 
 
+def _create_ref(proxy_type, value, lazy):
+    if isinstance(value, six.string_types):
+        obj_id = value
+    elif isinstance(value, (proxy_type, proxy_type.get_proxied_model())):
+        obj_id = value.id
+    else:
+        raise ValueError(
+            _LE('Reference field should only be initialized by ID or '
+                'model instance/reference'),
+        )
+
+    return proxy_type(id=obj_id, lazy=lazy)
+
+
 class ReferenceField(fields.BaseField):
     '''A field that holds a "foreign-key" to another model.
 
@@ -56,8 +70,10 @@ class ReferenceField(fields.BaseField):
         return self._types
 
     def parse_value(self, value):
-        if value:
-            return self.types[0](id=value, lazy=self._lazy)
+        if value is None:
+            return
+
+        return _create_ref(self.types[0], value, self._lazy)
 
     def to_struct(self, obj):
         if obj is not None:
@@ -79,14 +95,17 @@ class ReferenceListField(fields.ListField):
     'Name of the secgroup'
 
     '''
-    def __init__(self, target_model, *args, **kwargs):
+    def __init__(self, target_model, lazy=True, *args, **kwargs):
         self._proxy_type = model_proxy.create_model_proxy(
             model_framework.get_model(target_model))
+        self._lazy = lazy
         super(ReferenceListField, self).__init__(
             self._proxy_type, *args, **kwargs)
 
     def parse_value(self, values):
-        return [self._proxy_type(v) for v in values or []]
+        return [
+            _create_ref(self._proxy_type, v, self._lazy) for v in values or []
+        ]
 
     def to_struct(self, objs):
         if objs:

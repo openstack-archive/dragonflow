@@ -62,14 +62,20 @@ class _IndexCache(object):
     def get_all(self, obj):
         return self._tree.get_all(self._get_key(obj))
 
+    def _get_key_element(self, obj, key_element):
+        path = key_element.split('.')
+
+        for p in path:
+            obj = getattr(obj, p)
+            if obj is None:
+                return MISSING
+
+        return obj
+
     def _get_key(self, obj):
         key = []
         for f in self._index:
-            if obj.field_is_set(f):
-                value = getattr(obj, f)
-            else:
-                value = MISSING
-
+            value = self._get_key_element(obj, f)
             key.append(value)
 
         return tuple(key)
