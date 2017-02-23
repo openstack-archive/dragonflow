@@ -224,6 +224,8 @@ function configure_df_plugin {
             iniset $NEUTRON_CONF quotas quota_security_group_rule "-1"
         fi
 
+        # load dragonflow.ini into neutron-server
+        neutron_server_config_add_new $DRAGONFLOW_CONF
     fi
 
     iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
