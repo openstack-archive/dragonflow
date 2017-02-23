@@ -188,11 +188,9 @@ class DfLocalController(object):
         self.db_store.del_lswitch(lswitch_id)
 
     def _notify_active_ports_updated_when_lport_created(self, lport):
-        active_ports = self.nb_api.get_active_ports(lport.get_topic())
+        active_ports = self.db_store.get_active_ports(lport.get_topic())
         for active_port in active_ports:
             if active_port.get_detected_lport_id() == lport.get_id():
-                self.db_store.update_active_port(active_port.get_id(),
-                                                 active_port)
                 self.open_flow_app.notify_update_active_port(active_port,
                                                              None)
 
@@ -533,9 +531,9 @@ class DfLocalController(object):
         LOG.info(_LI("Active port updated. Active port = %(new)s, "
                      "old active port = %(old)s"),
                  {'new': active_port, 'old': old_active_port})
-        if lport is not None:
-            self.db_store.update_active_port(active_port.get_id(),
-                                             active_port)
+        self.db_store.update_active_port(active_port.get_id(),
+                                         active_port)
+        if lport:
             self.open_flow_app.notify_update_active_port(active_port,
                                                          old_active_port)
         else:
