@@ -126,8 +126,6 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.assertIn(fake_lport.get_id(), self.app.subnet_vm_port_map[subnet])
 
         fake_lport.inner_obj['ips'] = ['10.0.0.6']
-        tunnel_key = fake_lport.get_unique_key()
-        self.app.ofport_to_dhcp_app_port_data.update({tunnel_key: None})
         self.app._uninstall_dhcp_flow_for_vm_port = mock.Mock()
         # test case: lport has valid ip
         self.app.remove_local_port(fake_lport)
