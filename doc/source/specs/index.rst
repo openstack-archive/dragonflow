@@ -65,6 +65,7 @@ Specs
     support_check_chassis_alive
     traceroute
     api
+    vlan_aware_vms
 
 Templates
 ---------
