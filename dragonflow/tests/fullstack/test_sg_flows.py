@@ -264,7 +264,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
     def test_associating_flows(self):
 
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'test_network1'})
+        network_id = network.create()
         self.assertTrue(network.exists())
 
         subnet_info = {'network_id': network_id,
@@ -288,7 +288,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         vm = self.store(objects.VMTestObj(self, self.neutron))
         vm.create(network=network, security_groups=[security_group_id])
 
-        addresses = vm.server.addresses['test_network1']
+        addresses = vm.server.addresses['mynetwork']
         self.assertIsNotNone(addresses)
         ip = addresses[0]['addr']
         self.assertIsNotNone(ip)
@@ -335,7 +335,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
     def test_rule_flows(self):
 
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'test_network2'})
+        network_id = network.create()
         self.assertTrue(network.exists())
 
         subnet_info = {'network_id': network_id,

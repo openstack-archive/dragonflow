@@ -42,7 +42,7 @@ class TestTopology(test_base.DFTestBase):
 
     def _create_network(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'private'})
+        network_id = network.create()
         self.assertTrue(network.exists())
         subnet = self.store(objects.SubnetTestObj(
             self.neutron,

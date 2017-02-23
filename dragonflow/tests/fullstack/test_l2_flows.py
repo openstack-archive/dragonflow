@@ -48,7 +48,7 @@ class TestL2FLows(test_base.DFTestBase):
             return
 
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'private'})
+        network_id = network.create()
         network_params = network.get_network()
         segmentation_id = network_params['network']['provider:segmentation_id']
         subnet = {'network_id': network_id,
@@ -65,8 +65,8 @@ class TestL2FLows(test_base.DFTestBase):
         vm.create(network=network)
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
-        self.assertIsNotNone(vm.server.addresses['private'])
-        mac = vm.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(vm.server.addresses['mynetwork'])
+        mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
         metadataid = utils.wait_until_is_and_return(
             lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
@@ -467,7 +467,7 @@ class TestL2FLows(test_base.DFTestBase):
 
     def test_vm_multicast(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'private'})
+        network_id = network.create()
         subnet = {'network_id': network_id,
                   'cidr': '10.200.0.0/24',
                   'gateway_ip': '10.200.0.1',
@@ -481,8 +481,8 @@ class TestL2FLows(test_base.DFTestBase):
         vm.create(network=network)
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
-        self.assertIsNotNone(vm.server.addresses['private'])
-        mac = vm.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(vm.server.addresses['mynetwork'])
+        mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
         metadataid = utils.wait_until_is_and_return(
             lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),

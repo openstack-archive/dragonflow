@@ -98,7 +98,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
 
     def test_notify_message(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'private'})
+        network_id = network.create()
         subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
                                                   network_id))
         subnet_body = {'network_id': network_id,
@@ -113,8 +113,8 @@ class TestOvsdbMonitor(test_base.DFTestBase):
 
         vm = self.store(objects.VMTestObj(self, self.neutron))
         vm.create(network=network)
-        self.assertIsNotNone(vm.server.addresses['private'])
-        mac = vm.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(vm.server.addresses['mynetwork'])
+        mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
         # wait util get the message we want
         utils.wait_until_true(
@@ -138,7 +138,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
 
     def test_reply_message(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
-        network_id = network.create(network={'name': 'private'})
+        network_id = network.create()
         subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
                                                   network_id))
         subnet_body = {'network_id': network_id,
@@ -153,14 +153,14 @@ class TestOvsdbMonitor(test_base.DFTestBase):
 
         vm1 = self.store(objects.VMTestObj(self, self.neutron))
         vm1.create(network=network)
-        self.assertIsNotNone(vm1.server.addresses['private'])
-        mac1 = vm1.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(vm1.server.addresses['mynetwork'])
+        mac1 = vm1.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac1)
 
         vm2 = self.store(objects.VMTestObj(self, self.neutron))
         vm2.create(network=network)
-        self.assertIsNotNone(vm2.server.addresses['private'])
-        mac2 = vm2.server.addresses['private'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(vm2.server.addresses['mynetwork'])
+        mac2 = vm2.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac2)
 
         # wait util get the message we want
