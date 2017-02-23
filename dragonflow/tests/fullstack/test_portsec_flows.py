@@ -48,66 +48,66 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
                     return port
         return None
 
-    def _get_anti_spoof_expected_flows(self, ip, mac, of_port):
+    def _get_anti_spoof_expected_flows(self, ip, mac, unique_key):
         expected_flow_list = []
 
-        in_port_match = "in_port=" + str(of_port)
+        unique_key_match = "reg6=" + hex(unique_key)
         dl_src_match = "dl_src=" + mac
         goto_conntrack_table_action = \
             "goto_table:" + str(const.EGRESS_CONNTRACK_TABLE)
         goto_classification_table_action = \
             "goto_table:" + str(const.SERVICES_CLASSIFICATION_TABLE)
 
-        # priority: High, match: in_port=of_port, dl_src=$vm_mac,
+        # priority: High, match: reg6=unique_key, dl_src=$vm_mac,
         # dl_dst=ff:ff:ff:ff:ff:ff, udp, tp_src=68, tp_dst=67,
         # actions: goto const.EGRESS_CONNTRACK_TABLE
         dl_dst_match = "dl_dst=" + const.BROADCAST_MAC
         expected_flow_list.append({
             "priority": str(const.PRIORITY_HIGH),
-            "match_list": [in_port_match, dl_src_match, dl_dst_match,
+            "match_list": [unique_key_match, dl_src_match, dl_dst_match,
                            "udp", "tp_src=" + str(const.DHCP_CLIENT_PORT),
                            "tp_dst=" + str(const.DHCP_SERVER_PORT)],
             "actions": goto_conntrack_table_action
         })
 
-        # priority: High, match: ip, in_port=of_port, dl_src=$vm_mac,
+        # priority: High, match: ip, reg6=unique_key, dl_src=$vm_mac,
         # nw_src=$fixed_ip,
         # actions: goto const.EGRESS_CONNTRACK_TABLE
         nw_src_match = "nw_src=" + ip
         expected_flow_list.append({
             "priority": str(const.PRIORITY_HIGH),
-            "match_list": ["ip", in_port_match, dl_src_match, nw_src_match],
+            "match_list": ["ip", unique_key_match, dl_src_match, nw_src_match],
             "actions": goto_conntrack_table_action
         })
 
-        # priority: High, match: arp, in_port=of_port, dl_src=$vm_mac,
+        # priority: High, match: arp, reg6=unique_key, dl_src=$vm_mac,
         # arp_spa=$fixed_ip, arp_sha=$vm_mac
         # actions: goto const.SERVICES_CLASSIFICATION_TABLE
         arp_spa_match = "arp_spa=" + ip
         arp_sha_match = "arp_sha=" + mac
         expected_flow_list.append({
             "priority": str(const.PRIORITY_HIGH),
-            "match_list": ["arp", in_port_match, dl_src_match, arp_spa_match,
+            "match_list": ["arp", unique_key_match, dl_src_match, arp_spa_match,
                            arp_sha_match],
             "actions": goto_classification_table_action
         })
 
-        # priority: High, match: arp, in_port=of_port, dl_src=$vm_mac,
+        # priority: High, match: arp, reg6=unique_key, dl_src=$vm_mac,
         # arp_op=1, arp_spa=0, arp_sha=$vm_mac
         # actions: goto const.SERVICES_CLASSIFICATION_TABLE
         arp_sha_match = "arp_sha=" + mac
         expected_flow_list.append({
             "priority": str(const.PRIORITY_HIGH),
-            "match_list": ["arp", in_port_match, dl_src_match,
+            "match_list": ["arp", unique_key_match, dl_src_match,
                            "arp_spa=0.0.0.0", "arp_op=1", arp_sha_match],
             "actions": goto_classification_table_action
         })
 
-        # priority: Low, match: in_port=of_port, dl_src=$vm_mac
+        # priority: Low, match: reg6=unique_key, dl_src=$vm_mac
         # actions: goto const.SERVICES_CLASSIFICATION_TABLE
         expected_flow_list.append({
             "priority": str(const.PRIORITY_HIGH),
-            "match_list": [in_port_match, dl_src_match],
+            "match_list": [unique_key_match, dl_src_match],
             "actions": goto_classification_table_action
         })
 
@@ -210,10 +210,11 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
 
         of_port = self.vswitch_api.get_port_ofport_by_id(port.get_id())
         self.assertIsNotNone(of_port)
+        unique_key = port.get_unique_key()
 
         # Check if the associating flows were installed.
         expected_flow_list = self._get_anti_spoof_expected_flows(
-            ip, mac, of_port
+            ip, mac, unique_key
         )
         self._check_all_flows_existed(expected_flow_list)
 
@@ -223,6 +224,6 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
 
         # Check if the associating flows were removed.
         expected_flow_list = self._get_anti_spoof_expected_flows(
-            ip, mac, of_port
+            ip, mac, unique_key
         )
         self._check_not_flow_existed(expected_flow_list)
