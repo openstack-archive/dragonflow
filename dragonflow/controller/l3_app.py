@@ -112,8 +112,8 @@ class L3App(df_base_app.DFlowApp):
                 icmp_ttl_pkt = icmp_error_generator.generate(
                     icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE,
                     msg.data, router_port_ip, pkt)
-                in_port = msg.match.get('in_port')
-                self.send_packet(in_port, icmp_ttl_pkt)
+                unique_key = msg.match.get('reg6')
+                self.dispatch_packet(icmp_ttl_pkt, unique_key)
             else:
                 LOG.warning(_LW("The invalid TTL packet's destination mac %s "
                                 "can't be recognized."), e_pkt.dst)
@@ -140,8 +140,8 @@ class L3App(df_base_app.DFlowApp):
                 icmp_dst_unreach = icmp_error_generator.generate(
                     icmp.ICMP_DEST_UNREACH, icmp.ICMP_PORT_UNREACH_CODE,
                     msg.data, pkt=pkt)
-                in_port = msg.match.get('in_port')
-                self.send_packet(in_port, icmp_dst_unreach)
+                unique_key = msg.match.get('reg6')
+                self.dispatch_packet(icmp_dst_unreach, unique_key)
 
             # Silently drop packet of other protocol.
             return
