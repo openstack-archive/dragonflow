@@ -31,9 +31,11 @@ class TestL3App(test_app_base.DFAppTestBase):
 
     def test_add_del_router(self):
         self.controller.delete_lrouter(self.router.get_id())
-        self.assertEqual(4, self.mock_mod_flow.call_count)
+        self.assertEqual(5, self.mock_mod_flow.call_count)
         self.mock_mod_flow.reset_mock()
         self.controller.update_lrouter(self.router)
+        # Since there is only one router interface in the fake router.
+        # Adding router will call mod_flow 2 times less than deleting router.
         self.assertEqual(3, self.mock_mod_flow.call_count)
         args, kwargs = self.mock_mod_flow.call_args
         self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])
@@ -84,3 +86,25 @@ class TestL3App(test_app_base.DFAppTestBase):
                 icmp_error.assert_called_with(icmp.ICMP_TIME_EXCEEDED,
                                               icmp.ICMP_TTL_EXPIRED_CODE,
                                               mock.ANY, "10.0.0.1", mock.ANY)
+
+    def test_reply_icmp_unreachable_with_rate_limit(self):
+        self.app.router_port_rarp_cache = mock.Mock()
+        self.app.router_port_rarp_cache.values.return_value = ["10.0.0.1"]
+        event = mock.Mock()
+        fake_ip_pkt = mock.Mock()
+        fake_ip_pkt.dst = "10.0.0.1"
+        fake_pkt = mock.Mock()
+        fake_pkt.get_protocol.return_value = fake_ip_pkt
+        with mock.patch("ryu.lib.packet.packet.Packet", return_value=fake_pkt):
+            with mock.patch("dragonflow.controller.common"
+                            ".icmp_error_generator.generate") as icmp_error:
+                self.app.packet_in_handler(event)
+                self.app.packet_in_handler(event)
+                self.app.packet_in_handler(event)
+                self.app.packet_in_handler(event)
+
+                self.assertEqual(self.app.conf.router_port_unreach_max_rate,
+                                 icmp_error.call_count)
+                icmp_error.assert_called_with(icmp.ICMP_DEST_UNREACH,
+                                              icmp.ICMP_PORT_UNREACH_CODE,
+                                              mock.ANY, pkt=fake_pkt)
