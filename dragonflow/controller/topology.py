@@ -55,14 +55,13 @@ class Topology(object):
             LOG.error(_LE("ovs_port is None"))
             return
         LOG.info(_LI("Ovs port updated: %s"), ovs_port)
+        # ignore port that misses some parameters
+        if not self._check_ovs_port_integrity(ovs_port):
+            return
         port_id = ovs_port.get_id()
         old_port = self.ovs_ports.get(port_id)
         if old_port is None:
-            # ignore new port that misses some parameters
-            if not self._check_ovs_port_integrity(ovs_port):
-                return
-            else:
-                action = "added"
+            action = "added"
         else:
             action = 'updated'
 

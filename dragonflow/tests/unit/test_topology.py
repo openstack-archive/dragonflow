@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 import mock
 from oslo_config import cfg
 
@@ -37,6 +39,8 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.nb_api.get_routers.return_value = []
         self.nb_api.get_security_groups.return_value = []
         self.nb_api.get_floatingips.return_value = []
+        self.fake_invalid_ovs_port = copy.deepcopy(
+            test_app_base.fake_ovs_port1)
 
     def test_vm_port_online_offline(self):
         self.nb_api.get_all_logical_switches.return_value = [
@@ -68,6 +72,10 @@ class TestTopology(test_app_base.DFAppTestBase):
             test_app_base.fake_local_port1.get_id())
         self.nb_api.subscriber.unregister_topic.assert_called_once_with(
             test_app_base.fake_local_port1.get_topic())
+
+        self.fake_invalid_ovs_port.get_ofport.return_value = -1
+        self.topology.ovs_port_updated(self.fake_invalid_ovs_port)
+        self.controller.update_lport.assert_not_called()
 
     def test_vm_online_after_topology_pulled(self):
         self.nb_api.get_all_logical_switches.return_value = [
