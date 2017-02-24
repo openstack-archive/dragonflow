@@ -362,15 +362,14 @@ class SGApp(df_base_app.DFlowApp):
 
         parser = self.parser
         ofproto = self.ofproto
+        unique_key = lport.get_unique_key()
 
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            tunnel_key = lport.get_unique_key()
-            lport_classify_match = {"reg7": tunnel_key}
+            lport_classify_match = {"reg7": unique_key}
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            ofport = lport.get_external_value('ofport')
-            lport_classify_match = {"in_port": ofport}
+            lport_classify_match = {"reg6": unique_key}
 
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(security_group_id)
@@ -399,15 +398,14 @@ class SGApp(df_base_app.DFlowApp):
 
         parser = self.parser
         ofproto = self.ofproto
+        unique_key = lport.get_unique_key()
 
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            tunnel_key = lport.get_unique_key()
-            lport_classify_match = {"reg7": tunnel_key}
+            lport_classify_match = {"reg7": unique_key}
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            ofport = lport.get_external_value('ofport')
-            lport_classify_match = {"in_port": ofport}
+            lport_classify_match = {"reg6": unique_key}
 
         conj_id, priority = \
             self._get_secgroup_conj_id_and_priority(security_group_id)
@@ -442,17 +440,16 @@ class SGApp(df_base_app.DFlowApp):
     def _install_connection_track_flow_by_direction(self, lport, direction):
         parser = self.parser
         ofproto = self.ofproto
+        unique_key = lport.get_unique_key()
 
         if direction == 'ingress':
             pre_table_id = const.INGRESS_CONNTRACK_TABLE
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            tunnel_key = lport.get_unique_key()
-            lport_classify_match = {"reg7": tunnel_key}
+            lport_classify_match = {"reg7": unique_key}
         else:
             pre_table_id = const.EGRESS_CONNTRACK_TABLE
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            ofport = lport.get_external_value('ofport')
-            lport_classify_match = {"in_port": ofport}
+            lport_classify_match = {"reg6": unique_key}
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                 **lport_classify_match)
@@ -474,15 +471,15 @@ class SGApp(df_base_app.DFlowApp):
     def _uninstall_connection_track_flow_by_direction(self, lport, direction):
         parser = self.parser
         ofproto = self.ofproto
+        unique_key = lport.get_unique_key()
 
         if direction == 'ingress':
             pre_table_id = const.INGRESS_CONNTRACK_TABLE
-            tunnel_key = lport.get_unique_key()
-            lport_classify_match = {"reg7": tunnel_key}
+            unique_key = lport.get_unique_key()
+            lport_classify_match = {"reg7": unique_key}
         else:
             pre_table_id = const.EGRESS_CONNTRACK_TABLE
-            ofport = lport.get_external_value('ofport')
-            lport_classify_match = {"in_port": ofport}
+            lport_classify_match = {"reg6": unique_key}
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                 **lport_classify_match)

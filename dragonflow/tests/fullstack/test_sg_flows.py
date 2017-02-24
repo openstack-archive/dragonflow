@@ -109,12 +109,12 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
         return False
 
-    def _is_associating_flow(self, flow, direction, of_port, reg7):
+    def _is_associating_flow(self, flow, direction, unique_key):
         if direction == 'ingress':
-            match = 'reg7=' + str(reg7)
+            match = 'reg7=' + str(unique_key)
             table = const.INGRESS_SECURITY_GROUP_TABLE
         else:
-            match = 'in_port=' + str(of_port)
+            match = 'reg6=' + str(unique_key)
             table = const.EGRESS_SECURITY_GROUP_TABLE
 
         if (flow['table'] == str(table)) and \
@@ -126,15 +126,15 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
         return False
 
-    def _find_associating_flows(self, flows, of_port, reg7):
+    def _find_associating_flows(self, flows, unique_key):
         ingress_associating_flow = None
         egress_associating_flow = None
         for flow in flows:
             if self._is_associating_flow(flow=flow, direction='ingress',
-                                         of_port=of_port, reg7=reg7):
+                                         unique_key=unique_key):
                 ingress_associating_flow = flow
             elif self._is_associating_flow(flow=flow, direction='egress',
-                                           of_port=of_port, reg7=reg7):
+                                           unique_key=unique_key):
                 egress_associating_flow = flow
 
         return ingress_associating_flow, egress_associating_flow
@@ -298,8 +298,8 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
             lambda: self._get_vm_port(ip, mac),
             exception=Exception('No port assigned to VM')
         )
-        tunnel_key = port.get_unique_key()
-        tunnel_key_hex = hex(tunnel_key)
+        unique_key= port.get_unique_key()
+        unique_key_hex = hex(unique_key)
 
         of_port = self.vswitch_api.get_port_ofport_by_id(port.get_id())
         self.assertIsNotNone(of_port)
@@ -309,8 +309,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
         # Check if the associating flows were installed.
         ingress_associating_flow, egress_associating_flow = \
-            self._find_associating_flows(flows_after_change, of_port,
-                                         tunnel_key_hex)
+            self._find_associating_flows(flows_after_change, unique_key_hex)
 
         LOG.info(_LI("flows after associating a port and a security group"
                      " are: %s"),
@@ -326,8 +325,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
         # Check if the associating flows were removed.
         ingress_associating_flow, egress_associating_flow = \
-            self._find_associating_flows(flows_after_update, of_port,
-                                         tunnel_key_hex)
+            self._find_associating_flows(flows_after_update, unique_key_hex)
 
         self.assertIsNone(ingress_associating_flow)
         self.assertIsNone(egress_associating_flow)
