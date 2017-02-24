@@ -112,8 +112,8 @@ class DNATApp(df_base_app.DFlowApp):
 
         pkt = packet.Packet(msg.data)
         reply_pkt = self._revert_nat_for_icmp_embedded_packet(pkt, INGRESS)
-        out_port = msg.match.get('reg7')
-        self.send_packet(out_port, reply_pkt)
+        lport_unique_key = msg.match.get('reg7')
+        self.dispatch_packet(reply_pkt, lport_unique_key)
 
     def egress_packet_in_handler(self, event):
         msg = event.msg
@@ -136,8 +136,8 @@ class DNATApp(df_base_app.DFlowApp):
                 icmp_ttl_pkt = icmp_error_generator.generate(
                     icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE,
                     msg.data, floatingip, pkt)
-                in_port = msg.match.get('in_port')
-                self.send_packet(in_port, icmp_ttl_pkt)
+                unique_key = msg.match.get('reg6')
+                self.dispatch_packet(icmp_ttl_pkt, unique_key)
             else:
                 LOG.warning(_LW("The invalid TTL packet's destination mac %s "
                                 "can't be recognized."), e_pkt.src)
@@ -299,14 +299,12 @@ class DNATApp(df_base_app.DFlowApp):
             match=match)
 
         # Add flows to packet-in icmp time exceed and icmp unreachable message
-        lport = self.db_store.get_local_port(floatingip.get_lport_id())
-        lport_ofport = lport.get_external_value('ofport')
         actions = [
             parser.OFPActionDecNwTtl(),
             parser.OFPActionSetField(eth_src=vm_gateway_mac),
             parser.OFPActionSetField(eth_dst=vm_mac),
             parser.OFPActionSetField(ipv4_dst=vm_ip),
-            parser.OFPActionSetField(reg7=lport_ofport),
+            parser.OFPActionSetField(reg7=vm_tunnel_key),
             parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                    ofproto.OFPCML_NO_BUFFER)
         ]
