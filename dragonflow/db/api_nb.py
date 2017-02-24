@@ -217,7 +217,7 @@ class NbApi(object):
 
     def db_change_callback(self, table, key, action, value, topic=None):
         update = db_common.DbUpdate(table, key, action, value, topic=topic)
-        LOG.info(_LI("Pushing Update to Queue: %s"), update)
+        LOG.debug("Pushing Update to Queue: %s", update)
         self._queue.put(update)
         eventlet.sleep(0)
 
