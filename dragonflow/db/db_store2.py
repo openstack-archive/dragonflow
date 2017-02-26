@@ -9,6 +9,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import collections
+import itertools
 import threading
 
 from dragonflow._i18n import _LE
@@ -37,48 +39,63 @@ class _IndexCache(object):
         self._index = index
         self._tree = radix_tree.RadixTree(len(index))
 
-        # We save ID->key mapping for updating (object might have changed)
+        # We save ID->keys mapping for updating (object might have changed)
         # and deletion (object might contain just the ID)
-        self._keys = {}
+        self._keys = collections.defaultdict(set)
 
     def delete(self, obj):
-        key = self._keys.pop(obj.id)
-        self._tree.delete(key, obj.id)
+        keys = self._keys.pop(obj.id)
+
+        for key in keys:
+            self._tree.delete(key, obj.id)
 
     def update(self, obj):
-        new_key = self._get_key(obj)
-        old_key = self._keys.get(obj.id)
+        new_keys = self._get_keys(obj)
+        old_keys = self._keys.get(obj.id, set())
 
         # Re-insert into cache only if key changed
-        if old_key == new_key:
-            return
+        added_keys = new_keys - old_keys
+        deleted_keys = old_keys - new_keys
 
-        if old_key is not None:
-            self.delete(obj)
+        for key in added_keys:
+            self._tree.set(key, obj.id)
 
-        self._keys[obj.id] = new_key
-        self._tree.set(new_key, obj.id)
+        for key in deleted_keys:
+            self._tree.delete(key, obj.id)
+
+        self._keys[obj.id] = new_keys
 
     def get_all(self, obj):
-        return self._tree.get_all(self._get_key(obj))
+        for key in self._get_keys(obj):
+            for obj in self._tree.get_all(key):
+                yield obj
 
     def _get_key_element(self, obj, key_element):
         path = key_element.split('.')
+        extras = set()
+        nodes = [obj]
 
         for p in path:
-            obj = getattr(obj, p)
-            if obj is None:
-                return MISSING
+            new_nodes = []
+            for node in nodes:
+                attr = getattr(node, p)
+                if isinstance(attr, list):
+                    new_nodes.extend(attr)
+                elif attr is None:
+                    extras.add(MISSING)
+                else:
+                    new_nodes.append(attr)
+            nodes = new_nodes
 
-        return obj
+        return set(nodes).union(extras)
 
-    def _get_key(self, obj):
-        key = []
+    def _get_keys(self, obj):
+        keys = []
         for f in self._index:
-            value = self._get_key_element(obj, f)
-            key.append(value)
+            values = self._get_key_element(obj, f)
+            keys.append(values)
 
-        return tuple(key)
+        return set(itertools.product(*keys))
 
 
 def _take_one(iterable):
