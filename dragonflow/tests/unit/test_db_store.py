@@ -200,6 +200,7 @@ class NestedNestedModel(models.Base):
 
 class NestedModel(models.Base):
     submodel2 = fields.EmbeddedField(NestedNestedModel)
+    sublist2 = fields.ListField(NestedNestedModel)
 
 
 @model_framework.construct_nb_db_model
@@ -213,6 +214,7 @@ class ReffedModel(model_framework.ModelBase):
         'topic': 'topic',
         'twicenested': 'submodel1.submodel2.name',
         'refnested': 'ref1.id',
+        'listnested': 'sublist1.sublist2.name',
     },
 )
 class ModelTest(model_framework.ModelBase):
@@ -221,6 +223,7 @@ class ModelTest(model_framework.ModelBase):
     extra_field = fields.StringField()
     submodel1 = fields.EmbeddedField(NestedModel)
     ref1 = df_fields.ReferenceField(ReffedModel)
+    sublist1 = fields.ListField(NestedModel)
 
 
 class TestDbStore2(tests_base.BaseTestCase):
@@ -396,3 +399,101 @@ class TestDbStore2(tests_base.BaseTestCase):
                     index=ModelTest.get_indexes()['refnested'],
                 ),
             )
+
+    def test_listnested_keys(self):
+        self.db_store.update(
+            ModelTest(
+                id='id1',
+                sublist1=[
+                    NestedModel(
+                        sublist2=[
+                            NestedNestedModel(name='name1'),
+                            NestedNestedModel(name='name2'),
+                        ],
+                    ),
+                    NestedModel(
+                        sublist2=[
+                            NestedNestedModel(name='name4'),
+                            NestedNestedModel(name='name5'),
+                        ],
+                    ),
+                ],
+            ),
+        )
+        self.db_store.update(
+            ModelTest(
+                id='id2',
+                sublist1=[
+                    NestedModel(
+                        sublist2=[
+                            NestedNestedModel(name='name3'),
+                            NestedNestedModel(name='name4'),
+                        ],
+                    ),
+                ],
+            ),
+        )
+        self.assertItemsEqual(
+            ('id1',),
+            self.db_store.get_keys(
+                ModelTest(
+                    sublist1=[
+                        NestedModel(
+                            sublist2=[
+                                NestedNestedModel(name='name1'),
+                            ]
+                        ),
+                    ],
+                ),
+                index=ModelTest.get_indexes()['listnested'],
+            ),
+        )
+
+        self.assertItemsEqual(
+            ('id2',),
+            self.db_store.get_keys(
+                ModelTest(
+                    sublist1=[
+                        NestedModel(
+                            sublist2=[
+                                NestedNestedModel(name='name3'),
+                            ]
+                        ),
+                    ],
+                ),
+                index=ModelTest.get_indexes()['listnested'],
+            ),
+        )
+
+        self.assertItemsEqual(
+            ('id1', 'id2',),
+            self.db_store.get_keys(
+                ModelTest(
+                    sublist1=[
+                        NestedModel(
+                            sublist2=[
+                                NestedNestedModel(name='name4'),
+                            ]
+                        ),
+                    ],
+                ),
+                index=ModelTest.get_indexes()['listnested'],
+            ),
+        )
+
+        self.assertItemsEqual(
+            ('id1', 'id2',),
+            self.db_store.get_keys(
+                ModelTest(
+                    sublist1=[
+                        NestedModel(
+                            sublist2=[
+                                NestedNestedModel(name='name5'),
+                                NestedNestedModel(name='name3'),
+                            ]
+                        ),
+                    ],
+                ),
+                index=ModelTest.get_indexes()['listnested'],
+            ),
+        )
