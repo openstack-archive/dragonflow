@@ -156,27 +156,43 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             match=match,
             inst=inst,
         )
-        # Response packet
+
+        # ARP responder
+        match = parser.OFPMatch(in_port=ofport,
+                                eth_type=ethernet.ether.ETH_TYPE_ARP)
         actions = [
-            parser.NXActionRegLoad(ofs_nbits=nicira_ext.ofs_nbits(0, 31),
-                                   dst="in_port",
-                                   value=0),
-        ]
-        inst = [
-            parser.OFPInstructionActions(
-                ofproto.OFPIT_APPLY_ACTIONS,
-                actions,
-            ),
-            parser.OFPInstructionGotoTable(const.METADATA_SERVICE_REPLY_TABLE),
-        ]
+            parser.NXActionResubmitTable(
+                table_id=const.METADATA_SERVICE_REPLY_TABLE),
+            parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                             actions)]
         self.mod_flow(
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_ADD,
             priority=const.PRIORITY_MEDIUM,
-            match=parser.OFPMatch(in_port=ofport),
+            match=match,
             inst=inst,
         )
         self._create_arp_responder(mac)
+
+        # Response packet
+        match = parser.OFPMatch(in_port=ofport,
+                                eth_type=ethernet.ether.ETH_TYPE_IP)
+        actions = [
+            parser.NXActionResubmitTable(
+                table_id=const.METADATA_SERVICE_REPLY_TABLE),
+            parser.NXActionResubmitTable(
+                table_id=const.INGRESS_DISPATCH_TABLE)
+        ]
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                             actions)]
+        self.mod_flow(
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            command=ofproto.OFPFC_ADD,
+            priority=const.PRIORITY_MEDIUM,
+            match=match,
+            inst=inst,
+        )
 
     def _add_incoming_flows(self):
         ofproto = self.ofproto
@@ -227,7 +243,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             actions.append(parser.OFPActionSetField(ipv4_dst=self._ip))
         if self._port != const.METADATA_HTTP_PORT:
             actions.append(parser.OFPActionSetField(tcp_dst=self._port))
-        actions.append(parser.OFPActionSetField(reg7=self._ofport))
         return actions
 
     def _get_rewrite_ip_and_output_actions(self, ofproto, parser):
@@ -303,9 +318,9 @@ class MetadataServiceApp(df_base_app.DFlowApp):
                         dst=('tcp_src', 0),
                         n_bits=16,
                     ),
-                    parser.NXFlowSpecOutput(
-                        src=('in_port', 0),
-                        dst='',
+                    parser.NXFlowSpecLoad(
+                        src=('reg6', 0),
+                        dst=('reg7', 0),
                         n_bits=32,
                     ),
                 ],
@@ -373,11 +388,6 @@ class MetadataServiceApp(df_base_app.DFlowApp):
                         src=1,
                         dst=('arp_spa', 31),
                         n_bits=1,
-                    ),
-                    parser.NXFlowSpecOutput(
-                        src=('reg7', 0),
-                        dst='',
-                        n_bits=32,
                     ),
                 ],
                 idle_timeout=30,
