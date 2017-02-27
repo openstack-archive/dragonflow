@@ -35,6 +35,7 @@ from dragonflow import conf as cfg
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
+from dragonflow.neutron.service.trunk.drivers.dragonflow import df_trunk_driver
 
 LOG = log.getLogger(__name__)
 
@@ -64,6 +65,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         self._set_base_port_binding()
         self.port_status = n_const.PORT_STATUS_ACTIVE
         self.subscribe_registries()
+        df_trunk_driver.DragonflowDriver()
 
     def post_fork_initialize(self, resource, event, trigger, **kwargs):
         # NOTE(nick-ma-z): This will initialize all workers (API, RPC,

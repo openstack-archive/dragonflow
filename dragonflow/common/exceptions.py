@@ -110,3 +110,7 @@ class MaskOverlapException(DragonflowException):
 class CookieOverflowExcpetion(DragonflowException):
     message = _('Cookie overflow: '
                 'Value: %(cookie)s Offset: %(offset)s Mask: %(mask)s')
+
+
+class UnsupportedSegmentationTypeException(DragonflowException):
+    message = _('Unsupported segmentation type: %(segmentation_type)')
