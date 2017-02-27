@@ -35,6 +35,8 @@ from dragonflow import conf as cfg
 from dragonflow.db import api_nb
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
+from dragonflow.neutron.services.trunk.drivers.dragonflow import (
+    driver as trunk_driver)
 
 LOG = log.getLogger(__name__)
 
@@ -51,7 +53,8 @@ class DFMechDriver(driver_api.MechanismDriver):
                                    'external-net',
                                    'port-security',
                                    'allowed-address-pairs',
-                                   'net-mtu']
+                                   'net-mtu',
+                                   'trunk']
 
     def initialize(self):
         LOG.info(_LI("Starting DFMechDriver"))
@@ -69,6 +72,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         # NOTE(nick-ma-z): This will initialize all workers (API, RPC,
         # plugin service, etc) and threads with network connections.
         self.nb_api = api_nb.NbApi.get_instance(True)
+        self.trunk_driver = trunk_driver.DragonflowDriver(self.nb_api)
         if cfg.CONF.df.enable_port_status_notifier:
             port_status_notifier = df_utils.load_driver(
                 cfg.CONF.df.port_status_notifier,
