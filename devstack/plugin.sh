@@ -26,6 +26,10 @@ if is_service_enabled df-metadata ; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,metadata_service_app.MetadataServiceApp"
 fi
 
+if is_service_enabled q-trunk ; then
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,trunk_app.TrunkApp"
+fi
+
 ENABLE_ACTIVE_DETECTION=${ENABLE_ACTIVE_DETECTION:-True}
 if [[ "$ENABLE_ACTIVE_DETECTION" == "True" ]]; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,active_port_detection_app.ActivePortDetectionApp"
