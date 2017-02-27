@@ -15,6 +15,7 @@
 
 from ryu.lib.packet import arp
 from ryu.ofproto import ether
+from ryu.ofproto import nicira_ext
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
@@ -60,9 +61,18 @@ class ArpResponder(object):
                    parser.OFPActionSetField(eth_src=self.mac_address),
                    parser.OFPActionSetField(arp_sha=self.mac_address),
                    parser.OFPActionSetField(arp_spa=self.interface_ip),
-                   parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
-        instructions = [parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+                   parser.NXActionRegMove(src_field='reg6',
+                                          dst_field='reg7',
+                                          n_bits=32),
+                   parser.NXActionRegLoad(
+                           dst='in_port',
+                           ofs_nbits=nicira_ext.ofs_nbits(0, 31),
+                           value=0)]
+        instructions = [
+            parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
+            parser.OFPInstructionGotoTable(
+                    const.INGRESS_DISPATCH_TABLE),
+        ]
         return instructions
 
     def add(self):
