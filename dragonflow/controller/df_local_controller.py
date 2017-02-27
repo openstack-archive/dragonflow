@@ -38,6 +38,7 @@ from dragonflow.db import models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
+from dragonflow.db.models import trunk
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -322,8 +323,17 @@ class DfLocalController(object):
         chassis = lport.chassis
         is_local = (chassis.id == self.chassis_name)
         lport.is_local = is_local
+        trunk_port_id = lport.binding_profile.get('trunk_port_id')
         if is_local:
-            lport.ofport = self.vswitch_api.get_port_ofport_by_id(lport.id)
+            if not trunk_port_id:
+                lport.ofport = self.vswitch_api.get_port_ofport_by_id(lport.id)
+            else:
+                child_port_segmentation = self.db_store2.get_one(
+                        trunk.ChildPortSegmentation(id=trunk_port_id))
+                if child_port_segmentation:
+                    parent = child_port_segmentation.parent.get_object()
+                    if parent:
+                        lport.ofport = parent.ofport
         else:
             lport.peer_vtep_address = (chassis.ip if not lport.remote_vtep else
                                        lport.binding_profile['host_ip'])
