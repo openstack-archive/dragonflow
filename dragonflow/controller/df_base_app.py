@@ -133,6 +133,46 @@ class DFlowApp(object):
 
         datapath.send_msg(message)
 
+    def add_group(self, group_id, group_type, buckets):
+        """Add an entry to the groups table:
+
+            :param group_id:    ID for the new group
+            :param group_type:  Type of the new group, one of ofproto.OFPGT_*
+            :param buckets:     List of parser.OFPBucket objects that define
+                                group's actions.
+        """
+        self._mod_group(
+            command=self.ofproto.OFPGC_ADD,
+            group_id=group_id,
+            group_type=group_type,
+            buckets=buckets,
+        )
+
+    def del_group(self, group_id, group_type):
+        """Delete an entry from the groups table
+
+            :param group_id:    ID of the group to delete.
+                                To delete all groups use ofproto.OFPG_ALL.
+            :param group_type:  Type of the group to delete.
+        """
+        self._mod_group(
+            command=self.ofproto.OFPGC_DELETE,
+            group_id=group_id,
+            group_type=group_type,
+        )
+
+    def _mod_group(self, command, group_id, group_type, buckets=None):
+        """Convenince function that sends a group modification message"""
+        self.datapath.send_msg(
+            self.parser.OFPGroupMod(
+                datapath=self.datapath,
+                command=command,
+                group_id=group_id,
+                type_=group_type,
+                buckets=buckets,
+            )
+        )
+
     def send_packet(self, port, pkt):
         datapath = self.datapath
         ofproto = datapath.ofproto
