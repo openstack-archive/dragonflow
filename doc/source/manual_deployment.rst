@@ -136,7 +136,7 @@ Pub/Sub Driver
 
 Dragonflow supports zeromq and redis. You need to change the configuration, for example, zeromq:
 
-/etc/neutron/plugins/dragonflow.ini:
+/etc/neutron/dragonflow.ini:
 
 ::
 
