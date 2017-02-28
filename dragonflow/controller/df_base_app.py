@@ -150,6 +150,32 @@ class DFlowApp(object):
 
         datapath.send_msg(message)
 
+    def add_group(self, group_id, group_type, buckets):
+        self._mod_group(
+            command=self.ofproto.OFPGC_ADD,
+            group_id=group_id,
+            group_type=group_type,
+            buckets=buckets,
+        )
+
+    def del_group(self, group_id, group_type):
+        self._mod_group(
+            command=self.ofproto.OFPGC_DELETE,
+            group_id=group_id,
+            group_type=group_type,
+        )
+
+    def _mod_group(self, command, group_id, group_type, buckets=None):
+        self.datapath.send_msg(
+            self.parser.OFPGroupMod(
+                datapath=self.datapath,
+                command=command,
+                group_id=group_id,
+                type_=group_type,
+                buckets=buckets or [],
+            )
+        )
+
     def send_packet(self, port, pkt):
         datapath = self.datapath
         ofproto = datapath.ofproto
