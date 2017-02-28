@@ -90,7 +90,7 @@ Basic Configurations
     service_metadata_proxy = True
     metadata_proxy_shared_secret = secret
 
-/etc/neutron/plugins/dragonflow.ini
+/etc/neutron/dragonflow.ini
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
@@ -122,7 +122,7 @@ in your environment and expose the necessary TCP port.
 
 Next you need to change the configuration, for example, etcd:
 
-/etc/neutron/plugins/dragonflow.ini:
+/etc/neutron/dragonflow.ini:
 
 ::
 
@@ -136,7 +136,7 @@ Pub/Sub Driver
 
 Dragonflow supports zeromq and redis. You need to change the configuration, for example, zeromq:
 
-/etc/neutron/plugins/dragonflow.ini:
+/etc/neutron/dragonflow.ini:
 
 ::
 
