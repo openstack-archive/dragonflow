@@ -10,40 +10,37 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
+
 from neutron.agent.linux.utils import wait_until_true
 from neutron.common import config as common_config
-from neutronclient.neutron import client
-import os_client_config
 from oslo_config import cfg
+from oslo_log import log
 
 from dragonflow.common import common_params
 from dragonflow.db import api_nb
 from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
+from dragonflow.tests.common import clients
 
 
 cfg.CONF.register_opts(common_params.df_opts, 'df')
-
-
-def get_cloud_config(cloud='devstack-admin'):
-    return os_client_config.OpenStackConfig().get_one_cloud(cloud=cloud)
-
-
-def credentials(cloud='devstack-admin'):
-    """Retrieves credentials to run functional tests"""
-    return get_cloud_config(cloud=cloud).get_auth_args()
 
 
 class DFTestBase(base.BaseTestCase):
 
     def setUp(self):
         super(DFTestBase, self).setUp()
-        creds = credentials()
-        tenant_name = creds['project_name']
-        auth_url = creds['auth_url'] + "/v2.0"
-        self.neutron = client.Client('2.0', username=creds['username'],
-             password=creds['password'], auth_url=auth_url,
-             tenant_name=tenant_name)
+        if os.environ.get('DF_FULLSTACK_USE_ENV'):
+            try:
+                self.neutron = clients.get_neutron_client_from_env()
+            except KeyError as e:
+                message = _LE('Cannot find environment variable %s. '
+                           'Have you sourced openrc?')
+                LOG.error(message, e.args[0])
+                self.fail(message % e.args[0])
+        else:
+            self.neutron = clients.get_neutron_client_from_cloud_config()
         self.neutron.format = 'json'
 
         # NOTE: Each env can only have one default subnetpool for each
