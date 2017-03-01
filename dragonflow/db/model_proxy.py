@@ -91,3 +91,18 @@ def create_model_proxy(model):
         (_ModelProxyBase,),
         attrs,
     )
+
+
+def create_reference(model, lazy=True, **kwargs):
+    """
+    Create a reference to an instance of a model. lazy states the entire model
+    is retrieved only upon access. If lazy is False, the entire model is read
+    upon reference creation
+
+    >>> ref_to_lport = create_reference(Lport, id='some-id')
+    >>> ref_to_lport.name
+    'port-name'
+    """
+    reference_model = create_model_proxy(model)
+    instance = reference_model(lazy=lazy, **kwargs)
+    return instance

@@ -46,6 +46,12 @@ class TestObjectProxy(tests_base.BaseTestCase):
         self.assertEqual('topic1', mtp.topic)
         self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
 
+        self.db_store2.get_one.reset_mock()
+        mtp = model_proxy.create_reference(ModelTest, id='id1')
+        self.assertEqual('id1', mtp.id)
+        self.assertEqual('topic1', mtp.topic)
+        self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
+
     def test_lazyness(self):
         self.db_store2.get_one.return_value = ModelTest(
             id='id1', topic='topic1')
@@ -57,9 +63,21 @@ class TestObjectProxy(tests_base.BaseTestCase):
         self.assertEqual('topic1', mtp.topic)
         self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
 
+        self.db_store2.get_one.reset_mock()
+        mtp = model_proxy.create_reference(ModelTest, id='id1')
+        self.assertEqual('id1', mtp.id)
+        self.db_store2.get_one.assert_not_called()
+
+        self.assertEqual('topic1', mtp.topic)
+        self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
+
     def test_eagerness(self):
         self.db_store2.get_one.return_value = ModelTest(
             id='id1', topic='topic1')
 
         ModelTestProxy(id='id1', lazy=False)
+        self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
+
+        self.db_store2.get_one.reset_mock()
+        model_proxy.create_reference(ModelTest, lazy=False, id='id1')
         self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
