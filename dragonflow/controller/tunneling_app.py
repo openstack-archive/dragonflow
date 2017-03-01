@@ -233,5 +233,5 @@ class TunnelingApp(df_base_app.DFlowApp):
             actions += [
                     ofpact_set_field(tun_ipv4_dst=peer_ip),
                     ofpact_set_field(tunnel_id_nxm=segmentation_id),
-                    ofpact_set_field(port=ofport)]
+                    self.parser.OFPActionOutput(port=ofport)]
         return actions
