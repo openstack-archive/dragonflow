@@ -10,13 +10,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 from neutron.conf.services import qos_driver_manager as driver_mgr_config
 from neutron.objects.qos import rule
 from neutron.plugins.ml2 import config as ml2_config
 from neutron_lib.plugins import directory
 import testtools
 
+from dragonflow.db.models import qos
 from dragonflow.tests.unit import test_mech_driver
 
 
@@ -44,9 +44,12 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         qos_policy = {'policy': {'name': "policy1", 'project_id': 'project1'}}
         qos_obj = self.plugin.create_policy(self.context, qos_policy)
         self.assertGreater(qos_obj['revision_number'], 0)
-        self.driver.nb_api.create_qos_policy.assert_called_with(
-            mock.ANY, 'project1', name='policy1',
-            rules=[], version=qos_obj['revision_number'])
+        self.driver.nb_api.create.assert_called_with(qos.QosPolicy(
+            id=qos_obj['id'],
+            topic='project1',
+            name='policy1',
+            rules=[],
+            version=qos_obj['revision_number']))
         return qos_obj
 
     def test_create_policy(self):
@@ -58,9 +61,12 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
             self.context, qos_obj['id'], {'policy': {'name': 'policy2'}})
         self.assertGreater(new_qos_obj['revision_number'],
                            qos_obj['revision_number'])
-        self.driver.nb_api.update_qos_policy.assert_called_with(
-            qos_obj['id'], 'project1', name='policy2',
-            rules=[], version=new_qos_obj['revision_number'])
+        self.driver.nb_api.update.assert_called_with(qos.QosPolicy(
+            id=qos_obj['id'],
+            topic='project1',
+            name='policy2',
+            rules=[],
+            version=new_qos_obj['revision_number']))
 
     def test_create_delete_policy_rule(self):
         qos_obj = self._test_create_policy()
@@ -72,9 +78,12 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         new_qos_obj = self.plugin.get_policy(self.context, qos_obj['id'])
         self.assertGreater(new_qos_obj['revision_number'],
                            qos_obj['revision_number'])
-        self.driver.nb_api.update_qos_policy.assert_called_with(
-            qos_obj['id'], 'project1', name='policy1',
-            rules=[qos_rule_obj], version=new_qos_obj['revision_number'])
+        self.driver.nb_api.update.assert_called_with(qos.QosPolicy(
+            id=qos_obj['id'],
+            topic='project1',
+            name='policy1',
+            rules=[qos_rule_obj],
+            version=new_qos_obj['revision_number']))
 
         self.plugin.delete_policy_rule(self.context,
                                        rule.QosBandwidthLimitRule,
@@ -83,15 +92,19 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         newer_qos_obj = self.plugin.get_policy(self.context, qos_obj['id'])
         self.assertGreater(newer_qos_obj['revision_number'],
                            new_qos_obj['revision_number'])
-        self.driver.nb_api.update_qos_policy.assert_called_with(
-            qos_obj['id'], 'project1', name='policy1',
-            rules=[], version=newer_qos_obj['revision_number'])
+        self.driver.nb_api.update.assert_called_with(qos.QosPolicy(
+            id=qos_obj['id'],
+            topic='project1',
+            name='policy1',
+            rules=[],
+            version=newer_qos_obj['revision_number']))
 
     def test_delete_policy(self):
         qos_obj = self._test_create_policy()
         self.plugin.delete_policy(self.context, qos_obj['id'])
-        self.driver.nb_api.delete_qos_policy.assert_called_with(
-            qos_obj['id'], mock.ANY)
+        self.driver.nb_api.delete.assert_called_with(qos.QosPolicy(
+            id=qos_obj['id'],
+            topic='project1'))
 
     @testtools.skip("bug/1649503")
     def test_create_update_network_qos_policy(self):
