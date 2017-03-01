@@ -130,7 +130,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             match=match)
 
     def _egress_flow(self, lport, network_id, network_type):
-        LOG.debug('egrees flow for network %(net_id)s',
+        LOG.debug('Add egress flow for network %(net_id)s',
                   {'net_id': network_id})
         match = self.parser.OFPMatch(metadata=network_id)
         inst = [self.parser.OFPInstructionGotoTable(
@@ -159,7 +159,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             match=match)
 
     def _egress_external_flow(self, lport, network_id):
-        LOG.debug('egrees external flow for network %(net_id)s',
+        LOG.debug('Add egress external flow for network %(net_id)s',
                   {'net_id': network_id})
 
         physical_network = lport.get_external_value('physical_network')
