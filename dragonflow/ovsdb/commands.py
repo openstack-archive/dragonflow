@@ -117,8 +117,8 @@ class CreateQos(commands.BaseCommand):
         qos = txn.insert(self.api.idl.tables['QoS'])
         qos.type = 'linux-htb'
         qos_external_ids = {}
-        qos_external_ids['version'] = str(self.qos.get_version())
-        qos_external_ids['qos-id'] = self.qos.get_id()
+        qos_external_ids['version'] = str(self.qos.version)
+        qos_external_ids['qos-id'] = self.qos.id
         qos_external_ids['iface-id'] = self.port_id
         qos.external_ids = qos_external_ids
         qos.verify('queues')
@@ -170,6 +170,6 @@ class UpdateQos(commands.BaseCommand):
         for r in qos_table.rows.values():
             if idlutils.row_match(r, conditions):
                 external_ids = getattr(r, 'external_ids', {})
-                external_ids['version'] = str(self.qos.get_version())
-                external_ids['qos-id'] = self.qos.get_id()
+                external_ids['version'] = str(self.qos.version)
+                external_ids['qos-id'] = self.qos.id
                 setattr(r, 'external_ids', external_ids)
