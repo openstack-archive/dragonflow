@@ -29,14 +29,13 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         self.app = self.open_flow_app.dispatcher.apps[0]
         self.mock_mod_flow = mock.Mock(name='mod_flow')
         self.app.mod_flow = self.mock_mod_flow
-        self.router = test_app_base.fake_logic_router1
+        self.router = copy.deepcopy(test_app_base.fake_logic_router1)
+
+    def test_add_del_router(self):
         _add_subnet_send_to_snat = mock.patch.object(
             self.app,
             '_add_subnet_send_to_snat'
         )
-        routes = [{"destination": "10.100.0.0/16",
-                   "nexthop": "10.0.0.6"}]
-        self.router.inner_obj['routes'] = routes
         self.addCleanup(_add_subnet_send_to_snat.stop)
         _add_subnet_send_to_snat.start()
         _del_subnet_send_to_snat = mock.patch.object(
@@ -46,65 +45,89 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
         self.addCleanup(_del_subnet_send_to_snat.stop)
         _del_subnet_send_to_snat.start()
 
-    def test_add_del_route(self):
         # delete router
         self.controller.delete_lrouter(self.router.get_id())
-        self.assertEqual(4, self.mock_mod_flow.call_count)
+        # 5 mod flows, l2 -> l3, arp, icmp, router interface and route.
+        self.assertEqual(5, self.app.mod_flow.call_count)
+        self.app._delete_subnet_send_to_snat.assert_called_once_with(
+            test_app_base.fake_logic_switch1.get_unique_key(),
+            self.router.get_ports()[0].get_mac(),
+        )
+
         # add router
-        self.mock_mod_flow.reset_mock()
+        self.app.mod_flow.reset_mock()
         self.controller.update_lrouter(self.router)
-        self.assertEqual(3, self.mock_mod_flow.call_count)
-        args, kwargs = self.mock_mod_flow.call_args
-        self.assertEqual(const.L2_LOOKUP_TABLE, kwargs['table_id'])
+        self.assertEqual(5, self.app.mod_flow.call_count)
+        args, kwargs = self.app.mod_flow.call_args
+        self.assertEqual(const.L3_LOOKUP_TABLE, kwargs['table_id'])
         self.app._add_subnet_send_to_snat.assert_called_once_with(
             test_app_base.fake_logic_switch1.get_unique_key(),
             self.router.get_ports()[0].get_mac(),
             self.router.get_ports()[0].get_unique_key()
         )
-        self.mock_mod_flow.reset_mock()
+
+    def test_add_del_router_route_after_lport(self):
+        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.app.mod_flow.reset_mock()
 
         # add route
         routes = [{"destination": "10.100.0.0/16",
                    "nexthop": "10.0.0.6"},
                   {"destination": "10.101.0.0/16",
                    "nexthop": "10.0.0.6"}]
+        # Use another object here to differentiate the one in cache
         router_with_route = copy.deepcopy(self.router)
         router_with_route.inner_obj['routes'] = routes
         router_with_route.inner_obj['version'] += 1
-        self.controller.update_lport(test_app_base.fake_local_port1)
         self.controller.update_lrouter(router_with_route)
-        self.assertEqual(3, self.mock_mod_flow.call_count)
-        self.controller.update_lport(test_app_base.fake_remote_port1)
-        fake_remote_port2 = test_app_base.make_fake_remote_port(
-            id='fake_remote_port2',
-            macs=[self.router.get_ports()[0].get_mac()],
-            name='fake_remote_port2',
-            ips=['10.0.0.18'],
-            chassis='fake_host2',
-            unique_key=7,
-            segmentation_id=41,
-            ofport=22,
-            network_type='vxlan',
-            subnets=['fake_subnet1'],
-            local_network_id=1)
-        self.controller.update_lport(fake_remote_port2)
+        # 2 routes, 2 mod_flow
+        self.assertEqual(2, self.app.mod_flow.call_count)
 
         # delete route
-        self.mock_mod_flow.reset_mock()
-        self.router.inner_obj['routes'] = [
-            {"destination": "10.100.0.0/16",
-             "nexthop": "10.0.0.8"}]
+        self.app.mod_flow.reset_mock()
+        self.router.inner_obj['routes'] = []
         self.router.inner_obj['version'] += 2
-        self.controller.delete_lport(
-                test_app_base.fake_remote_port1.get_id())
         self.controller.update_lrouter(self.router)
-        self.assertEqual(3, self.mock_mod_flow.call_count)
-        self.app._delete_subnet_send_to_snat.assert_called_once_with(
-            test_app_base.fake_logic_switch1.get_unique_key(),
-            self.router.get_ports()[0].get_mac(),
-        )
+        self.assertEqual(2, self.app.mod_flow.call_count)
 
-    def test_n_icmp_responder_for_n_router_interface(self):
+    def test_add_del_lport_after_router_route(self):
+        # add route
+        routes = [{"destination": "10.100.0.0/16",
+                   "nexthop": "10.0.0.6"},
+                  {"destination": "10.101.0.0/16",
+                   "nexthop": "10.0.0.6"}]
+        # Use another object here to differentiate the one in cache
+        router_with_route = copy.deepcopy(self.router)
+        router_with_route.inner_obj['routes'] = routes
+        router_with_route.inner_obj['version'] += 1
+        self.controller.update_lrouter(router_with_route)
+        # No lport no flow for route
+        self.assertFalse(self.app.mod_flow.called)
+
+        self.controller.update_lport(test_app_base.fake_local_port1)
+        # 2 routes, 2 mod_flow and 1 mod_flow for add lport proactive route
+        self.assertEqual(3, self.app.mod_flow.call_count)
+
+        self.app.mod_flow.reset_mock()
+        self.controller.delete_lport('fake_port1')
+        # 2 routes, 2 mod_flow and 1 mod_flow for del lport proactive route
+        self.assertEqual(3, self.app.mod_flow.call_count)
+
+    def test_no_route_if_no_match_lport(self):
+        # add route
+        routes = [{"destination": "10.100.0.0/16",
+                   "nexthop": "10.0.0.106"},
+                  {"destination": "10.101.0.0/16",
+                   "nexthop": "10.0.0.106"}]
+        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.app.mod_flow.reset_mock()
+        router_with_route = copy.deepcopy(self.router)
+        router_with_route.inner_obj['routes'] = routes
+        router_with_route.inner_obj['version'] += 1
+        self.controller.update_lrouter(router_with_route)
+        self.assertFalse(self.app.mod_flow.called)
+
+    def _add_another_router_interface(self):
         router_port1 = {"network": "20.0.0.1/24",
                         "lswitch": "fake_switch2",
                         "topic": "fake_tenant1",
@@ -113,8 +136,20 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase):
                         "lrouter": "fake_router_id",
                         "id": "fake_router_port2"}
         self.router.inner_obj['ports'].append(router_port1)
+
+    def test_n_icmp_responder_for_n_router_interface(self):
+        self._add_another_router_interface()
         dst_router_port = self.router.get_ports()[0]
         with mock.patch("dragonflow.controller.common"
                         ".icmp_responder.ICMPResponder") as icmp:
             self.app._add_new_router_port(self.router, dst_router_port)
             self.assertEqual(1, icmp.call_count)
+
+    def test_n_route_for_n_router_interface(self):
+        self._add_another_router_interface()
+        dst_router_port = self.router.get_ports()[0]
+        with mock.patch.object(
+                self.app,
+                "_add_subnet_send_to_proactive_routing") as method:
+            self.app._add_new_router_port(self.router, dst_router_port)
+            self.assertEqual(1, method.call_count)
