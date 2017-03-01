@@ -21,12 +21,14 @@ from ryu.ofproto import ether
 from dragonflow._i18n import _LE
 from dragonflow.controller.common import constants
 from dragonflow.controller.common import cookies
+from dragonflow.db import db_store2
 
 
 class DFlowApp(object):
     def __init__(self, api, db_store=None, vswitch_api=None, nb_api=None):
         self.api = api
         self.db_store = db_store
+        self.db_store2 = db_store2.get_instance()
         self.vswitch_api = vswitch_api
         self.nb_api = nb_api
         # Though there is nothing to initialize in super class, call it
