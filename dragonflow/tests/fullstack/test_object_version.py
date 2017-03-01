@@ -14,6 +14,7 @@ import contextlib
 
 from oslo_concurrency import lockutils
 
+from dragonflow.db.models import qos
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
@@ -132,12 +133,12 @@ class TestObjectVersion(test_base.DFTestBase):
                                                         self.nb_api))
         policy_id = qospolicy.create()
         self.assertTrue(qospolicy.exists())
-        version = self.nb_api.get_qos_policy(policy_id).get_version()
+        version = self.nb_api.get(qos.QosPolicy(id=policy_id)).version
 
         rule = {'max_kbps': '1000', 'max_burst_kbps': '100'}
         qospolicy.create_rule(policy_id, rule, 'bandwidth_limit')
         self.assertTrue(qospolicy.exists())
-        new_version = self.nb_api.get_qos_policy(policy_id).get_version()
+        new_version = self.nb_api.get(qos.QosPolicy(id=policy_id)).version
         self.assertGreater(new_version, version)
 
         qospolicy.close()
