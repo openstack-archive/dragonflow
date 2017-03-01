@@ -9,6 +9,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import copy
+
 from jsonmodels import fields
 import mock
 
@@ -73,6 +75,13 @@ class ModelWithEventsMixin(ModelWithEvents, EventsMixin):
 @mf.construct_nb_db_model(indexes={'foo': 'bar'})
 class ModelWithIndexesMixin(ModelTestWithIndexes, IndexesMixin):
     pass
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class EmbeddingModel(mf.ModelBase):
+    field1 = fields.StringField()
+    embedded = fields.EmbeddedField(ModelTest)
 
 
 class TestModelFramework(tests_base.BaseTestCase):
@@ -190,3 +199,23 @@ class TestModelFramework(tests_base.BaseTestCase):
         self.assertFalse(m.field_is_set('field1'))
         self.assertTrue(m.field_is_set('field2'))
         self.assertTrue(m.field_is_set('field3'))
+
+    def test_copy(self):
+        model_test = ModelTest(id="3", field1='a', field2='b')
+        embedding_model_test = EmbeddingModel(id="4", field1='a',
+                                              embedded=model_test)
+        embedding_model_copy = copy.copy(embedding_model_test)
+        self.assertEqual(embedding_model_test, embedding_model_copy)
+        self.assertEqual(id(model_test), id(embedding_model_copy.embedded))
+        embedding_model_copy.embedded.field3 = 'c'
+        self.assertEqual(model_test, embedding_model_copy.embedded)
+
+    def test_deep_copy(self):
+        model_test = ModelTest(id="3", field1='a', field2='b')
+        embedding_model_test = EmbeddingModel(id="4", field1='a',
+                                              embedded=model_test)
+        embedding_model_copy = copy.deepcopy(embedding_model_test)
+        self.assertEqual(embedding_model_test, embedding_model_copy)
+        self.assertNotEqual(id(model_test), id(embedding_model_copy.embedded))
+        embedding_model_copy.embedded.field3 = 'c'
+        self.assertNotEqual(model_test, embedding_model_copy.embedded)
