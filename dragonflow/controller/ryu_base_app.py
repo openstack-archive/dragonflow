@@ -141,12 +141,6 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def notify_delete_floatingip(self, floatingip):
         self.dispatcher.dispatch('delete_floatingip', floatingip)
 
-    def notify_update_qos_policy(self, qos):
-        self.dispatcher.dispatch('update_qos_policy', qos)
-
-    def notify_delete_qos_policy(self, qos):
-        self.dispatcher.dispatch('delete_qos_policy', qos)
-
     def notify_update_active_port(self, active_port, old_active_port):
         self.dispatcher.dispatch('update_active_port',
                                  active_port=active_port,
