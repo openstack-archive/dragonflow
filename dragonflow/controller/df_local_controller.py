@@ -125,13 +125,6 @@ class DfLocalController(object):
     def _register_legacy_model_refreshers(self):
         refreshers = [
             df_db_objects_refresh.DfObjectRefresher(
-                'QoS Policies',
-                self.db_store.get_qos_policy_keys,
-                self.nb_api.get_qos_policies,
-                self.update_qospolicy,
-                self.delete_qospolicy,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
                 'Switches',
                 self.db_store.get_lswitch_keys,
                 self.nb_api.get_all_logical_switches,
@@ -215,13 +208,6 @@ class DfLocalController(object):
                 models.Floatingip,
                 self.db_store.get_floatingips,
                 self.nb_api.get_floatingips,
-                self.update,
-                self.delete_by_id,
-            ),
-            db_consistent.ModelHandler(
-                models.QosPolicy,
-                self.db_store.get_qos_policies,
-                self.nb_api.get_qos_policies,
                 self.update,
                 self.delete_by_id,
             ),
@@ -501,27 +487,6 @@ class DfLocalController(object):
         if old_secgroup is None:
             return
         self._delete_old_security_group(old_secgroup)
-
-    def update_qospolicy(self, qos):
-        original_qos = self.db_store.get_qos_policy(qos.get_id())
-        if not df_utils.is_valid_version(
-                original_qos.inner_obj if original_qos else None,
-                qos.inner_obj):
-            return
-
-        self.db_store.set_qos_policy(qos.get_id(), qos)
-        if not original_qos:
-            return
-
-        self.open_flow_app.notify_update_qos_policy(qos)
-
-    def delete_qospolicy(self, qos_id):
-        qos = self.db_store.get_qos_policy(qos_id)
-        if not qos:
-            return
-
-        self.open_flow_app.notify_delete_qos_policy(qos)
-        self.db_store.delete_qos_policy(qos_id)
 
     def register_chassis(self):
         # Get all chassis from nb db to db store.
