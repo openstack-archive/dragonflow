@@ -16,6 +16,7 @@ from dragonflow.common import exceptions
 from dragonflow.db import api_nb
 from dragonflow.db import db_common
 import dragonflow.db.model_framework as mf
+from dragonflow.db.models import mixins
 from dragonflow.tests import base as tests_base
 
 
@@ -25,6 +26,13 @@ class ModelTest(mf.ModelBase):
 
     id = fields.StringField()
     topic = fields.StringField()
+    field1 = fields.StringField()
+
+
+@mf.construct_nb_db_model
+class TopicModelTest(mf.ModelBase, mixins.Topic):
+    table_name = 'topic_model_test'
+
     field1 = fields.StringField()
 
 
@@ -144,3 +152,13 @@ class TestNbApi(tests_base.BaseTestCase):
         self.assertItemsEqual((m1.to_struct(), m2.to_struct()),
                               (o.to_struct() for o in res))
         ModelTest.on_get_all_post.assert_called_once()
+
+    @mock.patch.object(TopicModelTest, 'from_json')
+    def test_get_topic(self, from_json):
+        self.api_nb.get(TopicModelTest(id='id1'))
+        self.api_nb.driver.get_key.assert_called_once_with('topic_model_test',
+                                                           'id1', None)
+        self.api_nb.driver.get_key.reset_mock()
+        self.api_nb.get(TopicModelTest(id='id2', topic='topic1'))
+        self.api_nb.driver.get_key.assert_called_once_with('topic_model_test',
+                                                           'id2', 'topic1')

@@ -17,6 +17,7 @@
 import time
 
 import eventlet
+from jsonmodels import errors
 from neutron_lib import constants as const
 from oslo_config import cfg
 from oslo_log import log
@@ -41,7 +42,10 @@ _nb_api = None
 
 
 def _get_topic(obj):
-    return getattr(obj, 'topic', None)
+    try:
+        return getattr(obj, 'topic', None)
+    except errors.ValidationError:
+        return None
 
 
 class NbApi(object):
