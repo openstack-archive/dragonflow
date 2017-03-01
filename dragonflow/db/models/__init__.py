@@ -23,7 +23,6 @@ LogicalRouterPort = legacy_models.LogicalRouterPort
 SecurityGroup = legacy_models.SecurityGroup
 SecurityGroupRule = legacy_models.SecurityGroupRule
 Floatingip = legacy_models.Floatingip
-QosPolicy = legacy_models.QosPolicy
 Publisher = legacy_models.Publisher
 AllowedAddressPairsActivePort = legacy_models.AllowedAddressPairsActivePort
 Listener = legacy_models.Listener
