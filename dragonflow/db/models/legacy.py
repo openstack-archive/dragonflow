@@ -341,45 +341,6 @@ class Floatingip(NbDbObject):
 
 
 @register_model_class
-class QosPolicy(NbDbObject):
-
-    table_name = "qospolicy"
-
-    def get_type(self):
-        return self.inner_obj.get('type')
-
-    def get_max_burst_kbps(self):
-        rules = self.inner_obj.get('rules', [])
-        max_burst_kbps = None
-        for rule in rules:
-            if rule['type'] == 'bandwidth_limit':
-                max_burst_kbps = rule.get('max_burst_kbps')
-                break
-
-        return max_burst_kbps
-
-    def get_max_kbps(self):
-        rules = self.inner_obj.get('rules', [])
-        max_kbps = None
-        for rule in rules:
-            if rule['type'] == 'bandwidth_limit':
-                max_kbps = rule.get('max_kbps')
-                break
-
-        return max_kbps
-
-    def get_dscp_marking(self):
-        rules = self.inner_obj.get('rules', [])
-        dscp_marking = None
-        for rule in rules:
-            if rule['type'] == 'dscp_marking':
-                dscp_marking = rule.get('dscp_mark')
-                break
-
-        return dscp_marking
-
-
-@register_model_class
 class Publisher(NbDbObject):
 
     table_name = "publisher"
