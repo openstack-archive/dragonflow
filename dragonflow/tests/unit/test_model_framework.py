@@ -219,3 +219,9 @@ class TestModelFramework(tests_base.BaseTestCase):
         self.assertNotEqual(id(model_test), id(embedding_model_copy.embedded))
         embedding_model_copy.embedded.field3 = 'c'
         self.assertNotEqual(model_test, embedding_model_copy.embedded)
+
+    def test_model_repr(self):
+        instance = ModelTest(id="id", field1="a")
+        instance_str = repr(instance)
+        self.assertIn(instance_str, {"ModelTest(id='id', field1='a')",
+                                     "ModelTest(field1='a', id='id')"})
