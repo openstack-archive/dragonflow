@@ -23,6 +23,12 @@ class ModelTest(mf.ModelBase):
     topic = fields.StringField()
 
 
+@mf.construct_nb_db_model
+class ModelTest2(mf.ModelBase):
+    id = fields.StringField()
+    topic = fields.StringField()
+
+
 ModelTestProxy = model_proxy.create_model_proxy(ModelTest)
 
 
@@ -85,3 +91,9 @@ class TestObjectProxy(tests_base.BaseTestCase):
     def test_none_reference(self):
         self.assertIsNone(model_proxy.create_reference(ModelTest, id=None))
         self.assertIsNone(model_proxy.create_reference(ModelTest))
+
+    def test_memoization(self):
+        self.assertEqual(ModelTestProxy,
+                         model_proxy.create_model_proxy(ModelTest))
+        self.assertNotEqual(ModelTestProxy,
+                            model_proxy.create_model_proxy(ModelTest2))
