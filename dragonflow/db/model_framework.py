@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import collections
+import copy
 import functools
 
 from jsonmodels import fields
@@ -161,6 +162,16 @@ class _CommonBase(models.Base):
     def field_is_set(self, name):
         '''Checks whether a fields was set on current object'''
         return name in self._set_fields
+
+    def __copy__(self):
+        fields = {name: getattr(self, name)
+                  for name, _field in self.iterate_over_set_fields()}
+        return self.__class__(**fields)
+
+    def __deepcopy__(self, memo):
+        fields = {name: copy.deepcopy(getattr(self, name), memo)
+                  for name, _field in self.iterate_over_set_fields()}
+        return self.__class__(**fields)
 
 
 def _add_event_funcs(cls_, event):
