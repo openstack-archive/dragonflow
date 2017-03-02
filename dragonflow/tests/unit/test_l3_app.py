@@ -56,3 +56,26 @@ class TestL3App(test_app_base.DFAppTestBase,
             buffer_id=mock.sentinel.buffer_id,
             idle_timeout=self.app.idle_timeout,
             hard_timeout=self.app.hard_timeout)
+
+    def test_add_del_lport_after_router_route(self):
+        # add route
+        routes = [{"destination": "10.100.0.0/16",
+                   "nexthop": "10.0.0.6"},
+                  {"destination": "10.101.0.0/16",
+                   "nexthop": "10.0.0.6"}]
+        # Use another object here to differentiate the one in cache
+        router_with_route = copy.deepcopy(self.router)
+        router_with_route.inner_obj['routes'] = routes
+        router_with_route.inner_obj['version'] += 1
+        self.controller.update_lrouter(router_with_route)
+        # No lport no flow for route
+        self.assertFalse(self.app.mod_flow.called)
+
+        self.controller.update_lport(test_app_base.fake_local_port1)
+        # 2 routes, 2 mod_flow
+        self.assertEqual(2, self.app.mod_flow.call_count)
+
+        self.app.mod_flow.reset_mock()
+        self.controller.delete_lport('fake_port1')
+        # 2 routes, 2 mod_flow
+        self.assertEqual(2, self.app.mod_flow.call_count)
