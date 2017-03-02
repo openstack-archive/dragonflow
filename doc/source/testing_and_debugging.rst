@@ -47,7 +47,7 @@ towards verifying the pipeline was installed correctly.
 
     > sudo ovs-ofctl dump-flows br-int -O OpenFlow13
 
-This command will display the pipline that has been installed in OVS. See the
+This command will display the pipeline that has been installed in OVS. See the
 manual page for ovs-ofctl for more info.
 
 It is worthwhile to note that each flow contains statistics such as how many
@@ -59,7 +59,7 @@ packets matched this flow, and what is the cummulative size.
 
 
 This command will simulate a packet matching the given flow through
-the pipline.  The perl script in [#]_ can be used to facilitate the use
+the pipeline.  The perl script in [#]_ can be used to facilitate the use
 of this tool. The script also recirculates the packet when necessary,
 e.g. for connection tracking.
 

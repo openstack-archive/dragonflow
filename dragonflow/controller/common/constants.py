@@ -13,16 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-# Pipline Table numbers.
+# Pipeline Table numbers.
 # In general each time packet is forwarded from one table to another
 # as it goes in the pipeline, table id is increased.
 
 # First table in the pipeline. All packets are landed here.
 # In case packet is originated from local port, it is forwarded
 # to EGRESS_PORT_SECURITY_TABLE.
-# In case packet is comming from outside with a fip, it is
+# In case packet is coming from outside with a fip, it is
 # forwarded to table INGRESS_NAT_TABLE for translation.
-# In case the packet is comming with a tunnel id, it is
+# In case the packet is coming with a tunnel id, it is
 # translated to network id and the packet is forwarded to
 # INGRESS_DESTINATION_PORT_LOOKUP_TABLE.
 INGRESS_CLASSIFICATION_DISPATCH_TABLE = 0
@@ -47,7 +47,7 @@ IPV6_ND_TABLE = 45
 # Handle fip
 INGRESS_NAT_TABLE = 50
 # Translate destination mac and port key to reg7 and forward packet to table
-# L3_LOOKUP_TABLE. Duplicate broadcase packets.
+# L3_LOOKUP_TABLE. Duplicate broadcast packets.
 L2_LOOKUP_TABLE = 55
 # Filter packet based on destination IP address.
 L3_LOOKUP_TABLE = 60
@@ -55,7 +55,7 @@ L3_LOOKUP_TABLE = 60
 L3_PROACTIVE_LOOKUP_TABLE = 65
 # Related to dnap app
 EGRESS_NAT_TABLE = 70
-# Depending on reg7, packet is pushed localy to EGRESS_EXTERNAL_TABLE or
+# Depending on reg7, packet is pushed locally to EGRESS_EXTERNAL_TABLE or
 # translated to tunnel.
 EGRESS_TABLE = 75
 # Push packet to local ovs port.
