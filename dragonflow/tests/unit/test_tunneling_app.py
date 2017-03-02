@@ -91,11 +91,13 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
                     tun_ipv4_dst=remote_ip),
                 self.app.parser.OFPActionSetField(
                     tunnel_id_nxm=410),
-                self.app.parser.OFPActionSetField(
+                self.app.parser.OFPActionOutput(
                     port=ofport)]
-        inst = [self.app.parser.OFPInstructionActions(
-                self.app.ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        inst = [self.app.parser.OFPInstructionActions()]
         self.controller.update_lport(fake_remote_gre_port1)
+        self.app.parser.OFPInstructionActions.assert_called_with(
+            self.app.ofproto.OFPIT_APPLY_ACTIONS, actions)
+        self.app.parser.OFPInstructionActions.reset_mock()
         self.app.mod_flow.assert_called_with(
             inst=inst,
             command=self.datapath.ofproto.OFPFC_ADD,
@@ -112,6 +114,9 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
                 local_network_id=21,
                 name='fake_remote_gre_port2')
         self.controller.update_lport(fake_remote_gre_port2)
+        self.app.parser.OFPInstructionActions.assert_called_with(
+            self.app.ofproto.OFPIT_APPLY_ACTIONS, actions)
+        self.app.parser.OFPInstructionActions.reset_mock()
         # The multicast flow will be modified to EGRESS_TABLE with priority low
         self.app.mod_flow.assert_called_with(
             inst=inst,
@@ -121,6 +126,9 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
             match=match)
         self.app.mod_flow.reset_mock()
         self.controller.delete_lport(fake_remote_gre_port1.get_id())
+        self.app.parser.OFPInstructionActions.assert_called_with(
+            self.app.ofproto.OFPIT_APPLY_ACTIONS, actions)
+        self.app.parser.OFPInstructionActions.reset_mock()
         # The multicast flow will be modified to EGRESS_TABLE with priority low
         self.app.mod_flow.assert_called_with(
             inst=inst,
