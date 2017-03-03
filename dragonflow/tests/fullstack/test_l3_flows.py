@@ -38,10 +38,10 @@ class TestL3Flows(test_base.DFTestBase):
             raise
         self.store(self.topology)
 
-    def test_router_add_route(self):
+    def test_router_add_extra_route(self):
         lport = self.port1.port.get_logical_port()
         ip1 = lport.get_ip()
-        dest = "10.{}.{}.0/24".format(
+        dest = "20.{}.{}.0/24".format(
             random.randint(0, 254), random.randint(0, 254))
         body = {
                     "routes": [
@@ -54,12 +54,14 @@ class TestL3Flows(test_base.DFTestBase):
         self.neutron.update_router(self.router.router.router_id,
                                    body={'router': body})
 
-        # table = 20, priority = 100, ip, nw_src = 192.168.10.0/24,
-        # nw_dst = 10.110.10.0/24
-        # actions = dec_ttl, load:0x18->NXM_NX_REG7[], resubmit(, 64)
+        # table = L3_LOOKUP_TABLE, priority = PRIORITY_VERY_HIGH, ip,
+        # reg5 = router_unique_key, nw_dst = destination,
+        # dl_dst = router_interface_mac
+        # actions = dec_ttl, load: router_interface_mac->eth_src,
+        # load: lport_mac->eth_dst, load:lport_unique_key->NXM_NX_REG7[],
+        # resubmit(, 64)
         utils.wait_until_true(
-            lambda: any(self._get_route_flows('192.168.10.0/24',
-                                              dest)),
+            lambda: any(self._get_extra_route_flows(dest)),
             timeout=test_const.DEFAULT_RESOURCE_READY_TIMEOUT,
             exception=Exception('route flow entry is not installed')
         )
@@ -68,14 +70,13 @@ class TestL3Flows(test_base.DFTestBase):
                                    body={'router': body})
 
         utils.wait_until_true(
-            lambda: not any(self._get_route_flows('192.168.10.0/24',
-                                                  dest)),
+            lambda: not any(self._get_extra_route_flows(dest)),
             timeout=test_const.DEFAULT_RESOURCE_READY_TIMEOUT,
             exception=Exception('route flow entry is not deleted')
         )
 
-    def _get_route_flows(self, nw_src, nw_dst):
-        match = 'nw_src=' + nw_src + ',nw_dst=' + nw_dst
+    def _get_extra_route_flows(self, nw_dst):
+        match = 'nw_dst=' + nw_dst
         ovs_flows_parser = utils.OvsFlowsParser()
         flows = ovs_flows_parser.dump(self.integration_bridge)
         flows = [flow for flow in flows
