@@ -140,7 +140,7 @@ class L3AppMixin(object):
                 old_router_ports.remove(new_port)
 
         for old_port in old_router_ports:
-            self._delete_router_port(old_port)
+            self._delete_router_port(new_router, old_port)
 
     def _add_new_lrouter(self, lrouter):
         for new_port in lrouter.get_ports():
