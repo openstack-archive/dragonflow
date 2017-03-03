@@ -15,6 +15,8 @@
 
 import copy
 
+import mock
+
 from dragonflow.tests.unit import _test_l3
 from dragonflow.tests.unit import test_app_base
 
@@ -88,3 +90,40 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
         router_with_route.inner_obj['version'] += 1
         self.controller.update_lrouter(router_with_route)
         self.assertFalse(self.app.mod_flow.called)
+
+    def _test_add_port(self, lport):
+        with mock.patch('dragonflow.controller.l3_proactive_app.'
+                        'L3ProactiveApp._add_port_process'
+                        ) as fake_add_port_process:
+            self.controller.update_lport(lport)
+            fake_add_port_process.assert_called_once_with(
+                lport.get_ip(),
+                lport.get_mac(),
+                lport.get_external_value('local_network_id'),
+                lport.get_unique_key()
+            )
+
+    def _test_remove_port(self, lport):
+        self.controller.update_lport(lport)
+        with mock.patch('dragonflow.controller.l3_proactive_app.'
+                        'L3ProactiveApp._remove_port_process'
+                        ) as fake_remove_port_process:
+            self.controller.delete_lport(lport.get_id())
+            fake_remove_port_process.assert_called_once_with(
+                lport.get_ip(),
+                lport.get_external_value('local_network_id'),
+            )
+
+    def test_add_local_port(self):
+        # add local port
+        self._test_add_port(test_app_base.fake_local_port1)
+
+    def test_remove_local_port(self):
+        self._test_remove_port(test_app_base.fake_local_port1)
+
+    def test_add_remote_port(self):
+        # add remote port
+        self._test_add_port(test_app_base.fake_remote_port1)
+
+    def test_remove_remote_port(self):
+        self._test_remove_port(test_app_base.fake_remote_port1)
