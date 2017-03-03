@@ -216,8 +216,12 @@ class RedisDbDriver(db_api.DbApi):
         return self.set_key(table, key, value, topic)
 
     def delete_key(self, table, key, topic=None):
-        local_topic = topic
-        local_key = self._uuid_to_key(table, key, local_topic)
+        if topic:
+            local_key = self._uuid_to_key(table, key, topic)
+        else:
+            local_key = self._find_key_without_topic(table, key)
+            if local_key is None:
+                raise df_exceptions.DBKeyNotFound(key=key)
 
         try:
             res = self._execute_cmd("DEL", local_key)
