@@ -173,6 +173,11 @@ class _CommonBase(models.Base):
                   for name, _field in self.iterate_over_set_fields()}
         return self.__class__(**fields)
 
+    def __repr__(self):
+        fields = ["{}={}".format(name, repr(getattr(self, name)))
+                  for name, _field in self.iterate_over_set_fields()]
+        return "{}({})".format(self.__class__.__name__, ", ".join(fields))
+
 
 def _add_event_funcs(cls_, event):
     @classmethod
