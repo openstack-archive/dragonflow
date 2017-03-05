@@ -170,7 +170,15 @@ df_opts = [
     cfg.IntOpt('neutron_listener_report_delay',
                default=10,
                help=_('The max delay in seconds for Neutron to report heart'
-                      'beat to df-db'))
+                      'beat to df-db')),
+    cfg.BoolOpt('networking_interop',
+                default=True,
+                help=_('Enable Dragonflow interoperability with other'
+                       'networking implementations')),
+    cfg.ListOpt('interop_networking_types',
+                default=['neutron-openvswitch-agent'],
+                help=_('List of supported interoperable network switching'
+                       'neutron network implementations'))
 ]
 
 

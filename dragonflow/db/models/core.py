@@ -9,6 +9,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from dragonflow.common import constants
 from dragonflow import conf
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
@@ -19,7 +20,9 @@ from dragonflow.db.models import mixins
 @mf.construct_nb_db_model
 class Chassis(mf.ModelBase, mixins.BasicEvents):
     table_name = 'chassis'
-
+    controller = df_fields.EnumField(
+            conf.CONF.df.interop_networking_types.append(
+                constants.DRAGONFLOW_LABEL))
     ip = df_fields.IpAddressField(required=True)
     tunnel_types = df_fields.EnumListField(conf.CONF.df.tunnel_types,
                                            required=True)

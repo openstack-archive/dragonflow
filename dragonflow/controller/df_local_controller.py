@@ -534,6 +534,7 @@ class DfLocalController(object):
             core.Chassis(id=self.chassis_name))
 
         chassis = core.Chassis(
+            controller=constants.DRAGONFLOW_LABEL,
             id=self.chassis_name,
             ip=self.ip,
             tunnel_types=self.tunnel_types,

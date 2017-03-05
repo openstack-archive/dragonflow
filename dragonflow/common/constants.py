@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+DRAGONFLOW_LABEL = 'df-local-controller'
 DRAGONFLOW_VIRTUAL_PORT = "DragonflowVirtualPort"
 OVS_INTERFACE = "ovsinterface"
 OVS_VM_INTERFACE = "vm"

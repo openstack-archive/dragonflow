@@ -33,6 +33,8 @@ from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.db import api_nb
+from dragonflow.db import db_store2
+from dragonflow.db.models import core
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
 
@@ -56,6 +58,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     def initialize(self):
         LOG.info(_LI("Starting DFMechDriver"))
         self.nb_api = None
+        self.db_store2 = db_store2.get_instance()
 
         # When set to True, Nova plugs the VIF directly into the ovs bridge
         # instead of using the hybrid mode.
@@ -98,6 +101,51 @@ class DFMechDriver(driver_api.MechanismDriver):
         registry.subscribe(self.delete_security_group_rule,
                            resources.SECURITY_GROUP_RULE,
                            events.AFTER_DELETE)
+        if cfg.CONF.df.networking_interop:
+            self._subscribe_for_agent_events()
+
+    def _subscribe_for_agent_events(self):
+        registry.subscribe(self.process_agent_update,
+                           resources.AGENT,
+                           events.AFTER_CREATE)
+        registry.subscribe(self.process_agent_update,
+                           resources.AGENT,
+                           events.AFTER_UPDATE)
+        registry.subscribe(self.process_agent_remove,
+                           resources.AGENT,
+                           events.AFTER_DELETE)
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ALIEN_CHASSIS)
+    def process_agent_update(self, resource, event, trigger, **kwargs):
+        agent_name = kwargs['agent'].get('binary').encode('ascii', 'ignore')
+        if agent_name not in cfg.CONF.df.interop_networking_types:
+            return
+
+        compute_host = kwargs['host']
+        tunneling_ip = kwargs['agent'][u'configurations'][u'tunneling_ip']
+        tunnel_types = kwargs['agent'][u'configurations'][u'tunnel_types']
+        for compute in self.nb_api.get_all(core.Chassis):
+            self.db_store2.update(compute)
+
+        old_compute = self.db_store2.get_one(
+            core.Chassis(id=compute_host))
+
+        new_compute = core.Chassis(
+            controller=agent_name,
+            id=compute_host,
+            ip=tunneling_ip,
+            tunnel_types=tunnel_types,
+        )
+
+        if old_compute is None:
+            self.nb_api.create(new_compute)
+        elif old_compute != new_compute:
+            self.nb_api.update(new_compute)
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ALIEN_CHASSIS)
+    def process_agent_remove(self, resource, event, trigger, **kwargs):
+        compute_host = kwargs['host']
+        self.nb_api.delete(id=compute_host)
 
     @property
     def core_plugin(self):
