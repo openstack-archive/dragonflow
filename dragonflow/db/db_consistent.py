@@ -18,7 +18,7 @@ import time
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow._i18n import _LE, _LW
+from dragonflow._i18n import _LE
 from dragonflow.common import utils as df_utils
 
 LOG = log.getLogger(__name__)
@@ -28,6 +28,18 @@ MIN_SYNC_INTERVAL_TIME = 60
 
 def _get_version(obj):
     return getattr(obj, 'version', None)
+
+
+_CREATE = 'create'
+_UPDATE = 'update'
+_DELETE = 'delete'
+
+
+class _CacheObject(object):
+    def __init__(self, action, nb_version, local_version):
+        self.action = action
+        self.nb_version = nb_version
+        self.local_version = local_version
 
 
 class ModelHandler(object):
@@ -52,12 +64,6 @@ class ModelHandler(object):
     def get_nb_db_objects(self, topic):
         return self._nb_api_func(topic)
 
-    def handle_update(self, obj):
-        self._update_handler(obj)
-
-    def handle_delete(self, obj_id):
-        self._delete_handler(self._model, obj_id)
-
     @classmethod
     def create_using_controller(cls, model, controller):
         return cls(
@@ -71,8 +77,92 @@ class ModelHandler(object):
                 model,
             ),
             update_handler=controller.update,
-            delete_handler=controller.delete_by_id,
+            delete_handler=controller.delete,
         )
+
+    def _get_cache_obj(self, action, obj_id):
+        cache_obj = self.cache.get(obj_id)
+        if cache_obj is None or cache_obj.action != action:
+            return None
+
+        return cache_obj
+
+    def _add_to_cache(self, action, nb_obj=None, local_obj=None):
+        obj_id = (nb_obj or local_obj).id
+        self.cache[obj_id] = _CacheObject(
+            action,
+            _get_version(nb_obj),
+            _get_version(local_obj),
+        )
+
+    def handle_create(self, direct, obj):
+        if direct:
+            self._update_handler(obj)
+        else:
+            cache_obj = self._get_cache_obj(_CREATE, obj.id)
+            if cache_obj is None:
+                self._add_to_cache(_CREATE, nb_obj=obj)
+            else:
+                self._handle_indirect_create(cache_obj, obj)
+
+    def _handle_indirect_create(self, cache_obj, obj):
+        self._update_handler(obj)
+        del self.cache[obj.id]
+
+    def handle_update(self, direct, obj, local_obj):
+        if obj == local_obj:
+            return
+
+        if direct:
+            self._update_handler(obj)
+        else:
+            cache_obj = self._get_cache_obj(_UPDATE, obj.id)
+            if cache_obj is None:
+                self._add_to_cache(_UPDATE, nb_obj=obj, local_obj=local_obj)
+            else:
+                self._handle_indirect_update(cache_obj, obj, local_obj)
+
+    def _handle_indirect_update(self, cache_obj, obj, local_obj):
+        self._update_handler(obj)
+        del self.cache[obj.id]
+
+    def handle_delete(self, direct, obj):
+        if direct:
+            self._delete_handler(obj)
+        else:
+            cache_obj = self._get_cache_obj(_DELETE, obj.id)
+            if cache_obj is None:
+                self._add_to_cache(_DELETE, local_obj=obj)
+            else:
+                self._handle_indirect_delete(cache_obj, obj)
+
+    def _handle_indirect_delete(self, cache_obj, obj):
+        self._delete_handler(obj)
+        del self.cache[obj.id]
+
+
+class VersionedModelHandler(ModelHandler):
+    def _handle_indirect_create(self, cache_obj, obj):
+        if obj.version >= cache_obj.nb_version:
+            self._update_handler(obj)
+            del self.cache[obj.id]
+
+    def handle_update(self, direct, obj, local_obj):
+        if not obj.is_newer_than(local_obj):
+            return
+
+        super(VersionedModelHandler, self).handle_update(direct, obj,
+                                                         local_obj)
+
+    def _handle_indirect_update(self, cache_obj, obj, local_obj):
+        if obj.version < cache_obj.nb_version:
+            return
+
+        if local_obj.version <= cache_obj.local_version:
+            self._update_handler(obj)
+            del self.cache[obj.id]
+        else:
+            self._add_to_cache(_UPDATE, nb_obj=obj, local_obj=local_obj)
 
 
 class DBConsistencyManager(object):
@@ -124,54 +214,6 @@ class DBConsistencyManager(object):
                 LOG.exception(_LE("Exception occurred when"
                               "handling db comparison: %s"), e)
 
-    def _verify_object(self, handler, action, df_object, local_object=None):
-        """Verify the object status and judge whether to create/update/delete
-        the object or not, we'll use twice comparison to verify the status,
-        first comparison result will be stored in the cache and if second
-        comparison result is still consistent with the cache, we can make
-        sure the object status
-
-        :param handler: Handler of the model
-        :param action:  Operate action(create/update/delete)
-        :param df_object:  Object from df db
-        :param local_object:  Object from local cache
-        """
-        df_version = _get_version(df_object)
-        local_version = _get_version(local_object)
-
-        if df_object is not None:
-            obj_id = df_object.id
-        else:
-            obj_id = local_object.id
-
-        old_cache_obj = handler.cache.get(obj_id)
-        if not old_cache_obj or old_cache_obj.get_action() != action:
-            cache_obj = CacheObject(action, df_version, local_version)
-            handler.cache[obj_id] = cache_obj
-            return
-
-        old_df_version = old_cache_obj.get_df_version()
-        old_local_version = old_cache_obj.get_local_version()
-        if action == 'create':
-            if df_version >= old_df_version:
-                handler.handle_update(df_object)
-                del handler.cache[obj_id]
-            return
-        elif action == 'update':
-            if df_version < old_df_version:
-                return
-            if local_version <= old_local_version:
-                handler.handle_update(df_object)
-                del handler.cache[obj_id]
-            else:
-                cache_obj = CacheObject(action, df_version, local_version)
-                handler.cache[obj_id] = cache_obj
-        elif action == 'delete':
-            handler.handle_delete(obj_id)
-            del handler.cache[obj_id]
-        else:
-            LOG.warning(_LW('Unknown action %s in db consistent'), action)
-
     def _compare_df_and_local_data(self, handler, topic, direct):
         """Compare specific resource type df objects and local objects
         one by one, we could judge whether to create/update/delete
@@ -183,62 +225,29 @@ class DBConsistencyManager(object):
         directly after this comparison, if False, we'll go into the verify
         process which need twice comparison to do the operation.
         """
-        local_object_map = {
-            o.id: o for o in handler.get_db_store_objects(topic)
-        }
-        df_objects = handler.get_nb_db_objects(topic)
+        local_objects = {o.id: o for o in handler.get_db_store_objects(topic)}
+        local_ids = set(local_objects.keys())
 
-        for df_object in df_objects[:]:
-            df_id = df_object.id
-            df_version = _get_version(df_object)
+        nb_objects = {o.id: o for o in handler.get_nb_db_objects(topic)}
+        nb_ids = set(nb_objects.keys())
 
-            if df_version is None:
-                LOG.error(_LE("Version is None in df_object: %s"), df_object)
-                continue
-            local_object = local_object_map.pop(df_id, None)
-            if local_object:
-                local_version = _get_version(local_object)
-                if local_version is None:
-                    LOG.debug("Version is None in local_object: %s",
-                              local_object)
-                    handler.handle_update(df_object)
-                elif df_version > local_version:
-                    LOG.debug("Find a newer version df object: %s", df_object)
-                    if direct:
-                        handler.handle_update(df_object)
-                    else:
-                        self._verify_object(
-                            handler, 'update', df_object, local_object)
-            else:
-                LOG.debug("Find an additional df object: %s", df_object)
-                if direct:
-                    handler.handle_update(df_object)
-                else:
-                    self._verify_object(handler, 'create', df_object)
+        common_ids = nb_ids.intersection(local_ids)
+        deleted_ids = local_ids - common_ids
+        added_ids = nb_ids - common_ids
 
-        for local_object in local_object_map.values():
-            LOG.debug("Find a redundant local object: %s", local_object)
-            if direct:
-                handler.handle_delete(local_object.id)
-            else:
-                self._verify_object(handler, 'delete', None, local_object)
+        for obj in (local_objects[id] for id in deleted_ids):
+            LOG.debug("Found a redundant local object: %r", obj)
+            handler.handle_delete(direct, obj)
+
+        for local_obj, nb_obj in (
+            (local_objects[id], nb_objects[id]) for id in common_ids
+        ):
+            handler.handle_update(direct, nb_obj, local_obj)
+
+        for obj in (nb_objects[id] for id in added_ids):
+            LOG.debug("Found a new df object: %r", obj)
+            handler.handle_create(direct, obj)
 
     def handle_data_comparison(self, tenants, handler, direct):
         for topic in tenants:
             self._compare_df_and_local_data(handler, topic, direct)
-
-
-class CacheObject(object):
-    def __init__(self, action, df_version, local_version):
-        self.action = action
-        self.df_version = df_version
-        self.local_version = local_version
-
-    def get_action(self):
-        return self.action
-
-    def get_df_version(self):
-        return self.df_version
-
-    def get_local_version(self):
-        return self.local_version

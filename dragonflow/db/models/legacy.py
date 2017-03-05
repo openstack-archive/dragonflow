@@ -80,6 +80,9 @@ class NbDbObject(NbObject):
     def version(self):
         return self.get_version()
 
+    def is_newer_than(self, other):
+        return self.version > other.version
+
 
 class UniqueKeyMixin(object):
 
