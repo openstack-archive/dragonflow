@@ -19,7 +19,8 @@ from dragonflow.db.models import mixins
 @mf.construct_nb_db_model
 class Chassis(mf.ModelBase, mixins.BasicEvents):
     table_name = 'chassis'
-
+    controller = df_fields.EnumField(
+            ['dragonflow'] + conf.CONF.df.interop_networking_types)
     ip = df_fields.IpAddressField(required=True)
     tunnel_types = df_fields.EnumListField(conf.CONF.df.tunnel_types,
                                            required=True)

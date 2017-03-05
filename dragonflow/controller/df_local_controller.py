@@ -532,9 +532,10 @@ class DfLocalController(object):
             self.db_store2.update(c)
 
         old_chassis = self.db_store2.get_one(
-            core.Chassis(id=self.chassis_name))
+            core_models.Chassis(id=self.chassis_name))
 
         chassis = core.Chassis(
+            controller='dragonflow',
             id=self.chassis_name,
             ip=self.ip,
             tunnel_types=self.tunnel_types,

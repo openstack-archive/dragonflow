@@ -26,7 +26,7 @@ from dragonflow.db import models
 db_tables = (
     list(models.table_class_mapping) +
     list(model_framework.iter_tables()) +
-    ['unique_key', 'portstats']
+    ['unique_key', 'portstats', 'chassis']
 )
 
 
