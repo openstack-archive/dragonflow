@@ -183,47 +183,47 @@ class DfLocalController(object):
             return
 
         handlers = [
-            db_consistent.ModelHandler(
+            db_consistent.VersionedModelHandler(
                 models.QosPolicy,
                 self.db_store.get_qos_policies,
                 self.nb_api.get_qos_policies,
                 self.update,
-                self.delete_by_id,
+                self.delete,
             ),
-            db_consistent.ModelHandler(
+            db_consistent.VersionedModelHandler(
                 models.LogicalSwitch,
                 self.db_store.get_lswitchs,
                 self.nb_api.get_all_logical_switches,
                 self.update,
-                self.delete_by_id,
+                self.delete,
             ),
-            db_consistent.ModelHandler(
+            db_consistent.VersionedModelHandler(
                 models.SecurityGroup,
                 self.db_store.get_security_groups,
                 self.nb_api.get_security_groups,
                 self.update,
-                self.delete_by_id,
+                self.delete,
             ),
-            db_consistent.ModelHandler(
+            db_consistent.VersionedModelHandler(
                 models.LogicalPort,
                 self.db_store.get_ports,
                 self.nb_api.get_all_logical_ports,
                 self.update,
-                self.delete_by_id,
+                self.delete,
             ),
-            db_consistent.ModelHandler(
+            db_consistent.VersionedModelHandler(
                 models.LogicalRouter,
                 self.db_store.get_routers,
                 self.nb_api.get_routers,
                 self.update,
-                self.delete_by_id,
+                self.delete,
             ),
-            db_consistent.ModelHandler(
+            db_consistent.VersionedModelHandler(
                 models.Floatingip,
                 self.db_store.get_floatingips,
                 self.nb_api.get_floatingips,
                 self.update,
-                self.delete_by_id,
+                self.delete,
             ),
         ]
 
@@ -248,11 +248,15 @@ class DfLocalController(object):
                     ),
                 )
 
-                if (self.enable_db_consistency and
-                        issubclass(model, mixins.Version)):
-                    # Register only versioned models for now
+                if self.enable_db_consistency:
+                    # FIXME (dimak) move into factory function
+                    if issubclass(model, mixins.Version):
+                        handler_class = db_consistent.VersionedModelHandler
+                    else:
+                        handler_class = db_consistent.ModelHandler
+
                     self.db_consistency_manager.add_handler(
-                        db_consistent.ModelHandler.create_using_controller(
+                        handler_class.create_using_controller(
                             model,
                             self,
                         ),
