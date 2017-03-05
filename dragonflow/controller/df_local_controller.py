@@ -535,6 +535,7 @@ class DfLocalController(object):
             core.Chassis(id=self.chassis_name))
 
         chassis = core.Chassis(
+            controller='df-local-controller',
             id=self.chassis_name,
             ip=self.ip,
             tunnel_types=self.tunnel_types,
