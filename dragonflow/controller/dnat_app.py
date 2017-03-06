@@ -32,6 +32,8 @@ from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import icmp_error_generator
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
+from dragonflow.db.models import constants as model_constants
+from dragonflow.db.models import l2
 
 
 LOG = log.getLogger(__name__)
@@ -491,9 +493,10 @@ class DNATApp(df_base_app.DFlowApp):
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)
 
-    def update_logical_switch(self, lswitch):
-        fip_groups = self._check_and_update_floatingips(
-            lswitch)
+    @df_base_app.register_event(l2.LogicalSwitch,
+                                model_constants.EVENT_UPDATED)
+    def update_logical_switch(self, lswitch, orig_lswitch=None):
+        fip_groups = self._check_and_update_floatingips(lswitch)
         if not fip_groups:
             return
         for fip_group in fip_groups:
@@ -507,9 +510,9 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _check_and_update_floatingips(self, lswitch, topic=None):
         fip_return = []
-        if not lswitch.is_external():
+        if not lswitch.is_external:
             return fip_return
-        network_id = lswitch.get_id()
+        network_id = lswitch.id
         for fip in self.db_store.get_floatingips(topic):
             if fip.get_floating_network_id() == network_id:
                 update_fip = self._update_floatingip_gateway(fip, lswitch)
@@ -518,12 +521,12 @@ class DNATApp(df_base_app.DFlowApp):
         return fip_return
 
     def _update_floatingip_gateway(self, fip, lswitch):
-        subnets = lswitch.get_subnets()
+        subnets = lswitch.subnets
         for subnet in subnets:
-            if subnet.get_cidr() == fip.get_external_cidr():
+            if subnet.cidr == fip.get_external_cidr():
                 # external gateway ip changed
-                if subnet.get_gateway_ip() != fip.get_external_gateway_ip():
-                    fip.set_external_gateway_ip(subnet.get_gateway_ip())
+                if subnet.gateway_ip != fip.get_external_gateway_ip():
+                    fip.set_external_gateway_ip(subnet.gateway_ip)
                     return fip
         return None
 
