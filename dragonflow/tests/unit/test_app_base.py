@@ -19,6 +19,7 @@ from oslo_config import cfg
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
+from dragonflow.db import db_store2
 from dragonflow.db import models as db_models
 from dragonflow.db.models import core_models
 from dragonflow.tests import base as tests_base
@@ -31,6 +32,10 @@ class DFAppTestBase(tests_base.BaseTestCase):
         cfg.CONF.set_override('apps_list', self.apps_list, group='df')
         super(DFAppTestBase, self).setUp()
         mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
+
+        # CLear old objects from cache
+        db_store2._instance = None
+
         self.controller = df_local_controller.DfLocalController('fake_host')
         self.nb_api = self.controller.nb_api = mock.MagicMock()
         self.vswitch_api = self.controller.vswitch_api = mock.MagicMock()
