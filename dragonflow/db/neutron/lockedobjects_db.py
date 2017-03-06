@@ -114,7 +114,9 @@ def _get_lock_id_by_resource_type(resource_type, *args, **kwargs):
     elif RESOURCE_QOS == resource_type:
         lock_id = args[0][2]['id']
     elif RESOURCE_NEUTRON_LISTENER == resource_type:
-        lock_id = args[0][1]
+        # The db model of lock is uuid of 36 chars, but the neutron listener
+        # uses hostname as lock-id, so we need to truncate it.
+        lock_id = args[0][1][:35]
     else:
         raise df_exc.UnknownResourceException(resource_type=resource_type)
 
