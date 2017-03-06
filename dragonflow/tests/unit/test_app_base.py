@@ -19,6 +19,7 @@ from oslo_config import cfg
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
+from dragonflow.db import db_store2
 from dragonflow.db import models as db_models
 from dragonflow.db.models import core_models
 from dragonflow.tests import base as tests_base
@@ -45,6 +46,9 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.open_flow_app.load(self.controller.open_flow_app, **kwargs)
         self.topology = self.controller.topology = topology.Topology(
             self.controller, enable_selective_topo_dist)
+
+        # CLear old objects from cache
+        db_store2._instance = None
 
         # Add basic network topology
         self.controller.update_lswitch(fake_logic_switch1)
