@@ -390,89 +390,6 @@ class NbApi(object):
                                    sg_id, 'set', secgroup_json,
                                    secgroup['topic'])
 
-    def get_lswitch(self, id, topic=None):
-        try:
-            lswitch_value = self.driver.get_key(
-                db_models.LogicalSwitch.table_name, id, topic)
-            return db_models.LogicalSwitch(lswitch_value)
-        except Exception:
-            return None
-
-    def add_subnet(self, id, lswitch_id, topic, **columns):
-        lswitch_json = self.driver.get_key(db_models.LogicalSwitch.table_name,
-                                           lswitch_id, topic)
-        lswitch = jsonutils.loads(lswitch_json)
-        nw_version = columns.pop('nw_version', None)
-        nw_dict = {'id': lswitch_id, 'version': nw_version}
-        if not df_utils.is_valid_version(lswitch, nw_dict):
-            return
-
-        subnet = {}
-        subnet['id'] = id
-        subnet['lswitch'] = lswitch_id
-        subnet['topic'] = topic
-        for col, val in columns.items():
-            subnet[col] = val
-
-        subnets = lswitch.get('subnets', [])
-        subnets.append(subnet)
-        lswitch['subnets'] = subnets
-        lswitch['version'] = nw_version
-        lswitch_json = jsonutils.dumps(lswitch)
-        self.driver.set_key(db_models.LogicalSwitch.table_name,
-                            lswitch_id, lswitch_json, lswitch['topic'])
-        self._send_db_change_event(db_models.LogicalSwitch.table_name,
-                                   lswitch_id, 'set',
-                                   lswitch_json, lswitch['topic'])
-
-    def update_subnet(self, id, lswitch_id, topic, **columns):
-        lswitch_json = self.driver.get_key(db_models.LogicalSwitch.table_name,
-                                           lswitch_id, topic)
-        lswitch = jsonutils.loads(lswitch_json)
-        nw_version = columns.pop('nw_version', None)
-        nw_dict = {'id': lswitch_id, 'version': nw_version}
-        if not df_utils.is_valid_version(lswitch, nw_dict):
-            return
-        subnet = None
-        for s in lswitch.get('subnets', []):
-            if s['id'] == id:
-                subnet = s
-
-        for col, val in columns.items():
-            subnet[col] = val
-
-        lswitch['version'] = nw_version
-        lswitch_json = jsonutils.dumps(lswitch)
-        self.driver.set_key(db_models.LogicalSwitch.table_name,
-                            lswitch_id, lswitch_json, lswitch['topic'])
-        self._send_db_change_event(db_models.LogicalSwitch.table_name,
-                                   lswitch_id, 'set',
-                                   lswitch_json, lswitch['topic'])
-
-    def delete_subnet(self, id, lswitch_id, topic, **columns):
-        lswitch_json = self.driver.get_key(db_models.LogicalSwitch.table_name,
-                                           lswitch_id, topic)
-        lswitch = jsonutils.loads(lswitch_json)
-        nw_version = columns.pop('nw_version', None)
-        nw_dict = {'id': lswitch_id, 'version': nw_version}
-        if not df_utils.is_valid_version(lswitch, nw_dict):
-            return
-
-        new_ports = []
-        for subnet in lswitch.get('subnets', []):
-            if subnet['id'] != id:
-                new_ports.append(subnet)
-
-        lswitch['subnets'] = new_ports
-        lswitch['version'] = nw_version
-        lswitch_json = jsonutils.dumps(lswitch)
-        self.driver.set_key(db_models.LogicalSwitch.table_name,
-                            lswitch_id, lswitch_json,
-                            lswitch['topic'])
-        self._send_db_change_event(db_models.LogicalSwitch.table_name,
-                                   lswitch_id, 'set',
-                                   lswitch_json, lswitch['topic'])
-
     def get_logical_port(self, port_id, topic=None):
         try:
             port_value = self.driver.get_key(db_models.LogicalPort.table_name,
@@ -490,38 +407,6 @@ class NbApi(object):
                 continue
             res.append(lport)
         return res
-
-    def create_lswitch(self, id, topic, **columns):
-        lswitch = {}
-        lswitch['id'] = id
-        lswitch['topic'] = topic
-        lswitch[db_models.UNIQUE_KEY] = self.driver.allocate_unique_key(
-            db_models.LogicalSwitch.table_name)
-        for col, val in columns.items():
-            lswitch[col] = val
-        lswitch_json = jsonutils.dumps(lswitch)
-        self.driver.create_key(db_models.LogicalSwitch.table_name,
-                               id, lswitch_json, topic)
-        self._send_db_change_event(db_models.LogicalSwitch.table_name,
-                                   id, 'create', lswitch_json, topic)
-
-    def update_lswitch(self, id, topic, **columns):
-        lswitch_json = self.driver.get_key(db_models.LogicalSwitch.table_name,
-                                           id, topic)
-        lswitch = jsonutils.loads(lswitch_json)
-        if not df_utils.is_valid_version(lswitch, columns):
-            return
-        lswitch.update(columns)
-        lswitch_json = jsonutils.dumps(lswitch)
-        self.driver.set_key(db_models.LogicalSwitch.table_name,
-                            id, lswitch_json, lswitch['topic'])
-        self._send_db_change_event(db_models.LogicalSwitch.table_name,
-                                   id, 'set', lswitch_json, lswitch['topic'])
-
-    def delete_lswitch(self, id, topic):
-        self.driver.delete_key(db_models.LogicalSwitch.table_name, id, topic)
-        self._send_db_change_event(db_models.LogicalSwitch.table_name,
-                                   id, 'delete', id, topic)
 
     def create_lport(self, id, lswitch_id, topic, **columns):
         lport = {}
@@ -672,13 +557,6 @@ class NbApi(object):
         for secgroup_value in self.driver.get_all_entries(
                 db_models.SecurityGroup.table_name, topic):
             res.append(db_models.SecurityGroup(secgroup_value))
-        return res
-
-    def get_all_logical_switches(self, topic=None):
-        res = []
-        for lswitch_value in self.driver.get_all_entries(
-                db_models.LogicalSwitch.table_name, topic):
-            res.append(db_models.LogicalSwitch(lswitch_value))
         return res
 
     def create_floatingip(self, id, topic, **columns):
