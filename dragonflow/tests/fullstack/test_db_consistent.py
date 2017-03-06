@@ -12,11 +12,9 @@
 
 import time
 
-from oslo_serialization import jsonutils
-
 from dragonflow.controller.common import constants as const
 from dragonflow.db import db_consistent
-from dragonflow.db import models
+from dragonflow.db.models import l2
 from dragonflow.tests.common import constants
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
@@ -72,31 +70,29 @@ class TestDbConsistent(test_base.DFTestBase):
             timeout=10, sleep=1,
             exception=Exception('no rule for vm in l2 lookup table')
         )
-        df_network = {}
         net_id = '11111111-1111-1111-1111-111111111111'
-        df_network['id'] = net_id
-        df_network['topic'] = topic
-        df_network['name'] = 'df_nw1'
-        df_network['network_type'] = 'vxlan'
-        df_network['segmentation_id'] = 4000
-        df_network['router_external'] = False
-        df_network['mtu'] = 1500
-        df_network[models.UNIQUE_KEY] = 1
-        df_network['version'] = 1
+        df_network = l2.LogicalSwitch(
+            id=net_id,
+            topic=topic,
+            name='df_nw1',
+            network_type='vxlan',
+            segmentation_id=4000,
+            is_external=False,
+            mtu=1500,
+            unique_key=1,
+            version=1)
 
-        df_subnet = {}
-        df_subnet['id'] = '22222222-2222-2222-2222-222222222222'
-        df_subnet['lswitch'] = net_id
-        df_subnet['name'] = 'df_sn1'
-        df_subnet['enable_dhcp'] = True
-        df_subnet['cidr'] = '10.60.0.0/24'
-        df_subnet['dhcp_ip'] = '10.60.0.2'
-        df_subnet['gateway_ip'] = '10.60.0.1'
-        df_subnet['dns_nameservers'] = []
-        df_subnet['host_routes'] = []
+        df_subnet = l2.Subnet(
+            id='22222222-2222-2222-2222-222222222222',
+            topic=topic,
+            name='df_sn1',
+            enable_dhcp=True,
+            cidr='10.60.0.0/24',
+            dhcp_ip='10.60.0.2',
+            gateway_ip='10.60.0.1')
 
-        df_network['subnets'] = [df_subnet]
-        df_network_json = jsonutils.dumps(df_network)
+        df_network.add_subnet(df_subnet)
+        df_network_json = df_network.to_json()
 
         self.nb_api.driver.create_key(
                 'lswitch', net_id, df_network_json, topic)
@@ -109,9 +105,9 @@ class TestDbConsistent(test_base.DFTestBase):
             exception=Exception('no goto dhcp rule for lswitch')
         )
 
-        df_network['version'] = 2
-        df_network['subnets'][0]['dhcp_ip'] = '10.60.0.3'
-        df_network_json = jsonutils.dumps(df_network)
+        df_network.version = 2
+        df_network.subnets[0].dhcp_ip = '10.60.0.3'
+        df_network_json = df_network.to_json()
         self.nb_api.driver.set_key('lswitch', net_id, df_network_json, topic)
 
         time.sleep(self.db_sync_time)

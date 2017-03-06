@@ -22,7 +22,6 @@ from dragonflow.db import models
 class TenantDbStore(object):
 
     def __init__(self):
-        self.lswitchs = {}
         self.ports = {}
         self.local_ports = {}
         self.routers = {}
@@ -32,7 +31,6 @@ class TenantDbStore(object):
         self.activeports = {}
         self.lock = threading.Lock()
         self._table_name_mapping = {
-            models.LogicalSwitch.table_name: self.lswitchs,
             models.LogicalPort.table_name: self.ports,
             'local_ports': self.local_ports,
             models.LogicalRouter.table_name: self.routers,
@@ -126,25 +124,8 @@ class DbStore(object):
         if table_item:
             return table_item.get_unique_key()
 
-    def set_lswitch(self, id, lswitch, topic=None):
-        self.set(models.LogicalSwitch.table_name, id, lswitch, topic)
-
-    def get_lswitch(self, id, topic=None):
-        return self.get(models.LogicalSwitch.table_name, id, topic)
-
-    def del_lswitch(self, id, topic=None):
-        self.delete(models.LogicalSwitch.table_name, id, topic)
-
     def get_port_keys(self, topic=None):
         return self.keys(models.LogicalPort.table_name, topic)
-
-    def get_lswitch_keys(self, topic=None):
-        return self.keys(models.LogicalSwitch.table_name, topic)
-
-    def get_lswitch_keys_by_network_type(self, network_type):
-        lswitches = self.values(models.LogicalSwitch.table_name, None)
-        return {lswitch.get_id() for lswitch in lswitches
-                if lswitch.get_network_type() == network_type}
 
     def get_router_keys(self, topic=None):
         return self.keys(models.LogicalRouter.table_name, topic)
@@ -239,9 +220,6 @@ class DbStore(object):
 
     def get_security_group_keys(self, topic=None):
         return self.keys(models.SecurityGroup.table_name, topic)
-
-    def get_lswitchs(self, topic=None):
-        return self.values(models.LogicalSwitch.table_name, topic)
 
     def update_floatingip(self, floatingip_id, floatingip, topic=None):
         self.set(models.Floatingip.table_name,
