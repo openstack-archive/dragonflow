@@ -36,6 +36,8 @@ from dragonflow import conf as cfg
 from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
+from dragonflow.db.models import constants as model_constants
+from dragonflow.db.models import l2
 
 LOG = log.getLogger(__name__)
 
@@ -152,8 +154,8 @@ class DHCPApp(df_base_app.DFlowApp):
         pkt_type_packed = struct.pack('!B', pkt_type)
         dns = self._get_dns_address_list_bin(subnet)
         host_routes = self._get_host_routes_list_bin(subnet, lport)
-        dhcp_server_address = self._get_dhcp_server_address(subnet)
-        netmask_bin = self._get_port_netmask(subnet).packed
+        dhcp_server_address = subnet.dhcp_ip
+        netmask_bin = subnet.cidr.netmask.packed
         domain_name_bin = struct.pack('!%ss' % len(self.domain_name),
                                       self.domain_name)
         lease_time_bin = struct.pack('!I', self.lease_time)
@@ -198,20 +200,20 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def _get_dns_address_list_bin(self, subnet):
         dns_servers = self.global_dns_list
-        if len(subnet.get_dns_name_servers()) > 0:
-            dns_servers = subnet.get_dns_name_servers()
+        if len(subnet.dns_nameservers) > 0:
+            dns_servers = subnet.dns_nameservers
         dns_bin = b''
         for address in dns_servers:
             dns_bin += addrconv.ipv4.text_to_bin(address)
         return dns_bin
 
     def _get_host_routes_list_bin(self, subnet, lport):
-        host_routes = copy.copy(subnet.get_host_routes())
+        host_routes = copy.copy(subnet.host_routes)
         if self.conf.df_add_link_local_route:
             # Add route for metadata request.
-            host_routes.append(
-                {'destination': '%s/32' % const.METADATA_SERVICE_IP,
-                 'nexthop': lport.get_ip()})
+            host_routes.append(l2.HostRoute(
+                destination='%s/32' % const.METADATA_SERVICE_IP,
+                nexthop=lport.get_ip()))
 
         routes_bin = b''
 
@@ -219,11 +221,12 @@ class DHCPApp(df_base_app.DFlowApp):
         for opt in dhcp_opts:
             if opt['opt_name'] == str(DHCP_CLASSLESS_ROUTE_OPT):
                 dest_cidr, _c, via = opt['opt_value'].partition(',')
-                host_routes.append({'destination': dest_cidr, 'nexthop': via})
+                host_routes.append(l2.HostRoute(destination=dest_cidr,
+                                                nexthop=via))
 
         for route in host_routes:
-            dest, slash, mask = route.get('destination').partition('/')
-            mask = int(mask)
+            dest = route.destination.network
+            mask = route.destination.prefixlen
             routes_bin += struct.pack('B', mask)
             """
             for compact encoding
@@ -237,7 +240,7 @@ class DHCPApp(df_base_app.DFlowApp):
             addr_bin = addrconv.ipv4.text_to_bin(dest)
             dest_len = int(math.ceil(mask / 8.0))
             routes_bin += addr_bin[:dest_len]
-            routes_bin += addrconv.ipv4.text_to_bin(route.get('nexthop'))
+            routes_bin += addrconv.ipv4.text_to_bin(route.nexthop)
 
         return routes_bin
 
@@ -247,25 +250,17 @@ class DHCPApp(df_base_app.DFlowApp):
                 return ord(opt.value)
 
     def _get_subnet_by_port(self, lport):
-        l_switch_id = lport.get_lswitch_id()
-        l_switch = self.db_store.get_lswitch(l_switch_id)
-        subnets = l_switch.get_subnets()
+        lswitch = self._get_lswitch_by_port(lport)
         subnet_id = lport.get_subnets()[0]
-        for subnet in subnets:
-            if subnet_id == subnet.get_id():
-                return subnet
-        return None
+        return lswitch.find_subnet(subnet_id)
 
     def _get_lswitch_by_port(self, lport):
         l_switch_id = lport.get_lswitch_id()
-        l_switch = self.db_store.get_lswitch(l_switch_id)
+        l_switch = self.db_store2.get_one(l2.LogicalSwitch(id=l_switch_id))
         return l_switch
 
-    def _get_dhcp_server_address(self, subnet):
-        return netaddr.IPAddress(subnet.get_dhcp_server_address())
-
     def _get_port_gateway_address(self, subnet, lport):
-        gateway_ip = subnet.get_gateway_ip()
+        gateway_ip = subnet.gateway_ip
         if gateway_ip:
             return gateway_ip
 
@@ -274,19 +269,16 @@ class DHCPApp(df_base_app.DFlowApp):
             if opt['opt_name'] == str(dhcp.DHCP_GATEWAY_ADDR_OPT):
                 return opt['opt_value']
 
-    def _get_port_netmask(self, subnet):
-        return netaddr.IPNetwork(subnet.get_cidr()).netmask
-
     def _is_dhcp_enabled_for_port(self, lport):
         subnet = self._get_subnet_by_port(lport)
         if subnet:
-            return subnet.enable_dhcp()
+            return subnet.enable_dhcp
         LOG.warning(_LW("No subnet found for port %s"), lport.get_id())
         return False
 
     def _get_port_mtu(self, lport):
         # get network mtu from lswitch
-        mtu = self._get_lswitch_by_port(lport).get_mtu()
+        mtu = self._get_lswitch_by_port(lport).mtu
 
         tunnel_type = cfg.CONF.df.tunnel_type
         if tunnel_type == n_p_const.TYPE_VXLAN:
@@ -368,20 +360,24 @@ class DHCPApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def update_logical_switch(self, lswitch):
-        subnets = lswitch.get_subnets()
-        network_id = lswitch.get_unique_key()
+    @df_base_app.register_event(l2.LogicalSwitch,
+                                model_constants.EVENT_CREATED)
+    @df_base_app.register_event(l2.LogicalSwitch,
+                                model_constants.EVENT_UPDATED)
+    def update_logical_switch(self, lswitch, orig_lswitch=None):
+        subnets = lswitch.subnets
+        network_id = lswitch.unique_key
         all_subnets = set()
         for subnet in subnets:
             if self._is_ipv4(subnet):
-                subnet_id = subnet.get_id()
+                subnet_id = subnet.id
                 all_subnets.add(subnet_id)
                 old_dhcp_ip = (
                     (self.switch_dhcp_ip_map[network_id]
                      and self.switch_dhcp_ip_map[network_id].get(subnet_id))
                     or None)
-                if subnet.enable_dhcp():
-                    dhcp_ip = subnet.get_dhcp_server_address()
+                if subnet.enable_dhcp:
+                    dhcp_ip = subnet.dhcp_ip
                     if dhcp_ip != old_dhcp_ip:
                         # In case the subnet alway has dhcp enabled, but change
                         # its dhcp IP.
@@ -418,8 +414,10 @@ class DHCPApp(df_base_app.DFlowApp):
 
             del self.switch_dhcp_ip_map[network_id][subnet_id]
 
+    @df_base_app.register_event(l2.LogicalSwitch,
+                                model_constants.EVENT_DELETED)
     def remove_logical_switch(self, lswitch):
-        network_id = lswitch.get_unique_key()
+        network_id = lswitch.unique_key
         self._remove_dhcp_unicast_match_flow(network_id)
         del self.switch_dhcp_ip_map[network_id]
 
@@ -483,7 +481,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def _is_ipv4(self, subnet):
         try:
-            return (netaddr.IPNetwork(subnet.get_cidr()).version == 4)
+            return subnet.cidr.version == 4
         except TypeError:
             return False
 

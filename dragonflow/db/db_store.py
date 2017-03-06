@@ -14,7 +14,6 @@
 #    under the License.
 
 import collections
-import copy
 import threading
 
 from dragonflow.db import models
@@ -23,7 +22,6 @@ from dragonflow.db import models
 class TenantDbStore(object):
 
     def __init__(self):
-        self.lswitchs = {}
         self.ports = {}
         self.local_ports = {}
         self.routers = {}
@@ -33,7 +31,6 @@ class TenantDbStore(object):
         self.activeports = {}
         self.lock = threading.Lock()
         self._table_name_mapping = {
-            models.LogicalSwitch.table_name: self.lswitchs,
             models.LogicalPort.table_name: self.ports,
             'local_ports': self.local_ports,
             models.LogicalRouter.table_name: self.routers,
@@ -128,25 +125,8 @@ class DbStore(object):
         if table_item:
             return table_item.get_unique_key()
 
-    def set_lswitch(self, id, lswitch, topic=None):
-        self.set(models.LogicalSwitch.table_name, id, lswitch, topic)
-
-    def get_lswitch(self, id, topic=None):
-        return self.get(models.LogicalSwitch.table_name, id, topic)
-
-    def del_lswitch(self, id, topic=None):
-        self.delete(models.LogicalSwitch.table_name, id, topic)
-
     def get_port_keys(self, topic=None):
         return self.keys(models.LogicalPort.table_name, topic)
-
-    def get_lswitch_keys(self, topic=None):
-        return self.keys(models.LogicalSwitch.table_name, topic)
-
-    def get_lswitch_keys_by_network_type(self, network_type):
-        lswitches = self.values(models.LogicalSwitch.table_name, None)
-        return {lswitch.get_id() for lswitch in lswitches
-                if lswitch.get_network_type() == network_type}
 
     def get_router_keys(self, topic=None):
         return self.keys(models.LogicalRouter.table_name, topic)
@@ -242,9 +222,6 @@ class DbStore(object):
     def get_security_group_keys(self, topic=None):
         return self.keys(models.SecurityGroup.table_name, topic)
 
-    def get_lswitchs(self, topic=None):
-        return self.values(models.LogicalSwitch.table_name, topic)
-
     def update_floatingip(self, floatingip_id, floatingip, topic=None):
         self.set(models.Floatingip.table_name,
                  floatingip_id, floatingip, topic)
@@ -257,30 +234,6 @@ class DbStore(object):
 
     def get_floatingips(self, topic=None):
         return self.values(models.Floatingip.table_name, topic)
-
-    def check_and_update_floatingips(self, lswitch, topic=None):
-        fip_return = []
-        if not lswitch.is_external():
-            return fip_return
-        network_id = lswitch.get_id()
-        for fip in self.get_floatingips(topic):
-            if fip.get_floating_network_id() == network_id:
-                update_fip = self.update_floatingip_gateway(
-                    fip, lswitch)
-                if update_fip:
-                    fip_return.append(update_fip)
-        return fip_return
-
-    def update_floatingip_gateway(self, fip, lswitch):
-        subnets = lswitch.get_subnets()
-        for subnet in subnets:
-            if subnet.get_cidr() == fip.get_external_cidr():
-                # external gateway ip changed
-                if subnet.get_gateway_ip() != fip.get_external_gateway_ip():
-                    old_fip = copy.deepcopy(fip)
-                    fip.set_external_gateway_ip(subnet.get_gateway_ip())
-                    return (fip, old_fip)
-        return None
 
     def update_publisher(self, uuid, publisher, topic=None):
         self.set(models.Publisher.table_name, uuid, publisher, topic)

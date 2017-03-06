@@ -19,8 +19,10 @@ from oslo_config import cfg
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
+from dragonflow.db import db_store2
 from dragonflow.db import models as db_models
 from dragonflow.db.models import core_models
+from dragonflow.db.models import l2
 from dragonflow.tests import base as tests_base
 
 
@@ -46,9 +48,12 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.topology = self.controller.topology = topology.Topology(
             self.controller, enable_selective_topo_dist)
 
+        # CLear old objects from cache
+        db_store2._instance = None
+
         # Add basic network topology
-        self.controller.update_lswitch(fake_logic_switch1)
-        self.controller.update_lswitch(fake_external_switch1)
+        self.controller.update(fake_logic_switch1)
+        self.controller.update(fake_external_switch1)
         self.controller.update_lrouter(fake_logic_router1)
         self.controller.db_store2.update(fake_chassis1)
         self.controller.db_store2.update(fake_chassis2)
@@ -83,46 +88,17 @@ fake_logic_router1.inner_obj = {
                "lrouter": "fake_router_id",
                "id": "fake_router_port1"}]}
 
-fake_lswitch_default_subnets = [{"dhcp_ip": "10.0.0.2",
-                                 "name": "private-subnet",
-                                 "enable_dhcp": True,
-                                 "lswitch": "fake_switch1",
-                                 "dns_nameservers": [],
-                                 "topic": "fake_tenant1",
-                                 "gateway_ip": "10.0.0.1",
-                                 "host_routes": [],
-                                 "cidr": "10.0.0.0/24",
-                                 "id": "fake_subnet1"}]
+fake_lswitch_default_subnets = [l2.Subnet(dhcp_ip="10.0.0.2",
+                                          name="private-subnet",
+                                          enable_dhcp=True,
+                                          lswitch="fake_switch1",
+                                          topic="fake_tenant1",
+                                          gateway_ip="10.0.0.1",
+                                          cidr="10.0.0.0/24",
+                                          id="fake_subnet1")]
 
 
-def make_fake_logic_switch(
-        unique_key,
-        name,
-        router_external,
-        segmentation_id,
-        mtu,
-        topic,
-        id,
-        subnets=None,
-        network_type='vxlan',
-        version=2,
-        **kwargs):
-    fake_switch = db_models.LogicalSwitch("{}")
-    fake_switch.inner_obj = {
-            "subnets": subnets,
-            "name": name,
-            "router_external": router_external,
-            "segmentation_id": segmentation_id,
-            "mtu": mtu,
-            "topic": topic,
-            "version": version,
-            "network_type": network_type,
-            "id": id,
-            "unique_key": unique_key}
-    fake_switch.inner_obj.update(kwargs)
-    return fake_switch
-
-fake_logic_switch1 = make_fake_logic_switch(
+fake_logic_switch1 = l2.LogicalSwitch(
         subnets=fake_lswitch_default_subnets,
         unique_key=1,
         name='private',
@@ -130,20 +106,20 @@ fake_logic_switch1 = make_fake_logic_switch(
         segmentation_id=41,
         mtu=1450,
         topic='fake_tenant1',
-        id='fake_switch1')
-
-external_switch1_subnets = [{"name": "public-subnet",
-                             "enable_dhcp": False,
-                             "lswitch": "fake_external_switch1",
-                             "dns_nameservers": [],
-                             "topic": "fake_tenant1",
-                             "gateway_ip": "172.24.4.1",
-                             "host_routes": [],
-                             "cidr": "172.24.4.0/24",
-                             "id": "fake_external_subnet1"}]
+        id='fake_switch1',
+        version=5)
 
 
-fake_external_switch1 = make_fake_logic_switch(
+external_switch1_subnets = [l2.Subnet(name="public-subnet",
+                                      enable_dhcp=False,
+                                      lswitch="fake_external_switch1",
+                                      topic="fake_tenant1",
+                                      gateway_ip="172.24.4.1",
+                                      cidr="172.24.4.0/24",
+                                      id="fake_external_subnet1")]
+
+
+fake_external_switch1 = l2.LogicalSwitch(
         subnets=external_switch1_subnets,
         unique_key=2,
         name='public',

@@ -88,58 +88,6 @@ class UniqueKeyMixin(object):
 
 
 @register_model_class
-class LogicalSwitch(NbDbObject, UniqueKeyMixin):
-
-    table_name = "lswitch"
-
-    def is_external(self):
-        return self.inner_obj.get('router_external')
-
-    def get_mtu(self):
-        return self.inner_obj.get('mtu')
-
-    def get_subnets(self):
-        subnets = self.inner_obj.get('subnets')
-        if subnets:
-            return [Subnet(subnet) for subnet in subnets]
-        else:
-            return []
-
-    def get_segment_id(self):
-        return self.inner_obj.get('segmentation_id')
-
-    def get_network_type(self):
-        return self.inner_obj.get('network_type')
-
-    def get_physical_network(self):
-        return self.inner_obj.get('physical_network')
-
-
-class Subnet(NbObject):
-
-    def enable_dhcp(self):
-        return self.inner_obj.get('enable_dhcp')
-
-    def get_name(self):
-        return self.inner_obj.get('name')
-
-    def get_dhcp_server_address(self):
-        return self.inner_obj.get('dhcp_ip')
-
-    def get_cidr(self):
-        return self.inner_obj.get('cidr')
-
-    def get_gateway_ip(self):
-        return self.inner_obj.get('gateway_ip')
-
-    def get_dns_name_servers(self):
-        return self.inner_obj.get('dns_nameservers', [])
-
-    def get_host_routes(self):
-        return self.inner_obj.get('host_routes', [])
-
-
-@register_model_class
 class LogicalPort(NbDbObject, UniqueKeyMixin):
 
     table_name = "lport"
