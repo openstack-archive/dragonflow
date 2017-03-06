@@ -14,7 +14,9 @@ from oslo_log import log
 
 from dragonflow.common import constants
 from dragonflow.controller import df_db_objects_refresh
+from dragonflow.db import db_store2
 from dragonflow.db import models as db_models
+from dragonflow.db.models import l2
 
 LOG = log.getLogger(__name__)
 
@@ -39,6 +41,7 @@ class Topology(object):
         self.db_store = controller.get_db_store()
         self.openflow_app = controller.get_openflow_app()
         self.chassis_name = controller.get_chassis_name()
+        self.db_store2 = db_store2.get_instance()
 
     def ovs_port_updated(self, ovs_port):
         """
@@ -137,10 +140,11 @@ class Topology(object):
         if not tunnel_type:
             return
 
-        lswitch_ids = self.db_store.get_lswitch_keys_by_network_type(
-            tunnel_type)
-        for lswitch_id in lswitch_ids:
-            lports = self.db_store.get_ports_by_network_id(lswitch_id)
+        lswitches = self.db_store2.get_all(
+            l2.LogicalSwitch(network_type=tunnel_type),
+            l2.LogicalSwitch.get_indexes()['network_type'])
+        for lswitch in lswitches:
+            lports = self.db_store.get_ports_by_network_id(lswitch.id)
             for lport in lports:
                 if lport.get_external_value('is_local'):
                     continue

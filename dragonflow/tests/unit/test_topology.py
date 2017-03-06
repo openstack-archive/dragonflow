@@ -22,6 +22,31 @@ from dragonflow.controller import df_db_objects_refresh
 from dragonflow.tests.unit import test_app_base
 
 
+def nb_api_get_all_func(*instances):
+    """
+    Create an method that can be used to override the mock's nb_api's get_all
+    to return objects that should exist, e.g. instances that were created
+    with create (and verified with the relevant assert)
+    :param instances:   An iterable of instances that should exist in nb_api
+    :type instances:    iterable of instances
+    """
+    alls = {}
+    for instance in instances:
+        try:
+            alls[instance.__class__].append(instance)
+        except KeyError:
+            alls[instance.__class__] = [instance]
+
+    def nb_api_get_all(inst, topic=None):
+        try:
+            if not topic:
+                return alls[inst]
+            return [obj for obj in alls[inst] if obj.topic == topic]
+        except KeyError:
+            return mock.MagicMock(name='NbApi.get_instance().get()')
+    return nb_api_get_all
+
+
 class TestTopology(test_app_base.DFAppTestBase):
     # This is to comply the current code, as the app_list can't be empty.
     # But we don't need any app in this test, acutally.
@@ -35,7 +60,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         super(TestTopology, self).setUp(enable_selective_topo_dist=True)
         # By default, return empty value for all resources, each case can
         # customize the return value on their own.
-        self.nb_api.get_all_logical_switches.return_value = []
+        self.nb_api.get_all.return_value = []
         self.nb_api.get_all_logical_ports.return_value = []
         self.nb_api.get_routers.return_value = []
         self.nb_api.get_security_groups.return_value = []
@@ -48,8 +73,8 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.controller._register_models()
 
     def test_vm_port_online_offline(self):
-        self.nb_api.get_all_logical_switches.return_value = [
-            test_app_base.fake_logic_switch1]
+        self.nb_api.get_all.side_effect = nb_api_get_all_func(
+            test_app_base.fake_logic_switch1)
         self.nb_api.get_all_logical_ports.return_value = [
             test_app_base.fake_local_port1]
         self.nb_api.get_logical_port.return_value = (
@@ -71,7 +96,7 @@ class TestTopology(test_app_base.DFAppTestBase):
             test_app_base.fake_local_port1.get_topic())
 
         # Verify port offline
-        self.nb_api.get_all_logical_ports.return_value = []
+        self.nb_api.get_all.return_value = []
         self.topology.ovs_port_deleted(test_app_base.fake_ovs_port1.get_id())
         self.controller.delete_lport.assert_called_once_with(
             test_app_base.fake_local_port1.get_id())
@@ -84,8 +109,8 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.controller.update_lport.assert_not_called()
 
     def test_vm_online_after_topology_pulled(self):
-        self.nb_api.get_all_logical_switches.return_value = [
-            test_app_base.fake_logic_switch1]
+        self.nb_api.get_all.side_effect = nb_api_get_all_func(
+            test_app_base.fake_logic_switch1)
         self.nb_api.get_all_logical_ports.return_value = [
             test_app_base.fake_local_port1]
 
@@ -102,9 +127,9 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
 
         # Another port online
-        self.nb_api.get_all_logical_ports.return_value = [
+        self.nb_api.get_all.side_effect = nb_api_get_all_func(
             test_app_base.fake_local_port1,
-            test_app_base.fake_local_port2]
+            test_app_base.fake_local_port2)
         self.controller.update_lport = mock.Mock()
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port2)
         self.controller.update_lport.assert_called_once_with(
@@ -112,8 +137,8 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.nb_api.subscriber.register_topic.assert_called_once()
 
     def test_multi_vm_port_online_restart_controller(self):
-        self.nb_api.get_all_logical_switches.return_value = [
-            test_app_base.fake_logic_switch1]
+        self.nb_api.get_all.side_effect = nb_api_get_all_func(
+            test_app_base.fake_logic_switch1)
         self.nb_api.get_all_logical_ports.return_value = [
             test_app_base.fake_local_port1,
             test_app_base.fake_local_port2]
@@ -171,15 +196,15 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.assertEqual(1, len(self.topology.topic_subscribed[topic]))
 
     def test_db_sync(self):
-        self.nb_api.get_all_logical_switches.return_value = [
-            test_app_base.fake_logic_switch1]
+        self.nb_api.get_all.side_effect = nb_api_get_all_func(
+            test_app_base.fake_logic_switch1)
         self.nb_api.get_all_logical_ports.return_value = [
             test_app_base.fake_local_port1]
 
         self.topology.topic_subscribed = {
             'fake_tenant1': test_app_base.fake_local_port1}
         self.controller.update_lport = mock.Mock()
-        self.controller.update_lswitch = mock.Mock()
+        self.controller.update = mock.Mock()
         self.controller.update_secgroup = mock.Mock()
         self.controller.update_lrouter = mock.Mock()
         self.controller.update_floatingip = mock.Mock()
@@ -187,10 +212,10 @@ class TestTopology(test_app_base.DFAppTestBase):
 
         # Verify the db sync will work for topology
         self.controller.run_sync()
+        self.controller.update.assert_called_once_with(
+            test_app_base.fake_logic_switch1)
         self.controller.update_lport.assert_called_once_with(
             test_app_base.fake_local_port1)
-        self.controller.update_lswitch.assert_called_once_with(
-            test_app_base.fake_logic_switch1)
         self.assertFalse(self.controller.update_secgroup.called)
         self.assertFalse(self.controller.update_lrouter.called)
         self.assertFalse(self.controller.update_floatingip.called)
