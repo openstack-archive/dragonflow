@@ -15,6 +15,7 @@ import contextlib
 from neutronclient.common import exceptions as n_exc
 from oslo_concurrency import lockutils
 
+from dragonflow.db.models import l2
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -37,9 +38,9 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network.create()
         self.assertTrue(network.exists())
         netobj = network.get_network()
-        lswitch = self.nb_api.get_lswitch(netobj['network']['id'],
-                                          netobj['network']['tenant_id'])
-        net_mtu = lswitch.get_mtu()
+        lswitch = self.nb_api.get(l2.LogicalSwitch(
+            id=netobj['network']['id'], topic=netobj['network']['tenant_id']))
+        net_mtu = lswitch.mtu
         self.assertEqual(netobj['network']['mtu'], net_mtu)
         network.close()
         self.assertFalse(network.exists())
@@ -85,7 +86,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         ))
         subnet_id = subnet.create()
         self.assertTrue(subnet.exists())
-        self.assertEqual(subnet_id, subnet.get_subnet().get_id())
+        self.assertEqual(subnet_id, subnet.get_subnet().id)
         subnet.close()
         self.assertFalse(subnet.exists())
         network.close()
@@ -115,11 +116,11 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             ]
         }
         subnet.create(subnet_data)
-        lswitch = self.nb_api.get_lswitch(network_id)
-        subnet = lswitch.get_subnets()
-        self.assertEqual(
-            0, cmp(subnet_data['host_routes'], subnet[0].get_host_routes())
-        )
+        lswitch = self.nb_api.get(l2.LogicalSwitch(id=network_id))
+        subnet = lswitch.subnets
+        self.assertEqual(subnet_data['host_routes'],
+                         [host_route.to_struct()
+                          for host_route in subnet[0].host_routes])
 
     def test_create_delete_router(self):
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))

@@ -27,6 +27,8 @@ from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import nd_advertisers
 from dragonflow.controller import df_base_app
+from dragonflow.db.models import constants as model_constants
+from dragonflow.db.models import l2
 
 
 # TODO(gsagie) currently the number set in Ryu for this
@@ -435,10 +437,12 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
+    @df_base_app.register_event(l2.LogicalSwitch,
+                                model_constants.EVENT_DELETED)
     def remove_logical_switch(self, lswitch):
         ofproto = self.ofproto
 
-        network_id = lswitch.get_unique_key()
+        network_id = lswitch.unique_key
         match = self._get_multicast_broadcast_match(network_id)
 
         self.mod_flow(
