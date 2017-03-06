@@ -34,7 +34,7 @@ from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import icmp_error_generator
 from dragonflow.controller.common import icmp_responder
-from dragonflow.db import models
+from dragonflow.db.models import l2
 
 ROUTE_TO_ADD = 'route_to_add'
 ROUTE_ADDED = 'route_added'
@@ -367,8 +367,9 @@ class L3AppMixin(object):
     def _add_new_router_port(self, router, router_port):
         LOG.info(_LI("Adding new logical router interface = %s"),
                  router_port)
-        local_network_id = self.db_store.get_unique_key_by_id(
-            models.LogicalSwitch.table_name, router_port.get_lswitch_id())
+        local_network_id = self.db_store2.get_one(
+            l2.LogicalSwitch(id=router_port.get_lswitch_id())).unique_key
+
         parser = self.parser
         ofproto = self.ofproto
 
@@ -435,8 +436,8 @@ class L3AppMixin(object):
     def _delete_router_port(self, router, router_port):
         LOG.info(_LI("Removing logical router interface = %s"),
                  router_port)
-        local_network_id = self.db_store.get_unique_key_by_id(
-            models.LogicalSwitch.table_name, router_port.get_lswitch_id())
+        local_network_id = self.db_store2.get_one(
+            l2.LogicalSwitch(id=router_port.get_lswitch_id())).unique_key
 
         parser = self.parser
         ofproto = self.ofproto
