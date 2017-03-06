@@ -15,8 +15,6 @@ from dragonflow.db.models import legacy_models
 NbObject = legacy_models.NbObject
 NbDbObject = legacy_models.NbDbObject
 UniqueKeyMixin = legacy_models.UniqueKeyMixin
-LogicalSwitch = legacy_models.LogicalSwitch
-Subnet = legacy_models.Subnet
 LogicalPort = legacy_models.LogicalPort
 LogicalRouter = legacy_models.LogicalRouter
 LogicalRouterPort = legacy_models.LogicalRouterPort
