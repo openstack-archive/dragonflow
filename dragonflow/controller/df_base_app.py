@@ -67,7 +67,9 @@ class DFlowApp(object):
         :param lport:           local logical port which is updated to db
         :param original_lport:  local logical port in db before the update
         """
-        self.add_local_port(lport)
+        handler = getattr(self, "add_local_port", None)
+        if handler:
+            handler(lport)
 
     def update_remote_port(self, lport, original_lport):
         """update remote logical port hook callback
@@ -77,7 +79,9 @@ class DFlowApp(object):
         :param original_lport:  logical port in db which resides on other
         compute node before the update
         """
-        self.add_remote_port(lport)
+        handler = getattr(self, "add_remote_port", None)
+        if handler:
+            handler(lport)
 
     @property
     def datapath(self):
