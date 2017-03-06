@@ -33,8 +33,10 @@ from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.db import api_nb
+from dragonflow.db.models import l2
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
+from dragonflow.neutron.db.models import l2 as neutron_l2
 
 LOG = log.getLogger(__name__)
 
@@ -218,18 +220,8 @@ class DFMechDriver(driver_api.MechanismDriver):
     def create_network_postcommit(self, context):
         network = context.current
 
-        self.nb_api.create_lswitch(
-            id=network['id'],
-            topic=network['tenant_id'],
-            name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
-            network_type=network.get('provider:network_type'),
-            physical_network=network.get('provider:physical_network'),
-            segmentation_id=network.get('provider:segmentation_id'),
-            router_external=network['router:external'],
-            mtu=network.get('mtu'),
-            version=network['revision_number'],
-            subnets=[],
-            qos_policy_id=network.get('qos_policy_id'))
+        lswitch = neutron_l2.logical_switch_from_neutron_network(network)
+        self.nb_api.create(lswitch)
 
         LOG.info(_LI("DFMechDriver: create network %s"), network['id'])
         return network
@@ -241,8 +233,8 @@ class DFMechDriver(driver_api.MechanismDriver):
         tenant_id = network['tenant_id']
 
         try:
-            self.nb_api.delete_lswitch(id=network_id,
-                                       topic=tenant_id)
+            self.nb_api.delete(l2.LogicalSwitch(id=network_id,
+                                                topic=tenant_id))
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
                       "been deleted concurrently", network_id)
@@ -254,16 +246,8 @@ class DFMechDriver(driver_api.MechanismDriver):
     def update_network_postcommit(self, context):
         network = context.current
 
-        self.nb_api.update_lswitch(
-            id=network['id'],
-            topic=network['tenant_id'],
-            name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
-            network_type=network.get('provider:network_type'),
-            segmentation_id=network.get('provider:segmentation_id'),
-            router_external=network.get('router:external'),
-            mtu=network.get('mtu'),
-            version=network['revision_number'],
-            qos_policy_id=network.get('qos_policy_id'))
+        lswitch = neutron_l2.logical_switch_from_neutron_network(network)
+        self.nb_api.update(lswitch)
 
         LOG.info(_LI("DFMechDriver: update network %s"), network['id'])
         return network
@@ -374,18 +358,13 @@ class DFMechDriver(driver_api.MechanismDriver):
                 _LE("Failed to create dhcp port for subnet %s"), subnet['id'])
             return None
 
-        self.nb_api.add_subnet(
-            subnet['id'],
-            net_id,
-            subnet['tenant_id'],
-            name=subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
-            nw_version=network['revision_number'],
-            enable_dhcp=subnet['enable_dhcp'],
-            cidr=subnet['cidr'],
-            dhcp_ip=dhcp_ip,
-            gateway_ip=subnet['gateway_ip'],
-            dns_nameservers=subnet.get('dns_nameservers', []),
-            host_routes=subnet.get('host_routes', []))
+        lswitch = self.nb_api.get(l2.LogicalSwitch(id=net_id,
+                                                   topic=network['tenant_id']))
+        lswitch.version = network['revision_number']
+        df_subnet = neutron_l2.subnet_from_neutron_subnet(subnet)
+        df_subnet.dhcp_ip = dhcp_ip
+        lswitch.add_subnet(df_subnet)
+        self.nb_api.update(lswitch)
 
         LOG.info(_LI("DFMechDriver: create subnet %s"), subnet['id'])
         return subnet
@@ -453,18 +432,13 @@ class DFMechDriver(driver_api.MechanismDriver):
                 new_subnet['id'])
             return None
 
-        self.nb_api.update_subnet(
-            new_subnet['id'],
-            new_subnet['network_id'],
-            new_subnet['tenant_id'],
-            name=new_subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
-            nw_version=network['revision_number'],
-            enable_dhcp=new_subnet['enable_dhcp'],
-            cidr=new_subnet['cidr'],
-            dhcp_ip=dhcp_ip,
-            gateway_ip=new_subnet['gateway_ip'],
-            dns_nameservers=new_subnet.get('dns_nameservers', []),
-            host_routes=new_subnet.get('host_routes', []))
+        lswitch = self.nb_api.get(l2.LogicalSwitch(id=new_subnet['network_id'],
+                                                   topic=network['tenant_id']))
+        lswitch.version = network['revision_number']
+        subnet = lswitch.find_subnet(new_subnet['id'])
+        subnet.update(neutron_l2.subnet_from_neutron_subnet(new_subnet))
+        subnet.dhcp_ip = dhcp_ip
+        self.nb_api.update(lswitch)
 
         LOG.info(_LI("DFMechDriver: update subnet %s"), new_subnet['id'])
         return new_subnet
@@ -479,15 +453,16 @@ class DFMechDriver(driver_api.MechanismDriver):
         subnet = context.current
         net_id = subnet['network_id']
         subnet_id = subnet['id']
-
         # The network in context is still the network before deleting subnet
         network = self.core_plugin.get_network(context._plugin_context,
                                                net_id)
 
-        # update df controller with subnet delete
         try:
-            self.nb_api.delete_subnet(subnet_id, net_id, subnet['tenant_id'],
-                                      nw_version=network['revision_number'])
+            lswitch = self.nb_api.get(l2.LogicalSwitch(
+                id=net_id, topic=network['tenant_id']))
+            lswitch.remove_subnet(subnet_id)
+            lswitch.version = network['revision_number']
+            self.nb_api.update(lswitch)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("network %s is not found in DB, might have "
                       "been deleted concurrently", net_id)
