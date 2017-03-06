@@ -14,11 +14,11 @@
 #    under the License.
 
 from dragonflow.controller.common import constants as const
+from dragonflow.db.models import l2
 from dragonflow.tests.unit import test_app_base
 
 
 make_fake_local_port = test_app_base.make_fake_local_port
-make_fake_logic_switch = test_app_base.make_fake_logic_switch
 make_fake_remote_port = test_app_base.make_fake_remote_port
 
 
@@ -27,17 +27,17 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestTunnelingApp, self).setUp()
-        fake_gre_switch1 = make_fake_logic_switch(
+        fake_gre_switch1 = l2.LogicalSwitch(
                 subnets=test_app_base.fake_lswitch_default_subnets,
                 mtu=1464,
                 unique_key=6,
                 topic='fake_tenant1',
-                router_external=False,
+                is_external=False,
                 segmentation_id=410,
                 name='private',
                 network_type='gre',
                 id='fake_gre_switch1')
-        self.controller.update_lswitch(fake_gre_switch1)
+        self.controller.update(fake_gre_switch1)
         self.app = self.open_flow_app.dispatcher.apps[0]
 
     def test_tunneling_for_local_port(self):

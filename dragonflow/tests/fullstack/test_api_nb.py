@@ -15,6 +15,7 @@ import copy
 import mock
 
 from dragonflow.db import models as db_models
+from dragonflow.db.models import l2
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.unit import test_app_base
 
@@ -32,28 +33,26 @@ class Test_API_NB(test_base.DFTestBase):
         publisher.start()
 
     def test_create_lswitch(self):
-        fake_lswitch = copy.deepcopy(
-            test_app_base.fake_logic_switch1.inner_obj)
-        del fake_lswitch['unique_key']
+        fake_lswitch = l2.LogicalSwitch(id='test_lswitch0',
+                                        topic='test_tenant1')
 
-        self.nb_api.create_lswitch(**fake_lswitch)
-        self.addCleanup(self.nb_api.delete_lswitch,
-                        fake_lswitch['id'], fake_lswitch['topic'])
-        lswitch = self.nb_api.get_lswitch(fake_lswitch['id'],
-                                          fake_lswitch['topic'])
-        self.assertIsNotNone(lswitch.get_unique_key())
+        self.nb_api.create(fake_lswitch)
+        lean_fake_lswitch = l2.LogicalSwitch(id=fake_lswitch.id,
+                                             topic=fake_lswitch.topic)
+        self.addCleanup(self.nb_api.delete, lean_fake_lswitch)
+        lswitch = self.nb_api.get(lean_fake_lswitch)
+        self.assertIsNotNone(lswitch.unique_key)
 
-        fake_lswitch1 = copy.deepcopy(fake_lswitch)
-        fake_lswitch1['id'] = 'other_id'
-        self.nb_api.create_lswitch(**fake_lswitch1)
-        self.addCleanup(self.nb_api.delete_lswitch,
-                        fake_lswitch1['id'], fake_lswitch1['topic'])
-        lswitch1 = self.nb_api.get_lswitch(fake_lswitch1['id'],
-                                           fake_lswitch1['topic'])
-        self.assertIsNotNone(lswitch1.get_unique_key())
+        fake_lswitch1 = l2.LogicalSwitch(id='test_lswitch1',
+                                         topic='test_tenant1')
+        self.nb_api.create(fake_lswitch1)
+        lean_fake_lswitch1 = l2.LogicalSwitch(id=fake_lswitch1.id,
+                                              topic=fake_lswitch1.topic)
+        self.addCleanup(self.nb_api.delete, lean_fake_lswitch1)
+        lswitch1 = self.nb_api.get(lean_fake_lswitch1)
+        self.assertIsNotNone(lswitch1.unique_key)
 
-        self.assertNotEqual(lswitch.get_unique_key(),
-                            lswitch1.get_unique_key())
+        self.assertNotEqual(lswitch.unique_key, lswitch1.unique_key)
 
     def test_create_lport(self):
         fake_lport = copy.deepcopy(

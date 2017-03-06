@@ -17,6 +17,7 @@ from neutron.agent.common import utils as agent_utils
 from neutronclient.common import exceptions
 from oslo_log import log
 
+from dragonflow.db.models import l2
 from dragonflow.db.models import qos
 from dragonflow.tests.common import clients
 from dragonflow.tests.common import constants as const
@@ -199,7 +200,7 @@ class NetworkTestObj(object):
         return self.topic
 
     def exists(self):
-        netobj = self.nb_api.get_lswitch(self.network_id)
+        netobj = self.nb_api.get(l2.LogicalSwitch(id=self.network_id))
         if netobj:
             return True
         return False
@@ -383,14 +384,10 @@ class SubnetTestObj(object):
         return subnet['subnet']
 
     def get_subnet(self):
-        network = self.nb_api.get_lswitch(self.network_id)
+        network = self.nb_api.get(l2.LogicalSwitch(id=self.network_id))
         if not network:
             return None
-        subnets = network.get_subnets()
-        for subnet in subnets:
-            if subnet.get_id() == self.subnet_id:
-                return subnet
-        return None
+        return network.find_subnet(self.subnet_id)
 
     def exists(self):
         subnet = self.get_subnet()
