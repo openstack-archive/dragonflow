@@ -493,7 +493,7 @@ class DNATApp(df_base_app.DFlowApp):
         self._remove_egress_nat_rules(floatingip)
 
     def update_logical_switch(self, lswitch):
-        fip_groups = self.db_store.check_and_update_floatingips(
+        fip_groups = self._check_and_update_floatingips(
             lswitch)
         if not fip_groups:
             return
@@ -505,6 +505,28 @@ class DNATApp(df_base_app.DFlowApp):
                 topic=fip.get_topic(),
                 notify=False,
                 external_gateway_ip=fip.get_external_gateway_ip())
+
+    def _check_and_update_floatingips(self, lswitch, topic=None):
+        fip_return = []
+        if not lswitch.is_external():
+            return fip_return
+        network_id = lswitch.get_id()
+        for fip in self.db_store.get_floatingips(topic):
+            if fip.get_floating_network_id() == network_id:
+                update_fip = self._update_floatingip_gateway(fip, lswitch)
+                if update_fip:
+                    fip_return.append(update_fip)
+        return fip_return
+
+    def _update_floatingip_gateway(self, fip, lswitch):
+        subnets = lswitch.get_subnets()
+        for subnet in subnets:
+            if subnet.get_cidr() == fip.get_external_cidr():
+                # external gateway ip changed
+                if subnet.get_gateway_ip() != fip.get_external_gateway_ip():
+                    fip.set_external_gateway_ip(subnet.get_gateway_ip())
+                    return fip
+        return None
 
     def _install_output_to_physical_patch(self, ofport):
         parser = self.parser
