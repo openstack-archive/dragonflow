@@ -9,7 +9,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from dragonflow.db.models import core  # noqa
-from dragonflow.db.models import l2  # noqa
-from dragonflow.db.models import legacy  # noqa
-from dragonflow.db.models import qos  # noqa
+
+import dragonflow.db.field_types as df_fields
+import dragonflow.db.model_framework as mf
+
+
+@mf.construct_nb_db_model
+class HostRoute(mf.ModelBase):
+    id = None
+    destination = df_fields.IpNetworkField(required=True)
+    nexthop = df_fields.IpAddressField(required=True)

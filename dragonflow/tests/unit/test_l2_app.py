@@ -16,6 +16,7 @@
 import mock
 
 from dragonflow.controller.common import constants as const
+from dragonflow.db.models import l2
 from dragonflow.tests.unit import test_app_base
 
 
@@ -24,7 +25,7 @@ class TestL2App(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestL2App, self).setUp()
-        fake_local_switch1 = test_app_base.make_fake_logic_switch(
+        fake_local_switch1 = l2.LogicalSwitch(
                 subnets=test_app_base.fake_lswitch_default_subnets,
                 network_type='local',
                 id='fake_local_switch1',
@@ -32,9 +33,9 @@ class TestL2App(test_app_base.DFAppTestBase):
                 mtu=1500,
                 topic='fake_tenant1',
                 unique_key=1,
-                router_external=False,
+                is_external=False,
                 name='private')
-        self.controller.update_lswitch(fake_local_switch1)
+        self.controller.update(fake_local_switch1)
         self.app = self.open_flow_app.dispatcher.apps[0]
 
     def test_multicast_local_port(self):
