@@ -35,6 +35,7 @@ from dragonflow.db import db_store2
 from dragonflow.db import model_framework
 from dragonflow.db import models
 from dragonflow.db.models import core
+from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
 from dragonflow.ovsdb import vswitch_impl
 
@@ -123,13 +124,6 @@ class DfLocalController(object):
     def _register_legacy_model_refreshers(self):
         refreshers = [
             df_db_objects_refresh.DfObjectRefresher(
-                'Switches',
-                self.db_store.get_lswitch_keys,
-                self.nb_api.get_all_logical_switches,
-                self.update_lswitch,
-                self.delete_lswitch,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
                 'Security Groups',
                 self.db_store.get_security_group_keys,
                 self.nb_api.get_security_groups,
@@ -175,13 +169,6 @@ class DfLocalController(object):
 
         handlers = [
             db_consistent.ModelHandler(
-                models.LogicalSwitch,
-                self.db_store.get_lswitchs,
-                self.nb_api.get_all_logical_switches,
-                self.update,
-                self.delete_by_id,
-            ),
-            db_consistent.ModelHandler(
                 models.SecurityGroup,
                 self.db_store.get_security_groups,
                 self.nb_api.get_security_groups,
@@ -215,9 +202,6 @@ class DfLocalController(object):
             self.db_consistency_manager.add_handler(handler)
 
     def _register_models(self):
-        self._register_legacy_model_refreshers()
-        self._register_legacy_model_consistency_handlers()
-
         for model in model_framework.iter_models_by_dependency_order():
             # FIXME (dimak) do not register topicless models for now
             if issubclass(model, mixins.Topic):
@@ -241,6 +225,9 @@ class DfLocalController(object):
                             self,
                         ),
                     )
+
+        self._register_legacy_model_refreshers()
+        self._register_legacy_model_consistency_handlers()
 
     def db_sync_loop(self):
         while True:
@@ -295,27 +282,6 @@ class DfLocalController(object):
             self.delete_lport(port.get_id())
         self.db_store2.delete(chassis)
 
-    def update_lswitch(self, lswitch):
-        old_lswitch = self.db_store.get_lswitch(lswitch.get_id())
-        if not df_utils.is_valid_version(
-                old_lswitch.inner_obj if old_lswitch else None,
-                lswitch.inner_obj):
-            return
-
-        LOG.info("Adding/Updating Logical Switch = %s", lswitch)
-        self.db_store.set_lswitch(lswitch.get_id(), lswitch)
-        self.open_flow_app.notify_update_logical_switch(lswitch)
-
-    def delete_lswitch(self, lswitch_id):
-        lswitch = self.db_store.get_lswitch(lswitch_id)
-        LOG.info("Removing Logical Switch = %s", lswitch_id)
-        if lswitch is None:
-            LOG.warning("Try to delete a nonexistent lswitch(%s)",
-                        lswitch_id)
-            return
-        self.open_flow_app.notify_remove_logical_switch(lswitch)
-        self.db_store.del_lswitch(lswitch_id)
-
     def _notify_active_ports_updated_when_lport_created(self, lport):
         active_ports = self.db_store.get_active_ports(lport.get_topic())
         for active_port in active_ports:
@@ -336,16 +302,17 @@ class DfLocalController(object):
         return True
 
     def _logical_port_process(self, lport, original_lport=None):
-        lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
+        lswitch = self.db_store2.get_one(
+            l2.LogicalSwitch(id=lport.get_lswitch_id()))
         if not lswitch:
             LOG.warning("Could not find lswitch for lport: %s",
                         lport.get_id())
             return
         lport.set_external_value('local_network_id',
-                                 lswitch.get_unique_key())
-        network_type = lswitch.get_network_type()
-        segment_id = lswitch.get_segment_id()
-        physical_network = lswitch.get_physical_network()
+                                 lswitch.unique_key)
+        network_type = lswitch.network_type
+        segment_id = lswitch.segmentation_id
+        physical_network = lswitch.physical_network
 
         lport.set_external_value('network_type', network_type)
         if segment_id is not None:

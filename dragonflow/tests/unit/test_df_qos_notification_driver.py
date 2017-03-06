@@ -111,16 +111,18 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         kwargs = {'qos_policy_id': qos_obj['id']}
         with self.network(arg_list=('qos_policy_id',), **kwargs) as n:
             network_id = n['network']['id']
-            self.assertTrue(nb_api.create_lswitch.called)
-            called_args = nb_api.create_lswitch.call_args_list[0][1]
-            self.assertEqual(qos_obj['id'], called_args.get('qos_policy_id'))
+            self.assertTrue(nb_api.create.called)
+            # nb_api.create(LogicalSwitch) will be called after
+            # nb_api.create(QosPolicy), so the index here is 1.
+            called_args = nb_api.create.call_args_list[1][0][0]
+            self.assertEqual(qos_obj['id'], called_args.qos_policy.id)
 
             data = {'network': {'qos_policy_id': None}}
             req = self.new_update_request('networks', data, network_id)
             req.get_response(self.api)
-            self.assertTrue(nb_api.update_lswitch.called)
-            called_args = nb_api.update_lswitch.call_args_list[0][1]
-            self.assertIsNone(called_args.get('qos_policy_id'))
+            self.assertTrue(nb_api.update.called)
+            called_args = nb_api.update.call_args_list[0][0][0]
+            self.assertIsNone(called_args.qos_policy)
 
     def test_create_update_port_qos_policy(self):
         nb_api = self.driver.nb_api
