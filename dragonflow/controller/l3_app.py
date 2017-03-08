@@ -15,7 +15,6 @@
 
 import netaddr
 from oslo_log import log
-from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
@@ -24,6 +23,8 @@ from ryu.ofproto import ether
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.controller import l3_app_base
+from dragonflow.db.models import l3
+
 
 LOG = log.getLogger(__name__)
 
@@ -52,22 +53,23 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         if pkt_ip is None:
             LOG.error("Received Non IP Packet")
             return
-        pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
         network_id = msg.match.get('metadata')
         try:
-            self._get_route(pkt_ip, pkt_ethernet, network_id, msg)
+            self._get_route(pkt_ip, network_id, msg)
         except Exception as e:
             LOG.error("L3 App PacketIn exception raised")
             LOG.error(e)
 
-    def _get_route(self, pkt_ip, pkt_ethernet, network_id, msg):
+    def _get_route(self, pkt_ip, network_id, msg):
         ip_addr = netaddr.IPAddress(pkt_ip.dst)
-        router = self.db_store.get_router_by_router_interface_mac(
-            pkt_ethernet.dst)
-        for router_port in router.get_ports():
-            if ip_addr in netaddr.IPNetwork(router_port.get_network()):
+        router_unique_key = msg.match.get('reg5')
+        router = self.db_store2.get_all(
+            l3.LogicalRouter(unique_key=router_unique_key),
+            l3.LogicalRouter.get_indexes()['unique_key'])
+        for router_port in router.ports:
+            if ip_addr in router_port.network:
                 dst_ports = self.db_store.get_ports_by_network_id(
-                    router_port.get_lswitch_id())
+                    router_port.lswitch.id)
                 for out_port in dst_ports:
                     if out_port.get_ip() == pkt_ip.dst:
                         self._install_l3_flow(router_port,
@@ -79,7 +81,7 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
                          src_network_id):
         reg7 = dst_port.get_unique_key()
         dst_ip = dst_port.get_ip()
-        src_mac = dst_router_port.get_mac()
+        src_mac = dst_router_port.mac
         dst_mac = dst_port.get_mac()
         dst_network_id = dst_port.get_external_value('local_network_id')
 
@@ -110,7 +112,7 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         # Since we are using buffer, set buffer id to make the new OpenFlow
         # rule carry on handling original packet.
         self.mod_flow(
-            cookie=dst_router_port.get_unique_key(),
+            cookie=dst_router_port.unique_key,
             inst=inst,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_VERY_HIGH,

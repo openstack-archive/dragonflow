@@ -34,6 +34,7 @@ from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import l2
+from dragonflow.db.models import l3
 
 
 LOG = log.getLogger(__name__)
@@ -262,10 +263,11 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _get_vm_gateway_info(self, floatingip):
         lport = self.db_store.get_local_port(floatingip.get_lport_id())
-        lrouter = self.db_store.get_router(floatingip.get_lrouter_id())
-        for router_port in lrouter.get_ports():
-            if router_port.get_lswitch_id() == lport.get_lswitch_id():
-                return router_port.get_mac()
+        lrouter = self.db_store2.get_one(l3.LogicalRouter(
+                                             id=floatingip.get_lrouter_id()))
+        for router_port in lrouter.ports:
+            if router_port.lswitch.id == lport.get_lswitch_id():
+                return router_port.mac
         return None
 
     def _install_dnat_ingress_rules(self, floatingip):
