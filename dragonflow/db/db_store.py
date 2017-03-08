@@ -24,7 +24,6 @@ class TenantDbStore(object):
     def __init__(self):
         self.ports = {}
         self.local_ports = {}
-        self.routers = {}
         self.floatingips = {}
         self.secgroups = {}
         self.publishers = {}
@@ -33,7 +32,6 @@ class TenantDbStore(object):
         self._table_name_mapping = {
             models.LogicalPort.table_name: self.ports,
             'local_ports': self.local_ports,
-            models.LogicalRouter.table_name: self.routers,
             models.Floatingip.table_name: self.floatingips,
             models.SecurityGroup.table_name: self.secgroups,
             models.Publisher.table_name: self.publishers,
@@ -128,9 +126,6 @@ class DbStore(object):
     def get_port_keys(self, topic=None):
         return self.keys(models.LogicalPort.table_name, topic)
 
-    def get_router_keys(self, topic=None):
-        return self.keys(models.LogicalRouter.table_name, topic)
-
     def get_floatingip_keys(self, topic=None):
         return self.keys(models.Floatingip.table_name, topic)
 
@@ -184,28 +179,9 @@ class DbStore(object):
             if lport.get_id().startswith(port_id_prefix):
                 return lport
 
-    def update_router(self, router_id, router, topic=None):
-        self.set(models.LogicalRouter.table_name, router_id, router, topic)
-
-    def delete_router(self, id, topic=None):
-        self.delete(models.LogicalRouter.table_name, id, topic)
-
-    def get_router(self, router_id, topic=None):
-        return self.get(models.LogicalRouter.table_name, router_id, topic)
-
     def get_ports_by_network_id(self, lswitch_id, topic=None):
         ports = self.values(models.LogicalPort.table_name, topic)
         return [port for port in ports if port.get_lswitch_id() == lswitch_id]
-
-    def get_router_by_router_interface_mac(self, interface_mac, topic=None):
-        routers = self.values(models.LogicalRouter.table_name, topic)
-        for router in routers:
-            for port in router.get_ports():
-                if port.get_mac() == interface_mac:
-                    return router
-
-    def get_routers(self, topic=None):
-        return self.values(models.LogicalRouter.table_name, topic)
 
     def update_security_group(self, secgroup_id, secgroup, topic=None):
         self.set(models.SecurityGroup.table_name, secgroup_id, secgroup, topic)

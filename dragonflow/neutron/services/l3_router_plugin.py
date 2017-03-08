@@ -37,8 +37,10 @@ from oslo_utils import importutils
 
 from dragonflow._i18n import _LE, _LI
 from dragonflow.common import exceptions as df_exceptions
+from dragonflow.db.models import l3
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
+from dragonflow.neutron.db.models import l3 as neutron_l3
 
 
 LOG = log.getLogger(__name__)
@@ -110,40 +112,17 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_router(self, context, router):
         router = super(DFL3RouterPlugin, self).create_router(context, router)
-        router_version = router['revision_number']
-        router_id = router['id']
-        tenant_id = router['tenant_id']
-        is_distributed = router.get('distributed', False)
-        router_name = router.get('name', df_const.DF_ROUTER_DEFAULT_NAME)
-        self.nb_api.create_lrouter(router_id, topic=tenant_id,
-                                   name=router_name,
-                                   distributed=is_distributed,
-                                   version=router_version,
-                                   ports=[])
+        lrouter = neutron_l3.logical_router_from_neutron_router(router)
+        self.nb_api.create(lrouter)
         return router
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def update_router(self, context, router_id, router):
         router = super(DFL3RouterPlugin, self).update_router(
                        context, router_id, router)
-        router_version = router['revision_number']
-
+        lrouter = neutron_l3.logical_router_from_neutron_router(router)
         try:
-            gw_info = router.get('external_gateway_info', {})
-            if gw_info:
-                gw_info.update({'port_id': router.get('gw_port_id')})
-            is_distributed = router.get('distributed', False)
-            self.nb_api.update_lrouter(
-                router_id,
-                topic=router['tenant_id'],
-                name=router['name'],
-                distributed=is_distributed,
-                version=router_version,
-                routes=router.get('routes', []),
-                admin_state_up=router['admin_state_up'],
-                description=router['description'],
-                gateway=gw_info
-            )
+            self.nb_api.update(lrouter)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("router %s is not found in DF DB", router_id)
 
@@ -151,12 +130,10 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def delete_router(self, context, router_id):
-        router = self.get_router(context, router_id)
         ret_val = super(DFL3RouterPlugin, self).delete_router(context,
                                                               router_id)
         try:
-            self.nb_api.delete_lrouter(id=router_id,
-                                       topic=router['tenant_id'])
+            self.nb_api.delete(l3.LogicalRouter(id=router_id))
         except df_exceptions.DBKeyNotFound:
             LOG.debug("router %s is not found in DF DB", router_id)
         return ret_val
@@ -261,28 +238,30 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def add_router_interface(self, context, router_id, interface_info):
-        result = super(DFL3RouterPlugin, self).add_router_interface(
-                       context, router_id, interface_info)
+        router_port_info = super(DFL3RouterPlugin, self).add_router_interface(
+            context, router_id, interface_info)
         router = self.get_router(context, router_id)
-        router_version = router['revision_number']
 
-        port = self.core_plugin.get_port(context, result['port_id'])
-        subnet = self.core_plugin.get_subnet(context, result['subnet_id'])
+        port = self.core_plugin.get_port(context, router_port_info['port_id'])
+        subnet = self.core_plugin.get_subnet(context,
+                                             router_port_info['subnet_id'])
         cidr = netaddr.IPNetwork(subnet['cidr'])
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
+
         logical_port = self.nb_api.get_logical_port(port['id'],
                                                     port['tenant_id'])
 
-        self.nb_api.add_lrouter_port(result['port_id'],
-                                     result['id'],
-                                     result['network_id'],
-                                     result['tenant_id'],
-                                     router_version=router_version,
-                                     mac=port['mac_address'],
-                                     network=network,
-                                     unique_key=logical_port.get_unique_key())
-        return result
+        logical_router_port = neutron_l3.build_logical_router_port(
+            router_port_info, mac=port['mac_address'],
+            network=network, unique_key=logical_port.get_unique_key())
+        lrouter = self.nb_api.get(l3.LogicalRouter(id=router_id,
+                                                   topic=router['tenant_id']))
+        lrouter.version = router['revision_number']
+        lrouter.add_router_port(logical_router_port)
+        self.nb_api.update(lrouter)
+
+        return router_port_info
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def remove_router_interface(self, context, router_id, interface_info):
@@ -290,13 +269,13 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             super(DFL3RouterPlugin, self).remove_router_interface(
                 context, router_id, interface_info))
         router = self.get_router(context, router_id)
-        router_version = router['revision_number']
 
         try:
-            self.nb_api.delete_lrouter_port(router_port_info['port_id'],
-                                            router_id,
-                                            router_port_info['tenant_id'],
-                                            router_version=router_version)
+            lrouter = self.nb_api.get(l3.LogicalRouter(
+                id=router_id, topic=router['tenant_id']))
+            lrouter.remove_router_port(router_port_info['port_id'])
+            lrouter.version = router['revision_number']
+            self.nb_api.update(lrouter)
         except df_exceptions.DBKeyNotFound:
             LOG.exception(_LE("logical router %s is not found in DF DB, "
                               "suppressing delete_lrouter_port "

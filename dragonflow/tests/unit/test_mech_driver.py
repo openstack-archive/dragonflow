@@ -14,11 +14,11 @@
 
 import mock
 import netaddr
-from neutron import context
 from neutron.plugins.ml2 import config
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_plugin
+from neutron_lib import context
 
 from dragonflow.db.models import l2
 from dragonflow.neutron.db.models import l2 as neutron_l2

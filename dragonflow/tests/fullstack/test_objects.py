@@ -19,6 +19,7 @@ from oslo_log import log
 
 from dragonflow._i18n import _LW
 from dragonflow.db.models import l2
+from dragonflow.db.models import l3
 from dragonflow.db.models import qos
 from dragonflow.tests.common import clients
 from dragonflow.tests.common import constants as const
@@ -87,7 +88,7 @@ class RouterTestObj(object):
         self.closed = True
 
     def exists(self):
-        router = self.nb_api.get_router(self.router_id)
+        router = self.nb_api.get(l3.LogicalRouter(id=self.router_id))
         if router:
             return True
         return False
