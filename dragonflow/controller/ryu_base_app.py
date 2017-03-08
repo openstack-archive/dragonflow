@@ -77,13 +77,6 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def unregister_table_handler(self, table_id, handler):
         self.table_handlers.pop(table_id, None)
 
-    def notify_update_router(self, router=None, original_router=None):
-        self.dispatcher.dispatch('router_updated', router=router,
-                                 original_router=original_router)
-
-    def notify_delete_router(self, router=None):
-        self.dispatcher.dispatch('router_deleted', router=router)
-
     def notify_add_local_port(self, lport=None):
         self.dispatcher.dispatch('add_local_port', lport=lport)
 

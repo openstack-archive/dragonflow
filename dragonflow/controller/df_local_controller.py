@@ -140,13 +140,6 @@ class DfLocalController(object):
                 self.delete_lport,
             ),
             df_db_objects_refresh.DfObjectRefresher(
-                'Routers',
-                self.db_store.get_router_keys,
-                self.nb_api.get_routers,
-                self.update_lrouter,
-                self.delete_lrouter,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
                 'Floating IPs',
                 self.db_store.get_floatingip_keys,
                 self.nb_api.get_floatingips,
@@ -181,13 +174,6 @@ class DfLocalController(object):
                 models.LogicalPort,
                 self.db_store.get_ports,
                 self.nb_api.get_all_logical_ports,
-                self.update,
-                self.delete_by_id,
-            ),
-            db_consistent.ModelHandler(
-                models.LogicalRouter,
-                self.db_store.get_routers,
-                self.nb_api.get_routers,
                 self.update,
                 self.delete_by_id,
             ),
@@ -419,25 +405,6 @@ class DfLocalController(object):
 
     def bridge_port_updated(self, lport):
         self.open_flow_app.notify_update_bridge_port(lport)
-
-    def update_lrouter(self, lrouter):
-        old_lrouter = self.db_store.get_router(lrouter.get_id())
-        if not df_utils.is_valid_version(
-                old_lrouter.inner_obj if old_lrouter else None,
-                lrouter.inner_obj):
-            return
-        self.open_flow_app.notify_update_router(lrouter, old_lrouter)
-        self.db_store.update_router(lrouter.get_id(), lrouter)
-
-    def delete_lrouter(self, lrouter_id):
-        router = self.db_store.get_router(lrouter_id)
-        if router is None:
-            LOG.warning(_LW("Try to delete a nonexistent router(%s)"),
-                        lrouter_id)
-            return
-        LOG.info(_LI("Removing router = %s"), lrouter_id)
-        self.open_flow_app.notify_delete_router(router)
-        self.db_store.delete_router(lrouter_id)
 
     def update_secgroup(self, secgroup):
         old_secgroup = self.db_store.get_security_group(secgroup.get_id())
