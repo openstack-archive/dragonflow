@@ -446,6 +446,20 @@ function stop_df_metadata_agent {
     fi
 }
 
+function start_df_bgp_service {
+    if is_service_enabled df-bgp ; then
+        echo "Starting Dragonflow BGP dynamic routing service"
+        run_process df-bgp "python $DF_BGP_SERVICE --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
+    fi
+}
+
+function stop_df_bgp_service {
+    if is_service_enabled df-bgp ; then
+       echo "Stopping Dragonflow BGP dynamic routing service"
+       stop_process df-bgp
+    fi
+}
+
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
@@ -496,9 +510,11 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
 
         start_df
         start_df_metadata_agent
+        start_df_bgp_service
     fi
 
     if [[ "$1" == "unstack" ]]; then
+        stop_df_bgp_service
         stop_df_metadata_agent
         stop_df
         if function_exists nb_db_driver_clean; then
