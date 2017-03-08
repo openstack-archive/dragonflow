@@ -20,7 +20,7 @@ from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
 from dragonflow.db import models as db_models
-from dragonflow.db.models import core_models
+from dragonflow.db.models import core
 from dragonflow.tests import base as tests_base
 
 
@@ -286,14 +286,14 @@ fake_remote_port1 = make_fake_remote_port(
     local_network_id=1)
 
 
-fake_chassis1 = core_models.Chassis(
+fake_chassis1 = core.Chassis(
     id='fake_host',
     ip='172.24.4.50',
     tunnel_types=('vxlan',),
 )
 
 
-fake_chassis2 = core_models.Chassis(
+fake_chassis2 = core.Chassis(
     id='fake_host2',
     ip='172.24.4.51',
     tunnel_types=('vxlan',),
