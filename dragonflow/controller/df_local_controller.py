@@ -178,8 +178,61 @@ class DfLocalController(object):
         for refresher in refreshers:
             df_db_objects_refresh.add_refresher(refresher)
 
+    def _register_legacy_model_consistency_handlers(self):
+        if not self.enable_db_consistency:
+            return
+
+        handlers = [
+            db_consistent.ModelHandler(
+                models.QosPolicy,
+                self.db_store.get_qos_policies,
+                self.nb_api.get_qos_policies,
+                self.update,
+                self.delete_by_id,
+            ),
+            db_consistent.ModelHandler(
+                models.LogicalSwitch,
+                self.db_store.get_lswitchs,
+                self.nb_api.get_all_logical_switches,
+                self.update,
+                self.delete_by_id,
+            ),
+            db_consistent.ModelHandler(
+                models.SecurityGroup,
+                self.db_store.get_security_groups,
+                self.nb_api.get_security_groups,
+                self.update,
+                self.delete_by_id,
+            ),
+            db_consistent.ModelHandler(
+                models.LogicalPort,
+                self.db_store.get_ports,
+                self.nb_api.get_all_logical_ports,
+                self.update,
+                self.delete_by_id,
+            ),
+            db_consistent.ModelHandler(
+                models.LogicalRouter,
+                self.db_store.get_routers,
+                self.nb_api.get_routers,
+                self.update,
+                self.delete_by_id,
+            ),
+            db_consistent.ModelHandler(
+                models.Floatingip,
+                self.db_store.get_floatingips,
+                self.nb_api.get_floatingips,
+                self.update,
+                self.delete_by_id,
+            ),
+        ]
+
+        for handler in handlers:
+            self.db_consistency_manager.add_handler(handler)
+
     def _register_models(self):
         self._register_legacy_model_refreshers()
+        self._register_legacy_model_consistency_handlers()
 
         for model in model_framework.iter_models():
             # FIXME (dimak) do not register topicless models for now
@@ -194,7 +247,16 @@ class DfLocalController(object):
                         functools.partial(self.delete_by_id, model),
                     ),
                 )
-            # FIXME (dimak) add db_consistency for new models here
+
+                if (self.enable_db_consistency and
+                        issubclass(model, mixins.Version)):
+                    # Register only versioned models for now
+                    self.db_consistency_manager.add_handler(
+                        db_consistent.ModelHandler.create_using_controller(
+                            model,
+                            self,
+                        ),
+                    )
 
     def db_sync_loop(self):
         while True:
