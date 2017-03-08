@@ -17,6 +17,7 @@ import copy
 
 import mock
 
+from dragonflow.db.models import host_route
 from dragonflow.tests.unit import _test_l3
 from dragonflow.tests.unit import test_app_base
 
@@ -28,19 +29,20 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
     def setUp(self):
         super(TestL3ProactiveApp, self).setUp()
         self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app.mod_flow = mock.Mock()
         self.router = copy.deepcopy(test_app_base.fake_logic_router1)
 
     def test_add_del_lport_after_router_route(self):
         # add route
-        routes = [{"destination": "10.100.0.0/16",
-                   "nexthop": "10.0.0.6"},
-                  {"destination": "10.101.0.0/16",
-                   "nexthop": "10.0.0.6"}]
+        routes = [host_route.HostRoute(destination="10.100.0.0/16",
+                                       nexthop="10.0.0.6"),
+                  host_route.HostRoute(destination="10.101.0.0/16",
+                                       nexthop="10.0.0.6")]
         # Use another object here to differentiate the one in cache
         router_with_route = copy.deepcopy(self.router)
-        router_with_route.inner_obj['routes'] = routes
-        router_with_route.inner_obj['version'] += 1
-        self.controller.update_lrouter(router_with_route)
+        router_with_route.routes = routes
+        router_with_route.version += 1
+        self.controller.update(router_with_route)
         # No lport no flow for route
         self.assertFalse(self.app.mod_flow.called)
 
