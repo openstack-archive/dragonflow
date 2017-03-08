@@ -62,7 +62,6 @@ class TestTopology(test_app_base.DFAppTestBase):
         # customize the return value on their own.
         self.nb_api.get_all.return_value = []
         self.nb_api.get_all_logical_ports.return_value = []
-        self.nb_api.get_routers.return_value = []
         self.nb_api.get_security_groups.return_value = []
         self.nb_api.get_floatingips.return_value = []
         self.fake_invalid_ovs_port = copy.deepcopy(

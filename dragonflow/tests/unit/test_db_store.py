@@ -79,39 +79,6 @@ class TestDbStore(tests_base.BaseTestCase):
         self.db_store.delete_port('id3', False, 'topic2')
         self.assertIsNone(self.db_store.get_port('id3'))
 
-    def test_router(self):
-        router1 = mock.Mock()
-        port1_1 = mock.Mock()
-        port1_1.get_mac.return_value = '12:34:56:78:90:ab'
-        router1.get_ports.return_value = [port1_1]
-        router2 = mock.Mock()
-        router2.get_ports.return_value = [mock.Mock()]
-        router3 = mock.Mock()
-        router3.get_ports.return_value = [mock.Mock(), mock.Mock()]
-        self.db_store.update_router('id1', router1, 'topic1')
-        self.db_store.update_router('id2', router2, 'topic2')
-        self.db_store.update_router('id3', router3, 'topic2')
-        self.assertEqual(router1, self.db_store.get_router('id1'))
-        self.assertEqual(router2, self.db_store.get_router('id2'))
-        self.assertEqual(
-            router1,
-            self.db_store.get_router('id1', 'topic1'),
-        )
-        self.assertIn(router2, self.db_store.get_routers('topic2'))
-        self.assertIn(router3, self.db_store.get_routers('topic2'))
-        self.assertEqual(
-            {router1, router2, router3},
-            set(self.db_store.get_routers()),
-        )
-        self.assertEqual(
-            router1,
-            self.db_store.get_router_by_router_interface_mac(
-                '12:34:56:78:90:ab'
-            )
-        )
-        self.db_store.delete_router('id3', 'topic2')
-        self.assertIsNone(self.db_store.get_router('id3'))
-
     def test_security_group(self):
         sg1 = 'sg1'
         sg2 = 'sg2'

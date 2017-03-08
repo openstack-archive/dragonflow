@@ -24,6 +24,7 @@ from dragonflow.db import db_store2
 from dragonflow.db import models as db_models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
+from dragonflow.db.models import l3
 from dragonflow.tests import base as tests_base
 
 
@@ -56,7 +57,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         # Add basic network topology
         self.controller.update(fake_logic_switch1)
         self.controller.update(fake_external_switch1)
-        self.controller.update_lrouter(fake_logic_router1)
+        self.controller.update(fake_logic_router1)
         self.controller.db_store2.update(fake_chassis1)
         self.controller.db_store2.update(fake_chassis2)
 
@@ -66,29 +67,24 @@ class DFAppTestBase(tests_base.BaseTestCase):
                    'add_flow_go_to_table').start()
         mock.patch('neutron.agent.common.utils.execute').start()
 
-fake_logic_router1 = db_models.LogicalRouter("{}")
-fake_logic_router1.inner_obj = {
-    "description": "",
-    "name": "router1",
-    "admin_state_up": True,
-    "distributed": False,
-    "gateway": {"network_id": "fake_external_switch1",
-                "enable_snat": True,
-                "port_id": "fake_gateway_port_id",
-                "external_fixed_ips": [
-                    {"subnet_id": "fake_external_subnet1",
-                     "ip_address": "172.24.4.11"}]},
-    "topic": "fake_tenant1",
-    "version": 10,
-    "routes": [],
-    "id": "fake_router_id",
-    "ports": [{"network": "10.0.0.1/24",
-               "lswitch": "fake_switch1",
-               "topic": "fake_tenant1",
-               "mac": "fa:16:3e:50:96:f4",
-               "unique_key": 14,
-               "lrouter": "fake_router_id",
-               "id": "fake_router_port1"}]}
+
+fake_logical_router_ports = [l3.LogicalRouterPort(network="10.0.0.1/24",
+                                                  lswitch="fake_switch1",
+                                                  topic="fake_tenant1",
+                                                  mac="fa:16:3e:50:96:f4",
+                                                  unique_key=14,
+                                                  id="fake_router_port1")]
+
+
+fake_logic_router1 = l3.LogicalRouter(
+    name="router1",
+    topic="fake_tenant1",
+    version=10,
+    routes=[],
+    id="fake_router_id",
+    unique_key=1,
+    ports=fake_logical_router_ports)
+
 
 fake_lswitch_default_subnets = [l2.Subnet(dhcp_ip="10.0.0.2",
                                           name="private-subnet",
