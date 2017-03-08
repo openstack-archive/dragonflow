@@ -27,7 +27,7 @@ from dragonflow.db.models import all  # noqa
 db_tables = (
     list(models.table_class_mapping) +
     list(model_framework.iter_tables()) +
-    ['unique_key', 'portstats']
+    ['unique_key', 'portstats', 'bgp_peer', 'bgp_speaker']
 )
 
 
