@@ -16,6 +16,7 @@ import mock
 
 from dragonflow.db import models as db_models
 from dragonflow.db.models import l2
+from dragonflow.db.models import l3
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.unit import test_app_base
 
@@ -79,27 +80,25 @@ class Test_API_NB(test_base.DFTestBase):
                             lport1.get_unique_key())
 
     def test_create_lrouter(self):
-        fake_lrouter = copy.deepcopy(
-            test_app_base.fake_logic_router1.inner_obj)
-        fake_lrouter.pop('unique_key', None)
-        self.nb_api.create_lrouter(**fake_lrouter)
-        self.addCleanup(self.nb_api.delete_lrouter,
-                        fake_lrouter['id'], fake_lrouter['topic'])
-        lrouter = self.nb_api.get_router(fake_lrouter['id'],
-                                         fake_lrouter['topic'])
-        self.assertIsNotNone(lrouter.get_unique_key())
+        fake_lrouter = l3.LogicalRouter(id='test_router0',
+                                        topic='test_tenant1')
+        self.nb_api.create(fake_lrouter)
+        lean_fake_lrouter = l3.LogicalRouter(id=fake_lrouter.id,
+                                             topic=fake_lrouter.topic)
+        self.addCleanup(self.nb_api.delete, lean_fake_lrouter)
+        lrouter = self.nb_api.get(lean_fake_lrouter)
+        self.assertIsNotNone(lrouter.unique_key)
 
-        fake_lrouter1 = copy.deepcopy(fake_lrouter)
-        fake_lrouter1['id'] = 'other_id'
-        self.nb_api.create_lrouter(**fake_lrouter1)
-        self.addCleanup(self.nb_api.delete_lrouter,
-                        fake_lrouter1['id'], fake_lrouter1['topic'])
-        lrouter1 = self.nb_api.get_router(fake_lrouter1['id'],
-                                          fake_lrouter1['topic'])
-        self.assertIsNotNone(lrouter1.get_unique_key())
+        fake_lrouter1 = l3.LogicalRouter(id='test_router1',
+                                         topic='test_tenant1')
+        self.nb_api.create(fake_lrouter1)
+        lean_fake_lrouter1 = l3.LogicalRouter(id=fake_lrouter1.id,
+                                              topic=fake_lrouter1.topic)
+        self.addCleanup(self.nb_api.delete, lean_fake_lrouter1)
+        lrouter1 = self.nb_api.get(lean_fake_lrouter1)
+        self.assertIsNotNone(lrouter1.unique_key)
 
-        self.assertNotEqual(lrouter.get_unique_key(),
-                            lrouter1.get_unique_key())
+        self.assertNotEqual(lrouter.unique_key, lrouter1.unique_key)
 
     def test_create_listener(self):
         # prepare
