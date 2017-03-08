@@ -13,6 +13,7 @@
 from oslo_config import cfg
 
 from dragonflow.conf import df_active_port_detection
+from dragonflow.conf import df_bgp
 from dragonflow.conf import df_cassandra
 from dragonflow.conf import df_common_params
 from dragonflow.conf import df_dhcp
@@ -39,3 +40,4 @@ df_dnat.register_opts()
 df_ryu.register_opts()
 df_provider_networks.register_opts()
 df_snat.register_opts()
+df_bgp.register_opts()
