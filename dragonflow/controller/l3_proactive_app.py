@@ -29,7 +29,7 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
 
     def _add_subnet_send_to_route(self, match, local_network_id, router_port):
         self._add_subnet_send_to_proactive_routing(match, local_network_id,
-                                                   router_port.get_mac())
+                                                   router_port.mac)
 
     def _add_subnet_send_to_proactive_routing(self, match, dst_network_id,
                                               dst_router_port_mac):

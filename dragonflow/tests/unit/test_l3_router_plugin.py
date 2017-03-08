@@ -19,7 +19,26 @@ from neutron_lib import context as nctx
 from neutron_lib.plugins import directory
 import testtools
 
+from dragonflow.neutron.db.models import l3 as neutron_l3
 from dragonflow.tests.unit import test_mech_driver
+
+
+def nb_api_get_func(*instances):
+    """
+    Create an method that can be used to override the mock's nb_api's get
+    to return objects that should exist, e.g. instances that were created
+    with create (and verified with the relevant assert)
+    :param instances:   An iterable of instances that should exist in nb_api
+    :type instances:    iterable of instances
+    """
+    ids = {instance.id: instance for instance in instances}
+
+    def nb_api_get(inst):
+        try:
+            return ids[inst.id]
+        except KeyError:
+            return mock.MagicMock(name='NbApi.get_instance().get()')
+    return nb_api_get
 
 
 class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
@@ -43,13 +62,13 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                         'admin_state_up': True}}
         router = self.l3p.create_router(self.context, r)
         self.assertGreater(router['revision_number'], 0)
-        self.nb_api.create_lrouter.assert_called_once_with(
-            router['id'], topic='tenant', name='router', distributed=False,
-            version=router['revision_number'], ports=[])
-        return router
+
+        lrouter = neutron_l3.logical_router_from_neutron_router(router)
+        self.nb_api.create.assert_called_once_with(lrouter)
+        return router, lrouter
 
     def test_create_update_router_revision(self):
-        router = self._test_create_router_revision()
+        router, _ = self._test_create_router_revision()
         old_version = router['revision_number']
         router['name'] = 'another_router'
         new_router = self.l3p.update_router(
@@ -57,32 +76,32 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
         self.assertGreater(new_router['revision_number'], old_version)
 
     def test_add_delete_router_interface_revision(self):
-        router = self._test_create_router_revision()
+        router, lrouter = self._test_create_router_revision()
         old_version = router['revision_number']
+        # TODO(xiaohhui): This needs to be cleaned once lport has
+        # migrated to new model.
+        mock_lport = mock.Mock()
+        mock_lport.get_unique_key.return_value = 1
+        self.nb_api.get_logical_port.return_value = mock_lport
+
+        self.nb_api.get.side_effect = nb_api_get_func(lrouter)
         with self.subnet() as s:
             data = {'subnet_id': s['subnet']['id']}
-            router_port_info = self.l3p.add_router_interface(
-                self.context, router['id'], data)
+            self.l3p.add_router_interface(self.context, router['id'], data)
             router_with_int = self.l3p.get_router(self.context, router['id'])
             self.assertGreater(router_with_int['revision_number'],
                                old_version)
-            self.nb_api.add_lrouter_port.assert_called_once_with(
-                router_port_info['port_id'], router_port_info['id'],
-                router_port_info['network_id'],
-                router_port_info['tenant_id'],
-                router_version=router_with_int['revision_number'],
-                mac=mock.ANY, network=mock.ANY, unique_key=mock.ANY)
+            lrouter.version = router_with_int['revision_number']
+            self.nb_api.update.assert_called_once_with(lrouter)
+            self.nb_api.update.reset_mock()
 
-            router_port_info = self.l3p.remove_router_interface(
-                 self.context, router['id'], data)
+            self.l3p.remove_router_interface(self.context, router['id'], data)
             router_without_int = self.l3p.get_router(self.context,
                                                      router['id'])
             self.assertGreater(router_without_int['revision_number'],
                                router_with_int['revision_number'])
-            self.nb_api.delete_lrouter_port.assert_called_once_with(
-                 router_port_info['port_id'], router_port_info['id'],
-                 router_port_info['tenant_id'],
-                 router_version=router_without_int['revision_number'])
+            lrouter.version = router_without_int['revision_number']
+            self.nb_api.update.assert_called_once_with(lrouter)
 
     def _test_create_floatingip_revision(self):
         kwargs = {'arg_list': ('router:external',),
