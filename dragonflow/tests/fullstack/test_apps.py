@@ -22,6 +22,7 @@ from ryu.ofproto import inet
 from dragonflow._i18n import _LI
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants
+from dragonflow.db.models import l3
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils as test_utils
@@ -1008,7 +1009,9 @@ class TestL3App(test_base.DFTestBase):
             self.subnet1.subnet_id]['port_id']
         topic = self.router.router_interfaces[
             self.subnet1.subnet_id]['tenant_id']
-        lrouter = self.nb_api.get_router(self.router.router.router_id, topic)
+        lrouter = self.nb_api.get(l3.LogicalRouter(
+                                      id=self.router.router.router_id,
+                                      topic=topic))
         router_version = lrouter.get_version()
         self.nb_api.delete_lport(router_port_id, topic)
         router_version += 1

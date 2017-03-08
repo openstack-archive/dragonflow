@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import netaddr
 from oslo_serialization import jsonutils
 
 
@@ -157,53 +156,6 @@ class LogicalPort(NbDbObject, UniqueKeyMixin):
         lport_with_exteral_dict = dict(self.inner_obj)
         lport_with_exteral_dict['external_dict'] = self.external_dict
         return str(lport_with_exteral_dict)
-
-
-@register_model_class
-class LogicalRouter(NbDbObject, UniqueKeyMixin):
-
-    table_name = "lrouter"
-
-    def get_ports(self):
-        ports = self.inner_obj.get('ports')
-        if ports:
-            return [LogicalRouterPort(port) for port in ports]
-        else:
-            return []
-
-    def get_routes(self):
-        return self.inner_obj.get('routes', [])
-
-    def is_distributed(self):
-        return self.inner_obj.get('distributed', False)
-
-    def get_external_gateway(self):
-        return self.inner_obj.get('gateway', {})
-
-
-class LogicalRouterPort(NbObject, UniqueKeyMixin):
-
-    def __init__(self, lroute_port):
-        super(LogicalRouterPort, self).__init__(lroute_port)
-        self.cidr = netaddr.IPNetwork(self.inner_obj['network'])
-
-    def get_ip(self):
-        return str(self.cidr.ip)
-
-    def get_cidr_network(self):
-        return str(self.cidr.network)
-
-    def get_cidr_netmask(self):
-        return str(self.cidr.netmask)
-
-    def get_mac(self):
-        return self.inner_obj.get('mac')
-
-    def get_lswitch_id(self):
-        return self.inner_obj.get('lswitch')
-
-    def get_network(self):
-        return self.inner_obj.get('network')
 
 
 @register_model_class

@@ -21,6 +21,8 @@ from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.controller import l3_app_base
+from dragonflow.db.models import constants as model_constants
+from dragonflow.db.models import l3
 
 ROUTE_TO_ADD = 'route_to_add'
 ROUTE_ADDED = 'route_added'
@@ -38,27 +40,37 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         msg = event.msg
         self.router_function_packet_in_handler(msg)
 
-    def router_updated(self, router, original_router):
+    @df_base_app.register_event(l3.LogicalRouter,
+                                model_constants.EVENT_CREATED)
+    @df_base_app.register_event(l3.LogicalRouter,
+                                model_constants.EVENT_UPDATED)
+    def router_updated(self, router, original_router=None):
         super(L3ProactiveApp, self).router_updated(router, original_router)
         if original_router:
             # NOTE(xiaohhui): extra route is only implemented in L3ProactiveApp
             self._update_router_attributes(original_router, router)
 
     def _update_router_attributes(self, old_router, new_router):
-        old_routes = old_router.get_routes()
-        new_routes = new_router.get_routes()
+        old_routes = old_router.routes
+        new_routes = new_router.routes
         for new_route in new_routes:
             if new_route not in old_routes:
-                self._add_router_route(new_router, new_route)
+                route_dict = {'destination': new_route.destination,
+                              'nexthop': new_route.nexthop}
+                self._add_router_route(new_router, route_dict)
             else:
                 old_routes.remove(new_route)
         for old_route in old_routes:
-            self._delete_router_route(new_router, old_route)
+            route_dict = {'destination': old_route.destination,
+                          'nexthop': old_route.nexthop}
+            self._delete_router_route(new_router, route_dict)
 
     def _add_new_lrouter(self, lrouter):
         super(L3ProactiveApp, self)._add_new_lrouter(lrouter)
-        for route in lrouter.get_routes():
-            self._add_router_route(lrouter, route)
+        for route in lrouter.routes:
+            route_dict = {'destination': route.destination,
+                          'nexthop': route.nexthop}
+            self._add_router_route(lrouter, route_dict)
 
     def _get_port(self, ip, lswitch_id, topic):
         ports = self.db_store.get_ports(topic)
@@ -67,8 +79,8 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
                 return port
 
     def _get_gateway_port_by_ip(self, router, ip):
-        for port in router.get_ports():
-            network = netaddr.IPNetwork(port.get_network())
+        for port in router.ports:
+            network = port.network
             if netaddr.IPAddress(ip) in network:
                 return port
 
@@ -95,15 +107,16 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
 
     def _reprocess_to_add_route(self, topic, port_ip):
         LOG.debug('reprocess to add routes again')
-        for router in self.db_store.get_routers(topic):
-            router_id = router.get_id()
+        for router in self.db_store2.get_all_by_topic(l3.LogicalRouter,
+                                                      topic=topic):
+            router_id = router.id
             cached_routes = self.route_cache.get(router_id)
             if cached_routes is None:
                 continue
             routes_to_add = cached_routes.get(ROUTE_TO_ADD)
             LOG.debug('routes to add: %s', routes_to_add)
             for route in routes_to_add:
-                if port_ip != route[1]:
+                if port_ip != str(route[1]):
                     continue
                 route_dict = dict(zip(['destination', 'nexthop'], route))
                 added = self._add_router_route(router, route_dict)
@@ -115,8 +128,9 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
 
     def _reprocess_to_del_route(self, topic, port_ip):
         LOG.debug('reprocess to del routes again')
-        for router in self.db_store.get_routers(topic):
-            router_id = router.get_id()
+        for router in self.db_store2.get_all_by_topic(l3.LogicalRouter,
+                                                      topic=topic):
+            router_id = router.id
             cached_routes = self.route_cache.get(router_id)
             if cached_routes is None:
                 continue
@@ -124,7 +138,7 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
             # elements in routes_added inside the iteration.
             routes_added = copy.deepcopy(cached_routes.get(ROUTE_ADDED))
             for route in routes_added:
-                if port_ip != route[1]:
+                if port_ip != str(route[1]):
                     continue
                 route_dict = dict(zip(['destination', 'nexthop'], route))
                 self._delete_router_route(router, route_dict)
@@ -136,11 +150,10 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         parser = self.parser
 
         destination = route.get('destination')
-        destination = netaddr.IPNetwork(destination)
-        nexthop = route.get('nexthop')
+        nexthop = str(route.get('nexthop'))
         router_if_port = self._get_gateway_port_by_ip(router, nexthop)
         nexthop_port = self._get_port(
-            nexthop, router_if_port.get_lswitch_id(), router.get_topic())
+            nexthop, router_if_port.lswitch.id, router.topic)
         if nexthop_port is None:
             LOG.info(_LI('nexthop port does not exist'))
             return False
@@ -181,10 +194,10 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
 
     def _generate_l3_match(self, parser, destination, nexthop_port,
                            router_if_port):
-        router_if_mac = router_if_port.get_mac()
+        router_if_mac = router_if_port.mac
         network_id = nexthop_port.get_external_value('local_network_id')
-        src_network = router_if_port.get_cidr_network()
-        src_netmask = router_if_port.get_cidr_netmask()
+        src_network = router_if_port.network.network
+        src_netmask = router_if_port.network.netmask
         dst_network = destination.network
         dst_netmask = destination.netmask
         if destination.version == 4:
@@ -205,7 +218,7 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         LOG.info(_LI('Add extra route %(route)s for router %(router)s'),
                  {'route': route, 'router': str(router)})
 
-        router_id = router.get_id()
+        router_id = router.id
         added = self._add_route_process(router, route)
         if added:
             self._add_to_route_cache(ROUTE_ADDED, router_id, route)
@@ -217,11 +230,10 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         parser = self.parser
 
         destination = route.get('destination')
-        destination = netaddr.IPNetwork(destination)
-        nexthop = route.get('nexthop')
+        nexthop = str(route.get('nexthop'))
         router_if_port = self._get_gateway_port_by_ip(router, nexthop)
         nexthop_port = self._get_port(
-            nexthop, router_if_port.get_lswitch_id(), router.get_topic())
+            nexthop, router_if_port.lswitch.id, router.topic)
         if nexthop_port is None:
             LOG.info(_LI('nexthop does not exist'))
             return
@@ -247,12 +259,12 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
                   {'route': route, 'router': router})
 
         self._delete_route_process(router, route)
-        self._del_from_route_cache(ROUTE_ADDED, router.get_id(), route)
-        self._del_from_route_cache(ROUTE_TO_ADD, router.get_id(), route)
+        self._del_from_route_cache(ROUTE_ADDED, router.id, route)
+        self._del_from_route_cache(ROUTE_TO_ADD, router.id, route)
 
     def _add_subnet_send_to_route(self, match, local_network_id, router_port):
         self._add_subnet_send_to_proactive_routing(match, local_network_id,
-                                                   router_port.get_mac())
+                                                   router_port.mac)
 
     def _add_subnet_send_to_proactive_routing(self, match, dst_network_id,
                                               dst_router_port_mac):
