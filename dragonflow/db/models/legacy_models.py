@@ -451,7 +451,6 @@ class OvsPort(object):
 
     TYPE_VM = 'vm'
     TYPE_TUNNEL = 'tunnel'
-    TYPE_BRIDGE = 'bridge'
     TYPE_PATCH = 'patch'
 
     def __init__(self, value):

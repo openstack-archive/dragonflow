@@ -25,8 +25,7 @@ class Topology(object):
     def __init__(self, controller, enable_selective_topology_distribution):
         self.ovs_port_type = (db_models.OvsPort.TYPE_VM,
                               db_models.OvsPort.TYPE_TUNNEL,
-                              db_models.OvsPort.TYPE_PATCH,
-                              db_models.OvsPort.TYPE_BRIDGE)
+                              db_models.OvsPort.TYPE_PATCH)
 
         # Stores topics(tenants) subscribed by lports in the current local
         # controller. I,e, {tenant1:{lport1, lport2}, tenant2:{lport3}}
@@ -197,16 +196,6 @@ class Topology(object):
             except Exception:
                 LOG.exception(_LE('Failed to process logical port online '
                                   'event: %s'), lport)
-
-    def _bridge_port_added(self, ovs_port):
-        self._bridge_port_updated(ovs_port)
-
-    def _bridge_port_updated(self, ovs_port):
-        try:
-            self.controller.bridge_port_updated(ovs_port)
-        except Exception:
-            LOG.exception(_LE('Failed to process bridge port online '
-                              'event: %s'), ovs_port)
 
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.get_id()
