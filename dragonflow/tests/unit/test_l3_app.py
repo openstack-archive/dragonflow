@@ -28,10 +28,11 @@ class TestL3App(test_app_base.DFAppTestBase,
     def setUp(self):
         super(TestL3App, self).setUp()
         self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app.mod_flow = mock.Mock()
         self.router = copy.deepcopy(test_app_base.fake_logic_router1)
 
     def test_install_l3_flow_set_metadata(self):
-        dst_router_port = self.router.get_ports()[0]
+        dst_router_port = self.router.ports[0]
         dst_port = test_app_base.fake_local_port1
         dst_metadata = dst_port.get_external_value('local_network_id')
         mock_msg = mock.Mock()
@@ -41,14 +42,14 @@ class TestL3App(test_app_base.DFAppTestBase,
             metadata=dst_metadata)
 
     def test_install_l3_flow_use_buffer(self):
-        dst_router_port = self.router.get_ports()[0]
+        dst_router_port = self.router.ports[0]
         dst_port = test_app_base.fake_local_port1
         mock_msg = mock.Mock()
         mock_msg.buffer_id = mock.sentinel.buffer_id
         self.app._install_l3_flow(dst_router_port, dst_port,
                                   mock_msg, mock.ANY)
         self.app.mod_flow.assert_called_once_with(
-            cookie=dst_router_port.get_unique_key(),
+            cookie=dst_router_port.unique_key,
             inst=mock.ANY,
             table_id=const.L3_LOOKUP_TABLE,
             priority=const.PRIORITY_VERY_HIGH,
@@ -65,9 +66,9 @@ class TestL3App(test_app_base.DFAppTestBase,
                    "nexthop": "10.0.0.6"}]
         # Use another object here to differentiate the one in cache
         router_with_route = copy.deepcopy(self.router)
-        router_with_route.inner_obj['routes'] = routes
-        router_with_route.inner_obj['version'] += 1
-        self.controller.update_lrouter(router_with_route)
+        router_with_route.routes = routes
+        router_with_route.version += 1
+        self.controller.update(router_with_route)
         # No lport no flow for route
         self.assertFalse(self.app.mod_flow.called)
 

@@ -258,6 +258,9 @@ class DbStore2(object):
             index=model.get_indexes()['topic'],
         )
 
+    def clear(self):
+        self._cache = {}
+
 
 _instance = None
 _instance_lock = threading.Lock()

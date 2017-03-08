@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import sys
 import time
 
@@ -20,6 +21,7 @@ from ryu.ofproto import inet
 
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants
+from dragonflow.db.models import l3
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils as test_utils
@@ -1006,17 +1008,17 @@ class TestL3App(test_base.DFTestBase):
             self.subnet1.subnet_id]['port_id']
         topic = self.router.router_interfaces[
             self.subnet1.subnet_id]['tenant_id']
-        lrouter = self.nb_api.get_router(self.router.router.router_id, topic)
-        router_version = lrouter.get_version()
         self.nb_api.delete_lport(router_port_id, topic)
-        router_version += 1
-        self.nb_api.delete_lrouter_port(router_port_id,
-                                        self.router.router.router_id,
-                                        topic,
-                                        router_version=router_version)
+        lrouter = self.nb_api.get(l3.LogicalRouter(
+                                      id=self.router.router.router_id,
+                                      topic=topic))
+        lrouter.version += 1
+        original_lrouter = copy.deepcopy(lrouter)
+        lrouter.remove_router_port(router_port_id)
+        self.nb_api.update(lrouter)
         # Update router with virtual router interface.
-        lrouter.inner_obj['version'] = router_version + 1
-        self.nb_api.update_lrouter(**lrouter.inner_obj)
+        original_lrouter.version += 1
+        self.nb_api.update(original_lrouter)
 
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.port1.port.update({"security_groups": []})
