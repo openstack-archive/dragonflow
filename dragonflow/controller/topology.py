@@ -198,16 +198,6 @@ class Topology(object):
                 LOG.exception(_LE('Failed to process logical port online '
                                   'event: %s'), lport)
 
-    def _bridge_port_added(self, ovs_port):
-        self._bridge_port_updated(ovs_port)
-
-    def _bridge_port_updated(self, ovs_port):
-        try:
-            self.controller.bridge_port_updated(ovs_port)
-        except Exception:
-            LOG.exception(_LE('Failed to process bridge port online '
-                              'event: %s'), ovs_port)
-
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.get_id()
         lport_id = ovs_port.get_iface_id()

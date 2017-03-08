@@ -402,9 +402,6 @@ class DfLocalController(object):
 
         self._notify_active_ports_updated_when_lport_removed(lport)
 
-    def bridge_port_updated(self, lport):
-        self.open_flow_app.notify_update_bridge_port(lport)
-
     def update_lrouter(self, lrouter):
         old_lrouter = self.db_store.get_router(lrouter.get_id())
         if not df_utils.is_valid_version(
