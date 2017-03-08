@@ -9,9 +9,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from dragonflow.db.models import bgp  # noqa
-from dragonflow.db.models import core  # noqa
-from dragonflow.db.models import l2  # noqa
-from dragonflow.db.models import l3  # noqa
-from dragonflow.db.models import legacy  # noqa
-from dragonflow.db.models import qos  # noqa
+
+from dragonflow.controller import df_bgp_service
+
+
+def main():
+    df_bgp_service.main()
