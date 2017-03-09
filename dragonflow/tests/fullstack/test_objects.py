@@ -20,6 +20,9 @@ from oslo_log import log
 from dragonflow._i18n import _LW
 from dragonflow.db.models import l2
 from dragonflow.db.models import qos
+from dragonflow.db.models import SecurityGroup
+from dragonflow.db.models import SecurityGroupRule
+
 from dragonflow.tests.common import clients
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
