@@ -364,7 +364,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
         egress_rule_info = {'ethertype': 'IPv4',
                             'direction': 'egress',
-                            'protocol': str(n_const.PROTO_NUM_UDP),
+                            'protocol': 'udp',
                             'port_range_min': '53',
                             'port_range_max': '53',
                             'remote_group_id': security_group_id}
