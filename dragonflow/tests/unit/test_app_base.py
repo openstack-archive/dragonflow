@@ -23,6 +23,7 @@ from dragonflow.db import db_store2
 from dragonflow.db import models as db_models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
+from dragonflow.db.models import secgroups
 from dragonflow.tests import base as tests_base
 
 
@@ -295,31 +296,32 @@ fake_floatingip1.inner_obj = {
     'external_gateway_ip': u'172.24.4.1'}
 
 
-fake_security_group = db_models.SecurityGroup("{}")
-fake_security_group.inner_obj = {
-    "description": "",
-    "name": "fake_security_group",
-    "topic": "fake_tenant1",
-    "version": 5,
-    "unique_key": 1,
-    "id": "fake_security_group_id1",
-    "rules": [{"direction": "egress",
-               "security_group_id": "fake_security_group_id1",
-               "ethertype": "IPv4",
-               "topic": "fake_tenant1",
-               "port_range_max": 53,
-               "port_range_min": 53,
-               "protocol": "udp",
-               "remote_group_id": None,
-               "remote_ip_prefix": "192.168.180.0/28",
-               "id": "fake_security_group_rule_1"},
-              {"direction": "ingress",
-               "security_group_id": "fake_security_group_id1",
-               "ethertype": "IPv4",
-               "topic": "fake_tenant1",
-               "port_range_max": None,
-               "port_range_min": None,
-               "protocol": None,
-               "remote_group_id": "fake_security_group_id1",
-               "remote_ip_prefix": None,
-               "id": "fake_security_group_rule_2"}]}
+fake_security_group = secgroups.SecurityGroup(
+    description="",
+    name="fake_security_group",
+    topic="fake_tenant1",
+    version=5,
+    unique_key=1,
+    id="fake_security_group_id1",
+    rules=[secgroups.SecurityGroupRule(
+            direction="egress",
+            security_group_id="fake_security_group_id1",
+            ethertype="IPv4",
+            topic="fake_tenant1",
+            port_range_max=53,
+            port_range_min=53,
+            protocol="udp",
+            remote_group_id=None,
+            remote_ip_prefix="192.168.180.0/28",
+            id="fake_security_group_rule_1"),
+           secgroups.SecurityGroupRule(
+            direction="ingress",
+            security_group_id="fake_security_group_id1",
+            ethertype="IPv4",
+            topic="fake_tenant1",
+            port_range_max=None,
+            port_range_min=None,
+            protocol=None,
+            remote_group_id="fake_security_group_id1",
+            remote_ip_prefix=None,
+            id="fake_security_group_rule_2")])

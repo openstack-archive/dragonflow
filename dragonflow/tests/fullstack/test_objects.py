@@ -19,6 +19,8 @@ from oslo_log import log
 
 from dragonflow.db.models import l2
 from dragonflow.db.models import qos
+from dragonflow.db.models import secgroups
+
 from dragonflow.tests.common import clients
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
@@ -132,7 +134,8 @@ class SecGroupTestObj(object):
         self.closed = True
 
     def exists(self):
-        secgroup = self.nb_api.get_security_group(self.secgroup_id)
+        sg_obj = secgroups.SecurityGroup(id=self.secgroup_id)
+        secgroup = self.nb_api.get(sg_obj)
         if secgroup:
             return True
         return False
@@ -148,10 +151,11 @@ class SecGroupTestObj(object):
         self.neutron.delete_security_group_rule(secrule_id)
 
     def rule_exists(self, secrule_id):
-        secgroup = self.nb_api.get_security_group(self.secgroup_id)
+        sg_obj = secgroups.SecurityGroup(id=self.secgroup_id)
+        secgroup = self.nb_api.get(sg_obj)
         if secgroup:
-            for rule in secgroup.get_rules():
-                if rule.get_id() == secrule_id:
+            for rule in secgroup.rules:
+                if rule.id == secrule_id:
                     return True
         return False
 
