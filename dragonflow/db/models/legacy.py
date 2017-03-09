@@ -216,46 +216,6 @@ class LogicalRouterPort(NbObject, UniqueKeyMixin):
 
 
 @register_model_class
-class SecurityGroup(NbDbObject, UniqueKeyMixin):
-
-    table_name = "secgroup"
-
-    def get_rules(self):
-        rules = self.inner_obj.get('rules')
-        if rules:
-            return [SecurityGroupRule(rule) for rule in rules]
-        else:
-            return []
-
-
-class SecurityGroupRule(NbObject):
-
-    def get_direction(self):
-        return self.inner_obj.get('direction')
-
-    def get_ethertype(self):
-        return self.inner_obj.get('ethertype')
-
-    def get_port_range_max(self):
-        return self.inner_obj.get('port_range_max')
-
-    def get_port_range_min(self):
-        return self.inner_obj.get('port_range_min')
-
-    def get_protocol(self):
-        return self.inner_obj.get('protocol')
-
-    def get_remote_group_id(self):
-        return self.inner_obj.get('remote_group_id')
-
-    def get_remote_ip_prefix(self):
-        return self.inner_obj.get('remote_ip_prefix')
-
-    def get_security_group_id(self):
-        return self.inner_obj.get('security_group_id')
-
-
-@register_model_class
 class Floatingip(NbDbObject):
 
     table_name = "floatingip"

@@ -111,32 +111,6 @@ class TestDbStore(tests_base.BaseTestCase):
         self.db_store.delete_router('id3', 'topic2')
         self.assertIsNone(self.db_store.get_router('id3'))
 
-    def test_security_group(self):
-        sg1 = 'sg1'
-        sg2 = 'sg2'
-        sg3 = 'sg3'
-        self.db_store.update_security_group('id1', sg1, 'topic1')
-        self.db_store.update_security_group('id2', sg2, 'topic2')
-        self.db_store.update_security_group('id3', sg3, 'topic2')
-        self.assertEqual(sg1, self.db_store.get_security_group('id1'))
-        self.assertEqual(sg2, self.db_store.get_security_group('id2'))
-        self.assertEqual(
-            sg3,
-            self.db_store.get_security_group('id3', 'topic2')
-        )
-        sg_keys = self.db_store.get_security_group_keys()
-        sg_keys_topic2 = self.db_store.get_security_group_keys('topic2')
-        sgs = self.db_store.get_security_groups()
-        sgs_topic2 = self.db_store.get_security_groups('topic2')
-        self.assertEqual({'id1', 'id2', 'id3'}, set(sg_keys))
-        self.assertIn('id2', sg_keys_topic2)
-        self.assertIn('id3', sg_keys_topic2)
-        self.assertEqual({sg1, sg2, sg3}, set(sgs))
-        self.assertIn(sg2, sgs_topic2)
-        self.assertIn(sg3, sgs_topic2)
-        self.db_store.delete_security_group('id3', 'topic2')
-        self.assertIsNone(self.db_store.get_security_group('id3', 'topic2'))
-
     def test_floating_ip(self):
         fip1 = 'fip1'
         fip2 = 'fip2'

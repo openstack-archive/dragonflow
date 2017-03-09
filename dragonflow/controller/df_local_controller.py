@@ -125,13 +125,6 @@ class DfLocalController(object):
     def _register_legacy_model_refreshers(self):
         refreshers = [
             df_db_objects_refresh.DfObjectRefresher(
-                'Security Groups',
-                self.db_store.get_security_group_keys,
-                self.nb_api.get_security_groups,
-                self.update_secgroup,
-                self.delete_secgroup,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
                 'Ports',
                 self.db_store.get_port_keys,
                 self.nb_api.get_all_logical_ports,
@@ -169,13 +162,6 @@ class DfLocalController(object):
             return
 
         handlers = [
-            db_consistent.ModelHandler(
-                models.SecurityGroup,
-                self.db_store.get_security_groups,
-                self.nb_api.get_security_groups,
-                self.update,
-                self.delete_by_id,
-            ),
             db_consistent.ModelHandler(
                 models.LogicalPort,
                 self.db_store.get_ports,
@@ -435,25 +421,6 @@ class DfLocalController(object):
         self.open_flow_app.notify_delete_router(router)
         self.db_store.delete_router(lrouter_id)
 
-    def update_secgroup(self, secgroup):
-        old_secgroup = self.db_store.get_security_group(secgroup.get_id())
-        if old_secgroup is None:
-            LOG.info(_LI("Security Group created = %s"), secgroup)
-            self._add_new_security_group(secgroup)
-            return
-        if not df_utils.is_valid_version(
-                old_secgroup.inner_obj if old_secgroup else None,
-                secgroup.inner_obj):
-            return
-        self._update_security_group_rules(old_secgroup, secgroup)
-        self.db_store.update_security_group(secgroup.get_id(), secgroup)
-
-    def delete_secgroup(self, secgroup_id):
-        old_secgroup = self.db_store.get_security_group(secgroup_id)
-        if old_secgroup is None:
-            return
-        self._delete_old_security_group(old_secgroup)
-
     def register_chassis(self):
         # Get all chassis from nb db to db store.
         for c in self.nb_api.get_all(core.Chassis):
@@ -484,38 +451,6 @@ class DfLocalController(object):
             # The customized ovs idl will ingore the command if the port
             # already exists.
             self.vswitch_api.add_virtual_tunnel_port(t)
-
-    def _update_security_group_rules(self, old_secgroup, new_secgroup):
-        new_secgroup_rules = new_secgroup.get_rules()
-        old_secgroup_rules = old_secgroup.get_rules()
-        for new_rule in new_secgroup_rules:
-            if new_rule not in old_secgroup_rules:
-                self._add_new_security_group_rule(new_secgroup, new_rule)
-            else:
-                old_secgroup_rules.remove(new_rule)
-
-        for old_rule in old_secgroup_rules:
-            self._delete_security_group_rule(old_secgroup, old_rule)
-
-    def _add_new_security_group(self, secgroup):
-        for new_rule in secgroup.get_rules():
-            self._add_new_security_group_rule(secgroup, new_rule)
-        self.db_store.update_security_group(secgroup.get_id(), secgroup)
-
-    def _delete_old_security_group(self, secgroup):
-        for rule in secgroup.get_rules():
-            self._delete_security_group_rule(secgroup, rule)
-        self.db_store.delete_security_group(secgroup.get_id())
-
-    def _add_new_security_group_rule(self, secgroup, secgroup_rule):
-        LOG.info(_LI("Adding new secgroup rule = %s"), secgroup_rule)
-        self.open_flow_app.notify_add_security_group_rule(
-                 secgroup, secgroup_rule)
-
-    def _delete_security_group_rule(self, secgroup, secgroup_rule):
-        LOG.info(_LI("Removing secgroup rule = %s"), secgroup_rule)
-        self.open_flow_app.notify_remove_security_group_rule(
-                 secgroup, secgroup_rule)
 
     def update_floatingip(self, floatingip):
         # check whether this floatingip is associated with a lport or not
