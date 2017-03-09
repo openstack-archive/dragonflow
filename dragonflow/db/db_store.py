@@ -27,7 +27,7 @@ class TenantDbStore(object):
         self.local_ports = {}
         self.routers = {}
         self.floatingips = {}
-        self.secgroups = {}
+        # self.secgroups = {}
         self.publishers = {}
         self.qos_policies = {}
         self.activeports = {}
@@ -38,7 +38,7 @@ class TenantDbStore(object):
             'local_ports': self.local_ports,
             models.LogicalRouter.table_name: self.routers,
             models.Floatingip.table_name: self.floatingips,
-            models.SecurityGroup.table_name: self.secgroups,
+            # models.SecurityGroup.table_name: self.secgroups,
             models.Publisher.table_name: self.publishers,
             models.QosPolicy.table_name: self.qos_policies,
             models.AllowedAddressPairsActivePort.table_name: self.activeports
@@ -227,20 +227,20 @@ class DbStore(object):
     def get_routers(self, topic=None):
         return self.values(models.LogicalRouter.table_name, topic)
 
-    def update_security_group(self, secgroup_id, secgroup, topic=None):
-        self.set(models.SecurityGroup.table_name, secgroup_id, secgroup, topic)
+    # def update_security_group(self, secgroup_id, secgroup, topic=None):
+    #     self.set(models.SecurityGroup.table_name, secgroup_id, secgroup, topic)
 
-    def delete_security_group(self, id, topic=None):
-        self.delete(models.SecurityGroup.table_name, id, topic)
+    # def delete_security_group(self, id, topic=None):
+    #     self.delete(models.SecurityGroup.table_name, id, topic)
 
-    def get_security_group(self, secgroup_id, topic=None):
-        return self.get(models.SecurityGroup.table_name, secgroup_id, topic)
+    # def get_security_group(self, secgroup_id, topic=None):
+    #     return self.get(models.SecurityGroup.table_name, secgroup_id, topic)
 
-    def get_security_groups(self, topic=None):
-        return self.values(models.SecurityGroup.table_name, topic)
+    # def get_security_groups(self, topic=None):
+    #     return self.values(models.SecurityGroup.table_name, topic)
 
-    def get_security_group_keys(self, topic=None):
-        return self.keys(models.SecurityGroup.table_name, topic)
+    # def get_security_group_keys(self, topic=None):
+    #     return self.keys(models.SecurityGroup.table_name, topic)
 
     def get_lswitchs(self, topic=None):
         return self.values(models.LogicalSwitch.table_name, topic)

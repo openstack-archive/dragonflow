@@ -113,15 +113,15 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def notify_update_bridge_port(self, lport=None):
         self.dispatcher.dispatch('update_bridge_port', lport=lport)
 
-    def notify_add_security_group_rule(self, secgroup, secgroup_rule):
-        self.dispatcher.dispatch('add_security_group_rule',
-                                 secgroup=secgroup,
-                                 secgroup_rule=secgroup_rule)
+    # def notify_add_security_group_rule(self, secgroup, secgroup_rule):
+    #     self.dispatcher.dispatch('add_security_group_rule',
+    #                              secgroup=secgroup,
+    #                              secgroup_rule=secgroup_rule)
 
-    def notify_remove_security_group_rule(self, secgroup, secgroup_rule):
-        self.dispatcher.dispatch('remove_security_group_rule',
-                                 secgroup=secgroup,
-                                 secgroup_rule=secgroup_rule)
+    # def notify_remove_security_group_rule(self, secgroup, secgroup_rule):
+    #     self.dispatcher.dispatch('remove_security_group_rule',
+    #                              secgroup=secgroup,
+    #                              secgroup_rule=secgroup_rule)
 
     def notify_ovs_sync_finished(self):
         self.dispatcher.dispatch('ovs_sync_finished')
