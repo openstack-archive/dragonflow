@@ -13,7 +13,6 @@
 import netaddr
 import time
 
-from neutron_lib import constants as n_const
 from oslo_log import log
 
 from dragonflow.controller.common import constants as const
@@ -352,7 +351,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
 
         egress_rule_info = {'ethertype': ethertype,
                             'direction': 'egress',
-                            'protocol': str(n_const.PROTO_NUM_UDP),
+                            'protocol': 'udp',
                             'port_range_min': '53',
                             'port_range_max': '53',
                             'remote_group_id': security_group_id}
