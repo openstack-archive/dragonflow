@@ -112,9 +112,10 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         with self.network(arg_list=('qos_policy_id',), **kwargs) as n:
             network_id = n['network']['id']
             self.assertTrue(nb_api.create.called)
-            # nb_api.create(LogicalSwitch) will be called after
-            # nb_api.create(QosPolicy), so the index here is 1.
-            called_args = nb_api.create.call_args_list[1][0][0]
+            # Excepted call order for nb_api.create:
+            # QosPolicy, SecuiryGroup, LogicalSwitch.
+            # Expected index for LogicalSwitch is 2.
+            called_args = nb_api.create.call_args_list[2][0][0]
             self.assertEqual(qos_obj['id'], called_args.qos_policy.id)
 
             data = {'network': {'qos_policy_id': None}}
