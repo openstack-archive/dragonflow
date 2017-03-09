@@ -14,6 +14,7 @@
 #    under the License.
 
 
+from neutron.conf.agent.metadata import config as n_conf
 from oslo_config import cfg
 
 from dragonflow._i18n import _
@@ -35,6 +36,7 @@ df_metadata_opts = [
 
 def register_opts():
     cfg.CONF.register_opts(df_metadata_opts, group='df_metadata')
+    cfg.CONF.register_opts(n_conf.METADATA_PROXY_HANDLER_OPTS)
 
 
 def list_opts():

@@ -139,6 +139,9 @@ function configure_df_metadata_service {
         iniset $DRAGONFLOW_CONF df_metadata ip "$DF_METADATA_SERVICE_IP"
         iniset $DRAGONFLOW_CONF df_metadata port "$DF_METADATA_SERVICE_PORT"
         iniset $DRAGONFLOW_CONF df metadata_interface "$DF_METADATA_SERVICE_INTERFACE"
+        iniset $DRAGONFLOW_CONF DEFAULT nova_metadata_host "$NOVA_SERVICE_HOST"
+        iniset $DRAGONFLOW_CONF DEFAULT nova_metadata_port "$METADATA_SERVICE_PORT"
+        iniset $DRAGONFLOW_CONF DEFAULT nova_metadata_protocol "$NOVA_SERVICE_PROTOCOL"
     fi
 }
 
