@@ -16,6 +16,7 @@ from neutronclient.common import exceptions as n_exc
 from oslo_concurrency import lockutils
 
 from dragonflow.db.models import l2
+from dragonflow.db.models import secgroups
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -285,10 +286,12 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                         objects.SecGroupTestObj(self.neutron, self.nb_api))
         sg_id = secgroup.create()
         self.assertTrue(secgroup.exists())
-        version1 = self.nb_api.get_security_group(sg_id).get_version()
+        secgroup_obj = secgroups.SecurityGroup(id=sg_id)
+        version1 = self.nb_api.get(secgroup_obj).version
         secgroup.update()
         self.assertTrue(secgroup.exists())
-        version2 = self.nb_api.get_security_group(sg_id).get_version()
+        secgroup_obj = secgroups.SecurityGroup(id=sg_id)
+        version2 = self.nb_api.get(secgroup_obj).version
         self.assertNotEqual(version1, version2)
         secgroup.close()
         self.assertFalse(secgroup.exists())
