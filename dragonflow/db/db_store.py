@@ -25,7 +25,6 @@ class TenantDbStore(object):
         self.ports = {}
         self.local_ports = {}
         self.floatingips = {}
-        self.secgroups = {}
         self.publishers = {}
         self.activeports = {}
         self.lock = threading.Lock()
@@ -33,7 +32,6 @@ class TenantDbStore(object):
             models.LogicalPort.table_name: self.ports,
             'local_ports': self.local_ports,
             models.Floatingip.table_name: self.floatingips,
-            models.SecurityGroup.table_name: self.secgroups,
             models.Publisher.table_name: self.publishers,
             models.AllowedAddressPairsActivePort.table_name: self.activeports
         }
@@ -181,21 +179,6 @@ class DbStore(object):
     def get_ports_by_network_id(self, lswitch_id, topic=None):
         ports = self.values(models.LogicalPort.table_name, topic)
         return [port for port in ports if port.get_lswitch_id() == lswitch_id]
-
-    def update_security_group(self, secgroup_id, secgroup, topic=None):
-        self.set(models.SecurityGroup.table_name, secgroup_id, secgroup, topic)
-
-    def delete_security_group(self, id, topic=None):
-        self.delete(models.SecurityGroup.table_name, id, topic)
-
-    def get_security_group(self, secgroup_id, topic=None):
-        return self.get(models.SecurityGroup.table_name, secgroup_id, topic)
-
-    def get_security_groups(self, topic=None):
-        return self.values(models.SecurityGroup.table_name, topic)
-
-    def get_security_group_keys(self, topic=None):
-        return self.keys(models.SecurityGroup.table_name, topic)
 
     def update_floatingip(self, floatingip_id, floatingip, topic=None):
         self.set(models.Floatingip.table_name,

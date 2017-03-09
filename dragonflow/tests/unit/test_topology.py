@@ -204,7 +204,6 @@ class TestTopology(test_app_base.DFAppTestBase):
             'fake_tenant1': test_app_base.fake_local_port1}
         self.controller.update_lport = mock.Mock()
         self.controller.update = mock.Mock()
-        self.controller.update_secgroup = mock.Mock()
         self.controller.update_lrouter = mock.Mock()
         self.controller.update_floatingip = mock.Mock()
         self._reset_refresher()
@@ -215,6 +214,5 @@ class TestTopology(test_app_base.DFAppTestBase):
             test_app_base.fake_logic_switch1)
         self.controller.update_lport.assert_called_once_with(
             test_app_base.fake_local_port1)
-        self.assertFalse(self.controller.update_secgroup.called)
         self.assertFalse(self.controller.update_lrouter.called)
         self.assertFalse(self.controller.update_floatingip.called)
