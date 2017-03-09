@@ -24,7 +24,9 @@ from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
-from dragonflow.db import models
+from dragonflow.db.models import constants as model_constants
+from dragonflow.db.models import secgroups as sg_model
+# from dragonflow.db import models
 
 
 LOG = log.getLogger(__name__)
@@ -120,7 +122,7 @@ class SGApp(df_base_app.DFlowApp):
         secgroup_rule (type SecurityGroupRule).
         """
         result_base = {}
-        ethertype = secgroup_rule.get_ethertype()
+        ethertype = secgroup_rule.ethertype
         if ethertype == n_const.IPv4:
             result_base['eth_type'] = ether.ETH_TYPE_IP
         elif ethertype == n_const.IPv6:
@@ -129,13 +131,13 @@ class SGApp(df_base_app.DFlowApp):
             )
             result_base['eth_type'] = ether.ETH_TYPE_IPV6
             return [result_base]
-        protocol_name = secgroup_rule.get_protocol()
+        protocol_name = secgroup_rule.protocol
         if not protocol_name:
             return [result_base]
         protocol = self._protocol_number_by_name(protocol_name)
         result_base["ip_proto"] = protocol
-        port_range_min = secgroup_rule.get_port_range_min()
-        port_range_max = secgroup_rule.get_port_range_max()
+        port_range_min = secgroup_rule.port_range_min
+        port_range_max = secgroup_rule.port_range_max
         if protocol == n_const.PROTO_NUM_ICMP:
             if port_range_min:
                 result_base['icmpv4_type'] = int(port_range_min)
@@ -316,9 +318,10 @@ class SGApp(df_base_app.DFlowApp):
         self._install_security_group_permit_flow_by_direction(
             security_group_id, 'egress')
 
-        secgroup = self.db_store.get_security_group(security_group_id)
+        sg_obj = sg_model.SecurityGroup(id=security_group_id)
+        secgroup = self.db_store2.get_one(sg_obj)
         if secgroup is not None:
-            for rule in secgroup.get_rules():
+            for rule in secgroup.rules:
                 self.add_security_group_rule(secgroup, rule)
 
     def _uninstall_security_group_permit_flow_by_direction(self,
@@ -350,9 +353,10 @@ class SGApp(df_base_app.DFlowApp):
         self._uninstall_security_group_permit_flow_by_direction(
             security_group_id, 'egress')
 
-        secgroup = self.db_store.get_security_group(security_group_id)
+        sg_obj = sg_model.SecurityGroup(id=security_group_id)
+        secgroup = self.db_store2.get_one(sg_obj)
         if secgroup is not None:
-            for rule in secgroup.get_rules():
+            for rule in secgroup.rules:
                 self.remove_security_group_rule(secgroup, rule)
 
     def _install_associating_flow_by_direction(self, security_group_id,
@@ -510,19 +514,19 @@ class SGApp(df_base_app.DFlowApp):
 
         parser = self.parser
         ofproto = self.ofproto
-        rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
+        rule_id = self._get_security_rule_mapping(secgroup_rule.id)
 
         match_list = \
             self._get_rule_flows_match_except_net_addresses(secgroup_rule)
 
-        if secgroup_rule.get_ethertype() == n_const.IPv4:
-            if secgroup_rule.get_direction() == 'ingress':
+        if secgroup_rule.ethertype == n_const.IPv4:
+            if secgroup_rule.direction == 'ingress':
                 table_id = const.INGRESS_SECURITY_GROUP_TABLE
                 ipv4_match_item = "ipv4_src"
             else:
                 table_id = const.EGRESS_SECURITY_GROUP_TABLE
                 ipv4_match_item = "ipv4_dst"
-        elif secgroup_rule.get_ethertype() == n_const.IPv6:
+        elif secgroup_rule.ethertype == n_const.IPv6:
             # not support yet
             LOG.info(_LI("IPv6 rules are not supported yet"))
             return
@@ -570,12 +574,12 @@ class SGApp(df_base_app.DFlowApp):
 
         parser = self.parser
         ofproto = self.ofproto
-        rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
-        remote_group_id = secgroup_rule.get_remote_group_id()
-        remote_ip_prefix = secgroup_rule.get_remote_ip_prefix()
-        ethertype = secgroup_rule.get_ethertype()
+        rule_id = self._get_security_rule_mapping(secgroup_rule.id)
+        remote_group_id = secgroup_rule.remote_group_id
+        remote_ip_prefix = secgroup_rule.remote_ip_prefix
+        ethertype = secgroup_rule.ethertype
 
-        if secgroup_rule.get_direction() == 'ingress':
+        if secgroup_rule.direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
             ipv4_match_item = "ipv4_src"
         else:
@@ -636,13 +640,13 @@ class SGApp(df_base_app.DFlowApp):
         # uninstall rule flows by its cookie
         ofproto = self.ofproto
 
-        direction = secgroup_rule.get_direction()
+        direction = secgroup_rule.direction
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
 
-        rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
+        rule_id = self._get_security_rule_mapping(secgroup_rule.id)
         if rule_id is None:
             LOG.error(_LE("the rule_id of the security group rule %s is none"),
                       rule_id)
@@ -746,8 +750,8 @@ class SGApp(df_base_app.DFlowApp):
             return self.next_secgroup_rule_id
 
     def _get_secgroup_conj_id_and_priority(self, secgroup_id):
-        sg_unique_key = self.db_store.get_unique_key_by_id(
-            models.SecurityGroup.table_name, secgroup_id)
+        sg = self.db_store2.get_one(sg_model.SecurityGroup(id=secgroup_id))
+        sg_unique_key = sg.unique_key
         return sg_unique_key, (SG_PRIORITY_OFFSET + sg_unique_key)
 
     def _associate_secgroup_lport_addresses(self, secgroup_id, lport):
@@ -769,7 +773,7 @@ class SGApp(df_base_app.DFlowApp):
         if secrules:
             for rule_info in secrules.values():
                 self._update_security_group_rule_flows_by_addresses(
-                    rule_info.get_security_group_id(),
+                    rule_info.security_group_id,
                     rule_info,
                     added_cidr,
                     removed_cidr)
@@ -799,7 +803,7 @@ class SGApp(df_base_app.DFlowApp):
             if secrules:
                 for rule_info in secrules.values():
                     self._update_security_group_rule_flows_by_addresses(
-                        rule_info.get_security_group_id(),
+                        rule_info.security_group_id,
                         rule_info,
                         added_cidr,
                         removed_cidr
@@ -881,7 +885,7 @@ class SGApp(df_base_app.DFlowApp):
         if secrules is not None:
             for rule_info in secrules.values():
                 self._update_security_group_rule_flows_by_addresses(
-                    rule_info.get_security_group_id(),
+                    rule_info.security_group_id,
                     rule_info,
                     added_cidr,
                     removed_cidr
@@ -1005,8 +1009,36 @@ class SGApp(df_base_app.DFlowApp):
     def _is_sg_not_associated_with_local_port(self, secgroup_id):
         return self.secgroup_associate_local_ports.get(secgroup_id) is None
 
+    @df_base_app.register_event(sg_model.SecurityGroup,
+                                model_constants.EVENT_CREATED)
+    def add_security_group(self, secgroup):
+        for new_rule in secgroup.rules:
+            self.add_security_group_rule(secgroup, new_rule)
+
+    @df_base_app.register_event(sg_model.SecurityGroup,
+                                model_constants.EVENT_UPDATED)
+    def update_security_group(self, new_secgroup, old_secgroup):
+        new_secgroup_rules = new_secgroup.rules
+        old_secgroup_rules = old_secgroup.rules
+        for new_rule in new_secgroup_rules:
+            if new_rule not in old_secgroup_rules:
+                self.add_security_group_rule(new_secgroup, new_rule)
+            else:
+                old_secgroup_rules.remove(new_rule)
+
+        for old_rule in old_secgroup_rules:
+            self.remove_security_group_rule(old_secgroup, old_rule)
+
+    @df_base_app.register_event(sg_model.SecurityGroup,
+                                model_constants.EVENT_DELETED)
+    def delete_security_group(self, secgroup):
+        for new_rule in secgroup.rules:
+            self.add_security_group_rule(secgroup, new_rule)
+
+    @df_base_app.register_event(sg_model.SecurityGroupRule,
+                                model_constants.EVENT_CREATED)
     def add_security_group_rule(self, secgroup, secgroup_rule):
-        secgroup_id = secgroup.get_id()
+        secgroup_id = secgroup.id
         if self._is_sg_not_associated_with_local_port(secgroup_id):
             LOG.debug("Security group %s wasn't associated with a local port",
                       secgroup_id)
@@ -1017,37 +1049,39 @@ class SGApp(df_base_app.DFlowApp):
 
         # update the record of rules each of which specifies a same security
         #  group as its parameter of remote group.
-        remote_group_id = secgroup_rule.get_remote_group_id()
+        remote_group_id = secgroup_rule.remote_group_id
         if remote_group_id is not None:
             associate_rules = self.remote_secgroup_ref.get(remote_group_id)
             if associate_rules is None:
                 self.remote_secgroup_ref[remote_group_id] = \
-                    {secgroup_rule.get_id(): secgroup_rule}
+                    {secgroup_rule.id: secgroup_rule}
             else:
-                associate_rules[secgroup_rule.get_id()] = secgroup_rule
+                associate_rules[secgroup_rule.id] = secgroup_rule
 
         self._install_security_group_rule_flows(secgroup_id, secgroup_rule)
 
+    @df_base_app.register_event(sg_model.SecurityGroupRule,
+                                model_constants.EVENT_DELETED)
     def remove_security_group_rule(self, secgroup, secgroup_rule):
-        secgroup_id = secgroup.get_id()
+        secgroup_id = secgroup.id
         if self._is_sg_not_associated_with_local_port(secgroup_id):
             LOG.debug("Security group %s wasn't associated with a local port",
                       secgroup_id)
             return
 
         LOG.info(_LI("Remove a rule %(rule)s to security group %(secgroup)s"),
-                 {'rule': secgroup_rule, 'secgroup': secgroup.get_id()})
+                 {'rule': secgroup_rule, 'secgroup': secgroup.id})
 
         conj_id, priority = \
-            self._get_secgroup_conj_id_and_priority(secgroup.get_id())
+            self._get_secgroup_conj_id_and_priority(secgroup.id)
 
         # update the record of rules each of which specifies a same security
         # group as its parameter of remote group.
-        remote_group_id = secgroup_rule.get_remote_group_id()
+        remote_group_id = secgroup_rule.remote_group_id
         if remote_group_id is not None:
             associate_rules = self.remote_secgroup_ref.get(remote_group_id)
             if associate_rules is not None:
-                del associate_rules[secgroup_rule.get_id()]
+                del associate_rules[secgroup_rule.id]
                 if len(associate_rules) == 0:
                     del self.remote_secgroup_ref[remote_group_id]
 
@@ -1058,8 +1092,8 @@ class SGApp(df_base_app.DFlowApp):
 
     def _delete_conntrack_entries_process(self, port_info, rule,
                                           remote_address_list=None):
-        ethertype = rule.get_ethertype()
-        if 'ingress' == rule.get_direction():
+        ethertype = rule.ethertype
+        if 'ingress' == rule.direction:
             nw_match_mark = 'nw_dst'
             remote_match_mark = 'nw_src'
         else:
@@ -1071,7 +1105,7 @@ class SGApp(df_base_app.DFlowApp):
                 nw_match_mark: port_ip,
                 'zone': port_info['zone_id']
             }
-            protocol = rule.get_protocol()
+            protocol = rule.protocol
             if protocol:
                 entries_filter['protocol'] = protocol
             if remote_address_list:
@@ -1096,7 +1130,7 @@ class SGApp(df_base_app.DFlowApp):
                                          with the remote group of the rule
         :type filter_remote_addresses:  a list of IP addresses
         """
-        if rule.get_ethertype() == n_const.IPv6:
+        if rule.ethertype == n_const.IPv6:
             # Not support IPv6 yet. Because the controller has already printed
             # logs in other methods, there is no need to print extra logs here.
             return
@@ -1116,7 +1150,7 @@ class SGApp(df_base_app.DFlowApp):
         else:
             associating_ports_info = []
             associating_port_ids = self.secgroup_associate_local_ports.get(
-                rule.get_security_group_id())
+                rule.security_group_id)
             for port_id in associating_port_ids:
                 lport = self.db_store.get_port(port_id)
                 removed_ips = self._get_ips_in_logical_port(lport)
@@ -1142,9 +1176,10 @@ class SGApp(df_base_app.DFlowApp):
         zone_id = lport.get_external_value('local_network_id')
 
         local_port_info = {'removed_ips': removed_ips, 'zone_id': zone_id}
-        secgroup = self.db_store.get_security_group(secgroup_id)
+        sg_obj = sg_model.SecurityGroup(id=secgroup_id)
+        secgroup = self.db_store2.get_one(sg_obj)
         if secgroup is not None:
-            for rule in secgroup.get_rules():
+            for rule in secgroup.rules:
                 self._delete_conntrack_entries_by_rule(
                     rule, filter_port_info=local_port_info)
 

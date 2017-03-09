@@ -22,7 +22,9 @@ from neutron_lib import context
 
 from dragonflow.db.models import host_route
 from dragonflow.db.models import l2
+from dragonflow.db.models import secgroups
 from dragonflow.neutron.db.models import l2 as neutron_l2
+from dragonflow.neutron.db.models import secgroups as neutron_secgroups
 from dragonflow.tests.common import utils
 
 
@@ -81,10 +83,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         sg = self.driver.create_security_group(self.context, s)
         self.assertGreater(sg['revision_number'], 0)
 
-        self.nb_api.create_security_group.assert_called_with(
-            id=sg['id'], topic=sg['tenant_id'],
-            name=sg['name'], rules=sg['security_group_rules'],
-            version=sg['revision_number'])
+        self.nb_api.create.assert_called_with(
+            neutron_secgroups.security_group_from_neutron_obj(sg))
         return sg
 
     def test_create_security_group_revision(self):
@@ -97,15 +97,13 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             self.context, sg['id'], data)
         self.assertGreater(new_sg['revision_number'], sg['revision_number'])
 
-        self.nb_api.update_security_group.assert_called_with(
-            id=sg['id'], topic=sg['tenant_id'],
-            name='updated', rules=new_sg['security_group_rules'],
-            version=new_sg['revision_number'])
+        self.nb_api.update.assert_called_with(
+            neutron_secgroups.security_group_from_neutron_obj(new_sg))
 
     def test_create_delete_sg_rule_revision(self):
         sg = self._test_create_security_group_revision()
         r = {'security_group_rule': {'tenant_id': 'some_tenant',
-                                     'port_range_min': 80, 'protocol': 6,
+                                     'port_range_min': 80, 'protocol': 'tcp',
                                      'port_range_max': 90,
                                      'remote_ip_prefix': '0.0.0.0/0',
                                      'ethertype': 'IPv4',
@@ -115,17 +113,15 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         rule = self.driver.create_security_group_rule(self.context, r)
         new_sg = self.driver.get_security_group(self.context, sg['id'])
         self.assertGreater(new_sg['revision_number'], sg['revision_number'])
-        self.nb_api.add_security_group_rules.assert_called_with(
-            sg['id'], sg['tenant_id'],
-            sg_rules=[rule], sg_version=new_sg['revision_number'])
+        self.nb_api.update.assert_called_with(
+            neutron_secgroups.security_group_from_neutron_obj(new_sg))
 
         self.driver.delete_security_group_rule(self.context, rule['id'])
         newer_sg = self.driver.get_security_group(self.context, sg['id'])
         self.assertGreater(newer_sg['revision_number'],
                            new_sg['revision_number'])
-        self.nb_api.delete_security_group_rule.assert_called_with(
-            sg['id'], rule['id'], sg['tenant_id'],
-            sg_version=newer_sg['revision_number'])
+        self.nb_api.update.assert_called_with(
+            neutron_secgroups.security_group_from_neutron_obj(newer_sg))
 
     def _test_create_network_revision(self):
         with self.network() as n:
@@ -422,8 +418,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
     def test_delete_security_group(self):
         sg = self._test_create_security_group_revision()
         self.driver.delete_security_group(self.context, sg['id'])
-        self.nb_api.delete_security_group.assert_called_with(
-            sg['id'], topic=sg['tenant_id'])
+        self.nb_api.delete.assert_called_with(
+            secgroups.SecurityGroup(id=sg['id'], topic=sg['project_id']))
 
     def test_update_subnet_with_disabled_dhcp(self):
         network, lswitch = self._test_create_network_revision()
