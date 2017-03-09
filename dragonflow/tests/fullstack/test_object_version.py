@@ -16,6 +16,7 @@ from oslo_concurrency import lockutils
 
 from dragonflow.db.models import l2
 from dragonflow.db.models import qos
+from dragonflow.db.models import secgroups
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
@@ -114,17 +115,20 @@ class TestObjectVersion(test_base.DFTestBase):
                         objects.SecGroupTestObj(self.neutron, self.nb_api))
         sg_id = secgroup.create()
         self.assertTrue(secgroup.exists())
-        version = self.nb_api.get_security_group(sg_id).get_version()
+        sg_obj = secgroups.SecurityGroup(id=sg_id)
+        version = self.nb_api.get(sg_obj).version
 
         secrule_id = secgroup.rule_create()
         self.assertTrue(secgroup.rule_exists(secrule_id))
-        new_version = self.nb_api.get_security_group(sg_id).get_version()
+        sg_obj = secgroups.SecurityGroup(id=sg_id)
+        new_version = self.nb_api.get(sg_obj).version
         self.assertGreater(new_version, version)
 
         secgroup.rule_delete(secrule_id)
         self.assertFalse(secgroup.rule_exists(secrule_id))
         version = new_version
-        new_version = self.nb_api.get_security_group(sg_id).get_version()
+        sg_obj = secgroups.SecurityGroup(id=sg_id)
+        new_version = self.nb_api.get(sg_obj).version
         self.assertGreater(new_version, version)
 
         secgroup.close()

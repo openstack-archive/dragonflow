@@ -9,21 +9,18 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from dragonflow.db.models import legacy
 
-# Remove those once we're done
-NbObject = legacy.NbObject
-NbDbObject = legacy.NbDbObject
-UniqueKeyMixin = legacy.UniqueKeyMixin
-LogicalPort = legacy.LogicalPort
-LogicalRouter = legacy.LogicalRouter
-LogicalRouterPort = legacy.LogicalRouterPort
-Floatingip = legacy.Floatingip
-Publisher = legacy.Publisher
-AllowedAddressPairsActivePort = legacy.AllowedAddressPairsActivePort
-Listener = legacy.Listener
-OvsPort = legacy.OvsPort
+from dragonflow.db.models import secgroups
+from dragonflow.neutron.common import constants as df_const
 
-UNIQUE_KEY = legacy.UNIQUE_KEY
 
-table_class_mapping = legacy.table_class_mapping
+def security_group_from_neutron_obj(secgroup):
+    sg_name = secgroup.get('name', df_const.DF_SG_DEFAULT_NAME)
+    rules = secgroup.get('security_group_rules', [])
+    return secgroups.SecurityGroup(
+        id=secgroup['id'],
+        topic=secgroup['tenant_id'],
+        name=sg_name,
+        rules=rules,
+        description=secgroup.get('description'),
+        version=secgroup['revision_number'])
