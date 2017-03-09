@@ -56,19 +56,11 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         self.ryu_df_adapter.notify_remove_local_port(lport=4)
         self.ryu_df_adapter.notify_add_remote_port(lport=5)
         self.ryu_df_adapter.notify_remove_remote_port(lport=6)
-        self.ryu_df_adapter.notify_add_security_group_rule(
-                secgroup=12, secgroup_rule=13)
-        self.ryu_df_adapter.notify_remove_security_group_rule(
-                secgroup=14, secgroup_rule=15)
         self.mock_app.assert_has_calls([
                 mock.call.add_local_port(lport=3),
                 mock.call.remove_local_port(lport=4),
                 mock.call.add_remote_port(lport=5),
-                mock.call.remove_remote_port(lport=6),
-                mock.call.add_security_group_rule(
-                        secgroup=12, secgroup_rule=13),
-                mock.call.remove_security_group_rule(
-                        secgroup=14, secgroup_rule=15)])
+                mock.call.remove_remote_port(lport=6)])
 
     def test_switch_features_handler(self):
         self.mock_app.reset_mock()
