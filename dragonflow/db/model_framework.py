@@ -90,6 +90,12 @@ class _CommonBase(models.Base):
 
     def _emit(self, event, *args, **kwargs):
         for cb in self._event_callbacks[event]:
+            LOG.debug("%(func)s from %(module)s gets %(event)s event of "
+                      "%(resource)s.",
+                      {'func': cb.__name__,
+                       'module': cb.__module__,
+                       'event': event,
+                       'resource': repr(self)})
             try:
                 cb(self, *args, **kwargs)
             except Exception:
