@@ -137,8 +137,15 @@ class TestModelFramework(tests_base.BaseTestCase):
     def test_event_register_emit(self):
         event1_cb = mock.MagicMock()
         event2_cb = mock.MagicMock()
-        ModelWithEvents.register_event1(event1_cb)
-        ModelWithEvents.register_event2(event2_cb)
+
+        def function1(obj, *args, **kwargs):
+            event1_cb(obj, *args, **kwargs)
+
+        def function2(obj, *args, **kwargs):
+            event2_cb(obj, *args, **kwargs)
+
+        ModelWithEvents.register_event1(function1)
+        ModelWithEvents.register_event2(function2)
         m = ModelWithEvents()
         m.emit_event1(True, kw='a')
         event1_cb.assert_called_once_with(m, True, kw='a')
@@ -152,8 +159,15 @@ class TestModelFramework(tests_base.BaseTestCase):
     def test_callbacks_not_shared(self):
         m1 = mock.MagicMock()
         m2 = mock.MagicMock()
-        ModelWithEvents.register_event1(m1)
-        ModelWithMoreEvents.register_event1(m2)
+
+        def function1(obj):
+            m1()
+
+        def function2(obj):
+            m2()
+
+        ModelWithEvents.register_event1(function1)
+        ModelWithMoreEvents.register_event1(function2)
         ModelWithMoreEvents().emit_event1()
 
         m1.assert_not_called()
