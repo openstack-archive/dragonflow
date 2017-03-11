@@ -14,7 +14,6 @@
 #    under the License.
 
 import collections
-import copy
 import threading
 
 from dragonflow.db import models
@@ -259,30 +258,6 @@ class DbStore(object):
 
     def get_floatingips(self, topic=None):
         return self.values(models.Floatingip.table_name, topic)
-
-    def check_and_update_floatingips(self, lswitch, topic=None):
-        fip_return = []
-        if not lswitch.is_external():
-            return fip_return
-        network_id = lswitch.get_id()
-        for fip in self.get_floatingips(topic):
-            if fip.get_floating_network_id() == network_id:
-                update_fip = self.update_floatingip_gateway(
-                    fip, lswitch)
-                if update_fip:
-                    fip_return.append(update_fip)
-        return fip_return
-
-    def update_floatingip_gateway(self, fip, lswitch):
-        subnets = lswitch.get_subnets()
-        for subnet in subnets:
-            if subnet.get_cidr() == fip.get_external_cidr():
-                # external gateway ip changed
-                if subnet.get_gateway_ip() != fip.get_external_gateway_ip():
-                    old_fip = copy.deepcopy(fip)
-                    fip.set_external_gateway_ip(subnet.get_gateway_ip())
-                    return (fip, old_fip)
-        return None
 
     def set_qos_policy(self, qos_id, qos, topic=None):
         self.set(models.QosPolicy.table_name, qos_id, qos, topic)
