@@ -9,6 +9,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import six
+
 from dragonflow._i18n import _LE
 from dragonflow.db import db_store2
 
@@ -73,6 +75,24 @@ class _ModelProxyBase(object):
         return cls._model
 
 
+def _memoize_model_proxies(f):
+    """
+    A memoization decorator targeted for `create_model_proxy`.
+    """
+    memo = {}
+
+    @six.wraps(f)
+    def func(model):
+        try:
+            return memo[model.__name__]
+        except KeyError:
+            result = f(model)
+            memo[model.__name__] = result
+            return result
+    return func
+
+
+@_memoize_model_proxies
 def create_model_proxy(model):
     '''This creates a proxy class for a specific model type, this class can
     then be used to create references.
