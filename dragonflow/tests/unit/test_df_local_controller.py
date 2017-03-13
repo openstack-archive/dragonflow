@@ -22,6 +22,7 @@ from dragonflow.db import db_store2
 from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
+from dragonflow.db.models import l3
 from dragonflow.tests.unit import test_app_base
 
 
@@ -30,10 +31,13 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
     apps_list = "l2_app.L2App"
 
     def _get_mock_floatingip(self, lport_id, fip_id):
-        floatingip = mock.Mock()
-        floatingip.get_lport_id.return_value = lport_id
-        floatingip.get_id.return_value = fip_id
-        return floatingip
+        return l3.FloatingIp(
+            id=fip_id,
+            lport=lport_id,
+            version=1,
+            unique_key=1,
+            topic='topic',
+        )
 
     @mock.patch.object(df_local_controller.DfLocalController,
                        '_update_floatingip')
@@ -71,28 +75,27 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.controller.update_floatingip(fip)
         mock_update.assert_called_once_with(old_fip, fip)
 
-    @mock.patch.object(ryu_base_app.RyuDFAdapter,
-                       'notify_delete_floatingip')
-    @mock.patch.object(db_store.DbStore, 'get_floatingip')
-    def test_floatingip_deleted(self, mock_get_fip, mock_notify):
-        mock_get_fip.return_value = None
+    @mock.patch.object(l3.FloatingIp, 'emit_deleted')
+    @mock.patch.object(db_store2.DbStore2, 'get_one')
+    def test_floatingip_deleted(self, mock_get, mock_deleted):
+        mock_get.return_value = None
         lport_id = 'fake_lport_id'
         fip_id = 'fake_fip_id'
         fip = self._get_mock_floatingip(lport_id, fip_id)
         self.assertIsNone(self.controller.delete_floatingip(fip_id))
-        mock_get_fip.return_value = fip
+        mock_get.return_value = fip
         self.controller.delete_floatingip(fip_id)
-        mock_notify.assert_called_once_with(fip)
+        mock_deleted.assert_called_once_with(fip)
 
     @mock.patch.object(ryu_base_app.RyuDFAdapter,
                        'notify_associate_floatingip')
-    @mock.patch.object(db_store.DbStore, 'update_floatingip')
+    @mock.patch.object(db_store2.DbStore2, 'update')
     def test__associate_floatingip(self, mock_update, mock_notify):
         lport_id = 'fake_lport_id'
         fip_id = 'fake_fip_id'
         fip = self._get_mock_floatingip(lport_id, fip_id)
         self.controller._associate_floatingip(fip)
-        mock_update.assert_called_once_with(fip_id, fip)
+        mock_update.assert_called_once_with(fip)
         mock_notify.assert_called_once_with(fip)
 
     @mock.patch.object(ryu_base_app.RyuDFAdapter,

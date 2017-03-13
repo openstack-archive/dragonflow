@@ -87,48 +87,6 @@ class UniqueKeyMixin(object):
 
 
 @register_model_class
-class Floatingip(NbDbObject):
-
-    table_name = "floatingip"
-
-    def get_status(self):
-        return self.inner_obj.get('status')
-
-    def update_fip_status(self, status):
-        self.inner_obj['status'] = status
-
-    def get_ip_address(self):
-        return self.inner_obj.get('floating_ip_address')
-
-    def get_mac_address(self):
-        return self.inner_obj.get('floating_mac_address')
-
-    def get_lport_id(self):
-        return self.inner_obj.get('port_id')
-
-    def get_fixed_ip_address(self):
-        return self.inner_obj.get('fixed_ip_address')
-
-    def get_lrouter_id(self):
-        return self.inner_obj.get('router_id')
-
-    def get_external_gateway_ip(self):
-        return self.inner_obj.get('external_gateway_ip')
-
-    def set_external_gateway_ip(self, gw_ip):
-        self.inner_obj['external_gateway_ip'] = gw_ip
-
-    def get_floating_network_id(self):
-        return self.inner_obj.get('floating_network_id')
-
-    def get_external_cidr(self):
-        return self.inner_obj.get('external_cidr')
-
-    def get_floating_port_id(self):
-        return self.inner_obj.get('floating_port_id')
-
-
-@register_model_class
 class AllowedAddressPairsActivePort(NbDbObject):
 
     table_name = "activeport"
