@@ -11,6 +11,7 @@
 #    under the License.
 
 from jsonmodels import fields
+from neutron_lib import constants
 
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
@@ -47,3 +48,23 @@ class LogicalRouter(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
         for idx, router_port in enumerate(self.ports):
             if router_port.id == router_port_id:
                 self.ports.pop(idx)
+
+
+@mf.register_model
+@mf.construct_nb_db_model(indexes={'lport': 'lport.id'})
+class FloatingIp(mf.ModelBase, mixins.Version, mixins.Topic,
+                 mixins.UniqueKey, mixins.Name, mixins.BasicEvents):
+    table_name = 'floatingip'
+
+    status = df_fields.EnumField((constants.FLOATINGIP_STATUS_ACTIVE,
+                                  constants.FLOATINGIP_STATUS_DOWN,
+                                  constants.FLOATINGIP_STATUS_ERROR))
+    floating_ip_address = df_fields.IpAddressField()
+    fixed_ip_address = df_fields.IpAddressField()
+    lport = df_fields.ReferenceField(l2.LogicalPort)
+    floating_lport = df_fields.ReferenceField(l2.LogicalPort)
+    lrouter = df_fields.ReferenceField(LogicalRouter)
+
+    @property
+    def is_local(self):
+        return self.lport is not None and self.lport.is_local

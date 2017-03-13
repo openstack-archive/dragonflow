@@ -47,6 +47,13 @@ EGRESS = 'egress'
 INGRESS = 'ingress'
 
 
+def _fip_status_by_lport(fip):
+    if fip.lport is None:
+        return n_const.FLOATINGIP_STATUS_DOWN
+    else:
+        return n_const.FLOATINGIP_STATUS_ACTIVE
+
+
 class DNATApp(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
@@ -237,41 +244,38 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _install_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
-        if netaddr.IPAddress(floatingip.get_ip_address()).version != \
-                n_const.IP_VERSION_4:
+        if floatingip.floating_ip_address.version != n_const.IP_VERSION_4:
             return
+        floating_lport = self._get_floating_lport(floatingip)
         arp_responder.ArpResponder(self,
                                    None,
-                                   floatingip.get_ip_address(),
-                                   floatingip.get_mac_address(),
+                                   floatingip.floating_ip_address,
+                                   floating_lport.mac,
                                    const.INGRESS_NAT_TABLE).add()
 
     def _remove_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
-        if netaddr.IPAddress(floatingip.get_ip_address()).version != \
-                n_const.IP_VERSION_4:
+        if floatingip.floating_ip_address.version != n_const.IP_VERSION_4:
             return
+        floating_lport = self._get_floating_lport(floatingip)
         arp_responder.ArpResponder(self,
                                    None,
-                                   floatingip.get_ip_address(),
-                                   floatingip.get_mac_address(),
+                                   floatingip.floating_ip_address,
+                                   floating_lport.mac,
                                    const.INGRESS_NAT_TABLE).remove()
 
     def _get_vm_port_info(self, floatingip):
-        lport = self.db_store2.get_one(
-            l2.LogicalPort(id=floatingip.get_lport_id()))
+        lport = floatingip.lport
         mac = lport.mac
         ip = lport.ip
         tunnel_key = lport.unique_key
-        local_network_id = lport.local_network_id
+        local_network_id = lport.lswitch.unique_key
 
         return mac, ip, tunnel_key, local_network_id
 
     def _get_vm_gateway_info(self, floatingip):
-        lport = self.db_store2.get_one(
-            l2.LogicalPort(id=floatingip.get_lport_id()))
-        lrouter = self.db_store2.get_one(l3.LogicalRouter(
-                                             id=floatingip.get_lrouter_id()))
+        lport = floatingip.lport
+        lrouter = floatingip.lrouter
         for router_port in lrouter.ports:
             if router_port.lswitch.id == lport.lswitch.id:
                 return router_port.mac
@@ -281,19 +285,20 @@ class DNATApp(df_base_app.DFlowApp):
         parser = self.parser
         ofproto = self.ofproto
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=floatingip.get_ip_address())
+                                ipv4_dst=floatingip.floating_ip_address)
 
-        vm_mac, vm_ip, vm_tunnel_key, local_network_id = \
+        vm_mac, vm_ip, lport_key, local_network_id = \
             self._get_vm_port_info(floatingip)
         vm_gateway_mac = self._get_vm_gateway_info(floatingip)
         if vm_gateway_mac is None:
-            vm_gateway_mac = floatingip.get_mac_address()
+            floating_lport = self._get_floating_lport(floatingip)
+            vm_gateway_mac = floating_lport.mac
         actions = [
             parser.OFPActionDecNwTtl(),
             parser.OFPActionSetField(eth_src=vm_gateway_mac),
             parser.OFPActionSetField(eth_dst=vm_mac),
             parser.OFPActionSetField(ipv4_dst=vm_ip),
-            parser.OFPActionSetField(reg7=vm_tunnel_key),
+            parser.OFPActionSetField(reg7=lport_key),
             parser.OFPActionSetField(metadata=local_network_id)
         ]
         action_inst = parser.OFPInstructionActions(
@@ -314,7 +319,7 @@ class DNATApp(df_base_app.DFlowApp):
             parser.OFPActionSetField(eth_src=vm_gateway_mac),
             parser.OFPActionSetField(eth_dst=vm_mac),
             parser.OFPActionSetField(ipv4_dst=vm_ip),
-            parser.OFPActionSetField(reg7=vm_tunnel_key),
+            parser.OFPActionSetField(reg7=lport_key),
             parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                    ofproto.OFPCML_NO_BUFFER)
         ]
@@ -324,7 +329,7 @@ class DNATApp(df_base_app.DFlowApp):
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     ip_proto=in_proto.IPPROTO_ICMP,
                                     icmpv4_type=icmp_type,
-                                    ipv4_dst=floatingip.get_ip_address())
+                                    ipv4_dst=floatingip.floating_ip_address)
             self.mod_flow(
                 inst=action_inst,
                 table_id=const.INGRESS_NAT_TABLE,
@@ -335,7 +340,7 @@ class DNATApp(df_base_app.DFlowApp):
         parser = self.parser
         ofproto = self.ofproto
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=floatingip.get_ip_address())
+                                ipv4_dst=floatingip.floating_ip_address)
         self.mod_flow(
             command=ofproto.OFPFC_DELETE,
             table_id=const.INGRESS_NAT_TABLE,
@@ -351,9 +356,25 @@ class DNATApp(df_base_app.DFlowApp):
         match.set_ipv4_src(utils.ipv4_text_to_int(vm_ip))
         return match
 
+    def _get_floating_lport(self, fip):
+        # FIXME(dimak) Floating lports are not in DbStore because local
+        # controller ignores them, we should change this some-time
+        # FIXME (dimak) cache until above is done
+        return self.nb_api.get(l2.LogicalPort(id=fip.floating_lport.id))
+
+    def _get_external_subnet(self, fip):
+        floating_lport = self._get_floating_lport(fip)
+        subnets = floating_lport.lswitch.subnets
+        for subnet in subnets:
+            if fip.floating_ip_address in subnet.cidr:
+                return subnet
+
+    def _get_external_cidr(self, fip):
+        return self._get_external_subnet(fip).cidr
+
     def _install_dnat_egress_rules(self, floatingip, network_bridge_mac):
-        fip_mac = floatingip.get_mac_address()
-        fip_ip = floatingip.get_ip_address()
+        fip_mac = self._get_floating_lport(floatingip).mac
+        fip_ip = floatingip.floating_ip_address
         parser = self.parser
         ofproto = self.ofproto
         match = self._get_dnat_egress_match(floatingip)
@@ -399,8 +420,7 @@ class DNATApp(df_base_app.DFlowApp):
             match=match)
 
     def _install_egress_nat_rules(self, floatingip):
-        net = netaddr.IPNetwork(floatingip.get_external_cidr())
-        if net.version != n_const.IP_VERSION_4:
+        if self._get_external_cidr(floatingip).version != n_const.IP_VERSION_4:
             return
 
         match = self._get_dnat_egress_match(floatingip)
@@ -414,8 +434,7 @@ class DNATApp(df_base_app.DFlowApp):
                                             self.external_bridge_mac)
 
     def _remove_egress_nat_rules(self, floatingip):
-        net = netaddr.IPNetwork(floatingip.get_external_cidr())
-        if net.version != n_const.IP_VERSION_4:
+        if self._get_external_cidr(floatingip).version != n_const.IP_VERSION_4:
             return
 
         ofproto = self.ofproto
@@ -429,7 +448,8 @@ class DNATApp(df_base_app.DFlowApp):
         self._remove_dnat_egress_rules(floatingip)
 
     def _install_ingress_nat_rules(self, floatingip):
-        network_id = floatingip.get_floating_network_id()
+        floating_lport = self._get_floating_lport(floatingip)
+        network_id = floating_lport.lswitch.unique_key
         # TODO(Fei Rao) check the network type
         if self._is_first_external_network(network_id):
             # if it is the first floating ip on this node, then
@@ -456,7 +476,8 @@ class DNATApp(df_base_app.DFlowApp):
         self._increase_external_network_count(network_id)
 
     def _remove_ingress_nat_rules(self, floatingip):
-        network_id = floatingip.get_floating_network_id()
+        floating_lport = self._get_floating_lport(floatingip)
+        network_id = floating_lport.lswitch.unique_key
         if self._is_last_external_network(network_id):
             # if it is the last floating ip on this node, then
             # remove the common goto flow rule.
@@ -480,79 +501,79 @@ class DNATApp(df_base_app.DFlowApp):
         self._decrease_external_network_count(network_id)
 
     def update_floatingip_status(self, floatingip, status):
-        floatingip.update_fip_status(status)
         if self.neutron_server_notifier:
             self.neutron_server_notifier.notify_fip_status(floatingip, status)
 
-    def associate_floatingip(self, floatingip):
-        self.local_floatingips[floatingip.get_id()] = floatingip
-        lport = self.db_store2.get_one(
-            l2.LogicalPort(id=floatingip.get_lport_id()))
+    @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_CREATED)
+    def _create_floatingip(self, fip):
+        if fip.is_local:
+            self._associate_floatingip(fip)
+            self.update_floatingip_status(
+                fip, n_const.FLOATINGIP_STATUS_ACTIVE)
+
+    @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_UPDATED)
+    def _update_floatingip(self, fip, original_fip):
+        if original_fip.lport == fip.lport:
+            return
+
+        if original_fip.is_local:
+            self._disassociate_floatingip(original_fip)
+
+        if fip.is_local:
+            self._associate_floatingip(fip)
+
+        old_status = _fip_status_by_lport(original_fip)
+        new_status = _fip_status_by_lport(fip)
+
+        # FIXME (dimak): Race here: we should only update on disassociate
+        # or reassociate when FIP is still local
+        if old_status != new_status:
+            self.update_floatingip_status(fip, new_status)
+
+    def _associate_floatingip(self, floatingip):
+        self.local_floatingips[floatingip.id] = floatingip
+        lport = floatingip.lport
         mac = lport.mac
-        self.floatingip_rarp_cache[mac] = floatingip.get_ip_address()
+        self.floatingip_rarp_cache[mac] = floatingip.floating_ip_address
         self._install_ingress_nat_rules(floatingip)
         self._install_egress_nat_rules(floatingip)
-        self.update_floatingip_status(
-            floatingip, n_const.FLOATINGIP_STATUS_ACTIVE)
 
-    def disassociate_floatingip(self, floatingip):
-        self.delete_floatingip(floatingip)
-        self.update_floatingip_status(
-            floatingip, n_const.FLOATINGIP_STATUS_DOWN)
-
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
-    def _remove_local_port(self, lport):
-        ips_to_disassociate = [
-            fip for fip in self.local_floatingips.values()
-            if fip.get_lport_id() == lport.id]
-        for floatingip in ips_to_disassociate:
-            self.disassociate_floatingip(floatingip)
-
-    def delete_floatingip(self, floatingip):
-        self.local_floatingips.pop(floatingip.get_id(), 0)
-        lport = self.db_store2.get_one(
-            l2.LogicalPort(id=floatingip.get_lport_id()))
+    def _disassociate_floatingip(self, floatingip):
+        self.local_floatingips.pop(floatingip.id, 0)
+        lport = floatingip.lport
         mac = lport.mac
         self.floatingip_rarp_cache.pop(mac, None)
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)
 
-    @df_base_app.register_event(l2.LogicalSwitch,
-                                model_constants.EVENT_UPDATED)
-    def update_logical_switch(self, lswitch, orig_lswitch=None):
-        fip_groups = self._check_and_update_floatingips(lswitch)
-        if not fip_groups:
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_UPDATED)
+    def _update_local_port(self, lport, orig_lport):
+        if orig_lport.is_local:
+            # Associate only when lport becomes local
             return
-        for fip_group in fip_groups:
-            fip, old_fip = fip_group
-            # save to df db
-            self.nb_api.update_floatingip(
-                id=fip.get_id(),
-                topic=fip.get_topic(),
-                notify=False,
-                external_gateway_ip=fip.get_external_gateway_ip())
 
-    def _check_and_update_floatingips(self, lswitch, topic=None):
-        fip_return = []
-        if not lswitch.is_external:
-            return fip_return
-        network_id = lswitch.id
-        for fip in self.db_store.get_floatingips(topic):
-            if fip.get_floating_network_id() == network_id:
-                update_fip = self._update_floatingip_gateway(fip, lswitch)
-                if update_fip:
-                    fip_return.append(update_fip)
-        return fip_return
+        fips = self.db_store2.get_all(
+            l3.FloatingIp(lport=lport),
+            index=l3.FloatingIp.get_index('lport'),
+        )
 
-    def _update_floatingip_gateway(self, fip, lswitch):
-        subnets = lswitch.subnets
-        for subnet in subnets:
-            if str(subnet.cidr) == fip.get_external_cidr():
-                # external gateway ip changed
-                if str(subnet.gateway_ip) != fip.get_external_gateway_ip():
-                    fip.set_external_gateway_ip(subnet.gateway_ip)
-                    return fip
-        return None
+        for fip in fips:
+            self._associate_floatingip(fip)
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    def _remove_local_port(self, lport):
+        ips_to_disassociate = (
+            fip for fip in self.local_floatingips.values()
+            if fip.lport.id == lport.id)
+        for floatingip in ips_to_disassociate:
+            self._disassociate_floatingip(floatingip)
+            self.update_floatingip_status(
+                floatingip, n_const.FLOATINGIP_STATUS_DOWN)
+
+    @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_DELETED)
+    def _delete_floatingip(self, floatingip):
+        if floatingip.is_local:
+            self._disassociate_floatingip(floatingip)
 
     def _install_output_to_physical_patch(self, ofport):
         parser = self.parser

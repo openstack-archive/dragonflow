@@ -485,13 +485,10 @@ class FloatingipTestObj(object):
         self.closed = True
 
     def get_floatingip(self):
-        return self.nb_api.get_floatingip(self.floatingip_id)
+        return self.nb_api.get(l3.FloatingIp(id=self.floatingip_id))
 
     def exists(self):
-        floatingip = self.nb_api.get_floatingip(self.floatingip_id)
-        if floatingip:
-            return True
-        return False
+        return self.get_floatingip() is not None
 
     def wait_until_fip_active(self, timeout=const.DEFAULT_CMD_TIMEOUT,
                               sleep=1, exception=None):
