@@ -227,23 +227,22 @@ class TestObjectVersion(test_base.DFTestBase):
 
             fip_para = {'floating_network_id': external_network_id}
             # create
-            new_fip = fip.create(fip_para)
+            fip.create(fip_para)
             self.assertTrue(fip.exists())
-            fip_id = new_fip['id']
-            prev_version = self.nb_api.get_floatingip(fip_id).get_version()
+            prev_version = fip.get_floatingip().version
 
             # associate with port
             fip.update({'port_id': port_id})
             fip_obj = fip.get_floatingip()
-            self.assertEqual(fip_obj.get_lport_id(), port_id)
-            version = self.nb_api.get_floatingip(fip_id).get_version()
+            self.assertEqual(fip_obj.lport.id, port_id)
+            version = fip_obj.version
             self.assertGreater(version, prev_version)
             prev_version = version
 
             fip.update({})
             fip_obj = fip.get_floatingip()
-            self.assertIsNone(fip_obj.get_lport_id())
-            version = self.nb_api.get_floatingip(fip_id).get_version()
+            self.assertIsNone(fip_obj.lport)
+            version = fip_obj.version
             self.assertGreater(version, prev_version)
 
             fip.close()
