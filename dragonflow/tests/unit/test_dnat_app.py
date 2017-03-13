@@ -15,7 +15,15 @@
 
 import mock
 
+from dragonflow.db.models import l2
+from dragonflow.db.models import l3
 from dragonflow.tests.unit import test_app_base
+
+
+def _get_local_lport():
+    lport = mock.Mock()
+    lport.is_local = True
+    return lport
 
 
 class TestDNATApp(test_app_base.DFAppTestBase):
@@ -28,7 +36,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
     def test_external_bridge_online(self):
         self.dnat_app.local_floatingips[
-            test_app_base.fake_floatingip1.get_id()] = (
+            test_app_base.fake_floatingip1.id] = (
                 test_app_base.fake_floatingip1)
 
         with mock.patch.object(self.dnat_app,
@@ -65,15 +73,14 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
     def test_delete_port_with_deleted_floatingip(self):
         self.controller.update(test_app_base.fake_local_port1)
-        self.controller.update_floatingip(test_app_base.fake_floatingip1)
-        self.controller.delete_floatingip(
-            test_app_base.fake_floatingip1.get_id())
+        self.controller.update(test_app_base.fake_floatingip1)
+        self.controller.delete(test_app_base.fake_floatingip1)
 
         self.assertFalse(self.dnat_app.local_floatingips)
 
         with mock.patch.object(
             self.dnat_app,
-            'delete_floatingip',
+            '_delete_floatingip',
         ) as mock_func:
             self.dnat_app._remove_local_port(test_app_base.fake_local_port1)
             mock_func.assert_not_called()
@@ -81,14 +88,93 @@ class TestDNATApp(test_app_base.DFAppTestBase):
     def test_floatingip_removed_only_once(self):
         self.controller.update(test_app_base.fake_local_port1)
         self.controller.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
-        self.controller.update_floatingip(test_app_base.fake_floatingip1)
-        self.controller.delete_floatingip(
-            test_app_base.fake_floatingip1.get_id())
+        self.controller.update(test_app_base.fake_floatingip1)
+        self.controller.delete(test_app_base.fake_floatingip1)
         self.controller.delete(test_app_base.fake_local_port1)
-        with mock.patch.object(
-            self.controller,
-            'delete_floatingip'
-        ) as mock_func:
+        with mock.patch.object(self.controller, 'delete') as mock_func:
             self.controller.topology.ovs_port_deleted(
                 test_app_base.fake_ovs_port1.get_id())
-            mock_func.assert_not_called()
+        mock_func.assert_not_called()
+
+    def test_associate_floatingip_called_on_create(self):
+        fip = l3.FloatingIp(id='fake_id')
+        fip.lport = mock.Mock()
+        fip.lport.is_local = True
+
+        with mock.patch.object(self.dnat_app, 'associate_floatingip') as m:
+            fip.emit_created()
+            m.assert_called_once_with(fip)
+
+    def test_associate_floatingip_not_called_on_create(self):
+        fip = l3.FloatingIp(id='fake_id')
+
+        with mock.patch.object(self.dnat_app, 'associate_floatingip') as m:
+            fip.emit_created()
+            m.assert_not_called()
+
+    def test_disassociate_floatingip_called_on_delete(self):
+        fip = l3.FloatingIp(id='fake_id', lport='fake_lport_id')
+
+        with mock.patch.object(self.dnat_app, 'disassociate_floatingip') as m:
+            fip.emit_deleted()
+            m.assert_called_once_with(fip)
+
+    def test_disassociate_floatingip_not_called_on_delete(self):
+        fip = l3.FloatingIp(id='fake_id')
+
+        with mock.patch.object(self.dnat_app, 'disassociate_floatingip') as m:
+            fip.emit_deleted()
+            m.assert_not_called()
+
+    def test_reassociate_on_lport_change(self):
+        fip = l3.FloatingIp(id='fake_id', lport='fake_lport_id')
+        old_fip = l3.FloatingIp(id='fake_id', lport='fake_lport_id1')
+
+        with mock.patch.object(self.dnat_app, 'disassociate_floatingip') as d:
+            with mock.patch.object(self.dnat_app, 'associate_floatingip') as a:
+                fip.emit_updated(old_fip)
+                a.assert_called_once_with(fip)
+                d.assert_called_once_with(old_fip)
+
+    def test_no_reassociate_on_update(self):
+        fip = l3.FloatingIp(id='fake_id', lport='fake_lport_id')
+        old_fip = l3.FloatingIp(id='fake_id', lport='fake_lport_id')
+
+        with mock.patch.object(self.dnat_app, 'disassociate_floatingip') as d:
+            with mock.patch.object(self.dnat_app, 'associate_floatingip') as a:
+                fip.emit_updated(old_fip)
+                a.assert_not_called()
+                d.assert_not_called()
+
+    def test_associate_on_update(self):
+        fip = l3.FloatingIp(id='fake_id')
+        fip.lport = _get_local_lport()
+        old_fip = l3.FloatingIp(id='fake_id')
+
+        with mock.patch.object(self.dnat_app, 'disassociate_floatingip') as d:
+            with mock.patch.object(self.dnat_app, 'associate_floatingip') as a:
+                fip.emit_updated(old_fip)
+                a.assert_called_once_with(fip)
+                d.assert_not_called()
+
+    def test_disassociate_on_update(self):
+        fip = l3.FloatingIp(id='fake_id')
+        old_fip = l3.FloatingIp(id='fake_id')
+        old_fip.lport = _get_local_lport()
+
+        with mock.patch.object(self.dnat_app, 'disassociate_floatingip') as d:
+            with mock.patch.object(self.dnat_app, 'associate_floatingip') as a:
+                fip.emit_updated(old_fip)
+                a.assert_not_called()
+                d.assert_called_once_with(old_fip)
+
+    def test_remove_local_lport(self):
+        lport = l2.LogicalPort(id='fake_lport')
+        lport.is_local = True
+        fip = l3.FloatingIp(id='fake_id', lport=lport)
+        self.dnat_app.db_store2.update(lport)
+
+        self.dnat_app.local_floatingips[fip.id] = fip
+        with mock.patch.object(self.dnat_app, 'disassociate_floatingip') as d:
+            lport.emit_local_deleted()
+            d.assert_called_once_with(fip)
