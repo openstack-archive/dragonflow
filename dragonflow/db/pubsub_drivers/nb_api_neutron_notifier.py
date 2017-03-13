@@ -29,6 +29,7 @@ from dragonflow.db import db_common
 from dragonflow.db import models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
+from dragonflow.db.models import l3
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.db import neutron_notifier_api
 
@@ -120,7 +121,7 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
             core_plugin = directory.get_plugin()
             core_plugin.update_port_status(n_context.get_admin_context(),
                                            key, value)
-        elif models.Floatingip.table_name == table and 'update' == action:
+        elif l3.FloatingIp.table_name == table and 'update' == action:
             l3_plugin = directory.get_plugin(n_const.L3)
             l3_plugin.update_fip_status(n_context.get_admin_context(),
                                         key, value)
