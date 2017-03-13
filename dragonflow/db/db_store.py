@@ -22,12 +22,10 @@ from dragonflow.db import models
 class TenantDbStore(object):
 
     def __init__(self):
-        self.floatingips = {}
         self.publishers = {}
         self.activeports = {}
         self.lock = threading.Lock()
         self._table_name_mapping = {
-            models.Floatingip.table_name: self.floatingips,
             models.Publisher.table_name: self.publishers,
             models.AllowedAddressPairsActivePort.table_name: self.activeports
         }
@@ -115,22 +113,6 @@ class DbStore(object):
         table_item = self.get(table_name, key, topic)
         if table_item:
             return table_item.get_unique_key()
-
-    def get_floatingip_keys(self, topic=None):
-        return self.keys(models.Floatingip.table_name, topic)
-
-    def update_floatingip(self, floatingip_id, floatingip, topic=None):
-        self.set(models.Floatingip.table_name,
-                 floatingip_id, floatingip, topic)
-
-    def get_floatingip(self, floatingip_id, topic=None):
-        return self.get(models.Floatingip.table_name, floatingip_id, topic)
-
-    def delete_floatingip(self, floatingip_id, topic=None):
-        self.delete(models.Floatingip.table_name, floatingip_id, topic)
-
-    def get_floatingips(self, topic=None):
-        return self.values(models.Floatingip.table_name, topic)
 
     def update_publisher(self, uuid, publisher, topic=None):
         self.set(models.Publisher.table_name, uuid, publisher, topic)

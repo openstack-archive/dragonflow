@@ -27,27 +27,6 @@ class TestDbStore(tests_base.BaseTestCase):
         tests_base.BaseTestCase.setUp(self)
         self.db_store = db_store.DbStore()
 
-    def test_floating_ip(self):
-        fip1 = 'fip1'
-        fip2 = 'fip2'
-        fip3 = 'fip3'
-        self.db_store.update_floatingip('id1', fip1, 'topic1')
-        self.db_store.update_floatingip('id2', fip2, 'topic2')
-        self.db_store.update_floatingip('id3', fip3, 'topic2')
-        self.assertEqual(fip1, self.db_store.get_floatingip('id1'))
-        self.assertEqual(fip2, self.db_store.get_floatingip('id2'))
-        self.assertEqual(
-            fip3,
-            self.db_store.get_floatingip('id3', 'topic2')
-        )
-        fips = self.db_store.get_floatingips()
-        fips_topic2 = self.db_store.get_floatingips('topic2')
-        self.assertEqual({fip1, fip2, fip3}, set(fips))
-        self.assertIn(fip2, fips_topic2)
-        self.assertIn(fip3, fips_topic2)
-        self.db_store.delete_floatingip('id3', 'topic2')
-        self.assertIsNone(self.db_store.get_floatingip('id3', 'topic2'))
-
     def test_publisher(self):
         pub1 = mock.Mock()
         pub1.get_topic.return_value = None
