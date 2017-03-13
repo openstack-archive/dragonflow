@@ -9,26 +9,26 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from dragonflow.db.models import legacy_models
+from dragonflow.db.models import legacy
 
 # Remove those once we're done
-NbObject = legacy_models.NbObject
-NbDbObject = legacy_models.NbDbObject
-UniqueKeyMixin = legacy_models.UniqueKeyMixin
-LogicalSwitch = legacy_models.LogicalSwitch
-Subnet = legacy_models.Subnet
-LogicalPort = legacy_models.LogicalPort
-LogicalRouter = legacy_models.LogicalRouter
-LogicalRouterPort = legacy_models.LogicalRouterPort
-SecurityGroup = legacy_models.SecurityGroup
-SecurityGroupRule = legacy_models.SecurityGroupRule
-Floatingip = legacy_models.Floatingip
-QosPolicy = legacy_models.QosPolicy
-Publisher = legacy_models.Publisher
-AllowedAddressPairsActivePort = legacy_models.AllowedAddressPairsActivePort
-Listener = legacy_models.Listener
-OvsPort = legacy_models.OvsPort
+NbObject = legacy.NbObject
+NbDbObject = legacy.NbDbObject
+UniqueKeyMixin = legacy.UniqueKeyMixin
+LogicalSwitch = legacy.LogicalSwitch
+Subnet = legacy.Subnet
+LogicalPort = legacy.LogicalPort
+LogicalRouter = legacy.LogicalRouter
+LogicalRouterPort = legacy.LogicalRouterPort
+SecurityGroup = legacy.SecurityGroup
+SecurityGroupRule = legacy.SecurityGroupRule
+Floatingip = legacy.Floatingip
+QosPolicy = legacy.QosPolicy
+Publisher = legacy.Publisher
+AllowedAddressPairsActivePort = legacy.AllowedAddressPairsActivePort
+Listener = legacy.Listener
+OvsPort = legacy.OvsPort
 
-UNIQUE_KEY = legacy_models.UNIQUE_KEY
+UNIQUE_KEY = legacy.UNIQUE_KEY
 
-table_class_mapping = legacy_models.table_class_mapping
+table_class_mapping = legacy.table_class_mapping
