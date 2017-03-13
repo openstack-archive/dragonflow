@@ -24,7 +24,7 @@ from oslo_config import cfg
 import testtools
 
 from dragonflow.common import utils as df_utils
-from dragonflow.db import models
+from dragonflow.db.models import l3 as df_l3
 from dragonflow.neutron.db.models import l3 as neutron_l3
 from dragonflow.tests.unit import test_mech_driver
 
@@ -134,17 +134,12 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                     {'floatingip': {'floating_network_id': n['network']['id'],
                                     'tenant_id': n['network']['tenant_id']}})
                 self.assertGreater(floatingip['revision_number'], 0)
-                self.nb_api.create_floatingip.assert_called_once_with(
-                    id=floatingip['id'],
-                    topic=floatingip['tenant_id'],
-                    version=floatingip['revision_number'],
-                    name=mock.ANY, floating_ip_address=mock.ANY,
-                    floating_network_id=mock.ANY, router_id=mock.ANY,
-                    port_id=mock.ANY, fixed_ip_address=mock.ANY,
-                    status=mock.ANY, floating_port_id=mock.ANY,
-                    floating_mac_address=mock.ANY,
-                    external_gateway_ip=mock.ANY,
-                    external_cidr=mock.ANY)
+                nb_fip = self.nb_api.create.call_args_list[-1][0][0]
+                self.assertIsInstance(nb_fip, df_l3.FloatingIp)
+                self.assertEqual(floatingip['id'], nb_fip.id)
+                self.assertEqual(floatingip['tenant_id'], nb_fip.topic)
+                self.assertEqual(floatingip['revision_number'],
+                                 nb_fip.version)
         return floatingip
 
     def test_create_update_floatingip_revision(self):
@@ -154,11 +149,11 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
         new_fip = self.l3p.update_floatingip(
             self.context, floatingip['id'], {'floatingip': floatingip})
         self.assertGreater(new_fip['revision_number'], old_version)
-        self.nb_api.update_floatingip.assert_called_once_with(
-            id=floatingip['id'], topic=new_fip['tenant_id'],
-            notify=True, name=mock.ANY, router_id=mock.ANY,
-            port_id=mock.ANY, version=new_fip['revision_number'],
-            fixed_ip_address=mock.ANY)
+        nb_fip = self.nb_api.update.call_args_list[-1][0][0]
+        self.assertIsInstance(nb_fip, df_l3.FloatingIp)
+        self.assertEqual(new_fip['id'], nb_fip.id)
+        self.assertEqual(new_fip['tenant_id'], nb_fip.topic)
+        self.assertEqual(new_fip['revision_number'], nb_fip.version)
 
     def test_create_floatingip_with_normal_user(self):
         normal_context = nctx.Context(is_admin=False, overwrite=False)
@@ -199,7 +194,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                                     'tenant_id': n['network']['tenant_id']}})
 
         self.assertEqual(n_const.FLOATINGIP_STATUS_DOWN, floatingip['status'])
-        notifier.notify_neutron_server(models.Floatingip.table_name,
+        notifier.notify_neutron_server(df_l3.FloatingIp.table_name,
                                        floatingip['id'],
                                        "update",
                                        n_const.FLOATINGIP_STATUS_ACTIVE)
