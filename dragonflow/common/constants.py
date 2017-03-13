@@ -21,3 +21,7 @@ OVS_UNKNOWN_INTERFACE = "unknown"
 
 PORT_STATUS_UP = "up"
 PORT_STATUS_DOWN = "down"
+
+ROLE_NEUTRON_SERVER = "neutron-server"
+ROLE_DF_CONTROLLER = "df-local-controller"
+ROLE_DF_PUBLISHER_SERVICE = "df-publisher-service"

@@ -390,6 +390,12 @@ class Publisher(NbDbObject):
     def get_last_activity_timestamp(self):
         return self.inner_obj.get('last_activity_timestamp')
 
+    def get_role(self):
+        return self.inner_obj.get('role')
+
+    def get_enabled(self):
+        return self.inner_obj.get('enabled')
+
     def get_version(self):
         return 0
 

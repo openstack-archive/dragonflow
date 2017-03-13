@@ -13,20 +13,17 @@
 import eventlet
 from eventlet import queue
 import sys
-import time
 import traceback
 
 from neutron.agent.common import config
 from neutron.common import config as common_config
 from oslo_log import log as logging
-from oslo_serialization import jsonutils
 
 from dragonflow._i18n import _LW
-from dragonflow.common import exceptions
+from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.db import db_common
-from dragonflow.db import models
 from dragonflow.db import pub_sub_api
 
 
@@ -41,11 +38,6 @@ class PublisherService(object):
         self.db = df_utils.load_driver(
             cfg.CONF.df.nb_db_class,
             df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-        self.uuid = pub_sub_api.generate_publisher_uuid()
-        self._rate_limit = df_utils.RateLimiter(
-            cfg.CONF.df.publisher_rate_limit_count,
-            cfg.CONF.df.publisher_rate_limit_timeout,
-        )
 
     def _get_publisher(self):
         pub_sub_driver = df_utils.load_driver(
@@ -68,6 +60,7 @@ class PublisherService(object):
     def initialize(self):
         if self.multiproc_subscriber:
             self.multiproc_subscriber.initialize(self._append_event_to_queue)
+        self.publisher.set_publisher_role(constants.ROLE_NEUTRON_SERVER)
         self.publisher.initialize()
 
     def _append_event_to_queue(self, table, key, action, value, topic):
@@ -83,61 +76,17 @@ class PublisherService(object):
             db_port=cfg.CONF.df.remote_db_port,
             config=cfg.CONF.df
         )
-        self._register_as_publisher()
         self._start_db_table_monitors()
         while True:
             try:
                 event = self._queue.get()
                 self.publisher.send_event(event)
-                if event.table != models.Publisher.table_name:
-                    self._update_timestamp_in_db()
                 eventlet.sleep(0)
             except Exception as e:
                 LOG.warning(_LW("Exception in main loop: {}, {}").format(
                     e, traceback.format_exc()
                 ))
                 # Ignore
-
-    def _update_timestamp_in_db(self):
-        if self._rate_limit():
-            return
-        try:
-            publisher_json = self.db.get_key(
-                models.Publisher.table_name,
-                self.uuid,
-            )
-            publisher = jsonutils.loads(publisher_json)
-            publisher['last_activity_timestamp'] = time.time()
-            publisher_json = jsonutils.dumps(publisher)
-            self.db.set_key(
-                models.Publisher.table_name,
-                self.uuid,
-                publisher_json
-            )
-        except exceptions.DBKeyNotFound:
-            self._register_as_publisher()
-
-    def _register_as_publisher(self):
-        publisher = {
-            'id': self.uuid,
-            'uri': self._get_uri(),
-            'last_activity_timestamp': time.time(),
-        }
-        publisher_json = jsonutils.dumps(publisher)
-        self.db.create_key(
-            models.Publisher.table_name,
-            self.uuid, publisher_json
-        )
-
-    def _get_uri(self):
-        ip = cfg.CONF.df.publisher_bind_address
-        if ip == '*' or ip == '127.0.0.1':
-            ip = cfg.CONF.df.management_ip
-        return "{}://{}:{}".format(
-            cfg.CONF.df.publisher_transport,
-            ip,
-            cfg.CONF.df.publisher_port,
-        )
 
     def _start_db_table_monitor(self, table_name):
         if table_name == 'publisher':

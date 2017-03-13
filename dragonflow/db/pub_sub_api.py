@@ -22,8 +22,10 @@ from oslo_serialization import jsonutils
 import six
 
 from dragonflow._i18n import _LE, _LI
+from dragonflow.common import constants
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
+from dragonflow import conf as cfg
 from dragonflow.db import db_common
 from dragonflow.db import models
 from dragonflow.db.models import core
@@ -33,6 +35,15 @@ LOG = logging.getLogger(__name__)
 eventlet.monkey_patch(socket=False)
 
 MONITOR_TABLES = [core.Chassis.table_name, models.Publisher.table_name]
+
+
+def generate_publisher_uuid(role):
+    """
+    Generate a non-random uuid based on the fully qualified domain name.
+    This UUID is supposed to remain the same across service restarts.
+    """
+    hostname = "%s.%s" % (role, socket.getfqdn())
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, hostname))
 
 
 def pack_message(message):
@@ -51,14 +62,6 @@ def unpack_message(message):
     except Exception:
         LOG.exception(_LE("Error in unpack_message: "))
     return entry
-
-
-def generate_publisher_uuid():
-    """
-    Generate a non-random uuid based on the fully qualified domain name.
-    This UUID is supposed to remain the same across service restarts.
-    """
-    return str(uuid.uuid5(uuid.NAMESPACE_DNS, socket.getfqdn()))
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -88,7 +91,7 @@ class PubSubApi(object):
 class PublisherApi(object):
 
     @abc.abstractmethod
-    def initialize(self):
+    def initialize(self, uuid=None):
         """Initialize the DB client
 
         :param endpoint: ip:port
@@ -195,6 +198,92 @@ class SubscriberApi(object):
         :param topic:  topic to remove
         :type topic:   string
         """
+
+
+class PublisherRegisterBase(PublisherApi):
+    def __init__(self):
+        super(PublisherRegisterBase, self).__init__()
+        self.db_driver = df_utils.load_driver(
+            cfg.CONF.df.nb_db_class,
+            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
+        self._rate_limit = df_utils.RateLimiter(
+            cfg.CONF.df.publisher_rate_limit_count,
+            cfg.CONF.df.publisher_rate_limit_timeout,
+        )
+        self.role = constants.ROLE_NEUTRON_SERVER
+        self.uuid = None
+
+    def initialize(self, uuid=None):
+        self.db_driver.initialize(
+            db_ip=cfg.CONF.df.remote_db_ip,
+            db_port=cfg.CONF.df.remote_db_port,
+            config=cfg.CONF.df
+        )
+        self.uuid = uuid
+        if not self.uuid:
+            self.uuid = generate_publisher_uuid(self.role)
+        self._register_as_publisher()
+
+    def send_event(self, update, topic):
+        self._update_timestamp_in_db()
+
+    def set_publisher_role(self, role):
+        self.role = role
+
+    def _update_timestamp_in_db(self):
+        if self._rate_limit():
+            return
+        try:
+            publisher_json = self.db_driver.get_key(
+                models.Publisher.table_name,
+                self.uuid,
+            )
+            publisher = jsonutils.loads(publisher_json)
+            publisher['last_activity_timestamp'] = time.time()
+            publisher_json = jsonutils.dumps(publisher)
+            self.db_driver.set_key(
+                models.Publisher.table_name,
+                self.uuid,
+                publisher_json
+            )
+        except exceptions.DBKeyNotFound:
+            self._register_as_publisher()
+
+    def _register_as_publisher(self):
+        publisher = {
+            'id': self.uuid,
+            'uri': self._get_uri(),
+            'last_activity_timestamp': time.time(),
+            'role': self.role,
+            'enabled': True,
+        }
+        publisher_json = jsonutils.dumps(publisher)
+        self.db_driver.create_key(
+            models.Publisher.table_name,
+            self.uuid, publisher_json
+        )
+
+    def _get_uri(self):
+        ip = cfg.CONF.df.publisher_bind_address
+        if ip == '*' or ip == '127.0.0.1':
+            ip = cfg.CONF.df.management_ip
+        return "{}://{}:{}".format(
+            cfg.CONF.df.publisher_transport,
+            ip,
+            cfg.CONF.df.publisher_port,
+        )
+
+    def close(self):
+        pass
+
+    def set_publisher_for_failover(self, pub, callback):
+        pass
+
+    def start_detect_for_failover(self):
+        pass
+
+    def process_ha(self):
+        pass
 
 
 class SubscriberAgentBase(SubscriberApi):
@@ -312,7 +401,8 @@ class StalePublisherMonitor(TableMonitor):
             polling_time
         )
         self._timeout = timeout
-        self._uuid = generate_publisher_uuid()
+        self._uuid = generate_publisher_uuid(
+            constants.ROLE_DF_PUBLISHER_SERVICE)
 
     def _poll_once(self, old_cache):
         """Scan for stale entries of other publishers"""

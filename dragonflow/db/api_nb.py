@@ -25,7 +25,8 @@ from oslo_serialization import jsonutils
 from oslo_utils import excutils
 
 from dragonflow._i18n import _LI, _LW, _LE
-import dragonflow.common.exceptions as df_exceptions
+from dragonflow.common import constants as df_const
+from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import model_framework as mf
@@ -66,6 +67,9 @@ class NbApi(object):
         if self.is_neutron_server:
             # multiproc pub/sub is only supported in neutron server
             self.pub_sub_use_multiproc = cfg.CONF.df.pub_sub_use_multiproc
+            self.role = df_const.ROLE_NEUTRON_SERVER
+        else:
+            self.role = df_const.ROLE_DF_CONTROLLER
 
     @staticmethod
     def get_instance(is_neutron_server):
@@ -89,6 +93,7 @@ class NbApi(object):
             self.publisher = self._get_publisher()
             self.subscriber = self._get_subscriber()
             if self.is_neutron_server:
+                self.publisher.set_publisher_role(self.role)
                 self.publisher.initialize()
                 # Start a thread to detect DB failover in Plugin
                 self.publisher.set_publisher_for_failover(
@@ -101,6 +106,7 @@ class NbApi(object):
                 # we initialize the publisher here. Make sure it
                 # only supports redis-based pub/sub driver.
                 if "ActivePortDetectionApp" in cfg.CONF.df.apps_list:
+                    self.publisher.set_publisher_role(self.role)
                     self.publisher.initialize()
 
                 # NOTE(gampel) we want to start queuing event as soon
@@ -111,6 +117,9 @@ class NbApi(object):
                     self.subscriber,
                     self.db_change_callback)
                 self.subscriber.register_hamsg_for_db()
+
+    def set_role(self, role):
+        self.role = role
 
     def set_db_consistency_manager(self, db_consistency_manager):
         self.db_consistency_manager = db_consistency_manager
@@ -142,13 +151,8 @@ class NbApi(object):
     def _start_subscriber(self):
         self.subscriber.initialize(self.db_change_callback)
         self.subscriber.register_topic(db_common.SEND_ALL_TOPIC)
-        publishers_ips = cfg.CONF.df.publishers_ips
-        uris = {'%s://%s:%s' % (
-                cfg.CONF.df.publisher_transport,
-                ip,
-                cfg.CONF.df.publisher_port) for ip in publishers_ips}
         publishers = self.get_publishers()
-        uris |= {publisher.get_uri() for publisher in publishers}
+        uris = {publisher.get_uri() for publisher in publishers}
         for uri in uris:
             self.subscriber.register_listen_address(uri)
         self.subscriber.daemonize()
@@ -223,6 +227,10 @@ class NbApi(object):
             return
         self.subscriber.initialize(cb)
         self.subscriber.register_topic(topic)
+        publishers = self.get_publishers()
+        uris = {publisher.get_uri() for publisher in publishers}
+        for uri in uris:
+            self.subscriber.register_listen_address(uri)
         self.subscriber.daemonize()
 
     def db_change_callback(self, table, key, action, value, topic=None):
@@ -760,15 +768,8 @@ class NbApi(object):
             topic,
         )
 
-    def delete_publisher(self, uuid, topic):
+    def delete_publisher(self, uuid, topic=None):
         self.driver.delete_key(db_models.Publisher.table_name, uuid, topic)
-        self._send_db_change_event(
-            db_models.Publisher.table_name,
-            uuid,
-            'delete',
-            uuid,
-            topic,
-        )
 
     def get_publisher(self, uuid, topic=None):
         try:
@@ -782,7 +783,23 @@ class NbApi(object):
             LOG.exception(_LE('Could not get publisher %s'), uuid)
             return None
 
-    def get_publishers(self, topic=None):
+    def get_publishers(self, filter_enabled=True,
+                       filter_old=False, topic=None):
+        if self.role == df_const.ROLE_NEUTRON_SERVER:
+            publishers = self._get_publishers(df_const.ROLE_DF_CONTROLLER,
+                                              filter_enabled,
+                                              filter_old, topic)
+        elif self.role == df_const.ROLE_DF_CONTROLLER:
+            publishers = self._get_publishers(df_const.ROLE_NEUTRON_SERVER,
+                                              filter_enabled,
+                                              filter_old, topic)
+        else:
+            # Ignore other roles
+            return []
+        return publishers
+
+    def _get_publishers(self, role, filter_enabled=True,
+                        filter_old=False, topic=None):
         publishers_values = self.driver.get_all_entries(
             db_models.Publisher.table_name,
             topic,
@@ -791,13 +808,27 @@ class NbApi(object):
                       for value in publishers_values]
         timeout = cfg.CONF.df.publisher_timeout
 
+        def _publisher_enabled(publisher):
+            return publisher.get_enabled()
+
+        def _publisher_role(publisher):
+            return (publisher.get_role() == role)
+
         def _publisher_not_too_old(publisher):
             last_activity_timestamp = publisher.get_last_activity_timestamp()
             return (last_activity_timestamp >= time.time() - timeout)
-        filter(_publisher_not_too_old, publishers)
+
+        publishers = filter(_publisher_role, publishers)
+        print "Nick: get role publishers: %s" % str(publishers)
+        if filter_enabled:
+            publishers = filter(_publisher_enabled, publishers)
+            print "Nick: get enabled publishers: %s" % str(publishers)
+        if filter_old:
+            publishers = filter(_publisher_not_too_old, publishers)
+        print "Nick: get final publishers: %s" % str(publishers)
         return publishers
 
-    def update_publisher(self, uuid, topic, **columns):
+    def update_publisher(self, uuid, topic=None, **columns):
         publisher_value = self.driver.get_key(
             db_models.Publisher.table_name,
             uuid,
@@ -806,19 +837,19 @@ class NbApi(object):
         publisher = jsonutils.loads(publisher_value)
         publisher.update(columns)
         publisher_value = jsonutils.dumps(publisher)
+        print "Nick: pub mod: %s" % publisher_value
         self.driver.set_key(
             db_models.Publisher.table_name,
             uuid,
             publisher_value,
             topic,
         )
-        self._send_db_change_event(
-            db_models.Publisher.table_name,
-            uuid,
-            'set',
-            publisher_value,
-            topic,
-        )
+
+    def disable_publisher(self, uuid, topic=None):
+        self.update_publisher(uuid, topic, enabled=False)
+
+    def enable_publisher(self, uuid, topic=None):
+        self.update_publisher(uuid, topic, enabled=True)
 
     def create_qos_policy(self, policy_id, topic, **columns):
         policy = {'id': policy_id,

@@ -50,9 +50,9 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
         self.client = None
         self.redis_mgt = None
 
-    def initialize(self):
+    def initialize(self, uuid=None):
         # find a publisher server node
-        super(RedisPublisherAgent, self).initialize()
+        super(RedisPublisherAgent, self).initialize(uuid)
         self.redis_mgt = redis_mgt.RedisMgt.get_instance(
             cfg.CONF.df.remote_db_ip,
             cfg.CONF.df.remote_db_port)

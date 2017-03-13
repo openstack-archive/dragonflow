@@ -17,8 +17,10 @@ from oslo_config import cfg
 from oslo_serialization import jsonutils
 import six
 
+from dragonflow.common import constants as df_const
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
+from dragonflow.db import models as db_models
 from dragonflow.db import pub_sub_api
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils as test_utils
@@ -27,6 +29,7 @@ from dragonflow.tests.fullstack import test_objects as objects
 
 
 events_num = 0
+publisher_id = '76edd94a-a7a6-4cd8-a0b1-60c54112f117'
 
 
 class Namespace(object):
@@ -39,7 +42,8 @@ class PubSubTestBase(test_base.DFTestBase):
             pubsub_driver_name,
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         publisher = pub_sub_driver.get_publisher()
-        publisher.initialize()
+        publisher.set_publisher_role(df_const.ROLE_NEUTRON_SERVER)
+        publisher.initialize(uuid=publisher_id)
         return publisher
 
     def get_publisher(self):
@@ -50,8 +54,11 @@ class PubSubTestBase(test_base.DFTestBase):
         return self._get_publisher(pubsub_driver_name)
 
     def get_server_publisher(self, bind_address="127.0.0.1", port=12345):
-        cfg.CONF.df.publisher_port = str(port)
-        cfg.CONF.df.publisher_bind_address = bind_address
+        cfg.CONF.set_override('publisher_port', port, group='df')
+        cfg.CONF.set_override('publisher_bind_address',
+                              bind_address, group='df')
+        print "Nick: disable all"
+        self.disable_all()
         return self._get_publisher(cfg.CONF.df.pub_sub_driver)
 
     def get_subscriber(self, callback):
@@ -61,17 +68,39 @@ class PubSubTestBase(test_base.DFTestBase):
         subscriber = pub_sub_driver.get_subscriber()
         subscriber.initialize(callback)
         subscriber.register_topic(db_common.SEND_ALL_TOPIC)
-        uri = '%s://%s:%s' % (
-            cfg.CONF.df.publisher_transport,
-            '127.0.0.1',
-            cfg.CONF.df.publisher_port
-        )
-        subscriber.register_listen_address(uri)
-        publishers = self.nb_api.get_publishers()
+        publishers = self.nb_api._get_publishers(df_const.ROLE_NEUTRON_SERVER)
         for publisher in publishers:
+            print 'Nick: register publisher: %s' % publisher.get_uri()
             subscriber.register_listen_address(publisher.get_uri())
         subscriber.daemonize()
         return subscriber
+
+    def cleanup_publisher(self, publisher):
+        if publisher:
+            publisher.close()
+            self.nb_api.delete_publisher(publisher_id)
+            print "Nick: enable all"
+            self.enable_all()
+
+    def disable_all(self):
+        publishers_values = self.nb_api.driver.get_all_entries(
+            db_models.Publisher.table_name,
+        )
+        publishers = [db_models.Publisher(value)
+                      for value in publishers_values]
+        for publisher in publishers:
+            if publisher.get_id() != publisher_id:
+                self.nb_api.disable_publisher(publisher.get_id())
+
+    def enable_all(self):
+        publishers_values = self.nb_api.driver.get_all_entries(
+            db_models.Publisher.table_name,
+        )
+        publishers = [db_models.Publisher(value)
+                      for value in publishers_values]
+        for publisher in publishers:
+            if publisher.get_id() != publisher_id:
+                self.nb_api.enable_publisher(publisher.get_id())
 
 
 class TestPubSub(PubSubTestBase):
@@ -188,27 +217,22 @@ class TestPubSub(PubSubTestBase):
                 ns.events_num += 1
                 ns.events_action = action
 
-        publisher = self.get_server_publisher()
+        publisher = self.get_server_publisher(port=12343)
         subscriber = self.get_subscriber(_db_change_callback)
-
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
+
         local_events_num = ns.events_num
         action = "log"
         update = db_common.DbUpdate(
             'info', 'log', action, "test ev no diff ports value")
-        publisher.send_event(update)
-        time.sleep(const.DEFAULT_CMD_TIMEOUT)
-
-        self.assertEqual(local_events_num + 1, ns.events_num)
-        self.assertEqual(ns.events_action, action)
-        local_events_num = ns.events_num
         for i in six.moves.range(100):
             publisher.send_event(update)
             time.sleep(0)
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
 
-        self.assertEqual(local_events_num + 100, ns.events_num)
+        self.assertGreaterEqual(ns.events_num, local_events_num + 1)
         subscriber.stop()
+        self.cleanup_publisher(publisher)
 
     def test_pub_sub_add_topic(self):
         if not self.do_test:
@@ -222,7 +246,7 @@ class TestPubSub(PubSubTestBase):
                 self.events_num_t += 1
                 self.events_action_t = action
 
-        publisher = self.get_server_publisher()
+        publisher = self.get_server_publisher(port=12344)
         subscriber = self.get_subscriber(_db_change_callback_topic)
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         topic = "topic"
@@ -254,6 +278,7 @@ class TestPubSub(PubSubTestBase):
         publisher.send_event(update, topic)
         self.assertIsNone(self.events_action_t)
         subscriber.stop()
+        self.cleanup_publisher(publisher)
 
     def test_pub_sub_register_addr(self):
         if not self.do_test:
@@ -267,7 +292,7 @@ class TestPubSub(PubSubTestBase):
                 ns.events_num += 1
                 ns.events_action = action
 
-        publisher = self.get_server_publisher()
+        publisher = self.get_server_publisher(port=12347)
         subscriber = self.get_subscriber(_db_change_callback)
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         action = "log"
@@ -296,6 +321,9 @@ class TestPubSub(PubSubTestBase):
         publisher2.send_event(update)
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertEqual(ns.events_action, action)
+        subscriber.stop()
+        self.cleanup_publisher(publisher)
+        self.cleanup_publisher(publisher2)
 
 
 class TestMultiprocPubSub(PubSubTestBase):
@@ -331,12 +359,13 @@ class TestMultiprocPubSub(PubSubTestBase):
         if not self.do_test:
             return
         self.event_received = False
-        cfg.CONF.df.publisher_multiproc_socket = '/tmp/ipc_test_socket'
+        cfg.CONF.set_override('publisher_multiproc_socket',
+                              '/tmp/ipc_test_socket', group='df')
         pub_sub_driver = df_utils.load_driver(
             cfg.CONF.df.pub_sub_multiproc_driver,
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         publisher = pub_sub_driver.get_publisher()
-        publisher.initialize()
+        publisher.initialize(uuid=publisher_id)
         self.subscriber = pub_sub_driver.get_subscriber()
         self.subscriber.initialize(self._verify_event)
         self.subscriber.daemonize()
@@ -344,6 +373,7 @@ class TestMultiprocPubSub(PubSubTestBase):
         test_utils.wait_until_true(lambda: self.event_received)
         self.subscriber.stop()
         self.subscriber = None
+        publisher.close()
 
 
 class TestDbTableMonitors(PubSubTestBase):
@@ -357,7 +387,7 @@ class TestDbTableMonitors(PubSubTestBase):
         self.namespace = Namespace()
         self.namespace.events = []
         self.namespace.has_values = False
-        self.publisher = self.get_server_publisher()
+        self.publisher = self.get_server_publisher(port=12348)
         self.subscriber = self.get_subscriber(self._db_change_callback)
         self.monitor = self._create_monitor('chassis')
 
@@ -365,6 +395,7 @@ class TestDbTableMonitors(PubSubTestBase):
         if self.do_test:
             self.monitor.stop()
             self.subscriber.stop()
+            self.cleanup_publisher(self.publisher)
         super(TestDbTableMonitors, self).tearDown()
 
     def _db_change_callback(self, table, key, action, value, topic):

@@ -48,6 +48,8 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
                 LOG.warning(_LW("RedisPortStatusNotifier cannot "
                                 "work when enable_df_pub_sub is disabled"))
                 return
+            self.nb_api.publisher.set_publisher_role(
+                constants.ROLE_DF_CONTROLLER)
             self.nb_api.publisher.initialize()
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_NEUTRON_LISTENER)
