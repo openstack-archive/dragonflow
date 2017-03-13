@@ -17,7 +17,7 @@ from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
 from dragonflow.db import db_store2
-from dragonflow.db.models import core_models
+from dragonflow.db.models import core
 from dragonflow.tests.unit import test_app_base
 
 
@@ -233,7 +233,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
     def test_delete_chassis(self, mock_db_store2_delete,
                             mock_get_ports, mock_delete_lport):
         lport_id = 'fake_lport_id'
-        chassis = core_models.Chassis(id='fake_chassis_id')
+        chassis = core.Chassis(id='fake_chassis_id')
         lport = mock.Mock()
         lport.get_id.return_value = lport_id
         mock_get_ports.return_value = [lport]

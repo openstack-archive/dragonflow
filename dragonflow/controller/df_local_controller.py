@@ -36,7 +36,7 @@ from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db import model_framework
 from dragonflow.db import models
-from dragonflow.db.models import core_models
+from dragonflow.db.models import core
 from dragonflow.db.models import mixins
 from dragonflow.ovsdb import vswitch_impl
 
@@ -400,7 +400,7 @@ class DfLocalController(object):
             else:
                 # Remote port that exists in current network pod.
                 remote_chassis = self.db_store2.get_one(
-                    core_models.Chassis(id=lport.get_chassis()))
+                    core.Chassis(id=lport.get_chassis()))
                 if not remote_chassis:
                     # chassis has not been online yet.
                     return
@@ -528,13 +528,13 @@ class DfLocalController(object):
 
     def register_chassis(self):
         # Get all chassis from nb db to db store.
-        for c in self.nb_api.get_all(core_models.Chassis):
+        for c in self.nb_api.get_all(core.Chassis):
             self.db_store2.update(c)
 
         old_chassis = self.db_store2.get_one(
-            core_models.Chassis(id=self.chassis_name))
+            core.Chassis(id=self.chassis_name))
 
-        chassis = core_models.Chassis(
+        chassis = core.Chassis(
             id=self.chassis_name,
             ip=self.ip,
             tunnel_types=self.tunnel_types,
