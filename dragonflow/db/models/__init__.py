@@ -18,7 +18,6 @@ UniqueKeyMixin = legacy_models.UniqueKeyMixin
 LogicalPort = legacy_models.LogicalPort
 SecurityGroup = legacy_models.SecurityGroup
 SecurityGroupRule = legacy_models.SecurityGroupRule
-Floatingip = legacy_models.Floatingip
 Publisher = legacy_models.Publisher
 AllowedAddressPairsActivePort = legacy_models.AllowedAddressPairsActivePort
 Listener = legacy_models.Listener

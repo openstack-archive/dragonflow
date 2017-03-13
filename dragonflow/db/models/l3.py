@@ -51,3 +51,33 @@ class LogicalRouter(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
         for idx, router_port in enumerate(self.ports):
             if router_port.id == router_port_id:
                 self.ports.pop(idx)
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class FloatingIp(mf.ModelBase, mixins.Version, mixins.Topic,
+                 mixins.UniqueKey, mixins.BasicEvents):
+    table_name = 'floatingip'
+
+    status = fields.StringField()  # FIXME enum
+    floating_ip_address = df_fields.IpAddressField()
+    floating_mac_address = fields.StringField()
+    port_id = df_fields.ReferenceField(l2.LogicalPort)
+    fixed_ip_address = df_fields.IpAddressField()
+    router_id = df_fields.ReferenceField(LogicalRouter)
+    external_gateway_ip = df_fields.IpAddressField()
+    external_cidr = df_fields.IpNetworkField()
+    floating_port_id = df_fields.ReferenceField(l2.LogicalPort)
+
+    # Renames
+    @property
+    def lport(self):
+        return self.port_id
+
+    @property
+    def lrouter(self):
+        return self.router_id
+
+    @property
+    def floating_lport(self):
+        return self.floating_port_id

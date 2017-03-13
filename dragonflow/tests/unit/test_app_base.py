@@ -272,22 +272,22 @@ fake_chassis2 = core_models.Chassis(
 )
 
 
-fake_floatingip1 = db_models.Floatingip("{}")
-fake_floatingip1.inner_obj = {
-    'router_id': 'fake_router_id',
-    'status': 'DOWN',
-    'name': 'no_fip_name',
-    'floating_port_id': 'fake_floatingip_port_id',
-    'floating_mac_address': 'fa:16:3e:76:a2:84',
-    'floating_network_id': 'fake_external_switch1',
-    'topic': 'fake_tenant1',
-    'fixed_ip_address': '10.0.0.6',
-    'floating_ip_address': '172.24.4.2',
-    'version': 7,
-    'external_cidr': '172.24.4.0/24',
-    'port_id': 'fake_port1',
-    'id': 'fake_floatingip_id1',
-    'external_gateway_ip': u'172.24.4.1'}
+fake_floatingip1 = db_models.Floatingip(
+    router_id='fake_router_id',
+    status='DOWN',
+    name='no_fip_name',
+    floating_port_id='fake_floatingip_port_id',
+    floating_mac_address='fa:16:3e:76:a2:84',
+    floating_network_id='fake_external_switch1',
+    topic='fake_tenant1',
+    fixed_ip_address='10.0.0.6',
+    floating_ip_address='172.24.4.2',
+    version=7,
+    external_cidr='172.24.4.0/24',
+    port_id='fake_port1',
+    id='fake_floatingip_id1',
+    external_gateway_ip=u'172.24.4.1',
+)
 
 
 fake_security_group = db_models.SecurityGroup("{}")

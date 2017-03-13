@@ -140,13 +140,6 @@ class DfLocalController(object):
                 self.delete_lport,
             ),
             df_db_objects_refresh.DfObjectRefresher(
-                'Floating IPs',
-                self.db_store.get_floatingip_keys,
-                self.nb_api.get_floatingips,
-                self.update_floatingip,
-                self.delete_floatingip,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
                 'Active Ports',
                 self.db_store.get_active_port_keys,
                 self.nb_api.get_active_ports,
@@ -174,13 +167,6 @@ class DfLocalController(object):
                 models.LogicalPort,
                 self.db_store.get_ports,
                 self.nb_api.get_all_logical_ports,
-                self.update,
-                self.delete_by_id,
-            ),
-            db_consistent.ModelHandler(
-                models.Floatingip,
-                self.db_store.get_floatingips,
-                self.nb_api.get_floatingips,
                 self.update,
                 self.delete_by_id,
             ),
@@ -488,33 +474,6 @@ class DfLocalController(object):
         self.open_flow_app.notify_remove_security_group_rule(
                  secgroup, secgroup_rule)
 
-    def update_floatingip(self, floatingip):
-        # check whether this floatingip is associated with a lport or not
-        if floatingip.get_lport_id():
-            if self.db_store.get_local_port(floatingip.get_lport_id()) is None:
-                return
-
-        old_floatingip = self.db_store.get_floatingip(floatingip.get_id())
-        if old_floatingip is None:
-            # The new floatingip should be associated with a lport
-            if not floatingip.get_lport_id():
-                return
-            self._associate_floatingip(floatingip)
-            return
-        if not df_utils.is_valid_version(
-                old_floatingip.inner_obj if old_floatingip else None,
-                floatingip.inner_obj):
-            return
-        self._update_floatingip(old_floatingip, floatingip)
-
-    def delete_floatingip(self, floatingip_id):
-        floatingip = self.db_store.get_floatingip(floatingip_id)
-        if not floatingip:
-            return
-        self.open_flow_app.notify_delete_floatingip(floatingip)
-        LOG.info(_LI("Floatingip is deleted. Floatingip = %s"), floatingip)
-        self.db_store.delete_floatingip(floatingip_id)
-
     def update_publisher(self, publisher):
         self.db_store.update_publisher(publisher.get_id(), publisher)
         LOG.info(_LI('Registering to new publisher: %s'), str(publisher))
@@ -528,24 +487,6 @@ class DfLocalController(object):
                 publisher.get_uri()
             )
             self.db_store.delete_publisher(uuid)
-
-    def _associate_floatingip(self, floatingip):
-        self.db_store.update_floatingip(floatingip.get_id(), floatingip)
-        self.open_flow_app.notify_associate_floatingip(floatingip)
-        LOG.info(_LI("Floatingip is associated with port. Floatingip = %s"),
-                 floatingip)
-
-    def _disassociate_floatingip(self, floatingip):
-        self.db_store.delete_floatingip(floatingip.get_id())
-        self.open_flow_app.notify_disassociate_floatingip(floatingip)
-        LOG.info(_LI("Floatingip is disassociated from port. "
-                     "Floatingip = %s"), floatingip)
-
-    def _update_floatingip(self, old_floatingip, new_floatingip):
-        if new_floatingip.get_lport_id() != old_floatingip.get_lport_id():
-            self._disassociate_floatingip(old_floatingip)
-            if new_floatingip.get_lport_id():
-                self._associate_floatingip(new_floatingip)
 
     def ovs_port_updated(self, ovs_port):
         self.open_flow_app.notify_ovs_port_updated(ovs_port)

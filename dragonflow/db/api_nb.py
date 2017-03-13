@@ -458,58 +458,6 @@ class NbApi(object):
             res.append(db_models.SecurityGroup(secgroup_value))
         return res
 
-    def create_floatingip(self, id, topic, **columns):
-        floatingip = {}
-        floatingip['id'] = id
-        floatingip['topic'] = topic
-        for col, val in columns.items():
-            floatingip[col] = val
-        floatingip_json = jsonutils.dumps(floatingip)
-        self.driver.create_key(db_models.Floatingip.table_name,
-                               id, floatingip_json, topic)
-        if floatingip.get('port_id') is not None:
-            self._send_db_change_event(db_models.Floatingip.table_name,
-                                       id, 'create', floatingip_json, topic)
-
-    def delete_floatingip(self, id, topic):
-        floatingip = self.driver.get_key(db_models.Floatingip.table_name,
-                                         id, topic)
-        fip_dict = jsonutils.loads(floatingip)
-        if fip_dict.get('port_id') is not None:
-            self._send_db_change_event(db_models.Floatingip.table_name,
-                                       id, 'delete', id, topic)
-        self.driver.delete_key('floatingip', id, topic)
-
-    def update_floatingip(self, id, topic, notify, **columns):
-        floatingip_json = self.driver.get_key(db_models.Floatingip.table_name,
-                                              id, topic)
-        floatingip = jsonutils.loads(floatingip_json)
-        if not df_utils.is_valid_version(floatingip, columns):
-            return
-        floatingip.update(columns)
-        floatingip_json = jsonutils.dumps(floatingip)
-        self.driver.set_key(db_models.Floatingip.table_name,
-                            id, floatingip_json, floatingip['topic'])
-        if notify:
-            self._send_db_change_event(db_models.Floatingip.table_name,
-                                       id, 'set',
-                                       floatingip_json, floatingip['topic'])
-
-    def get_floatingip(self, id, topic=None):
-        try:
-            floatingip_value = self.driver.get_key(
-                db_models.Floatingip.table_name, id, topic)
-            return db_models.Floatingip(floatingip_value)
-        except Exception:
-            return None
-
-    def get_floatingips(self, topic=None):
-        res = []
-        for floatingip in self.driver.get_all_entries(
-                db_models.Floatingip.table_name, topic):
-            res.append(db_models.Floatingip(floatingip))
-        return res
-
     def create_publisher(self, uuid, topic, **columns):
         publisher = {
             'id': uuid,
@@ -631,7 +579,7 @@ class NbApi(object):
                 active_port_json))
         return res
 
-    def create(self, obj):
+    def create(self, obj, notify=True):
         """Create the provided object in the database and publish an event
            about its creation.
         """
@@ -641,10 +589,11 @@ class NbApi(object):
         topic = _get_topic(obj)
         self.driver.create_key(model.table_name, obj.id,
                                serialized_obj, topic)
-        self._send_db_change_event(model.table_name, obj.id, 'create',
-                                   serialized_obj, topic)
+        if notify:
+            self._send_db_change_event(model.table_name, obj.id, 'create',
+                                       serialized_obj, topic)
 
-    def update(self, obj):
+    def update(self, obj, notify=True):
         """Update the provided object in the database and publish an event
            about the change.
 
@@ -669,8 +618,9 @@ class NbApi(object):
 
         self.driver.set_key(model.table_name, full_obj.id,
                             serialized_obj, topic)
-        self._send_db_change_event(model.table_name, full_obj.id, 'set',
-                                   serialized_obj, topic)
+        if notify:
+            self._send_db_change_event(model.table_name, full_obj.id, 'set',
+                                       serialized_obj, topic)
 
     def delete(self, obj):
         """Delete the provided object from the database and publish the event

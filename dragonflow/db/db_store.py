@@ -24,7 +24,6 @@ class TenantDbStore(object):
     def __init__(self):
         self.ports = {}
         self.local_ports = {}
-        self.floatingips = {}
         self.secgroups = {}
         self.publishers = {}
         self.activeports = {}
@@ -32,7 +31,6 @@ class TenantDbStore(object):
         self._table_name_mapping = {
             models.LogicalPort.table_name: self.ports,
             'local_ports': self.local_ports,
-            models.Floatingip.table_name: self.floatingips,
             models.SecurityGroup.table_name: self.secgroups,
             models.Publisher.table_name: self.publishers,
             models.AllowedAddressPairsActivePort.table_name: self.activeports
@@ -126,9 +124,6 @@ class DbStore(object):
     def get_port_keys(self, topic=None):
         return self.keys(models.LogicalPort.table_name, topic)
 
-    def get_floatingip_keys(self, topic=None):
-        return self.keys(models.Floatingip.table_name, topic)
-
     def set_port(self, port_id, port, is_local, topic=None):
         if not topic:
             topic = port.get_topic()
@@ -197,19 +192,6 @@ class DbStore(object):
 
     def get_security_group_keys(self, topic=None):
         return self.keys(models.SecurityGroup.table_name, topic)
-
-    def update_floatingip(self, floatingip_id, floatingip, topic=None):
-        self.set(models.Floatingip.table_name,
-                 floatingip_id, floatingip, topic)
-
-    def get_floatingip(self, floatingip_id, topic=None):
-        return self.get(models.Floatingip.table_name, floatingip_id, topic)
-
-    def delete_floatingip(self, floatingip_id, topic=None):
-        self.delete(models.Floatingip.table_name, floatingip_id, topic)
-
-    def get_floatingips(self, topic=None):
-        return self.values(models.Floatingip.table_name, topic)
 
     def update_publisher(self, uuid, publisher, topic=None):
         self.set(models.Publisher.table_name, uuid, publisher, topic)
