@@ -46,7 +46,7 @@ class DFMechDriver(driver_api.MechanismDriver):
     """
 
     supported_extension_aliases = ['security-group',
-                                   'extra_dhcp_opt'
+                                   'extra_dhcp_opt',
                                    'binding',
                                    'external-net',
                                    'port-security',
