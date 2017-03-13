@@ -89,15 +89,6 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def notify_ovs_port_deleted(self, ovs_port):
         self.dispatcher.dispatch('ovs_port_deleted', ovs_port)
 
-    def notify_associate_floatingip(self, floatingip):
-        self.dispatcher.dispatch('associate_floatingip', floatingip)
-
-    def notify_disassociate_floatingip(self, floatingip):
-        self.dispatcher.dispatch('disassociate_floatingip', floatingip)
-
-    def notify_delete_floatingip(self, floatingip):
-        self.dispatcher.dispatch('delete_floatingip', floatingip)
-
     def notify_update_active_port(self, active_port, old_active_port):
         self.dispatcher.dispatch('update_active_port',
                                  active_port=active_port,

@@ -14,14 +14,13 @@ import mock
 from oslo_config import cfg
 
 from dragonflow.common import constants
-from dragonflow.common import utils
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db import model_proxy
 from dragonflow.db.models import core
-from dragonflow.db.models import l2
+from dragonflow.db.models import l3
 from dragonflow.tests.unit import test_app_base
 
 
@@ -30,96 +29,13 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
     apps_list = "l2_app.L2App"
 
     def _get_mock_floatingip(self, lport_id, fip_id):
-        floatingip = mock.Mock()
-        floatingip.get_lport_id.return_value = lport_id
-        floatingip.get_id.return_value = fip_id
-        return floatingip
-
-    @mock.patch.object(df_local_controller.DfLocalController,
-                       '_update_floatingip')
-    @mock.patch.object(utils, 'is_valid_version')
-    @mock.patch.object(df_local_controller.DfLocalController,
-                       '_associate_floatingip')
-    @mock.patch.object(db_store.DbStore, 'get_floatingip')
-    @mock.patch.object(db_store2.DbStore2, 'get_one')
-    def test_floatingip_updated(self, mock_get_one, mock_get_fip,
-                                mock_assoc, mock_is_valid, mock_update):
-        lport_id = 'fake_lport_id'
-        fip_id = 'fake_fip_id'
-        fip = self._get_mock_floatingip(lport_id, fip_id)
-        mock_get_one.return_value = None
-        self.assertIsNone(self.controller.update_floatingip(fip))
-        mock_get_one.assert_called_once_with(l2.LogicalPort(id=lport_id))
-
-        mock_get_fip.return_value = None
-        fip.get_lport_id.return_value = None
-        self.assertIsNone(self.controller.update_floatingip(fip))
-        mock_get_fip.assert_called_once_with(fip_id)
-
-        mock_get_one.return_value = mock.Mock()
-        fip.get_lport_id.return_value = lport_id
-        self.assertIsNone(self.controller.update_floatingip(fip))
-        mock_assoc.assert_called_once_with(fip)
-
-        old_fip = mock.Mock()
-        mock_get_fip.return_value = old_fip
-        mock_is_valid.return_value = False
-        self.assertIsNone(self.controller.update_floatingip(fip))
-        mock_is_valid.assert_called_once()
-
-        mock_is_valid.return_value = True
-        self.controller.update_floatingip(fip)
-        mock_update.assert_called_once_with(old_fip, fip)
-
-    @mock.patch.object(ryu_base_app.RyuDFAdapter,
-                       'notify_delete_floatingip')
-    @mock.patch.object(db_store.DbStore, 'get_floatingip')
-    def test_floatingip_deleted(self, mock_get_fip, mock_notify):
-        mock_get_fip.return_value = None
-        lport_id = 'fake_lport_id'
-        fip_id = 'fake_fip_id'
-        fip = self._get_mock_floatingip(lport_id, fip_id)
-        self.assertIsNone(self.controller.delete_floatingip(fip_id))
-        mock_get_fip.return_value = fip
-        self.controller.delete_floatingip(fip_id)
-        mock_notify.assert_called_once_with(fip)
-
-    @mock.patch.object(ryu_base_app.RyuDFAdapter,
-                       'notify_associate_floatingip')
-    @mock.patch.object(db_store.DbStore, 'update_floatingip')
-    def test__associate_floatingip(self, mock_update, mock_notify):
-        lport_id = 'fake_lport_id'
-        fip_id = 'fake_fip_id'
-        fip = self._get_mock_floatingip(lport_id, fip_id)
-        self.controller._associate_floatingip(fip)
-        mock_update.assert_called_once_with(fip_id, fip)
-        mock_notify.assert_called_once_with(fip)
-
-    @mock.patch.object(ryu_base_app.RyuDFAdapter,
-                       'notify_disassociate_floatingip')
-    @mock.patch.object(db_store.DbStore, 'delete_floatingip')
-    def test__disassociate_floatingip(self, mock_delete, mock_notify):
-        lport_id = 'fake_lport_id'
-        fip_id = 'fake_fip_id'
-        fip = self._get_mock_floatingip(lport_id, fip_id)
-        self.controller._disassociate_floatingip(fip)
-        mock_delete.assert_called_once_with(fip_id)
-        mock_notify.assert_called_once_with(fip)
-
-    @mock.patch.object(df_local_controller.DfLocalController,
-                       '_associate_floatingip')
-    @mock.patch.object(df_local_controller.DfLocalController,
-                       '_disassociate_floatingip')
-    def test__update_floatingip(self, mock_disassoc, mock_assoc):
-        old_lport_id = 'fake_old_lport_id'
-        old_fip_id = 'fake_old_fip_id'
-        old_fip = self._get_mock_floatingip(old_lport_id, old_fip_id)
-        new_lport_id = 'fake_new_lport_id'
-        new_fip_id = 'fake_new_fip_id'
-        new_fip = self._get_mock_floatingip(new_lport_id, new_fip_id)
-        self.controller._update_floatingip(old_fip, new_fip)
-        mock_disassoc.called_once_with(old_fip)
-        mock_assoc.called_once_with(new_fip)
+        return l3.FloatingIp(
+            id=fip_id,
+            lport=lport_id,
+            version=1,
+            unique_key=1,
+            topic='topic',
+        )
 
     @mock.patch.object(ryu_base_app.RyuDFAdapter, 'notify_ovs_sync_finished')
     def test_ovs_sync_finished(self, mock_notify):
@@ -253,6 +169,46 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.assertFalse(self.controller._is_physical_chassis(chassis_virt))
 
     @mock.patch.object(db_store2.DbStore2, 'get_one')
+    @mock.patch.object(db_store2.DbStore2, 'update')
+    def test_update_model_object_created_called(self, update, get_one):
+        obj = mock.MagicMock()
+        obj.version = 1
+
+        get_one.return_value = None
+        self.controller.update_model_object(obj)
+        update.assert_called_once_with(obj)
+        obj.emit_created.assert_called_once()
+
+    @mock.patch.object(db_store2.DbStore2, 'get_one')
+    @mock.patch.object(db_store2.DbStore2, 'update')
+    def test_update_model_object_updated_called(self, update, get_one):
+        obj = mock.MagicMock()
+        obj.version = 2
+
+        old_obj = mock.MagicMock()
+        old_obj.version = 1
+
+        get_one.return_value = old_obj
+        self.controller.update_model_object(obj)
+        update.assert_called_once_with(obj)
+        obj.emit_updated.assert_called_once_with(old_obj)
+
+    @mock.patch.object(db_store2.DbStore2, 'get_one')
+    @mock.patch.object(db_store2.DbStore2, 'update')
+    def test_update_model_object_not_called(self, update, get_one):
+        obj = mock.MagicMock()
+        obj.version = 1
+        obj.is_newer_than.return_value = False
+
+        old_obj = mock.MagicMock()
+        old_obj.version = 1
+
+        get_one.return_value = old_obj
+        self.controller.update_model_object(obj)
+        update.assert_not_called()
+        obj.emit_updated.assert_not_called()
+
+    @mock.patch.object(db_store2.DbStore2, 'get_one')
     @mock.patch.object(db_store2.DbStore2, 'delete')
     def test_delete_model_object_called(self, delete, get_one):
         obj = mock.MagicMock()
@@ -260,11 +216,12 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
         get_one.return_value = obj
         self.controller.delete_model_object(obj)
-        self.assertTrue(delete.called)
+        delete.assert_called_once()
+        obj.emit_deleted.assert_called_once()
 
     @mock.patch.object(db_store2.DbStore2, 'get_one')
     @mock.patch.object(db_store2.DbStore2, 'delete')
     def test_delete_model_object_not_called(self, delete, get_one):
         get_one.return_value = None
         self.controller.delete_model_object(None)
-        self.assertFalse(delete.called)
+        delete.assert_not_called()

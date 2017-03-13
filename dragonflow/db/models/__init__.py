@@ -15,7 +15,6 @@ from dragonflow.db.models import legacy
 NbObject = legacy.NbObject
 NbDbObject = legacy.NbDbObject
 UniqueKeyMixin = legacy.UniqueKeyMixin
-Floatingip = legacy.Floatingip
 AllowedAddressPairsActivePort = legacy.AllowedAddressPairsActivePort
 OvsPort = legacy.OvsPort
 

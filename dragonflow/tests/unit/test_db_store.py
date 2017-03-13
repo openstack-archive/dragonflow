@@ -14,39 +14,11 @@ from jsonmodels import fields
 from jsonmodels import models
 import mock
 
-from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db import field_types as df_fields
 from dragonflow.db import model_framework
 from dragonflow.db.models import mixins
 from dragonflow.tests import base as tests_base
-
-
-class TestDbStore(tests_base.BaseTestCase):
-    def setUp(self):
-        tests_base.BaseTestCase.setUp(self)
-        self.db_store = db_store.DbStore()
-
-    def test_floating_ip(self):
-        fip1 = 'fip1'
-        fip2 = 'fip2'
-        fip3 = 'fip3'
-        self.db_store.update_floatingip('id1', fip1, 'topic1')
-        self.db_store.update_floatingip('id2', fip2, 'topic2')
-        self.db_store.update_floatingip('id3', fip3, 'topic2')
-        self.assertEqual(fip1, self.db_store.get_floatingip('id1'))
-        self.assertEqual(fip2, self.db_store.get_floatingip('id2'))
-        self.assertEqual(
-            fip3,
-            self.db_store.get_floatingip('id3', 'topic2')
-        )
-        fips = self.db_store.get_floatingips()
-        fips_topic2 = self.db_store.get_floatingips('topic2')
-        self.assertEqual({fip1, fip2, fip3}, set(fips))
-        self.assertIn(fip2, fips_topic2)
-        self.assertIn(fip3, fips_topic2)
-        self.db_store.delete_floatingip('id3', 'topic2')
-        self.assertIsNone(self.db_store.get_floatingip('id3', 'topic2'))
 
 
 class NestedNestedModel(models.Base):
