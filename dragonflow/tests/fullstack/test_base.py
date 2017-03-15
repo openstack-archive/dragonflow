@@ -19,6 +19,7 @@ from oslo_log import log
 
 from dragonflow._i18n import _LE
 from dragonflow import conf as cfg
+from dragonflow.controller.common import utils as ctrl_utils
 from dragonflow.db import api_nb
 from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
@@ -69,6 +70,12 @@ class DFTestBase(base.BaseTestCase):
 
         if cfg.CONF.df.enable_selective_topology_distribution:
             self.start_subscribing()
+
+    def check_active_port_detection_app(self):
+        apps_list = cfg.CONF.df.apps_list
+        if ctrl_utils.ACTIVE_PORT_DETECTION_APP in apps_list:
+            return True
+        return False
 
     def _close_stored_objects(self):
         while self.__objects_to_close:

@@ -1762,6 +1762,8 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
 
     def setUp(self):
         super(TestAllowedAddressPairsDetectActive, self).setUp()
+        if not self.check_active_port_detection_app():
+            self.skipTest("ActivePortDetectionApp is not enabled")
         self.topology = None
         self.policy = None
         self.allowed_address_pair_ip_address = None
