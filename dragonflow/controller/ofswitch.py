@@ -23,7 +23,7 @@ import ryu.exception as ryu_exc
 from dragonflow._i18n import _LE
 from dragonflow.controller.common import constants as const
 
-LOG = log.getLogger("dragonflow.controller.ofswitch")
+LOG = log.getLogger(__name__)
 
 
 class OpenFlowSwitchMixin(object):
