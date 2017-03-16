@@ -518,7 +518,7 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
 
     def get_host(self, req):
         return '{}:{}'.format(
-            self.conf.nova_metadata_ip,
+            self.conf.nova_metadata_host,
             self.conf.nova_metadata_port,
         )
 
