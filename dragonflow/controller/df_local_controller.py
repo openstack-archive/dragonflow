@@ -17,7 +17,6 @@ import functools
 import sys
 import time
 
-from neutron.agent.common import config
 from neutron.common import config as common_config
 from oslo_log import log
 from ryu.base import app_manager
@@ -778,7 +777,7 @@ def init_ryu_config():
 def main():
     chassis_name = cfg.CONF.host
     common_config.init(sys.argv[1:])
-    config.setup_logging()
+    common_config.setup_logging()
     init_ryu_config()
     controller = DfLocalController(chassis_name)
     controller.run()
