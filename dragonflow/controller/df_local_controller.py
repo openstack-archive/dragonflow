@@ -124,13 +124,6 @@ class DfLocalController(object):
     def _register_legacy_model_refreshers(self):
         refreshers = [
             df_db_objects_refresh.DfObjectRefresher(
-                'Ports',
-                self.db_store.get_port_keys,
-                self.nb_api.get_all_logical_ports,
-                self.update_lport,
-                self.delete_lport,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
                 'Floating IPs',
                 self.db_store.get_floatingip_keys,
                 self.nb_api.get_floatingips,
@@ -154,13 +147,6 @@ class DfLocalController(object):
             return
 
         handlers = [
-            db_consistent.ModelHandler(
-                models.LogicalPort,
-                self.db_store.get_ports,
-                self.nb_api.get_all_logical_ports,
-                self.update,
-                self.delete_by_id,
-            ),
             db_consistent.ModelHandler(
                 models.Floatingip,
                 self.db_store.get_floatingips,
@@ -241,7 +227,9 @@ class DfLocalController(object):
             return
 
         # Notify about remote port update
-        remote_ports = self.db_store.get_ports_by_chassis(remote_chassis_name)
+        index = l2.LogicalPort.get_indexes()['chassis_id']
+        remote_ports = self.db_store2.get_all(l2.LogicalPort(chassis=chassis),
+                                              index=index)
         for port in remote_ports:
             self._logical_port_process(port, None)
 
@@ -249,142 +237,76 @@ class DfLocalController(object):
         LOG.info("Deleting remote ports in remote chassis %s", chassis.id)
         # Chassis is deleted, there is no reason to keep the remote port
         # in it.
-        remote_ports = self.db_store.get_ports_by_chassis(chassis.id)
+        index = l2.LogicalPort.get_indexes()['chassis_id']
+        remote_ports = self.db_store2.get_all(l2.LogicalPort(chassis=chassis),
+                                              index=index)
         for port in remote_ports:
-            self.delete_lport(port.get_id())
+            self._delete_lport_instance(port)
         self.db_store2.delete(chassis)
 
-    def _notify_active_ports_updated_when_lport_created(self, lport):
-        active_ports = self.db_store.get_active_ports(lport.get_topic())
-        for active_port in active_ports:
-            if active_port.get_detected_lport_id() == lport.get_id():
-                self.open_flow_app.notify_update_active_port(active_port,
-                                                             None)
-
-    def _notify_active_ports_updated_when_lport_removed(self, lport):
-        active_ports = self.db_store.get_active_ports(lport.get_topic())
-        for active_port in active_ports:
-            if active_port.get_detected_lport_id() == lport.get_id():
-                self.open_flow_app.notify_remove_active_port(active_port)
-                self.db_store.delete_active_port(active_port.get_id())
-
     def _is_physical_chassis(self, chassis):
-        if not chassis or chassis == constants.DRAGONFLOW_VIRTUAL_PORT:
+        if not chassis or chassis.id == constants.DRAGONFLOW_VIRTUAL_PORT:
             return False
         return True
 
-    def _logical_port_process(self, lport, original_lport=None):
-        lswitch = self.db_store2.get_one(
-            l2.LogicalSwitch(id=lport.get_lswitch_id()))
+    def _logical_port_process(self, lport):
+        lswitch = lport.lswitch
         if not lswitch:
             LOG.warning("Could not find lswitch for lport: %s",
                         lport.get_id())
             return
-        lport.set_external_value('local_network_id',
-                                 lswitch.unique_key)
+        lport.local_network_id = lswitch.unique_key
         network_type = lswitch.network_type
         segment_id = lswitch.segmentation_id
         physical_network = lswitch.physical_network
 
-        lport.set_external_value('network_type', network_type)
+        lport.network_type = network_type
         if segment_id is not None:
-            lport.set_external_value('segmentation_id',
-                                     int(segment_id))
+            lport.segmentation_id = int(segment_id)
         if physical_network:
-            lport.set_external_value('physical_network', physical_network)
+            lport.physical_network = physical_network
 
-        chassis = lport.get_chassis()
-        if chassis == self.chassis_name:
-            lport.set_external_value('is_local', True)
-            self.db_store.set_port(lport.get_id(), lport, True)
-            ofport = self.vswitch_api.get_port_ofport_by_id(lport.get_id())
-            if ofport:
-                lport.set_external_value('ofport', ofport)
-                if original_lport is None:
-                    LOG.info("Adding new local logical port = %s", lport)
-                    self.open_flow_app.notify_add_local_port(lport)
-                else:
-                    LOG.info("Updating local logical port = %(port)s, "
-                             "original port = %(original_port)s",
-                             {'port': lport,
-                              'original_port': original_lport})
-                    self.open_flow_app.notify_update_local_port(lport,
-                                                                original_lport)
-            else:
-                LOG.info("Local logical port %s was not created yet", lport)
-                return
+        chassis = lport.chassis
+        is_local = (chassis.id == self.chassis_name)
+        lport.is_local = is_local
+        if is_local:
+            lport.ofport = self.vswitch_api.get_port_ofport_by_id(lport.id)
         else:
-            lport.set_external_value('is_local', False)
-            self.db_store.set_port(lport.get_id(), lport, False)
-            if lport.get_remote_vtep():
-                # Remote port that exists in other network pod.
-                lport.set_external_value('peer_vtep_address',
-                                         lport.get_chassis())
-            else:
-                # Remote port that exists in current network pod.
-                remote_chassis = self.db_store2.get_one(
-                    core.Chassis(id=lport.get_chassis()))
-                if not remote_chassis:
-                    # chassis has not been online yet.
-                    return
-                lport.set_external_value('peer_vtep_address',
-                                         remote_chassis.ip)
+            lport.peer_vtep_address = chassis.ip
+            lport.ofport = self.vswitch_api.get_vtp_ofport(network_type)
 
-            ofport = self.vswitch_api.get_vtp_ofport(
-                lport.get_external_value('network_type'))
-            if ofport:
-                lport.set_external_value('ofport', ofport)
-                if original_lport is None:
-                    LOG.info("Adding new remote logical port = %s", lport)
-                    self.open_flow_app.notify_add_remote_port(lport)
-                else:
-                    LOG.info("Updating remote logical port = %(port)s, "
-                             "original port = %(original_port)s",
-                             {'port': lport,
-                              'original_port': original_lport})
-                    self.open_flow_app.notify_update_remote_port(
-                        lport, original_lport)
-            else:
-                # The tunnel port online event will update the remote logical
-                # port. Log this warning first.
-                LOG.warning("No tunnel for remote logical port %s", lport)
-                return
+        if not lport.ofport:
+            # The tunnel port online event will update the remote logical
+            # port. Log this warning first.
+            LOG.warning("%(location)s logical port %(port)s"
+                        " was not created yet",
+                        {'location': "Local" if is_local else
+                                     "Tunnel for remote",
+                         'port': lport})
+            return
 
-        if original_lport is None:
-            self._notify_active_ports_updated_when_lport_created(lport)
+        lport.emit_updated()
 
     def update_lport(self, lport):
-        chassis = lport.get_chassis()
+        chassis = lport.chassis
         if not self._is_physical_chassis(chassis):
             LOG.debug(("Port %s has not been bound or it is a vPort"),
                       lport.get_id())
             return
-        original_lport = self.db_store.get_port(lport.get_id())
-        if original_lport and not original_lport.get_external_value("ofport"):
-            original_lport = None
+        original_lport = self.db_store2.get_one(lport)
 
-        if not df_utils.is_valid_version(
-                original_lport.inner_obj if original_lport else None,
-                lport.inner_obj):
-            return
-        self._logical_port_process(lport, original_lport)
+        if lport.is_newer_than(original_lport):
+            self._logical_port_process(lport)
 
-    def delete_lport(self, lport_id):
-        lport = self.db_store.get_port(lport_id)
+    def delete_lport(self, lport):
+        lport = self.db_store2.get_one(lport)
         if lport is None:
             return
-        if lport.get_external_value('is_local'):
-            LOG.info("Removing local logical port = %s", lport)
-            if lport.get_external_value('ofport') is not None:
-                self.open_flow_app.notify_remove_local_port(lport)
-            self.db_store.delete_port(lport.get_id(), True)
-        else:
-            LOG.info("Removing remote logical port = %s", lport)
-            if lport.get_external_value('ofport') is not None:
-                self.open_flow_app.notify_remove_remote_port(lport)
-            self.db_store.delete_port(lport.get_id(), False)
+        self._delete_lport_instance(lport)
 
-        self._notify_active_ports_updated_when_lport_removed(lport)
+    def _delete_lport_instance(self, lport):
+        lport.emit_deleted()
+        self.db_store2.delete(lport)
 
     def register_chassis(self):
         # Get all chassis from nb db to db store.
@@ -420,7 +342,9 @@ class DfLocalController(object):
     def update_floatingip(self, floatingip):
         # check whether this floatingip is associated with a lport or not
         if floatingip.get_lport_id():
-            if self.db_store.get_local_port(floatingip.get_lport_id()) is None:
+            lport = self.db_store2.get_one(
+                l2.LogicalPort(id=floatingip.get_lport_id()))
+            if lport is None or not lport.is_local:
                 return
 
         old_floatingip = self.db_store.get_floatingip(floatingip.get_id())
@@ -492,9 +416,9 @@ class DfLocalController(object):
 
     def update_activeport(self, active_port):
         old_active_port = self.db_store.get_active_port(active_port.get_id())
-        lport_id = active_port.get_detected_lport_id()
-        lport = self.db_store.get_local_port(lport_id,
-                                             active_port.get_topic())
+        lean_lport = l2.LogicalPort(id=active_port.get_detected_lport_id(),
+                                    topic=active_port.get_topic())
+        lport = self.db_store2.get_one(lean_lport)
         LOG.info("Active port updated. Active port = %(new)s, "
                  "old active port = %(old)s",
                  {'new': active_port, 'old': old_active_port})
@@ -513,9 +437,9 @@ class DfLocalController(object):
             self.db_store.delete_active_port(active_port_key)
             LOG.info("Active node was removed. Active node = %s",
                      active_port)
-            lport_id = active_port.get_detected_lport_id()
-            lport = self.db_store.get_local_port(lport_id,
-                                                 active_port.get_topic())
+            lean_lport = l2.LogicalPort(id=active_port.get_detected_lport_id(),
+                                        topic=active_port.get_topic())
+            lport = self.db_store2.get_one(lean_lport)
             if lport is not None:
                 self.open_flow_app.notify_remove_active_port(active_port)
 

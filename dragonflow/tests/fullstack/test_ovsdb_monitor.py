@@ -11,6 +11,7 @@
 #    under the License.
 
 from dragonflow import conf as cfg
+from dragonflow.db.models import l2
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base

@@ -305,7 +305,7 @@ class Port(object):
         """Return the name of this port, i.e. the name of the underlying tap
         device.
         """
-        return self.port.get_logical_port().get_id()
+        return self.port.get_logical_port().id
 
 
 class LogicalPortTap(object):
@@ -324,14 +324,14 @@ class LogicalPortTap(object):
     def _create_tap_device(self):
         flags = pytun.IFF_TAP | pytun.IFF_NO_PI
         name = self._get_tap_interface_name()
-        create_tap_dev(name, self.lport.get_mac())
+        create_tap_dev(name, self.lport.mac)
         tap = pytun.TunTapDevice(flags=flags, name=name)
         self._connect_tap_device_to_vswitch(self.integration_bridge, tap.name)
         tap.up()
         return tap
 
     def _get_tap_interface_name(self):
-        lport_name = self.lport.get_id()
+        lport_name = self.lport.id
         lport_name_prefix = lport_name[:11]
         return 'tap{}'.format(lport_name_prefix)
 
@@ -346,7 +346,7 @@ class LogicalPortTap(object):
         full_args = ['ovs-vsctl', 'add-port', vswitch_name, tap_name]
         utils.execute(full_args, run_as_root=True, process_input=None)
         full_args = ['ovs-vsctl', 'set', 'interface', tap_name,
-                     'external_ids:iface-id={}'.format(self.lport.get_id())]
+                     'external_ids:iface-id={}'.format(self.lport.id)]
         utils.execute(full_args, run_as_root=True, process_input=None)
 
     def _disconnect_tap_device_to_vswitch(self, vswitch_name, tap_name):

@@ -60,29 +60,6 @@ class DFlowApp(object):
             for model, event in args:
                 model.register(event, attr)
 
-    def update_local_port(self, lport, original_lport):
-        """override update_local_port method to default call add_local_port
-        method
-
-        :param lport:           local logical port which is updated to db
-        :param original_lport:  local logical port in db before the update
-        """
-        handler = getattr(self, "add_local_port", None)
-        if handler:
-            handler(lport)
-
-    def update_remote_port(self, lport, original_lport):
-        """update remote logical port hook callback
-
-        :param lport:           logical port which resides on other compute
-        node, and is updated in db
-        :param original_lport:  logical port in db which resides on other
-        compute node before the update
-        """
-        handler = getattr(self, "add_remote_port", None)
-        if handler:
-            handler(lport)
-
     @property
     def datapath(self):
         return self.api.datapath
