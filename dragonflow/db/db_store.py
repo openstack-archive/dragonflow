@@ -22,14 +22,10 @@ from dragonflow.db import models
 class TenantDbStore(object):
 
     def __init__(self):
-        self.ports = {}
-        self.local_ports = {}
         self.floatingips = {}
         self.activeports = {}
         self.lock = threading.Lock()
         self._table_name_mapping = {
-            models.LogicalPort.table_name: self.ports,
-            'local_ports': self.local_ports,
             models.Floatingip.table_name: self.floatingips,
             models.AllowedAddressPairsActivePort.table_name: self.activeports
         }
@@ -115,65 +111,8 @@ class DbStore(object):
         if table_item:
             return table_item.get_unique_key()
 
-    def get_port_keys(self, topic=None):
-        return self.keys(models.LogicalPort.table_name, topic)
-
     def get_floatingip_keys(self, topic=None):
         return self.keys(models.Floatingip.table_name, topic)
-
-    def set_port(self, port_id, port, is_local, topic=None):
-        if not topic:
-            topic = port.get_topic()
-        if is_local:
-            tenant_db = self.tenant_dbs[topic]
-            with tenant_db.lock:
-                tenant_db.ports[port_id] = port
-                tenant_db.local_ports[port_id] = port
-        else:
-            self.set(models.LogicalPort.table_name, port_id, port, topic)
-
-    def get_port(self, port_id, topic=None):
-        return self.get(models.LogicalPort.table_name, port_id, topic)
-
-    def get_ports(self, topic=None):
-        return self.values(models.LogicalPort.table_name, topic)
-
-    def get_ports_by_chassis(self, chassis_id, topic=None):
-        lports = self.get_ports(topic)
-        ret_lports = []
-        for lport in lports:
-            if lport.get_chassis() == chassis_id:
-                ret_lports.append(lport)
-        return ret_lports
-
-    def delete_port(self, port_id, is_local, topic=None):
-        if is_local:
-            if not topic:
-                topic = self.get_port(port_id).get_topic()
-            tenant_db = self.tenant_dbs[topic]
-            with tenant_db.lock:
-                del tenant_db.ports[port_id]
-                del tenant_db.local_ports[port_id]
-        else:
-            self.delete(models.LogicalPort.table_name, port_id, topic)
-
-    def get_local_port(self, port_id, topic=None):
-        return self.get('local_ports', port_id, topic)
-
-    def get_local_ports(self, topic=None):
-        return self.values('local_ports', topic)
-
-    def get_local_port_by_name(self, port_name, topic=None):
-        # TODO(oanson) This will be bad for performance
-        ports = self.values('local_ports', topic)
-        port_id_prefix = port_name[3:]
-        for lport in ports:
-            if lport.get_id().startswith(port_id_prefix):
-                return lport
-
-    def get_ports_by_network_id(self, lswitch_id, topic=None):
-        ports = self.values(models.LogicalPort.table_name, topic)
-        return [port for port in ports if port.get_lswitch_id() == lswitch_id]
 
     def update_floatingip(self, floatingip_id, floatingip, topic=None):
         self.set(models.Floatingip.table_name,

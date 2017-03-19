@@ -10,9 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.extensions import allowedaddresspairs as addr_pair
-from neutron.extensions import extra_dhcp_opt as edo_ext
-from neutron.extensions import portsecurity as psec
 from neutron.plugins.ml2 import models
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
@@ -453,31 +450,7 @@ class DFMechDriver(api.MechanismDriver):
 
         LOG.info("DFMechDriver: delete subnet %s", subnet_id)
 
-    def _filter_unsupported_allowed_address_pairs(self,
-                                                  allowed_address_pairs):
-        if not validators.is_attr_set(allowed_address_pairs):
-            return []
-
-        # Not support IP address prefix yet
-        for pair in allowed_address_pairs:
-            if '/' in pair["ip_address"]:
-                raise Exception(_("DF don't support IP prefix in allowed"
-                                  "address pairs yet. The allowed address"
-                                  "pair {ip_address = %(ip_address), "
-                                  "mac_address = %(mac_address)} "
-                                  "caused this exception.} "),
-                                {'ip_address': pair["ip_address"],
-                                 'mac_address': pair["mac_address"]})
-
-        supported_allowed_address_pairs = list(allowed_address_pairs)
-        return supported_allowed_address_pairs
-
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
-    def create_port_postcommit(self, context):
-        port = context.current
-        ips = [ip['ip_address'] for ip in port.get('fixed_ips', [])]
-        subnets = [ip['subnet_id'] for ip in port.get('fixed_ips', [])]
-
+    def _get_chassis_and_remote_vtep(self, port):
         # Router GW ports are not needed by dragonflow controller and
         # they currently cause error as they couldn't be mapped to
         # a valid ofport (or location)
@@ -493,32 +466,17 @@ class DFMechDriver(api.MechanismDriver):
                 df_const.DF_REMOTE_PORT_TYPE:
             chassis = binding_profile.get(df_const.DF_BINDING_PROFILE_HOST_IP)
             remote_vtep = True
+        return chassis, remote_vtep
 
-        # filter unsupported allowed address pairs
-        filtered_allowed_adress_pairs = \
-            self._filter_unsupported_allowed_address_pairs(
-                port.get(addr_pair.ADDRESS_PAIRS, []))
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
+    def create_port_postcommit(self, context):
+        port = context.current
+        chassis, remote_vtep = self._get_chassis_and_remote_vtep(port)
 
-        self.nb_api.create_lport(
-            id=port['id'],
-            lswitch_id=port['network_id'],
-            topic=port['tenant_id'],
-            macs=[port['mac_address']], ips=ips,
-            subnets=subnets,
-            name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
-            enabled=port.get('admin_state_up', False),
-            chassis=chassis,
-            version=port['revision_number'],
-            device_owner=port.get('device_owner'),
-            device_id=port.get('device_id'),
-            security_groups=port.get('security_groups', []),
-            port_security_enabled=port.get(psec.PORTSECURITY, False),
-            remote_vtep=remote_vtep,
-            allowed_address_pairs=filtered_allowed_adress_pairs,
-            binding_profile=port.get(portbindings.PROFILE),
-            binding_vnic_type=port.get(portbindings.VNIC_TYPE),
-            qos_policy_id=port.get('qos_policy_id'),
-            extra_dhcp_opts=port.get(edo_ext.EXTRADHCPOPTS, []))
+        lport = neutron_l2.logical_port_from_neutron_port(port)
+        lport.chassis = chassis
+        lport.remote_vtep = remote_vtep
+        self.nb_api.create(lport)
 
         LOG.info("DFMechDriver: create port %s", port['id'])
         return port
@@ -546,8 +504,9 @@ class DFMechDriver(api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
     def update_port_postcommit(self, context):
         updated_port = context.current
-        if not self.nb_api.get_logical_port(updated_port['id'],
-                                            updated_port['tenant_id']):
+        lean_port = l2.LogicalPort(id=updated_port['id'],
+                                   topic=updated_port['tenant_id'])
+        if not self.nb_api.get(lean_port):
             # REVISIT(xiaohhui): Should we unify the check before update nb db?
             LOG.debug("The port %s has been deleted from dragonflow NB DB, "
                       "by concurrent operation.", updated_port['id'])
@@ -573,55 +532,12 @@ class DFMechDriver(api.MechanismDriver):
                                           updated_port)
             return None
 
-        # Router GW ports are not needed by dragonflow controller and
-        # they currently cause error as they couldnt be mapped to
-        # a valid ofport (or location)
-        if updated_port.get('device_owner') == n_const.DEVICE_OWNER_ROUTER_GW:
-            chassis = None
-        else:
-            chassis = updated_port.get('binding:host_id') or None
+        chassis, remote_vtep = self._get_chassis_and_remote_vtep(updated_port)
 
-        binding_profile = updated_port.get('binding:profile')
-        remote_vtep = False
-        if binding_profile and binding_profile.get(
-                df_const.DF_BINDING_PROFILE_PORT_KEY) ==\
-                df_const.DF_REMOTE_PORT_TYPE:
-            chassis = binding_profile.get(df_const.DF_BINDING_PROFILE_HOST_IP)
-            remote_vtep = True
-
-        updated_security_groups = updated_port.get('security_groups')
-        if updated_security_groups:
-            security_groups = updated_security_groups
-        else:
-            security_groups = []
-
-        # filter unsupported allowed address pairs
-        filtered_allowed_adress_pairs = \
-            self._filter_unsupported_allowed_address_pairs(
-                updated_port.get(addr_pair.ADDRESS_PAIRS, []))
-
-        ips = [ip['ip_address'] for ip in updated_port.get('fixed_ips', [])]
-        subnets = [ip['subnet_id'] for ip in updated_port.get('fixed_ips', [])]
-
-        self.nb_api.update_lport(
-            id=updated_port['id'],
-            topic=updated_port['tenant_id'],
-            macs=[updated_port['mac_address']],
-            ips=ips,
-            subnets=subnets,
-            name=updated_port.get('name', df_const.DF_PORT_DEFAULT_NAME),
-            enabled=updated_port['admin_state_up'],
-            chassis=chassis,
-            device_owner=updated_port.get('device_owner'),
-            device_id=updated_port.get('device_id'),
-            security_groups=security_groups,
-            port_security_enabled=updated_port.get(psec.PORTSECURITY, False),
-            allowed_address_pairs=filtered_allowed_adress_pairs,
-            binding_profile=updated_port.get(portbindings.PROFILE),
-            binding_vnic_type=updated_port.get(portbindings.VNIC_TYPE),
-            version=updated_port['revision_number'], remote_vtep=remote_vtep,
-            qos_policy_id=updated_port.get('qos_policy_id'),
-            extra_dhcp_opts=updated_port.get(edo_ext.EXTRADHCPOPTS, []))
+        lport = neutron_l2.logical_port_from_neutron_port(updated_port)
+        lport.chassis = chassis
+        lport.remote_vtep = remote_vtep
+        self.nb_api.update(lport)
 
         LOG.info("DFMechDriver: update port %s", updated_port['id'])
         return updated_port
@@ -630,10 +546,10 @@ class DFMechDriver(api.MechanismDriver):
     def delete_port_postcommit(self, context):
         port = context.current
         port_id = port['id']
-
+        lean_port = l2.LogicalPort(id=port_id,
+                                   topic=port['tenant_id'])
         try:
-            topic = port['tenant_id']
-            self.nb_api.delete_lport(id=port_id, topic=topic)
+            self.nb_api.delete(lean_port)
         except df_exceptions.DBKeyNotFound:
             LOG.debug("port %s is not found in DF DB, might have "
                       "been deleted concurrently", port_id)

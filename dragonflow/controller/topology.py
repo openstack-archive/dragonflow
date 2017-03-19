@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
+
 from neutron_lib import constants as n_const
 from oslo_log import log
 
@@ -19,6 +21,13 @@ from dragonflow.db import models as db_models
 from dragonflow.db.models import l2
 
 LOG = log.getLogger(__name__)
+
+
+# This tuple is used as the key for ovs_to_lport_mapping, which maps an OVS
+# port to its Logical Port. lport_id is the Logical Port's ID. topic is the
+# tenant (or project).
+OvsLportMapping = collections.namedtuple('OvsLportMapping',
+                                         ('lport_id', 'topic'))
 
 
 class Topology(object):
@@ -144,18 +153,20 @@ class Topology(object):
             l2.LogicalSwitch(network_type=tunnel_type),
             l2.LogicalSwitch.get_index('network_type'))
         for lswitch in lswitches:
-            lports = self.db_store.get_ports_by_network_id(lswitch.id)
+            index = l2.LogicalPort.get_indexes()['lswitch_id']
+            lports = self.db_store2.get_all(l2.LogicalPort(lswitch=lswitch),
+                                            index=index)
             for lport in lports:
-                if lport.get_external_value('is_local'):
+                if lport.is_local:
                     continue
 
                 # Update of virtual tunnel port should update remote port in
                 # the lswitch of same type.
                 try:
                     if action == "set":
-                        self.controller.update_lport(lport)
+                        self.controller.update(lport)
                     else:
-                        self.controller.delete_lport(lport.get_id())
+                        self.controller.delete(lport)
                 except Exception:
                     LOG.exception("Failed to process logical port"
                                   "when %(action)s tunnel %(lport)s",
@@ -179,33 +190,33 @@ class Topology(object):
             LOG.warning("No logical port found for ovs port: %s",
                         ovs_port)
             return
-        topic = lport.get_topic()
+        topic = lport.topic
         if not topic:
             return
         self._add_to_topic_subscribed(topic, lport_id)
 
         ovs_port_id = ovs_port.get_id()
-        self.ovs_to_lport_mapping[ovs_port_id] = {'lport_id': lport_id,
-                                                  'topic': topic}
+        self.ovs_to_lport_mapping[ovs_port_id] = OvsLportMapping(
+                lport_id=lport_id, topic=topic)
 
-        chassis = lport.get_chassis()
+        chassis = lport.chassis
         # check if migration occurs
-        if chassis != self.chassis_name:
-            device_owner = lport.get_device_owner()
+        if chassis.id != self.chassis_name:
+            device_owner = lport.device_owner
             if n_const.DEVICE_OWNER_COMPUTE_PREFIX in device_owner:
                 LOG.info("Prepare migrate lport %(lport)s to %(chassis)s",
                          {"lport": lport_id, "chassis": chassis})
                 self.nb_api.set_lport_migration(lport_id, self.chassis_name)
             return
 
-        cached_lport = self.db_store.get_port(lport_id)
-        if not cached_lport or not cached_lport.get_external_value("ofport"):
+        cached_lport = self.db_store2.get_one(l2.LogicalPort(id=lport_id))
+        if not cached_lport or not cached_lport.ofport:
             # If the logical port is not in db store or its ofport is not
             # valid. It has not been applied to dragonflow apps. We need to
             # update it in dragonflow controller.
             LOG.info("A local logical port(%s) is online", lport)
             try:
-                self.controller.update_lport(lport)
+                self.controller.update(lport)
             except Exception:
                 LOG.exception('Failed to process logical port online '
                               'event: %s', lport)
@@ -213,21 +224,21 @@ class Topology(object):
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.get_id()
         lport_id = ovs_port.get_iface_id()
-        lport = self.db_store.get_port(lport_id)
+        lport = self.db_store2.get_one(l2.LogicalPort(id=lport_id))
         if lport is None:
             lport = self.ovs_to_lport_mapping.get(ovs_port_id)
             if lport is None:
                 return
-            topic = lport.get('topic')
+            topic = lport.topic
             del self.ovs_to_lport_mapping[ovs_port_id]
             self._del_from_topic_subscribed(topic, lport_id)
             return
 
-        topic = lport.get_topic()
+        topic = lport.topic
 
         LOG.info("The logical port(%s) is offline", lport)
         try:
-            self.controller.delete_lport(lport_id)
+            self.controller.delete(lport)
         except Exception:
             LOG.exception(
                 'Failed to process logical port offline event %s', lport_id)
@@ -284,9 +295,13 @@ class Topology(object):
         df_db_objects_refresh.clear_local_cache({tenant_id})
 
     def _get_lport(self, port_id, topic=None):
-        lport = self.db_store.get_port(port_id)
+        if topic is None:
+            lean_lport = l2.LogicalPort(id=port_id)
+        else:
+            lean_lport = l2.LogicalPort(id=port_id, topic=topic)
+        lport = self.db_store2.get_one(lean_lport)
         if lport is None:
-            lport = self.nb_api.get_logical_port(port_id, topic)
+            lport = self.nb_api.get(lean_lport)
 
         return lport
 
@@ -308,21 +323,21 @@ class Topology(object):
                     LOG.warning("No logical port found for ovs port: %s",
                                 ovs_port)
                     continue
-                topic = lport.get_topic()
+                topic = lport.topic
                 if not topic:
                     continue
-                new_ovs_to_lport_mapping[key] = {
-                    'lport_id': lport_id, 'topic': topic}
+                new_ovs_to_lport_mapping[key] = OvsLportMapping(
+                    lport_id=lport_id, topic=topic)
                 if not delete_ovs_to_lport_mapping.pop(key, None):
-                    add_ovs_to_lport_mapping[key] = {
-                        'lport_id': lport_id, 'topic': topic}
+                    add_ovs_to_lport_mapping[key] = OvsLportMapping(
+                        lport_id=lport_id, topic=topic)
         self.ovs_to_lport_mapping = new_ovs_to_lport_mapping
         for value in add_ovs_to_lport_mapping.values():
-            lport_id = value['lport_id']
-            topic = value['topic']
+            lport_id = value.lport_id
+            topic = value.topic
             self._add_to_topic_subscribed(topic, lport_id)
 
         for value in delete_ovs_to_lport_mapping.values():
-            lport_id = value['lport_id']
-            topic = value['topic']
+            lport_id = value.lport_id
+            topic = value.topic
             self._del_from_topic_subscribed(topic, lport_id)
