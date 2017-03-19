@@ -133,7 +133,8 @@ class DNATApp(df_base_app.DFlowApp):
 
             pkt = packet.Packet(msg.data)
             e_pkt = pkt.get_protocol(ethernet.ethernet)
-            floatingip = self.floatingip_rarp_cache.get(e_pkt.src)
+            mac = netaddr.EUI(e_pkt.src)
+            floatingip = self.floatingip_rarp_cache.get(mac)
             if floatingip:
                 icmp_ttl_pkt = icmp_error_generator.generate(
                     icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE,
@@ -255,20 +256,22 @@ class DNATApp(df_base_app.DFlowApp):
                                    const.INGRESS_NAT_TABLE).remove()
 
     def _get_vm_port_info(self, floatingip):
-        lport = self.db_store.get_local_port(floatingip.get_lport_id())
-        mac = lport.get_mac()
-        ip = lport.get_ip()
-        tunnel_key = lport.get_unique_key()
-        local_network_id = lport.get_external_value('local_network_id')
+        lport = self.db_store2.get_one(
+            l2.LogicalPort(id=floatingip.get_lport_id()))
+        mac = lport.mac
+        ip = lport.ip
+        tunnel_key = lport.unique_key
+        local_network_id = lport.local_network_id
 
         return mac, ip, tunnel_key, local_network_id
 
     def _get_vm_gateway_info(self, floatingip):
-        lport = self.db_store.get_local_port(floatingip.get_lport_id())
+        lport = self.db_store2.get_one(
+            l2.LogicalPort(id=floatingip.get_lport_id()))
         lrouter = self.db_store2.get_one(l3.LogicalRouter(
                                              id=floatingip.get_lrouter_id()))
         for router_port in lrouter.ports:
-            if router_port.lswitch.id == lport.get_lswitch_id():
+            if router_port.lswitch.id == lport.lswitch.id:
                 return router_port.mac
         return None
 
@@ -466,8 +469,9 @@ class DNATApp(df_base_app.DFlowApp):
 
     def associate_floatingip(self, floatingip):
         self.local_floatingips[floatingip.get_id()] = floatingip
-        lport = self.db_store.get_local_port(floatingip.get_lport_id())
-        mac = lport.get_mac()
+        lport = self.db_store2.get_one(
+            l2.LogicalPort(id=floatingip.get_lport_id()))
+        mac = lport.mac
         self.floatingip_rarp_cache[mac] = floatingip.get_ip_address()
         self._install_ingress_nat_rules(floatingip)
         self._install_egress_nat_rules(floatingip)
@@ -479,18 +483,19 @@ class DNATApp(df_base_app.DFlowApp):
         self.update_floatingip_status(
             floatingip, n_const.FLOATINGIP_STATUS_DOWN)
 
-    def remove_local_port(self, lport):
-        port_id = lport.get_id()
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    def _remove_local_port(self, lport):
         ips_to_disassociate = [
             fip for fip in self.local_floatingips.values()
-            if fip.get_lport_id() == port_id]
+            if fip.get_lport_id() == lport.id]
         for floatingip in ips_to_disassociate:
             self.disassociate_floatingip(floatingip)
 
     def delete_floatingip(self, floatingip):
         self.local_floatingips.pop(floatingip.get_id(), 0)
-        lport = self.db_store.get_local_port(floatingip.get_lport_id())
-        mac = lport.get_mac()
+        lport = self.db_store2.get_one(
+            l2.LogicalPort(id=floatingip.get_lport_id()))
+        mac = lport.mac
         self.floatingip_rarp_cache.pop(mac, None)
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)

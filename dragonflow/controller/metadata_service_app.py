@@ -34,6 +34,7 @@ from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
+from dragonflow.db.models import l2
 
 
 LOG = log.getLogger(__name__)
@@ -521,9 +522,9 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
         return h
 
     def _get_logical_port_by_tunnel_key(self, tunnel_key):
-        lports = self.nb_api.get_all_logical_ports()
+        lports = self.nb_api.get_all(l2.LogicalPort)
         for lport in lports:
-            if lport.get_unique_key() == tunnel_key:
+            if lport.unique_key == tunnel_key:
                 return lport
         raise exceptions.LogicalPortNotFoundByTunnelKey(key=tunnel_key)
 
