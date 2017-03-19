@@ -53,7 +53,7 @@ class TestPortQos(test_base.DFTestBase):
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
 
         logical_port = port.get_logical_port()
-        self.assertEqual(qos_policy_id, logical_port.get_qos_policy_id())
+        self.assertEqual(qos_policy_id, logical_port.qos_policy.id)
 
         check_columns = {
             'ingress_policing_rate', 'ingress_policing_burst'}

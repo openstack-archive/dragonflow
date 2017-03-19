@@ -14,6 +14,7 @@ from neutron.objects.qos import rule
 from neutron_lib.plugins import constants as service_constants
 from neutron_lib.plugins import directory
 
+from dragonflow.db.models import l2
 from dragonflow.db.models import qos
 from dragonflow.tests.common import utils
 from dragonflow.tests.unit import test_mech_driver
@@ -134,18 +135,21 @@ class TestDfQosDriver(test_mech_driver.DFMechanismDriverTestCase):
         qos_obj = self._test_create_policy()
         kwargs = {'qos_policy_id': qos_obj['id']}
         with self.subnet(enable_dhcp=False) as subnet:
+            nb_api.create.reset_mock()
             with self.port(subnet=subnet,
                            arg_list=('qos_policy_id',),
                            **kwargs) as p:
                 port_id = p['port']['id']
-                self.assertTrue(nb_api.create_lport.called)
-                called_args = nb_api.create_lport.call_args_list[0][1]
-                self.assertEqual(qos_obj['id'],
-                                 called_args.get('qos_policy_id'))
+                nb_api.create.assert_called_once()
+                lport = nb_api.create.call_args_list[0][0][0]
+                self.assertIsInstance(lport, l2.LogicalPort)
+                self.assertEqual(qos_obj['id'], lport.qos_policy.id)
 
+                nb_api.update.reset_mock()
                 data = {'port': {'qos_policy_id': None}}
                 req = self.new_update_request('ports', data, port_id)
                 req.get_response(self.api)
-                self.assertTrue(nb_api.update_lport.called)
-                called_args = nb_api.update_lport.call_args_list[0][1]
-                self.assertIsNone(called_args.get('qos_policy_id'))
+                nb_api.update.assert_called_once()
+                lport = nb_api.update.call_args_list[0][0][0]
+                self.assertIsInstance(lport, l2.LogicalPort)
+                self.assertIsNone(lport.qos_policy)
