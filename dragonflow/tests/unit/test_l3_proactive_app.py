@@ -46,12 +46,12 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
         # No lport no flow for route
         self.assertFalse(self.app.mod_flow.called)
 
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update(test_app_base.fake_local_port1)
         # 2 routes, 2 mod_flow and 1 mod_flow for add lport proactive route
         self.assertEqual(3, self.app.mod_flow.call_count)
 
         self.app.mod_flow.reset_mock()
-        self.controller.delete_lport('fake_port1')
+        self.controller.delete(test_app_base.fake_local_port1)
         # 2 routes, 2 mod_flow and 1 mod_flow for del lport proactive route
         self.assertEqual(3, self.app.mod_flow.call_count)
 
@@ -59,23 +59,23 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
         with mock.patch('dragonflow.controller.l3_proactive_app.'
                         'L3ProactiveApp._add_port_process'
                         ) as fake_add_port_process:
-            self.controller.update_lport(lport)
+            self.controller.update(lport)
             fake_add_port_process.assert_called_once_with(
-                lport.get_ip(),
-                lport.get_mac(),
-                lport.get_external_value('local_network_id'),
-                lport.get_unique_key()
+                lport.ip,
+                lport.mac,
+                lport.local_network_id,
+                lport.unique_key
             )
 
     def _test_remove_port(self, lport):
-        self.controller.update_lport(lport)
+        self.controller.update(lport)
         with mock.patch('dragonflow.controller.l3_proactive_app.'
                         'L3ProactiveApp._remove_port_process'
                         ) as fake_remove_port_process:
-            self.controller.delete_lport(lport.get_id())
+            self.controller.delete(lport)
             fake_remove_port_process.assert_called_once_with(
-                lport.get_ip(),
-                lport.get_external_value('local_network_id'),
+                lport.ip,
+                lport.local_network_id,
             )
 
     def test_add_local_port(self):
