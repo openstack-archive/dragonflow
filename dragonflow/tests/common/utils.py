@@ -12,6 +12,7 @@
 
 import re
 
+import netaddr
 from neutron.agent.common import utils as agent_utils
 from neutron.common import utils as n_utils
 from neutron_lib import constants as n_const
@@ -19,6 +20,7 @@ import six
 
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as df_const
+from dragonflow.db.models import l2
 from dragonflow.ovsdb import vswitch_impl
 from dragonflow.tests.common import constants as const
 
@@ -84,13 +86,19 @@ def print_command(full_args, run_as_root=False):
 
 
 def get_vm_port(nb_api, ip=None, mac=None):
-    ports = nb_api.get_all_logical_ports()
+    ports = nb_api.get_all(l2.LogicalPort)
     for port in ports:
         if port.is_vm_port():
-            if ip and port.get_ip() != ip:
-                continue
-            if mac and port.get_mac() != mac:
-                continue
+            if ip:
+                if not isinstance(ip, netaddr.IPAddress):
+                    ip = netaddr.IPAddress(ip)
+                if port.ip != ip:
+                    continue
+            if mac:
+                if not isinstance(mac, netaddr.EUI):
+                    mac = netaddr.EUI(mac)
+                if port.mac != mac:
+                    continue
             return port
     return None
 

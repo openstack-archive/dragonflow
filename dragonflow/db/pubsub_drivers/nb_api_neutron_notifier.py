@@ -27,6 +27,7 @@ from oslo_log import log
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import models
+from dragonflow.db.models import l2
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.db import neutron_notifier_api
 
@@ -77,7 +78,7 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
 
     def notify_port_status(self, ovs_port, status):
         port_id = ovs_port.get_iface_id()
-        self._send_event(models.LogicalPort.table_name,
+        self._send_event(l2.LogicalPort.table_name,
                          port_id, 'update', status)
 
     def notify_fip_status(self, fip, status):
@@ -110,7 +111,7 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
         self.nb_api.publisher.send_event(update)
 
     def notify_neutron_server(self, table, key, action, value, topic=None):
-        if models.LogicalPort.table_name == table and 'update' == action:
+        if l2.LogicalPort.table_name == table and 'update' == action:
             LOG.info("Process port %s status update event", key)
             core_plugin = directory.get_plugin()
             core_plugin.update_port_status(n_context.get_admin_context(),

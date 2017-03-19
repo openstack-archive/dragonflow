@@ -162,6 +162,24 @@ class IpNetworkField(fields.BaseField):
             return str(obj)
 
 
+class MacAddressField(fields.BaseField):
+    '''A field representing a MAC address, specifically a netaddr.EUI.
+
+    In serialized form it is stored in UNIX MAC format:
+        "mac": "12:34:56:78:90:ab"
+    '''
+    types = (netaddr.EUI,)
+
+    def parse_value(self, value):
+        if value is not None:
+            return netaddr.EUI(value, dialect=netaddr.mac_unix_expanded)
+
+    def to_struct(self, obj):
+        if obj is not None:
+            obj.dialect = netaddr.mac_unix_expanded
+            return str(obj)
+
+
 class EnumField(fields.StringField):
     '''A field that can hold a string from a set of predetermined values:
 
@@ -211,3 +229,24 @@ class EnumListField(fields.ListField):
                     _('{value} is not one of: [{valid_values}]').format(
                         value=value,
                         valid_values=', '.join(self._valid_values)))
+
+
+class StringDictField(fields.BaseField):
+    '''A field that stores a string -> string dictionary'''
+    types = (dict,)
+
+    def validate(self, value):
+        super(StringDictField, self).validate(value)
+        if not value:
+            return
+        for key, inner_val in value.items():
+            if not isinstance(key, six.string_types):
+                raise errors.ValidationError(
+                    _('Key {} is not a string').format(key))
+            if not isinstance(inner_val, six.string_types):
+                raise errors.ValidationError(
+                    _('Value {value} to key {key} is not a string').format(
+                        key=key, value=inner_val))
+
+    def get_default_value(self):
+        return {}
