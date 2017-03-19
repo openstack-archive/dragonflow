@@ -443,7 +443,7 @@ class PortTestObj(object):
         return port['port']
 
     def get_logical_port(self):
-        return self.nb_api.get_logical_port(self.port_id)
+        return self.nb_api.get(l2.LogicalPort(id=self.port_id))
 
     def exists(self):
         port = self.get_logical_port()

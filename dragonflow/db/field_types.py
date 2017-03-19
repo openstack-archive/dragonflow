@@ -162,6 +162,24 @@ class IpNetworkField(fields.BaseField):
             return str(obj)
 
 
+class MacAddressField(fields.BaseField):
+    '''A field representing a MAC address, specifically a netaddr.EUI.
+
+    In serialized form it is stored in UNIX MAC format:
+        "mac": "12:34:56:78:90:ab"
+    '''
+    types = (netaddr.EUI,)
+
+    def parse_value(self, value):
+        if value is not None:
+            return netaddr.EUI(value, dialect=netaddr.mac_unix_expanded)
+
+    def to_struct(self, obj):
+        if obj is not None:
+            obj.dialect = netaddr.mac_unix_expanded
+            return str(obj)
+
+
 class EnumField(fields.StringField):
     '''A field that can hold a string from a set of predetermined values:
 

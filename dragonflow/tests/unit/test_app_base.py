@@ -22,6 +22,7 @@ from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
 from dragonflow.db import db_store2
 from dragonflow.db import model_framework
+from dragonflow.db import model_proxy
 from dragonflow.db import models as db_models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
@@ -38,6 +39,12 @@ class DFAppTestBase(tests_base.BaseTestCase):
         super(DFAppTestBase, self).setUp()
         mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
         mock.patch('dragonflow.db.api_nb.NbApi.get_instance').start()
+        mod_flow = mock.patch(
+            'dragonflow.controller.df_base_app.DFlowApp.mod_flow').start()
+        add_flow_go_to_table_mock_patch = mock.patch(
+            'dragonflow.controller.df_base_app.DFlowApp.add_flow_go_to_table')
+        add_flow_go_to_table = add_flow_go_to_table_mock_patch.start()
+        execute = mock.patch('neutron.agent.common.utils.execute').start()
 
         # CLear old objects from cache
         db_store2._instance = None
@@ -64,11 +71,9 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.controller.db_store2.update(fake_chassis1)
         self.controller.db_store2.update(fake_chassis2)
 
-        mock.patch(
-            'dragonflow.controller.df_base_app.DFlowApp.mod_flow').start()
-        mock.patch('dragonflow.controller.df_base_app.DFlowApp.'
-                   'add_flow_go_to_table').start()
-        mock.patch('neutron.agent.common.utils.execute').start()
+        mod_flow.reset_mock()
+        add_flow_go_to_table.reset_mock()
+        execute.reset_mock()
 
     def tearDown(self):
         for model in model_framework.iter_models(False):
@@ -137,8 +142,8 @@ fake_external_switch1 = l2.LogicalSwitch(
 def make_fake_port(id=None,
                    subnets=None,
                    is_local=None,
-                   macs=('00:00:00:00:00:00'),
-                   ips=('0.0.0.0.0'),
+                   macs=('00:00:00:00:00:00',),
+                   ips=('0.0.0.0',),
                    name='fake_local_port',
                    lswitch='fake_switch1',
                    enabled=True,
@@ -157,34 +162,31 @@ def make_fake_port(id=None,
                    ofport=1,
                    local_network_id=11,
                    extra_dhcp_opts=None):
-    fake_port = db_models.LogicalPort("{}")
-    fake_port.inner_obj = {
-        'subnets': subnets,
-        'binding_profile': {},
-        'macs': macs,
-        'name': name,
-        'allowed_address_pairs': [],
-        'lswitch': lswitch,
-        'enabled': True,
-        'topic': topic,
-        'ips': ips,
-        'device_owner': device_owner,
-        'tunnel_key': tunnel_key,
-        'chassis': chassis,
-        'version': version,
-        'unique_key': unique_key,
-        'port_security_enabled': port_security_enabled,
-        'binding_vnic_type': binding_vnic_type,
-        'id': "%s_%s%s" % (network_type, name, ofport) if not id else id,
-        'security_groups': security_groups,
-        'device_id': device_id,
-        'extra_dhcp_opts': extra_dhcp_opts}
-    fake_port.external_dict = {
-        'is_local': is_local,
-        'segmentation_id': segmentation_id,
-        'ofport': ofport,
-        'network_type': network_type,
-        'local_network_id': local_network_id}
+    fake_port = l2.LogicalPort(
+        id="%s_%s%s" % (network_type, name, ofport) if not id else id,
+        topic=topic,
+        name=name,
+        unique_key=unique_key,
+        version=version,
+        ips=ips,
+        subnets=subnets,
+        macs=macs,
+        chassis=chassis,
+        lswitch=lswitch,
+        security_groups=security_groups,
+        allowed_address_pairs=[],
+        port_security_enabled=port_security_enabled,
+        device_owner=device_owner,
+        device_id=device_id,
+        # binding_vnic_type=binding_vnic_type,
+        extra_dhcp_options=extra_dhcp_opts,
+    )
+    fake_port.is_local = is_local
+    fake_port.segmentation_id = segmentation_id
+    fake_port.ofport = ofport
+    fake_port.network_type = network_type
+    fake_port.local_network_id = local_network_id
+    fake_port.tunnel_key = tunnel_key
     return fake_port
 
 
@@ -193,20 +195,17 @@ def make_fake_local_port(**kargs):
     return make_fake_port(**kargs)
 
 
-fake_local_port1_dhcp_opts = [{
-    'opt_value': "10.0.0.1",
-    'opt_name': "3",
-    'ip_version': 4}, {
-    'opt_value': "0.0.0.0/0,10.0.0.1",
-    'opt_name': "121",
-    'ip_version': 4}]
+fake_local_port1_dhcp_opts = [
+    l2.DHCPOption(tag=3, value='10.0.0.1'),
+    l2.DHCPOption(tag=121, value='0.0.0.0/0,10.0.0.1'),
+]
 
 
 fake_local_port1 = make_fake_local_port(
     macs=['fa:16:3e:8c:2e:b3'],
     ips=['10.0.0.6', '2222:2222::3'],
     network_type='vxlan',
-    subnets=['fake_subnet1'],
+    subnets=[model_proxy.create_reference(l2.Subnet, 'fake_subnet1')],
     id='fake_port1',
     extra_dhcp_opts=fake_local_port1_dhcp_opts)
 
