@@ -70,9 +70,9 @@ def delete_conntrack_entries_by_filter(ethertype='IPv4', protocol=None,
         cmd.extend(['-p', str(protocol)])
     cmd.extend(['-f', ethertype.lower()])
     if nw_src:
-        cmd.extend(['-s', nw_src])
+        cmd.extend(['-s', str(nw_src)])
     if nw_dst:
-        cmd.extend(['-d', nw_dst])
+        cmd.extend(['-d', str(nw_dst)])
     if zone:
         cmd.extend(['-w', str(zone)])
 

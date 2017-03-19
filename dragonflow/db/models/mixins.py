@@ -43,6 +43,7 @@ class Name(mf.MixinBase):
     name = fields.StringField()
 
 
+@mf.construct_nb_db_model(indexes={'unique_key': 'unique_key'})
 class UniqueKey(mf.MixinBase):
     unique_key = fields.IntField(required=True)
 

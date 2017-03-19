@@ -32,10 +32,6 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         self.ryu_df_adapter = ryu_base_app.RyuDFAdapter(db_store=self.db_store)
         self.ryu_df_adapter.nb_api = mock.Mock()
         self.mock_app = mock.Mock(spec=[
-                'add_local_port',
-                'remove_local_port',
-                'add_remote_port',
-                'remove_remote_port',
                 'router_updated',
                 'router_deleted',
                 'add_security_group_rule',
@@ -49,18 +45,6 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
             self.ryu_df_adapter.dispatcher.apps = [self.mock_app]
         self.ryu_df_adapter.dispatcher.load = dispatcher_load
         self.ryu_df_adapter.load()
-
-    def test_notifies(self):
-        self.mock_app.reset_mock()
-        self.ryu_df_adapter.notify_add_local_port(lport=3)
-        self.ryu_df_adapter.notify_remove_local_port(lport=4)
-        self.ryu_df_adapter.notify_add_remote_port(lport=5)
-        self.ryu_df_adapter.notify_remove_remote_port(lport=6)
-        self.mock_app.assert_has_calls([
-                mock.call.add_local_port(lport=3),
-                mock.call.remove_local_port(lport=4),
-                mock.call.add_remote_port(lport=5),
-                mock.call.remove_remote_port(lport=6)])
 
     def test_switch_features_handler(self):
         self.mock_app.reset_mock()
