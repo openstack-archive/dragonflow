@@ -70,6 +70,9 @@ class L3AppTestCaseMixin(object):
             with mock.patch("ryu.lib.packet.packet.Packet"):
                 with mock.patch("dragonflow.controller.common."
                                 "icmp_error_generator.generate") as icmp_error:
+                    eui_patcher = mock.patch("netaddr.EUI")
+                    eui_patcher.start()
+                    self.addCleanup(eui_patcher.stop)
                     self.app.packet_in_handler(event)
                     self.app.packet_in_handler(event)
                     self.app.packet_in_handler(event)

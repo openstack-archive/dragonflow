@@ -61,21 +61,21 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                   'enable_dhcp': True}
         self.neutron.create_subnet({'subnet': subnet})
         ports = utils.wait_until_is_and_return(
-            lambda: self.nb_api.get_all_logical_ports(),
+            lambda: self.nb_api.get_all(l2.LogicalPort),
             exception=Exception('No ports assigned in subnet')
         )
         dhcp_ports_found = 0
         for port in ports:
-            if port.get_lswitch_id() == network_id:
-                if port.get_device_owner() == 'network:dhcp':
+            if port.lswitch.id == network_id:
+                if port.device_owner == 'network:dhcp':
                     dhcp_ports_found += 1
         network.close()
         self.assertEqual(1, dhcp_ports_found)
-        ports = self.nb_api.get_all_logical_ports()
+        ports = self.nb_api.get_all(l2.LogicalPort)
         dhcp_ports_found = 0
         for port in ports:
-            if port.get_lswitch_id() == network_id:
-                if port.get_device_owner() == 'network:dhcp':
+            if port.lswitch.id == network_id:
+                if port.device_owner == 'network:dhcp':
                     dhcp_ports_found += 1
         self.assertEqual(0, dhcp_ports_found)
 
@@ -153,11 +153,11 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertTrue(router.exists())
         subnet_msg = {'subnet_id': subnet_id}
         port = self.neutron.add_interface_router(router_id, body=subnet_msg)
-        port2 = self.nb_api.get_logical_port(port['port_id'])
+        port2 = self.nb_api.get(l2.LogicalPort(id=port['port_id']))
         self.assertIsNotNone(port2)
         router.close()
         utils.wait_until_none(
-            lambda: self.nb_api.get_logical_port(port['port_id']),
+            lambda: self.nb_api.get(l2.LogicalPort(id=port['port_id'])),
             exception=Exception('Port was not deleted')
         )
         subnet.close()
@@ -173,7 +173,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                                               self.nb_api, network_id))
         port.create()
         self.assertTrue(port.exists())
-        self.assertEqual(network_id, port.get_logical_port().get_lswitch_id())
+        self.assertEqual(network_id, port.get_logical_port().lswitch.id)
         port.close()
         self.assertFalse(port.exists())
         network.close()
@@ -202,7 +202,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         port.create(port_param)
         self.assertTrue(port.exists())
         self.assertEqual(qos_policy_id,
-                         port.get_logical_port().get_qos_policy_id())
+                         port.get_logical_port().qos_policy.id)
 
         port.close()
         self.assertFalse(port.exists())
@@ -235,7 +235,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         }
         port.update(port_param)
         self.assertEqual(qos_policy_id,
-                         port.get_logical_port().get_qos_policy_id())
+                         port.get_logical_port().qos_policy.id)
 
         port.close()
         self.assertFalse(port.exists())
@@ -274,11 +274,13 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         interface_port = self.neutron.show_port(router_l['port_id'])
         self.assertRaises(n_exc.Conflict, self.neutron.delete_port,
                           interface_port['port']['id'])
-        self.assertIsNotNone(self.nb_api.
-                             get_logical_port(interface_port['port']['id']))
+        self.assertIsNotNone(self.nb_api.get(
+            l2.LogicalPort(id=interface_port['port']['id'])))
+
         self.neutron.remove_interface_router(router.router_id,
                                              body=interface_msg)
-        port2 = self.nb_api.get_logical_port(interface_port['port']['id'])
+        port2 = self.nb_api.get(
+            l2.LogicalPort(id=interface_port['port']['id']))
         self.assertIsNone(port2)
         subnet.close()
         router.close()
@@ -390,8 +392,8 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             priv_subnet_id = priv_subnet.create(private_subnet_para)
             self.assertTrue(priv_subnet.exists())
             router_interface = router.add_interface(subnet_id=priv_subnet_id)
-            router_lport = self.nb_api.get_logical_port(
-                router_interface['port_id'])
+            router_lport = self.nb_api.get(
+                l2.LogicalPort(id=router_interface['port_id']))
             self.assertIsNotNone(router_lport)
 
             port = self.store(
@@ -450,8 +452,8 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             priv_subnet_id = priv_subnet.create(private_subnet_para)
             self.assertTrue(priv_subnet.exists())
             router_interface = router.add_interface(subnet_id=priv_subnet_id)
-            router_lport = self.nb_api.get_logical_port(
-                router_interface['port_id'])
+            router_lport = self.nb_api.get(
+                l2.LogicalPort(id=router_interface['port_id']))
             self.assertIsNotNone(router_lport)
 
             port = self.store(
@@ -522,7 +524,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         port.create()
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_switch = lport.get_port_security_enable()
+        real_switch = lport.port_security_enabled
         self.assertEqual(network_portsec_switch, real_switch)
 
         network_portsec_switch = False
@@ -531,7 +533,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         port.create()
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_switch = lport.get_port_security_enable()
+        real_switch = lport.port_security_enabled
         self.assertEqual(network_portsec_switch, real_switch)
 
         port = self.store(
@@ -545,14 +547,14 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         })
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_switch = lport.get_port_security_enable()
+        real_switch = lport.port_security_enabled
         self.assertEqual(expected_switch, real_switch)
 
         expected_switch = True
         port.update({'port_security_enabled': expected_switch})
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_switch = lport.get_port_security_enable()
+        real_switch = lport.port_security_enabled
         self.assertEqual(expected_switch, real_switch)
 
     def test_add_remove_allowed_address_pairs(self):
@@ -588,7 +590,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         })
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_pairs = lport.get_allowed_address_pairs()
+        real_pairs = [aap.to_struct() for aap in lport.allowed_address_pairs]
         self.assertItemsEqual(expected_pairs, real_pairs)
 
         expected_pairs = [
@@ -600,7 +602,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         port.update({'allowed_address_pairs': expected_pairs})
         lport = port.get_logical_port()
         self.assertIsNotNone(lport)
-        real_pairs = lport.get_allowed_address_pairs()
+        real_pairs = [aap.to_struct() for aap in lport.allowed_address_pairs]
         self.assertItemsEqual(expected_pairs, real_pairs)
 
     def test_create_delete_bgp_peer(self):
