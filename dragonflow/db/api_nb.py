@@ -16,7 +16,6 @@
 
 import eventlet
 from jsonmodels import errors
-from neutron_lib import constants as const
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -315,24 +314,6 @@ class NbApi(object):
         else:
             LOG.warning('Unknown table %s', table)
 
-    def get_logical_port(self, port_id, topic=None):
-        try:
-            port_value = self.driver.get_key(db_models.LogicalPort.table_name,
-                                             port_id, topic)
-            return db_models.LogicalPort(port_value)
-        except Exception:
-            return None
-
-    def get_all_logical_ports(self, topic=None):
-        res = []
-        for lport_value in self.driver.get_all_entries(
-                db_models.LogicalPort.table_name, topic):
-            lport = db_models.LogicalPort(lport_value)
-            if lport.get_chassis() is None:
-                continue
-            res.append(lport)
-        return res
-
     # lport process for VM migration
     def set_lport_migration(self, port_id, chassis):
         port_migration = {'migration': chassis}
@@ -340,11 +321,14 @@ class NbApi(object):
         self.driver.create_key('lport_migration', port_id, migration_json)
 
     def get_lport_migration(self, port_id):
-        migration_json = self.driver.get_key('lport_migration', port_id)
+        try:
+            migration_json = self.driver.get_key('lport_migration', port_id)
+        except df_exceptions.DBKeyNotFound:
+            LOG.exception("migration for lport %s not found", port_id)
+            return
 
-        if migration_json:
-            port_migration = jsonutils.loads(migration_json)
-            return port_migration
+        port_migration = jsonutils.loads(migration_json)
+        return port_migration
 
     def delete_lport_migration(self, port_id):
         self.driver.delete_key('lport_migration', port_id)
@@ -353,41 +337,6 @@ class NbApi(object):
         lport_json = jsonutils.dumps(lport.lport)
         self._send_db_change_event('lport_migration', port_id, 'migrate',
                                    lport_json, topic=lport.lport['topic'])
-
-    def create_lport(self, id, lswitch_id, topic, **columns):
-        lport = {}
-        lport['id'] = id
-        lport['lswitch'] = lswitch_id
-        lport['topic'] = topic
-        lport[db_models.UNIQUE_KEY] = self.driver.allocate_unique_key(
-            db_models.LogicalPort.table_name)
-        for col, val in columns.items():
-            lport[col] = val
-        lport_json = jsonutils.dumps(lport)
-        self.driver.create_key(db_models.LogicalPort.table_name,
-                               id, lport_json, topic)
-        self._send_db_change_event(db_models.LogicalPort.table_name,
-                                   id, 'create', lport_json, topic)
-
-    def update_lport(self, id, topic, **columns):
-        lport_json = self.driver.get_key(db_models.LogicalPort.table_name,
-                                         id, topic)
-        lport = jsonutils.loads(lport_json)
-        if not df_utils.is_valid_version(lport, columns):
-            return
-        for col, val in columns.items():
-            if val != const.ATTR_NOT_SPECIFIED:
-                lport[col] = val
-        lport_json = jsonutils.dumps(lport)
-        self.driver.set_key(db_models.LogicalPort.table_name,
-                            id, lport_json, lport['topic'])
-        self._send_db_change_event(db_models.LogicalPort.table_name,
-                                   id, 'set', lport_json, lport['topic'])
-
-    def delete_lport(self, id, topic):
-        self.driver.delete_key(db_models.LogicalPort.table_name, id, topic)
-        self._send_db_change_event(db_models.LogicalPort.table_name,
-                                   id, 'delete', id, topic)
 
     def create_floatingip(self, id, topic, **columns):
         floatingip = {}

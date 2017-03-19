@@ -25,6 +25,7 @@ from ryu.ofproto import ether
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.controller import l3_app_base
+from dragonflow.db.models import l2
 from dragonflow.db.models import l3
 
 
@@ -70,10 +71,13 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
             l3.LogicalRouter.get_index('unique_key'))
         for router_port in router.ports:
             if ip_addr in router_port.network:
-                dst_ports = self.db_store.get_ports_by_network_id(
-                    router_port.lswitch.id)
+                index = l2.LogicalPort.get_indexes()['lswitch_id']
+                dst_ports = self.db_store2.get_all(
+                    l2.LogicalPort(lswitch=l2.LogicalSwitch(
+                        id=router_port.lswitch.id)),
+                    index=index)
                 for out_port in dst_ports:
-                    if out_port.get_ip() == pkt_ip.dst:
+                    if out_port.ip == ip_addr:
                         self._install_l3_flow(router_port,
                                               out_port, msg,
                                               network_id)
@@ -81,11 +85,11 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
 
     def _install_l3_flow(self, dst_router_port, dst_port, msg,
                          src_network_id):
-        reg7 = dst_port.get_unique_key()
-        dst_ip = dst_port.get_ip()
+        reg7 = dst_port.unique_key
+        dst_ip = dst_port.ip
         src_mac = dst_router_port.mac
-        dst_mac = dst_port.get_mac()
-        dst_network_id = dst_port.get_external_value('local_network_id')
+        dst_mac = dst_port.mac
+        dst_network_id = dst_port.local_network_id
 
         parser = self.parser
         ofproto = self.ofproto

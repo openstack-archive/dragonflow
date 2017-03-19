@@ -22,6 +22,7 @@ from ryu.ofproto import ether
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
+from dragonflow.db.models import l2
 
 
 LOG = log.getLogger(__name__)
@@ -40,15 +41,15 @@ class PortSecApp(df_base_app.DFlowApp):
     def _get_allow_ip_mac_pairs(self, lport):
         allowed_ip_mac_pairs = []
 
-        fixed_ips = lport.get_ip_list()
-        fixed_mac = lport.get_mac()
+        fixed_ips = lport.ips
+        fixed_mac = lport.mac
         if (fixed_ips is not None) and (fixed_mac is not None):
             for fixed_ip in fixed_ips:
                 allowed_ip_mac_pairs.append(
-                    {'ip_address': fixed_ip,
-                     'mac_address': fixed_mac})
+                    l2.AddressPair(ip_address=fixed_ip,
+                                   mac_address=fixed_mac))
 
-        allow_address_pairs = lport.get_allowed_address_pairs()
+        allow_address_pairs = lport.allowed_address_pairs
         if allow_address_pairs is not None:
             allowed_ip_mac_pairs.extend(allow_address_pairs)
 
@@ -57,19 +58,18 @@ class PortSecApp(df_base_app.DFlowApp):
     def _get_allow_macs(self, lport):
         allowed_macs = set()
 
-        fixed_mac = lport.get_mac()
+        fixed_mac = lport.mac
         if fixed_mac is not None:
             allowed_macs.add(fixed_mac)
 
-        allow_address_pairs = lport.get_allowed_address_pairs()
-        if allow_address_pairs is not None:
-            for allow_address_pair in allow_address_pairs:
-                allowed_macs.add(allow_address_pair['mac_address'])
+        allow_address_pairs = lport.allowed_address_pairs
+        allowed_macs.union(allow_address_pair.mac_address
+                           for allow_address_pair in allow_address_pairs)
 
         return allowed_macs
 
     def _install_flows_check_valid_ip_and_mac(self, unique_key, ip, mac):
-        if netaddr.IPNetwork(ip).version == n_const.IP_VERSION_6:
+        if ip.version == n_const.IP_VERSION_6:
             LOG.info("IPv6 addresses are not supported yet")
             return
 
@@ -188,14 +188,14 @@ class PortSecApp(df_base_app.DFlowApp):
         self._remove_one_port_security_flow(const.PRIORITY_HIGH, match)
 
     def _install_port_security_flows(self, lport):
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
 
         # install ip and mac check flows
         allowed_ip_mac_pairs = self._get_allow_ip_mac_pairs(lport)
         for ip_mac_pair in allowed_ip_mac_pairs:
             self._install_flows_check_valid_ip_and_mac(
-                unique_key, ip_mac_pair['ip_address'],
-                ip_mac_pair['mac_address']
+                unique_key, ip_mac_pair.ip_address,
+                ip_mac_pair.mac_address
             )
 
         # install vm mac and allowed address pairs mac check flows
@@ -204,11 +204,11 @@ class PortSecApp(df_base_app.DFlowApp):
             self._install_flows_check_valid_mac(unique_key, allowed_mac)
 
         # install only vm mac check flows
-        vm_mac = lport.get_mac()
+        vm_mac = lport.mac
         self._install_flows_check_only_vm_mac(unique_key, vm_mac)
 
     def _update_port_security_flows(self, lport, original_lport):
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
 
         # update ip and mac check flows
         added_ip_mac_pairs, removed_ip_mac_pairs = \
@@ -216,11 +216,10 @@ class PortSecApp(df_base_app.DFlowApp):
                                                      original_lport)
         for item in added_ip_mac_pairs:
             self._install_flows_check_valid_ip_and_mac(
-                unique_key, item['ip_address'],
-                item['mac_address'])
+                unique_key, item.ip_address, item.mac_address)
         for item in removed_ip_mac_pairs:
             self._uninstall_flows_check_valid_ip_and_mac(
-                unique_key, item['ip_address'], item['mac_address'])
+                unique_key, item.ip_address, item.mac_address)
 
         # update vm mac and allowed address pairs mac check flows
         added_valid_macs, removed_valid_macs = \
@@ -232,8 +231,8 @@ class PortSecApp(df_base_app.DFlowApp):
             self._uninstall_flows_check_valid_mac(unique_key, item)
 
         # update only vm mac check flows
-        new_vm_mac = lport.get_mac()
-        old_vm_mac = original_lport.get_mac()
+        new_vm_mac = lport.mac
+        old_vm_mac = original_lport.mac
         if new_vm_mac != old_vm_mac:
             self._install_flows_check_only_vm_mac(unique_key, new_vm_mac)
             self._uninstall_flows_check_only_vm_mac(unique_key, old_vm_mac)
@@ -246,15 +245,15 @@ class PortSecApp(df_base_app.DFlowApp):
                       command=ofproto.OFPFC_DELETE_STRICT)
 
     def _uninstall_port_security_flows(self, lport):
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
 
         # uninstall ip and mac check flows
         allowed_ip_mac_pairs = self._get_allow_ip_mac_pairs(lport)
         for ip_mac_pair in allowed_ip_mac_pairs:
             self._uninstall_flows_check_valid_ip_and_mac(
                 unique_key,
-                ip_mac_pair['ip_address'],
-                ip_mac_pair['mac_address']
+                ip_mac_pair.ip_address,
+                ip_mac_pair.mac_address
             )
 
         # uninstall vm mac and allowed address pairs mac check flows
@@ -263,12 +262,12 @@ class PortSecApp(df_base_app.DFlowApp):
             self._uninstall_flows_check_valid_mac(unique_key, allowed_mac)
 
         # uninstall only vm mac check flows
-        vm_mac = lport.get_mac()
+        vm_mac = lport.mac
         self._uninstall_flows_check_only_vm_mac(unique_key, vm_mac)
 
     def _install_disable_flow(self, lport):
 
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
         parser = self.parser
 
         # Send packets to next table directly
@@ -280,7 +279,7 @@ class PortSecApp(df_base_app.DFlowApp):
 
     def _uninstall_disable_flow(self, lport):
 
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
         parser = self.parser
 
         # Remove send packets to next table directly
@@ -322,16 +321,18 @@ class PortSecApp(df_base_app.DFlowApp):
         # Default drop
         self._add_flow_drop(const.PRIORITY_VERY_LOW, None)
 
-    def add_local_port(self, lport):
-        enable = lport.get_port_security_enable()
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    def _add_local_port(self, lport):
+        enable = lport.port_security_enabled
         if enable:
             self._install_port_security_flows(lport)
         else:
             self._install_disable_flow(lport)
 
-    def update_local_port(self, lport, original_lport):
-        enable = lport.get_port_security_enable()
-        original_enable = original_lport.get_port_security_enable()
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_UPDATED)
+    def _update_local_port(self, lport, original_lport):
+        enable = lport.port_security_enabled
+        original_enable = original_lport.port_security_enabled
 
         if enable:
             if original_enable:
@@ -345,8 +346,9 @@ class PortSecApp(df_base_app.DFlowApp):
                 self._install_disable_flow(lport)
                 self._uninstall_port_security_flows(original_lport)
 
-    def remove_local_port(self, lport):
-        enable = lport.get_port_security_enable()
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    def _remove_local_port(self, lport):
+        enable = lport.port_security_enabled
         if enable:
             self._uninstall_port_security_flows(lport)
         else:
