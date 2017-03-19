@@ -22,7 +22,7 @@ from dragonflow.controller.common import utils as cookie
 from dragonflow.controller import df_base_app
 from dragonflow.controller import ofswitch
 
-LOG = log.getLogger("dragonflow.controller.aging")
+LOG = log.getLogger(__name__)
 
 
 AGING_COOKIE_NAME = 'aging'

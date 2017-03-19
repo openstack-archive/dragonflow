@@ -40,7 +40,7 @@ from dragonflow.db.models import mixins
 from dragonflow.ovsdb import vswitch_impl
 
 
-LOG = log.getLogger("dragonflow.controller.df_local_controller")
+LOG = log.getLogger(__name__)
 
 
 class DfLocalController(object):
