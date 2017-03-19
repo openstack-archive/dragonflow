@@ -57,7 +57,7 @@ class TestRemotePort(test_base.DFTestBase):
         network_type = network_obj['provider:network_type']
         segmentation_id = network_obj['provider:segmentation_id']
         ofport = self.vswitch_api.get_vtp_ofport(network_type)
-        port_unique_key = port.get_logical_port().get_unique_key()
+        port_unique_key = port.get_logical_port().unique_key
 
         match = "reg7=" + str(hex(port_unique_key))
         action = ("set_field:10.10.10.10" +

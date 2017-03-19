@@ -62,12 +62,12 @@ class SNATApp_mixin(object):
             const.INGRESS_NAT_TABLE).remove()
 
     def is_data_port(self, lport):
-        if lport.get_device_owner() == '':
+        if lport.device_owner == '':
             LOG.warning("SNAT application is operating in test mode")
             return True
         else:
             return df_utils.is_port_owner_of_type(
-                lport.get_device_owner(),
+                lport.device_owner,
                 df_common_const.DATA_DEVICE_OWNER)
 
     def _install_egress_goto_rules(self):

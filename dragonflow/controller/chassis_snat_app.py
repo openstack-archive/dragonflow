@@ -20,6 +20,7 @@ from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.controller import snat_app_mixin as snat_mixin
+from dragonflow.db.models import l2
 
 LOG = log.getLogger(__name__)
 
@@ -86,7 +87,8 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
             match,
             self.external_host_mac)
 
-    def remove_local_port(self, lport):
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    def _remove_local_port(self, lport):
         """override remove_local_port method to remove installed flows
 
         :param lport:  local logical port which is being removed
@@ -100,7 +102,8 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
             else:
                 LOG.info('SNAT application: not a compute port, skipped')
 
-    def add_local_port(self, lport):
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    def _add_local_port(self, lport):
         """override add_local_port method to install sNAT related flows
 
         :param lport:  local logical port which is being added
@@ -111,7 +114,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
         if self.external_host_mac is not None:
             # install flows only when compute port is added
             if self.is_data_port(lport):
-                self.chassis = lport.get_chassis()
+                self.chassis = lport.chassis
 
                 self.install_lport_based_flows(lport)
             else:
@@ -141,14 +144,14 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
     def install_lport_based_flows(self, lport):
         # instance specific flows
         self._install_snat_ingress_after_conntrack(
-                                        lport.get_unique_key(),
-                                        lport.get_mac(),
+                                        lport.unique_key,
+                                        lport.mac,
                                         self.external_host_mac)
 
     def remove_lport_based_flows(self, lport):
         parser = self.parser
         ofproto = self.ofproto
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                 ct_mark=int(unique_key))
 

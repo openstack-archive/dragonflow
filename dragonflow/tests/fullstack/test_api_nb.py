@@ -18,7 +18,6 @@ from dragonflow.db import models as db_models
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
 from dragonflow.tests.fullstack import test_base
-from dragonflow.tests.unit import test_app_base
 
 
 class Test_API_NB(test_base.DFTestBase):
@@ -56,28 +55,21 @@ class Test_API_NB(test_base.DFTestBase):
         self.assertNotEqual(lswitch.unique_key, lswitch1.unique_key)
 
     def test_create_lport(self):
-        fake_lport = copy.deepcopy(
-            test_app_base.fake_local_port1.inner_obj)
-        del fake_lport['unique_key']
-        fake_lport['lswitch_id'] = 'fake_switch1'
-        self.nb_api.create_lport(**fake_lport)
-        self.addCleanup(self.nb_api.delete_lport,
-                        fake_lport['id'], fake_lport['topic'])
-        lport = self.nb_api.get_logical_port(fake_lport['id'],
-                                             fake_lport['topic'])
-        self.assertIsNotNone(lport.get_unique_key())
+        fake_lport = l2.LogicalPort(id='test_lport0', topic='test_tenant1')
+        self.nb_api.create(fake_lport)
+        self.addCleanup(self.nb_api.delete, fake_lport)
+        lport = self.nb_api.get(fake_lport)
+        self.assertIsNotNone(lport.unique_key)
 
         fake_lport1 = copy.deepcopy(fake_lport)
-        fake_lport1['id'] = 'other_id'
-        self.nb_api.create_lport(**fake_lport1)
-        self.addCleanup(self.nb_api.delete_lport,
-                        fake_lport1['id'], fake_lport1['topic'])
-        lport1 = self.nb_api.get_logical_port(fake_lport1['id'],
-                                              fake_lport1['topic'])
-        self.assertIsNotNone(lport1.get_unique_key())
+        fake_lport1.id = 'other_id'
+        self.nb_api.create(fake_lport1)
+        self.addCleanup(self.nb_api.delete, fake_lport1)
+        lport1 = self.nb_api.get(fake_lport1)
+        self.assertIsNotNone(lport1.unique_key)
 
-        self.assertNotEqual(lport.get_unique_key(),
-                            lport1.get_unique_key())
+        self.assertNotEqual(lport.unique_key,
+                            lport1.unique_key)
 
     def test_create_lrouter(self):
         fake_lrouter = l3.LogicalRouter(id='test_router0',

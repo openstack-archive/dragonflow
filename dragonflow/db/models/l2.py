@@ -11,12 +11,21 @@
 #    under the License.
 
 from jsonmodels import fields
+from jsonmodels import models
+from neutron_lib.api.definitions import portbindings
+from neutron_lib import constants as n_const
+from oslo_log import log
 
+from dragonflow.db import db_store2
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
+from dragonflow.db.models import core
 from dragonflow.db.models import host_route
 from dragonflow.db.models import mixins
 from dragonflow.db.models import qos
+from dragonflow.db.models import secgroups
+
+LOG = log.getLogger(__name__)
 
 
 @mf.construct_nb_db_model
@@ -58,3 +67,131 @@ class LogicalSwitch(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
         for idx, subnet in enumerate(self.subnets):
             if subnet.id == subnet_id:
                 return self.subnets.pop(idx)
+
+
+class AddressPair(models.Base):
+    ip_address = df_fields.IpAddressField(required=True)
+    mac_address = df_fields.MacAddressField(required=True)
+
+
+class DHCPOption(models.Base):
+    tag = fields.IntField(required=True)
+    value = fields.StringField(required=True)
+
+
+# LogicalPort events
+EVENT_LOCAL_CREATED = 'local_created'
+EVENT_REMOTE_CREATED = 'remote_created'
+EVENT_LOCAL_UPDATED = 'local_updated'
+EVENT_REMOTE_UPDATED = 'remote_updated'
+EVENT_LOCAL_DELETED = 'local_deleted'
+EVENT_REMOTE_DELETED = 'remote_deleted'
+
+
+@mf.register_model
+@mf.construct_nb_db_model(events={
+    EVENT_LOCAL_CREATED, EVENT_REMOTE_CREATED,
+    EVENT_LOCAL_UPDATED, EVENT_REMOTE_UPDATED,
+    EVENT_LOCAL_DELETED, EVENT_REMOTE_DELETED,
+}, indexes={
+    'chassis_id': 'chassis.id',
+    'lswitch_id': 'lswitch.id',
+})
+class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
+                  mixins.UniqueKey):
+    table_name = "lport"
+    ips = df_fields.ListOfField(df_fields.IpAddressField())
+    subnets = df_fields.ReferenceListField(Subnet)
+    macs = df_fields.ListOfField(df_fields.MacAddressField())
+    enabled = fields.BoolField()
+    chassis = df_fields.ReferenceField(core.Chassis)
+    lswitch = df_fields.ReferenceField(LogicalSwitch)
+    security_groups = df_fields.ReferenceListField(secgroups.SecurityGroup)
+    allowed_address_pairs = fields.ListField(AddressPair)
+    port_security_enabled = fields.BoolField()
+    device_owner = fields.StringField()
+    device_id = fields.StringField()
+    qos_policy = df_fields.ReferenceField(qos.QosPolicy)
+    remote_vtep = fields.BoolField()
+    extra_dhcp_options = fields.ListField(DHCPOption)
+    binding_vnic_type = df_fields.EnumField(portbindings.VNIC_TYPES)
+
+    def __init__(self, ofport=None, is_local=None,
+                 peer_vtep_address=None, **kwargs):
+        super(LogicalPort, self).__init__(**kwargs)
+        self.ofport = ofport
+        self.is_local = is_local
+        self.peer_vtep_address = peer_vtep_address
+
+    @property
+    def ip(self):
+        try:
+            return self.ips[0]
+        except IndexError:
+            return None
+
+    @property
+    def mac(self):
+        try:
+            return self.macs[0]
+        except IndexError:
+            return None
+
+    def is_vm_port(self):
+        """
+        Return True if the device owner starts with 'compute:' (or is None)
+        """
+        owner = self.device_owner
+        if not owner or owner.startswith(n_const.DEVICE_OWNER_COMPUTE_PREFIX):
+            return True
+        return False
+
+    def __str__(self):
+        data = {}
+        for name in dir(self):
+            if name.startswith('_'):
+                continue
+            cls_definition = getattr(self.__class__, name, None)
+            if isinstance(cls_definition, fields.BaseField):
+                if name in self._set_fields:
+                    data[name] = getattr(self, name)
+            elif not cls_definition:  # Display only instnaces, not classes
+                data[name] = getattr(self, name)
+        return str(data)
+
+    def emit_updated(self):
+        ofport = getattr(self, 'ofport', None)
+        if not ofport:
+            return
+        is_local = getattr(self, 'is_local', None)
+        db_store_inst = db_store2.get_instance()
+        original_lport = db_store_inst.get_one(self)
+        # TODO(oanson) This should be done in df_local_controller, not here.
+        # See Dragonflow bug/1690775
+        db_store_inst.update(self)
+        if original_lport is None:
+            LOG.info("Adding new logical port = %s", self)
+            if is_local:
+                self.emit_local_created()
+            else:
+                self.emit_remote_created()
+        else:
+            LOG.info("Updating %(location)s logical port = %(port)s, "
+                     "original port = %(original_port)s",
+                     {'port': self,
+                      'original_port': original_lport,
+                      'location': 'local' if is_local else 'remote'})
+            if is_local:
+                self.emit_local_updated(original_lport)
+            else:
+                self.emit_remote_updated(original_lport)
+
+    def emit_deleted(self):
+        is_local = getattr(self, 'is_local', None)
+        ofport = getattr(self, 'ofport', None)
+        if not ofport:
+            return
+        if is_local:
+            self.emit_local_deleted()
+        else:
+            self.emit_remote_deleted()
