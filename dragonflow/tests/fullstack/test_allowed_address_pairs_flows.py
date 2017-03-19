@@ -57,7 +57,6 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
                 if expected_arp_spa not in flow['match']:
                     continue
             return True
-
         return False
 
     def _check_sending_gratuitous_arp_to_controller_flows(self, ofport,
@@ -79,6 +78,10 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
         Add a VM with allowed address pairs configuration. Verify related
         flows is there.
         """
+        if not self.check_app_loaded(
+             "active_port_detection_app.ActivePortDetectionApp"):
+            self.skipTest("ActivePortDetectionApp is not enabled")
+
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create(network={'name': 'aap_test'})
         subnet_obj = self.store(objects.SubnetTestObj(

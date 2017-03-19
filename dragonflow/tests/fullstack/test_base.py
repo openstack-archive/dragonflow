@@ -70,6 +70,12 @@ class DFTestBase(base.BaseTestCase):
         if cfg.CONF.df.enable_selective_topology_distribution:
             self.start_subscribing()
 
+    def check_app_loaded(self, app_name):
+        apps_list = cfg.CONF.df.apps_list
+        if app_name in apps_list:
+            return True
+        return False
+
     def _close_stored_objects(self):
         while self.__objects_to_close:
             close_func = self.__objects_to_close.pop()

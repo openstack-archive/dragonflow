@@ -14,7 +14,6 @@
 import struct
 
 from neutron.agent.common import utils
-from oslo_config import cfg
 from oslo_log import log
 from ryu.lib import addrconv
 
@@ -26,8 +25,6 @@ from dragonflow.controller.common import cookies
 LOG = log.getLogger(__name__)
 
 _aging_cookie = 0
-ACTIVE_PORT_DETECTION_APP = \
-    "active_port_detection_app.ActivePortDetectionApp"
 
 
 AGING_COOKIE_NAME = 'aging'
@@ -66,13 +63,6 @@ def set_aging_cookie_bits(old_cookie, old_cookie_mask):
 
 def get_xor_cookie(cookie):
     return cookie ^ const.GLOBAL_INIT_AGING_COOKIE
-
-
-def check_active_port_detection_app():
-    apps_list = cfg.CONF.df.apps_list
-    if ACTIVE_PORT_DETECTION_APP in apps_list:
-        return True
-    return False
 
 
 def delete_conntrack_entries_by_filter(ethertype='IPv4', protocol=None,
