@@ -30,30 +30,6 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
         self.app = self.open_flow_app.dispatcher.apps[0]
         self.router = copy.deepcopy(test_app_base.fake_logic_router1)
 
-    def test_add_del_router_route_after_lport(self):
-        self.controller.update_lport(test_app_base.fake_local_port1)
-        self.app.mod_flow.reset_mock()
-
-        # add route
-        routes = [{"destination": "10.100.0.0/16",
-                   "nexthop": "10.0.0.6"},
-                  {"destination": "10.101.0.0/16",
-                   "nexthop": "10.0.0.6"}]
-        # Use another object here to differentiate the one in cache
-        router_with_route = copy.deepcopy(self.router)
-        router_with_route.inner_obj['routes'] = routes
-        router_with_route.inner_obj['version'] += 1
-        self.controller.update_lrouter(router_with_route)
-        # 2 routes, 2 mod_flow
-        self.assertEqual(2, self.app.mod_flow.call_count)
-
-        # delete route
-        self.app.mod_flow.reset_mock()
-        self.router.inner_obj['routes'] = []
-        self.router.inner_obj['version'] += 2
-        self.controller.update_lrouter(self.router)
-        self.assertEqual(2, self.app.mod_flow.call_count)
-
     def test_add_del_lport_after_router_route(self):
         # add route
         routes = [{"destination": "10.100.0.0/16",
@@ -76,20 +52,6 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
         self.controller.delete_lport('fake_port1')
         # 2 routes, 2 mod_flow and 1 mod_flow for del lport proactive route
         self.assertEqual(3, self.app.mod_flow.call_count)
-
-    def test_no_route_if_no_match_lport(self):
-        # add route
-        routes = [{"destination": "10.100.0.0/16",
-                   "nexthop": "10.0.0.106"},
-                  {"destination": "10.101.0.0/16",
-                   "nexthop": "10.0.0.106"}]
-        self.controller.update_lport(test_app_base.fake_local_port1)
-        self.app.mod_flow.reset_mock()
-        router_with_route = copy.deepcopy(self.router)
-        router_with_route.inner_obj['routes'] = routes
-        router_with_route.inner_obj['version'] += 1
-        self.controller.update_lrouter(router_with_route)
-        self.assertFalse(self.app.mod_flow.called)
 
     def _test_add_port(self, lport):
         with mock.patch('dragonflow.controller.l3_proactive_app.'
