@@ -69,6 +69,7 @@ class RouterTestObj(object):
     def close(self):
         if self.closed or self.router_id is None:
             return
+        self.update(router={"routes": None})
         ports = self.neutron.list_ports(device_id=self.router_id)
         ports = ports['ports']
         for port in ports:

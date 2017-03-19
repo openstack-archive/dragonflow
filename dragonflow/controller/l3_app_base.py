@@ -38,7 +38,6 @@ from dragonflow.db import models
 
 ROUTE_TO_ADD = 'route_to_add'
 ROUTE_ADDED = 'route_added'
-COOKIE_NAME = 'tunnel_key'
 LOG = log.getLogger(__name__)
 
 
@@ -48,7 +47,6 @@ class L3AppMixin(object):
         super(L3AppMixin, self).__init__()
         self.router_port_rarp_cache = {}
         self.route_cache = {}
-        self.register_local_cookie_bits(COOKIE_NAME, 24)
 
         self.conf = cfg.CONF.df_l3_app
         self.ttl_invalid_handler_rate_limit = df_utils.RateLimiter(
@@ -141,7 +139,8 @@ class L3AppMixin(object):
         for port in router.get_ports():
             self._delete_router_port(router, port)
         for route in router.get_routes():
-            self._delete_router_route(router, route)
+            self._delete_router_extra_route(router, route)
+        self.route_cache.pop(router.get_id(), None)
 
     def _update_router_interfaces(self, old_router, new_router):
         new_router_ports = new_router.get_ports()
@@ -160,139 +159,20 @@ class L3AppMixin(object):
         new_routes = new_router.get_routes()
         for new_route in new_routes:
             if new_route not in old_routes:
-                self._add_router_route(new_router, new_route)
+                self._add_router_extra_route(new_router, new_route)
             else:
                 old_routes.remove(new_route)
         for old_route in old_routes:
-            self._delete_router_route(new_router, old_route)
+            self._delete_router_extra_route(new_router, old_route)
 
     def _add_new_lrouter(self, lrouter):
         for new_port in lrouter.get_ports():
             self._add_new_router_port(lrouter, new_port)
         for route in lrouter.get_routes():
-            self._add_router_route(lrouter, route)
+            self._add_router_extra_route(lrouter, route)
 
-    def _add_router_route(self, router, route):
-        LOG.info(_LI('Add extra route %(route)s for router %(router)s'),
-                 {'route': route, 'router': str(router)})
-
-        router_id = router.get_id()
-        added = self._add_route_process(router, route)
-        if added:
-            self._add_to_route_cache(ROUTE_ADDED, router_id, route)
-        else:
-            self._add_to_route_cache(ROUTE_TO_ADD, router_id, route)
-
-    def _delete_router_route(self, router, route):
-        LOG.debug('Delete extra route %(route)s from router %(router)s',
-                  {'route': route, 'router': router})
-
-        self._delete_route_process(router, route)
-        self._del_from_route_cache(ROUTE_ADDED, router.get_id(), route)
-        self._del_from_route_cache(ROUTE_TO_ADD, router.get_id(), route)
-
-    def _add_route_process(self, router, route):
-        ofproto = self.ofproto
-        parser = self.parser
-
-        destination = route.get('destination')
-        destination = netaddr.IPNetwork(destination)
-        nexthop = route.get('nexthop')
-        router_if_port = self._get_gateway_port_by_ip(router, nexthop)
-        nexthop_port = self._get_port(
-            nexthop, router_if_port.get_lswitch_id(), router.get_topic())
-        if nexthop_port is None:
-            LOG.info(_LI('nexthop port does not exist'))
-            return False
-
-        # Install openflow entry for the route
-        # Match: ip, metadata=network_id, nw_src=src_network/mask,
-        #        nw_dst=dst_network/mask,
-        #  Actions:ttl-1, mod_dl_dst=next_hop_mac, load_reg7=next_hop_port_key,
-        #  goto: egress_table
-        dst_mac = nexthop_port.get_mac()
-        tunnel_key = nexthop_port.get_unique_key()
-        match = self._generate_l3_match(parser,
-                                        destination,
-                                        nexthop_port,
-                                        router_if_port)
-
-        actions = [
-            parser.OFPActionDecNwTtl(),
-            parser.OFPActionSetField(eth_dst=dst_mac),
-            parser.OFPActionSetField(reg7=tunnel_key),
-        ]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
-
-        inst = [action_inst, goto_inst]
-
-        cookie, cookie_mask = self.get_local_cookie(COOKIE_NAME, tunnel_key)
-        self.mod_flow(
-            cookie=cookie,
-            cookie_mask=cookie_mask,
-            inst=inst,
-            table_id=const.L3_LOOKUP_TABLE,
-            priority=const.PRIORITY_VERY_HIGH,
-            match=match)
-
-        return True
-
-    def _delete_route_process(self, router, route):
-        ofproto = self.ofproto
-        parser = self.parser
-
-        destination = route.get('destination')
-        destination = netaddr.IPNetwork(destination)
-        nexthop = route.get('nexthop')
-        router_if_port = self._get_gateway_port_by_ip(router, nexthop)
-        nexthop_port = self._get_port(
-            nexthop, router_if_port.get_lswitch_id(), router.get_topic())
-        if nexthop_port is None:
-            LOG.info(_LI('nexthop does not exist'))
-            return
-
-        # remove openflow entry for the route
-        # Match: ip, metadata=network_id, nw_src=src_network/mask,
-        #        nw_dst=dst_network/mask,
-        match = self._generate_l3_match(parser,
-                                        destination,
-                                        nexthop_port,
-                                        router_if_port)
-
-        self.mod_flow(
-            command=ofproto.OFPFC_DELETE_STRICT,
-            table_id=const.L3_LOOKUP_TABLE,
-            priority=const.PRIORITY_VERY_HIGH,
-            match=match)
-
-        return
-
-    def _generate_l3_match(self, parser, destination, nexthop_port,
-                           router_if_port):
-        router_if_mac = router_if_port.get_mac()
-        network_id = nexthop_port.get_external_value('local_network_id')
-        src_network = router_if_port.get_cidr_network()
-        src_netmask = router_if_port.get_cidr_netmask()
-        dst_network = destination.network
-        dst_netmask = destination.netmask
-        if destination.version == 4:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    metadata=network_id,
-                                    eth_dst=router_if_mac,
-                                    ipv4_src=(src_network, src_netmask),
-                                    ipv4_dst=(dst_network, dst_netmask))
-        else:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
-                                    metadata=network_id,
-                                    eth_dst=router_if_mac,
-                                    ipv6_src=(src_network, src_netmask),
-                                    ipv6_dst=(dst_network, dst_netmask))
-        return match
-
-    def _get_port(self, ip, lswitch_id, topic):
-        ports = self.db_store.get_ports(topic)
+    def _get_port_by_lswitch_and_ip(self, ip, lswitch_id):
+        ports = self.db_store.get_ports()
         for port in ports:
             if port.get_ip() == ip and port.get_lswitch_id() == lswitch_id:
                 return port
@@ -303,8 +183,132 @@ class L3AppMixin(object):
             if netaddr.IPAddress(ip) in network:
                 return port
 
+        # Code is not expected to hit here as neutron will prevent from adding
+        # unreachable route.
         raise exceptions.DBStoreRecordNotFound(
             record='RouterPort(router=%s, ip=%s)' % (router.get_name(), ip))
+
+    def _add_router_extra_route(self, router, route):
+        """Add extra router to router."""
+
+        LOG.debug('Add extra route %(route)s to router %(router)s',
+                  {'route': route, 'router': router})
+
+        router_port = self._get_gateway_port_by_ip(router, route['nexthop'])
+        lport = self._get_port_by_lswitch_and_ip(route['nexthop'],
+                                                 router_port.get_lswitch_id())
+        router_id = router.get_id()
+        if not lport:
+            LOG.debug("lport with IP %s doesn't exist, skip adding "
+                      "extra route.", route['nexthop'])
+            self._add_to_route_cache(ROUTE_TO_ADD, router_id, route)
+            return
+
+        self._add_extra_route_to_router(router.get_unique_key(),
+                                        router_port.get_mac(),
+                                        lport.get_unique_key(),
+                                        lport.get_mac(), route)
+        self._add_to_route_cache(ROUTE_ADDED, router_id, route)
+
+    def _delete_router_extra_route(self, router, route):
+        """Delete extra route from router."""
+
+        LOG.debug('Delete extra route %(route)s from router %(router)s',
+                  {'route': route, 'router': router})
+
+        router_port = self._get_gateway_port_by_ip(router, route['nexthop'])
+        router_unique_key = router.get_unique_key()
+        router_if_mac = router_port.get_mac()
+        # Delete the openflow for extra route anyway.
+        self._delete_extra_route_from_router(router_unique_key,
+                                             router_if_mac, route)
+        self._del_from_route_cache(ROUTE_ADDED, router.get_id(), route)
+        self._del_from_route_cache(ROUTE_TO_ADD, router.get_id(), route)
+
+    def _add_extra_route_to_router(self, router_unique_key, router_if_mac,
+                                   lport_unique_key, lport_mac, route):
+        """Add extra route to router.
+        @param router_unique_key: The unique_key of router where the extra
+                                  route belongs to
+        @param router_if_mac: The mac address of related router port
+        @param lport_unique_key: The unique_key of lport whick will act as
+                                 nexthop.
+        @param lport_mac: The mac address of lport which will act as nexthop
+        @param route: The extra route dict
+        """
+        LOG.info(_LI('Add extra route %(route)s to router'), route)
+
+        ofproto = self.ofproto
+        parser = self.parser
+
+        # Install openflow entry for extra route, only packets come from
+        # the same subnet as nexthop port can use extra route.
+        # Match: ip, reg5=router_unique_key, dl_dst=router_if_mac,
+        #        nw_dst=destination,
+        # Actions:ttl-1, mod_dl_src=router_if_mac, mod_dl_dst=lport_mac,
+        #         load_reg7=next_hop_port_key,
+        # goto: egress_table
+        match = self._generate_extra_route_match(router_unique_key,
+                                                 router_if_mac,
+                                                 route.get('destination'))
+
+        actions = [
+            parser.OFPActionDecNwTtl(),
+            parser.OFPActionSetField(eth_src=router_if_mac),
+            parser.OFPActionSetField(eth_dst=lport_mac),
+            parser.OFPActionSetField(reg7=lport_unique_key),
+        ]
+        action_inst = parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)
+        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_TABLE)
+        inst = [action_inst, goto_inst]
+        self.mod_flow(
+            inst=inst,
+            table_id=const.L3_LOOKUP_TABLE,
+            priority=const.PRIORITY_VERY_HIGH,
+            match=match)
+
+    def _delete_extra_route_from_router(self, router_unique_key,
+                                        router_if_mac, route):
+        """Delete extra route from router.
+        @param router_unique_key: The unique_key of router where the extra
+                                  route belongs to
+        @param router_if_mac: The mac address of related router port
+        @param route: The extra route dict
+        """
+        LOG.info(_LI('Delete extra route %(route)s from router'), route)
+
+        ofproto = self.ofproto
+
+        # Remove openflow entry for extra route
+        # Match: ip, reg5=router_unique_key, dl_dst=router_if_mac,
+        #        nw_dst=destination
+        match = self._generate_extra_route_match(router_unique_key,
+                                                 router_if_mac,
+                                                 route.get('destination'))
+
+        self.mod_flow(
+            command=ofproto.OFPFC_DELETE_STRICT,
+            table_id=const.L3_LOOKUP_TABLE,
+            priority=const.PRIORITY_VERY_HIGH,
+            match=match)
+
+    def _generate_extra_route_match(self, router_unique_key, router_if_mac,
+                                    destination):
+        destination = netaddr.IPNetwork(destination)
+        dst_network = destination.network
+        dst_netmask = destination.netmask
+        if destination.version == 4:
+            match = self.parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                         reg5=router_unique_key,
+                                         eth_dst=router_if_mac,
+                                         ipv4_dst=(dst_network, dst_netmask))
+        else:
+            match = self.parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6,
+                                         reg5=router_unique_key,
+                                         eth_dst=router_if_mac,
+                                         ipv6_dst=(dst_network, dst_netmask))
+        return match
 
     # route cache got following structure
     # {router: {ROUTE_ADDED: set(route), ROUTE_TO_ADD: set(route)}
@@ -323,6 +327,17 @@ class L3AppMixin(object):
         routes = cached_routes.get(key)
         routes.discard(
             (route.get('destination'), route.get('nexthop')))
+
+    def _change_route_cache_status(self, router_id, from_part, to_part, route):
+        """Change the status of extra route in cache of app.
+
+        @param router_id The cache belongs to which router.
+        @param from_part From which part the extra route will be moved.
+        @param to_part   To which part the extra route will be moved.
+        @param route     The extra route to move.
+        """
+        self._del_from_route_cache(from_part, router_id, route)
+        self._add_to_route_cache(to_part, router_id, route)
 
     def _get_router_interface_match(self, router_unique_key, rif_ip):
         if netaddr.IPAddress(rif_ip).version == 4:
@@ -532,47 +547,102 @@ class L3AppMixin(object):
             priority=const.PRIORITY_HIGH,
             match=match)
 
-    def _reprocess_to_add_route(self, topic, port_ip):
-        LOG.debug('reprocess to add routes again')
-        for router in self.db_store.get_routers(topic):
-            router_id = router.get_id()
-            cached_routes = self.route_cache.get(router_id)
-            if cached_routes is None:
-                continue
-            routes_to_add = cached_routes.get(ROUTE_TO_ADD)
-            LOG.debug('routes to add: %s', routes_to_add)
-            for route in routes_to_add:
-                if port_ip != route[1]:
-                    continue
-                route_dict = dict(zip(['destination', 'nexthop'], route))
-                added = self._add_router_route(router, route_dict)
-                if added:
-                    self._add_to_route_cache(ROUTE_ADDED, router_id,
-                                             route_dict)
-                    self._del_from_route_cache(ROUTE_TO_ADD, router_id,
-                                               route_dict)
+    def _get_router_by_lswitch_and_port_ip(self, lswitch_id, port_ip):
+        """Find and return the logical router that lport connects to.
 
-    def _reprocess_to_del_route(self, topic, port_ip):
-        LOG.debug('reprocess to del routes again')
-        for router in self.db_store.get_routers(topic):
-            router_id = router.get_id()
-            cached_routes = self.route_cache.get(router_id)
-            if cached_routes is None:
+        @param lswitch_id: The lswitch id of lport
+        @param port_ip: The ip of lport
+        @return Router and the router port that is the gateway of lport
+        """
+        for router in self.db_store.get_routers():
+            for port in router.get_ports():
+                network = netaddr.IPNetwork(port.get_network())
+                if (lswitch_id == port.get_lswitch_id() and
+                        netaddr.IPAddress(port_ip) in network):
+                    return router, port
+        return None, None
+
+    def _reprocess_to_add_route(self, lport):
+        """Add extra routes for lport.
+
+        @param lport: The lport related to extra routes.
+        """
+        LOG.debug("Reprocess to add extra routes that use lport %(lport)s "
+                  "as nexthop", lport)
+        lswitch_id = lport.get_lswitch_id()
+        port_ip = lport.get_ip()
+        router, router_if = self._get_router_by_lswitch_and_port_ip(
+            lswitch_id, port_ip)
+        if not router:
+            LOG.debug("No router for lport %s, skip adding extra route",
+                      lport)
+            return
+
+        router_id = router.get_id()
+        cached_routes = self.route_cache.get(router_id)
+        if not cached_routes or not cached_routes.get(ROUTE_TO_ADD):
+            LOG.debug("No extra routes need to be processed for logical "
+                      "router %s", router)
+            return
+
+        # Make a copy here, or else _change_route_cache_status will delete
+        # elements in routes inside the iteration.
+        routes = copy.deepcopy(cached_routes.get(ROUTE_TO_ADD))
+        for route in routes:
+            if port_ip != route[1]:
                 continue
-            # Make a copy here, or else _del_from_route_cache will delete
-            # elements in routes_added inside the iteration.
-            routes_added = copy.deepcopy(cached_routes.get(ROUTE_ADDED))
-            for route in routes_added:
-                if port_ip != route[1]:
-                    continue
-                route_dict = dict(zip(['destination', 'nexthop'], route))
-                self._delete_router_route(router, route_dict)
-                self._del_from_route_cache(ROUTE_ADDED, router_id, route_dict)
-                self._add_to_route_cache(ROUTE_TO_ADD, router_id, route_dict)
+            route_dict = dict(zip(['destination', 'nexthop'], route))
+            self._add_extra_route_to_router(router.get_unique_key(),
+                                            router_if.get_mac(),
+                                            lport.get_unique_key(),
+                                            lport.get_mac(),
+                                            route_dict)
+            self._change_route_cache_status(router_id,
+                                            from_part=ROUTE_TO_ADD,
+                                            to_part=ROUTE_ADDED,
+                                            route=route_dict)
+
+    def _reprocess_to_delete_route(self, lport):
+        """Delete extra routes for lport.
+
+        @param lport: The lport related to extra routes.
+        """
+        LOG.debug("Reprocess to delete extra routes that use lport %(lport)s "
+                  "as nexthop", lport)
+        lswitch_id = lport.get_lswitch_id()
+        port_ip = lport.get_ip()
+        router, router_if = self._get_router_by_lswitch_and_port_ip(
+            lswitch_id, port_ip)
+        if not router:
+            LOG.debug("No router for lport %s, skip adding extra route",
+                      lport)
+            return
+
+        router_id = router.get_id()
+        cached_routes = self.route_cache.get(router_id)
+        if not cached_routes or not cached_routes.get(ROUTE_ADDED):
+            LOG.debug("No extra routes need to be processed for logical "
+                      "router %s", router)
+            return
+
+        # Make a copy here, or else _change_route_cache_status will delete
+        # elements in routes inside the iteration.
+        routes = copy.deepcopy(cached_routes.get(ROUTE_ADDED))
+        for route in routes:
+            if port_ip != route[1]:
+                continue
+            route_dict = dict(zip(['destination', 'nexthop'], route))
+            self._delete_extra_route_from_router(router.get_unique_key(),
+                                                 router_if.get_mac(),
+                                                 route_dict)
+            self._change_route_cache_status(router_id,
+                                            from_part=ROUTE_ADDED,
+                                            to_part=ROUTE_TO_ADD,
+                                            route=route_dict)
 
     def _add_port(self, lport):
         """Add port which is not a router interface."""
-        self._reprocess_to_add_route(lport.get_topic(), lport.get_ip())
+        self._reprocess_to_add_route(lport)
 
     def remove_local_port(self, lport):
         LOG.debug('remove local port:%s', lport)
@@ -590,4 +660,4 @@ class L3AppMixin(object):
 
     def _remove_port(self, lport):
         """Remove port which is not a router interface."""
-        self._reprocess_to_del_route(lport.get_topic(), lport.get_ip())
+        self._reprocess_to_delete_route(lport)

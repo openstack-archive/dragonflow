@@ -1055,6 +1055,68 @@ class TestL3App(test_base.DFTestBase):
         if len(policy.exceptions) > 0:
             raise policy.exceptions[0]
 
+    def _create_extra_route_policies(self, nexthop_port):
+        ignore_action = app_testing_objects.IgnoreAction()
+        raise_action = app_testing_objects.RaiseAction("Unexpected packet")
+        rules = [
+            app_testing_objects.PortPolicyRule(
+                # The nexthop lport should get the icmp echo request whose
+                # destination is the cidr of extra route.
+                app_testing_objects.RyuICMPPingFilter(self._get_ping),
+                actions=[app_testing_objects.DisableRuleAction(),
+                         app_testing_objects.StopSimulationAction()]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore gratuitous ARP packets
+                app_testing_objects.RyuARPGratuitousFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
+                # Ignore IPv6 packets
+                app_testing_objects.RyuIPv6Filter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+        ]
+        policy = app_testing_objects.PortPolicy(
+            rules=rules,
+            default_action=raise_action
+        )
+        key = (self.subnet1.subnet_id, nexthop_port.port_id)
+        return {key: policy}
+
+    def test_router_extra_route(self):
+        nexthop_port = self.subnet1.create_port()
+        nexthop_ip = nexthop_port.port.get_logical_port().get_ip()
+        self.router.router.update({"routes": [{"nexthop": nexthop_ip,
+                                               "destination": "30.0.0.0/24"}]})
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+        ignore_action = app_testing_objects.IgnoreAction()
+        port_policy = self._create_extra_route_policies(nexthop_port)
+        initial_packet = self._create_packet(
+            "30.0.0.12",
+            ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
+        send_action = app_testing_objects.SendAction(
+            self.subnet1.subnet_id,
+            self.port1.port_id,
+            str(initial_packet))
+        policy = self.store(
+            app_testing_objects.Policy(
+                initial_actions=[
+                    send_action
+                ],
+                port_policies=port_policy,
+                unknown_port_action=ignore_action
+            )
+        )
+        policy.start(self.topology)
+        policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        if len(policy.exceptions) > 0:
+            raise policy.exceptions[0]
+
 
 class TestSGApp(test_base.DFTestBase):
     def setUp(self):
