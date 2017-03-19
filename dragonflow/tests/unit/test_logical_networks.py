@@ -31,7 +31,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 lswitch='fake_vlan_switch1',
                 local_network_id=1)
         self.logical_networks.add_local_port(
-                port_id=fake_local_vlan_port1.get_id(),
+                port_id=fake_local_vlan_port1.id,
                 network_id=1,
                 network_type='vlan')
         net_1_vlan_ports = self.logical_networks.get_local_port_count(
@@ -46,7 +46,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 lswitch='fake_vlan_switch1',
                 local_network_id=1)
         self.logical_networks.add_local_port(
-                port_id=fake_local_vlan_port2.get_id(),
+                port_id=fake_local_vlan_port2.id,
                 network_id=1,
                 network_type='vlan')
         net_1_vlan_ports = self.logical_networks.get_local_port_count(
@@ -65,7 +65,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 ofport=4,
                 local_network_id=2)
         self.logical_networks.add_local_port(
-                port_id=fake_local_gre_port1.get_id(),
+                port_id=fake_local_gre_port1.id,
                 network_id=2,
                 network_type='gre')
         net_2_gre_ports = self.logical_networks.get_local_port_count(
@@ -73,7 +73,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 network_type='gre')
         self.assertEqual(1, net_2_gre_ports)
         self.logical_networks.remove_local_port(
-                port_id=fake_local_gre_port1.get_id(),
+                port_id=fake_local_gre_port1.id,
                 network_id=2,
                 network_type='gre')
         net_2_gre_ports = self.logical_networks.get_local_port_count(
@@ -90,7 +90,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 lswitch='fake_vlan_switch1',
                 local_network_id=1)
         self.logical_networks.add_remote_port(
-                port_id=fake_remote_vlan_port1.get_id(),
+                port_id=fake_remote_vlan_port1.id,
                 network_id=1,
                 network_type='vlan')
         net_1_vlan_ports = self.logical_networks.get_remote_port_count(
@@ -105,7 +105,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 lswitch='fake_vlan_switch1',
                 local_network_id=1)
         self.logical_networks.add_remote_port(
-                port_id=fake_remote_vlan_port2.get_id(),
+                port_id=fake_remote_vlan_port2.id,
                 network_id=1,
                 network_type='vlan')
         net_1_vlan_ports = self.logical_networks.get_remote_port_count(
@@ -124,7 +124,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 ofport=4,
                 local_network_id=2)
         self.logical_networks.add_remote_port(
-                port_id=fake_local_gre_port1.get_id(),
+                port_id=fake_local_gre_port1.id,
                 network_id=2,
                 network_type='gre')
         net_2_gre_ports = self.logical_networks.get_remote_port_count(
@@ -133,7 +133,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
 
         self.assertEqual(1, net_2_gre_ports)
         self.logical_networks.remove_remote_port(
-                port_id=fake_local_gre_port1.get_id(),
+                port_id=fake_local_gre_port1.id,
                 network_id=2,
                 network_type='gre')
         net_2_gre_ports = self.logical_networks.get_remote_port_count(

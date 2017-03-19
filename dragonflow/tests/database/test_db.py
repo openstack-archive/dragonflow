@@ -56,12 +56,12 @@ def run_server(nb_api):
     nb_api.create(l2.LogicalSwitch(id=lswitch_name, topic=topic))
     start = time.time()
     for idx in range(cfg.CONF.df_db_test.count):
-        nb_api.create_lport(
-            'lport{}'.format(idx),
-            lswitch_name,
-            topic,
+        nb_api.create(l2.LogicalPort(
+            id='lport{}'.format(idx),
+            lswitch=lswitch_name,
+            topic=topic,
             timestamp=time.time()
-        )
+        ))
     nb_api.delete_publisher(publisher, topic)
     end = time.time()
     data_str = [str(end - start), str(cfg.CONF.df_db_test.count),

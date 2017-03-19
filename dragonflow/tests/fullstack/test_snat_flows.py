@@ -79,7 +79,7 @@ class TestSnatFlows(test_base.DFTestBase):
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
         )
-        port_key = port.get_unique_key()
+        port_key = port.unique_key
         r = self._check_port_based_flows(
             ovs.dump(self.integration_bridge),
             hex(port_key),

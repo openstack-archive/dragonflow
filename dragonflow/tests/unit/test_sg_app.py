@@ -18,7 +18,7 @@ import netaddr
 from neutron.agent.common import utils
 from neutron_lib import constants as n_const
 
-from dragonflow.db import models as db_models
+from dragonflow.db.models import l2
 from dragonflow.db.models import secgroups
 from dragonflow.tests.unit import test_app_base
 
@@ -54,31 +54,33 @@ class TestSGApp(test_app_base.DFAppTestBase):
         return n_const.IPv4
 
     def _get_another_local_lport(self):
-        fake_local_port = db_models.LogicalPort("{}")
-        fake_local_port.inner_obj = {
-            'subnets': ['fake_subnet1'],
-            'binding_profile': {},
-            'macs': ['fa:16:3e:8c:2e:12'],
-            'name': '',
-            'allowed_address_pairs': [],
-            'lswitch': 'fake_switch1',
-            'enabled': True,
-            'topic': 'fake_tenant1',
-            'ips': ['10.0.0.10', '2222:2222::2'],
-            'device_owner': 'compute:None',
-            'chassis': 'fake_host',
-            'version': 2,
-            'unique_key': 5,
-            'port_security_enabled': True,
-            'binding_vnic_type': 'normal',
-            'id': 'fake_port2',
-            'security_groups': ['fake_security_group_id1'],
-            'device_id': 'fake_device_id'}
-        fake_local_port.external_dict = {'is_local': True,
-                                         'segmentation_id': 23,
-                                         'ofport': 20,
-                                         'network_type': 'vxlan',
-                                         'local_network_id': 1}
+        fake_local_port = l2.LogicalPort(
+            id='fake_port2',
+            topic='fake_tenant1',
+            name='',
+            unique_key=5,
+            version=2,
+            ips=[netaddr.IPAddress('10.0.0.10'),
+                 netaddr.IPAddress('2222:2222::2')],
+            subnets=['fake_subnet1'],
+            macs=[netaddr.EUI('fa:16:3e:8c:2e:12')],
+            chassis='fake_host',
+            lswitch='fake_switch1',
+            security_groups=['fake_security_group_id1'],
+            allowed_address_pairs=[],
+            port_security_enabled=True,
+            device_owner='compute:None',
+            device_id='fake_device_id',
+            ofport=20,
+            is_local=True,
+            # 'binding_profile': {},
+            # 'binding_vnic_type': 'normal',
+        )
+        fake_local_port.is_local = True
+        fake_local_port.segmentation_id = 23
+        fake_local_port.ofport = 20
+        fake_local_port.network_type = 'vxlan'
+        fake_local_port.local_network_id = 1
         return fake_local_port
 
     def _get_another_security_group(self, is_ipv6=False):
@@ -149,15 +151,15 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.assert_not_called()
 
         # add remote port before adding any local port
-        self.controller.update_lport(self.fake_remote_lport)
+        self.controller.update(self.fake_remote_lport)
         self.mock_mod_flow.assert_not_called()
 
         # remove remote port before adding any local port
-        self.controller.delete_lport(self.fake_remote_lport.get_id())
+        self.controller.delete(self.fake_remote_lport)
         self.mock_mod_flow.assert_not_called()
 
         # add local port one
-        self.controller.update_lport(self.fake_local_lport)
+        self.controller.update(self.fake_local_lport)
         # add flows:
         # 1. a flow in ingress conntrack table (ipv4)
         # 2. a flow in ingress conntrack table (ipv6)
@@ -179,8 +181,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # add local port two
         fake_local_lport2 = self._get_another_local_lport()
-
-        self.controller.update_lport(fake_local_lport2)
+        self.controller.update(fake_local_lport2)
         # add flows:
         # 1. a flow in ingress conntrack table (ipv4)
         # 2. a flow in ingress conntrack table (ipv6)
@@ -195,7 +196,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # remove local port two
-        self.controller.delete_lport(fake_local_lport2.get_id())
+        self.controller.delete(fake_local_lport2)
         # remove flows:
         # 1. a flow in ingress conntrack table (ipv4)
         # 2. a flow in ingress conntrack table (ipv6)
@@ -238,7 +239,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_execute.reset_mock()
 
         # add remote port after adding a local port
-        self.controller.update_lport(self.fake_remote_lport)
+        self.controller.update(self.fake_remote_lport)
         # add flows:
         # 1. a ingress rule flow (caused by IP addresses represent
         # remote_group_id changed) in ingress secgroup table
@@ -246,7 +247,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # remove remote port after adding a local port
-        self.controller.delete_lport(self.fake_remote_lport.get_id())
+        self.controller.delete(self.fake_remote_lport)
         # remove flows:
         # 1. a ingress rule flow (caused by IP addresses represent
         # remote_group_id changed) in ingress secgroup table
@@ -260,7 +261,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_execute.reset_mock()
 
         # remove local port one
-        self.controller.delete_lport(self.fake_local_lport.get_id())
+        self.controller.delete(self.fake_local_lport)
         # remove flows:
         # 1. a flow in ingress conntrack table (ipv4)
         # 2. a flow in ingress conntrack table(ipv6)
@@ -310,8 +311,8 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # add local port
         fake_local_lport = self._get_another_local_lport()
-        fake_local_lport_version = fake_local_lport.inner_obj['version']
-        self.controller.update_lport(fake_local_lport)
+        fake_local_lport_version = fake_local_lport.version
+        self.controller.update(fake_local_lport)
         self.mock_mod_flow.reset_mock()
 
         # create another fake security group
@@ -320,11 +321,10 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # update the association of the lport to a new security group
         fake_local_lport = self._get_another_local_lport()
-        fake_local_lport.inner_obj['security_groups'] = \
-            ['fake_security_group_id2']
+        fake_local_lport.security_groups = ['fake_security_group_id2']
         fake_local_lport_version += 1
-        fake_local_lport.inner_obj['version'] = fake_local_lport_version
-        self.controller.update_lport(fake_local_lport)
+        fake_local_lport.version = fake_local_lport_version
+        self.controller.update(fake_local_lport)
         # add flows:
         # 1. a associating flow (conjunction) in ingress secgroup table (ipv4)
         # 2. a associating flow (conjunction) in ingress secgroup table (ipv6)
@@ -359,10 +359,10 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # update the association of the lport to no security group
         fake_local_lport = self._get_another_local_lport()
-        fake_local_lport.inner_obj['security_groups'] = []
+        fake_local_lport.security_groups = []
         fake_local_lport_version += 1
-        fake_local_lport.inner_obj['version'] = fake_local_lport_version
-        self.controller.update_lport(fake_local_lport)
+        fake_local_lport.version = fake_local_lport_version
+        self.controller.update(fake_local_lport)
         # remove flows:
         # 1-2. a flow in ingress conntrack table (ipv4, ipv6)
         # 3-4. a associating flow in ingress secgroup table (ipv4, ipv6)
@@ -391,7 +391,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_execute.reset_mock()
 
         # remove local port
-        self.controller.delete_lport(fake_local_lport.get_id())
+        self.controller.delete(fake_local_lport)
 
         # delete fake security group
         self.controller.delete(self.security_group)
@@ -405,9 +405,8 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # add local port
         fake_local_lport = self._get_another_local_lport()
-        fake_local_lport.inner_obj['security_groups'] = \
-            ['fake_security_group_id2']
-        self.controller.update_lport(fake_local_lport)
+        fake_local_lport.security_groups = ['fake_security_group_id2']
+        self.controller.update(fake_local_lport)
         self.mock_mod_flow.reset_mock()
         self.mock_execute.reset_mock()
 
@@ -449,7 +448,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_execute.reset_mock()
 
         # remove local ports
-        self.controller.delete_lport(fake_local_lport.get_id())
+        self.controller.delete(fake_local_lport)
         self.mock_mod_flow.reset_mock()
 
         # delete fake security group
@@ -461,14 +460,14 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # add a local port with allowed address pairs
         fake_local_lport = self._get_another_local_lport()
-        fake_local_lport.inner_obj["allowed_address_pairs"] = [
-            {'ip_address': '10.0.0.100',
-             'mac_address': 'fa:16:3e:8c:2e:12'}
+        fake_local_lport.allowed_address_pairs = [
+            l2.AddressPair(ip_address='10.0.0.100',
+                           mac_address='fa:16:3e:8c:2e:12')
         ]
-        fake_local_lport_version = fake_local_lport.inner_obj['version']
-        self.controller.update_lport(fake_local_lport)
+        fake_local_lport_version = fake_local_lport.version
+        self.controller.update(fake_local_lport)
         # add flows:
-        # 1-2. a flow in ingress conntrack table (ipv4, ipv6)
+        # 1-2. a flow in ingress conntrack table (ipv4, ipv6
         # 3-4. a associating flow in ingress secgroup table (ipv4, ipv6)
         # 5-6. a flow in egress conntrack table (ipv4, ipv6)
         # 7-8. a associating flow in egress secgroup table (ipv4, ipv6)
@@ -484,13 +483,13 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
         # update allowed address pairs of the lport
         fake_local_lport = self._get_another_local_lport()
-        fake_local_lport.inner_obj["allowed_address_pairs"] = [
-            {'ip_address': '10.0.0.200',
-             'mac_address': 'fa:16:3e:8c:2e:12'}
+        fake_local_lport.allowed_address_pairs = [
+            l2.AddressPair(ip_address='10.0.0.200',
+                           mac_address='fa:16:3e:8c:2e:12')
         ]
         fake_local_lport_version += 1
-        fake_local_lport.inner_obj['version'] = fake_local_lport_version
-        self.controller.update_lport(fake_local_lport)
+        fake_local_lport.version = fake_local_lport_version
+        self.controller.update(fake_local_lport)
         # add flows:
         # 1. a ingress rule flow in ingress secgroup table(using ip in the new
         #    allowed address pairs)
@@ -502,7 +501,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
 
         # remove local port
-        self.controller.delete_lport(fake_local_lport.get_id())
+        self.controller.delete(fake_local_lport)
         # remove flows:
         # 1-2. a flow in ingress conntrack table (ipv4, ipv6)
         # 3-4. a associating flow in ingress secgroup table (ipv4, ipv6)
