@@ -36,6 +36,7 @@ from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.db import api_nb
+from dragonflow.db.models import l2
 
 
 LOG = log.getLogger(__name__)
@@ -531,11 +532,12 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
         return h
 
     def _get_logical_port_by_tunnel_key(self, tunnel_key):
-        lports = self.nb_api.get_all_logical_ports()
-        for lport in lports:
-            if lport.get_unique_key() == tunnel_key:
-                return lport
-        raise exceptions.LogicalPortNotFoundByTunnelKey(key=tunnel_key)
+        lean_lport = l2.LogicalPort(unique_key=tunnel_key)
+        index = l2.LogicalPort.get_indexes()['unique_key']
+        lport = self.nb_api.get(lean_lport, index=index)
+        if not lport:
+            raise exceptions.LogicalPortNotFoundByTunnelKey(key=tunnel_key)
+        return lport
 
     # Taken from Neurton: neutron/agent/metadata/agent.py
     def _sign_instance_id(self, instance_id):

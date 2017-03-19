@@ -74,7 +74,7 @@ class TestL2FLows(test_base.DFTestBase):
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
         )
-        tunnel_key = port.get_unique_key()
+        tunnel_key = port.unique_key
         tunnel_key_hex = hex(tunnel_key)
         n_type = network.get_network()['network']['provider:network_type']
         ofport = self.vswitch_api.get_vtp_ofport(n_type)
@@ -133,7 +133,7 @@ class TestL2FLows(test_base.DFTestBase):
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
         )
-        port_key = port.get_unique_key()
+        port_key = port.unique_key
         port_key_hex = hex(port_key)
 
         r = self._check_vlan_flows(ovs.dump(self.integration_bridge),
@@ -307,7 +307,7 @@ class TestL2FLows(test_base.DFTestBase):
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
         )
-        port_key = port.get_unique_key()
+        port_key = port.unique_key
         port_key_hex = hex(port_key)
         r = self._check_flat_flows(ovs.dump(self.integration_bridge),
                                    metadataid, port_key_hex, mac)
@@ -501,7 +501,7 @@ class TestL2FLows(test_base.DFTestBase):
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
         )
-        tunnel_key = port.get_unique_key()
+        tunnel_key = port.unique_key
         tunnel_key_hex = hex(tunnel_key)
         r = self._check_multicast_rule(ovs.dump(self.integration_bridge),
                                        metadataid, tunnel_key_hex)
