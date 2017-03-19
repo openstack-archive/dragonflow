@@ -21,6 +21,7 @@ from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.db import model_framework
+from dragonflow.db.models import all  # noqa
 from dragonflow.db import models
 
 db_tables = (
