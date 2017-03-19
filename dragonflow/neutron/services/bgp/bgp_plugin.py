@@ -23,6 +23,7 @@ from oslo_log import log as logging
 
 from dragonflow.db.models import bgp
 from dragonflow.db.models import core
+from dragonflow.db.models import l2
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 
 
@@ -126,14 +127,14 @@ class DFBgpPlugin(service_base.ServicePluginBase,
     def _get_external_ip_of_lport(self, lport_id, topic):
         """Get the accessible external ip of chassis where lport resides in"""
 
-        lport = self.nb_api.get_logical_port(lport_id, topic)
-        binding_host = lport.get_chassis()
+        lport = self.nb_api.get(l2.LogicalPort(id=lport_id, topic=topic))
+        binding_host = lport.chassis
         if not binding_host:
             LOG.warning(
                 'Logical port %s has not been bound to any host yet', lport_id)
             return
 
-        return self._get_external_ip_by_host(binding_host)
+        return self._get_external_ip_by_host(binding_host.id)
 
     def _get_external_ip_by_host(self, host):
         chassis = self.nb_api.get(core.Chassis(id=host))

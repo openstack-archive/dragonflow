@@ -40,13 +40,13 @@ class TestL3Flows(test_base.DFTestBase):
 
     def test_router_add_extra_route(self):
         lport = self.port1.port.get_logical_port()
-        ip1 = lport.get_ip()
+        ip1 = lport.ip
         dest = "20.{}.{}.0/24".format(
             random.randint(0, 254), random.randint(0, 254))
         body = {
                     "routes": [
                         {
-                            "nexthop": ip1,
+                            "nexthop": str(ip1),
                             "destination": dest
                         }
                     ]

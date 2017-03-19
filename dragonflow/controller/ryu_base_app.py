@@ -77,26 +77,6 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def unregister_table_handler(self, table_id, handler):
         self.table_handlers.pop(table_id, None)
 
-    def notify_add_local_port(self, lport=None):
-        self.dispatcher.dispatch('add_local_port', lport=lport)
-
-    def notify_update_local_port(self, lport=None, original_lport=None):
-        self.dispatcher.dispatch('update_local_port', lport=lport,
-                                 original_lport=original_lport)
-
-    def notify_remove_local_port(self, lport=None):
-        self.dispatcher.dispatch('remove_local_port', lport=lport)
-
-    def notify_add_remote_port(self, lport=None):
-        self.dispatcher.dispatch('add_remote_port', lport=lport)
-
-    def notify_update_remote_port(self, lport=None, original_lport=None):
-        self.dispatcher.dispatch('update_remote_port', lport=lport,
-                                 original_lport=original_lport)
-
-    def notify_remove_remote_port(self, lport=None):
-        self.dispatcher.dispatch('remove_remote_port', lport=lport)
-
     def notify_ovs_sync_finished(self):
         self.dispatcher.dispatch('ovs_sync_finished')
 

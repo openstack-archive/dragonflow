@@ -67,7 +67,7 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
                    match=mock.ANY)])
 
     def test_add_local_port(self):
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update(test_app_base.fake_local_port1)
 
         self.SNAT_app.mod_flow.assert_has_calls(
             [mock.call(
@@ -77,8 +77,9 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
                    match=mock.ANY)])
 
     def test_remove_local_port(self):
-        self.controller.open_flow_app.notify_remove_local_port(
-            test_app_base.fake_local_port1)
+        self.controller.update(test_app_base.fake_local_port1)
+        self.SNAT_app.mod_flow.reset_mock()
+        self.controller.delete(test_app_base.fake_local_port1)
 
         self.SNAT_app.mod_flow.assert_has_calls(
             [mock.call(
