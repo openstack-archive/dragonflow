@@ -10,8 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import netaddr
-
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
@@ -58,10 +56,10 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
     def _add_port(self, lport):
         """Add port which is not a router interface."""
         super(L3ProactiveApp, self)._add_port(lport)
-        dst_ip = lport.get_ip()
-        dst_mac = lport.get_mac()
-        network_id = lport.get_external_value('local_network_id')
-        tunnel_key = lport.get_unique_key()
+        dst_ip = lport.ip
+        dst_mac = lport.mac
+        network_id = lport.local_network_id
+        tunnel_key = lport.unique_key
 
         self._add_port_process(dst_ip, dst_mac, network_id, tunnel_key)
 
@@ -70,7 +68,7 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         parser = self.parser
         ofproto = self.ofproto
 
-        if netaddr.IPAddress(dst_ip).version == n_const.IP_VERSION_4:
+        if dst_ip.version == n_const.IP_VERSION_4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     metadata=network_id,
                                     ipv4_dst=dst_ip)
@@ -96,8 +94,8 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
     def _remove_port(self, lport):
         """Remove port which is not a router interface."""
         super(L3ProactiveApp, self)._remove_port(lport)
-        dst_ip = lport.get_ip()
-        network_id = lport.get_external_value('local_network_id')
+        dst_ip = lport.ip
+        network_id = lport.local_network_id
 
         self._remove_port_process(dst_ip, network_id)
 
@@ -106,7 +104,7 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         parser = self.parser
         ofproto = self.ofproto
 
-        if netaddr.IPAddress(dst_ip).version == n_const.IP_VERSION_4:
+        if dst_ip.version == n_const.IP_VERSION_4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     metadata=network_id,
                                     ipv4_dst=dst_ip)

@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import itertools
 import mock
 from neutron.db.models import l3
 from neutron_lib import constants as n_const
@@ -28,7 +29,7 @@ from dragonflow.neutron.db.models import l3 as neutron_l3
 from dragonflow.tests.unit import test_mech_driver
 
 
-def nb_api_get_func(*instances):
+def nb_api_get_funcs(*instances):
     """
     Create an method that can be used to override the mock's nb_api's get
     to return objects that should exist, e.g. instances that were created
@@ -43,7 +44,15 @@ def nb_api_get_func(*instances):
             return ids[inst.id]
         except KeyError:
             return mock.MagicMock(name='NbApi.get_instance().get()')
-    return nb_api_get
+
+    def nb_api_create(inst):
+        inst.on_create_pre()
+        ids[inst.id] = inst
+
+    def nb_api_update(inst):
+        ids[inst.id].update(inst)
+
+    return nb_api_get, nb_api_create, nb_api_update
 
 
 class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
@@ -83,13 +92,12 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
     def test_add_delete_router_interface_revision(self):
         router, lrouter = self._test_create_router_revision()
         old_version = router['revision_number']
-        # TODO(xiaohhui): This needs to be cleaned once lport has
-        # migrated to new model.
-        mock_lport = mock.Mock()
-        mock_lport.get_unique_key.return_value = 1
-        self.nb_api.get_logical_port.return_value = mock_lport
 
-        self.nb_api.get.side_effect = nb_api_get_func(lrouter)
+        nb_api_get, nb_api_create, nb_api_update = nb_api_get_funcs(lrouter)
+        self.nb_api.get.side_effect = nb_api_get
+        self.nb_api.update.side_effect = nb_api_update
+        self.nb_api.create.side_effect = nb_api_create
+        self.nb_api.driver.allocate_unique_key.side_effect = itertools.count()
         with self.subnet() as s:
             data = {'subnet_id': s['subnet']['id']}
             self.l3p.add_router_interface(self.context, router['id'], data)
@@ -102,7 +110,9 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
             self.assertGreater(router_with_int['revision_number'],
                                old_version)
             lrouter.version = router_with_int['revision_number']
-            self.nb_api.update.assert_called_once_with(lrouter)
+            self.assertEqual(2, self.nb_api.update.call_count)
+            self.nb_api.update.assert_has_calls([mock.call(lrouter)])
+            # Second call is with the router lport
             self.nb_api.update.reset_mock()
 
             self.l3p.remove_router_interface(self.context, router['id'], data)

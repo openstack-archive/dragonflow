@@ -18,6 +18,7 @@ from oslo_serialization import jsonutils
 
 from dragonflow.common import utils as df_utils
 from dragonflow.db import models
+from dragonflow.db.models import l2
 from dragonflow.tests import base as tests_base
 from dragonflow.tests.common import utils
 
@@ -60,7 +61,7 @@ class TestNbApiNeutronNotifier(tests_base.BaseTestCase):
         core_plugin = mock.Mock()
         with mock.patch("neutron_lib.plugins.directory.get_plugin",
                         return_value=core_plugin):
-            self.notifier.notify_neutron_server(models.LogicalPort.table_name,
+            self.notifier.notify_neutron_server(l2.LogicalPort.table_name,
                                                 "fake_port",
                                                 "update",
                                                 "up")
