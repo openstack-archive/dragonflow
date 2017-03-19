@@ -34,6 +34,7 @@ from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import icmp_error_generator
 from dragonflow.controller.common import icmp_responder
+from dragonflow.controller import df_base_app
 from dragonflow.db.models import l2
 
 ROUTE_TO_ADD = 'route_to_add'
@@ -206,8 +207,8 @@ class L3AppMixin(object):
 
         self._add_extra_route_to_router(router.get_unique_key(),
                                         router_port.get_mac(),
-                                        lport.get_unique_key(),
-                                        lport.get_mac(), route)
+                                        lport.unique_key,
+                                        lport.mac, route)
         self._add_to_route_cache(ROUTE_ADDED, router_id, route)
 
     def _delete_router_extra_route(self, router, route):
@@ -409,7 +410,7 @@ class L3AppMixin(object):
         # controller will create icmp unreachable mesage. A virtual router
         # interface will not be in local cache, as it doesn't have chassis
         # information.
-        lport = self.db_store.get_port(router_port.get_id())
+        lport = self.db_store2.get_one(l2.LogicalPort(id=router_port.get_id()))
         if not lport:
             match = self._get_router_interface_match(router_unique_key, dst_ip)
             actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
@@ -510,16 +511,13 @@ class L3AppMixin(object):
             priority=const.PRIORITY_VERY_LOW,
             match=match)
 
-    def add_local_port(self, lport):
-        LOG.debug('add local port: %s', lport)
-        if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
-            self._add_concrete_router_interface(lport)
-        else:
-            self._add_port(lport)
-
-    def add_remote_port(self, lport):
-        LOG.debug('add remote port: %s', lport)
-        if lport.get_device_owner() == common_const.DEVICE_OWNER_ROUTER_INTF:
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_CREATED)
+    def _add_port_event_handler(self, lport):
+        LOG.debug('add %(locality)s port: %(lport)s',
+                  {'lport': lport,
+                   'locality': 'local' if lport.is_local else 'remote'})
+        if lport.device_owner == common_const.DEVICE_OWNER_ROUTER_INTF:
             self._add_concrete_router_interface(lport)
         else:
             self._add_port(lport)
@@ -528,14 +526,13 @@ class L3AppMixin(object):
         # The router interace is concrete, direct the packets to the real
         # port of router interface. The flow here will overwrite
         # the flow that packet-in the packets to local controller.
-        router = router or self.db_store.get_router(lport.get_device_id())
+        router = router or self.db_store.get_router(lport.device_id)
         if not router:
             return
 
         router_unique_key = router.get_unique_key()
-        port_unique_key = lport.get_unique_key()
-        match = self._get_router_interface_match(router_unique_key,
-                                                 lport.get_ip())
+        port_unique_key = lport.unique_key
+        match = self._get_router_interface_match(router_unique_key, lport.ip)
         actions = [self.parser.OFPActionSetField(reg7=port_unique_key)]
         action_inst = self.parser.OFPInstructionActions(
             self.ofproto.OFPIT_APPLY_ACTIONS, actions)
@@ -570,8 +567,8 @@ class L3AppMixin(object):
         """
         LOG.debug("Reprocess to add extra routes that use lport %(lport)s "
                   "as nexthop", lport)
-        lswitch_id = lport.get_lswitch_id()
-        port_ip = lport.get_ip()
+        lswitch_id = lport.lswitch.id
+        port_ip = lport.ip
         router, router_if = self._get_router_by_lswitch_and_port_ip(
             lswitch_id, port_ip)
         if not router:
@@ -595,8 +592,8 @@ class L3AppMixin(object):
             route_dict = dict(zip(['destination', 'nexthop'], route))
             self._add_extra_route_to_router(router.get_unique_key(),
                                             router_if.get_mac(),
-                                            lport.get_unique_key(),
-                                            lport.get_mac(),
+                                            lport.unique_key,
+                                            lport.mac,
                                             route_dict)
             self._change_route_cache_status(router_id,
                                             from_part=ROUTE_TO_ADD,
@@ -610,8 +607,8 @@ class L3AppMixin(object):
         """
         LOG.debug("Reprocess to delete extra routes that use lport %(lport)s "
                   "as nexthop", lport)
-        lswitch_id = lport.get_lswitch_id()
-        port_ip = lport.get_ip()
+        lswitch_id = lport.lswitch.id
+        port_ip = lport.ip
         router, router_if = self._get_router_by_lswitch_and_port_ip(
             lswitch_id, port_ip)
         if not router:
@@ -645,18 +642,15 @@ class L3AppMixin(object):
         """Add port which is not a router interface."""
         self._reprocess_to_add_route(lport)
 
-    def remove_local_port(self, lport):
-        LOG.debug('remove local port:%s', lport)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_DELETED)
+    def _remove_port_event_handler(self, lport):
+        LOG.debug('remove %(locality)s port: %(lport)s',
+                  {'lport': lport,
+                   'locality': 'local' if lport.is_local else 'remote'})
         # Let the router update process to delete flows for concrete
         # router port, if there is any.
-        if lport.get_device_owner() != common_const.DEVICE_OWNER_ROUTER_INTF:
-            self._remove_port(lport)
-
-    def remove_remote_port(self, lport):
-        LOG.debug('remove remote port:%s', lport)
-        # Let the router update process to delete flows for concrete
-        # router port, if there is any.
-        if lport.get_device_owner() != common_const.DEVICE_OWNER_ROUTER_INTF:
+        if lport.device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
             self._remove_port(lport)
 
     def _remove_port(self, lport):

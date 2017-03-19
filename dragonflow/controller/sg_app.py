@@ -25,9 +25,9 @@ from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
+from dragonflow.db.models import l2
 from dragonflow.db.models.secgroups import SecurityGroup
 from dragonflow.db.models.secgroups import SecurityGroupRule
-# from dragonflow.db import models
 
 
 LOG = log.getLogger(__name__)
@@ -202,15 +202,15 @@ class SGApp(df_base_app.DFlowApp):
         address or a IP address in allowed address pairs.
         """
         ips = set()
-        fixed_ip = lport.get_ip()
+        fixed_ip = lport.ip
         if netaddr.IPNetwork(fixed_ip).version == 4:
             ips.add(fixed_ip)
         else:
             LOG.warning(_LW("No support for non IPv4 protocol, the IP"
                             "address %(ip)s of %(lport)s was ignored."),
-                        {'ip': fixed_ip, 'lport': lport.get_id()})
+                        {'ip': fixed_ip, 'lport': lport.id})
 
-        allowed_address_pairs = lport.get_allowed_address_pairs()
+        allowed_address_pairs = lport.allowed_address_pairs
         if allowed_address_pairs is not None:
             for pair in allowed_address_pairs:
                 ip = pair["ip_address"]
@@ -221,7 +221,7 @@ class SGApp(df_base_app.DFlowApp):
                         _LW("No support for non IPv4 protocol, the address "
                             "%(ip)s in allowed address pairs of lport "
                             "%(lport)s was ignored."),
-                        {'ip': ip, 'lport': lport.get_id()})
+                        {'ip': ip, 'lport': lport.id})
         return ips
 
     def _get_lport_added_ips_for_secgroup(self, secgroup_id, lport):
@@ -233,7 +233,7 @@ class SGApp(df_base_app.DFlowApp):
         ips = self._get_ips_in_logical_port(lport)
         for ip in ips:
             if self._inc_ip_reference_and_check(secgroup_id, ip,
-                                                lport.get_id()):
+                                                lport.id):
                 added_ips.append(ip)
 
         return added_ips
@@ -248,7 +248,7 @@ class SGApp(df_base_app.DFlowApp):
         ips = self._get_ips_in_logical_port(lport)
         for ip in ips:
             if self._dec_ip_reference_and_check(secgroup_id, ip,
-                                                lport.get_id()):
+                                                lport.id):
                 removed_ips.append(ip)
 
         return removed_ips
@@ -268,12 +268,12 @@ class SGApp(df_base_app.DFlowApp):
 
         for ip in ips:
             if (ip not in original_ips) and self._inc_ip_reference_and_check(
-                    secgroup_id, ip, lport.get_id()):
+                    secgroup_id, ip, lport.id):
                 added_ips.append(ip)
 
         for ip in original_ips:
             if (ip not in ips) and self._dec_ip_reference_and_check(
-                    secgroup_id, ip, lport.get_id()):
+                    secgroup_id, ip, lport.id):
                 removed_ips.append(ip)
 
         return added_ips, removed_ips
@@ -365,7 +365,7 @@ class SGApp(df_base_app.DFlowApp):
 
         parser = self.parser
         ofproto = self.ofproto
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
 
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
@@ -401,7 +401,7 @@ class SGApp(df_base_app.DFlowApp):
 
         parser = self.parser
         ofproto = self.ofproto
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
 
         if direction == 'ingress':
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
@@ -443,7 +443,7 @@ class SGApp(df_base_app.DFlowApp):
     def _install_connection_track_flow_by_direction(self, lport, direction):
         parser = self.parser
         ofproto = self.ofproto
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
 
         if direction == 'ingress':
             pre_table_id = const.INGRESS_CONNTRACK_TABLE
@@ -474,11 +474,11 @@ class SGApp(df_base_app.DFlowApp):
     def _uninstall_connection_track_flow_by_direction(self, lport, direction):
         parser = self.parser
         ofproto = self.ofproto
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
 
         if direction == 'ingress':
             pre_table_id = const.INGRESS_CONNTRACK_TABLE
-            unique_key = lport.get_unique_key()
+            unique_key = lport.unique_key
             lport_classify_match = {"reg7": unique_key}
         else:
             pre_table_id = const.EGRESS_CONNTRACK_TABLE
@@ -818,11 +818,10 @@ class SGApp(df_base_app.DFlowApp):
         associate_ports = \
             self.secgroup_associate_local_ports.get(secgroup_id)
         if associate_ports is None:
-            self.secgroup_associate_local_ports[secgroup_id] = \
-                [lport.get_id()]
+            self.secgroup_associate_local_ports[secgroup_id] = [lport.id]
             self._install_security_group_flows(secgroup_id)
-        elif lport.get_id() not in associate_ports:
-            associate_ports.append(lport.get_id())
+        elif lport.id not in associate_ports:
+            associate_ports.append(lport.id)
 
         # install associating flow
         self._install_associating_flows(secgroup_id, lport)
@@ -837,8 +836,8 @@ class SGApp(df_base_app.DFlowApp):
         associate_ports = \
             self.secgroup_associate_local_ports.get(secgroup_id)
         if associate_ports is not None:
-            if lport.get_id() in associate_ports:
-                associate_ports.remove(lport.get_id())
+            if lport.id in associate_ports:
+                associate_ports.remove(lport.id)
                 # delete conntrack entities by port
                 self._delete_conntrack_entries_by_local_port_info(
                     lport, None, secgroup_id)
@@ -912,12 +911,13 @@ class SGApp(df_base_app.DFlowApp):
 
         return added_secgroups, removed_secgroups, unchanged_secgroups
 
-    def remove_local_port(self, lport):
-        if not netaddr.valid_ipv4(lport.get_ip()):
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    def _remove_local_port(self, lport):
+        if lport.ip.version != 4:
             LOG.warning(_LW("No support for non IPv4 protocol"))
             return
 
-        secgroups = lport.get_security_groups()
+        secgroups = lport.security_groups
         if not secgroups:
             return
 
@@ -927,17 +927,19 @@ class SGApp(df_base_app.DFlowApp):
         for secgroup_id in secgroups:
             self._remove_local_port_associating(lport, secgroup_id)
 
-    def remove_remote_port(self, lport):
-        secgroups = lport.get_security_groups()
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_DELETED)
+    def _remove_remote_port(self, lport):
+        secgroups = lport.security_groups
         if not secgroups:
             return
 
         for secgroup_id in secgroups:
             self._remove_remote_port_associating(lport, secgroup_id)
 
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_UPDATED)
     def update_local_port(self, lport, original_lport):
-        secgroups = lport.get_security_groups()
-        original_secgroups = original_lport.get_security_groups()
+        secgroups = lport.security_groups
+        original_secgroups = original_lport.security_groups
 
         added_secgroups, removed_secgroups, unchanged_secgroups = \
             self._get_added_and_removed_and_unchanged_secgroups(
@@ -964,9 +966,10 @@ class SGApp(df_base_app.DFlowApp):
             # install ct table
             self._install_connection_track_flows(lport)
 
-    def update_remote_port(self, lport, original_lport):
-        secgroups = lport.get_security_groups()
-        original_secgroups = original_lport.get_security_groups()
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_UPDATED)
+    def _update_remote_port(self, lport, original_lport):
+        secgroups = lport.security_groups
+        original_secgroups = original_lport.security_groups
 
         added_secgroups, removed_secgroups, unchanged_secgroups = \
             self._get_added_and_removed_and_unchanged_secgroups(
@@ -982,12 +985,13 @@ class SGApp(df_base_app.DFlowApp):
             self._update_port_addresses_process(lport, original_lport,
                                                 secgroup_id)
 
-    def add_local_port(self, lport):
-        secgroups = lport.get_security_groups()
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    def _add_local_port(self, lport):
+        secgroups = lport.security_groups
         if not secgroups:
             return
 
-        if not netaddr.valid_ipv4(lport.get_ip()):
+        if not netaddr.valid_ipv4(lport.ip):
             LOG.warning(_LW("No support for non IPv4 protocol"))
             return
 
@@ -997,8 +1001,9 @@ class SGApp(df_base_app.DFlowApp):
         # install ct table
         self._install_connection_track_flows(lport)
 
-    def add_remote_port(self, lport):
-        secgroups = lport.get_security_groups()
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_CREATED)
+    def _add_remote_port(self, lport):
+        secgroups = lport.security_groups
         if not secgroups:
             return
 
@@ -1155,9 +1160,9 @@ class SGApp(df_base_app.DFlowApp):
             associating_port_ids = self.secgroup_associate_local_ports.get(
                 rule.security_group_id)
             for port_id in associating_port_ids:
-                lport = self.db_store.get_port(port_id)
+                lport = self.db_store2.get_one(l2.LogicalPort(id=port_id))
                 removed_ips = self._get_ips_in_logical_port(lport)
-                zone_id = lport.get_external_value('local_network_id')
+                zone_id = lport.local_network_id
                 associating_ports_info.append({'removed_ips': removed_ips,
                                                'zone_id': zone_id})
 
@@ -1176,7 +1181,7 @@ class SGApp(df_base_app.DFlowApp):
             removed_ips = original_ips - ips
         else:
             removed_ips = ips
-        zone_id = lport.get_external_value('local_network_id')
+        zone_id = lport.local_network_id
 
         local_port_info = {'removed_ips': removed_ips, 'zone_id': zone_id}
         secgroup = self.db_store2.get_one(SecurityGroup(id=secgroup_id))

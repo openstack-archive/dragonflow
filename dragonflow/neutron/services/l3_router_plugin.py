@@ -37,6 +37,7 @@ from oslo_utils import importutils
 
 from dragonflow._i18n import _LE, _LI
 from dragonflow.common import exceptions as df_exceptions
+from dragonflow.db.models import l2
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
 
@@ -202,8 +203,9 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 # delete the stale floatingip port
                 try:
                     if floatingip_port:
-                        self.nb_api.delete_lport(floatingip_port['id'],
-                                                 floatingip_port['tenant_id'])
+                        self.nb_api.delete(
+                            l2.LogicalPort(id=floatingip_port['id'],
+                                           topic=floatingip_port['tenant_id']))
                 except df_exceptions.DBKeyNotFound:
                     pass
 

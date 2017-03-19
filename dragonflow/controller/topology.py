@@ -145,18 +145,20 @@ class Topology(object):
             l2.LogicalSwitch(network_type=tunnel_type),
             l2.LogicalSwitch.get_indexes()['network_type'])
         for lswitch in lswitches:
-            lports = self.db_store.get_ports_by_network_id(lswitch.id)
+            index = l2.LogicalPort.get_indexes()['lswitch_id']
+            lports = self.db_store2.get_all(l2.LogicalPort(lswitch=lswitch),
+                                            index=index)
             for lport in lports:
-                if lport.get_external_value('is_local'):
+                if lport.is_local:
                     continue
 
                 # Update of virtual tunnel port should update remote port in
                 # the lswitch of same type.
                 try:
                     if action == "set":
-                        self.controller.update_lport(lport)
+                        self.controller.update(lport)
                     else:
-                        self.controller.delete_lport(lport.get_id())
+                        self.controller.delete(lport)
                 except Exception:
                     LOG.exception(_LE("Failed to process logical port"
                                       "when %(action)s tunnel %(lport)s"),
@@ -180,7 +182,7 @@ class Topology(object):
             LOG.warning(_LW("No logical port found for ovs port: %s"),
                         ovs_port)
             return
-        topic = lport.get_topic()
+        topic = lport.topic
         if not topic:
             return
         self._add_to_topic_subscribed(topic, lport_id)
@@ -189,14 +191,14 @@ class Topology(object):
         self.ovs_to_lport_mapping[ovs_port_id] = {'lport_id': lport_id,
                                                   'topic': topic}
 
-        cached_lport = self.db_store.get_port(lport_id)
+        cached_lport = self.db_store2.get(l2.LogicalPort(id=lport_id))
         if not cached_lport or not cached_lport.get_external_value("ofport"):
             # If the logical port is not in db store or its ofport is not
             # valid. It has not been applied to dragonflow apps. We need to
             # update it in dragonflow controller.
             LOG.info(_LI("A local logical port(%s) is online"), lport)
             try:
-                self.controller.update_lport(lport)
+                self.controller.update(lport)
             except Exception:
                 LOG.exception(_LE('Failed to process logical port online '
                                   'event: %s'), lport)
@@ -204,21 +206,21 @@ class Topology(object):
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.get_id()
         lport_id = ovs_port.get_iface_id()
-        lport = self.db_store.get_port(lport_id)
+        lport = self.db_store2.get(l2.LogicalPort(id=lport_id))
         if lport is None:
             lport = self.ovs_to_lport_mapping.get(ovs_port_id)
             if lport is None:
                 return
-            topic = lport.get('topic')
+            topic = lport.topic
             del self.ovs_to_lport_mapping[ovs_port_id]
             self._del_from_topic_subscribed(topic, lport_id)
             return
 
-        topic = lport.get_topic()
+        topic = lport.topic
 
         LOG.info(_LI("The logical port(%s) is offline"), lport)
         try:
-            self.controller.delete_lport(lport_id)
+            self.controller.delete(lport)
         except Exception:
             LOG.exception(_LE(
                 'Failed to process logical port offline event %s'), lport_id)
@@ -270,9 +272,13 @@ class Topology(object):
         df_db_objects_refresh.clear_local_cache({tenant_id})
 
     def _get_lport(self, port_id, topic=None):
-        lport = self.db_store.get_port(port_id)
+        if topic:
+            lean_lport = l2.LogicalPort(id=port_id)
+        else:
+            lean_lport = l2.LogicalPort(id=port_id, topic=topic)
+        lport = self.db_store2.get(lean_lport)
         if lport is None:
-            lport = self.nb_api.get_logical_port(port_id, topic)
+            lport = self.nb_api.get_logical_port(lean_lport)
 
         return lport
 
@@ -294,7 +300,7 @@ class Topology(object):
                     LOG.warning(_LW("No logical port found for ovs port: %s"),
                                 ovs_port)
                     continue
-                topic = lport.get_topic()
+                topic = lport.topic
                 if not topic:
                     continue
                 new_ovs_to_lport_mapping[key] = {

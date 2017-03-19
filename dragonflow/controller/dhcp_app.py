@@ -102,11 +102,11 @@ class DHCPApp(df_base_app.DFlowApp):
                     self.block_hard_timeout)
             LOG.warning(_LW("pass rate limit for %(port_id)s blocking DHCP "
                             "traffic for %(time)s sec"),
-                        {'port_id': lport.get_id(),
+                        {'port_id': lport.id,
                          'time': self.block_hard_timeout})
             return
-        if not self.db_store.get_port(lport.get_id()):
-            LOG.error(_LE("Port %s no longer found."), lport.get_id())
+        if not self.db_store2.get(lport):
+            LOG.error(_LE("Port %s no longer found."), lport.id)
             return
         try:
             self._handle_dhcp_request(pkt, lport)
@@ -125,7 +125,7 @@ class DHCPApp(df_base_app.DFlowApp):
                                 lport)
             LOG.info(_LI("sending DHCP offer for port IP %(port_ip)s "
                          "port id %(port_id)s"),
-                     {'port_ip': lport.get_ip(), 'port_id': lport.get_id()})
+                     {'port_ip': lport.get_ip(), 'port_id': lport.id})
         elif dhcp_message_type == dhcp.DHCP_REQUEST:
             send_packet = self._create_dhcp_packet(
                                 packet,
@@ -134,22 +134,23 @@ class DHCPApp(df_base_app.DFlowApp):
                                 lport)
             LOG.info(_LI("sending DHCP ACK for port IP %(port_ip)s "
                          "port id %(tunnel_id)s"),
-                     {'port_ip': lport.get_ip(),
-                      'tunnel_id': lport.get_id()})
+                     {'port_ip': lport.ip,
+                      'tunnel_id': lport.id})
         else:
             LOG.error(_LE("DHCP message type %d not handled"),
                       dhcp_message_type)
         if send_packet:
-            unique_key = lport.get_unique_key()
+            unique_key = lport.unique_key
             self.dispatch_packet(send_packet, unique_key)
 
     def _create_dhcp_packet(self, packet, dhcp_packet, pkt_type, lport):
         pkt_ipv4 = packet.get_protocol(ipv4.ipv4)
         pkt_ethernet = packet.get_protocol(ethernet.ethernet)
 
-        subnet = self._get_subnet_by_port(lport)
-        if subnet is None:
-            LOG.error(_LE("No subnet found for port <%s>"), lport.get_id())
+        try:
+            subnet = lport.subnets[0]
+        except IndexError:
+            LOG.warning(_LW("No subnet found for port %s"), lport.id)
             return
 
         pkt_type_packed = struct.pack('!B', pkt_type)
@@ -194,7 +195,7 @@ class DHCPApp(df_base_app.DFlowApp):
                                         chaddr=pkt_ethernet.src,
                                         siaddr=dhcp_server_address,
                                         boot_file=dhcp_packet.boot_file,
-                                        yiaddr=lport.get_ip(),
+                                        yiaddr=lport.ip,
                                         xid=dhcp_packet.xid,
                                         options=options))
         return dhcp_pkt
@@ -214,16 +215,16 @@ class DHCPApp(df_base_app.DFlowApp):
             # Add route for metadata request.
             host_routes.append(host_route.HostRoute(
                 destination='%s/32' % const.METADATA_SERVICE_IP,
-                nexthop=lport.get_ip()))
+                nexthop=lport.ip))
 
         routes_bin = b''
 
-        dhcp_opts = lport.get_extra_dhcp_opts()
+        dhcp_opts = lport.extra_dhcp_opts
         for opt in dhcp_opts:
-            if opt['opt_name'] == str(DHCP_CLASSLESS_ROUTE_OPT):
-                dest_cidr, _c, via = opt['opt_value'].partition(',')
-                host_routes.append(host_route.HostRoute(destination=dest_cidr,
-                                                        nexthop=via))
+            if opt.name == str(DHCP_CLASSLESS_ROUTE_OPT):
+                dest_cidr, _c, via = opt.value.partition(',')
+                host_routes.append(l2.HostRoute(destination=dest_cidr,
+                                                nexthop=via))
 
         for route in host_routes:
             dest = route.destination.network
@@ -250,16 +251,6 @@ class DHCPApp(df_base_app.DFlowApp):
             if opt.tag == dhcp.DHCP_MESSAGE_TYPE_OPT:
                 return ord(opt.value)
 
-    def _get_subnet_by_port(self, lport):
-        lswitch = self._get_lswitch_by_port(lport)
-        subnet_id = lport.get_subnets()[0]
-        return lswitch.find_subnet(subnet_id)
-
-    def _get_lswitch_by_port(self, lport):
-        l_switch_id = lport.get_lswitch_id()
-        l_switch = self.db_store2.get_one(l2.LogicalSwitch(id=l_switch_id))
-        return l_switch
-
     def _get_port_gateway_address(self, subnet, lport):
         gateway_ip = subnet.gateway_ip
         if gateway_ip:
@@ -271,15 +262,16 @@ class DHCPApp(df_base_app.DFlowApp):
                 return opt['opt_value']
 
     def _is_dhcp_enabled_for_port(self, lport):
-        subnet = self._get_subnet_by_port(lport)
-        if subnet:
-            return subnet.enable_dhcp
-        LOG.warning(_LW("No subnet found for port %s"), lport.get_id())
-        return False
+        try:
+            subnet = lport.subnets[0]
+        except IndexError:
+            LOG.warning(_LW("No subnet found for port %s"), lport.id)
+            return False
+        return subnet.enable_dhcp
 
     def _get_port_mtu(self, lport):
         # get network mtu from lswitch
-        mtu = self._get_lswitch_by_port(lport).mtu
+        mtu = lport.lswitch.mtu
 
         tunnel_type = cfg.CONF.df.tunnel_type
         if tunnel_type == n_p_const.TYPE_VXLAN:
@@ -291,22 +283,23 @@ class DHCPApp(df_base_app.DFlowApp):
             return mtu - n_p_const.GRE_ENCAP_OVERHEAD if mtu else 0
         return self.default_interface_mtu
 
-    def remove_local_port(self, lport):
-        if not netaddr.valid_ipv4(lport.get_ip()):
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    def _remove_local_port(self, lport):
+        if lport.ip.version != 4:
             LOG.warning(_LW("No support for non IPv4 protocol"))
             return
 
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
         self.unique_key_to_dhcp_app_port_data.pop(unique_key, None)
 
-        subnet_id = lport.get_subnets()[0]
-        self.subnet_vm_port_map[subnet_id].discard(lport.get_id())
+        subnet_id = lport.subnets[0].id
+        self.subnet_vm_port_map[subnet_id].discard(lport.id)
         self._uninstall_dhcp_flow_for_vm_port(lport)
 
     def _uninstall_dhcp_flow_for_vm_port(self, lport):
         """Uninstall dhcp flow in DHCP_TABLE for a port of vm."""
 
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
         match = self.parser.OFPMatch(reg6=unique_key)
         self.mod_flow(
             table_id=const.DHCP_TABLE,
@@ -315,21 +308,22 @@ class DHCPApp(df_base_app.DFlowApp):
             match=match)
 
     def _is_vm_port(self, lport):
-        owner = lport.get_device_owner()
+        owner = lport.device_owner
         if not owner or "compute" in owner:
             return True
         return False
 
-    def add_local_port(self, lport):
-        if not netaddr.valid_ipv4(lport.get_ip()):
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    def _add_local_port(self, lport):
+        if lport.ip.version != 4:
             LOG.warning(_LW("No support for non IPv4 protocol"))
             return
 
         if not self._is_vm_port(lport):
             return
 
-        subnet_id = lport.get_subnets()[0]
-        self.subnet_vm_port_map[subnet_id].add(lport.get_id())
+        subnet_id = lport.subnets[0].id
+        self.subnet_vm_port_map[subnet_id].add(lport.id)
 
         if not self._is_dhcp_enabled_for_port(lport):
             return
@@ -339,14 +333,14 @@ class DHCPApp(df_base_app.DFlowApp):
     def _install_dhcp_flow_for_vm_port(self, lport):
         """Install dhcp flow in DHCP_TABLE for a port of vm."""
 
-        unique_key = lport.get_unique_key()
+        unique_key = lport.unique_key
         port_rate_limiter = df_utils.RateLimiter(
                         max_rate=self.conf.df_dhcp_max_rate_per_sec,
                         time_unit=1)
         self.unique_key_to_dhcp_app_port_data[unique_key] = (port_rate_limiter,
                                                              lport)
 
-        LOG.info(_LI("Register VM as DHCP client::port <%s>"), lport.get_id())
+        LOG.info(_LI("Register VM as DHCP client::port <%s>"), lport.id)
 
         parser = self.parser
         ofproto = self.ofproto
@@ -469,15 +463,15 @@ class DHCPApp(df_base_app.DFlowApp):
     def _install_dhcp_flow_for_vm_in_subnet(self, subnet_id):
         local_ports = self.subnet_vm_port_map[subnet_id]
         for p_id in local_ports:
-            port = self.db_store.get_local_port(p_id)
-            if port:
+            port = self.db_store2.get_one(l2.LogicalPort(id=p_id))
+            if port and port.is_local:
                 self._install_dhcp_flow_for_vm_port(port)
 
     def _uninstall_dhcp_flow_for_vm_in_subnet(self, subnet_id):
         local_ports = self.subnet_vm_port_map[subnet_id]
         for p_id in local_ports:
-            port = self.db_store.get_local_port(p_id)
-            if port:
+            port = self.db_store2.get_one(l2.LogicalPort(id=p_id))
+            if port and port.is_local:
                 self._uninstall_dhcp_flow_for_vm_port(port)
 
     def _is_ipv4(self, subnet):

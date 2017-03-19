@@ -13,15 +13,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron_lib.utils import helpers
+from oslo_log import log
+from ryu.lib import mac as mac_api
+
 from dragonflow._i18n import _LI, _LE
 from dragonflow.common import utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import logical_networks
 from dragonflow.controller import df_base_app
-from neutron_lib.utils import helpers
-from oslo_log import log
-from ryu.lib import mac as mac_api
+from dragonflow.db.models import l2
 
 
 NET_VLAN = 'vlan'
@@ -75,11 +77,12 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
     def switch_features_handler(self, ev):
         self._setup_physical_bridges(self.bridge_mappings)
 
-    def add_local_port(self, lport):
-        network_type = lport.get_external_value('network_type')
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    def _add_local_port(self, lport):
+        network_type = lport.network_type
         if network_type not in NETWORK_TYPES:
             return
-        network_id = lport.get_external_value('local_network_id')
+        network_id = lport.local_network_id
         port_count = self.logical_networks.get_local_port_count(
                 network_id=network_id,
                 network_type=network_type)
@@ -90,7 +93,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             self._new_network_flow(lport,
                                    network_id,
                                    network_type)
-        self.logical_networks.add_local_port(port_id=lport.get_id(),
+        self.logical_networks.add_local_port(port_id=lport.id,
                                              network_id=network_id,
                                              network_type=network_type)
 
@@ -99,7 +102,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             self.parser.OFPActionSetField(metadata=network_id)]
         match = None
         if network_type == NET_VLAN:
-            segmentation_id = lport.get_external_value('segmentation_id')
+            segmentation_id = lport.segmentation_id
             match = self.parser.OFPMatch()
             match.set_vlan_vid(segmentation_id)
             actions.append(self.parser.OFPActionPopVlan())
@@ -136,7 +139,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         inst = [self.parser.OFPInstructionGotoTable(
                 const.EGRESS_EXTERNAL_TABLE)]
         if network_type == NET_VLAN:
-            segmentation_id = lport.get_external_value('segmentation_id')
+            segmentation_id = lport.segmentation_id
             vlan_tag = (segmentation_id & VLAN_MASK)
             # from open flow documentation:
             # https://www.opennetworking.org/images/stories/downloads/\
@@ -162,7 +165,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         LOG.debug('Add egress external flow for network %(net_id)s',
                   {'net_id': network_id})
 
-        physical_network = lport.get_external_value('physical_network')
+        physical_network = lport.physical_network
         match = self.parser.OFPMatch(metadata=network_id)
         ofport = self.int_ofports[physical_network]
         actions = [
@@ -195,12 +198,13 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
-    def remove_local_port(self, lport):
-        network_type = lport.get_external_value('network_type')
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    def _remove_local_port(self, lport):
+        network_type = lport.network_type
         if network_type not in NETWORK_TYPES:
             return
-        network_id = lport.get_external_value('local_network_id')
-        self.logical_networks.remove_local_port(port_id=lport.get_id(),
+        network_id = lport.local_network_id
+        self.logical_networks.remove_local_port(port_id=lport.id,
                                                 network_id=network_id,
                                                 network_type=network_type)
         port_count = self.logical_networks.get_local_port_count(

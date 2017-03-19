@@ -292,49 +292,55 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                    {"ip_address": "20.1.1.20",
                     "mac_address": "aa:bb:cc:dd:ee:ff"}]}
         with self.subnet(enable_dhcp=False) as subnet:
+            self.nb_api.create.reset_mock()
             with self.port(subnet=subnet,
                            arg_list=('allowed_address_pairs',),
                            **kwargs) as p:
                 port = p['port']
-                self.assertTrue(self.nb_api.create_lport.called)
-                called_args = self.nb_api.create_lport.call_args_list[0][1]
-                expected_aap = [{"ip_address": "10.1.1.10",
-                                 "mac_address": port['mac_address']},
-                                {"ip_address": "20.1.1.20",
-                                 "mac_address": "aa:bb:cc:dd:ee:ff"}]
+                self.nb_api.create.assert_called_once()
+                lport = self.nb_api.create.call_args_list[0][0][0]
+                self.nb_api.create.reset_mock()
+                expected_aap = [
+                    l2.AddressPair(ip_address="10.1.1.10",
+                                   mac_address=port['mac_address']),
+                    l2.AddressPair(ip_address="20.1.1.20",
+                                   mac_address="aa:bb:cc:dd:ee:ff")]
                 self.assertItemsEqual(expected_aap,
-                                      called_args.get("allowed_address_pairs"))
+                                      lport.allowed_address_pairs)
 
                 data = {'port': {'allowed_address_pairs': []}}
                 req = self.new_update_request(
                         'ports',
                         data, port['id'])
                 req.get_response(self.api)
-                self.assertTrue(self.nb_api.update_lport.called)
-                called_args = self.nb_api.update_lport.call_args_list[0][1]
-                self.assertEqual([], called_args.get("allowed_address_pairs"))
+
+                self.nb_api.update.assert_called_once()
+                lport = self.nb_api.update.call_args_list[0][0][0]
+
+                self.assertEqual([], lport.allowed_address_pairs)
 
     def _test_create_update_port_security(self, enabled):
         kwargs = {'port_security_enabled': enabled}
         with self.subnet(enable_dhcp=False) as subnet:
+            self.nb_api.create.reset_mock()
             with self.port(subnet=subnet,
                            arg_list=('port_security_enabled',),
                            **kwargs) as port:
-                self.assertTrue(self.nb_api.create_lport.called)
-                called_args_dict = (
-                    self.nb_api.create_lport.call_args_list[0][1])
+                self.nb_api.create.assert_called_once()
+                lport = self.nb_api.create.call_args_list[0][0][0]
+                self.nb_api.create.reset_mock()
+                self.nb_api.update.reset_mock()
                 self.assertEqual(enabled,
-                                 called_args_dict.get('port_security_enabled'))
+                                 lport.port_security_enabled)
 
                 data = {'port': {'mac_address': '00:00:00:00:00:01'}}
                 req = self.new_update_request('ports',
                                               data, port['port']['id'])
                 req.get_response(self.api)
-                self.assertTrue(self.nb_api.update_lport.called)
-                called_args_dict = (
-                    self.nb_api.update_lport.call_args_list[0][1])
+                self.nb_api.update.assert_called_once()
+                lport = self.nb_api.create.call_args_list[0][0][0]
                 self.assertEqual(enabled,
-                                 called_args_dict.get('port_security_enabled'))
+                                 lport.port_security_enabled)
 
     def test_create_update_port_with_disabled_security(self):
         self._test_create_update_port_security(False)
@@ -344,38 +350,37 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
     def test_create_port_with_device_option(self):
         with self.subnet(enable_dhcp=False) as subnet:
+            self.nb_api.create.reset_mock()
             with self.port(subnet=subnet, device_owner='fake_owner',
                            device_id='fake_id'):
-                self.assertTrue(self.nb_api.create_lport.called)
-                called_args_dict = (
-                    self.nb_api.create_lport.call_args_list[0][1])
-                self.assertEqual('fake_owner',
-                                 called_args_dict.get('device_owner'))
-                self.assertEqual('fake_id',
-                                 called_args_dict.get('device_id'))
+                self.nb_api.create.assert_called_once()
+                lport = self.nb_api.create.call_args_list[0][0][0]
+                self.assertIsInstance(lport, l2.LogicalPort)
+                self.assertEqual('fake_owner', lport.device_owner)
+                self.assertEqual('fake_id', lport.device_id)
 
     def test_create_update_port_revision(self):
         with self.subnet(enable_dhcp=False) as subnet:
+            self.nb_api.create.reset_mock()
             with self.port(subnet=subnet) as p:
                 port = p['port']
                 self.assertGreater(port['revision_number'], 0)
-                self.assertTrue(self.nb_api.create_lport.called)
-                called_args_dict = (
-                    self.nb_api.create_lport.call_args_list[0][1])
-                self.assertEqual(port['revision_number'],
-                                 called_args_dict.get('version'))
+                self.nb_api.create.assert_called_once()
+                lport = self.nb_api.create.call_args_list[0][0][0]
+                self.assertIsInstance(lport, l2.LogicalPort)
+                self.assertEqual(port['revision_number'], lport.version)
 
+                self.nb_api.update.reset_mock()
                 data = {'port': {'name': 'updated'}}
                 req = self.new_update_request('ports', data, port['id'])
                 req.get_response(self.api)
                 prev_version = port['revision_number']
                 port = self.driver.get_port(self.context, port['id'])
                 self.assertGreater(port['revision_number'], prev_version)
-                self.assertTrue(self.nb_api.update_lport.called)
-                called_args_dict = (
-                    self.nb_api.update_lport.call_args_list[0][1])
-                self.assertEqual(port['revision_number'],
-                                 called_args_dict.get('version'))
+                self.nb_api.update.assert_called_once()
+                lport = self.nb_api.create.call_args_list[0][0][0]
+                self.assertIsInstance(lport, l2.LogicalPort)
+                self.assertEqual(port['revision_number'], lport.version)
 
     def test_delete_network(self):
         network, _lswitch = self._test_create_network_revision()
@@ -388,36 +393,40 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
         profile_arg = {'binding:profile': profile}
         with self.subnet(enable_dhcp=False) as subnet:
+            self.nb_api.create.reset_mock()
             with self.port(subnet=subnet,
                            arg_list=('binding:profile',),
                            **profile_arg) as port:
                 port = port['port']
-                self.assertTrue(self.nb_api.create_lport.called)
-                called_args_dict = (
-                    self.nb_api.create_lport.call_args_list[0][1])
-                self.assertTrue(called_args_dict.get('remote_vtep'))
-                self.assertEqual("20.0.0.2",
-                                 called_args_dict.get('chassis'))
+                self.nb_api.create.assert_called_once()
+                lport = self.nb_api.create.call_args_list[0][0][0]
+                self.assertIsInstance(lport, l2.LogicalPort)
+                self.assertTrue(lport.remote_vtep)
+                self.assertEqual("20.0.0.2", lport.chassis.ip)
 
+                self.nb_api.update.reset_mock()
                 profile['host_ip'] = "20.0.0.20"
                 data = {'port': {'binding:profile': profile}}
                 req = self.new_update_request('ports', data, port['id'])
                 req.get_response(self.api)
-                self.assertTrue(self.nb_api.update_lport.called)
-                called_args_dict = (
-                    self.nb_api.update_lport.call_args_list[0][1])
-                self.assertTrue(called_args_dict.get('remote_vtep'))
-                self.assertEqual("20.0.0.20",
-                                 called_args_dict.get('chassis'))
+                self.nb_api.update.assert_called_once()
+                lport = self.nb_api.update.call_args_list[0][0][0]
+                self.assertIsInstance(lport, l2.LogicalPort)
+                self.assertTrue(lport.remote_vtep)
+                self.assertEqual("20.0.0.20", lport.chassis.ip)
 
     def test_delete_port(self):
         with self.port() as p:
             port = p['port']
 
+        self.nb_api.delete.mock_reset()
         req = self.new_delete_request('ports', port['id'])
         req.get_response(self.api)
-        self.nb_api.delete_lport.assert_called_with(
-            id=port['id'], topic=port['tenant_id'])
+        self.nb_api.delete.assert_called_once()
+        lport = self.nb_api.update.call_args_list[0][0][0]
+        self.assertIsInstance(lport, l2.LogicalPort)
+        self.assertEqual(port['id'], lport.id)
+        self.assertEqual(port['tenant_id'], lport.topic)
 
     def test_delete_security_group(self):
         sg = self._test_create_security_group_revision()
@@ -450,12 +459,14 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                   [{'opt_value': "192.168.0.1", 'opt_name': "3"},
                    {'opt_value': "0.0.0.0/0,192.168.0.1", 'opt_name': "121"}]}
         with self.subnet(enable_dhcp=False) as subnet:
+            self.nb_api.create.reset_mock()
             with self.port(subnet=subnet,
                            arg_list=('extra_dhcp_opts',),
                            **kwargs) as p:
                 port = p['port']
-                self.assertTrue(self.nb_api.create_lport.called)
-                called_args = self.nb_api.create_lport.call_args_list[0][1]
+                self.nb_api.create.assert_called_once()
+                lport = self.nb_api.create.call_args_list[0][0][0]
+                self.assertIsInstance(lport, l2.LogicalPort)
                 expected_edo = [{'opt_value': u"192.168.0.1",
                                  'opt_name': u"3",
                                  'ip_version': 4},
@@ -463,8 +474,9 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                                  'opt_name': u"121",
                                  'ip_version': 4}]
                 self.assertItemsEqual(expected_edo,
-                                      called_args.get("extra_dhcp_opts"))
+                                      lport.extra_dhcp_opts.to_struct())
 
+                self.nb_api.update.reset_mock()
                 data = {'port': {'extra_dhcp_opts': [{'opt_name': '3',
                                                       'opt_value': None},
                                                      {'opt_name': '121',
@@ -473,9 +485,10 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                         'ports',
                         data, port['id'])
                 req.get_response(self.api)
-                self.assertTrue(self.nb_api.update_lport.called)
-                called_args = self.nb_api.update_lport.call_args_list[0][1]
-                self.assertEqual([], called_args.get("extra_dhcp_opts"))
+                self.nb_api.update.assert_called_once()
+                lport = self.nb_api.update.call_args_list[0][0][0]
+                self.assertIsInstance(lport, l2.LogicalPort)
+                self.assertEqual([], lport.extra_dhcp_opts.to_struct())
 
 
 class TestDFMechansimDriverAllowedAddressPairs(

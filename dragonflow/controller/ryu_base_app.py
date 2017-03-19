@@ -84,26 +84,6 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def notify_delete_router(self, router=None):
         self.dispatcher.dispatch('router_deleted', router=router)
 
-    def notify_add_local_port(self, lport=None):
-        self.dispatcher.dispatch('add_local_port', lport=lport)
-
-    def notify_update_local_port(self, lport=None, original_lport=None):
-        self.dispatcher.dispatch('update_local_port', lport=lport,
-                                 original_lport=original_lport)
-
-    def notify_remove_local_port(self, lport=None):
-        self.dispatcher.dispatch('remove_local_port', lport=lport)
-
-    def notify_add_remote_port(self, lport=None):
-        self.dispatcher.dispatch('add_remote_port', lport=lport)
-
-    def notify_update_remote_port(self, lport=None, original_lport=None):
-        self.dispatcher.dispatch('update_remote_port', lport=lport,
-                                 original_lport=original_lport)
-
-    def notify_remove_remote_port(self, lport=None):
-        self.dispatcher.dispatch('remove_remote_port', lport=lport)
-
     def notify_ovs_sync_finished(self):
         self.dispatcher.dispatch('ovs_sync_finished')
 

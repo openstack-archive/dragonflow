@@ -11,6 +11,7 @@
 #    under the License.
 
 from dragonflow import conf as cfg
+from dragonflow.db.models import l2
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
@@ -61,9 +62,9 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return True
 
     def _get_vm_port_by_mac_address(self, mac):
-        lports = self.nb_api.get_all_logical_ports()
+        lports = self.nb_api.get_all(l2.LogicalPort)
         for lport in lports:
-            if lport.get_mac() == mac:
+            if lport.mac == mac:
                 return lport
         return None
 

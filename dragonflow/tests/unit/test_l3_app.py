@@ -71,11 +71,11 @@ class TestL3App(test_app_base.DFAppTestBase,
         # No lport no flow for route
         self.assertFalse(self.app.mod_flow.called)
 
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update(test_app_base.fake_local_port1)
         # 2 routes, 2 mod_flow
         self.assertEqual(2, self.app.mod_flow.call_count)
 
         self.app.mod_flow.reset_mock()
-        self.controller.delete_lport('fake_port1')
+        self.controller.delete(test_app_base.fake_local_port1)
         # 2 routes, 2 mod_flow
         self.assertEqual(2, self.app.mod_flow.call_count)

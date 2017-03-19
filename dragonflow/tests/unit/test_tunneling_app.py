@@ -54,7 +54,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
             self.app.ofproto.OFPIT_APPLY_ACTIONS, actions),
                 self.app.parser.OFPInstructionGotoTable(
             const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)]
-        self.controller.update_lport(fake_local_gre_port1)
+        self.controller.update(fake_local_gre_port1)
         self.app.mod_flow.assert_called_with(
             inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
@@ -70,7 +70,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
                 ofport=2,
                 segmentation_id=410,
                 local_network_id=21)
-        self.controller.update_lport(fake_local_gre_port2)
+        self.controller.update(fake_local_gre_port2)
         self.app.mod_flow.assert_not_called()
         self.app.mod_flow.reset_mock()
 
@@ -82,9 +82,8 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
                 segmentation_id=410,
                 local_network_id=21,
                 name='fake_remote_gre_port1')
-        remote_ip = fake_remote_gre_port1.get_external_value(
-                'peer_vtep_address')
-        ofport = fake_remote_gre_port1.get_external_value('ofport')
+        remote_ip = fake_remote_gre_port1.peer_vtep_address
+        ofport = fake_remote_gre_port1.ofport
         match = self.app._make_bum_match(metadata=21)
         actions = [
                 self.app.parser.OFPActionSetField(
@@ -94,7 +93,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
                 self.app.parser.OFPActionOutput(
                     port=ofport)]
         inst = [self.app.parser.OFPInstructionActions()]
-        self.controller.update_lport(fake_remote_gre_port1)
+        self.controller.update(fake_remote_gre_port1)
         self.app.parser.OFPInstructionActions.assert_called_with(
             self.app.ofproto.OFPIT_APPLY_ACTIONS, actions)
         self.app.parser.OFPInstructionActions.reset_mock()
@@ -113,7 +112,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
                 segmentation_id=410,
                 local_network_id=21,
                 name='fake_remote_gre_port2')
-        self.controller.update_lport(fake_remote_gre_port2)
+        self.controller.update(fake_remote_gre_port2)
         self.app.parser.OFPInstructionActions.assert_called_with(
             self.app.ofproto.OFPIT_APPLY_ACTIONS, actions)
         self.app.parser.OFPInstructionActions.reset_mock()
@@ -125,7 +124,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
             priority=const.PRIORITY_LOW,
             match=match)
         self.app.mod_flow.reset_mock()
-        self.controller.delete_lport(fake_remote_gre_port1.get_id())
+        self.controller.delete(fake_remote_gre_port1)
         self.app.parser.OFPInstructionActions.assert_called_with(
             self.app.ofproto.OFPIT_APPLY_ACTIONS, actions)
         self.app.parser.OFPInstructionActions.reset_mock()
@@ -138,7 +137,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
             match=match)
         self.app.mod_flow.reset_mock()
 
-        self.controller.delete_lport(fake_remote_gre_port2.get_id())
+        self.controller.delete(fake_remote_gre_port2)
         # The multicast flow will be deleted to EGRESS_TABLE with priority low
         self.app.mod_flow.assert_called_with(
             inst=None,

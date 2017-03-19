@@ -57,7 +57,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                   'enable_dhcp': True}
         self.neutron.create_subnet({'subnet': subnet})
         ports = utils.wait_until_is_and_return(
-            lambda: self.nb_api.get_all_logical_ports(),
+            lambda: self.nb_api.get_all(l2.LogicalPort),
             exception=Exception('No ports assigned in subnet')
         )
         dhcp_ports_found = 0
@@ -67,11 +67,11 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
                     dhcp_ports_found += 1
         network.close()
         self.assertEqual(1, dhcp_ports_found)
-        ports = self.nb_api.get_all_logical_ports()
+        ports = self.nb_api.get_all(l2.LogicalPort)
         dhcp_ports_found = 0
         for port in ports:
-            if port.get_lswitch_id() == network_id:
-                if port.get_device_owner() == 'network:dhcp':
+            if port.lswitch.id == network_id:
+                if port.device_owner == 'network:dhcp':
                     dhcp_ports_found += 1
         self.assertEqual(0, dhcp_ports_found)
 

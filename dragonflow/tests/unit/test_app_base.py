@@ -139,7 +139,7 @@ def make_fake_port(id=None,
                    subnets=None,
                    is_local=None,
                    macs=('00:00:00:00:00:00'),
-                   ips=('0.0.0.0.0'),
+                   ips=('0.0.0.0'),
                    name='fake_local_port',
                    lswitch='fake_switch1',
                    enabled=True,
@@ -158,34 +158,33 @@ def make_fake_port(id=None,
                    ofport=1,
                    local_network_id=11,
                    extra_dhcp_opts=None):
-    fake_port = db_models.LogicalPort("{}")
-    fake_port.inner_obj = {
-        'subnets': subnets,
-        'binding_profile': {},
-        'macs': macs,
-        'name': name,
-        'allowed_address_pairs': [],
-        'lswitch': lswitch,
-        'enabled': True,
-        'topic': topic,
-        'ips': ips,
-        'device_owner': device_owner,
-        'tunnel_key': tunnel_key,
-        'chassis': chassis,
-        'version': version,
-        'unique_key': unique_key,
-        'port_security_enabled': port_security_enabled,
-        'binding_vnic_type': binding_vnic_type,
-        'id': "%s_%s%s" % (network_type, name, ofport) if not id else id,
-        'security_groups': security_groups,
-        'device_id': device_id,
-        'extra_dhcp_opts': extra_dhcp_opts}
-    fake_port.external_dict = {
-        'is_local': is_local,
-        'segmentation_id': segmentation_id,
-        'ofport': ofport,
-        'network_type': network_type,
-        'local_network_id': local_network_id}
+    fake_port = l2.LogicalPort(
+        subnets=subnets,
+        binding_profile={},
+        macs=list(macs),
+        name=name,
+        allowed_address_pairs=[],
+        lswitch=lswitch,
+        enabled=True,
+        topic=topic,
+        ips=list(ips),
+        device_owner=device_owner,
+        chassis=chassis,
+        version=version,
+        unique_key=unique_key,
+        port_security_enabled=port_security_enabled,
+        binding_vnic_type=binding_vnic_type,
+        id="%s_%s%s" % (network_type, name, ofport) if not id else id,
+        security_groups=security_groups,
+        device_id=device_id,
+        extra_dhcp_opts=extra_dhcp_opts,
+    )
+    fake_port.is_local = is_local
+    fake_port.segmentation_id = segmentation_id
+    fake_port.ofport = ofport
+    fake_port.network_type = network_type
+    fake_port.local_network_id = local_network_id
+    fake_port.tunnel_key=tunnel_key,
     return fake_port
 
 
@@ -194,20 +193,17 @@ def make_fake_local_port(**kargs):
     return make_fake_port(**kargs)
 
 
-fake_local_port1_dhcp_opts = [{
-    'opt_value': "10.0.0.1",
-    'opt_name': "3",
-    'ip_version': 4}, {
-    'opt_value': "0.0.0.0/0,10.0.0.1",
-    'opt_name': "121",
-    'ip_version': 4}]
+fake_local_port1_dhcp_opts = [
+    l2.DHCPOption(name='3', value='10.0.0.1'),
+    l2.DHCPOption(name='121', value='0.0.0.0/0,10.0.0.1'),
+]
 
 
-fake_local_port1 = make_fake_local_port(
+fake_local_port1 = make_fake_local_port()
     macs=['fa:16:3e:8c:2e:b3'],
     ips=['10.0.0.6'],
     network_type='vxlan',
-    subnets=['fake_subnet1'],
+    subnets=[l2.Subnet(id='fake_subnet1')],
     id='fake_port1',
     extra_dhcp_opts=fake_local_port1_dhcp_opts)
 

@@ -13,11 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
+
 from oslo_log import log
 
-from dragonflow._i18n import _LE
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
+from dragonflow.db.models import l2
 from dragonflow.db.models import qos
 
 
@@ -26,21 +28,28 @@ LOG = log.getLogger(__name__)
 
 class PortQosApp(df_base_app.DFlowApp):
 
-    def add_local_port(self, lport):
+    def __init__(self, *args, **kwargs):
+        super(PortQosApp, self).__init__(*args, **kwargs)
+        self.local_ports = collections.defaultdict(set)
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    def _add_local_port(self, lport):
         self._check_update_local_port_qos(lport)
 
-    def update_local_port(self, lport, original_lport):
-        if (original_lport
-                and lport.get_qos_policy_id()
-                == original_lport.get_qos_policy_id()):
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_UPDATED)
+    def _update_local_port(self, lport, original_lport):
+        if (original_lport and
+                lport.qos_policy == original_lport.qos_policy):
             # Do nothing, if the port's qos is the same as db store.
             return
 
+        if original_lport.qos_policy:
+            self.local_ports[original_lport.qos_policy.id].discard(lport.id)
         self._check_update_local_port_qos(lport)
 
     def _check_update_local_port_qos(self, lport):
-        qos_id = lport.get_qos_policy_id()
-        if not qos_id:
+        policy = lport.qos_policy
+        if not policy:
             # If the there is no qos associated with lport in nb db,
             # the qos in ovs db should also be checked and cleared.
             # This is because the ovs db might not be consistent with
@@ -48,15 +57,8 @@ class PortQosApp(df_base_app.DFlowApp):
             self.vswitch_api.clear_port_qos(lport.get_id())
             return
 
-        policy = self._get_qos_policy(qos_id)
-        if not policy:
-            LOG.error(_LE("Unable to get QoS %(policy)s when adding/updating "
-                          "local port %(port)s. It may have been deleted."),
-                      {'policy': qos_id, 'port': lport.get_id()})
-            self.vswitch_api.clear_port_qos(lport.get_id())
-            return
-
-        self._update_local_port_qos(lport.get_id(), policy)
+        self.local_ports[lport.qos_policy.id].add(lport.id)
+        self._update_local_port_qos(lport.id, policy)
 
     def _update_local_port_qos(self, port_id, policy):
 
@@ -77,25 +79,25 @@ class PortQosApp(df_base_app.DFlowApp):
             if _is_qos_set():
                 self.vswitch_api.set_port_qos(port_id, policy)
 
-    def remove_local_port(self, lport):
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    def _remove_local_port(self, lport):
+        if lport.qos_policy:
+            self.local_ports[lport.qos_policy.id].discard(lport.id)
         # If removing lport in nb db, the qos in ovs db should also be checked
         # and cleared. This is because the ovs db might not be consistent with
         # nb db.
-        self.vswitch_api.delete_port_qos_and_queue(lport.get_id())
+        self.vswitch_api.delete_port_qos_and_queue(lport.id)
 
     @df_base_app.register_event(qos.QosPolicy, model_constants.EVENT_UPDATED)
     def update_qos_policy(self, policy, orig_policy=None):
-        local_ports = self.db_store.get_local_ports(policy.topic)
-        for port in local_ports:
-            if port.get_qos_policy_id() == policy.id:
-                self._update_local_port_qos(port.get_id(), policy)
+        for port_id in self.local_ports[policy.id]:
+            self._update_local_port_qos(port_id, policy)
 
     @df_base_app.register_event(qos.QosPolicy, model_constants.EVENT_DELETED)
     def delete_qos_policy(self, policy):
-        local_ports = self.db_store.get_local_ports(policy.topic)
-        for port in local_ports:
-            if port.get_qos_policy_id() == policy.id:
-                self.vswitch_api.clear_port_qos(port.get_id())
+        ports = self.local_ports.pop(policy.id, ())
+        for port_id in ports:
+            self.vswitch_api.clear_port_qos(port_id)
 
     def _get_qos_policy(self, qos_id):
         policy_id_obj = qos.QosPolicy(id=qos_id)

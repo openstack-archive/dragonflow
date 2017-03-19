@@ -25,6 +25,7 @@ from dragonflow._i18n import _LE
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.controller import l3_app_base
+from dragonflow.db.models import l2
 
 LOG = log.getLogger(__name__)
 
@@ -67,8 +68,11 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
             pkt_ethernet.dst)
         for router_port in router.get_ports():
             if ip_addr in netaddr.IPNetwork(router_port.get_network()):
-                dst_ports = self.db_store.get_ports_by_network_id(
-                    router_port.get_lswitch_id())
+                index = l2.LogicalPort.get_indexes()['lswitch_id']
+                dst_ports = self.db_store2.get_all(
+                    l2.LogicalPort(lswitch=l2.LogicalSwitch(
+                        id=router_port.get_lswitch_id())),
+                    index=index)
                 for out_port in dst_ports:
                     if out_port.get_ip() == pkt_ip.dst:
                         self._install_l3_flow(router_port,

@@ -18,6 +18,7 @@ import six
 
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as df_const
+from dragonflow.db.models import l2
 from dragonflow.ovsdb import vswitch_impl
 from dragonflow.tests.common import constants as const
 
@@ -72,6 +73,15 @@ def check_dhcp_ip_rule(flows, dhcp_ip):
             if ('nw_dst=' + dhcp_ip + dhcp_ports in flow['match']):
                 return True
     return False
+
+
+def get_vm_port(nb_api, ip, mac):
+    ports = nb_api.get_all(l2.LogicalPort)
+    for port in ports:
+        if port.device_owner == 'compute:None':
+            if port.ip == ip and port.mac == mac:
+                return port
+    return None
 
 
 def print_command(full_args, run_as_root=False):

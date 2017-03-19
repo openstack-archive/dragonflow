@@ -14,7 +14,6 @@
 #    under the License.
 
 import collections
-import netaddr
 
 from oslo_log import log
 from oslo_service import loopingcall
@@ -27,6 +26,7 @@ from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as controller_const
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
+from dragonflow.db.models import l2
 
 LOG = log.getLogger(__name__)
 
@@ -72,10 +72,10 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
     def _get_ips_in_allowed_address_pairs(self, lport):
         ips = set()
-        allowed_address_pairs = lport.get_allowed_address_pairs()
+        allowed_address_pairs = lport.allowed_address_pairs
         for pair in allowed_address_pairs:
-            ip = pair["ip_address"]
-            if netaddr.IPNetwork(ip).version == 4:
+            ip = pair.ip_address
+            if ip.version == 4:
                 ips.add(ip)
             else:
                 # IPv6 addresses are not supported yet
@@ -122,8 +122,8 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         instructions = self._get_instructions_packet_in()
 
         arp_reply_match = self._get_match_arp_reply(
-            lport.get_external_value('ofport'),
-            lport.get_external_value('local_network_id'),
+            lport.ofport,
+            lport.local_network_id,
             ip)
         self.mod_flow(
             inst=instructions,
@@ -132,8 +132,8 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             match=arp_reply_match)
 
         gratuitous_arp_match = self._get_match_gratuitous_arp(
-            lport.get_external_value('ofport'),
-            lport.get_external_value('local_network_id'),
+            lport.ofport,
+            lport.local_network_id,
             ip)
         self.mod_flow(
             inst=instructions,
@@ -145,8 +145,8 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         ofproto = self.ofproto
 
         arp_reply_match = self._get_match_arp_reply(
-            lport.get_external_value('ofport'),
-            lport.get_external_value('local_network_id'),
+            lport.ofport,
+            lport.local_network_id,
             ip)
         self.mod_flow(
             table_id=controller_const.ARP_TABLE,
@@ -154,8 +154,8 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             command=ofproto.OFPFC_DELETE)
 
         gratuitous_arp_match = self._get_match_gratuitous_arp(
-            lport.get_external_value('ofport'),
-            lport.get_external_value('local_network_id'),
+            lport.ofport,
+            lport.local_network_id,
             ip)
         self.mod_flow(
             table_id=controller_const.ARP_TABLE,
@@ -163,20 +163,20 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             command=ofproto.OFPFC_DELETE)
 
     def _if_old_active_port_need_update(self, old_port, ip, mac, found_lport):
-        if (old_port.get_network_id() == found_lport.get_lswitch_id() and
+        if (old_port.get_network_id() == found_lport.lswitch.id and
            old_port.get_ip() == ip and
            old_port.get_detected_mac() == mac and
-           old_port.get_topic() == found_lport.get_topic() and
-           old_port.get_detected_lport_id() == found_lport.get_id()):
+           old_port.get_topic() == found_lport.topic and
+           old_port.get_detected_lport_id() == found_lport.id):
             return False
 
         return True
 
     def _update_active_port_in_db(self, ip, mac, ofport):
-        lports = self.db_store.get_ports()
+        lports = self.db_store2.get_all(l2.LogicalPort)
         found_lport = None
         for lport in lports:
-            if ofport == lport.get_external_value('ofport'):
+            if ofport == lport.ofport:
                 found_lport = lport
                 break
         if found_lport is None:
@@ -184,10 +184,10 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
                          "ofport(%s)."), ofport)
             return
 
-        network_id = found_lport.get_lswitch_id()
-        topic = found_lport.get_topic()
-        found_lport_id = found_lport.get_id()
-        key = network_id + ip
+        lswitch = found_lport.lswitch
+        topic = found_lport.topic
+        found_lport_id = found_lport.id
+        key = lswitch.id + ip
         old_active_port = self.db_store.get_active_port(key)
         if (not old_active_port or self._if_old_active_port_need_update(
                 old_active_port, ip, mac, found_lport)):
@@ -204,7 +204,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
                 self.nb_api.create_active_port(
                     id=key,
                     topic=topic,
-                    network_id=network_id,
+                    network_id=lswitch.id,
                     ip=ip,
                     detected_mac=mac,
                     detected_lport_id=found_lport_id)
@@ -213,8 +213,8 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         key = network_id + ip
         old_active_port = self.db_store.get_active_port(key)
         if (old_active_port and
-                old_active_port.get_detected_lport_id() == lport.get_id()):
-            self.nb_api.delete_active_port(key, lport.get_topic())
+                old_active_port.get_detected_lport_id() == lport.id):
+            self.nb_api.delete_active_port(key, lport.topic)
 
     def _add_target_ip(self, ip, lport):
         # install flows which send the arp reply or gratuitous arp to
@@ -223,15 +223,15 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         # send arp request
         self._send_arp_request(ip, lport)
 
-        network_id = lport.get_lswitch_id()
-        key = (network_id, ip)
-        lport_id = lport.get_id()
+        lswitch = lport.lswitch
+        key = (lswitch.id, ip)
+        lport_id = lport.id
         self.allowed_address_pairs_refs_list[key].add(lport_id)
 
     def _remove_target_ip(self, ip, lport):
-        network_id = lport.get_lswitch_id()
-        key = (network_id, ip)
-        lport_id = lport.get_id()
+        lswitch = lport.lswitch
+        key = (lswitch.id, ip)
+        lport_id = lport.id
         ip_refs_list = self.allowed_address_pairs_refs_list[key]
         if lport_id in ip_refs_list:
             ip_refs_list.remove(lport_id)
@@ -244,15 +244,14 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
         # Try to remove the active node detected from this lport and used
         # this ip from dragonflow DB
-        self._remove_active_port_from_db_by_lport(lport.get_lswitch_id(), ip,
-                                                  lport)
+        self._remove_active_port_from_db_by_lport(lport.lswitch.id, ip, lport)
 
     def _get_detect_items(self):
         items = []
 
         for target_ip, refs in self.allowed_address_pairs_refs_list.items():
             for lport_id in refs:
-                lport = self.db_store.get_port(lport_id)
+                lport = self.db_store2.get_one(l2.LogicalPort(id=lport_id))
                 if lport is not None:
                     items.append((target_ip, lport))
 
@@ -272,10 +271,10 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             self.send_arp_request(mac,
                                   '0.0.0.0',
                                   ip,
-                                  lport.get_external_value('ofport'))
+                                  lport.ofport)
         else:
             LOG.warning(_LW("Couldn't find a valid mac to detect active "
-                            "port in lport %s."), lport.get_id())
+                            "port in lport %s."), lport.id)
 
     def _periodic_send_arp_request(self):
         """Spawn a thread to periodically to detect active node among
@@ -288,12 +287,14 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
     def switch_features_handler(self, ev):
         self._periodic_send_arp_request()
 
-    def add_local_port(self, lport):
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    def _add_local_port(self, lport):
         ips = self._get_ips_in_allowed_address_pairs(lport)
         for target_ip in ips:
             self._add_target_ip(target_ip, lport)
 
-    def update_local_port(self, lport, original_lport):
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_UPDATED)
+    def _update_local_port(self, lport, original_lport):
         ips_set = self._get_ips_in_allowed_address_pairs(lport)
         original_ips_set = self._get_ips_in_allowed_address_pairs(
             original_lport)
@@ -304,7 +305,8 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         for target_ip in original_ips_set - ips_set:
             self._remove_target_ip(target_ip, original_lport)
 
-    def remove_local_port(self, lport):
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    def _remove_local_port(self, lport):
         ips = self._get_ips_in_allowed_address_pairs(lport)
         if not ips:
             return

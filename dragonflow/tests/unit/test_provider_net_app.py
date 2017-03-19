@@ -49,7 +49,7 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
                 local_network_id=21,
                 segmentation_id=5)
         self.app.int_ofports['phynet'] = 1
-        self.controller.update_lport(fake_local_vlan_port1)
+        self.controller.update(fake_local_vlan_port1)
         match = self.app.parser.OFPMatch(metadata=21)
         actions = [
                 self.app.parser.OFPActionOutput(
@@ -70,15 +70,15 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
                 macs=['1a:0b:0c:0d:0f:0f'],
                 ips=['10.0.0.112'],
                 ofport=12)
-        self.controller.update_lport(fake_local_vlan_port2)
+        self.controller.update(fake_local_vlan_port2)
         self.app.mod_flow.assert_not_called()
         self.app.mod_flow.reset_mock()
 
-        self.controller.delete_lport(fake_local_vlan_port1.get_id())
+        self.controller.delete(fake_local_vlan_port1)
         self.app.mod_flow.assert_not_called()
         self.app.mod_flow.reset_mock()
 
-        self.controller.delete_lport(fake_local_vlan_port2.get_id())
+        self.controller.delete(fake_local_vlan_port2)
         self.app.mod_flow.assert_called_with(
             command=self.app.ofproto.OFPFC_DELETE,
             table_id=const.EGRESS_EXTERNAL_TABLE,

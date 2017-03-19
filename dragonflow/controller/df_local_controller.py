@@ -125,13 +125,6 @@ class DfLocalController(object):
     def _register_legacy_model_refreshers(self):
         refreshers = [
             df_db_objects_refresh.DfObjectRefresher(
-                'Ports',
-                self.db_store.get_port_keys,
-                self.nb_api.get_all_logical_ports,
-                self.update_lport,
-                self.delete_lport,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
                 'Routers',
                 self.db_store.get_router_keys,
                 self.nb_api.get_routers,
@@ -162,13 +155,6 @@ class DfLocalController(object):
             return
 
         handlers = [
-            db_consistent.ModelHandler(
-                models.LogicalPort,
-                self.db_store.get_ports,
-                self.nb_api.get_all_logical_ports,
-                self.update,
-                self.delete_by_id,
-            ),
             db_consistent.ModelHandler(
                 models.LogicalRouter,
                 self.db_store.get_routers,
@@ -255,7 +241,9 @@ class DfLocalController(object):
             return
 
         # Notify about remote port update
-        remote_ports = self.db_store.get_ports_by_chassis(remote_chassis_name)
+        index = l2.LogicalPort.get_indexes()['chassis_id']
+        remote_ports = self.db_store2.get_all(l2.LogicalPort(chassis=chassis),
+                                              index=index)
         for port in remote_ports:
             self._logical_port_process(port, None)
 
@@ -263,9 +251,11 @@ class DfLocalController(object):
         LOG.info(_LI("Deleting remote ports in remote chassis %s"), chassis.id)
         # Chassis is deleted, there is no reason to keep the remote port
         # in it.
-        remote_ports = self.db_store.get_ports_by_chassis(chassis.id)
+        index = l2.LogicalPort.get_indexes()['chassis_id']
+        remote_ports = self.db_store2.get_all(l2.LogicalPort(chassis=chassis),
+                                              index=index)
         for port in remote_ports:
-            self.delete_lport(port.get_id())
+            self._delete_lport_instance(port)
         self.db_store2.delete(chassis)
 
     def _notify_active_ports_updated_when_lport_created(self, lport):
@@ -283,7 +273,7 @@ class DfLocalController(object):
                 self.db_store.delete_active_port(active_port.get_id())
 
     def _is_physical_chassis(self, chassis):
-        if not chassis or chassis == constants.DRAGONFLOW_VIRTUAL_PORT:
+        if not chassis or chassis.id == constants.DRAGONFLOW_VIRTUAL_PORT:
             return False
         return True
 

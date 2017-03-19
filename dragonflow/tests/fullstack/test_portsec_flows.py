@@ -40,14 +40,6 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
 
         return True
 
-    def _get_vm_port(self, ip, mac):
-        ports = self.nb_api.get_all_logical_ports()
-        for port in ports:
-            if port.get_device_owner() == 'compute:None':
-                if port.get_ip() == ip and port.get_mac() == mac:
-                    return port
-        return None
-
     def _get_anti_spoof_expected_flows(self, ip, mac, unique_key):
         expected_flow_list = []
 
@@ -204,7 +196,7 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
         mac = addresses[0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
         port = utils.wait_until_is_and_return(
-            lambda: self._get_vm_port(ip, mac),
+            lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
         )
 

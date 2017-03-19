@@ -15,7 +15,6 @@
 
 import collections
 
-import netaddr
 from neutron_lib import constants as common_const
 from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
@@ -104,11 +103,11 @@ class L2App(df_base_app.DFlowApp):
     def _add_l2_responders(self, lport):
         if not self.is_install_l2_responder:
             return
-        ips = lport.get_ip_list()
-        network_id = lport.get_external_value('local_network_id')
-        mac = lport.get_mac()
+        ips = lport.ips
+        network_id = lport.local_network_id
+        mac = lport.mac
         for ip in ips:
-            ip_version = netaddr.IPAddress(ip).version
+            ip_version = ip.version
             if ip_version == 4:
                 arp_responder.ArpResponder(self,
                                            network_id, ip, mac).add()
@@ -119,10 +118,10 @@ class L2App(df_base_app.DFlowApp):
     def _remove_l2_responders(self, lport):
         if not self.is_install_l2_responder:
             return
-        ips = lport.get_ip_list()
-        network_id = lport.get_external_value('local_network_id')
+        ips = lport.ips
+        network_id = lport.local_network_id
         for ip in ips:
-            ip_version = netaddr.IPAddress(ip).version
+            ip_version = ip.version
             if ip_version == 4:
                 arp_responder.ArpResponder(self,
                                            network_id, ip).remove()
@@ -130,50 +129,38 @@ class L2App(df_base_app.DFlowApp):
                 nd_advertisers.NeighAdvertiser(self,
                                                network_id, ip).remove()
 
-    def remove_local_port(self, lport):
-        lport_id = lport.get_id()
-        mac = lport.get_mac()
-        network_id = lport.get_external_value('local_network_id')
-        network_type = lport.get_external_value('network_type')
-        segmentation_id = lport.get_external_value('segmentation_id')
-        port_key = lport.get_unique_key()
-        topic = lport.get_topic()
-        device_owner = lport.get_device_owner()
-
-        parser = self.parser
-        ofproto = self.ofproto
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_DELETED)
+    def _remove_port(self, lport):
+        mac = lport.mac
+        network_id = lport.local_network_id
+        device_owner = lport.device_owner
 
         # Remove destination classifier for port
         if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
             self._delete_dst_classifier_flow_for_port(network_id, mac)
 
+        self._remove_l2_responders(lport)
+
+        if lport.is_local:
+            self._remove_local_port(lport)
+
+    def _remove_local_port(self, lport):
+        parser = self.parser
+        ofproto = self.ofproto
+
         # Remove egress classifier for port
-        match = parser.OFPMatch(reg7=port_key)
+        match = parser.OFPMatch(reg7=lport.unique_key)
         self.mod_flow(
             table_id=const.EGRESS_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-        self._remove_l2_responders(lport)
-
-        self._remove_local_port(lport_id,
-                                mac,
-                                topic,
-                                network_id,
-                                segmentation_id,
-                                network_type)
-
-    def _remove_local_port(self, lport_id, mac, topic,
-                           local_network_id, segmentation_id,
-                           network_type):
-        parser = self.parser
-        ofproto = self.ofproto
-
         # Remove ingress destination lookup for port
         match = parser.OFPMatch()
-        match.set_metadata(local_network_id)
-        match.set_dl_dst(haddr_to_bin(mac))
+        match.set_metadata(lport.local_network_id)
+        match.set_dl_dst(haddr_to_bin(lport.mac))
         self.mod_flow(
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
@@ -181,9 +168,10 @@ class L2App(df_base_app.DFlowApp):
             match=match)
 
         # Update multicast and broadcast
-        self._del_multicast_broadcast_handling_for_local(lport_id,
-                                                         topic,
-                                                         local_network_id)
+        self._del_multicast_broadcast_handling_for_local(
+            lport.id,
+            lport.topic,
+            lport.local_network_id)
 
     def _del_multicast_broadcast_handling_for_local(self,
                                                     lport_id,
@@ -241,7 +229,8 @@ class L2App(df_base_app.DFlowApp):
         egress = []
 
         for port_id_in_network in local_ports:
-            lport = self.db_store.get_port(port_id_in_network, topic)
+            lean_lport = l2.LogicalPort(id=port_id_in_network, topic=topic)
+            lport = self.db_store2.get_one(lean_lport)
             if lport is None:
                 continue
             port_key_in_network = local_ports[port_id_in_network]
@@ -279,17 +268,6 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
-    def remove_remote_port(self, lport):
-        mac = lport.get_mac()
-        network_id = lport.get_external_value('local_network_id')
-        device_owner = lport.get_device_owner()
-
-        # Remove destination classifier for port
-        if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
-            self._delete_dst_classifier_flow_for_port(network_id, mac)
-
-        self._remove_l2_responders(lport)
-
     def _add_dst_classifier_flow_for_port(self, network_id, mac, port_key):
         parser = self.parser
         ofproto = self.ofproto
@@ -320,24 +298,25 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def add_local_port(self, lport):
-        lport_id = lport.get_id()
-        mac = lport.get_mac()
-        ofport = lport.get_external_value('ofport')
-        port_key = lport.get_unique_key()
-        network_id = lport.get_external_value('local_network_id')
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    def _add_local_port(self, lport):
+        lport_id = lport.id
+        mac = lport.mac
+        ofport = lport.ofport
+        port_key = lport.unique_key
+        network_id = lport.local_network_id
 
         if ofport is None or network_id is None:
             return
 
-        topic = lport.get_topic()
+        topic = lport.topic
 
         parser = self.parser
         ofproto = self.ofproto
 
         # REVISIT(xiaohhui): This check might be removed when l3-agent is
         # obsoleted.
-        if lport.get_device_owner() != common_const.DEVICE_OWNER_ROUTER_INTF:
+        if lport.device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
             self._add_dst_classifier_flow_for_port(network_id, mac, port_key)
 
         # Go to dispatch table according to unique metadata & mac
@@ -398,8 +377,9 @@ class L2App(df_base_app.DFlowApp):
                                                    const.EGRESS_TABLE))
 
         for port_id_in_network in local_network.local_ports:
-            lport = self.db_store.get_port(port_id_in_network, topic)
-            if lport is None or lport_id == lport.get_id():
+            lean_lport = l2.LogicalPort(id=port_id_in_network, topic=topic)
+            lport = self.db_store2.get_one(lean_lport)
+            if lport is None or lport_id == lport.id:
                 continue
             port_key_in_network = local_network.local_ports[port_id_in_network]
 
@@ -451,15 +431,16 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
-    def add_remote_port(self, lport):
-        mac = lport.get_mac()
-        network_id = lport.get_external_value('local_network_id')
-        port_key = lport.get_unique_key()
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_CREATED)
+    def _add_remote_port(self, lport):
+        mac = lport.mac
+        network_id = lport.local_network_id
+        port_key = lport.unique_key
 
         # Router MAC's go to L3 table will be taken care by l3 app
         # REVISIT(xiaohhui): This check might be removed when l3-agent is
         # obsoleted.
-        if lport.get_device_owner() != common_const.DEVICE_OWNER_ROUTER_INTF:
+        if lport.device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
             self._add_dst_classifier_flow_for_port(network_id, mac, port_key)
 
         self._add_l2_responders(lport)
