@@ -40,6 +40,7 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 
 from dragonflow.common import exceptions as df_exceptions
+from dragonflow.db.models import l2
 from dragonflow.db.models import l3
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
@@ -194,8 +195,9 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 # delete the stale floatingip port
                 try:
                     if floatingip_port:
-                        self.nb_api.delete_lport(floatingip_port['id'],
-                                                 floatingip_port['tenant_id'])
+                        self.nb_api.delete(
+                            l2.LogicalPort(id=floatingip_port['id'],
+                                           topic=floatingip_port['tenant_id']))
                 except df_exceptions.DBKeyNotFound:
                     pass
 
@@ -264,13 +266,12 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         cidr = netaddr.IPNetwork(subnet['cidr'])
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
-
-        logical_port = self.nb_api.get_logical_port(port['id'],
-                                                    port['tenant_id'])
+        logical_port = self.nb_api.get(l2.LogicalPort(id=port['id'],
+                                                      topic=port['tenant_id']))
 
         logical_router_port = neutron_l3.build_logical_router_port(
             router_port_info, mac=port['mac_address'],
-            network=network, unique_key=logical_port.get_unique_key())
+            network=network, unique_key=logical_port.unique_key)
         lrouter = self.nb_api.get(l3.LogicalRouter(id=router_id,
                                                    topic=router['tenant_id']))
         lrouter.version = router['revision_number']
