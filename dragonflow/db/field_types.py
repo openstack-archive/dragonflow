@@ -19,29 +19,53 @@ from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
 
 
-def _create_ref(proxy_type, value, lazy):
-    """Create a proxy object based on:
-        * ID.
-        * Another proxy instance.
-        * Actual object of the proxied type.
+class _ReferenceMixin(object):
+    def _init_ref_mixin(self, model, lazy, dependency):
+        self._model = model
+        self._proxy_type = None
+        self._lazy = lazy
+        self._dependency = dependency
 
-    In case where object is passed (rather than ID), the ID is extracted from
-    the relevant field.
-    """
-    if isinstance(value, six.string_types):
-        obj_id = value
-    elif isinstance(value, (proxy_type, proxy_type.get_proxied_model())):
-        obj_id = value.id
-    else:
-        raise ValueError(
-            _LE('Reference field should only be initialized by ID or '
-                'model instance/reference'),
-        )
+    def _create_ref(self, value):
+        """Create a proxy object based on:
+            * ID.
+            * Another proxy instance.
+            * Actual object of the proxied type.
 
-    return proxy_type(id=obj_id, lazy=lazy)
+        In case where object is passed (rather than ID), the ID is extracted
+        from the relevant field.
+        """
+
+        if isinstance(value, six.string_types):
+            obj_id = value
+        elif isinstance(value, (self.model_type, self.proxy_type)):
+            obj_id = value.id
+        else:
+            raise ValueError(
+                _LE('Reference field should only be initialized by ID or '
+                    'model instance/reference'),
+            )
+
+        return self.proxy_type(id=obj_id, lazy=self._lazy)
+
+    @property
+    def proxy_type(self):
+        if self._proxy_type is None:
+            self._proxy_type = model_proxy.create_model_proxy(self.model_type)
+        return self._proxy_type
+
+    @property
+    def model_type(self):
+        if isinstance(self._model, six.string_types):
+            self._model = model_framework.get_model(self._model)
+        return self._model
+
+    @property
+    def dependency(self):
+        return self._dependency
 
 
-class ReferenceField(fields.BaseField):
+class ReferenceField(_ReferenceMixin, fields.BaseField):
     '''A field that holds a "foreign-key" to another model.
 
     Used to reference an object stored outside of the model, as if it was
@@ -56,39 +80,29 @@ class ReferenceField(fields.BaseField):
     'some-lswitch'
 
     '''
-    def __init__(self, model, lazy=True, *args, **kwargs):
+    def __init__(self, model, lazy=True, dependency=True, *args, **kwargs):
+        self._init_ref_mixin(model, lazy=lazy, dependency=dependency)
         super(ReferenceField, self).__init__(*args, **kwargs)
-        self._model = model
-        self._lazy = lazy
-        # We delay type creation until first access in case model is not
-        # available yet - i.e we got a string
-        self._types = None
 
     def validate(self, value):
         pass
 
     @property
     def types(self):
-        if self._types is None:
-            self._types = (
-                model_proxy.create_model_proxy(
-                    model_framework.get_model(self._model),
-                ),
-            )
-        return self._types
+        return (self.proxy_type,)
 
     def parse_value(self, value):
         if value is None:
             return
 
-        return _create_ref(self.types[0], value, self._lazy)
+        return self._create_ref(value)
 
     def to_struct(self, obj):
         if obj is not None:
             return obj.id
 
 
-class ReferenceListField(fields.ListField):
+class ReferenceListField(_ReferenceMixin, fields.ListField):
     '''A field that holds a sequence of 'foreign-keys'
 
     Much like ReferenceField above, this class allows accessing objects
@@ -103,16 +117,17 @@ class ReferenceListField(fields.ListField):
     'Name of the secgroup'
 
     '''
-    def __init__(self, target_model, lazy=True, *args, **kwargs):
-        self._proxy_type = model_proxy.create_model_proxy(
-            model_framework.get_model(target_model))
-        self._lazy = lazy
+    def __init__(self, model, lazy=True, dependency=True, *args, **kwargs):
+        self._init_ref_mixin(model, lazy=lazy, dependency=dependency)
         super(ReferenceListField, self).__init__(
-            self._proxy_type, *args, **kwargs)
+            (self.proxy_type,),
+            *args,
+            **kwargs
+        )
 
     def parse_value(self, values):
         return [
-            _create_ref(self._proxy_type, v, self._lazy) for v in values or []
+            self._create_ref(v) for v in values or []
         ]
 
     def to_struct(self, objs):

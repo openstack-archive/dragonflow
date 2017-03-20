@@ -188,16 +188,8 @@ class _CommonBase(models.Base):
     def dependencies(cls):
         deps = []
         for _, field in cls.iterate_over_fields():
-            if isinstance(field, fields.ListField):
-                types = field.items_types
-            else:
-                types = field.types
-
-            for field_type in types:
-                try:
-                    deps.append(field_type.get_proxied_model())
-                except AttributeError:
-                    pass
+            if getattr(field, 'dependency', False):
+                deps.append(field.model_type)
 
         return set(deps)
 
