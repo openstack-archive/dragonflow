@@ -327,3 +327,24 @@ class TestModelFramework(tests_base.BaseTestCase):
             mf._lookup_by_class_name.pop('LoopModel1', None)
             mf._lookup_by_class_name.pop('LoopModel2', None)
             mf._lookup_by_class_name.pop('LoopModel3', None)
+
+    def test_dependencies_with_backref(self):
+        try:
+            @mf.register_model
+            @mf.construct_nb_db_model
+            class LoopModel1(mf.ModelBase):
+                link = df_fields.ReferenceField('LoopModel2')
+
+            @mf.register_model
+            @mf.construct_nb_db_model
+            class LoopModel2(mf.ModelBase):
+                link = df_fields.ReferenceField(LoopModel1, dependency=False)
+
+            sorted_models = mf.iter_models_by_dependency_order()
+            self.assertLess(
+                sorted_models.index(LoopModel2),
+                sorted_models.index(LoopModel1)
+            )
+        finally:
+            mf._lookup_by_class_name.pop('LoopModel1', None)
+            mf._lookup_by_class_name.pop('LoopModel2', None)

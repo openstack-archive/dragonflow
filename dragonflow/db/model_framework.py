@@ -20,6 +20,7 @@ from oslo_serialization import jsonutils
 import six
 
 from dragonflow._i18n import _LE
+from dragonflow.db import field_types as df_fields
 from dragonflow.db.models import legacy
 
 LOG = log.getLogger(__name__)
@@ -188,16 +189,14 @@ class _CommonBase(models.Base):
     def dependencies(cls):
         deps = []
         for _, field in cls.iterate_over_fields():
-            if isinstance(field, fields.ListField):
-                types = field.items_types
-            else:
-                types = field.types
+            if not isinstance(
+                field,
+                (df_fields.ReferenceField, df_fields.ReferenceListField),
+            ):
+                continue
 
-            for field_type in types:
-                try:
-                    deps.append(field_type.get_proxied_model())
-                except AttributeError:
-                    pass
+            if field.dependency:
+                deps.append(field.model_type)
 
         return set(deps)
 
