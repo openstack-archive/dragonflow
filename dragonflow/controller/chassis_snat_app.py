@@ -15,7 +15,6 @@
 from oslo_log import log
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LI
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
@@ -34,7 +33,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
     """
     def __init__(self, *args, **kwargs):
         super(ChassisSNATApp, self).__init__(*args, **kwargs)
-        LOG.info(_LI("Loading SNAT application ... "))
+        LOG.info("Loading SNAT application ... ")
         self.external_network_bridge = (
             cfg.CONF.df_dnat_app.external_network_bridge)
         self.ex_peer_patch_port = (
@@ -91,21 +90,21 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
 
         :param lport:  local logical port which is being removed
         """
-        LOG.info(_LI("SNAT application: remove local port %(lport)s"),
+        LOG.info("SNAT application: remove local port %(lport)s",
                  {'lport': lport})
         if self.external_host_mac is not None:
             # remove VM specific flows
             if self.is_data_port(lport):
                 self.remove_lport_based_flows(lport)
             else:
-                LOG.info(_LI('SNAT application: not a compute port, skipped'))
+                LOG.info('SNAT application: not a compute port, skipped')
 
     def add_local_port(self, lport):
         """override add_local_port method to install sNAT related flows
 
         :param lport:  local logical port which is being added
         """
-        LOG.info(_LI("SNAT application: add local port %(lport)s"),
+        LOG.info("SNAT application: add local port %(lport)s",
                  {'lport': lport})
 
         if self.external_host_mac is not None:
@@ -115,7 +114,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
 
                 self.install_lport_based_flows(lport)
             else:
-                LOG.info(_LI('SNAT application: not a compute port, skipped'))
+                LOG.info('SNAT application: not a compute port, skipped')
 
     def install_strategy_based_flows(self):
 

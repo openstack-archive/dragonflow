@@ -35,8 +35,7 @@ def _create_ref(proxy_type, value, lazy):
     else:
         raise ValueError(
             _LE('Reference field should only be initialized by ID or '
-                'model instance/reference'),
-        )
+                'model instance/reference'))
 
     return proxy_type(id=obj_id, lazy=lazy)
 
@@ -176,7 +175,7 @@ class EnumField(fields.StringField):
         super(EnumField, self).validate(value)
         if value is not None and value not in self._valid_values:
             raise errors.ValidationError(
-                _LE('{value} is not one of: [{valid_values}]').format(
+                '{value} is not one of: [{valid_values}]'.format(
                     value=value,
                     valid_values=', '.join(self._valid_values),
                 ),
@@ -195,7 +194,7 @@ class EnumListField(fields.ListField):
 
     def validate(self, value):
         if self.required and not value:
-            raise errors.ValidationError(_LE('Field is required!'))
+            raise errors.ValidationError('Field is required!')
 
         if value is None:
             return
@@ -203,7 +202,7 @@ class EnumListField(fields.ListField):
         for elem in value:
             if elem not in self._valid_values:
                 raise errors.ValidationError(
-                    _LE('{value} is not one of: [{valid_values}]').format(
+                    '{value} is not one of: [{valid_values}]'.format(
                         value=value,
                         valid_values=', '.join(self._valid_values),
                     ),

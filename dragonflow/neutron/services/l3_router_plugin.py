@@ -35,7 +35,6 @@ from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
 
-from dragonflow._i18n import _LE, _LI
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
@@ -250,7 +249,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             self.nb_api.delete_floatingip(id=id,
                                           topic=floatingip['tenant_id'])
         except df_exceptions.DBKeyNotFound:
-            LOG.exception(_LE("floatingip %s is not found in DF DB"), id)
+            LOG.exception("floatingip %s is not found in DF DB", id)
 
     def get_floatingip(self, context, id, fields=None):
         with context.session.begin(subtransactions=True):
@@ -298,9 +297,9 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                                             router_port_info['tenant_id'],
                                             router_version=router_version)
         except df_exceptions.DBKeyNotFound:
-            LOG.exception(_LE("logical router %s is not found in DF DB, "
-                              "suppressing delete_lrouter_port "
-                              "exception"), router_id)
+            LOG.exception("logical router %s is not found in DF DB, "
+                          "suppressing delete_lrouter_port "
+                          "exception", router_id)
         return router_port_info
 
     def get_number_of_agents_for_scheduling(self, context):
@@ -315,9 +314,9 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         max_agents = cfg.CONF.max_l3_agents_per_router
         if max_agents:
             if max_agents > num_agents:
-                LOG.info(_LI("Number of active agents lower than "
-                             "max_l3_agents_per_router. L3 agents "
-                             "available: %s"), num_agents)
+                LOG.info("Number of active agents lower than "
+                         "max_l3_agents_per_router. L3 agents "
+                         "available: %s", num_agents)
             else:
                 num_agents = max_agents
 

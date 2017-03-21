@@ -17,7 +17,6 @@ import string
 from neutron.common import config as common_config
 from oslo_log import log
 
-from dragonflow._i18n import _LE
 from dragonflow import conf as cfg
 from dragonflow.db import api_nb
 from dragonflow.tests import base
@@ -38,8 +37,8 @@ class DFTestBase(base.BaseTestCase):
             try:
                 self.neutron = clients.get_neutron_client_from_env()
             except KeyError as e:
-                message = _LE('Cannot find environment variable %s. '
-                              'Have you sourced openrc?')
+                message = ('Cannot find environment variable %s. '
+                           'Have you sourced openrc?')
                 LOG.error(message, e.args[0])
                 self.fail(message % e.args[0])
         else:

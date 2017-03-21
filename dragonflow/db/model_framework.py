@@ -100,7 +100,7 @@ class _CommonBase(models.Base):
                 cb(self, *args, **kwargs)
             except Exception:
                 LOG.exception(
-                    _LE('Error while calling %(func)r(*%(_args)r, **%(kw)r)'),
+                    'Error while calling %(func)r(*%(_args)r, **%(kw)r)',
                     extra={'func': cb, '_args': args, 'kw': kwargs},
                 )
 

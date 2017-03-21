@@ -19,7 +19,6 @@ from oslo_config import cfg
 from oslo_log import log
 from ovs import vlog
 
-from dragonflow._i18n import _LW
 from dragonflow.common import constants
 from dragonflow.ovsdb import impl_idl
 from dragonflow.ovsdb import objects
@@ -115,10 +114,10 @@ class OvsApi(object):
     @staticmethod
     def _check_ofport(port_name, ofport):
         if ofport is None:
-            LOG.warning(_LW("Can't find ofport for port %s."), port_name)
+            LOG.warning("Can't find ofport for port %s.", port_name)
             return False
         if ofport < OFPORT_RANGE_MIN or ofport > OFPORT_RANGE_MAX:
-            LOG.warning(_LW("ofport %(ofport)s for port %(port)s is invalid."),
+            LOG.warning("ofport %(ofport)s for port %(port)s is invalid.",
                         {'ofport': ofport, 'port': port_name})
             return False
 
