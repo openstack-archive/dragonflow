@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
 import re
 
 from neutron.agent.common import utils as agent_utils
@@ -176,3 +177,28 @@ class empty_wrapper(object):
         def wrapped_f(*args, **kwargs):
             return f(*args, **kwargs)
         return wrapped_f
+
+
+@contextlib.contextmanager
+def monkeypatch(obj, member, sub):
+    '''This function creates a context that replaces a certain attribute and
+    restores it once the context is done.
+
+    :param obj: Object containing the attribute
+    :param member: String name of the member to replace
+    :param sub: The new value of the attribute.
+
+    >>> print(a.b)
+    1
+    >>> with monkeypatch(a, 'b', 2):
+            print(a.b)
+    2
+    >>> print(a.b)
+    1
+    '''
+    orig = getattr(obj, member)
+    setattr(obj, member, sub)
+    try:
+        yield
+    finally:
+        setattr(obj, member, orig)

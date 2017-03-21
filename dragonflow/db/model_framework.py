@@ -277,6 +277,8 @@ def construct_nb_db_model(cls_=None, indexes=None, events=frozenset()):
     else:
         return decorator(cls_)
 
+
+_registered_models = set()
 _lookup_by_class_name = {}
 _lookup_by_table_name = {}
 
@@ -294,6 +296,7 @@ def register_model(cls):
     '''Registers model into the lookup so it can be found later by name or
     by table name.
     '''
+    _registered_models.add(cls)
     _lookup_by_class_name[cls.__name__] = cls
     try:
         _lookup_by_table_name[cls.table_name] = cls
@@ -327,14 +330,15 @@ def get_model(arg):
 
 def iter_models():
     '''Iterate over all registered models'''
-    for model in _lookup_by_class_name.values():
+    for model in _registered_models:
         yield model
 
 
 def iter_tables():
     '''Iterate over all table names any of the models define'''
     for model in iter_models():
-        yield model.table_name
+        if hasattr(model, 'table_name'):
+            yield model.table_name
 
 
 def iter_models_by_dependency_order():
