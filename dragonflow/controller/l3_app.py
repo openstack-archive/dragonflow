@@ -21,7 +21,6 @@ from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LE
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.controller import l3_app_base
@@ -51,14 +50,14 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         pkt = packet.Packet(msg.data)
         pkt_ip = pkt.get_protocol(ipv4.ipv4) or pkt.get_protocol(ipv6.ipv6)
         if pkt_ip is None:
-            LOG.error(_LE("Received Non IP Packet"))
+            LOG.error("Received Non IP Packet")
             return
         pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
         network_id = msg.match.get('metadata')
         try:
             self._get_route(pkt_ip, pkt_ethernet, network_id, msg)
         except Exception as e:
-            LOG.error(_LE("L3 App PacketIn exception raised"))
+            LOG.error("L3 App PacketIn exception raised")
             LOG.error(e)
 
     def _get_route(self, pkt_ip, pkt_ethernet, network_id, msg):
