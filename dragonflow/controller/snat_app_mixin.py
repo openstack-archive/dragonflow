@@ -17,7 +17,6 @@ from oslo_log import log
 from ryu.ofproto import ether
 from ryu.ofproto import nicira_ext
 
-from dragonflow._i18n import _LW
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import utils as df_utils
 from dragonflow.controller.common import arp_responder
@@ -62,7 +61,7 @@ class SNATApp_mixin(object):
 
     def is_data_port(self, lport):
         if lport.get_device_owner() == '':
-            LOG.warning(_LW("SNAT application is operating in test mode"))
+            LOG.warning("SNAT application is operating in test mode")
             return True
         else:
             return df_utils.is_port_owner_of_type(

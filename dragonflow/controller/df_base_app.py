@@ -214,8 +214,7 @@ def register_event(model, event):
     '''
     if event not in model.get_events():
         raise RuntimeError(
-            _LE('{0} is not an event of {1}').format(event, model),
-        )
+            _LE('{0} is not an event of {1}').format(event, model))
 
     def decorator(func):
         if not hasattr(func, '_register_events'):
