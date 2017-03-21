@@ -25,7 +25,7 @@ import numpy
 from oslo_log import log
 from oslo_utils import importutils
 
-from dragonflow._i18n import _, _LE
+from dragonflow._i18n import _
 from dragonflow import conf as cfg
 from dragonflow.db import api_nb
 
@@ -124,7 +124,7 @@ def run_client(nb_api):
         events.append((time.time(), lport))
 
     def signal_handler(signal, frame):
-        LOG.error(_LE('You pressed Ctrl+C!'))
+        LOG.error('You pressed Ctrl+C!')
         finished()
 
     def print_status(signal, frame):
@@ -142,7 +142,7 @@ def run_client(nb_api):
     try:
         nb_api.register_notification_callback(callback_handler)
     except Exception as e:
-        LOG.error(_LE('Exception: '), e)
+        LOG.error('Exception: ', e)
         finished()
 
 

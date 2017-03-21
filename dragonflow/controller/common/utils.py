@@ -17,7 +17,6 @@ from neutron.agent.common import utils
 from oslo_log import log
 from ryu.lib import addrconv
 
-from dragonflow._i18n import _LE
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import cookies
@@ -83,4 +82,4 @@ def delete_conntrack_entries_by_filter(ethertype='IPv4', protocol=None,
                       extra_ok_codes=[1])
         LOG.debug("Successfully executed conntrack command %s", cmd)
     except RuntimeError:
-        LOG.exception(_LE("Failed execute conntrack command %s"), cmd)
+        LOG.exception("Failed execute conntrack command %s", cmd)
