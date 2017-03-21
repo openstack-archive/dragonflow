@@ -26,7 +26,7 @@ from oslo_utils import reflection
 import six
 from stevedore import driver
 
-from dragonflow._i18n import _, _LE
+from dragonflow._i18n import _
 
 DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
 DF_NB_DB_DRIVER_NAMESPACE = 'dragonflow.nb_db_driver'
@@ -72,10 +72,10 @@ def load_driver(driver_cfg, namespace):
         try:
             class_to_load = importutils.import_class(driver_cfg)
         except (ImportError, ValueError):
-            LOG.error(_LE("Error loading class %(class)s by alias e: %(e)s"),
+            LOG.error("Error loading class %(class)s by alias e: %(e)s",
                       {'class': driver_cfg, 'e': e1_info},
                       exc_info=e1_info)
-            LOG.error(_LE("Error loading class by class name"),
+            LOG.error("Error loading class by class name",
                       exc_info=True)
             raise ImportError(_("Class not found."))
     return class_to_load()
@@ -92,7 +92,7 @@ class DFDaemon(object):
 
     def daemonize(self, run):
         if self.is_daemonize:
-            LOG.error(_LE("already daemonized"))
+            LOG.error("already daemonized")
             return
         self.is_daemonize = True
         if self.is_not_light:
@@ -177,8 +177,8 @@ class wrap_func_retry(object):
                         if remaining > 0:
                             ectxt.reraise = not self._is_exception_expected(e)
                         else:
-                            LOG.exception(_LE('Function exceeded '
-                                              'retry limit.'))
+                            LOG.exception('Function exceeded '
+                                          'retry limit.')
                     LOG.debug("Performing retry for function %s",
                               reflection.get_callable_name(f))
                     # NOTE(vsergeyev): We are using patched time module, so

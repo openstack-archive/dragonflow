@@ -17,7 +17,6 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import redis
 
-from dragonflow._i18n import _LE, _LW, _LI
 from dragonflow import conf as cfg
 from dragonflow.db.drivers import redis_mgt
 from dragonflow.db import pub_sub_api
@@ -79,11 +78,11 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
             self._update_client()
 
     def _sync_master_list(self):
-        LOG.info(_LI("publish connection old masterlist %s"),
+        LOG.info("publish connection old masterlist %s",
                  self.redis_mgt.master_list)
         result = self.redis_mgt.redis_get_master_list_from_syncstring(
             redis_mgt.RedisMgt.global_sharedlist.raw)
-        LOG.info(_LI("publish connection new masterlist %s"),
+        LOG.info("publish connection new masterlist %s",
                  self.redis_mgt.master_list)
         if result:
             self._update_client()
@@ -106,7 +105,7 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
                 if not alreadysync:
                     self._sync_master_list()
                     alreadysync = True
-                    LOG.exception(_LE("publish error remote:%(remote)s "),
+                    LOG.exception("publish error remote:%(remote)s ",
                                   {'remote': self.remote})
                     continue
                 self.redis_mgt.remove_node_from_master_list(self.remote)
@@ -121,7 +120,7 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
 
             self.redis_mgt.daemonize()
         else:
-            LOG.warning(_LW("redis mgt is none"))
+            LOG.warning("redis mgt is none")
 
 
 class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
@@ -174,7 +173,7 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
         if self.redis_mgt is not None:
             self.redis_mgt.register_ha_topic()
         else:
-            LOG.warning(_LW("redis mgt is none"))
+            LOG.warning("redis mgt is none")
 
     def run(self):
         while True:
@@ -202,21 +201,21 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                                 self.redis_mgt.redis_failover_callback(
                                     value)
                         else:
-                            LOG.warning(_LW("receive unknown message in "
-                                            "subscriber %(type)s"),
+                            LOG.warning("receive unknown message in "
+                                        "subscriber %(type)s",
                                         {'type': data['type']})
 
                 else:
-                    LOG.warning(_LW("pubsub lost connection %(ip)s:"
-                                    "%(port)s"),
+                    LOG.warning("pubsub lost connection %(ip)s:"
+                                "%(port)s",
                                 {'ip': self.ip,
                                  'port': self.plugin_updates_port})
                     eventlet.sleep(1)
 
             except Exception as e:
-                LOG.warning(_LW("subscriber listening task lost "
-                                "connection "
-                                "%(e)s"), {'e': e})
+                LOG.warning("subscriber listening task lost "
+                            "connection "
+                            "%(e)s", {'e': e})
 
                 try:
                     connection = self.pub_sub.connection
@@ -236,9 +235,8 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                         self.db_changes_callback(None, None, 'dbrestart',
                                                  True, None)
                     else:
-                        LOG.warning(_LW("there is no more db node "
-                                        "available"))
+                        LOG.warning("there is no more db node available")
 
-                    LOG.exception(_LE("reconnect error %(ip)s:%(port)s"),
+                    LOG.exception("reconnect error %(ip)s:%(port)s",
                                   {'ip': self.ip,
                                    'port': self.plugin_updates_port})
