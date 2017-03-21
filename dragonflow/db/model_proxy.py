@@ -84,10 +84,10 @@ def _memoize_model_proxies(f):
     @six.wraps(f)
     def func(model):
         try:
-            return memo[model.__name__]
+            return memo[model]
         except KeyError:
             result = f(model)
-            memo[model.__name__] = result
+            memo[model] = result
             return result
     return func
 

@@ -9,6 +9,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import contextlib
 import copy
 
 from jsonmodels import fields
@@ -20,6 +21,14 @@ import dragonflow.db.model_framework as mf
 from dragonflow.db.models import constants
 from dragonflow.db.models import mixins
 from dragonflow.tests import base as tests_base
+
+
+@contextlib.contextmanager
+def clean_registry():
+    with mock.patch.object(mf, '_registered_models', new=set()):
+        with mock.patch.object(mf, '_lookup_by_class_name', new={}):
+            with mock.patch.object(mf, '_lookup_by_table_name', new={}):
+                yield
 
 
 @mf.register_model
@@ -302,7 +311,7 @@ class TestModelFramework(tests_base.BaseTestCase):
         )
 
     def test_loop_detection(self):
-        try:
+        with clean_registry():
             @mf.register_model
             @mf.construct_nb_db_model
             class LoopModel1(mf.ModelBase):
@@ -322,8 +331,3 @@ class TestModelFramework(tests_base.BaseTestCase):
                 RuntimeError,
                 mf.iter_models_by_dependency_order,
             )
-
-        finally:
-            mf._lookup_by_class_name.pop('LoopModel1', None)
-            mf._lookup_by_class_name.pop('LoopModel2', None)
-            mf._lookup_by_class_name.pop('LoopModel3', None)
