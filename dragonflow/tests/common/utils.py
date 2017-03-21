@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
 import re
 
 from neutron.agent.common import utils as agent_utils
@@ -176,3 +177,13 @@ class empty_wrapper(object):
         def wrapped_f(*args, **kwargs):
             return f(*args, **kwargs)
         return wrapped_f
+
+
+@contextlib.contextmanager
+def monkeypatch(obj, member, sub):
+    orig = getattr(obj, member)
+    setattr(obj, member, sub)
+    try:
+        yield
+    finally:
+        setattr(obj, member, orig)
