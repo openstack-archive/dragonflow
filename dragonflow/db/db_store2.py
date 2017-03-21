@@ -13,7 +13,6 @@ import collections
 import itertools
 import threading
 
-from dragonflow._i18n import _LE
 from dragonflow.utils import radix_tree
 
 
@@ -146,7 +145,7 @@ class _ModelCache(object):
             obj_id = _take_one(keys)
 
             if obj_id is not None and _take_one(keys) is not None:
-                raise ValueError(_LE('More than one result available'))
+                raise ValueError('More than one result available')
         else:
             obj_id = obj.id
 
