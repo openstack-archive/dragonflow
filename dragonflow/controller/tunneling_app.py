@@ -42,7 +42,7 @@ class TunnelingApp(df_base_app.DFlowApp):
     def add_local_port(self, lport):
         network_type = lport.get_external_value('network_type')
         if network_type not in self.tunnel_types:
-            LOG.warning(_LW("added unsupported network %(net_type)s lport"),
+            LOG.warning("added unsupported network %(net_type)s lport",
                         {'net_type': network_type})
             return
         network_id = lport.get_external_value('local_network_id')
@@ -64,7 +64,7 @@ class TunnelingApp(df_base_app.DFlowApp):
     def remove_local_port(self, lport):
         network_type = lport.get_external_value('network_type')
         if network_type not in self.tunnel_types:
-            LOG.warning(_LW("removed unsupported network %(net_type)s lport"),
+            LOG.warning("removed unsupported network %(net_type)s lport",
                         {'net_type': network_type})
             return
         network_id = lport.get_external_value('local_network_id')

@@ -16,7 +16,6 @@ from oslo_log import log
 from redis import client as redis_client
 from redis import exceptions
 
-from dragonflow._i18n import _LE, _LW
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
 from dragonflow.db.drivers import redis_mgt
@@ -106,7 +105,7 @@ class RedisDbDriver(db_api.DbApi):
 
     def _execute_cmd(self, oper, local_key, value=None):
         if not self._is_oper_valid(oper):
-            LOG.warning(_LW("invalid oper: %(oper)s"),
+            LOG.warning("invalid oper: %(oper)s",
                         {'oper': oper})
             return None
 

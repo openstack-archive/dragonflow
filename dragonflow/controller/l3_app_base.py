@@ -26,7 +26,6 @@ from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LI, _LW
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
@@ -75,8 +74,8 @@ class L3AppMixin(object):
                       const.L3_LOOKUP_TABLE)
             if self.ttl_invalid_handler_rate_limit():
                 LOG.warning(
-                    _LW("Get more than %(rate)s TTL invalid "
-                        "packets per second at table %(table)s"),
+                    ("Get more than %(rate)s TTL invalid "
+                        "packets per second at table %(table)s",
                     {'rate': self.conf.router_ttl_invalid_max_rate,
                      'table': const.L3_LOOKUP_TABLE})
                 return True
@@ -91,8 +90,8 @@ class L3AppMixin(object):
                 unique_key = msg.match.get('reg6')
                 self.dispatch_packet(icmp_ttl_pkt, unique_key)
             else:
-                LOG.warning(_LW("The invalid TTL packet's destination mac %s "
-                                "can't be recognized."), e_pkt.dst)
+                LOG.warning("The invalid TTL packet's destination mac %s "
+                                "can't be recognized.", e_pkt.dst)
             return True
 
         if msg.match.get('reg7'):
@@ -102,8 +101,8 @@ class L3AppMixin(object):
             # concrete.
             if self.port_icmp_unreach_respond_rate_limit():
                 LOG.warning(
-                    _LW("Get more than %(rate)s packets to router port "
-                        "per second at table %(table)s"),
+                    "Get more than %(rate)s packets to router port "
+                        "per second at table %(table)s",
                     {'rate': self.conf.router_port_unreach_max_rate,
                      'table': const.L3_LOOKUP_TABLE})
                 return True

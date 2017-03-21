@@ -17,7 +17,6 @@ from neutron.agent.common import utils as agent_utils
 from neutronclient.common import exceptions
 from oslo_log import log
 
-from dragonflow._i18n import _LW
 from dragonflow.tests.common import clients
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
@@ -32,7 +31,7 @@ def find_first_network(nclient, params):
     if networks_count == 0:
         return None
     if networks_count > 1:
-        message = _LW("More than one network (%(count)d) found matching: "
+        message = ("More than one network (%(count)d) found matching: "
                       "%(args)s")
         LOG.warning(message, {'args': params, 'count': networks_count})
     return networks[0]

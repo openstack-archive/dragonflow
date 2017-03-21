@@ -28,7 +28,7 @@ import six
 import six.moves.urllib.parse as urlparse
 import webob
 
-from dragonflow._i18n import _, _LW, _LE
+from dragonflow._i18n import _
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
@@ -437,10 +437,9 @@ class BaseMetadataProxyHandler(object):
             LOG.debug(str(resp))
             return self.create_response(req, resp, content)
         elif resp.status == 403:
-            LOG.warning(_LW(
+            LOG.warning(
                 'The remote metadata server responded with Forbidden. This '
-                'response usually occurs when shared secrets do not match.'
-            ))
+                'response usually occurs when shared secrets do not match.')
             return webob.exc.HTTPForbidden()
         elif resp.status == 400:
             return webob.exc.HTTPBadRequest()
@@ -449,7 +448,7 @@ class BaseMetadataProxyHandler(object):
         elif resp.status == 409:
             return webob.exc.HTTPConflict()
         elif resp.status == 500:
-            msg = _LW(
+            msg = (
                 'Remote metadata server experienced an internal server error.'
             )
             LOG.warning(msg)

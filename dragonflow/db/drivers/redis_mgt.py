@@ -22,7 +22,6 @@ from oslo_serialization import jsonutils
 import redis
 import six
 
-from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db.drivers import redis_calckey
@@ -132,16 +131,16 @@ class RedisMgt(object):
                 node = self._init_node(ip_port[0], ip_port[1])
                 info = self._get_cluster_info(node)
                 if info['cluster_state'] != 'ok':
-                    LOG.warning(_LW("redis cluster state failed"))
+                    LOG.warning("redis cluster state failed")
                 else:
                     new_nodes.update(self._get_cluster_nodes(node))
 
                 self._release_node(node)
                 break
             except Exception:
-                LOG.exception(_LE("exception happened "
+                LOG.exception("exception happened "
                                   "when get cluster topology, %(ip)s:"
-                                  "%(port)s"),
+                                  "%(port)s",
                               {'ip': ip_port[0], 'port': ip_port[1]})
 
         return new_nodes
@@ -299,10 +298,10 @@ class RedisMgt(object):
             # should be recovered manually. Assumed that no scale-down in
             # cluster.
             # Do not have to notify changes.
-            LOG.warning(_LW("redis cluster nodes less than local, "
+            LOG.warning("redis cluster nodes less than local, "
                             "maybe there is a partition in db "
                             "cluster, nodes:%(new)s, "
-                            "local nodes:%(local)s"),
+                            "local nodes:%(local)s",
                         {'new': new_nodes, 'local': old_nodes})
 
         return changed

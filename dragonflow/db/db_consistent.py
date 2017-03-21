@@ -18,7 +18,6 @@ import time
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow._i18n import _LE, _LW
 from dragonflow.common import utils as df_utils
 
 LOG = log.getLogger(__name__)
@@ -170,7 +169,7 @@ class DBConsistencyManager(object):
             handler.handle_delete(obj_id)
             del handler.cache[obj_id]
         else:
-            LOG.warning(_LW('Unknown action %s in db consistent'), action)
+            LOG.warning('Unknown action %s in db consistent', action)
 
     def _compare_df_and_local_data(self, handler, topic, direct):
         """Compare specific resource type df objects and local objects

@@ -286,7 +286,7 @@ class DfLocalController(object):
             self.sync_finished = True
         except Exception as e:
             self.sync_finished = False
-            LOG.warning(_LW("run_db_poll - suppressing exception"))
+            LOG.warning("run_db_poll - suppressing exception")
             LOG.exception(e)
 
     def update_chassis(self, chassis):
@@ -322,9 +322,9 @@ class DfLocalController(object):
 
     def delete_lswitch(self, lswitch_id):
         lswitch = self.db_store.get_lswitch(lswitch_id)
-        LOG.info(_LI("Removing Logical Switch = %s"), lswitch_id)
+        LOG.info("Removing Logical Switch = %s", lswitch_id)
         if lswitch is None:
-            LOG.warning(_LW("Try to delete a nonexistent lswitch(%s)"),
+            LOG.warning("Try to delete a nonexistent lswitch(%s)",
                         lswitch_id)
             return
         self.open_flow_app.notify_remove_logical_switch(lswitch)
@@ -352,7 +352,7 @@ class DfLocalController(object):
     def _logical_port_process(self, lport, original_lport=None):
         lswitch = self.db_store.get_lswitch(lport.get_lswitch_id())
         if not lswitch:
-            LOG.warning(_LW("Could not find lswitch for lport: %s"),
+            LOG.warning("Could not find lswitch for lport: %s",
                         lport.get_id())
             return
         lport.set_external_value('local_network_id',
@@ -423,8 +423,7 @@ class DfLocalController(object):
             else:
                 # The tunnel port online event will update the remote logical
                 # port. Log this warning first.
-                LOG.warning(_LW("No tunnel for remote logical port %s"),
-                            lport)
+                LOG.warning("No tunnel for remote logical port %s", lport)
                 return
 
         if original_lport is None:
@@ -475,7 +474,7 @@ class DfLocalController(object):
     def delete_lrouter(self, lrouter_id):
         router = self.db_store.get_router(lrouter_id)
         if router is None:
-            LOG.warning(_LW("Try to delete a nonexistent router(%s)"),
+            LOG.warning("Try to delete a nonexistent router(%s)",
                         lrouter_id)
             return
         LOG.info(_LI("Removing router = %s"), lrouter_id)

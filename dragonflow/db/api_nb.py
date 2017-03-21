@@ -24,7 +24,6 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
 
-from dragonflow._i18n import _LI, _LW, _LE
 import dragonflow.common.exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
@@ -260,8 +259,8 @@ class NbApi(object):
     def apply_db_change(self, table, key, action, value):
         # determine if the action is allowed or not
         if action not in DB_ACTION_LIST:
-            LOG.warning(_LW('Unknown action %(action)s for table '
-                            '%(table)s'), {'action': action, 'table': table})
+            LOG.warning('Unknown action %(action)s for table '
+                            '%(table)s', {'action': action, 'table': table})
             return
 
         if action == 'sync':
@@ -313,7 +312,7 @@ class NbApi(object):
                 'value': str(value),
             })
         else:
-            LOG.warning(_LW('Unknown table %s'), table)
+            LOG.warning('Unknown table %s', table)
 
     def create_security_group(self, id, topic, **columns):
         secgroup = {}
@@ -959,7 +958,7 @@ class NbApi(object):
         except df_exceptions.DBKeyNotFound:
             with excutils.save_and_reraise_exception():
                 LOG.warning(
-                    _LW('Could not find object %(id)s to delete in %(table)s'),
+                    'Could not find object %(id)s to delete in %(table)s',
                     extra={'id': id, 'table': model.table_name})
 
         self._send_db_change_event(model.table_name, obj.id, 'delete',

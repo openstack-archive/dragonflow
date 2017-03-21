@@ -20,7 +20,6 @@ from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
@@ -125,8 +124,7 @@ class SGApp(df_base_app.DFlowApp):
             result_base['eth_type'] = ether.ETH_TYPE_IP
         elif ethertype == n_const.IPv6:
             LOG.warning(
-                _LW("IPv6 in security group rules is not yet supported")
-            )
+                "IPv6 in security group rules is not yet supported")
             result_base['eth_type'] = ether.ETH_TYPE_IPV6
             return [result_base]
         protocol_name = secgroup_rule.get_protocol()
@@ -203,8 +201,8 @@ class SGApp(df_base_app.DFlowApp):
         if netaddr.IPNetwork(fixed_ip).version == 4:
             ips.add(fixed_ip)
         else:
-            LOG.warning(_LW("No support for non IPv4 protocol, the IP"
-                            "address %(ip)s of %(lport)s was ignored."),
+            LOG.warning("No support for non IPv4 protocol, the IP"
+                            "address %(ip)s of %(lport)s was ignored.",
                         {'ip': fixed_ip, 'lport': lport.get_id()})
 
         allowed_address_pairs = lport.get_allowed_address_pairs()
@@ -215,9 +213,9 @@ class SGApp(df_base_app.DFlowApp):
                     ips.add(ip)
                 else:
                     LOG.warning(
-                        _LW("No support for non IPv4 protocol, the address "
+                        "No support for non IPv4 protocol, the address "
                             "%(ip)s in allowed address pairs of lport "
-                            "%(lport)s was ignored."),
+                            "%(lport)s was ignored.",
                         {'ip': ip, 'lport': lport.get_id()})
         return ips
 
@@ -911,7 +909,7 @@ class SGApp(df_base_app.DFlowApp):
 
     def remove_local_port(self, lport):
         if not netaddr.valid_ipv4(lport.get_ip()):
-            LOG.warning(_LW("No support for non IPv4 protocol"))
+            LOG.warning("No support for non IPv4 protocol")
             return
 
         secgroups = lport.get_security_groups()
@@ -985,7 +983,7 @@ class SGApp(df_base_app.DFlowApp):
             return
 
         if not netaddr.valid_ipv4(lport.get_ip()):
-            LOG.warning(_LW("No support for non IPv4 protocol"))
+            LOG.warning("No support for non IPv4 protocol")
             return
 
         for secgroup_id in secgroups:

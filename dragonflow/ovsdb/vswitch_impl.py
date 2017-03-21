@@ -115,10 +115,10 @@ class OvsApi(object):
     @staticmethod
     def _check_ofport(port_name, ofport):
         if ofport is None:
-            LOG.warning(_LW("Can't find ofport for port %s."), port_name)
+            LOG.warning("Can't find ofport for port %s.", port_name)
             return False
         if ofport < OFPORT_RANGE_MIN or ofport > OFPORT_RANGE_MAX:
-            LOG.warning(_LW("ofport %(ofport)s for port %(port)s is invalid."),
+            LOG.warning("ofport %(ofport)s for port %(port)s is invalid.",
                         {'ofport': ofport, 'port': port_name})
             return False
 

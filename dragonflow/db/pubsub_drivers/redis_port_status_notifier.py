@@ -45,8 +45,8 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
             self.create_heart_beat_reporter(cfg.CONF.host)
         else:
             if not cfg.CONF.df.enable_df_pub_sub:
-                LOG.warning(_LW("RedisPortStatusNotifier cannot "
-                                "work when enable_df_pub_sub is disabled"))
+                LOG.warning("RedisPortStatusNotifier cannot "
+                                "work when enable_df_pub_sub is disabled")
                 return
             self.nb_api.publisher.initialize()
 
@@ -97,7 +97,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         elif listeners_num == 1:
             selected = listeners[0]
         else:
-            LOG.warning(_LW("No neutron listener found"))
+            LOG.warning("No neutron listener found")
             return
         topic = selected.get_topic()
         update = db_common.DbUpdate(table, key, action, value, topic=topic)

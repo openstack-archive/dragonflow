@@ -93,9 +93,8 @@ class PublisherService(object):
                     self._update_timestamp_in_db()
                 eventlet.sleep(0)
             except Exception as e:
-                LOG.warning(_LW("Exception in main loop: {}, {}").format(
-                    e, traceback.format_exc()
-                ))
+                LOG.warning("Exception in main loop: {}, {}").format(
+                    e, traceback.format_exc())
                 # Ignore
 
     def _update_timestamp_in_db(self):

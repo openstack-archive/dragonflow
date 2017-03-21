@@ -12,7 +12,6 @@
 
 from oslo_log import log
 
-from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import constants
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.db import models as db_models
@@ -173,7 +172,7 @@ class Topology(object):
         lport_id = ovs_port.get_iface_id()
         lport = self._get_lport(lport_id)
         if lport is None:
-            LOG.warning(_LW("No logical port found for ovs port: %s"),
+            LOG.warning("No logical port found for ovs port: %s",
                         ovs_port)
             return
         topic = lport.get_topic()
@@ -287,7 +286,7 @@ class Topology(object):
                 lport_id = ovs_port.get_iface_id()
                 lport = self._get_lport(lport_id)
                 if lport is None:
-                    LOG.warning(_LW("No logical port found for ovs port: %s"),
+                    LOG.warning("No logical port found for ovs port: %s",
                                 ovs_port)
                     continue
                 topic = lport.get_topic()

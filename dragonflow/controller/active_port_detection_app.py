@@ -22,7 +22,6 @@ from ryu.lib.packet import arp
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LE, _LI, _LW
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as controller_const
 from dragonflow.controller.common import utils
@@ -58,7 +57,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         pkt = packet.Packet(msg.data)
         arp_pkt = pkt.get_protocol(arp.arp)
         if arp_pkt is None:
-            LOG.error(_LE("No support for non ARP protocol"))
+            LOG.error("No support for non ARP protocol")
             return
 
         if (arp_pkt.opcode == arp.ARP_REQUEST and

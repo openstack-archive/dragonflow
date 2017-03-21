@@ -97,8 +97,8 @@ class DHCPApp(df_base_app.DFlowApp):
             self._block_port_dhcp_traffic(
                     unique_key,
                     self.block_hard_timeout)
-            LOG.warning(_LW("pass rate limit for %(port_id)s blocking DHCP "
-                            "traffic for %(time)s sec"),
+            LOG.warning("pass rate limit for %(port_id)s blocking DHCP "
+                            "traffic for %(time)s sec",
                         {'port_id': lport.get_id(),
                          'time': self.block_hard_timeout})
             return
@@ -281,7 +281,7 @@ class DHCPApp(df_base_app.DFlowApp):
         subnet = self._get_subnet_by_port(lport)
         if subnet:
             return subnet.enable_dhcp()
-        LOG.warning(_LW("No subnet found for port %s"), lport.get_id())
+        LOG.warning("No subnet found for port %s", lport.get_id())
         return False
 
     def _get_port_mtu(self, lport):
@@ -300,7 +300,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def remove_local_port(self, lport):
         if not netaddr.valid_ipv4(lport.get_ip()):
-            LOG.warning(_LW("No support for non IPv4 protocol"))
+            LOG.warning("No support for non IPv4 protocol")
             return
 
         unique_key = lport.get_unique_key()
@@ -329,7 +329,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def add_local_port(self, lport):
         if not netaddr.valid_ipv4(lport.get_ip()):
-            LOG.warning(_LW("No support for non IPv4 protocol"))
+            LOG.warning("No support for non IPv4 protocol")
             return
 
         if not self._is_vm_port(lport):
