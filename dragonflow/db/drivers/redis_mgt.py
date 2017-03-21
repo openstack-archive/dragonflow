@@ -22,7 +22,6 @@ from oslo_serialization import jsonutils
 import redis
 import six
 
-from dragonflow._i18n import _LI, _LE, _LW
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db.drivers import redis_calckey
@@ -87,8 +86,8 @@ class RedisMgt(object):
             self.default_node = redis.StrictRedis(host, port)
             RedisMgt.check_connection(self.default_node)
         except Exception as e:
-            LOG.exception(_LE("exception happened "
-                              "when connect to default node, %s"), e)
+            LOG.exception("exception happened "
+                          "when connect to default node, %s", e)
 
     def _init_node(self, host, port):
         node = redis.StrictRedis(host, port)
@@ -101,9 +100,8 @@ class RedisMgt(object):
                 disconnect()
             self.default_node.connection_pool.reset()
         except Exception as e:
-            LOG.exception(_LE("exception happened "
-                              "when release default node, %(e)s"),
-                          {'e': e})
+            LOG.exception("exception happened "
+                          "when release default node, %(e)s", {'e': e})
 
     def _release_node(self, node):
         node.connection_pool.get_connection(None, None).disconnect()
@@ -132,16 +130,16 @@ class RedisMgt(object):
                 node = self._init_node(ip_port[0], ip_port[1])
                 info = self._get_cluster_info(node)
                 if info['cluster_state'] != 'ok':
-                    LOG.warning(_LW("redis cluster state failed"))
+                    LOG.warning("redis cluster state failed")
                 else:
                     new_nodes.update(self._get_cluster_nodes(node))
 
                 self._release_node(node)
                 break
             except Exception:
-                LOG.exception(_LE("exception happened "
+                LOG.exception("exception happened "
                                   "when get cluster topology, %(ip)s:"
-                                  "%(port)s"),
+                                  "%(port)s",
                               {'ip': ip_port[0], 'port': ip_port[1]})
 
         return new_nodes
@@ -238,8 +236,8 @@ class RedisMgt(object):
     def remove_node_from_master_list(self, ip_port):
         if ip_port is not None:
             # remove the node by ip_port
-            LOG.info(_LI("remove node %(ip_port)s from "
-                         "redis master list"),
+            LOG.info("remove node %(ip_port)s from "
+                     "redis master list",
                      {'ip_port': ip_port})
             self.master_list = [node for node in self.master_list
                                 if node['ip_port'] != ip_port]
@@ -288,7 +286,7 @@ class RedisMgt(object):
                 # this means a tmp status
                 # one master one slave
                 changed = RET_CODE.NODES_CHANGE
-                LOG.info(_LI("master nodes not equals to slave nodes"))
+                LOG.info("master nodes not equals to slave nodes")
             else:
                 if cnt != len(old_nodes):
                     changed = RET_CODE.NODES_CHANGE
@@ -299,10 +297,10 @@ class RedisMgt(object):
             # should be recovered manually. Assumed that no scale-down in
             # cluster.
             # Do not have to notify changes.
-            LOG.warning(_LW("redis cluster nodes less than local, "
+            LOG.warning("redis cluster nodes less than local, "
                             "maybe there is a partition in db "
                             "cluster, nodes:%(new)s, "
-                            "local nodes:%(local)s"),
+                            "local nodes:%(local)s",
                         {'new': new_nodes, 'local': old_nodes})
 
         return changed
@@ -312,7 +310,7 @@ class RedisMgt(object):
         changed = self._check_nodes_change(self.cluster_nodes, new_nodes)
 
         if changed == RET_CODE.SLOTS_CHANGE:
-            LOG.info(_LI("redis_failover_callback:SLOTS_CHANGE"))
+            LOG.info("redis_failover_callback:SLOTS_CHANGE")
             # update local nodes
             # don't need re-sync
             self.cluster_nodes = new_nodes
@@ -320,7 +318,7 @@ class RedisMgt(object):
             self.redis_set_master_list_to_syncstring(self.master_list)
 
         elif changed == RET_CODE.NODES_CHANGE:
-            LOG.info(_LI("redis_failover_callback:NODES_CHANGE"))
+            LOG.info("redis_failover_callback:NODES_CHANGE")
             # update local nodes
             self.cluster_nodes = new_nodes
             self.master_list = self._parse_to_masterlist()
@@ -357,7 +355,7 @@ class RedisMgt(object):
                 self._release_node(node)
             return True
         except Exception:
-            LOG.exception(_LE("check master nodes connection failed"))
+            LOG.exception("check master nodes connection failed")
             return False
 
     def run(self):
@@ -378,9 +376,8 @@ class RedisMgt(object):
                     self.redis_failover_callback(nodes)
 
             except Exception:
-                LOG.exception(_LE("exception happened "
-                                  "when receive messages from plugin"
-                                  ))
+                LOG.exception("exception happened "
+                              "when receive messages from plugin")
 
     def redis_get_master_list_from_syncstring(self, syncstring):
         try:
@@ -388,21 +385,19 @@ class RedisMgt(object):
                 local_list = msgpack.Unpacker(six.BytesIO(syncstring)).unpack()
                 if local_list:
                     self.master_list = local_list
-                    LOG.info(_LI("get new master from syncstring master=%s"),
+                    LOG.info("get new master from syncstring master=%s",
                              self.master_list)
                     return True
 
             return False
 
         except Exception:
-            LOG.exception(_LE("exception happened "
-                              "when get new master from syncstring"
-                              ))
+            LOG.exception("exception happened "
+                          "when get new master from syncstring")
 
     def redis_set_master_list_to_syncstring(self, master_list):
         try:
             RedisMgt.global_sharedlist.raw = msgpack.packb(master_list)
         except Exception:
-            LOG.exception(_LE("exception happened "
-                              "when set new master to syncstring"
-                              ))
+            LOG.exception("exception happened "
+                          "when set new master to syncstring")

@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from dragonflow._i18n import _LI
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from oslo_log import log
@@ -26,8 +25,8 @@ class ClassifierApp(df_base_app.DFlowApp):
 
     def add_local_port(self, lport):
         ofport = lport.get_external_value('ofport')
-        LOG.info(_LI("Add local ovs port %(ovs_port)s, logical port "
-                     "%(lport)s for classification"),
+        LOG.info("Add local ovs port %(ovs_port)s, logical port "
+                     "%(lport)s for classification",
                  {'ovs_port': ofport, 'lport': lport})
         self._make_ingress_classification_flow(lport, ofport)
         self._make_ingress_dispatch_flow(lport, ofport)

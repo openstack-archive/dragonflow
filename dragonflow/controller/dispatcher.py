@@ -13,7 +13,7 @@
 from oslo_log import log
 from oslo_utils import importutils
 
-from dragonflow._i18n import _, _LE
+from dragonflow._i18n import _
 from dragonflow.common import exceptions
 
 LOG = log.getLogger(__name__)
@@ -34,7 +34,7 @@ class AppDispatcher(object):
                 app = app_class(*args, **kwargs)
                 self.apps.append(app)
             except ImportError as e:
-                LOG.exception(_LE("Error loading application by class, %s"), e)
+                LOG.exception("Error loading application by class, %s", e)
                 raise ImportError(_("Application class not found."))
 
     def dispatch(self, method, *args, **kwargs):
@@ -46,8 +46,8 @@ class AppDispatcher(object):
                     handler(*args, **kwargs)
                 except Exception as e:
                     app_name = app.__class__.__name__
-                    LOG.exception(_LE("Dragonflow application '%(name)s' "
-                                      "failed in %(method)s"),
+                    LOG.exception("Dragonflow application '%(name)s' "
+                                      "failed in %(method)s",
                                   {'name': app_name, 'method': method})
                     errors.append(e)
 
