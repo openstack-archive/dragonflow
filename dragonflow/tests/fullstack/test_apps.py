@@ -18,8 +18,6 @@ from oslo_log import log
 import ryu.lib.packet
 from ryu.ofproto import inet
 
-
-from dragonflow._i18n import _LI
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants
 from dragonflow.tests.common import app_testing_objects
@@ -40,8 +38,8 @@ class TestApps(test_base.DFTestBase):
             port1 = subnet1.create_port()
             port2 = subnet2.create_port()
             topology.create_router([subnet1.subnet_id, subnet2.subnet_id])
-            LOG.info(_LI('Port1 name: {}').format(port1.tap.tap.name))
-            LOG.info(_LI('Port2 name: {}').format(port2.tap.tap.name))
+            LOG.info('Port1 name: {}'.format(port1.tap.tap.name))
+            LOG.info('Port2 name: {}'.format(port2.tap.tap.name))
             test_utils.print_command(['ip', 'addr'])
             test_utils.print_command(['ovs-vsctl', 'show'], True)
             test_utils.print_command(
@@ -1546,7 +1544,7 @@ class TestSGApp(test_base.DFTestBase):
         self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         ovs = test_utils.OvsFlowsParser()
-        LOG.info(_LI("flows are: %s"),
+        LOG.info("flows are: %s",
                  ovs.get_ovs_flows(self.integration_bridge))
 
         if len(self.policy.exceptions) > 0:
