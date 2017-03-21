@@ -70,7 +70,7 @@ class PortSecApp(df_base_app.DFlowApp):
 
     def _install_flows_check_valid_ip_and_mac(self, unique_key, ip, mac):
         if netaddr.IPNetwork(ip).version == 6:
-            LOG.info(_LI("IPv6 addresses are not supported yet"))
+            LOG.info("IPv6 addresses are not supported yet")
             return
 
         parser = self.parser
@@ -98,7 +98,7 @@ class PortSecApp(df_base_app.DFlowApp):
 
     def _uninstall_flows_check_valid_ip_and_mac(self, unique_key, ip, mac):
         if netaddr.IPNetwork(ip).version == 6:
-            LOG.info(_LI("IPv6 addresses are not supported yet"))
+            LOG.info("IPv6 addresses are not supported yet")
             return
 
         parser = self.parser

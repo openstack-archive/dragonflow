@@ -22,7 +22,7 @@ from ryu.lib.packet import arp
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LE, _LI, _LW
+from dragonflow._i18n import _LE, _LW
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as controller_const
 from dragonflow.controller.common import utils
@@ -79,8 +79,8 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
                 ips.add(ip)
             else:
                 # IPv6 addresses are not supported yet
-                LOG.info(_LI("Don't support IPv6 addresses for now. IPv6"
-                             " address %s will be ignored."), ip)
+                LOG.info("Don't support IPv6 addresses for now. IPv6"
+                             " address %s will be ignored.", ip)
 
         return ips
 
@@ -180,8 +180,8 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
                 found_lport = lport
                 break
         if found_lport is None:
-            LOG.info(_LI("There is no logical port matched this "
-                         "ofport(%s)."), ofport)
+            LOG.info("There is no logical port matched this "
+                         "ofport(%s).", ofport)
             return
 
         network_id = found_lport.get_lswitch_id()
@@ -191,8 +191,8 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         old_active_port = self.db_store.get_active_port(key)
         if (not old_active_port or self._if_old_active_port_need_update(
                 old_active_port, ip, mac, found_lport)):
-            LOG.info(_LI("Detected new active node. ip=%(ip)s, "
-                         "mac=%(mac)s, lport_id=%(lport_id)s"),
+            LOG.info("Detected new active node. ip=%(ip)s, "
+                         "mac=%(mac)s, lport_id=%(lport_id)s",
                      {'ip': ip, 'mac': mac, 'lport_id': found_lport_id})
             if old_active_port:
                 self.nb_api.update_active_port(

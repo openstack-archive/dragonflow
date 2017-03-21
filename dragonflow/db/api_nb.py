@@ -24,7 +24,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
 
-from dragonflow._i18n import _LI, _LW, _LE
+from dragonflow._i18n import _LW, _LE
 import dragonflow.common.exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
@@ -200,7 +200,7 @@ class NbApi(object):
 
     def register_notification_callback(self, controller):
         self.controller = controller
-        LOG.info(_LI("DB configuration sync finished, waiting for changes"))
+        LOG.info("DB configuration sync finished, waiting for changes")
         if not self.use_pubsub:
             self.driver.register_notification_callback(
                 self.db_change_callback)
@@ -299,7 +299,7 @@ class NbApi(object):
                 ovs_port = db_models.OvsPort(value)
                 self.controller.ovs_port_deleted(ovs_port)
         elif 'log' == action:
-            message = _LI(
+            message = (
                 'Log event (Info): '
                 'table: %(table)s '
                 'key: %(key)s '

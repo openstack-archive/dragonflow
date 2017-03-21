@@ -120,8 +120,8 @@ class DHCPApp(df_base_app.DFlowApp):
                                 dhcp_packet,
                                 dhcp.DHCP_OFFER,
                                 lport)
-            LOG.info(_LI("sending DHCP offer for port IP %(port_ip)s "
-                         "port id %(port_id)s"),
+            LOG.info("sending DHCP offer for port IP %(port_ip)s "
+                         "port id %(port_id)s",
                      {'port_ip': lport.get_ip(), 'port_id': lport.get_id()})
         elif dhcp_message_type == dhcp.DHCP_REQUEST:
             send_packet = self._create_dhcp_packet(
@@ -129,8 +129,8 @@ class DHCPApp(df_base_app.DFlowApp):
                                 dhcp_packet,
                                 dhcp.DHCP_ACK,
                                 lport)
-            LOG.info(_LI("sending DHCP ACK for port IP %(port_ip)s "
-                         "port id %(tunnel_id)s"),
+            LOG.info("sending DHCP ACK for port IP %(port_ip)s "
+                         "port id %(tunnel_id)s",
                      {'port_ip': lport.get_ip(),
                       'tunnel_id': lport.get_id()})
         else:
@@ -353,7 +353,7 @@ class DHCPApp(df_base_app.DFlowApp):
         self.unique_key_to_dhcp_app_port_data[unique_key] = (port_rate_limiter,
                                                              lport)
 
-        LOG.info(_LI("Register VM as DHCP client::port <%s>"), lport.get_id())
+        LOG.info("Register VM as DHCP client::port <%s>", lport.get_id())
 
         parser = self.parser
         ofproto = self.ofproto

@@ -127,11 +127,11 @@ class L3AppMixin(object):
 
     def router_updated(self, router, original_router):
         if not original_router:
-            LOG.info(_LI("Logical Router created = %s"), router)
+            LOG.info("Logical Router created = %s", router)
             self._add_new_lrouter(router)
             return
 
-        LOG.info(_LI("Logical router updated = %s"), router)
+        LOG.info("Logical router updated = %s", router)
         self._update_router_interfaces(original_router, router)
         self._update_router_attributes(original_router, router)
 
@@ -236,7 +236,7 @@ class L3AppMixin(object):
         @param lport_mac: The mac address of lport which will act as nexthop
         @param route: The extra route dict
         """
-        LOG.info(_LI('Add extra route %(route)s to router'), route)
+        LOG.info('Add extra route %(route)s to router', route)
 
         ofproto = self.ofproto
         parser = self.parser
@@ -276,7 +276,7 @@ class L3AppMixin(object):
         @param router_if_mac: The mac address of related router port
         @param route: The extra route dict
         """
-        LOG.info(_LI('Delete extra route %(route)s from router'), route)
+        LOG.info('Delete extra route %(route)s from router', route)
 
         ofproto = self.ofproto
 
@@ -365,7 +365,7 @@ class L3AppMixin(object):
         return match
 
     def _add_new_router_port(self, router, router_port):
-        LOG.info(_LI("Adding new logical router interface = %s"),
+        LOG.info("Adding new logical router interface = %s",
                  router_port)
         local_network_id = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())
@@ -433,7 +433,7 @@ class L3AppMixin(object):
         self._add_subnet_send_to_snat(local_network_id, mac, tunnel_key)
 
     def _delete_router_port(self, router, router_port):
-        LOG.info(_LI("Removing logical router interface = %s"),
+        LOG.info("Removing logical router interface = %s",
                  router_port)
         local_network_id = self.db_store.get_unique_key_by_id(
             models.LogicalSwitch.table_name, router_port.get_lswitch_id())

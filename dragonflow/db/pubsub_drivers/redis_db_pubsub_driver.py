@@ -17,7 +17,7 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import redis
 
-from dragonflow._i18n import _LE, _LW, _LI
+from dragonflow._i18n import _LE, _LW
 from dragonflow import conf as cfg
 from dragonflow.db.drivers import redis_mgt
 from dragonflow.db import pub_sub_api
@@ -79,11 +79,11 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
             self._update_client()
 
     def _sync_master_list(self):
-        LOG.info(_LI("publish connection old masterlist %s"),
+        LOG.info("publish connection old masterlist %s",
                  self.redis_mgt.master_list)
         result = self.redis_mgt.redis_get_master_list_from_syncstring(
             redis_mgt.RedisMgt.global_sharedlist.raw)
-        LOG.info(_LI("publish connection new masterlist %s"),
+        LOG.info("publish connection new masterlist %s",
                  self.redis_mgt.master_list)
         if result:
             self._update_client()

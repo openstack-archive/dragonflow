@@ -30,7 +30,7 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 
-from dragonflow._i18n import _LI, _LE
+from dragonflow._i18n import _LE
 from dragonflow.common import utils as d_utils
 from dragonflow import conf as cfg
 from dragonflow.tests.common import utils as test_utils
@@ -356,7 +356,7 @@ class LogicalPortTap(object):
     def delete(self):
         self._disconnect_tap_device_to_vswitch(self.integration_bridge,
                                                self.tap.name)
-        LOG.info(_LI('Closing tap interface {} ({})').format(
+        LOG.info('Closing tap interface {} ({})'.format(
             self.tap.name,
             self.tap.fileno(),
         ))
@@ -368,7 +368,7 @@ class LogicalPortTap(object):
         :param buf: Raw packet data to send
         :type buf:  String (decoded)
         """
-        LOG.info(_LI('send: via {}: {}').format(
+        LOG.info('send: via {}: {}'.format(
             self.tap.name,
             packet_raw_data_to_hex(buf)))
         if self.is_blocking:
@@ -387,7 +387,7 @@ class LogicalPortTap(object):
         else:
             fd = self.tap.fileno()
             buf = os.read(fd, self.tap.mtu)
-        LOG.info(_LI('receive: via {}: {}').format(
+        LOG.info('receive: via {}: {}'.format(
             self.tap.name,
             packet_raw_data_to_hex(buf)))
         return buf
@@ -864,7 +864,7 @@ class LogAction(Action):
     """Action to log the received packet."""
     def __call__(self, policy, rule, port_thread, buf):
         pkt = packet.Packet(buf)
-        LOG.info(_LI('LogAction: Got packet: {}').format(str(pkt)))
+        LOG.info('LogAction: Got packet: {}'.format(str(pkt)))
 
 
 class SendAction(Action):
@@ -1032,7 +1032,7 @@ class PortThread(object):
                 buf = tap.read()
                 self.packet_handler(self, buf)
             except Exception as e:
-                LOG.info(_LI('Reading from {}/{} failed: {}').format(
+                LOG.info('Reading from {}/{} failed: {}'.format(
                     tap.tap.name,
                     self.port.name,
                     e))

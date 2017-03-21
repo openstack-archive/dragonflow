@@ -35,7 +35,7 @@ from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
 
-from dragonflow._i18n import _LE, _LI
+from dragonflow._i18n import _LE
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
@@ -315,9 +315,9 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         max_agents = cfg.CONF.max_l3_agents_per_router
         if max_agents:
             if max_agents > num_agents:
-                LOG.info(_LI("Number of active agents lower than "
+                LOG.info("Number of active agents lower than "
                              "max_l3_agents_per_router. L3 agents "
-                             "available: %s"), num_agents)
+                             "available: %s", num_agents)
             else:
                 num_agents = max_agents
 

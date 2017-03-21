@@ -12,7 +12,7 @@
 
 from oslo_log import log
 
-from dragonflow._i18n import _LI, _LE, _LW
+from dragonflow._i18n import _LE, _LW
 from dragonflow.common import constants
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.db import models as db_models
@@ -53,7 +53,7 @@ class Topology(object):
         if ovs_port is None:
             LOG.error(_LE("ovs_port is None"))
             return
-        LOG.info(_LI("Ovs port updated: %s"), ovs_port)
+        LOG.info("Ovs port updated: %s", ovs_port)
         # ignore port that misses some parameters
         if not self._check_ovs_port_integrity(ovs_port):
             return
@@ -67,7 +67,7 @@ class Topology(object):
         self.ovs_ports[port_id] = ovs_port
         port_type = ovs_port.get_type()
         if port_type not in self.ovs_port_type:
-            LOG.info(_LI("Unmanaged port online: %s"), ovs_port)
+            LOG.info("Unmanaged port online: %s", ovs_port)
             return
 
         handler_name = '_' + port_type + '_port_' + action
@@ -95,7 +95,7 @@ class Topology(object):
 
         port_type = ovs_port.get_type()
         if port_type not in self.ovs_port_type:
-            LOG.info(_LI("Unmanaged port offline: %s"), ovs_port)
+            LOG.info("Unmanaged port offline: %s", ovs_port)
             return
 
         handler_name = '_' + port_type + '_port_deleted'
@@ -105,7 +105,7 @@ class Topology(object):
             if handler is not None:
                 handler(ovs_port)
             else:
-                LOG.info(_LI("%s is None."), handler_name)
+                LOG.info("%s is None.", handler_name)
         except Exception:
             LOG.exception(_LE("Exception occurred when handling "
                           "ovs port update event"))
@@ -190,7 +190,7 @@ class Topology(object):
             # If the logical port is not in db store or its ofport is not
             # valid. It has not been applied to dragonflow apps. We need to
             # update it in dragonflow controller.
-            LOG.info(_LI("A local logical port(%s) is online"), lport)
+            LOG.info("A local logical port(%s) is online", lport)
             try:
                 self.controller.update_lport(lport)
             except Exception:
@@ -212,7 +212,7 @@ class Topology(object):
 
         topic = lport.get_topic()
 
-        LOG.info(_LI("The logical port(%s) is offline"), lport)
+        LOG.info("The logical port(%s) is offline", lport)
         try:
             self.controller.delete_lport(lport_id)
         except Exception:
@@ -230,7 +230,7 @@ class Topology(object):
             return
 
         if topic not in self.topic_subscribed:
-            LOG.info(_LI("Subscribe topic: %(topic)s by lport: %(id)s"),
+            LOG.info("Subscribe topic: %(topic)s by lport: %(id)s",
                      {"topic": topic, "id": lport_id})
             self.nb_api.subscriber.register_topic(topic)
             self._pull_tenant_topology_from_db(topic)
@@ -244,7 +244,7 @@ class Topology(object):
         port_ids = self.topic_subscribed[topic]
         port_ids.remove(lport_id)
         if len(port_ids) == 0:
-            LOG.info(_LI("Unsubscribe topic: %(topic)s by lport: %(id)s"),
+            LOG.info("Unsubscribe topic: %(topic)s by lport: %(id)s",
                      {"topic": topic, "id": lport_id})
             del self.topic_subscribed[topic]
             self.nb_api.subscriber.unregister_topic(topic)

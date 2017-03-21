@@ -14,7 +14,7 @@ import collections
 
 from oslo_log import log
 
-from dragonflow._i18n import _LI, _LE
+from dragonflow._i18n import _LE
 from dragonflow.common import exceptions
 
 
@@ -76,7 +76,7 @@ def register_cookie_bits(name, length, is_local=False, app_name=None):
             raise TypeError(_LE("app_name must be provided "
                                 "if is_local is True"))
     if (app_name, name) in _cookies:
-        LOG.info(_LI("Cookie for %(app_name)s/%(name)s already registered."),
+        LOG.info("Cookie for %(app_name)s/%(name)s already registered.",
                  {"app_name": app_name, "name": name})
         return
     start = _cookies_used_bits[app_name]
@@ -89,8 +89,8 @@ def register_cookie_bits(name, length, is_local=False, app_name=None):
     start += shift
     mask = (_cookie_mask_all >> (_cookie_max_bits - length)) << start
     _cookies[(app_name, name)] = CookieBitPair(start, mask)
-    LOG.info(_LI("Registered cookie for %(app_name)s/%(name)s, "
-                 "mask: %(mask)x, offset: %(offset)d, length: %(length)d"),
+    LOG.info("Registered cookie for %(app_name)s/%(name)s, "
+                 "mask: %(mask)x, offset: %(offset)d, length: %(length)d",
              {"app_name": app_name, "name": name,
               "mask": mask, "offset": start, "length": length})
 
