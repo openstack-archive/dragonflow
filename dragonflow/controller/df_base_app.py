@@ -18,7 +18,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LE
+from dragonflow._i18n import _
 from dragonflow.controller.common import constants
 from dragonflow.controller.common import cookies
 from dragonflow.db import db_store2
@@ -214,8 +214,7 @@ def register_event(model, event):
     '''
     if event not in model.get_events():
         raise RuntimeError(
-            _LE('{0} is not an event of {1}').format(event, model),
-        )
+            _('{0} is not an event of {1}').format(event, model))
 
     def decorator(func):
         if not hasattr(func, '_register_events'):

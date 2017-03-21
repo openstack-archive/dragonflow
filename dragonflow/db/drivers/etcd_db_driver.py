@@ -20,7 +20,6 @@ import urllib3
 from urllib3 import connection
 from urllib3 import exceptions
 
-from dragonflow._i18n import _LE
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
 
@@ -99,7 +98,7 @@ def _parse_hosts(hosts):
             host_port = host_str.strip().split(':')
             host_ports.append((host_port[0], int(host_port[1])))
         else:
-            LOG.error(_LE("The host string %s is invalid."), host_str)
+            LOG.error("The host string %s is invalid.", host_str)
     return tuple(host_ports)
 
 

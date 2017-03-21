@@ -20,7 +20,6 @@ from ryu.app.ofctl import service
 from ryu.base import app_manager
 import ryu.exception as ryu_exc
 
-from dragonflow._i18n import _LE
 from dragonflow.controller.common import constants as const
 
 LOG = log.getLogger(__name__)
@@ -44,13 +43,12 @@ class OpenFlowSwitchMixin(object):
         try:
             result = ofctl_api.send_msg(self._app, msg, reply_cls, reply_multi)
         except ryu_exc.RyuException as e:
-            m = _LE("ofctl request %(request)s error %(error)s") % {
+            m = "ofctl request %(request)s error %(error)s" % {
                     "request": msg,
-                    "error": e,
-            }
-            LOG.error(_LE("exception occurred, %s"), m)
+                    "error": e}
+            LOG.error("exception occurred, %s", m)
         except eventlet.timeout.Timeout as e:
-            LOG.error(_LE("exception occurred, %s"), e)
+            LOG.error("exception occurred, %s", e)
         finally:
             timeout.cancel()
         LOG.debug("ofctl request %(request)s result %(result)s",
@@ -70,7 +68,7 @@ class OpenFlowSwitchMixin(object):
                                  reply_cls=ofpp.OFPFlowStatsReply,
                                  reply_multi=True)
         if replies is None:
-            LOG.error(_LE("_send_msg failed when dump_flows"))
+            LOG.error("_send_msg failed when dump_flows")
             return []
         flows = []
         for rep in replies:
@@ -82,7 +80,7 @@ class OpenFlowSwitchMixin(object):
         try:
             self.delete_flows(cookie=match_c, cookie_mask=match_cmask)
         except Exception as e:
-            LOG.error(_LE("exception occurred when cleanup_flows %s"), e)
+            LOG.error("exception occurred when cleanup_flows %s", e)
 
     @staticmethod
     def _match(ofpp, match, **match_kwargs):

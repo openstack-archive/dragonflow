@@ -15,7 +15,6 @@ from cassandra import policies
 from cassandra import query
 from oslo_log import log
 
-from dragonflow._i18n import _LE
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow import conf as cfg
 from dragonflow.db import db_api
@@ -59,7 +58,7 @@ def _parse_hosts(hosts):
             if len(ports) > 0 and port not in ports:
                 raise df_exceptions.InvalidDBHostConfiguration(host=host_str)
         else:
-            LOG.error(_LE("The host string %s is invalid."), host_str)
+            LOG.error("The host string %s is invalid.", host_str)
     return (ips, ports[0])
 
 

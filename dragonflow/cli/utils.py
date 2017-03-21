@@ -15,6 +15,7 @@ import prettytable
 import six
 import textwrap
 
+from dragonflow._i18n import _
 from dragonflow.common import exceptions
 
 
