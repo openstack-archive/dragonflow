@@ -21,7 +21,7 @@ import time
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow._i18n import _LE, _LI, _LW
+#from dragonflow._i18n import _LE, _LI, _LW
 from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
@@ -45,8 +45,8 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
             self.create_heart_beat_reporter(cfg.CONF.host)
         else:
             if not cfg.CONF.df.enable_df_pub_sub:
-                LOG.warning(_LW("RedisPortStatusNotifier cannot "
-                                "work when enable_df_pub_sub is disabled"))
+                LOG.warning("RedisPortStatusNotifier cannot "
+                                "work when enable_df_pub_sub is disabled")
                 return
             self.nb_api.publisher.initialize()
 
@@ -58,7 +58,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         else:
             ppid = listener.get_ppid()
             my_ppid = os.getppid()
-            LOG.info(_LI("Listener %(l)s exists, my ppid is %(ppid)s"),
+            LOG.info("Listener %(l)s exists, my ppid is %(ppid)s",
                      {'l': listener, 'ppid': my_ppid})
             # FIXME(wangjian): if api_worker is 1, the old ppid could be
             # equal to my_ppid. I tried to set api_worker=1, still multiple
@@ -70,7 +70,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
     def _create_heart_beat_reporter(self, host):
         self.nb_api.register_listener_callback(self.port_status_callback,
                                                'listener_' + host)
-        LOG.info(_LI("Register listener %s"), host)
+        LOG.info("Register listener %s", host)
         self.heart_beat_reporter = HeartBeatReporter(self.nb_api)
         self.heart_beat_reporter.daemonize()
 
@@ -97,16 +97,16 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         elif listeners_num == 1:
             selected = listeners[0]
         else:
-            LOG.warning(_LW("No neutron listener found"))
+            LOG.warning("No neutron listener found")
             return
         topic = selected.get_topic()
         update = db_common.DbUpdate(table, key, action, value, topic=topic)
-        LOG.info(_LI("Publish to neutron %s"), topic)
+        LOG.info("Publish to neutron %s", topic)
         self.nb_api.publisher.send_event(update)
 
     def port_status_callback(self, table, key, action, value, topic=None):
         if models.LogicalPort.table_name == table and 'update' == action:
-            LOG.info(_LI("Process port %s status update event"), str(key))
+            LOG.info("Process port %s status update event", str(key))
             if constants.PORT_STATUS_UP == value:
                 self.mech_driver.set_port_status_up(key)
             if constants.PORT_STATUS_DOWN == value:
@@ -147,5 +147,5 @@ class HeartBeatReporter(object):
                                                     timestamp=timestamp,
                                                     ppid=ppid)
             except Exception:
-                LOG.exception(_LE(
-                        "Failed to report heart beat for %s"), listener)
+                LOG.exception(
+                        "Failed to report heart beat for %s", listener)

@@ -19,7 +19,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 import six
 
-from dragonflow._i18n import _LE
+#from dragonflow._i18n import _LE
 from dragonflow.db.models import legacy
 
 LOG = log.getLogger(__name__)
@@ -99,8 +99,7 @@ class _CommonBase(models.Base):
             try:
                 cb(self, *args, **kwargs)
             except Exception:
-                LOG.exception(
-                    _LE('Error while calling %(func)r(*%(_args)r, **%(kw)r)'),
+                LOG.exception('Error while calling %(func)r(*%(_args)r, **%(kw)r)',
                     extra={'func': cb, '_args': args, 'kw': kwargs},
                 )
 
@@ -359,7 +358,7 @@ def iter_models_by_dependency_order():
         # If we still have unsorted models yet nothing is independent, we have
         # dependency cycle
         if not independent_models:
-            raise RuntimeError(_LE('Models form a dependency cycle'))
+            raise RuntimeError('Models form a dependency cycle')
 
         # Move independent models to sorted list
         for model in independent_models:

@@ -15,7 +15,7 @@ import time
 from neutron_lib import constants as n_const
 from oslo_log import log
 
-from dragonflow._i18n import _LI
+#from dragonflow._i18n import _LI
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import constants as test_const
 from dragonflow.tests.common import utils
@@ -245,8 +245,8 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
                                                       direction='egress'):
                 found_egress_conntrack_invalied_drop_flow = True
 
-        LOG.info(_LI("default flows are: %s"),
-                 ovs.get_ovs_flows(self.integration_bridge))
+        LOG.info("default flows are: %s"),
+                 ovs.get_ovs_flows(self.integration_bridge)
 
         self.assertTrue(found_ingress_skip_flow)
         self.assertTrue(found_egress_skip_flow)
@@ -311,9 +311,9 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         ingress_associating_flow, egress_associating_flow = \
             self._find_associating_flows(flows_after_change, unique_key_hex)
 
-        LOG.info(_LI("flows after associating a port and a security group"
-                     " are: %s"),
-                 ovs.get_ovs_flows(self.integration_bridge))
+        LOG.info("flows after associating a port and a security group"
+                     " are: %s",
+                 ovs.get_ovs_flows(self.integration_bridge)
 
         self.assertIsNotNone(ingress_associating_flow)
         self.assertIsNotNone(egress_associating_flow)
@@ -383,8 +383,8 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         ovs = utils.OvsFlowsParser()
         flows = ovs.dump(self.integration_bridge)
 
-        LOG.info(_LI("flows after adding rules are: %s"),
-                 ovs.get_ovs_flows(self.integration_bridge))
+        LOG.info("flows after adding rules are: %s",
+                 ovs.get_ovs_flows(self.integration_bridge)
 
         # Check if the rule flows were installed.
         expected_ingress_rule_match = \

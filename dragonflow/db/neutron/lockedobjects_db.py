@@ -26,7 +26,7 @@ from oslo_utils import timeutils
 import six
 from sqlalchemy.orm import exc as orm_exc
 
-from dragonflow._i18n import _LW
+#from dragonflow._i18n import _LW
 from dragonflow.common import exceptions as df_exc
 from dragonflow.db.neutron import models
 
@@ -180,8 +180,8 @@ def _test_and_create_object(uuid):
             if row.lock and timeutils.is_older_than(
                     row.created_at, cfg.CONF.df.distributed_lock_ttl):
                 # reset the lock if it is timeout
-                LOG.warning(_LW('The lock for object %(id)s is reset '
-                                'due to timeout.'), {'id': uuid})
+                LOG.warning('The lock for object %(id)s is reset '
+                                'due to timeout.', {'id': uuid})
                 _lock_free_update(session, uuid, lock_state=True,
                                   session_id=row.session_id)
     except orm_exc.NoResultFound:

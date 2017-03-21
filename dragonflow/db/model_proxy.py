@@ -11,7 +11,7 @@
 #    under the License.
 import six
 
-from dragonflow._i18n import _LE
+#from dragonflow._i18n import _LE
 from dragonflow.db import db_store2
 
 
@@ -65,7 +65,7 @@ class _ModelProxyBase(object):
 
     @id.setter
     def id_setter(self, value):
-        raise RuntimeError(_LE('Setting ID of model-proxy is not allowed'))
+        raise RuntimeError('Setting ID of model-proxy is not allowed')
 
     def to_struct(self):
         return {'id': self._id}

@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from dragonflow._i18n import _LI, _LE
+#from dragonflow._i18n import _LI, _LE
 from dragonflow.common import utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as const
@@ -46,7 +46,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         try:
             return helpers.parse_mappings(bridge_mappings)
         except ValueError:
-            LOG.exception(_LE("Failed to parse bridge mapping"))
+            LOG.exception("Failed to parse bridge mapping")
             raise
 
     def _setup_physical_bridges(self, bridge_mappings):
@@ -58,8 +58,8 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
            :param bridge_mappings: map physical network names to bridge names.
         '''
         for physical_network, bridge in bridge_mappings.items():
-            LOG.info(_LI("Mapping physical network %(physical_network)s to "
-                         "bridge %(bridge)s"),
+            LOG.info("Mapping physical network %(physical_network)s to "
+                         "bridge %(bridge)s",
                      {'physical_network': physical_network,
                       'bridge': bridge})
             int_ofport = self.vswitch_api.create_patch_port(
@@ -83,7 +83,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         port_count = self.logical_networks.get_local_port_count(
                 network_id=network_id,
                 network_type=network_type)
-        LOG.info(_LI("adding %(net_type)s local port %(lport)s"),
+        LOG.info("adding %(net_type)s local port %(lport)s",
                  {'net_type': network_type,
                   'lport': lport})
         if port_count == 0:

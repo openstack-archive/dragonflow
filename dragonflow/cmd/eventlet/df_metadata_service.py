@@ -18,7 +18,7 @@ from neutron.common import config
 from neutron.conf.agent.metadata import config as metadata_conf
 from neutron import wsgi
 
-from dragonflow._i18n import _LI
+#from dragonflow._i18n import _LI
 from dragonflow import conf as cfg
 from dragonflow.controller import metadata_service_app
 
@@ -34,7 +34,7 @@ def environment_setup():
     bridge = cfg.CONF.df.integration_bridge
     interface = cfg.CONF.df.metadata_interface
     if ip_lib.device_exists(interface):
-        LOG.info(_LI("Device %s already exists"), interface)
+        LOG.info("Device %s already exists", interface)
         # Destroy the environment when the device exists.
         # We can re-initialize the environment correctly.
         environment_destroy()

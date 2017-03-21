@@ -27,7 +27,7 @@ from neutron_lib import exceptions as n_exc
 from neutron_lib.plugins import directory
 from oslo_log import log
 
-from dragonflow._i18n import _, _LI, _LE
+#from dragonflow._i18n import _, _LI, _LE
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
@@ -54,7 +54,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                                    'net-mtu']
 
     def initialize(self):
-        LOG.info(_LI("Starting DFMechDriver"))
+        LOG.info("Starting DFMechDriver")
         self.nb_api = None
 
         # When set to True, Nova plugs the VIF directly into the ovs bridge
@@ -156,12 +156,12 @@ class DFMechDriver(driver_api.MechanismDriver):
             self.nb_api.create_security_group(id=sg_id, topic=tenant_id,
                                               name=sg_name, rules=rules,
                                               version=sg_version)
-            LOG.info(_LI("DFMechDriver: create security group %s"), sg_name)
+            LOG.info("DFMechDriver: create security group %s", sg_name)
         elif event == events.AFTER_UPDATE:
             self.nb_api.update_security_group(id=sg_id, topic=tenant_id,
                                               name=sg_name, rules=rules,
                                               version=sg_version)
-            LOG.info(_LI("DFMechDriver: update security group %s"), sg_name)
+            LOG.info("DFMechDriver: update security group %s", sg_name)
 
         return sg
 
@@ -172,7 +172,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         tenant_id = sg['tenant_id']
 
         self.nb_api.delete_security_group(sg_id, topic=tenant_id)
-        LOG.info(_LI("DFMechDriver: delete security group %s"), sg_id)
+        LOG.info("DFMechDriver: delete security group %s", sg_id)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE)
     def create_security_group_rule(self, resource, event, trigger, **kwargs):
@@ -189,7 +189,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         self.nb_api.add_security_group_rules(sg_id, tenant_id,
                                              sg_rules=[sg_rule],
                                              sg_version=sg_version)
-        LOG.info(_LI("DFMechDriver: create security group rule in group %s"),
+        LOG.info("DFMechDriver: create security group rule in group %s",
                  sg_id)
         return sg_rule
 
@@ -205,7 +205,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         self.nb_api.delete_security_group_rule(sg_id, sgr_id, tenant_id,
                                                sg_version=sg_version)
-        LOG.info(_LI("DFMechDriver: delete security group rule %s"), sgr_id)
+        LOG.info("DFMechDriver: delete security group rule %s", sgr_id)
 
     def create_network_precommit(self, context):
         # TODO(xiaohhui): Multi-provider networks are not supported yet.
@@ -231,7 +231,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             subnets=[],
             qos_policy_id=network.get('qos_policy_id'))
 
-        LOG.info(_LI("DFMechDriver: create network %s"), network['id'])
+        LOG.info("DFMechDriver: create network %s", network['id'])
         return network
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
@@ -248,7 +248,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                       "been deleted concurrently", network_id)
             return
 
-        LOG.info(_LI("DFMechDriver: delete network %s"), network_id)
+        LOG.info("DFMechDriver: delete network %s", network_id)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
     def update_network_postcommit(self, context):
@@ -265,7 +265,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             version=network['revision_number'],
             qos_policy_id=network.get('qos_policy_id'))
 
-        LOG.info(_LI("DFMechDriver: update network %s"), network['id'])
+        LOG.info("DFMechDriver: update network %s", network['id'])
         return network
 
     def _get_dhcp_port_for_subnet(self, context, subnet_id):
@@ -370,8 +370,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                 plugin_context,
                                                 subnet)
         except Exception:
-            LOG.exception(
-                _LE("Failed to create dhcp port for subnet %s"), subnet['id'])
+            LOG.exception("Failed to create dhcp port for subnet %s", subnet['id'])
             return None
 
         self.nb_api.add_subnet(
@@ -387,7 +386,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             dns_nameservers=subnet.get('dns_nameservers', []),
             host_routes=subnet.get('host_routes', []))
 
-        LOG.info(_LI("DFMechDriver: create subnet %s"), subnet['id'])
+        LOG.info("DFMechDriver: create subnet %s", subnet['id'])
         return subnet
 
     def _update_subnet_dhcp_centralized(self, context, subnet):
@@ -448,8 +447,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                     old_subnet,
                                                     new_subnet)
         except Exception:
-            LOG.exception(
-                _LE("Failed to create dhcp port for subnet %s"),
+            LOG.exception("Failed to create dhcp port for subnet %s",
                 new_subnet['id'])
             return None
 
@@ -466,7 +464,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             dns_nameservers=new_subnet.get('dns_nameservers', []),
             host_routes=new_subnet.get('host_routes', []))
 
-        LOG.info(_LI("DFMechDriver: update subnet %s"), new_subnet['id'])
+        LOG.info("DFMechDriver: update subnet %s", new_subnet['id'])
         return new_subnet
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SUBNET)
@@ -493,7 +491,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                       "been deleted concurrently", net_id)
             return
 
-        LOG.info(_LI("DFMechDriver: delete subnet %s"), subnet_id)
+        LOG.info("DFMechDriver: delete subnet %s", subnet_id)
 
     def _filter_unsupported_allowed_address_pairs(self,
                                                   allowed_address_pairs):
@@ -562,7 +560,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             qos_policy_id=port.get('qos_policy_id'),
             extra_dhcp_opts=port.get(edo_ext.EXTRADHCPOPTS, []))
 
-        LOG.info(_LI("DFMechDriver: create port %s"), port['id'])
+        LOG.info("DFMechDriver: create port %s", port['id'])
         return port
 
     def _is_dhcp_port_after_subnet_delete(self, port):
@@ -665,7 +663,7 @@ class DFMechDriver(driver_api.MechanismDriver):
             qos_policy_id=updated_port.get('qos_policy_id'),
             extra_dhcp_opts=updated_port.get(edo_ext.EXTRADHCPOPTS, []))
 
-        LOG.info(_LI("DFMechDriver: update port %s"), updated_port['id'])
+        LOG.info("DFMechDriver: update port %s", updated_port['id'])
         return updated_port
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
@@ -681,7 +679,7 @@ class DFMechDriver(driver_api.MechanismDriver):
                       "been deleted concurrently", port_id)
             return
 
-        LOG.info(_LI("DFMechDriver: delete port %s"), port_id)
+        LOG.info("DFMechDriver: delete port %s", port_id)
 
     def bind_port(self, context):
         """Set porting binding data for use with nova."""

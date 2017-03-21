@@ -16,7 +16,7 @@
 from oslo_log import log
 from ryu.lib import mac as mac_api
 
-from dragonflow._i18n import _LI, _LW
+#from dragonflow._i18n import _LI, _LW
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import logical_networks
@@ -42,11 +42,11 @@ class TunnelingApp(df_base_app.DFlowApp):
     def add_local_port(self, lport):
         network_type = lport.get_external_value('network_type')
         if network_type not in self.tunnel_types:
-            LOG.warning(_LW("added unsupported network %(net_type)s lport"),
+            LOG.warning("added unsupported network %(net_type)s lport",
                         {'net_type': network_type})
             return
         network_id = lport.get_external_value('local_network_id')
-        LOG.info(_LI("adding %(net_type)s lport %(lport)s"),
+        LOG.info("adding %(net_type)s lport %(lport)s",
                  {'net_type': network_type,
                   'lport': lport})
         port_count = self.local_networks.get_local_port_count(
@@ -64,7 +64,7 @@ class TunnelingApp(df_base_app.DFlowApp):
     def remove_local_port(self, lport):
         network_type = lport.get_external_value('network_type')
         if network_type not in self.tunnel_types:
-            LOG.warning(_LW("removed unsupported network %(net_type)s lport"),
+            LOG.warning("removed unsupported network %(net_type)s lport",
                         {'net_type': network_type})
             return
         network_id = lport.get_external_value('local_network_id')
@@ -118,7 +118,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         segmentation_id = lport.get_external_value('segmentation_id')
         self._add_egress_dispatch_flow(lport, segmentation_id)
         network_id = lport.get_external_value('local_network_id')
-        LOG.info(_LI("adding remote %(net_type)s lport %(lport)s"),
+        LOG.info("adding remote %(net_type)s lport %(lport)s",
                  {'net_type': network_type,
                   'lport': lport})
         self.local_networks.add_remote_port(port_id=lport.get_id(),

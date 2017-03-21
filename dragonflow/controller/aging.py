@@ -15,7 +15,7 @@
 
 from oslo_log import log
 
-from dragonflow._i18n import _LI
+#from dragonflow._i18n import _LI
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import cookies
 from dragonflow.controller.common import utils as cookie
@@ -51,12 +51,12 @@ class Aging(df_base_app.DFlowApp, ofswitch.OpenFlowSwitchMixin):
     be called
     """
     def ovs_sync_started(self):
-        LOG.info(_LI("start aging"))
+        LOG.info("start aging")
         canary_flow = self.get_canary_flow()
         if not canary_flow:
             self.do_aging = False
             cookie.set_aging_cookie(const.GLOBAL_INIT_AGING_COOKIE)
-            LOG.info(_LI("no canary table, don't do aging"))
+            LOG.info("no canary table, don't do aging")
         else:
             self.do_aging = True
             self._renew_aging_cookie(canary_flow.cookie)
@@ -69,14 +69,14 @@ class Aging(df_base_app.DFlowApp, ofswitch.OpenFlowSwitchMixin):
     def ovs_sync_finished(self):
         if self.do_aging:
             self._start_aging()
-            LOG.info(_LI("do aging"))
+            LOG.info("do aging")
 
     def _start_aging(self):
         old_cookie = cookie.get_xor_cookie(cookie.get_aging_cookie())
         self.cleanup_flows(old_cookie, self.aging_mask)
 
     def _renew_aging_cookie(self, cur_c):
-        LOG.info(_LI("renew cookie, current cookie is %x"), cur_c)
+        LOG.info("renew cookie, current cookie is %x", cur_c)
         new_c = cookie.get_xor_cookie(cur_c)
         cookie.set_aging_cookie(new_c & self.aging_mask)
         return cookie.get_aging_cookie()

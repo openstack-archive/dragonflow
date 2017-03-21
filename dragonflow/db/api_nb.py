@@ -24,7 +24,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
 
-from dragonflow._i18n import _LI, _LW, _LE
+#from dragonflow._i18n import _LI, _LW, _LE
 import dragonflow.common.exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
@@ -200,7 +200,7 @@ class NbApi(object):
 
     def register_notification_callback(self, controller):
         self.controller = controller
-        LOG.info(_LI("DB configuration sync finished, waiting for changes"))
+        LOG.info("DB configuration sync finished, waiting for changes")
         if not self.use_pubsub:
             self.driver.register_notification_callback(
                 self.db_change_callback)
@@ -260,8 +260,8 @@ class NbApi(object):
     def apply_db_change(self, table, key, action, value):
         # determine if the action is allowed or not
         if action not in DB_ACTION_LIST:
-            LOG.warning(_LW('Unknown action %(action)s for table '
-                            '%(table)s'), {'action': action, 'table': table})
+            LOG.warning('Unknown action %(action)s for table '
+                            '%(table)s', {'action': action, 'table': table})
             return
 
         if action == 'sync':
@@ -299,7 +299,7 @@ class NbApi(object):
                 ovs_port = db_models.OvsPort(value)
                 self.controller.ovs_port_deleted(ovs_port)
         elif 'log' == action:
-            message = _LI(
+            message = (
                 'Log event (Info): '
                 'table: %(table)s '
                 'key: %(key)s '
@@ -313,7 +313,7 @@ class NbApi(object):
                 'value': str(value),
             })
         else:
-            LOG.warning(_LW('Unknown table %s'), table)
+            LOG.warning('Unknown table %s', table)
 
     def create_security_group(self, id, topic, **columns):
         secgroup = {}
@@ -779,7 +779,7 @@ class NbApi(object):
             )
             return db_models.Publisher(publisher_value)
         except Exception:
-            LOG.exception(_LE('Could not get publisher %s'), uuid)
+            LOG.exception('Could not get publisher %s', uuid)
             return None
 
     def get_publishers(self, topic=None):
@@ -859,7 +859,7 @@ class NbApi(object):
                 db_models.QosPolicy.table_name, policy_id, topic)
             return db_models.QosPolicy(qospolicy_value)
         except Exception:
-            LOG.exception(_LE('Could not get qos policy %s'), policy_id)
+            LOG.exception('Could not get qos policy %s', policy_id)
             return None
 
     def create_active_port(self, id, topic, **columns):
@@ -958,8 +958,7 @@ class NbApi(object):
             self.driver.delete_key(model.table_name, obj.id, topic)
         except df_exceptions.DBKeyNotFound:
             with excutils.save_and_reraise_exception():
-                LOG.warning(
-                    _LW('Could not find object %(id)s to delete in %(table)s'),
+                LOG.warning('Could not find object %(id)s to delete in %(table)s',
                     extra={'id': id, 'table': model.table_name})
 
         self._send_db_change_event(model.table_name, obj.id, 'delete',
@@ -981,8 +980,7 @@ class NbApi(object):
                 _get_topic(lean_obj),
             )
         except df_exceptions.DBKeyNotFound:
-            LOG.exception(
-                _LE('Could not get object %(id)s from table %(table)s'),
+            LOG.exception('Could not get object %(id)s from table %(table)s',
                 extra={'id': id, 'table': model.table_name})
         else:
             return model.from_json(serialized_obj)

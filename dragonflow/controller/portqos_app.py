@@ -15,7 +15,7 @@
 
 from oslo_log import log
 
-from dragonflow._i18n import _LE
+#from dragonflow._i18n import _LE
 from dragonflow.controller import df_base_app
 
 
@@ -48,7 +48,7 @@ class PortQosApp(df_base_app.DFlowApp):
 
         qos = self._get_qos_policy(qos_id)
         if not qos:
-            LOG.error(_LE("Unable to get QoS %(qos)s when adding/updating "
+            LOG.error("Unable to get QoS %(qos)s when adding/updating "
                           "local port %(port)s. It may have been deleted."),
                       {'qos': qos_id, 'port': lport.get_id()})
             self.vswitch_api.clear_port_qos(lport.get_id())

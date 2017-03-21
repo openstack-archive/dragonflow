@@ -25,7 +25,7 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LW
+#from dragonflow._i18n import _LW
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
@@ -91,8 +91,8 @@ class DNATApp(df_base_app.DFlowApp):
             LOG.debug("Get an invalid TTL packet at table %s",
                       const.INGRESS_NAT_TABLE)
             if self.ingress_ttl_invalid_handler_rate_limit():
-                LOG.warning(_LW("Get more than %(rate)s TTL invalid "
-                                "packets per second at table %(table)s"),
+                LOG.warning("Get more than %(rate)s TTL invalid "
+                                "packets per second at table %(table)s",
                             {'rate': self.conf.dnat_ttl_invalid_max_rate,
                              'table': const.INGRESS_NAT_TABLE})
                 return
@@ -104,8 +104,8 @@ class DNATApp(df_base_app.DFlowApp):
             return
 
         if self.ingress_icmp_error_rate_limit():
-            LOG.warning(_LW("Get more than %(rate)s ICMP error messages "
-                            "per second at table %(table)s"),
+            LOG.warning("Get more than %(rate)s ICMP error messages "
+                            "per second at table %(table)s",
                         {'rate': self.conf.dnat_icmp_error_max_rate,
                          'table': const.INGRESS_NAT_TABLE})
             return
@@ -123,8 +123,8 @@ class DNATApp(df_base_app.DFlowApp):
             LOG.debug("Get an invalid TTL packet at table %s",
                       const.EGRESS_NAT_TABLE)
             if self.egress_ttl_invalid_handler_rate_limit():
-                LOG.warning(_LW("Get more than %(rate)s TTL invalid "
-                                "packets per second at table %(table)s"),
+                LOG.warning("Get more than %(rate)s TTL invalid "
+                                "packets per second at table %(table)s",
                             {'rate': self.conf.dnat_ttl_invalid_max_rate,
                              'table': const.EGRESS_NAT_TABLE})
                 return
@@ -139,14 +139,14 @@ class DNATApp(df_base_app.DFlowApp):
                 unique_key = msg.match.get('reg6')
                 self.dispatch_packet(icmp_ttl_pkt, unique_key)
             else:
-                LOG.warning(_LW("The invalid TTL packet's destination mac %s "
-                                "can't be recognized."), e_pkt.src)
+                LOG.warning("The invalid TTL packet's destination mac %s "
+                                "can't be recognized.", e_pkt.src)
             return
 
         if self.external_bridge_mac:
             if self.ingress_icmp_error_rate_limit():
-                LOG.warning(_LW("Get more than %(rate)s ICMP error messages "
-                                "per second at table %(table)s"),
+                LOG.warning("Get more than %(rate)s ICMP error messages "
+                                "per second at table %(table)s",
                             {'rate': self.conf.dnat_icmp_error_max_rate,
                              'table': const.INGRESS_NAT_TABLE})
                 return

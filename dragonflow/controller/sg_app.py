@@ -20,7 +20,7 @@ from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
 
-from dragonflow._i18n import _LI, _LW, _LE
+#from dragonflow._i18n import _LI, _LW, _LE
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
@@ -125,7 +125,7 @@ class SGApp(df_base_app.DFlowApp):
             result_base['eth_type'] = ether.ETH_TYPE_IP
         elif ethertype == n_const.IPv6:
             LOG.warning(
-                _LW("IPv6 in security group rules is not yet supported")
+                ("IPv6 in security group rules is not yet supported")
             )
             result_base['eth_type'] = ether.ETH_TYPE_IPV6
             return [result_base]
@@ -203,8 +203,8 @@ class SGApp(df_base_app.DFlowApp):
         if netaddr.IPNetwork(fixed_ip).version == 4:
             ips.add(fixed_ip)
         else:
-            LOG.warning(_LW("No support for non IPv4 protocol, the IP"
-                            "address %(ip)s of %(lport)s was ignored."),
+            LOG.warning("No support for non IPv4 protocol, the IP"
+                            "address %(ip)s of %(lport)s was ignored.",
                         {'ip': fixed_ip, 'lport': lport.get_id()})
 
         allowed_address_pairs = lport.get_allowed_address_pairs()
@@ -215,7 +215,7 @@ class SGApp(df_base_app.DFlowApp):
                     ips.add(ip)
                 else:
                     LOG.warning(
-                        _LW("No support for non IPv4 protocol, the address "
+                        ("No support for non IPv4 protocol, the address "
                             "%(ip)s in allowed address pairs of lport "
                             "%(lport)s was ignored."),
                         {'ip': ip, 'lport': lport.get_id()})
@@ -524,10 +524,10 @@ class SGApp(df_base_app.DFlowApp):
                 ipv4_match_item = "ipv4_dst"
         elif secgroup_rule.get_ethertype() == n_const.IPv6:
             # not support yet
-            LOG.info(_LI("IPv6 rules are not supported yet"))
+            LOG.info("IPv6 rules are not supported yet")
             return
         else:
-            LOG.error(_LE("wrong ethernet type"))
+            LOG.error("wrong ethernet type")
             return
 
         actions = [parser.NXActionConjunction(clause=1,
@@ -628,9 +628,9 @@ class SGApp(df_base_app.DFlowApp):
                         match=match)
         elif ethertype == n_const.IPv6:
             # not support yet
-            LOG.info(_LI("IPv6 rules are not supported yet"))
+            LOG.info("IPv6 rules are not supported yet")
         else:
-            LOG.error(_LE("wrong ethernet type"))
+            LOG.error("wrong ethernet type")
 
     def _uninstall_security_group_rule_flows(self, secgroup_rule):
         # uninstall rule flows by its cookie
@@ -644,7 +644,7 @@ class SGApp(df_base_app.DFlowApp):
 
         rule_id = self._get_security_rule_mapping(secgroup_rule.get_id())
         if rule_id is None:
-            LOG.error(_LE("the rule_id of the security group rule %s is none"),
+            LOG.error("the rule_id of the security group rule %s is none",
                       rule_id)
             return
 
@@ -985,7 +985,7 @@ class SGApp(df_base_app.DFlowApp):
             return
 
         if not netaddr.valid_ipv4(lport.get_ip()):
-            LOG.warning(_LW("No support for non IPv4 protocol"))
+            LOG.warning("No support for non IPv4 protocol")
             return
 
         for secgroup_id in secgroups:
@@ -1012,7 +1012,7 @@ class SGApp(df_base_app.DFlowApp):
                       secgroup_id)
             return
 
-        LOG.info(_LI("Add a rule %(rule)s to security group %(secgroup)s"),
+        LOG.info("Add a rule %(rule)s to security group %(secgroup)s",
                  {'rule': secgroup_rule, 'secgroup': secgroup_id})
 
         # update the record of rules each of which specifies a same security
@@ -1035,7 +1035,7 @@ class SGApp(df_base_app.DFlowApp):
                       secgroup_id)
             return
 
-        LOG.info(_LI("Remove a rule %(rule)s to security group %(secgroup)s"),
+        LOG.info("Remove a rule %(rule)s to security group %(secgroup)s",
                  {'rule': secgroup_rule, 'secgroup': secgroup.get_id()})
 
         conj_id, priority = \

@@ -15,7 +15,7 @@ from neutron.agent.linux import ip_lib
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow._i18n import _LE
+#from dragonflow._i18n import _LE
 from dragonflow.cmd.eventlet import df_metadata_service
 from dragonflow.conf import df_metadata_service as df_metadata_service_conf
 from dragonflow.tests.fullstack import test_base
@@ -57,7 +57,7 @@ class TestMetadataService(test_base.DFTestBase):
             try:
                 utils.execute(cmd, run_as_root=True, check_exit_code=[0])
             except Exception:
-                LOG.exception(_LE("Failed to delete metadata test port"))
+                LOG.exception("Failed to delete metadata test port")
 
             ip = cfg.CONF.df_metadata.ip
             cmd = ["ip", "rule", "del", "from", ip, "table",
@@ -65,7 +65,7 @@ class TestMetadataService(test_base.DFTestBase):
             try:
                 utils.execute(cmd, run_as_root=True)
             except Exception:
-                LOG.exception(_LE(
+                LOG.exception(
                     "Failed to delete metadata test routing rule"
-                ))
+                )
         super(TestMetadataService, self).tearDown()

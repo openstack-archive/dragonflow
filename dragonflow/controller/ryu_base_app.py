@@ -25,7 +25,7 @@ from ryu.ofproto import ofproto_parser
 from ryu.ofproto import ofproto_v1_3
 from ryu import utils
 
-from dragonflow._i18n import _LE, _LI
+#from dragonflow._i18n import _LE, _LI
 from dragonflow.controller import dispatcher
 
 
@@ -196,8 +196,8 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
             handler = self.table_handlers[table_id]
             handler(event)
         else:
-            LOG.info(_LI("No handler for table id %(table)s with message "
-                         "%(msg)"), {'table': table_id, 'msg': msg})
+            LOG.info("No handler for table id %(table)s with message "
+                         "%(msg)", {'table': table_id, 'msg': msg})
 
     @handler.set_ev_handler(ofp_event.EventOFPErrorMsg,
                             handler.MAIN_DISPATCHER)
@@ -208,11 +208,11 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
             ryu_msg = ofproto_parser.msg(
                 self._datapath, version, msg_type,
                 msg_len - ofproto_common.OFP_HEADER_SIZE, xid, msg.data)
-            LOG.error(_LE('OFPErrorMsg received: %s'), ryu_msg)
+            LOG.error('OFPErrorMsg received: %s', ryu_msg)
         except Exception:
-            LOG.error(_LE('Unrecognized OFPErrorMsg received: '
+            LOG.error('Unrecognized OFPErrorMsg received: '
                           'type=0x%(type)02x code=0x%(code)02x '
-                          'message=%(msg)s'),
+                          'message=%(msg)s',
                       {'type': msg.type, 'code': msg.code,
                        'msg': utils.hex_array(msg.data)})
 
@@ -247,8 +247,8 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         ofproto = dp.ofproto
 
         if cur_config.packet_in_mask[0] & 1 << ofproto.OFPR_INVALID_TTL != 0:
-            LOG.info(_LI('SW config for TTL error packet in has already '
-                         'been set'))
+            LOG.info('SW config for TTL error packet in has already '
+                         'been set')
             return
 
         packet_in_mask = (cur_config.packet_in_mask[0] |
@@ -258,4 +258,4 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
             [cur_config.port_status_mask[0], cur_config.port_status_mask[1]],
             [cur_config.flow_removed_mask[0], cur_config.flow_removed_mask[1]])
         dp.send_msg(m)
-        LOG.info(_LI('Set SW config for TTL error packet in.'))
+        LOG.info('Set SW config for TTL error packet in.')

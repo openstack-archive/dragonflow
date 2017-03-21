@@ -21,7 +21,7 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import six
 
-from dragonflow._i18n import _LE, _LI
+#from dragonflow._i18n import _LE, _LI
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
@@ -40,7 +40,7 @@ def pack_message(message):
     try:
         data = msgpack.packb(message, encoding='utf-8')
     except Exception:
-        LOG.exception(_LE("Error in pack_message: "))
+        LOG.exception("Error in pack_message: ")
     return data
 
 
@@ -49,7 +49,7 @@ def unpack_message(message):
     try:
         entry = msgpack.unpackb(message, encoding='utf-8')
     except Exception:
-        LOG.exception(_LE("Error in unpack_message: "))
+        LOG.exception("Error in unpack_message: ")
     return entry
 
 
@@ -228,14 +228,14 @@ class SubscriberAgentBase(SubscriberApi):
         self.daemon.stop()
 
     def register_topic(self, topic):
-        LOG.info(_LI('Register topic %s'), topic)
+        LOG.info('Register topic %s', topic)
         if topic not in self.topic_list:
             self.topic_list.append(topic)
             return True
         return False
 
     def unregister_topic(self, topic):
-        LOG.info(_LI('Unregister topic %s'), topic)
+        LOG.info('Unregister topic %s', topic)
         self.topic_list.remove(topic)
 
     def set_subscriber_for_failover(self, sub, callback):
@@ -270,7 +270,7 @@ class TableMonitor(object):
                 eventlet.sleep(self._polling_time)
                 cache = self._poll_once(cache)
             except Exception:
-                LOG.exception(_LE("Error when polling table %s"),
+                LOG.exception("Error when polling table %s",
                               self._table_name)
 
     def _poll_once(self, old_cache):
@@ -325,7 +325,7 @@ class StalePublisherMonitor(TableMonitor):
                 continue
             last_activity_timestamp = publisher['last_activity_timestamp']
             if last_activity_timestamp < time.time() - self._timeout:
-                LOG.info(_LI('Removing publisher %s'), publisher_json)
+                LOG.info('Removing publisher %s', publisher_json)
                 try:
                     self._driver.delete_key(self._table_name, entry_key)
                 except exceptions.DBKeyNotFound:
