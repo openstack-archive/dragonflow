@@ -331,3 +331,11 @@ class TestModelFramework(tests_base.BaseTestCase):
                 RuntimeError,
                 mf.iter_models_by_dependency_order,
             )
+
+    def test_invalid_kwargs_init(self):
+        self.assertRaises(
+            TypeError,
+            ModelTest,
+            field1='value1',
+            field4='value4',
+        )
