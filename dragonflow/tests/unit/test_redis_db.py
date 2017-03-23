@@ -45,8 +45,8 @@ class TestRedisDB(tests_base.BaseTestCase):
         self.RedisDbDriver._get_client = mock.Mock(return_value=client)
         self.RedisDbDriver._sync_master_list = mock.Mock()
         self.RedisDbDriver.clients[0] = client
-        client.keys.return_value = 'a'
-        client.mget.return_value = 'value'
+        client.keys.return_value = ['a']
+        client.mget.return_value = ['value']
         client.execute_command.return_value = 'value'
         redis_mgt = mock.Mock()
         self.RedisDbDriver.redis_mgt = redis_mgt
@@ -96,7 +96,7 @@ class TestRedisDB(tests_base.BaseTestCase):
         redis_mgt.get_ip_by_key.assert_called_with('a')
 
         result = self.RedisDbDriver.get_all_entries('table', 'topic')
-        self.assertEqual(['v', 'a', 'l', 'u', 'e'], result)
+        self.assertEqual(['value'], result)
         local_key = '{table.topic}.*'
         redis_mgt.get_ip_by_key.assert_called_with(local_key)
 
