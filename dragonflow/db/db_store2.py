@@ -13,8 +13,12 @@ import collections
 import itertools
 import threading
 
+from jsonmodels import errors
+from jsonmodels import fields
+
 from dragonflow._i18n import _LE
 from dragonflow.utils import radix_tree
+from dragonflow.db import model_framework
 
 
 ANY = radix_tree.ANY
@@ -172,6 +176,7 @@ class _ModelCache(object):
 class DbStore2(object):
     def __init__(self):
         self._cache = {}
+        self._nested = collections.defaultdict(set)
 
     def _get_cache(self, model):
         try:
@@ -227,6 +232,9 @@ class DbStore2(object):
 
         return tuple(self._get_cache(model).get_keys(obj, index))
 
+    def _nested_key(self, obj):
+        return (type(obj), obj.id)
+
     def delete(self, obj):
         """Deletes the object provided from the cache, by removing it from all
            the indexes, a partial object can be provided, since we retrieve the
@@ -235,6 +243,9 @@ class DbStore2(object):
 
            >>> db_store.delete(Lport(id=lport_id))
         """
+        for model_type, obj_id in self._nested[self._nested_key(obj)]:
+            self.delete(model_type(id=obj_id))
+
         self._get_cache(type(obj)).delete(obj)
 
     def update(self, obj):
@@ -242,6 +253,32 @@ class DbStore2(object):
            version from all the indexes and populate them with the new object
         """
         self._get_cache(type(obj)).update(obj)
+
+        new_nested = set()
+        for subobj in self._get_nested_models(obj):
+            self.update(subobj)
+            new_nested.add(self._nested_key(subobj))
+
+        nested_key = self._nested_key(obj)
+        old_nested = self._nested[nested_key]
+        for model_type, obj_id in (old_nested - new_nested):
+            self.delete(model_type(id=obj_id))
+
+        self._nested[nested_key] = new_nested
+
+    def _get_nested_models(self, obj):
+        for name, field in obj.iterate_over_fields():
+            if isinstance(field, fields.EmbeddedField):
+                try:
+                    attr = getattr(obj, name)
+                    if isinstance(attr, model_framework.ModelBase):
+                        yield attr
+                except errors.ValidationError:
+                    pass
+            elif isinstance(field, fields.ListField):
+                for elem in getattr(obj, name):
+                    if isinstance(elem, model_framework.ModelBase):
+                        yield elem
 
     def __contains__(self, elem):
         return self.get_one(elem) == elem
