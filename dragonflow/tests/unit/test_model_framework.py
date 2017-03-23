@@ -120,6 +120,19 @@ class ListReffingModel(mf.ModelBase):
     ref2 = df_fields.ReferenceListField(ReffingModel)
 
 
+@mf.construct_nb_db_model
+class EmbeddedModel(mf.ModelBase):
+    field = fields.StringField()
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class EmbeddingModel2(mf.ModelBase):
+    emb_field = fields.EmbeddedField(EmbeddedModel)
+    emb_list = fields.ListField(EmbeddedModel)
+    emb_required = fields.EmbeddedField(EmbeddedModel, required=True)
+
+
 class TestModelFramework(tests_base.BaseTestCase):
     def test_lookup(self):
         self.assertEqual(ModelTest, mf.get_model('ModelTest'))
@@ -296,7 +309,9 @@ class TestModelFramework(tests_base.BaseTestCase):
         m.assert_called_once_with(o)
 
     def test_topological_sort(self):
-        sorted_models = mf.iter_models_by_dependency_order()
+        sorted_models = mf.iter_models_by_dependency_order(
+            include_embedded=True,
+        )
         self.assertLess(
             sorted_models.index(ReffedModel),
             sorted_models.index(ReffingModel)
@@ -330,4 +345,20 @@ class TestModelFramework(tests_base.BaseTestCase):
             self.assertRaises(
                 RuntimeError,
                 mf.iter_models_by_dependency_order,
+                include_embedded=True,
             )
+
+    def test_embedded_objects(self):
+        emb1 = EmbeddedModel(id='id1', field='1')
+        emb2 = EmbeddedModel(id='id2', field='2')
+        emb3 = EmbeddedModel(id='id3', field='3')
+
+        embedding1 = EmbeddingModel2(
+            emb_field=emb1,
+            emb_list=[emb2, emb3],
+        )
+
+        self.assertItemsEqual(
+            (emb1, emb2, emb3),
+            embedding1.iterate_embedded_models(),
+        )
