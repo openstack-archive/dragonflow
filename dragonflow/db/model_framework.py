@@ -213,6 +213,41 @@ class _CommonBase(models.Base):
     def is_first_class(cls):
         return hasattr(cls, 'table_name')
 
+    @classmethod
+    def iterate_embedded_model_types(cls):
+        embedded_models = set()
+
+        for name, field in cls.iterate_over_fields():
+            if isinstance(field, fields.EmbeddedField):
+                models = field.types
+            elif isinstance(field, fields.ListField):
+                models = field.items_types
+            else:
+                continue
+
+            for model in models:
+                if issubclass(model, ModelBase):
+                    embedded_models.add(model)
+
+                    for model in model.iterate_embedded_model_types():
+                        embedded_models.add(model)
+
+        for model in embedded_models:
+            yield model
+
+    def iterate_embedded_model_instances(self):
+        for name, field in self.iterate_over_set_fields():
+            if isinstance(field, fields.EmbeddedField):
+                subobjs = (getattr(self, name),)
+            elif isinstance(field, fields.ListField):
+                subobjs = getattr(self, name)
+            else:
+                continue
+
+            for subobj in subobjs:
+                if isinstance(subobj, ModelBase):
+                    yield subobj
+
 
 def _add_event_funcs(cls_, event):
     @classmethod
@@ -336,6 +371,10 @@ def register_model(cls):
     _lookup_by_class_name[cls.__name__] = cls
     _lookup_by_table_name[cls.table_name] = cls
 
+    for model in cls.iterate_embedded_model_types():
+        _registered_models.add(model)
+        _lookup_by_class_name[model.__name__] = model
+
     return cls
 
 
@@ -361,10 +400,14 @@ def get_model(arg):
     raise KeyError(arg)
 
 
-def iter_models():
+def iter_models(first_class_only=True):
     '''Iterate over all registered models'''
     for model in _registered_models:
         yield model
+
+        if not first_class_only:
+            for submodel in model.iterate_embedded_model_types():
+                yield model
 
 
 def iter_tables():
@@ -373,7 +416,7 @@ def iter_tables():
         yield key
 
 
-def iter_models_by_dependency_order():
+def iter_models_by_dependency_order(first_class_only=True):
     '''Iterate over all registered models
 
        The models are returned in an order s.t. a model never preceeds its
@@ -381,7 +424,7 @@ def iter_models_by_dependency_order():
     '''
     unsorted_models = {}
     # Gather all models and their dependencies
-    for model in iter_models():
+    for model in iter_models(first_class_only=first_class_only):
         unsorted_models[model] = model.dependencies()
 
     # Perform a topological sort
