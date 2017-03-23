@@ -13,6 +13,7 @@ import collections
 import copy
 import functools
 
+from jsonmodels import errors
 from jsonmodels import fields
 from jsonmodels import models
 from oslo_log import log
@@ -200,6 +201,20 @@ class _CommonBase(models.Base):
                     pass
 
         return set(deps)
+
+    def iterate_embedded_models(self):
+        for name, field in self.iterate_over_fields():
+            if isinstance(field, fields.EmbeddedField):
+                try:
+                    attr = getattr(self, name)
+                    if isinstance(attr, ModelBase):
+                        yield attr
+                except errors.ValidationError:
+                    pass
+            elif isinstance(field, fields.ListField):
+                for elem in getattr(self, name):
+                    if isinstance(elem, ModelBase):
+                        yield elem
 
 
 def _add_event_funcs(cls_, event):
