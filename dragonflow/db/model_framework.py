@@ -52,6 +52,14 @@ class _CommonBase(models.Base):
      * Unset field detection
     '''
     def __init__(self, **kwargs):
+        for key in kwargs:
+            if key not in self._field_names:
+                raise TypeError(
+                    _('{0} is not a field of {1}').format(
+                        key,
+                        self.__class__.__name__,
+                    )
+                )
         super(_CommonBase, self).__init__(**kwargs)
         self._set_fields = set(kwargs.keys()).intersection(self._field_names)
 

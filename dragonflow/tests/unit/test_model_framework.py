@@ -331,3 +331,11 @@ class TestModelFramework(tests_base.BaseTestCase):
                 RuntimeError,
                 mf.iter_models_by_dependency_order,
             )
+
+    def test_incorrect_args(self):
+        self.assertRaises(
+            TypeError,
+            ReffedModel,
+            id='a',
+            non_existant_field='some-value',
+        )
