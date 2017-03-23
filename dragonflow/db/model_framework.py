@@ -13,6 +13,7 @@ import collections
 import copy
 import functools
 
+from jsonmodels import errors
 from jsonmodels import fields
 from jsonmodels import models
 from oslo_log import log
@@ -201,6 +202,28 @@ class _CommonBase(models.Base):
 
         return set(deps)
 
+    def iterate_embedded_models(self):
+        for name, field in self.iterate_over_fields():
+            if isinstance(field, fields.EmbeddedField):
+                try:
+                    attrs = (getattr(self, name),)
+                except errors.ValidationError:
+                    pass
+            elif isinstance(field, fields.ListField):
+                attrs = getattr(self, name)
+            else:
+                continue
+
+            for attr in attrs:
+                if not isinstance(attr, ModelBase):
+                    continue
+
+                try:
+                    if attr.get_field('id'):
+                        yield attr
+                except errors.FieldNotFound:
+                    pass
+
 
 def _add_event_funcs(cls_, event):
     @classmethod
@@ -328,10 +351,11 @@ def get_model(arg):
     raise KeyError(arg)
 
 
-def iter_models():
+def iter_models(include_embedded=False):
     '''Iterate over all registered models'''
     for model in _registered_models:
-        yield model
+        if include_embedded or hasattr(model, 'table_name'):
+            yield model
 
 
 def iter_tables():
@@ -341,7 +365,7 @@ def iter_tables():
             yield model.table_name
 
 
-def iter_models_by_dependency_order():
+def iter_models_by_dependency_order(include_embedded=False):
     '''Iterate over all registered models
 
        The models are returned in an order s.t. a model never preceeds its
@@ -349,7 +373,7 @@ def iter_models_by_dependency_order():
     '''
     unsorted_models = {}
     # Gather all models and their dependencies
-    for model in iter_models():
+    for model in iter_models(include_embedded=include_embedded):
         unsorted_models[model] = model.dependencies()
 
     # Perform a topological sort

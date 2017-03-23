@@ -169,9 +169,17 @@ class _ModelCache(object):
         return (self._get_by_id(id_) for id_ in ids)
 
 
+def _hashable(obj):
+    '''Returns a hashable representation of the objects: its type and ID'''
+    return (type(obj), obj.id)
+
+
 class DbStore2(object):
     def __init__(self):
         self._cache = {}
+
+        self._obj_to_embedded = collections.defaultdict(set)
+        self._embedded_refs = collections.defaultdict(set)
 
     def _get_cache(self, model):
         try:
@@ -235,13 +243,39 @@ class DbStore2(object):
 
            >>> db_store.delete(Lport(id=lport_id))
         """
+        for subobj_key in self._obj_to_embedded[_hashable(obj)]:
+            self._delete_embedded(obj, subobj_key)
+
         self._get_cache(type(obj)).delete(obj)
+
+    def _delete_embedded(self, obj, embedded_key):
+        refs = self._embedded_refs[embedded_key]
+        refs.discard(_hashable(obj))
+
+        if not refs:
+            model_type, subobj_id = embedded_key
+            self.delete(model_type(id=subobj_id))
 
     def update(self, obj):
         """Sets or updates an object int the cache. This will remove the older
            version from all the indexes and populate them with the new object
         """
         self._get_cache(type(obj)).update(obj)
+
+        new_embedded = set()
+        obj_key = _hashable(obj)
+
+        for subobj in obj.iterate_embedded_models():
+            self.update(subobj)
+            embedded_key = _hashable(subobj)
+            new_embedded.add(embedded_key)
+            self._embedded_refs[embedded_key].add(obj_key)
+
+        old_embedded = self._obj_to_embedded[obj_key]
+        for embedded_key in (old_embedded - new_embedded):
+            self._delete_embedded(obj, embedded_key)
+
+        self._obj_to_embedded[obj_key] = new_embedded
 
     def __contains__(self, elem):
         return self.get_one(elem) == elem

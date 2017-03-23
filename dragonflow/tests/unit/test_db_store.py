@@ -225,6 +225,17 @@ class ModelTest(model_framework.ModelBase):
     sublist1 = fields.ListField(NestedModel)
 
 
+@model_framework.construct_nb_db_model
+class EmbeddedModel(model_framework.ModelBase):
+    field = fields.StringField()
+
+
+@model_framework.construct_nb_db_model
+class EmbeddingModel(model_framework.ModelBase):
+    field = fields.EmbeddedField(EmbeddedModel)
+    list_field = fields.ListField(EmbeddedModel)
+
+
 class TestDbStore2(tests_base.BaseTestCase):
     def setUp(self):
         super(TestDbStore2, self).setUp()
@@ -496,3 +507,73 @@ class TestDbStore2(tests_base.BaseTestCase):
                 index=ModelTest.get_indexes()['listnested'],
             ),
         )
+
+    def test_index_nested_objects(self):
+        embedded = EmbeddedModel(id='embedded1', field='a')
+        embedding = EmbeddingModel(id='embedding1', field=embedded)
+        self.db_store.update(embedding)
+        self.assertIn(embedded, self.db_store)
+
+    def test_index_list_of_nested_objects(self):
+        embedded1 = EmbeddedModel(id='embedded1', field='a')
+        embedded2 = EmbeddedModel(id='embedded2', field='b')
+        embedding = EmbeddingModel(id='embedding1',
+                                   list_field=[embedded1, embedded2])
+        self.db_store.update(embedding)
+        self.assertIn(embedded1, self.db_store)
+        self.assertIn(embedded2, self.db_store)
+
+    def test_delete_nested_objects(self):
+        embedded = EmbeddedModel(id='embedded1', field='a')
+        embedding = EmbeddingModel(id='embedding1', field=embedded)
+        self.db_store.update(embedding)
+        self.db_store.delete(embedding)
+        self.assertNotIn(embedded, self.db_store)
+
+    def test_delete_list_of_nested_objects(self):
+        embedded1 = EmbeddedModel(id='embedded1', field='a')
+        embedded2 = EmbeddedModel(id='embedded2', field='b')
+        embedding = EmbeddingModel(id='embedding1',
+                                   list_field=[embedded1, embedded2])
+        self.db_store.update(embedding)
+        self.db_store.delete(embedding)
+        self.assertNotIn(embedded1, self.db_store)
+        self.assertNotIn(embedded2, self.db_store)
+
+    def test_removed_after_change_nested_objects(self):
+        embedded = EmbeddedModel(id='embedded1', field='a')
+        embedding = EmbeddingModel(id='embedding1', field=embedded)
+        self.db_store.update(embedding)
+        embedding.field = None
+        self.assertIn(embedded, self.db_store)
+        self.db_store.update(embedding)
+        self.assertNotIn(embedded, self.db_store)
+
+    def test_removed_after_change_list_of_nested_objects(self):
+        embedded1 = EmbeddedModel(id='embedded1', field='a')
+        embedded2 = EmbeddedModel(id='embedded2', field='b')
+        embedding = EmbeddingModel(id='embedding1',
+                                   list_field=[embedded1, embedded2])
+        self.db_store.update(embedding)
+        embedding.list_field = [embedded1]
+        self.assertIn(embedded1, self.db_store)
+        self.assertIn(embedded2, self.db_store)
+        self.db_store.update(embedding)
+        self.assertIn(embedded1, self.db_store)
+        self.assertNotIn(embedded2, self.db_store)
+
+    def test_nested_object_moves(self):
+        embedded = EmbeddedModel(id='embedded1', field='a')
+        embedding1 = EmbeddingModel(id='embedding1', field=embedded)
+        embedding2 = EmbeddingModel(id='embedding2')
+        self.db_store.update(embedding1)
+        self.db_store.update(embedding2)
+        self.assertIn(embedded, self.db_store)
+
+        embedding1.field = None
+        embedding2.field = embedded
+        self.assertIn(embedded, self.db_store)
+
+        self.db_store.update(embedding2)
+        self.db_store.update(embedding1)
+        self.assertIn(embedded, self.db_store)

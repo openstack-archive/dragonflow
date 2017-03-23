@@ -296,7 +296,9 @@ class TestModelFramework(tests_base.BaseTestCase):
         m.assert_called_once_with(o)
 
     def test_topological_sort(self):
-        sorted_models = mf.iter_models_by_dependency_order()
+        sorted_models = mf.iter_models_by_dependency_order(
+            include_embedded=True,
+        )
         self.assertLess(
             sorted_models.index(ReffedModel),
             sorted_models.index(ReffingModel)
@@ -330,4 +332,5 @@ class TestModelFramework(tests_base.BaseTestCase):
             self.assertRaises(
                 RuntimeError,
                 mf.iter_models_by_dependency_order,
+                include_embedded=True,
             )
