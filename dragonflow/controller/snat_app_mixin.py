@@ -92,9 +92,9 @@ class SNATApp_mixin(object):
     def _install_snat_egress_conntrack(self, match, ext_host_ip):
         """implements single sNAT pass for multiple tenant deployment
 
-        :param match - OVS match expression passed as a parameter
-        :param ext_host_ip - unique ip to translate tenant IPs to it
-        :returns None
+        :param match: - OVS match expression passed as a parameter
+        :param ext_host_ip: - unique ip to translate tenant IPs to it
+        :returns: None
         ----Translation logic follows next rules:----
 
         ipv4_src -> reg5  (temporary save internal tenant local IP)
@@ -209,9 +209,9 @@ class SNATApp_mixin(object):
                                               external_host_mac):
         """complements reverse sNAT translation from unique IP to tenant IP
 
-        :param unique_key - key to match with
-        :param vm_mac - original VM mac address to restore
-        :returns None
+        :param unique_key: - key to match with
+        :param vm_mac: - original VM mac address to restore
+        :returns: None
 
         ---Translation complement follows next rules:---
         unique_key -> reg7 ( load unique port key into dedicated register)
