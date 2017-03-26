@@ -205,6 +205,15 @@ class LogicalPort(NbDbObject, UniqueKeyMixin):
     def get_extra_dhcp_opts(self):
         return self.inner_obj.get('extra_dhcp_opts', [])
 
+    def is_vm_port(self):
+        """
+        Return True if the device owner starts with 'compute:' (or is None)
+        """
+        owner = self.get_device_owner()
+        if not owner or owner.startswith("compute:"):
+            return True
+        return False
+
     def __str__(self):
         lport_with_exteral_dict = dict(self.inner_obj)
         lport_with_exteral_dict['external_dict'] = self.external_dict

@@ -190,7 +190,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
     def _get_vm_port(self, ip, mac):
         ports = self.nb_api.get_all_logical_ports()
         for port in ports:
-            if port.get_device_owner() == 'compute:None':
+            if port.is_vm_port():
                 if port.get_ip() == ip and port.get_mac() == mac:
                     return port
         return None

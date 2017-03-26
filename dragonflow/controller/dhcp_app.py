@@ -321,18 +321,12 @@ class DHCPApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def _is_vm_port(self, lport):
-        owner = lport.get_device_owner()
-        if not owner or "compute" in owner:
-            return True
-        return False
-
     def add_local_port(self, lport):
         if not netaddr.valid_ipv4(lport.get_ip()):
             LOG.warning(_LW("No support for non IPv4 protocol"))
             return
 
-        if not self._is_vm_port(lport):
+        if not lport.is_vm_port():
             return
 
         subnet_id = lport.get_subnets()[0]
