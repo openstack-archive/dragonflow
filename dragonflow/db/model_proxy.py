@@ -74,6 +74,9 @@ class _ModelProxyBase(object):
     def get_proxied_model(cls):
         return cls._model
 
+    def __repr__(self):
+        return '{0}(id={1})'.format(self.__class__.__name__, self._id)
+
 
 def _memoize_model_proxies(f):
     """
