@@ -67,6 +67,7 @@ Specs
     api
     publish_subscribe_v2
     vlan_aware_vms
+    fwaas
 
 Templates
 ---------
