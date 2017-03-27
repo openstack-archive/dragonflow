@@ -18,7 +18,6 @@ import time
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow._i18n import _LE, _LW
 from dragonflow.common import utils as df_utils
 
 LOG = log.getLogger(__name__)
@@ -121,8 +120,8 @@ class DBConsistencyManager(object):
             try:
                 self.handle_data_comparison(topics, handler, direct)
             except Exception as e:
-                LOG.exception(_LE("Exception occurred when"
-                              "handling db comparison: %s"), e)
+                LOG.exception("Exception occurred when"
+                              "handling db comparison: %s", e)
 
     def _verify_object(self, handler, action, df_object, local_object=None):
         """Verify the object status and judge whether to create/update/delete
@@ -170,7 +169,7 @@ class DBConsistencyManager(object):
             handler.handle_delete(obj_id)
             del handler.cache[obj_id]
         else:
-            LOG.warning(_LW('Unknown action %s in db consistent'), action)
+            LOG.warning('Unknown action %s in db consistent', action)
 
     def _compare_df_and_local_data(self, handler, topic, direct):
         """Compare specific resource type df objects and local objects
@@ -193,7 +192,7 @@ class DBConsistencyManager(object):
             df_version = _get_version(df_object)
 
             if df_version is None:
-                LOG.error(_LE("Version is None in df_object: %s"), df_object)
+                LOG.error("Version is None in df_object: %s", df_object)
                 continue
             local_object = local_object_map.pop(df_id, None)
             if local_object:
