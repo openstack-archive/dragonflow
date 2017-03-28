@@ -194,7 +194,7 @@ class _CommonBase(models.Base):
 
     @classmethod
     def dependencies(cls):
-        deps = []
+        deps = set()
         for key, field in cls.iterate_over_fields():
             if isinstance(field, fields.ListField):
                 types = field.items_types
@@ -203,11 +203,16 @@ class _CommonBase(models.Base):
 
             for field_type in types:
                 try:
-                    deps.append(field_type.get_proxied_model())
+                    deps.add(field_type.get_proxied_model())
                 except AttributeError:
-                    pass
+                    if issubclass(field_type, ModelBase):
+                        # If the field is not a reference, and it is a df
+                        # model(derived from ModelBase), we it is considered as
+                        # non-first class model. And its dependency
+                        # will be treated as current model's dependency.
+                        deps |= field_type.dependencies()
 
-        return set(deps)
+        return deps
 
 
 def _add_event_funcs(cls_, event):
