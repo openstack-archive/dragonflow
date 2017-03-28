@@ -71,7 +71,7 @@ class DbApi(object):
         :param topic:      topic for key
         :type topic:       string
         :returns:          string - the key value
-        :raises:           DragonflowException.DBKeyNotFound if key not found
+        :raises DragonflowException.DBKeyNotFound: if key not found
         """
 
     @abc.abstractmethod
@@ -87,7 +87,7 @@ class DbApi(object):
         :param topic:      topic for key
         :type topic:       string
         :returns:          None
-        :raises:           DragonflowException.DBKeyNotFound if key not found
+        :raises DragonflowException.DBKeyNotFound: if key not found
         """
 
     @abc.abstractmethod
@@ -116,7 +116,7 @@ class DbApi(object):
         :param topic:      topic for key
         :type topic:       string
         :returns:          None
-        :raises:           DragonflowException.DBKeyNotFound if key not found
+        :raises DragonflowException.DBKeyNotFound: if key not found
         """
 
     @abc.abstractmethod
@@ -128,7 +128,7 @@ class DbApi(object):
         :param topic:      get only entries matching this topic
         :type topic:       string
         :returns:          list of values
-        :raises:           DragonflowException.DBKeyNotFound if key not found
+        :raises DragonflowException.DBKeyNotFound: if key not found
         """
 
     @abc.abstractmethod
@@ -140,7 +140,7 @@ class DbApi(object):
         :param topic:      get all keys matching this topic
         :type topic:       string
         :returns:          list of keys
-        :raises:           DragonflowException.DBKeyNotFound if key not found
+        :raises DragonflowException.DBKeyNotFound: if key not found
         """
 
     @abc.abstractmethod

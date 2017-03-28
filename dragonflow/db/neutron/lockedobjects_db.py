@@ -204,7 +204,7 @@ def _lock_free_update(session, uuid, lock_state=False, session_id=0):
     :type lock_state:  boolean
     :param session_id: the API session ID to update
     :type session_id:  string
-    :raises:           RetryRequest() when the lock failed to update
+    :raises RetryRequest(): when the lock failed to update
     """
     if not lock_state:
         # acquire lock
