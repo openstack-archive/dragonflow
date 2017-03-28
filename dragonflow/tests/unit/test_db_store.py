@@ -496,3 +496,11 @@ class TestDbStore2(tests_base.BaseTestCase):
                 index=ModelTest.get_indexes()['listnested'],
             ),
         )
+
+    def test_store_clear(self):
+        o1 = ModelTest(id='id1', topic='topic')
+        self.db_store.update(o1)
+        self.assertIn(o1, self.db_store)
+
+        self.db_store.clear()
+        self.assertNotIn(o1, self.db_store)
