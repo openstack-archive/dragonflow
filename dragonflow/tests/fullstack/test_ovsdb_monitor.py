@@ -60,13 +60,6 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         else:
             return True
 
-    def _get_vm_port_by_mac_address(self, mac):
-        lports = self.nb_api.get_all_logical_ports()
-        for lport in lports:
-            if lport.get_mac() == mac:
-                return lport
-        return None
-
     def _get_wanted_vm_online(self, mac):
         while self.nb_api._queue.qsize() > 0:
             self.next_update = self.nb_api._queue.get()
@@ -131,7 +124,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             exception=Exception('Could not get wanted offline vm')
         )
         utils.wait_until_none(
-            lambda: self._get_vm_port_by_mac_address(mac),
+            lambda: utils.get_vm_port(self.nb_api, ip=None, mac=mac),
             timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT, sleep=1,
             exception=Exception('Port was not deleted')
         )
@@ -173,12 +166,12 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         vm1.close()
         vm2.close()
         utils.wait_until_none(
-            lambda: self._get_vm_port_by_mac_address(mac1),
+            lambda: utils.get_vm_port(self.nb_api, ip=None, mac=mac1),
             timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT, sleep=1,
             exception=Exception('Port was not deleted')
         )
         utils.wait_until_none(
-            lambda: self._get_vm_port_by_mac_address(mac2),
+            lambda: utils.get_vm_port(self.nb_api, ip=None, mac=mac2),
             timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT, sleep=1,
             exception=Exception('Port was not deleted')
         )
