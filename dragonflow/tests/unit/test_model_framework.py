@@ -123,6 +123,18 @@ class ListReffingModel(mf.ModelBase):
     ref2 = df_fields.ReferenceListField(ReffingModel)
 
 
+@mf.construct_nb_db_model
+class ReffingNonFirstClassModel(mf.ModelBase):
+    ref1 = df_fields.ReferenceField(ReffedModel)
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class ReffingModel3(mf.ModelBase):
+    table_name = 'ReffingModel3'
+    ref = fields.ListField(ReffingNonFirstClassModel)
+
+
 class TestModelFramework(tests_base.BaseTestCase):
     def test_lookup(self):
         self.assertEqual(ModelTest, mf.get_model('ModelTest'))
@@ -382,3 +394,10 @@ class TestModelFramework(tests_base.BaseTestCase):
                 table_name = 'a'
 
             self.assertRaises(RuntimeError, create_class)
+
+    def test_hierarchical_dependency(self):
+        sorted_models = mf.iter_models_by_dependency_order()
+        self.assertLess(
+            sorted_models.index(ReffedModel),
+            sorted_models.index(ReffingModel3)
+        )
