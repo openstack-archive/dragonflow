@@ -16,6 +16,7 @@ from neutron_lib.plugins import directory
 
 from dragonflow.db.models import qos
 from dragonflow.db.neutron import lockedobjects_db as lock_db
+from dragonflow.neutron.db.models import qos as n_qos
 
 
 class DFQosServiceNotificationDriver(
@@ -43,11 +44,7 @@ class DFQosServiceNotificationDriver(
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS)
     def create_policy(self, context, policy):
-        self.nb_api.create(qos.QosPolicy(id=policy['id'],
-                                         topic=policy['project_id'],
-                                         name=policy['name'],
-                                         rules=policy.get('rules', []),
-                                         version=policy['revision_number']))
+        self.nb_api.create(n_qos.qos_policy_from_neutron_qos_policy(policy))
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS)
     def update_policy(self, context, policy):
@@ -56,12 +53,8 @@ class DFQosServiceNotificationDriver(
         # in argument. Get the latest policy from neutron.
         policy_neutron = self._plugin.get_policy(context, policy_id)
 
-        self.nb_api.update(qos.QosPolicy(
-            id=policy_id,
-            topic=policy['project_id'],
-            name=policy['name'],
-            rules=policy_neutron['rules'],
-            version=policy_neutron['revision_number']))
+        self.nb_api.update(
+            n_qos.qos_policy_from_neutron_qos_policy(policy_neutron))
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS)
     def delete_policy(self, context, policy):
