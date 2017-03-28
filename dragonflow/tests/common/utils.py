@@ -82,6 +82,15 @@ def print_command(full_args, run_as_root=False):
     )))
 
 
+def get_vm_port(nb_api, ip, mac):
+    ports = nb_api.get_all_logical_ports()
+    for port in ports:
+        if port.is_vm_port():
+            if port.get_ip() == ip and port.get_mac() == mac:
+                return port
+    return None
+
+
 class OvsFlowsParser(object):
 
     def get_ovs_flows(self, integration_bridge):

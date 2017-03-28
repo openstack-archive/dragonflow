@@ -22,14 +22,6 @@ SNAT_APP_NAME = 'chassis_snat_app.ChassisSNATApp'
 class TestSnatFlows(test_base.DFTestBase):
     apps_list = SNAT_APP_NAME
 
-    def _get_vm_port(self, ip, mac):
-        ports = self.nb_api.get_all_logical_ports()
-        for port in ports:
-            if port.is_vm_port():
-                if port.get_ip() == ip and port.get_mac() == mac:
-                    return port
-        return None
-
     def _check_if_app_enabled(self):
         return SNAT_APP_NAME in cfg.CONF.df.apps_list
 
@@ -84,7 +76,7 @@ class TestSnatFlows(test_base.DFTestBase):
         self.assertIsNotNone(mac)
 
         port = utils.wait_until_is_and_return(
-            lambda: self._get_vm_port(ip, mac),
+            lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
         )
         port_key = port.get_unique_key()
