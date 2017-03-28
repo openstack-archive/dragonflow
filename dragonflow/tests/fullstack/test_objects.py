@@ -17,6 +17,7 @@ from neutron.agent.common import utils as agent_utils
 from neutronclient.common import exceptions
 from oslo_log import log
 
+from dragonflow.db.models import qos
 from dragonflow.tests.common import clients
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
@@ -524,7 +525,7 @@ class QosPolicyTestObj(object):
         self.closed = True
 
     def exists(self):
-        qospolicy = self.nb_api.get_qos_policy(self.policy_id)
+        qospolicy = self.nb_api.get(qos.QosPolicy(id=self.policy_id))
         if qospolicy:
             return True
         return False
