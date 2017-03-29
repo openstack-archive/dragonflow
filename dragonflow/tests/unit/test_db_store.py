@@ -297,6 +297,10 @@ class TestDbStore2(tests_base.BaseTestCase):
             (o2,),
             self.db_store.get_all_by_topic(ModelTest, topic='topic1'),
         )
+        self.assertItemsEqual(
+            (o1, o2, o3),
+            self.db_store.get_all_by_topic(ModelTest),
+        )
 
     def test_get_keys(self):
         self.db_store.update(ModelTest(id='id1', topic='topic'))
@@ -316,10 +320,13 @@ class TestDbStore2(tests_base.BaseTestCase):
             ('id1', 'id3'),
             self.db_store.get_keys_by_topic(ModelTest, topic='topic'),
         )
-
         self.assertItemsEqual(
             ('id2',),
             self.db_store.get_keys_by_topic(ModelTest, topic='topic1'),
+        )
+        self.assertItemsEqual(
+            ('id1', 'id2', 'id3'),
+            self.db_store.get_keys_by_topic(ModelTest),
         )
 
     def test_key_changed(self):
