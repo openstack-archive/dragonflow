@@ -126,6 +126,14 @@ class TestModelFramework(tests_base.BaseTestCase):
         self.assertEqual(ModelTest, mf.get_model('table1'))
         self.assertEqual(ModelTest, mf.get_model(ModelTest))
 
+    def test_model_hash(self):
+        model_test1 = ModelTest(id="1", field1='a', field2='b')
+        model_test2 = ModelTest(id="1", field1='a', field2='b')
+        model_test3 = ModelTest(id="3", field1='a', field2='b')
+        self.assertEqual(hash(model_test1), hash(model_test2))
+        self.assertNotEqual(hash(model_test1), hash(model_test3))
+        self.assertIn(model_test1, {model_test2, model_test3})
+
     def test_indexes_inheritance(self):
         self.assertEqual({'id': ('id',),
                           'index1': ('field1',),
