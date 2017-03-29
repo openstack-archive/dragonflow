@@ -21,9 +21,6 @@ from dragonflow.tests.fullstack import test_objects as objects
 
 class TestOVSFlowsForDHCP(test_base.DFTestBase):
 
-    def setUp(self):
-        super(TestOVSFlowsForDHCP, self).setUp()
-
     def get_dhcp_ip(self, network_id, subnet_id):
         ports = self.neutron.list_ports(network_id=network_id)
         ports = ports['ports']
