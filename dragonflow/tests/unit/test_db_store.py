@@ -18,6 +18,7 @@ from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db import field_types as df_fields
 from dragonflow.db import model_framework
+from dragonflow.db.models import mixins
 from dragonflow.tests import base as tests_base
 
 
@@ -216,9 +217,7 @@ class ReffedModel(model_framework.ModelBase):
         'listnested': 'sublist1.sublist2.name',
     },
 )
-class ModelTest(model_framework.ModelBase):
-    id = fields.StringField()
-    topic = fields.StringField()
+class ModelTest(model_framework.ModelBase, mixins.Topic):
     extra_field = fields.StringField()
     submodel1 = fields.EmbeddedField(NestedModel)
     ref1 = df_fields.ReferenceField(ReffedModel)
@@ -261,8 +260,8 @@ class TestDbStore2(tests_base.BaseTestCase):
         self.assertNotIn(o1, self.db_store)
 
     def test_get_all(self):
-        o1 = ModelTest(id='id1', topic='topic')
-        o2 = ModelTest(id='id2', topic='topic')
+        o1 = ModelTest(id='id1', topic='topic', extra_field='any1')
+        o2 = ModelTest(id='id2', topic='topic', extra_field='any2')
 
         self.db_store.update(o1)
         self.db_store.update(o2)
@@ -270,7 +269,7 @@ class TestDbStore2(tests_base.BaseTestCase):
         self.assertItemsEqual((o1, o2), self.db_store.get_all(ModelTest))
         self.assertItemsEqual(
             (o1, o2),
-            self.db_store.get_all(ModelTest(id=db_store2.ANY)),
+            self.db_store.get_all(ModelTest(extra_field=db_store2.ANY)),
         )
         self.assertItemsEqual(
             (o1,),
@@ -297,6 +296,10 @@ class TestDbStore2(tests_base.BaseTestCase):
             (o2,),
             self.db_store.get_all_by_topic(ModelTest, topic='topic1'),
         )
+        self.assertItemsEqual(
+            (o1, o2, o3),
+            self.db_store.get_all_by_topic(ModelTest),
+        )
 
     def test_get_keys(self):
         self.db_store.update(ModelTest(id='id1', topic='topic'))
@@ -316,10 +319,13 @@ class TestDbStore2(tests_base.BaseTestCase):
             ('id1', 'id3'),
             self.db_store.get_keys_by_topic(ModelTest, topic='topic'),
         )
-
         self.assertItemsEqual(
             ('id2',),
             self.db_store.get_keys_by_topic(ModelTest, topic='topic1'),
+        )
+        self.assertItemsEqual(
+            ('id1', 'id2', 'id3'),
+            self.db_store.get_keys_by_topic(ModelTest),
         )
 
     def test_key_changed(self):
@@ -340,6 +346,7 @@ class TestDbStore2(tests_base.BaseTestCase):
         self.db_store.update(
             ModelTest(
                 id='id1',
+                topic='topic',
                 submodel1=NestedModel(
                     submodel2=NestedNestedModel(
                         name='name1',
@@ -350,6 +357,7 @@ class TestDbStore2(tests_base.BaseTestCase):
         self.db_store.update(
             ModelTest(
                 id='id2',
+                topic='topic',
                 submodel1=NestedModel(
                     submodel2=NestedNestedModel(
                         name='name2',
@@ -388,9 +396,13 @@ class TestDbStore2(tests_base.BaseTestCase):
             return_value=self.db_store,
         ):
             self.db_store.update(ReffedModel(id='id1', name='name1'))
-            self.db_store.update(ModelTest(id='id2', ref1='id1'))
+            self.db_store.update(ModelTest(id='id2',
+                                           topic='topic',
+                                           ref1='id1'))
             self.db_store.update(ReffedModel(id='id3', name='name2'))
-            self.db_store.update(ModelTest(id='id4', ref1='id3'))
+            self.db_store.update(ModelTest(id='id4',
+                                           topic='topic',
+                                           ref1='id3'))
             self.assertItemsEqual(
                 ('id2',),
                 self.db_store.get_keys(
@@ -403,6 +415,7 @@ class TestDbStore2(tests_base.BaseTestCase):
         self.db_store.update(
             ModelTest(
                 id='id1',
+                topic='topic',
                 sublist1=[
                     NestedModel(
                         sublist2=[
@@ -422,6 +435,7 @@ class TestDbStore2(tests_base.BaseTestCase):
         self.db_store.update(
             ModelTest(
                 id='id2',
+                topic='topic',
                 sublist1=[
                     NestedModel(
                         sublist2=[
