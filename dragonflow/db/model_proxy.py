@@ -77,6 +77,12 @@ class _ModelProxyBase(object):
     def __repr__(self):
         return '{0}(id={1})'.format(self.__class__.__name__, self._id)
 
+    def __eq__(self, other):
+        return self._id == other.id
+
+    def __ne__(self, other):
+        return not self == other
+
 
 def _memoize_model_proxies(f):
     """

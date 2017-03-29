@@ -160,6 +160,9 @@ class _CommonBase(models.Base):
         else:
             super(_CommonBase, self).__delattr__(key)
 
+    def __hash__(self):
+        return hash(frozenset(self.to_struct().items()))
+
     def iterate_over_set_fields(self):
         for name, field in self:
             if name in self._set_fields:
