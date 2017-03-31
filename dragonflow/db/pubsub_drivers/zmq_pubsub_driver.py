@@ -64,12 +64,20 @@ class ZMQPubSubMultiproc(pub_sub_api.PubSubApi):
 class ZMQPublisherAgentBase(pub_sub_api.PublisherApi):
     def __init__(self):
         self.socket = None
+        self.context = None
 
     # Necessary, since it appears in the abstract class
     def initialize(self):
         super(ZMQPublisherAgentBase, self).initialize()
+        self._connect()
+
+    def _connect(self):
+        pass
 
     def send_event(self, update, topic=None):
+        if not self.socket:
+            self._connect()
+
         if topic:
             update.topic = topic
         elif update.topic:
@@ -79,7 +87,7 @@ class ZMQPublisherAgentBase(pub_sub_api.PublisherApi):
             update.topic = topic
         data = pub_sub_api.pack_message(update.to_dict())
         self.socket.send_multipart([topic, data])
-        LOG.debug("sending %s", update)
+        LOG.debug("Sending %s", update)
 
     def close(self):
         if self.socket:
@@ -95,40 +103,32 @@ class ZMQPublisherAgent(ZMQPublisherAgentBase):
             cfg.CONF.df.publisher_bind_address,
             cfg.CONF.df.publisher_port,
         )
-
-    def initialize(self):
-        super(ZMQPublisherAgent, self).initialize()
-        self._connect()
+        self.context = zmq.Context()
 
     def _connect(self):
-        context = zmq.Context()
-        self.socket = context.socket(zmq.PUB)
-        LOG.debug("about to bind to network socket: %s", self._endpoint)
+        self.socket = self.context.socket(zmq.PUB)
+        self.socket.setsockopt(zmq.LINGER, 0)
+        LOG.debug("About to bind to network socket: %s", self._endpoint)
         self.socket.bind(self._endpoint)
 
 
 class ZMQPublisherMultiprocAgent(ZMQPublisherAgentBase):
     def __init__(self):
         super(ZMQPublisherMultiprocAgent, self).__init__()
-        self.ipc_socket = cfg.CONF.df.publisher_multiproc_socket
+        self.context = zmq.Context()
 
     def _connect(self):
-        context = zmq.Context()
-        self.socket = context.socket(zmq.PUSH)
-        LOG.debug("about to connect to IPC socket: %s", self.ipc_socket)
-        self.socket.connect('ipc://%s' % self.ipc_socket)
-
-    def send_event(self, update, topic=None):
-        if not self.socket:
-            self._connect()
-        super(ZMQPublisherMultiprocAgent, self).send_event(update, topic)
+        self.socket = self.context.socket(zmq.PUSH)
+        ipc_socket = cfg.CONF.df.publisher_multiproc_socket
+        LOG.debug("About to connect to IPC socket: %s", ipc_socket)
+        self.socket.connect('ipc://%s' % ipc_socket)
 
 
 class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
-
     def __init__(self):
         super(ZMQSubscriberAgentBase, self).__init__()
         self.sub_socket = None
+        self.context = zmq.Context()
 
     def register_listen_address(self, uri):
         is_new = super(ZMQSubscriberAgentBase, self).register_listen_address(
@@ -158,7 +158,7 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
             self.sub_socket.setsockopt(zmq.UNSUBSCRIBE, topic)
 
     def run(self):
-        self.sub_socket = self.connect()
+        self.connect()
         LOG.info("Starting Subscriber on ports %(endpoints)s",
                  {'endpoints': self.uri_list})
         while True:
@@ -176,29 +176,25 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
             except Exception as e:
                 LOG.warning(e)
                 self.sub_socket.close()
-                self.sub_socket = self.connect()
+                self.connect()
                 self.db_changes_callback(None, None, 'sync',
                                          None, None)
 
 
 class ZMQSubscriberMultiprocAgent(ZMQSubscriberAgentBase):
     def connect(self):
-        context = zmq.Context()
-        inproc_server = context.socket(zmq.PULL)
+        self.sub_socket = self.context.socket(zmq.PULL)
         ipc_socket = cfg.CONF.df.publisher_multiproc_socket
-        LOG.debug("about to bind to IPC socket: %s", ipc_socket)
-        inproc_server.bind('ipc://%s' % ipc_socket)
-        return inproc_server
+        LOG.debug("About to bind to IPC socket: %s", ipc_socket)
+        self.sub_socket.bind('ipc://%s' % ipc_socket)
 
 
 class ZMQSubscriberAgent(ZMQSubscriberAgentBase):
     def connect(self):
-        context = zmq.Context()
-        socket = context.socket(zmq.SUB)
+        self.sub_socket = self.context.socket(zmq.SUB)
         for uri in self.uri_list:
             # TODO(gampel) handle exp zmq.EINVAL,zmq.EPROTONOSUPPORT
-            LOG.debug("about to connect to network publisher at %s", uri)
-            socket.connect(uri)
+            LOG.debug("About to connect to network publisher at %s", uri)
+            self.sub_socket.connect(uri)
         for topic in self.topic_list:
-            socket.setsockopt(zmq.SUBSCRIBE, topic)
-        return socket
+            self.sub_socket.setsockopt(zmq.SUBSCRIBE, topic)
