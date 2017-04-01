@@ -17,6 +17,7 @@ from neutron.agent.common import utils as agent_utils
 from neutronclient.common import exceptions
 from oslo_log import log
 
+from dragonflow.db.models import bgp
 from dragonflow.db.models import l2
 from dragonflow.db.models import qos
 from dragonflow.tests.common import clients
@@ -526,3 +527,74 @@ class QosPolicyTestObj(object):
         if qospolicy:
             return True
         return False
+
+
+class BGPPeerTestObj(object):
+    def __init__(self, neutron, nb_api):
+        self.peer_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.closed = False
+
+    def create(self, bgp_peer={'name': "peer1",
+                               'peer_ip': "172.24.4.100",
+                               'remote_as': 4321,
+                               'auth_type': 'none'}):
+        bgp_peer = self.neutron.create_bgp_peer({'bgp_peer': bgp_peer})
+        self.peer_id = bgp_peer['bgp_peer']['id']
+        return self.peer_id
+
+    def close(self):
+        if self.closed or self.peer_id is None:
+            return
+        self.neutron.delete_bgp_peer(self.peer_id)
+        self.closed = True
+
+    def exists(self):
+        bgp_peer = self.nb_api.get(bgp.BGPPeer(id=self.peer_id))
+        return bool(bgp_peer)
+
+
+class BGPSpeakerTestObj(object):
+    def __init__(self, neutron, nb_api):
+        self.speaker_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.closed = False
+
+    def create(self, bgp_speaker={'name': 'speaker1',
+                                  'local_as': 1234,
+                                  'ip_version': 4}):
+        bgp_speaker = self.neutron.create_bgp_speaker(
+            {'bgp_speaker': bgp_speaker})
+        self.speaker_id = bgp_speaker['bgp_speaker']['id']
+        return self.speaker_id
+
+    def add_peer(self, peer_id):
+        self.neutron.add_peer_to_bgp_speaker(self.speaker_id,
+                                             {'bgp_peer_id': peer_id})
+
+    def remove_peer(self, peer_id):
+        self.neutron.remove_peer_from_bgp_speaker(self.speaker_id,
+                                                  {'bgp_peer_id': peer_id})
+
+    def add_network(self, network_id):
+        self.neutron.add_network_to_bgp_speaker(self.speaker_id,
+                                                {'network_id': network_id})
+
+    def remove_network(self, network_id):
+        self.neutron.remove_network_from_bgp_speaker(
+            self.speaker_id, {'network_id': network_id})
+
+    def close(self):
+        if self.closed or self.speaker_id is None:
+            return
+        self.neutron.delete_bgp_speaker(self.speaker_id)
+        self.closed = True
+
+    def get_nb_bgp_speaker(self):
+        return self.nb_api.get(bgp.BGPSpeaker(id=self.speaker_id))
+
+    def exists(self):
+        bgp_speaker = self.nb_api.get(bgp.BGPSpeaker(id=self.speaker_id))
+        return bool(bgp_speaker)
