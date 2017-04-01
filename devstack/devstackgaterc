@@ -21,6 +21,8 @@ export OVERRIDE_ENABLED_SERVICES=key,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-ob
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_REDIS_PUBSUB=True"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_RUNNING_IN_GATE=True"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"SNAT_HOST_IP=172.24.4.100"
+export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin neutron-dynamic-routing http://git.openstack.org/openstack/neutron-dynamic-routing"
+export DEVSTACK_LOCAL_CONFIG+=$'\n'"DR_MODE=df-bgp"
 
 if [ -n "${DEVSTACK_GATE_TEMPEST}"] && [ ${DEVSTACK_GATE_TEMPEST} -gt 0 ]; then
     # Only include tempest if this is a tempest job

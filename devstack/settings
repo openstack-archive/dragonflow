@@ -19,6 +19,8 @@ METADATA_PROXY_SHARED_SECRET=${METADATA_PROXY_SHARED_SECRET:-"secret"}
 
 # df-bgp
 DF_BGP_SERVICE=${DF_BGP_SERVICE:-"$NEUTRON_BIN_DIR/df-bgp-service"}
+# This can be overridden in the localrc file
+DR_MODE=${DR_MODE:-df-bgp}
 
 DF_L2_RESPONDER=${DF_L2_RESPONDER:-'True'}
 
