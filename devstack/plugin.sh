@@ -175,6 +175,16 @@ function configure_qos {
     iniset $NEUTRON_CONF qos notification_drivers "$NOTIFICATION_DRIVER"
 }
 
+function configure_bgp {
+    setup_develop $DEST/neutron-dynamic-routing
+    sudo install -d -o $STACK_USER $NEUTRON_CONF_DIR/policy.d
+    cp -v $DEST/neutron-dynamic-routing/etc/neutron/policy.d/dynamic_routing.conf $NEUTRON_CONF_DIR/policy.d
+    _neutron_service_plugin_class_add df-bgp
+    # Since we are using a plugin outside neutron-dynamic-routing, we need to
+    # specify api_extensions_path explicitly.
+    iniset $NEUTRON_CONF DEFAULT api_extensions_path "$DEST/neutron-dynamic-routing/neutron_dynamic_routing/extensions"
+}
+
 function init_neutron_sample_config {
     # NOTE: We must make sure that neutron config file exists before
     # going further with ovs setup
@@ -200,6 +210,10 @@ function configure_df_plugin {
     if is_service_enabled q-svc ; then
         if is_service_enabled q-qos ; then
             configure_qos
+        fi
+
+        if [[ "$DR_MODE" == "df-bgp" ]]; then
+            configure_bgp
         fi
 
         # NOTE(gsagie) needed for tempest
