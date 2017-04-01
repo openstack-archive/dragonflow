@@ -592,3 +592,53 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertIsNotNone(lport)
         real_pairs = lport.get_allowed_address_pairs()
         self.assertItemsEqual(expected_pairs, real_pairs)
+
+    def test_create_delete_bgp_peer(self):
+        bgp_peer = self.store(
+            objects.BGPPeerTestObj(self.neutron, self.nb_api))
+        bgp_peer.create()
+        self.assertTrue(bgp_peer.exists())
+        bgp_peer.close()
+        self.assertFalse(bgp_peer.exists())
+
+    def test_create_delete_bgp_speaker(self):
+        bgp_speaker = self.store(
+            objects.BGPSpeakerTestObj(self.neutron, self.nb_api))
+        bgp_speaker.create()
+        self.assertTrue(bgp_speaker.exists())
+        bgp_speaker.close()
+        self.assertFalse(bgp_speaker.exists())
+
+    def test_add_remove_bgp_peer(self):
+        bgp_peer = self.store(
+            objects.BGPPeerTestObj(self.neutron, self.nb_api))
+        bgp_speaker = self.store(
+            objects.BGPSpeakerTestObj(self.neutron, self.nb_api))
+        bgp_peer.create()
+        bgp_speaker.create()
+        bgp_speaker.add_peer(bgp_peer.peer_id)
+        nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
+        peers = [peer.id for peer in nb_bgp_speaker.peers]
+        self.assertIn(bgp_peer.peer_id, peers)
+
+        bgp_speaker.remove_peer(bgp_peer.peer_id)
+        nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
+        peers = [peer.id for peer in nb_bgp_speaker.peers]
+        self.assertNotIn(bgp_peer.peer_id, nb_bgp_speaker.peers)
+
+    @lockutils.synchronized('need-external-net')
+    def test_add_remove_bgp_network(self):
+        bgp_peer = self.store(
+            objects.BGPPeerTestObj(self.neutron, self.nb_api))
+        bgp_speaker = self.store(
+            objects.BGPSpeakerTestObj(self.neutron, self.nb_api))
+        bgp_peer.create()
+        bgp_speaker.create()
+        with self._prepare_ext_net() as external_network_id:
+            bgp_speaker.add_network(external_network_id)
+            # TODO(xiaohhui): Verify the routes has been added to
+            # bgp speaker nb db data
+
+            bgp_speaker.remove_network(external_network_id)
+            nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
+            self.assertFalse(nb_bgp_speaker.routes)

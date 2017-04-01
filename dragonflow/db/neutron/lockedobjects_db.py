@@ -48,6 +48,8 @@ RESOURCE_FIP_UPDATE_OR_DELETE = 7
 RESOURCE_ROUTER_UPDATE_OR_DELETE = 8
 RESOURCE_QOS = 9
 RESOURCE_NEUTRON_LISTENER = 10
+RESOURCE_BGP_SPEAKER = 11
+RESOURCE_BGP_PEER = 12
 
 LOG = log.getLogger(__name__)
 
@@ -116,6 +118,10 @@ def _get_lock_id_by_resource_type(resource_type, *args, **kwargs):
         # The db model of lock is uuid of 36 chars, but the neutron listener
         # uses hostname as lock-id, so we need to truncate it.
         lock_id = args[0][1][:35]
+    elif RESOURCE_BGP_SPEAKER == resource_type:
+        lock_id = args[0][2]
+    elif RESOURCE_BGP_PEER == resource_type:
+        lock_id = args[0][2]
     else:
         raise df_exc.UnknownResourceException(resource_type=resource_type)
 
