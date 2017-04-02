@@ -41,7 +41,7 @@ def get_list_table_columns_and_formatters(fields, objs, exclude_fields=(),
              formatters is a dictionary specifies how to display the value
              of the field.
              They can be [], {}.
-    :raise: dragonflow.common.exceptions.CommandError.
+    :raise dragonflow.common.exceptions.CommandError:
     """
 
     if objs and isinstance(objs, list):
