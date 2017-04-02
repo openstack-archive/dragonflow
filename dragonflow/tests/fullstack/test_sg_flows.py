@@ -186,14 +186,6 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         self.assertTrue(ingress_permit_flow_check)
         self.assertTrue(egress_permit_flow_check)
 
-    def _get_vm_port(self, ip, mac):
-        ports = self.nb_api.get_all_logical_ports()
-        for port in ports:
-            if port.is_vm_port():
-                if port.get_ip() == ip and port.get_mac() == mac:
-                    return port
-        return None
-
     def test_default_flows(self):
         found_ingress_skip_flow = False
         found_egress_skip_flow = False
@@ -294,7 +286,7 @@ class TestOVSFlowsForSecurityGroup(test_base.DFTestBase):
         mac = addresses[0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
         port = utils.wait_until_is_and_return(
-            lambda: self._get_vm_port(ip, mac),
+            lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
         )
         unique_key = port.get_unique_key()
