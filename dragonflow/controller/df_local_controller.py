@@ -218,7 +218,7 @@ class DfLocalController(object):
         self._register_legacy_model_refreshers()
         self._register_legacy_model_consistency_handlers()
 
-        for model in model_framework.iter_models():
+        for model in model_framework.iter_models_by_dependency_order():
             # FIXME (dimak) do not register topicless models for now
             if issubclass(model, mixins.Topic):
                 df_db_objects_refresh.add_refresher(
