@@ -12,6 +12,7 @@
 from jsonmodels import fields
 import mock
 
+import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
 from dragonflow.db import model_proxy
 from dragonflow.tests import base as tests_base
@@ -27,6 +28,12 @@ class ModelTest2(mf.ModelBase):
     topic = fields.StringField()
 
 
+@mf.construct_nb_db_model
+class RefferingModel(mf.ModelBase):
+    model_test = df_fields.ReferenceField(ModelTest)
+    other_field = fields.StringField()
+
+
 ModelTestProxy = model_proxy.create_model_proxy(ModelTest)
 
 
@@ -40,6 +47,15 @@ class TestObjectProxy(tests_base.BaseTestCase):
         )
         self.addCleanup(self.get_inst_mock.stop)
         self.get_inst_mock.start()
+
+    def test_proxied_objects_equal(self):
+        obj1 = RefferingModel(id="id",
+                              model_test="model_id",
+                              other_field="other")
+        obj2 = RefferingModel(id="id",
+                              model_test="model_id",
+                              other_field="other")
+        self.assertEqual(obj1, obj2)
 
     def test_proxied_attrs(self):
         self.db_store2.get_one.return_value = ModelTest(
