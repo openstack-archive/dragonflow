@@ -19,13 +19,11 @@ from dragonflow.tests import base as tests_base
 
 @mf.construct_nb_db_model
 class ModelTest(mf.ModelBase):
-    id = fields.StringField()
     topic = fields.StringField()
 
 
 @mf.construct_nb_db_model
 class ModelTest2(mf.ModelBase):
-    id = fields.StringField()
     topic = fields.StringField()
 
 
