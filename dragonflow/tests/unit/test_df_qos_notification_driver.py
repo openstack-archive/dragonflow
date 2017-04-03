@@ -75,6 +75,7 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         qos_rule_obj = self.plugin.create_policy_rule(
             self.context, rule.QosBandwidthLimitRule,
             qos_obj['id'], {'bandwidth_limit_rule': qos_rule})
+        qos_rule_obj.pop('qos_policy_id', None)
         new_qos_obj = self.plugin.get_policy(self.context, qos_obj['id'])
         self.assertGreater(new_qos_obj['revision_number'],
                            qos_obj['revision_number'])
