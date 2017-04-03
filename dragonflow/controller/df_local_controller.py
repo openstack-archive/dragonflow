@@ -256,6 +256,7 @@ class DfLocalController(object):
             # all resources will be treated as new resource, and thus be
             # applied to local.
             self.db_store.clear()
+            self.db_store2.clear()
         while True:
             time.sleep(1)
             self.run_db_poll()
