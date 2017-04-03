@@ -55,6 +55,11 @@ class PubSubTestBase(test_base.DFTestBase):
                               bind_address, group='df')
         return self._get_publisher(cfg.CONF.df.pub_sub_driver)
 
+    def stop_publisher(self, publisher):
+        if publisher:
+            publisher.close()
+            publisher = None
+
     def get_subscriber(self, callback):
         pub_sub_driver = df_utils.load_driver(
             cfg.CONF.df.pub_sub_driver,
@@ -210,6 +215,7 @@ class TestPubSub(PubSubTestBase):
 
         self.assertEqual(local_events_num + 100, ns.events_num)
         subscriber.stop()
+        self.stop_publisher(publisher)
 
     def test_pub_sub_add_topic(self):
         if not self.do_test:
@@ -255,6 +261,7 @@ class TestPubSub(PubSubTestBase):
         publisher.send_event(update, topic)
         self.assertIsNone(self.events_action_t)
         subscriber.stop()
+        self.stop_publisher(publisher)
 
     def test_pub_sub_register_addr(self):
         if not self.do_test:
@@ -297,6 +304,9 @@ class TestPubSub(PubSubTestBase):
         publisher2.send_event(update)
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertEqual(ns.events_action, action)
+        subscriber.stop()
+        self.stop_publisher(publisher)
+        self.stop_publisher(publisher2)
 
 
 class TestMultiprocPubSub(PubSubTestBase):
@@ -312,11 +322,13 @@ class TestMultiprocPubSub(PubSubTestBase):
             "TestMultiprocPubSub value",
             topic=db_common.SEND_ALL_TOPIC,
         )
+        self.publisher = None
         self.subscriber = None
 
     def tearDown(self):
         if self.subscriber:
             self.subscriber.stop()
+        self.stop_publisher(self.publisher)
         super(TestMultiprocPubSub, self).tearDown()
 
     def _verify_event(self, table, key, action, value, topic):
@@ -344,8 +356,6 @@ class TestMultiprocPubSub(PubSubTestBase):
         self.subscriber.daemonize()
         publisher.send_event(self.event)
         test_utils.wait_until_true(lambda: self.event_received)
-        self.subscriber.stop()
-        self.subscriber = None
 
 
 class TestDbTableMonitors(PubSubTestBase):
@@ -367,6 +377,7 @@ class TestDbTableMonitors(PubSubTestBase):
         if self.do_test:
             self.monitor.stop()
             self.subscriber.stop()
+        self.stop_publisher(self.publisher)
         super(TestDbTableMonitors, self).tearDown()
 
     def _db_change_callback(self, table, key, action, value, topic):
