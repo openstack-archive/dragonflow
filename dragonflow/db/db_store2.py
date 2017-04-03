@@ -247,16 +247,22 @@ class DbStore2(object):
         return self.get_one(elem) == elem
 
     def get_all_by_topic(self, model, topic=None):
-        return self.get_all(
-            model(topic=topic),
-            index=model.get_indexes()['topic'],
-        )
+        if topic:
+            return self.get_all(
+                model(topic=topic),
+                index=model.get_indexes()['topic'],
+            )
+
+        return self.get_all(model)
 
     def get_keys_by_topic(self, model, topic=None):
-        return self.get_keys(
-            model(topic=topic),
-            index=model.get_indexes()['topic'],
-        )
+        if topic:
+            return self.get_keys(
+                model(topic=topic),
+                index=model.get_indexes()['topic'],
+            )
+
+        return self.get_keys(model)
 
     def clear(self):
         self._cache = {}
