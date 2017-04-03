@@ -88,7 +88,6 @@ class ModelWithIndexesMixin(ModelTestWithIndexes, IndexesMixin):
     pass
 
 
-@mf.register_model
 @mf.construct_nb_db_model
 class EmbeddingModel(mf.ModelBase):
     field1 = fields.StringField()
@@ -98,18 +97,21 @@ class EmbeddingModel(mf.ModelBase):
 @mf.register_model
 @mf.construct_nb_db_model
 class ReffedModel(mf.ModelBase):
+    table_name = 'ReffedModel'
     pass
 
 
 @mf.register_model
 @mf.construct_nb_db_model
 class ReffingModel(mf.ModelBase):
+    table_name = 'ReffingModel'
     ref1 = df_fields.ReferenceField(ReffedModel)
 
 
 @mf.register_model
 @mf.construct_nb_db_model
 class ReffingModel2(mf.ModelBase):
+    table_name = 'ReffingModel2'
     ref1 = df_fields.ReferenceField(ReffedModel)
     ref2 = df_fields.ReferenceField(ReffingModel)
 
@@ -117,6 +119,7 @@ class ReffingModel2(mf.ModelBase):
 @mf.register_model
 @mf.construct_nb_db_model
 class ListReffingModel(mf.ModelBase):
+    table_name = 'ListReffingModel'
     ref2 = df_fields.ReferenceListField(ReffingModel)
 
 
@@ -315,16 +318,19 @@ class TestModelFramework(tests_base.BaseTestCase):
             @mf.register_model
             @mf.construct_nb_db_model
             class LoopModel1(mf.ModelBase):
+                table_name = '1'
                 link = df_fields.ReferenceField('LoopModel2')
 
             @mf.register_model
             @mf.construct_nb_db_model
             class LoopModel2(mf.ModelBase):
+                table_name = '2'
                 link = df_fields.ReferenceField('LoopModel3')
 
             @mf.register_model
             @mf.construct_nb_db_model
             class LoopModel3(mf.ModelBase):
+                table_name = '3'
                 link = df_fields.ReferenceField(LoopModel1)
 
             self.assertRaises(

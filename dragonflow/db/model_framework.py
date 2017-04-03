@@ -209,6 +209,10 @@ class _CommonBase(models.Base):
 
         return set(deps)
 
+    @classmethod
+    def is_first_class(cls):
+        return hasattr(cls, 'table_name')
+
 
 def _add_event_funcs(cls_, event):
     @classmethod
@@ -306,12 +310,26 @@ def register_model(cls):
     '''
     _registered_models.add(cls)
     _lookup_by_class_name[cls.__name__] = cls
-    try:
-        _lookup_by_table_name[cls.table_name] = cls
-    except AttributeError:
-        pass
-    finally:
-        return cls
+
+    if not cls.is_first_class():
+        raise ValueError(
+            _('Non first-class {0} model cannot be registered').format(
+                cls.__name__,
+            ),
+        )
+
+    if cls.table_name in _lookup_by_table_name:
+        raise ValueError(
+            _('Cannot register {0} to table {1}, '
+              'already occupied by {2}').format(
+                  cls.__name__,
+                  cls.table_name,
+                  _lookup_by_table_name[cls.table_name].__name__,
+            ),
+        )
+    _lookup_by_table_name[cls.table_name] = cls
+
+    return cls
 
 
 def get_model(arg):
@@ -344,9 +362,8 @@ def iter_models():
 
 def iter_tables():
     '''Iterate over all table names any of the models define'''
-    for model in iter_models():
-        if hasattr(model, 'table_name'):
-            yield model.table_name
+    for key in _lookup_by_table_name:
+        yield key
 
 
 def iter_models_by_dependency_order():
