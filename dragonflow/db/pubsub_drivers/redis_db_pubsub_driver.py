@@ -59,8 +59,9 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
 
     def close(self):
         if self.remote:
-            self.client.client_kill(self.remote)
+            self.client.connection_pool.disconnect()
         self.client = None
+        self.remote = None
 
     def _update_client(self):
         if self.redis_mgt is not None:
