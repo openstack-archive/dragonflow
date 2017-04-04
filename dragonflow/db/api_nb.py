@@ -158,7 +158,7 @@ class NbApi(object):
         return self.driver.support_publish_subscribe()
 
     def _send_db_change_event(self, table, key, action, value, topic):
-        if not self.use_pubsub:
+        if not self.use_pubsub or not self.is_neutron_server:
             return
 
         if not self.enable_selective_topo_dist or topic is None:
