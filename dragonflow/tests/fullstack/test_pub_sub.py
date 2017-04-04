@@ -50,8 +50,9 @@ class PubSubTestBase(test_base.DFTestBase):
         return self._get_publisher(pubsub_driver_name)
 
     def get_server_publisher(self, bind_address="127.0.0.1", port=12345):
-        cfg.CONF.df.publisher_port = str(port)
-        cfg.CONF.df.publisher_bind_address = bind_address
+        cfg.CONF.set_override('publisher_port', port, group='df')
+        cfg.CONF.set_override('publisher_bind_address',
+                              bind_address, group='df')
         return self._get_publisher(cfg.CONF.df.pub_sub_driver)
 
     def get_subscriber(self, callback):
@@ -331,7 +332,8 @@ class TestMultiprocPubSub(PubSubTestBase):
         if not self.do_test:
             return
         self.event_received = False
-        cfg.CONF.df.publisher_multiproc_socket = '/tmp/ipc_test_socket'
+        cfg.CONF.set_override('publisher_multiproc_socket',
+                              '/tmp/ipc_test_socket', group='df')
         pub_sub_driver = df_utils.load_driver(
             cfg.CONF.df.pub_sub_multiproc_driver,
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
