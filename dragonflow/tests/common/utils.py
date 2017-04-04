@@ -14,6 +14,7 @@ import re
 
 from neutron.agent.common import utils as agent_utils
 from neutron.common import utils as n_utils
+from neutron_lib import constants as n_const
 import six
 
 from dragonflow.common import exceptions
@@ -92,6 +93,14 @@ def get_vm_port(nb_api, ip=None, mac=None):
                 continue
             return port
     return None
+
+
+def ip_version_to_ethertype(ip_version):
+    if ip_version == n_const.IP_VERSION_4:
+        return n_const.IPv4
+    if ip_version == n_const.IP_VERSION_6:
+        return n_const.IPv6
+    raise exceptions.InvalidEtherTypeException(ethertype=ip_version)
 
 
 class OvsFlowsParser(object):
