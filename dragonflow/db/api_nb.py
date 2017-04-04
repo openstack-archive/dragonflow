@@ -849,7 +849,7 @@ class NbApi(object):
                 active_port_json))
         return res
 
-    def create(self, obj):
+    def create(self, obj, skip_send_event=False):
         """Create the provided object in the database and publish an event
            about its creation.
         """
@@ -859,10 +859,11 @@ class NbApi(object):
         topic = _get_topic(obj)
         self.driver.create_key(model.table_name, obj.id,
                                serialized_obj, topic)
-        self._send_db_change_event(model.table_name, obj.id, 'create',
-                                   serialized_obj, topic)
+        if not skip_send_event:
+            self._send_db_change_event(model.table_name, obj.id, 'create',
+                                       serialized_obj, topic)
 
-    def update(self, obj):
+    def update(self, obj, skip_send_event=False):
         """Update the provided object in the database and publish an event
            about the change.
 
@@ -887,10 +888,11 @@ class NbApi(object):
 
         self.driver.set_key(model.table_name, full_obj.id,
                             serialized_obj, topic)
-        self._send_db_change_event(model.table_name, full_obj.id, 'set',
-                                   serialized_obj, topic)
+        if not skip_send_event:
+            self._send_db_change_event(model.table_name, full_obj.id, 'set',
+                                       serialized_obj, topic)
 
-    def delete(self, obj):
+    def delete(self, obj, skip_send_event=False):
         """Delete the provided object from the database and publish the event
            about its deletion.
 
@@ -908,8 +910,9 @@ class NbApi(object):
                     'Could not find object %(id)s to delete in %(table)s',
                     extra={'id': id, 'table': model.table_name})
 
-        self._send_db_change_event(model.table_name, obj.id, 'delete',
-                                   obj.id, topic)
+        if skip_send_event:
+            self._send_db_change_event(model.table_name, obj.id, 'delete',
+                                       obj.id, topic)
 
     def get(self, lean_obj):
         """Retrieve a model instance from the database. This function uses
