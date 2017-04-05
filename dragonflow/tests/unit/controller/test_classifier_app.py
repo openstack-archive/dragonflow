@@ -12,21 +12,23 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from dragonflow.controller.common import constants as const
-from dragonflow.tests.unit import test_app_base
+
 import mock
 
-make_fake_local_port = test_app_base.make_fake_local_port
-make_fake_logic_switch = test_app_base.make_fake_logic_switch
+from dragonflow.controller.common import constants as const
+from dragonflow.tests.unit.controller import app_test_base
+
+make_fake_local_port = app_test_base.make_fake_local_port
+make_fake_logic_switch = app_test_base.make_fake_logic_switch
 
 
-class TestClassifierApp(test_app_base.DFAppTestBase):
+class TestClassifierApp(app_test_base.DFAppTestBase):
     apps_list = "classifier_app.ClassifierApp"
 
     def setUp(self):
         super(TestClassifierApp, self).setUp()
         fake_vlan_switch1 = make_fake_logic_switch(
-                subnets=test_app_base.fake_lswitch_default_subnets,
+                subnets=app_test_base.fake_lswitch_default_subnets,
                 network_type='vlan',
                 id='fake_vlan_switch1', mtu=1500,
                 router_external=False, segmentation_id=41,

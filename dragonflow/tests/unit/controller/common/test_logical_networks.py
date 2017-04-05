@@ -14,7 +14,7 @@
 
 from dragonflow.controller.common import logical_networks
 from dragonflow.tests import base as tests_base
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import app_test_base
 
 
 class TestLogicalNetworks(tests_base.BaseTestCase):
@@ -23,7 +23,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
         self.logical_networks = logical_networks.LogicalNetworks()
 
     def test_add_remove_local_port(self):
-        fake_local_vlan_port1 = test_app_base.make_fake_local_port(
+        fake_local_vlan_port1 = app_test_base.make_fake_local_port(
                 network_type='vlan',
                 name='fake_local_vlan_port1',
                 unique_key=3,
@@ -38,7 +38,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 network_id=1,
                 network_type='vlan')
         self.assertEqual(1, net_1_vlan_ports)
-        fake_local_vlan_port2 = test_app_base.make_fake_local_port(
+        fake_local_vlan_port2 = app_test_base.make_fake_local_port(
                 network_type='vlan',
                 name='fake_local_vlan_port2',
                 unique_key=4,
@@ -57,7 +57,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 network_id=2,
                 network_type='gre')
         self.assertEqual(0, net_2_gre_ports)
-        fake_local_gre_port1 = test_app_base.make_fake_local_port(
+        fake_local_gre_port1 = app_test_base.make_fake_local_port(
                 network_type='gre',
                 lswitch='fake_gre_switch1',
                 name='fake_local_gre_port1',
@@ -82,7 +82,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
         self.assertEqual(0, net_2_gre_ports)
 
     def test_add_remove_remote_port(self):
-        fake_remote_vlan_port1 = test_app_base.make_fake_remote_port(
+        fake_remote_vlan_port1 = app_test_base.make_fake_remote_port(
                 network_type='vlan',
                 name='fake_remote_vlan_port1',
                 unique_key=30,
@@ -97,7 +97,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 network_id=1,
                 network_type='vlan')
         self.assertEqual(1, net_1_vlan_ports)
-        fake_remote_vlan_port2 = test_app_base.make_fake_remote_port(
+        fake_remote_vlan_port2 = app_test_base.make_fake_remote_port(
                 network_type='vlan',
                 name='fake_remote_vlan_port2',
                 unique_key=4,
@@ -116,7 +116,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
                 network_id=2,
                 network_type='gre')
         self.assertEqual(0, net_2_gre_ports)
-        fake_local_gre_port1 = test_app_base.make_fake_remote_port(
+        fake_local_gre_port1 = app_test_base.make_fake_remote_port(
                 network_type='gre',
                 lswitch='fake_gre_switch1',
                 name='fake_remote_gre_port1',

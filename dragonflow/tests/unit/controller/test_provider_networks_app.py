@@ -14,21 +14,21 @@
 #    under the License.
 
 from dragonflow.controller.common import constants as const
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import app_test_base
 
 
-make_fake_local_port = test_app_base.make_fake_local_port
-make_fake_logic_switch = test_app_base.make_fake_logic_switch
-make_fake_remote_port = test_app_base.make_fake_remote_port
+make_fake_local_port = app_test_base.make_fake_local_port
+make_fake_logic_switch = app_test_base.make_fake_logic_switch
+make_fake_remote_port = app_test_base.make_fake_remote_port
 
 
-class TestProviderNetsApp(test_app_base.DFAppTestBase):
+class TestProviderNetsApp(app_test_base.DFAppTestBase):
     apps_list = "provider_networks_app.ProviderNetworksApp"
 
     def setUp(self):
         super(TestProviderNetsApp, self).setUp()
         fake_vlan_switch1 = make_fake_logic_switch(
-                subnets=test_app_base.fake_lswitch_default_subnets,
+                subnets=app_test_base.fake_lswitch_default_subnets,
                 network_type='vlan',
                 id='fake_vlan_switch1',
                 mtu=1454,

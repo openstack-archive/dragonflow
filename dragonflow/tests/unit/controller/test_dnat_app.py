@@ -15,10 +15,10 @@
 
 import mock
 
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import app_test_base
 
 
-class TestDNATApp(test_app_base.DFAppTestBase):
+class TestDNATApp(app_test_base.DFAppTestBase):
     apps_list = "dnat_app.DNATApp"
 
     def setUp(self):
@@ -28,8 +28,8 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
     def test_external_bridge_online(self):
         self.dnat_app.local_floatingips[
-            test_app_base.fake_floatingip1.get_id()] = (
-                test_app_base.fake_floatingip1)
+            app_test_base.fake_floatingip1.get_id()] = (
+                app_test_base.fake_floatingip1)
 
         with mock.patch.object(self.dnat_app,
                                '_install_dnat_egress_rules') as mock_func:
@@ -55,7 +55,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             fake_ovs_port.get_name = mock.Mock(
                 return_value=self.dnat_app.external_network_bridge)
             self.controller.ovs_port_updated(fake_ovs_port)
-            mock_func.assert_called_once_with(test_app_base.fake_floatingip1,
+            mock_func.assert_called_once_with(app_test_base.fake_floatingip1,
                                               "aa:bb:cc:dd:ee:ff")
             mock_func.reset_mock()
 
@@ -64,10 +64,10 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             mock_func.assert_not_called()
 
     def test_delete_port_with_deleted_floatingip(self):
-        self.controller.update_lport(test_app_base.fake_local_port1)
-        self.controller.update_floatingip(test_app_base.fake_floatingip1)
+        self.controller.update_lport(app_test_base.fake_local_port1)
+        self.controller.update_floatingip(app_test_base.fake_floatingip1)
         self.controller.delete_floatingip(
-            test_app_base.fake_floatingip1.get_id())
+            app_test_base.fake_floatingip1.get_id())
 
         self.assertFalse(self.dnat_app.local_floatingips)
 
@@ -75,21 +75,22 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             self.dnat_app,
             'delete_floatingip',
         ) as mock_func:
-            self.dnat_app.remove_local_port(test_app_base.fake_local_port1)
+            self.dnat_app.remove_local_port(app_test_base.fake_local_port1)
             mock_func.assert_not_called()
 
     def test_floatingip_removed_only_once(self):
-        self.controller.update_lport(test_app_base.fake_local_port1)
-        self.controller.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
-        self.controller.update_floatingip(test_app_base.fake_floatingip1)
+        self.controller.update_lport(app_test_base.fake_local_port1)
+        self.controller.topology.ovs_port_updated(
+            app_test_base.fake_ovs_port1)
+        self.controller.update_floatingip(app_test_base.fake_floatingip1)
         self.controller.delete_floatingip(
-            test_app_base.fake_floatingip1.get_id())
+            app_test_base.fake_floatingip1.get_id())
         self.controller.delete_lport(
-            test_app_base.fake_local_port1.get_id())
+            app_test_base.fake_local_port1.get_id())
         with mock.patch.object(
             self.controller,
             'delete_floatingip'
         ) as mock_func:
             self.controller.topology.ovs_port_deleted(
-                test_app_base.fake_ovs_port1.get_id())
+                app_test_base.fake_ovs_port1.get_id())
             mock_func.assert_not_called()

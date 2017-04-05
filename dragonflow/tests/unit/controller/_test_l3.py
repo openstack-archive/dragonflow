@@ -16,7 +16,7 @@ import mock
 from ryu.lib.packet import icmp
 
 from dragonflow.controller.common import constants as const
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import app_test_base
 
 
 class L3AppTestCaseMixin(object):
@@ -66,7 +66,7 @@ class L3AppTestCaseMixin(object):
         # 5 mod flows, l2 -> l3, arp, icmp, router interface and route.
         self.assertEqual(5, self.app.mod_flow.call_count)
         self.app._delete_subnet_send_to_snat.assert_called_once_with(
-            test_app_base.fake_logic_switch1.get_unique_key(),
+            app_test_base.fake_logic_switch1.get_unique_key(),
             self.router.get_ports()[0].get_mac(),
         )
 
@@ -77,7 +77,7 @@ class L3AppTestCaseMixin(object):
         args, kwargs = self.app.mod_flow.call_args
         self.assertEqual(const.L3_LOOKUP_TABLE, kwargs['table_id'])
         self.app._add_subnet_send_to_snat.assert_called_once_with(
-            test_app_base.fake_logic_switch1.get_unique_key(),
+            app_test_base.fake_logic_switch1.get_unique_key(),
             self.router.get_ports()[0].get_mac(),
             self.router.get_ports()[0].get_unique_key()
         )
@@ -125,7 +125,7 @@ class L3AppTestCaseMixin(object):
                                               mock.ANY, pkt=fake_pkt)
 
     def test_add_del_router_route_after_lport(self):
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update_lport(app_test_base.fake_local_port1)
         self.app.mod_flow.reset_mock()
 
         # add route
@@ -154,7 +154,7 @@ class L3AppTestCaseMixin(object):
                    "nexthop": "10.0.0.106"},
                   {"destination": "10.101.0.0/16",
                    "nexthop": "10.0.0.106"}]
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update_lport(app_test_base.fake_local_port1)
         self.app.mod_flow.reset_mock()
         router_with_route = copy.deepcopy(self.router)
         router_with_route.inner_obj['routes'] = routes

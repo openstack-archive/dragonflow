@@ -15,10 +15,10 @@
 
 import mock
 
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import app_test_base
 
 
-class TestMetadataServiceApp(test_app_base.DFAppTestBase):
+class TestMetadataServiceApp(app_test_base.DFAppTestBase):
     apps_list = "metadata_service_app.MetadataServiceApp"
 
     def setUp(self):

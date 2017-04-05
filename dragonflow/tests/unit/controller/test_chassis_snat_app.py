@@ -17,10 +17,10 @@ import mock
 from oslo_config import cfg
 
 from dragonflow.controller.common import constants
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import app_test_base
 
 
-class TestChassisSNATApp(test_app_base.DFAppTestBase):
+class TestChassisSNATApp(app_test_base.DFAppTestBase):
     apps_list = "chassis_snat_app.ChassisSNATApp"
     external_host_ip = '172.24.4.100'
 
@@ -67,7 +67,7 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
                    match=mock.ANY)])
 
     def test_add_local_port(self):
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update_lport(app_test_base.fake_local_port1)
 
         self.SNAT_app.mod_flow.assert_has_calls(
             [mock.call(
@@ -78,7 +78,7 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
 
     def test_remove_local_port(self):
         self.controller.open_flow_app.notify_remove_local_port(
-            test_app_base.fake_local_port1)
+            app_test_base.fake_local_port1)
 
         self.SNAT_app.mod_flow.assert_has_calls(
             [mock.call(

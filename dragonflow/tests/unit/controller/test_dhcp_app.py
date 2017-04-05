@@ -21,7 +21,7 @@ from ryu.lib import addrconv
 from ryu.lib.packet import dhcp
 
 from dragonflow.controller.common import constants as const
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import app_test_base
 
 
 class Option(object):
@@ -30,7 +30,7 @@ class Option(object):
         self.value = value
 
 
-class TestDHCPApp(test_app_base.DFAppTestBase):
+class TestDHCPApp(app_test_base.DFAppTestBase):
     apps_list = "dhcp_app.DHCPApp"
 
     def setUp(self):
@@ -40,21 +40,21 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
     def test_host_route_include_metadata_route(self):
         cfg.CONF.set_override('df_add_link_local_route', True,
                               group='df_dhcp_app')
-        subnet = test_app_base.fake_logic_switch1.get_subnets()[0]
+        subnet = app_test_base.fake_logic_switch1.get_subnets()[0]
         host_route_bin = self.app._get_host_routes_list_bin(
-            subnet, test_app_base.fake_local_port1)
+            subnet, app_test_base.fake_local_port1)
         self.assertIn(addrconv.ipv4.text_to_bin(const.METADATA_SERVICE_IP),
                       host_route_bin)
 
     def test_update_dhcp_subnet_redownload_dhcp_flow(self):
-        fake_lswitch = copy.deepcopy(test_app_base.fake_logic_switch1)
+        fake_lswitch = copy.deepcopy(app_test_base.fake_logic_switch1)
         fake_lswitch.inner_obj['subnets'][0]['enable_dhcp'] = False
         fake_lswitch.inner_obj['subnets'][0]['dhcp_ip'] = None
         # Bump the version to pass the version check
         fake_lswitch.inner_obj['version'] += 1
         self.app._install_dhcp_flow_for_vm_port = mock.Mock()
         self.controller.update_lswitch(fake_lswitch)
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update_lport(app_test_base.fake_local_port1)
         self.assertFalse(self.app._install_dhcp_flow_for_vm_port.called)
 
         fake_lswitch1 = copy.deepcopy(fake_lswitch)
@@ -66,9 +66,9 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.assertTrue(self.app._install_dhcp_flow_for_vm_port.called)
 
     def test_update_dhcp_ip_subnet_redownload_dhcp_unicast_flow(self):
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update_lport(app_test_base.fake_local_port1)
 
-        fake_lswitch = copy.deepcopy(test_app_base.fake_logic_switch1)
+        fake_lswitch = copy.deepcopy(app_test_base.fake_logic_switch1)
         fake_lswitch.inner_obj['subnets'][0]['dhcp_ip'] = "10.0.0.100"
         # Bump the version to pass the version check
         fake_lswitch.inner_obj['version'] += 1
@@ -78,14 +78,14 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.controller.update_lswitch(fake_lswitch)
         self.assertFalse(self.app._install_dhcp_flow_for_vm_in_subnet.called)
         self.app._install_dhcp_unicast_match_flow.assert_called_once_with(
-            '10.0.0.100', test_app_base.fake_logic_switch1.get_unique_key())
+            '10.0.0.100', app_test_base.fake_logic_switch1.get_unique_key())
         self.app._remove_dhcp_unicast_match_flow.assert_called_once_with(
-            test_app_base.fake_logic_switch1.get_unique_key(), '10.0.0.2')
+            app_test_base.fake_logic_switch1.get_unique_key(), '10.0.0.2')
 
     def test__get_lswitch_by_port(self):
-        lport = test_app_base.fake_local_port1
+        lport = app_test_base.fake_local_port1
         l_switch_id = lport.get_lswitch_id()
-        fake_lswitch = test_app_base.fake_logic_switch1
+        fake_lswitch = app_test_base.fake_logic_switch1
         self.app.db_store.set_lswitch(l_switch_id, fake_lswitch)
         lswitch = self.app._get_lswitch_by_port(lport)
         self.assertEqual(fake_lswitch, lswitch)
@@ -105,8 +105,8 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.assertIsNone(opt_value2)
 
     def test__get_subnet_by_port(self):
-        fake_lport = copy.deepcopy(test_app_base.fake_local_port1)
-        fake_lport_subnet = test_app_base.fake_logic_switch1.get_subnets()[0]
+        fake_lport = copy.deepcopy(app_test_base.fake_local_port1)
+        fake_lport_subnet = app_test_base.fake_logic_switch1.get_subnets()[0]
         subnet = self.app._get_subnet_by_port(fake_lport)
         self.assertEqual(fake_lport_subnet, subnet)
 
@@ -116,7 +116,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.assertIsNone(subnet)
 
     def test_remove_local_port(self):
-        fake_lport = copy.deepcopy(test_app_base.fake_local_port1)
+        fake_lport = copy.deepcopy(app_test_base.fake_local_port1)
         fake_lport.inner_obj['ips'] = ['ThisIsNotAValidIP']
         self.controller.update_lport(fake_lport)
         subnet = fake_lport.get_subnets()[0]
@@ -134,21 +134,21 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.app._uninstall_dhcp_flow_for_vm_port.assert_called_once()
 
     def test_remove_logical_switch(self):
-        fake_lswitch = test_app_base.fake_logic_switch1
+        fake_lswitch = app_test_base.fake_logic_switch1
         network_id = fake_lswitch.get_unique_key()
         self.app._remove_dhcp_unicast_match_flow = mock.Mock()
         self.app.remove_logical_switch(fake_lswitch)
         self.assertNotIn(network_id, self.app.switch_dhcp_ip_map)
 
     def test_host_route_include_port_dhcp_opt_121(self):
-        subnet = test_app_base.fake_logic_switch1.get_subnets()[0]
+        subnet = app_test_base.fake_logic_switch1.get_subnets()[0]
         host_route_bin = self.app._get_host_routes_list_bin(
-            subnet, test_app_base.fake_local_port1)
+            subnet, app_test_base.fake_local_port1)
         self.assertIn(addrconv.ipv4.text_to_bin('10.0.0.1'), host_route_bin)
 
     def test_gateway_include_port_dhcp_opt_3(self):
-        subnet = copy.copy(test_app_base.fake_logic_switch1.get_subnets()[0])
+        subnet = copy.copy(app_test_base.fake_logic_switch1.get_subnets()[0])
         subnet.inner_obj['gateway_ip'] = ''
         gateway_ip = self.app._get_port_gateway_address(
-            subnet, test_app_base.fake_local_port1)
+            subnet, app_test_base.fake_local_port1)
         self.assertEqual('10.0.0.1', str(gateway_ip))

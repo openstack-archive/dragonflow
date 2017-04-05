@@ -17,18 +17,18 @@ import copy
 
 import mock
 
-from dragonflow.tests.unit import _test_l3
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import _test_l3
+from dragonflow.tests.unit.controller import app_test_base
 
 
-class TestL3ProactiveApp(test_app_base.DFAppTestBase,
+class TestL3ProactiveApp(app_test_base.DFAppTestBase,
                          _test_l3.L3AppTestCaseMixin):
     apps_list = "l3_proactive_app.L3ProactiveApp"
 
     def setUp(self):
         super(TestL3ProactiveApp, self).setUp()
         self.app = self.open_flow_app.dispatcher.apps[0]
-        self.router = copy.deepcopy(test_app_base.fake_logic_router1)
+        self.router = copy.deepcopy(app_test_base.fake_logic_router1)
 
     def test_add_del_lport_after_router_route(self):
         # add route
@@ -44,7 +44,7 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
         # No lport no flow for route
         self.assertFalse(self.app.mod_flow.called)
 
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update_lport(app_test_base.fake_local_port1)
         # 2 routes, 2 mod_flow and 1 mod_flow for add lport proactive route
         self.assertEqual(3, self.app.mod_flow.call_count)
 
@@ -78,14 +78,14 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
 
     def test_add_local_port(self):
         # add local port
-        self._test_add_port(test_app_base.fake_local_port1)
+        self._test_add_port(app_test_base.fake_local_port1)
 
     def test_remove_local_port(self):
-        self._test_remove_port(test_app_base.fake_local_port1)
+        self._test_remove_port(app_test_base.fake_local_port1)
 
     def test_add_remote_port(self):
         # add remote port
-        self._test_add_port(test_app_base.fake_remote_port1)
+        self._test_add_port(app_test_base.fake_remote_port1)
 
     def test_remove_remote_port(self):
-        self._test_remove_port(test_app_base.fake_remote_port1)
+        self._test_remove_port(app_test_base.fake_remote_port1)

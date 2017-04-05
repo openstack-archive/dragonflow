@@ -17,7 +17,7 @@ from neutron_lib.plugins import directory
 import testtools
 
 from dragonflow.db.models import qos
-from dragonflow.tests.unit import test_mech_driver
+from dragonflow.tests.unit.neutron.ml2 import test_mech_driver
 
 
 class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
