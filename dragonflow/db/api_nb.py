@@ -740,23 +740,9 @@ class NbApi(object):
             uuid,
             publisher_json, topic
         )
-        self._send_db_change_event(
-            db_models.Publisher.table_name,
-            uuid,
-            'create',
-            publisher_json,
-            topic,
-        )
 
     def delete_publisher(self, uuid, topic):
         self.driver.delete_key(db_models.Publisher.table_name, uuid, topic)
-        self._send_db_change_event(
-            db_models.Publisher.table_name,
-            uuid,
-            'delete',
-            uuid,
-            topic,
-        )
 
     def get_publisher(self, uuid, topic=None):
         try:
