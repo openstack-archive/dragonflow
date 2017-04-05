@@ -106,7 +106,6 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
         self.driver.nb_api.delete.assert_called_with(qos.QosPolicy(
             id=qos_obj['id']))
 
-    @testtools.skip("bug/1649503")
     def test_create_update_network_qos_policy(self):
         nb_api = self.driver.nb_api
         qos_obj = self._test_create_policy()
