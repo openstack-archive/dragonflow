@@ -158,13 +158,10 @@ class L2App(df_base_app.DFlowApp):
         self._remove_local_port(lport_id,
                                 mac,
                                 topic,
-                                network_id,
-                                segmentation_id,
-                                network_type)
+                                network_id)
 
     def _remove_local_port(self, lport_id, mac, topic,
-                           local_network_id, segmentation_id,
-                           network_type):
+                           local_network_id):
         parser = self.parser
         ofproto = self.ofproto
 
