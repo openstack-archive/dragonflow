@@ -16,16 +16,16 @@
 import mock
 
 from dragonflow.controller.common import constants as const
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import _test_app_base
 
 
-class TestL2App(test_app_base.DFAppTestBase):
+class TestL2App(_test_app_base.DFAppTestBase):
     apps_list = "l2_app.L2App"
 
     def setUp(self):
         super(TestL2App, self).setUp()
-        fake_local_switch1 = test_app_base.make_fake_logic_switch(
-                subnets=test_app_base.fake_lswitch_default_subnets,
+        fake_local_switch1 = _test_app_base.make_fake_logic_switch(
+                subnets=_test_app_base.fake_lswitch_default_subnets,
                 network_type='local',
                 id='fake_local_switch1',
                 segmentation_id=41,
@@ -38,7 +38,7 @@ class TestL2App(test_app_base.DFAppTestBase):
         self.app = self.open_flow_app.dispatcher.apps[0]
 
     def test_multicast_local_port(self):
-        fake_local_port1 = test_app_base.make_fake_local_port(
+        fake_local_port1 = _test_app_base.make_fake_local_port(
                 network_type='local',
                 macs=['00:0b:0c:0d:0e:0f'],
                 ips=['10.0.0.11'],
@@ -52,7 +52,7 @@ class TestL2App(test_app_base.DFAppTestBase):
             match=mock.ANY)
         self.app.mod_flow.reset_mock()
 
-        fake_local_port2 = test_app_base.make_fake_local_port(
+        fake_local_port2 = _test_app_base.make_fake_local_port(
                 network_type='local',
                 lswitch='fake_local_switch1',
                 macs=['1a:0b:0c:0d:0e:0f'],

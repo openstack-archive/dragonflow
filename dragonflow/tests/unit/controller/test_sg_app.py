@@ -19,22 +19,22 @@ from neutron.agent.common import utils
 from neutron_lib import constants as n_const
 
 from dragonflow.db import models as db_models
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import _test_app_base
 
 COMMAND_ADD = 1
 COMMAND_DELETE = 2
 
 
-class TestSGApp(test_app_base.DFAppTestBase):
+class TestSGApp(_test_app_base.DFAppTestBase):
     apps_list = "sg_app.SGApp"
 
     def setUp(self):
         super(TestSGApp, self).setUp()
         self.app = self.open_flow_app.dispatcher.apps[0]
         self.mock_mod_flow = self.app.mod_flow
-        self.security_group = test_app_base.fake_security_group
-        self.fake_local_lport = test_app_base.fake_local_port1
-        self.fake_remote_lport = test_app_base.fake_remote_port1
+        self.security_group = _test_app_base.fake_security_group
+        self.fake_local_lport = _test_app_base.fake_local_port1
+        self.fake_remote_lport = _test_app_base.fake_remote_port1
         self.mock_execute = utils.execute
 
         self.datapath.ofproto.OFPFC_ADD = COMMAND_ADD

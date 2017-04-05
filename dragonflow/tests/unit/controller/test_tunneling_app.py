@@ -14,21 +14,21 @@
 #    under the License.
 
 from dragonflow.controller.common import constants as const
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import _test_app_base
 
 
-make_fake_local_port = test_app_base.make_fake_local_port
-make_fake_logic_switch = test_app_base.make_fake_logic_switch
-make_fake_remote_port = test_app_base.make_fake_remote_port
+make_fake_local_port = _test_app_base.make_fake_local_port
+make_fake_logic_switch = _test_app_base.make_fake_logic_switch
+make_fake_remote_port = _test_app_base.make_fake_remote_port
 
 
-class TestTunnelingApp(test_app_base.DFAppTestBase):
+class TestTunnelingApp(_test_app_base.DFAppTestBase):
     apps_list = "tunneling_app.TunnelingApp"
 
     def setUp(self):
         super(TestTunnelingApp, self).setUp()
         fake_gre_switch1 = make_fake_logic_switch(
-                subnets=test_app_base.fake_lswitch_default_subnets,
+                subnets=_test_app_base.fake_lswitch_default_subnets,
                 mtu=1464,
                 unique_key=6,
                 topic='fake_tenant1',

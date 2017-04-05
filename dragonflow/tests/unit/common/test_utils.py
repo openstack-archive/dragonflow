@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+
 import mock
 import testtools
 
@@ -84,3 +86,27 @@ class TestLockedobjectsDB(tests_base.BaseTestCase):
     def test__get_lock_id_by_resource_type(self):
         with testtools.ExpectedException(df_exc.UnknownResourceException):
             lock_db._get_lock_id_by_resource_type("nobody")
+
+
+class TestRateLimiter(tests_base.BaseTestCase):
+    def test_rate_limiter_oneshot(self):
+        rate_limiter = utils.RateLimiter(3, 5)
+        counter = 0
+        for idx in range(5):
+            if not rate_limiter():
+                counter += 1
+        self.assertEqual(3, counter)
+        time.sleep(5)
+        for idx in range(5):
+            if not rate_limiter():
+                counter += 1
+        self.assertEqual(6, counter)
+
+    def test_rate_limiter_continuus(self):
+        rate_limiter = utils.RateLimiter(3, 5)
+        counter = 0
+        for idx in range(11):
+            if not rate_limiter():
+                counter += 1
+            time.sleep(1)
+        self.assertEqual(7, counter)

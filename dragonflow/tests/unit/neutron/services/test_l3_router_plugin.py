@@ -19,7 +19,7 @@ from neutron_lib import context as nctx
 from neutron_lib.plugins import directory
 import testtools
 
-from dragonflow.tests.unit import test_mech_driver
+from dragonflow.tests.unit.neutron.ml2 import test_mech_driver
 
 
 class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):

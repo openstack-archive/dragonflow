@@ -17,22 +17,22 @@ import copy
 import mock
 
 from dragonflow.controller.common import constants as const
-from dragonflow.tests.unit import _test_l3
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import _test_app_base
+from dragonflow.tests.unit.controller import _test_l3
 
 
-class TestL3App(test_app_base.DFAppTestBase,
+class TestL3App(_test_app_base.DFAppTestBase,
                 _test_l3.L3AppTestCaseMixin):
     apps_list = "l3_app.L3App"
 
     def setUp(self):
         super(TestL3App, self).setUp()
         self.app = self.open_flow_app.dispatcher.apps[0]
-        self.router = copy.deepcopy(test_app_base.fake_logic_router1)
+        self.router = copy.deepcopy(_test_app_base.fake_logic_router1)
 
     def test_install_l3_flow_set_metadata(self):
         dst_router_port = self.router.get_ports()[0]
-        dst_port = test_app_base.fake_local_port1
+        dst_port = _test_app_base.fake_local_port1
         dst_metadata = dst_port.get_external_value('local_network_id')
         mock_msg = mock.Mock()
         self.app._install_l3_flow(dst_router_port, dst_port,
@@ -42,7 +42,7 @@ class TestL3App(test_app_base.DFAppTestBase,
 
     def test_install_l3_flow_use_buffer(self):
         dst_router_port = self.router.get_ports()[0]
-        dst_port = test_app_base.fake_local_port1
+        dst_port = _test_app_base.fake_local_port1
         mock_msg = mock.Mock()
         mock_msg.buffer_id = mock.sentinel.buffer_id
         self.app._install_l3_flow(dst_router_port, dst_port,
@@ -71,7 +71,7 @@ class TestL3App(test_app_base.DFAppTestBase,
         # No lport no flow for route
         self.assertFalse(self.app.mod_flow.called)
 
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update_lport(_test_app_base.fake_local_port1)
         # 2 routes, 2 mod_flow
         self.assertEqual(2, self.app.mod_flow.call_count)
 

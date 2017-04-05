@@ -18,10 +18,10 @@ from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db.models import core
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import _test_app_base
 
 
-class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
+class DfLocalControllerTestCase(_test_app_base.DFAppTestBase):
 
     apps_list = "l2_app.L2App"
 

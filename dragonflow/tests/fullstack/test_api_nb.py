@@ -16,7 +16,7 @@ import mock
 
 from dragonflow.db import models as db_models
 from dragonflow.tests.fullstack import test_base
-from dragonflow.tests.unit import test_app_base
+from dragonflow.tests.unit.controller import _test_app_base
 
 
 class Test_API_NB(test_base.DFTestBase):
@@ -33,7 +33,7 @@ class Test_API_NB(test_base.DFTestBase):
 
     def test_create_lswitch(self):
         fake_lswitch = copy.deepcopy(
-            test_app_base.fake_logic_switch1.inner_obj)
+            _test_app_base.fake_logic_switch1.inner_obj)
         del fake_lswitch['unique_key']
 
         self.nb_api.create_lswitch(**fake_lswitch)
@@ -57,7 +57,7 @@ class Test_API_NB(test_base.DFTestBase):
 
     def test_create_lport(self):
         fake_lport = copy.deepcopy(
-            test_app_base.fake_local_port1.inner_obj)
+            _test_app_base.fake_local_port1.inner_obj)
         del fake_lport['unique_key']
         fake_lport['lswitch_id'] = 'fake_switch1'
         self.nb_api.create_lport(**fake_lport)
@@ -81,7 +81,7 @@ class Test_API_NB(test_base.DFTestBase):
 
     def test_create_lrouter(self):
         fake_lrouter = copy.deepcopy(
-            test_app_base.fake_logic_router1.inner_obj)
+            _test_app_base.fake_logic_router1.inner_obj)
         fake_lrouter.pop('unique_key', None)
         self.nb_api.create_lrouter(**fake_lrouter)
         self.addCleanup(self.nb_api.delete_lrouter,
