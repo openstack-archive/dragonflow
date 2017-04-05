@@ -216,7 +216,7 @@ class L2App(df_base_app.DFlowApp):
         self.mod_flow(
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_HIGH,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
         # Egress for broadcast and multicast
@@ -263,7 +263,7 @@ class L2App(df_base_app.DFlowApp):
             inst=egress_inst,
             table_id=const.L2_LOOKUP_TABLE,
             command=command,
-            priority=const.PRIORITY_HIGH,
+            priority=const.PRIORITY_MEDIUM,
             match=match)
 
         # Ingress broadcast
