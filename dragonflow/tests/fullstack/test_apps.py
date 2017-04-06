@@ -1001,6 +1001,13 @@ class TestL3App(test_base.DFTestBase):
             raise policy.exceptions[0]
 
     def test_udp_virtual_router_interface_with_rate_limit(self):
+        if 'zmq_pubsub_driver' == cfg.CONF.df.pub_sub_driver:
+            # NOTE(nick-ma-z): This test case directly calls nb_api which
+            # relies on a publisher running on local process. In ZMQ driver,
+            # a socket needs to be binded which causes conflicts with other
+            # df-services. But in Redis driver, the publisher is virtual and
+            # does not actually run which makes this test case work.
+            self.skipTest("ZMQ_PUBSUB does not support this test case")
         # Delete the concrete router interface.
         router_port_id = self.router.router_interfaces[
             self.subnet1.subnet_id]['port_id']
