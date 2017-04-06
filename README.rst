@@ -10,10 +10,10 @@ Team and repository tags
 Distributed SDN-based Neutron Implementation
 
 * Free software: Apache license
-* Homepage:  http://launchpad.net/dragonflow
-* Source: http://git.openstack.org/cgit/openstack/dragonflow
-* Bugs: http://bugs.launchpad.net/dragonflow
-* Documentation: http://docs.openstack.org/developer/dragonflow
+* Homepage:  https://launchpad.net/dragonflow
+* Source: https://git.openstack.org/cgit/openstack/dragonflow
+* Bugs: https://bugs.launchpad.net/dragonflow
+* Documentation: https://docs.openstack.org/developer/dragonflow
 
 .. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/df_logo.png
     :alt: Solution Overview
