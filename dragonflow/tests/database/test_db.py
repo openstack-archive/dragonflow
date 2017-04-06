@@ -28,6 +28,7 @@ from oslo_utils import importutils
 from dragonflow._i18n import _
 from dragonflow import conf as cfg
 from dragonflow.db import api_nb
+from dragonflow.db.models import l2
 
 
 LOG = log.getLogger(__name__)
@@ -52,7 +53,7 @@ def run_server(nb_api):
         topic,
         last_activity_timestamp=time.time()
     )
-    nb_api.create_lswitch(lswitch_name, topic)
+    nb_api.create(l2.LogicalSwitch(id=lswitch_name, topic=topic))
     start = time.time()
     for idx in range(cfg.CONF.df_db_test.count):
         nb_api.create_lport(

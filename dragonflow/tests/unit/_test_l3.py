@@ -66,7 +66,7 @@ class L3AppTestCaseMixin(object):
         # 5 mod flows, l2 -> l3, arp, icmp, router interface and route.
         self.assertEqual(5, self.app.mod_flow.call_count)
         self.app._delete_subnet_send_to_snat.assert_called_once_with(
-            test_app_base.fake_logic_switch1.get_unique_key(),
+            test_app_base.fake_logic_switch1.unique_key,
             self.router.get_ports()[0].get_mac(),
         )
 
@@ -77,7 +77,7 @@ class L3AppTestCaseMixin(object):
         args, kwargs = self.app.mod_flow.call_args
         self.assertEqual(const.L3_LOOKUP_TABLE, kwargs['table_id'])
         self.app._add_subnet_send_to_snat.assert_called_once_with(
-            test_app_base.fake_logic_switch1.get_unique_key(),
+            test_app_base.fake_logic_switch1.unique_key,
             self.router.get_ports()[0].get_mac(),
             self.router.get_ports()[0].get_unique_key()
         )

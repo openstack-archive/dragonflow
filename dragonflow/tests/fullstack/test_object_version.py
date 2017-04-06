@@ -14,6 +14,7 @@ import contextlib
 
 from oslo_concurrency import lockutils
 
+from dragonflow.db.models import l2
 from dragonflow.db.models import qos
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -27,20 +28,21 @@ class TestObjectVersion(test_base.DFTestBase):
     def test_network_version(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
+        lean_lswitch = l2.LogicalSwitch(id=network_id)
         self.assertTrue(network.exists())
-        version = self.nb_api.get_lswitch(network_id).get_version()
+        version = self.nb_api.get(lean_lswitch).version
 
         subnet = self.store(objects.SubnetTestObj(
                 self.neutron, self.nb_api, network_id))
         subnet.create()
         self.assertTrue(subnet.exists())
-        new_version = self.nb_api.get_lswitch(network_id).get_version()
+        new_version = self.nb_api.get(lean_lswitch).version
         self.assertGreater(new_version, version)
 
         subnet.close()
         self.assertFalse(subnet.exists())
         version = new_version
-        new_version = self.nb_api.get_lswitch(network_id).get_version()
+        new_version = self.nb_api.get(lean_lswitch).version
         self.assertGreater(new_version, version)
 
         network.close()
