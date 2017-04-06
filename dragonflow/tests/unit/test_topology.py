@@ -18,9 +18,7 @@ import copy
 import mock
 from oslo_config import cfg
 
-from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import topology
-from dragonflow.db.models import l2
 from dragonflow.tests.unit import test_app_base
 
 
@@ -58,7 +56,6 @@ class TestTopology(test_app_base.DFAppTestBase):
         cfg.CONF.set_override('enable_selective_topology_distribution',
                               True, group='df')
         cfg.CONF.set_override('enable_neutron_notifier', False, group='df')
-        cfg.CONF.set_override('enable_df_db_consistency', False, group='df')
         super(TestTopology, self).setUp(enable_selective_topo_dist=True)
         # By default, return empty value for all resources, each case can
         # customize the return value on their own.
@@ -66,35 +63,36 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.nb_api.get_floatingips.return_value = []
         self.fake_invalid_ovs_port = copy.deepcopy(
             test_app_base.fake_ovs_port1)
-
-    def _reset_refresher(self):
-        df_db_objects_refresh.items = []
         self.controller._register_models()
 
     def test_vm_port_online_offline(self):
         self.nb_api.get_all.side_effect = nb_api_get_all_func(
             test_app_base.fake_logic_switch1,
-            test_app_base.fake_local_port1)
+            test_app_base.fake_local_port1,
+            test_app_base.fake_chassis1,
+        )
         self.nb_api.get.return_value = (
             test_app_base.fake_local_port1)
 
         original_update = self.controller.update
         self.controller.update = mock.Mock()
         self.controller.update.side_effect = original_update
+        self.controller._sync._update_cb = self.controller.update
+
         original_delete = self.controller.delete
         self.controller.delete = mock.Mock()
         self.controller.delete.side_effect = original_delete
+        self.controller._sync._delete_cb = self.controller.delete
+
         original_delete_by_id = self.controller.delete_by_id
         self.controller.delete_by_id = mock.Mock()
         self.controller.delete_by_id.side_effect = original_delete_by_id
-        self._reset_refresher()
 
         # Verify port online
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
         self.controller.update.assert_has_calls(
             (mock.call(test_app_base.fake_logic_switch1),
              mock.call(test_app_base.fake_local_port1)),
-            any_order=True,
         )
         self.nb_api.subscriber.register_topic.assert_called_once_with(
             test_app_base.fake_local_port1.topic)
@@ -106,9 +104,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.topology.ovs_port_deleted(test_app_base.fake_ovs_port1)
         self.controller.delete.assert_has_calls([
             mock.call(test_app_base.fake_local_port1),
-            mock.call(
-                l2.LogicalSwitch(id=test_app_base.fake_logic_switch1.id),
-            ),
+            mock.call(test_app_base.fake_logic_switch1),
         ])
         self.nb_api.subscriber.unregister_topic.assert_called_once_with(
             test_app_base.fake_local_port1.topic)
@@ -133,7 +129,6 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.nb_api.get.side_effect = _get_logical_port
 
         # Pull topology by first ovs port online
-        self._reset_refresher()
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
 
         # Another port online
@@ -150,7 +145,9 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.nb_api.get_all.side_effect = nb_api_get_all_func(
             test_app_base.fake_logic_switch1,
             test_app_base.fake_local_port1,
-            test_app_base.fake_local_port2)
+            test_app_base.fake_local_port2,
+            test_app_base.fake_chassis1,
+        )
 
         def _get_logical_port(lport):
             lport_id = lport.id
@@ -163,18 +160,20 @@ class TestTopology(test_app_base.DFAppTestBase):
         original_update = self.controller.update
         self.controller.update = mock.Mock()
         self.controller.update.side_effect = original_update
-        self._reset_refresher()
+        self.controller._sync._update_cb = self.controller.update
 
         # The vm ports are online one by one
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port2)
 
-        calls = [mock.call(test_app_base.fake_logic_switch1),
+        calls = [mock.call(test_app_base.fake_chassis1),
+                 mock.call(test_app_base.fake_logic_switch1),
                  mock.call(test_app_base.fake_local_port1),
                  mock.call(test_app_base.fake_local_port2)]
         self.controller.update.assert_has_calls(
             calls, any_order=True)
-        self.assertEqual(3, self.controller.update.call_count)
+        print(self.controller.update.call_args_list)
+        self.assertEqual(4, self.controller.update.call_count)
         self.nb_api.subscriber.register_topic.assert_called_once()
 
     def test_check_topology_info(self):
@@ -211,14 +210,15 @@ class TestTopology(test_app_base.DFAppTestBase):
 
         self.topology.topic_subscribed = {
             'fake_tenant1': test_app_base.fake_local_port1}
-        self.controller.update = mock.Mock()
-        self._reset_refresher()
+        update = mock.Mock()
+        self.controller._sync._topics = {'fake_tenant1'}
+        self.controller._sync._update_cb = update
 
         # Verify the db sync will work for topology
-        self.controller.run_sync()
+        self.controller.sync()
         update_calls = [
             mock.call(test_app_base.fake_logic_switch1),
             mock.call(test_app_base.fake_local_port1)
         ]
-        self.controller.update.assert_has_calls(update_calls, any_order=True)
-        self.assertEqual(2, self.controller.update.call_count)
+        update.assert_has_calls(update_calls)
+        self.assertEqual(2, update.call_count)
