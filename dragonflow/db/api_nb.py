@@ -57,7 +57,6 @@ class NbApi(object):
         self.use_pubsub = use_pubsub
         self.publisher = None
         self.subscriber = None
-        self.db_consistency_manager = None
         self.is_neutron_server = is_neutron_server
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
@@ -111,16 +110,13 @@ class NbApi(object):
                     self.db_change_callback)
                 self.subscriber.register_hamsg_for_db()
 
-    def set_db_consistency_manager(self, db_consistency_manager):
-        self.db_consistency_manager = db_consistency_manager
-
     def db_recover_callback(self):
         # only db with HA func can go in here
         self.driver.process_ha()
         self.publisher.process_ha()
         self.subscriber.process_ha()
-        if self.db_consistency_manager and not self.is_neutron_server:
-            self.db_consistency_manager.process(direct=True)
+        if not self.is_neutron_server:
+            self.controller.sync()
 
     def _get_publisher(self):
         if self.pub_sub_use_multiproc:
@@ -165,10 +161,8 @@ class NbApi(object):
         self.publisher.send_event(update)
         time.sleep(0)
 
-    def register_notification_callback(self, controller):
+    def register_controller(self, controller):
         self.controller = controller
-        LOG.info("DB configuration sync finished, waiting for changes")
-        self._read_db_changes_from_queue()
 
     def register_listener_callback(self, cb, topic):
         """Register a callback for Neutron listener
@@ -194,7 +188,7 @@ class NbApi(object):
         self._queue.put(update)
         time.sleep(0)
 
-    def _read_db_changes_from_queue(self):
+    def process_changes(self):
         sync_rate_limiter = df_utils.RateLimiter(
             max_rate=1, time_unit=db_common.DB_SYNC_MINIMUM_INTERVAL)
         while True:
@@ -217,7 +211,7 @@ class NbApi(object):
                 if "ofport is 0" not in e.message:
                     LOG.exception(e)
                 if not sync_rate_limiter():
-                    self.apply_db_change(None, None, 'sync', None)
+                    self.controller.sync()
             self._queue.task_done()
 
     def apply_db_change(self, table, key, action, value):
@@ -228,11 +222,9 @@ class NbApi(object):
             return
 
         if action == 'sync':
-            self.controller.run_sync(value)
+            self.controller.sync()
         elif action == 'dbrestart':
             self.db_recover_callback()
-        elif action == 'db_sync':
-            self.db_consistency_manager.process(direct=False)
         elif action == 'ovs_sync_finished':
             self.controller.ovs_sync_finished()
         elif action == 'ovs_sync_started':

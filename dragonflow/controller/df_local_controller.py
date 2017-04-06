@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import functools
 import sys
-import time
 
 from neutron.common import config as common_config
 from oslo_log import log
+from oslo_service import loopingcall
 from ryu.app.ofctl import service as of_service
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
@@ -26,12 +25,10 @@ from ryu import cfg as ryu_cfg
 from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
-from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import service
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
-from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
@@ -39,6 +36,7 @@ from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
 from dragonflow.db.models import trunk
+from dragonflow.db import sync
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -73,24 +71,27 @@ class DfLocalController(object):
         # The OfctlService is needed to support the 'get_flows' method
         self.open_flow_service = app_mgr.instantiate(of_service.OfctlService)
         self.topology = None
-        self.db_consistency_manager = None
-        self.enable_db_consistency = cfg.CONF.df.enable_df_db_consistency
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
+        self._sync = sync.Sync(
+            nb_api=self.nb_api,
+            update_cb=self.update,
+            delete_cb=self.delete,
+            selective=self.enable_selective_topo_dist,
+        )
 
     def run(self):
         self.vswitch_api.initialize(self.nb_api)
+        self.nb_api.register_controller(self)
         if cfg.CONF.df.enable_neutron_notifier:
             self.neutron_notifier.initialize(nb_api=self.nb_api,
                                              is_neutron_server=False)
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)
-        if self.enable_db_consistency:
-            self.db_consistency_manager = \
-                db_consistent.DBConsistencyManager(self)
-            self.nb_api.set_db_consistency_manager(self.db_consistency_manager)
-            self.db_consistency_manager.daemonize()
-
+        loopingcall.FixedIntervalLoopingCall(self._submit_sync_event).start(
+            interval=sync.UPDATE_PERIOD,
+            initial_delay=sync.UPDATE_PERIOD,
+        )
         # both set_controller and del_controller will delete flows.
         # for reliability, here we should check if controller is set for OVS,
         # if yes, don't set controller and don't delete controller.
@@ -110,64 +111,27 @@ class DfLocalController(object):
         self.open_flow_app.start()
         self.create_tunnels()
         self._register_models()
-        self.db_sync_loop()
+        self.sync()
+        self.nb_api.process_changes()
+
+    def _submit_sync_event(self):
+        self.nb_api.db_change_callback(None, None, 'sync', None)
 
     def _register_models(self):
         for model in model_framework.iter_models_by_dependency_order():
-            # FIXME (dimak) do not register topicless models for now
-            if issubclass(model, mixins.Topic):
-                df_db_objects_refresh.add_refresher(
-                    df_db_objects_refresh.DfObjectRefresher(
-                        model.__name__,
-                        functools.partial(self.db_store.get_keys_by_topic,
-                                          model),
-                        functools.partial(self.nb_api.get_all, model),
-                        self.update,
-                        functools.partial(self.delete_by_id, model),
-                    ),
-                )
+            self._sync.add_model(model)
 
-                if (self.enable_db_consistency and
-                        issubclass(model, mixins.Version)):
-                    # Register only versioned models for now
-                    self.db_consistency_manager.add_handler(
-                        db_consistent.ModelHandler.create_using_controller(
-                            model,
-                            self,
-                        ),
-                    )
+    def sync(self):
+        self.register_chassis()  # FIXME (dimak) move elsewhere
+        self._sync.sync()
 
-    def db_sync_loop(self):
-        while True:
-            time.sleep(1)
-            self.run_db_poll()
-            if self.sync_finished and (
-                    self.nb_api.support_publish_subscribe()):
-                self.nb_api.register_notification_callback(self)
+    def register_topic(self, topic):
+        self.nb_api.subscriber.register_topic(topic)
+        self._sync.add_topic(topic)
 
-    def run_sync(self, mode=None):
-        if mode == 'full_sync':
-            # For a full sync, df needs to clean the local cache, so that
-            # all resources will be treated as new resource, and thus be
-            # applied to local.
-            self.db_store.clear()
-        while True:
-            time.sleep(1)
-            self.run_db_poll()
-            if self.sync_finished:
-                return
-
-    def run_db_poll(self):
-        try:
-            self.register_chassis()
-
-            topics = self.topology.get_subscribed_topics()
-            df_db_objects_refresh.sync_local_cache_from_nb_db(topics)
-            self.sync_finished = True
-        except Exception as e:
-            self.sync_finished = False
-            LOG.warning("run_db_poll - suppressing exception")
-            LOG.exception(e)
+    def unregister_topic(self, topic):
+        self.nb_api.subscriber.unregister_topic(topic)
+        self._sync.remove_topic(topic)
 
     def update_chassis(self, chassis):
         self.db_store.update(chassis)
@@ -344,7 +308,7 @@ class DfLocalController(object):
         try:
             return obj.is_newer_than(cached_obj)
         except AttributeError:
-            return True
+            return obj != cached_obj
 
     def update_model_object(self, obj):
         original_obj = self.db_store.get_one(obj)
