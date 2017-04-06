@@ -13,30 +13,28 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import functools
 import sys
 import time
 
 from neutron.common import config as common_config
 from oslo_log import log
+from oslo_service import loopingcall
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
 from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
-from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
-from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db import model_framework
 from dragonflow.db import models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
-from dragonflow.db.models import mixins
+from dragonflow.db import sync
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -81,10 +79,12 @@ class DfLocalController(object):
         self.open_flow_app = app_mgr.instantiate(ryu_base_app.RyuDFAdapter,
                                                  **kwargs)
         self.topology = None
-        self.db_consistency_manager = None
         self.enable_db_consistency = cfg.CONF.df.enable_df_db_consistency
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
+        self.sync = sync.Sync(self.nb_api, self.update, self.delete)
+        if not self.enable_selective_topo_dist:
+            self.sync.add_topic(sync.ALL_TOPICS)
         self.integration_bridge = cfg.CONF.df.integration_bridge
 
     def run(self):
@@ -97,10 +97,10 @@ class DfLocalController(object):
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)
         if self.enable_db_consistency:
-            self.db_consistency_manager = \
-                db_consistent.DBConsistencyManager(self)
-            self.nb_api.set_db_consistency_manager(self.db_consistency_manager)
-            self.db_consistency_manager.daemonize()
+            loopingcall.FixedIntervalLoopingCall(self.sync.sync).start(
+                interval=sync.UPDATE_PERIOD,
+                initial_delay=sync.UPDATE_PERIOD,
+            )
 
         # both set_controller and del_controller will delete flows.
         # for reliability, here we should check if controller is set for OVS,
@@ -121,113 +121,9 @@ class DfLocalController(object):
         self._register_models()
         self.db_sync_loop()
 
-    def _register_legacy_model_refreshers(self):
-        refreshers = [
-            df_db_objects_refresh.DfObjectRefresher(
-                'Security Groups',
-                self.db_store.get_security_group_keys,
-                self.nb_api.get_security_groups,
-                self.update_secgroup,
-                self.delete_secgroup,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
-                'Ports',
-                self.db_store.get_port_keys,
-                self.nb_api.get_all_logical_ports,
-                self.update_lport,
-                self.delete_lport,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
-                'Routers',
-                self.db_store.get_router_keys,
-                self.nb_api.get_routers,
-                self.update_lrouter,
-                self.delete_lrouter,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
-                'Floating IPs',
-                self.db_store.get_floatingip_keys,
-                self.nb_api.get_floatingips,
-                self.update_floatingip,
-                self.delete_floatingip,
-            ),
-            df_db_objects_refresh.DfObjectRefresher(
-                'Active Ports',
-                self.db_store.get_active_port_keys,
-                self.nb_api.get_active_ports,
-                self.update_activeport,
-                self.delete_activeport,
-            ),
-        ]
-
-        for refresher in refreshers:
-            df_db_objects_refresh.add_refresher(refresher)
-
-    def _register_legacy_model_consistency_handlers(self):
-        if not self.enable_db_consistency:
-            return
-
-        handlers = [
-            db_consistent.ModelHandler(
-                models.SecurityGroup,
-                self.db_store.get_security_groups,
-                self.nb_api.get_security_groups,
-                self.update,
-                self.delete_by_id,
-            ),
-            db_consistent.ModelHandler(
-                models.LogicalPort,
-                self.db_store.get_ports,
-                self.nb_api.get_all_logical_ports,
-                self.update,
-                self.delete_by_id,
-            ),
-            db_consistent.ModelHandler(
-                models.LogicalRouter,
-                self.db_store.get_routers,
-                self.nb_api.get_routers,
-                self.update,
-                self.delete_by_id,
-            ),
-            db_consistent.ModelHandler(
-                models.Floatingip,
-                self.db_store.get_floatingips,
-                self.nb_api.get_floatingips,
-                self.update,
-                self.delete_by_id,
-            ),
-        ]
-
-        for handler in handlers:
-            self.db_consistency_manager.add_handler(handler)
-
     def _register_models(self):
         for model in model_framework.iter_models_by_dependency_order():
-            # FIXME (dimak) do not register topicless models for now
-            if issubclass(model, mixins.Topic):
-                df_db_objects_refresh.add_refresher(
-                    df_db_objects_refresh.DfObjectRefresher(
-                        model.__name__,
-                        functools.partial(self.db_store2.get_keys_by_topic,
-                                          model),
-                        functools.partial(self.nb_api.get_all, model),
-                        self.update,
-                        functools.partial(self.delete_by_id, model),
-                    ),
-                )
-
-                if (self.enable_db_consistency and
-                        issubclass(model, mixins.Version)):
-                    # Register only versioned models for now
-                    self.db_consistency_manager.add_handler(
-                        db_consistent.ModelHandler.create_using_controller(
-                            model,
-                            self,
-                        ),
-                    )
-
-        self._register_legacy_model_refreshers()
-        self._register_legacy_model_consistency_handlers()
+            self.sync.add_model(model)
 
     def db_sync_loop(self):
         while True:
@@ -253,9 +149,7 @@ class DfLocalController(object):
     def run_db_poll(self):
         try:
             self.register_chassis()
-
-            topics = self.topology.get_subscribed_topics()
-            df_db_objects_refresh.sync_local_cache_from_nb_db(topics)
+            self.sync.sync(topics=self.topology.get_subscribed_topics())
             self.sync_finished = True
         except Exception as e:
             self.sync_finished = False
@@ -627,7 +521,7 @@ class DfLocalController(object):
         try:
             return obj.is_newer_than(cached_obj)
         except AttributeError:
-            return True
+            return obj != cached_obj
 
     def update_model_object(self, obj):
         original_obj = self.db_store2.get_one(obj)
