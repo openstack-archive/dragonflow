@@ -206,8 +206,7 @@ class L2App(df_base_app.DFlowApp):
 
     def _del_multicast_broadcast_flows_for_local(self, local_network_id):
         ofproto = self.ofproto
-
-        # Ingress for broadcast and multicast
+        # Egress and ingress broadcast
         match = self._get_multicast_broadcast_match(local_network_id)
 
         self.mod_flow(
@@ -215,9 +214,6 @@ class L2App(df_base_app.DFlowApp):
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
-
-        # Egress for broadcast and multicast
-        match = self._get_multicast_broadcast_match(local_network_id)
 
         self.mod_flow(
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
@@ -230,8 +226,6 @@ class L2App(df_base_app.DFlowApp):
         parser = self.parser
         ofproto = self.ofproto
         command = ofproto.OFPFC_MODIFY
-
-        # Ingress broadcast
         ingress = []
         egress = []
 
@@ -252,7 +246,7 @@ class L2App(df_base_app.DFlowApp):
         egress.append(parser.OFPActionSetField(reg7=0))
         egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
                                                    const.EGRESS_TABLE))
-        # Egress broadcast
+        # Egress and ingress broadcast
         match = self._get_multicast_broadcast_match(local_network_id)
         egress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, egress)]
@@ -263,8 +257,6 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-        # Ingress broadcast
-        match = self._get_multicast_broadcast_match(local_network_id)
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
         self.mod_flow(
@@ -410,7 +402,7 @@ class L2App(df_base_app.DFlowApp):
         egress.append(parser.OFPActionSetField(reg7=0))
         egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
                                                    const.EGRESS_TABLE))
-        # Egress broadcast
+        # Egress and ingress broadcast
         match = self._get_multicast_broadcast_match(network_id)
         egress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, egress)]
@@ -421,8 +413,6 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-        # Ingress broadcast
-        match = self._get_multicast_broadcast_match(network_id)
         ingress_inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, ingress)]
         self.mod_flow(
