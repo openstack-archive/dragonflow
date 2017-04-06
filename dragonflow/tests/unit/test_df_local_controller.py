@@ -77,7 +77,10 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         )
 
         self.assertIn(expected_chassis, self.controller.db_store)
-        self.nb_api.update.assert_called_once_with(expected_chassis)
+        self.nb_api.update.assert_called_once_with(
+            expected_chassis,
+            skip_send_event=True,
+        )
 
     @mock.patch.object(db_store.DbStore, 'get_one')
     def test__is_physical_chassis(self, get_one):
