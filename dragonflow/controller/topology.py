@@ -16,7 +16,6 @@ from neutron_lib import constants as n_const
 from oslo_log import log
 
 from dragonflow.common import constants
-from dragonflow.controller import df_db_objects_refresh
 from dragonflow.db import db_store
 from dragonflow.db.models import l2
 from dragonflow.db.models import migration
@@ -268,8 +267,7 @@ class Topology(object):
         if topic not in self.topic_subscribed:
             LOG.info("Subscribe topic: %(topic)s by lport: %(id)s",
                      {"topic": topic, "id": lport_id})
-            self.nb_api.subscriber.register_topic(topic)
-            self._pull_tenant_topology_from_db(topic)
+            self.controller.register_topic(topic)
             self.topic_subscribed[topic] = set([lport_id])
         else:
             self.topic_subscribed[topic].add(lport_id)
@@ -283,8 +281,7 @@ class Topology(object):
             LOG.info("Unsubscribe topic: %(topic)s by lport: %(id)s",
                      {"topic": topic, "id": lport_id})
             del self.topic_subscribed[topic]
-            self.nb_api.subscriber.unregister_topic(topic)
-            self._clear_tenant_topology(topic)
+            self.controller.unregister_topic(topic)
 
     def get_subscribed_topics(self):
         if not self.enable_selective_topo_dist:
@@ -296,10 +293,10 @@ class Topology(object):
         return set(self.topic_subscribed)
 
     def _pull_tenant_topology_from_db(self, tenant_id):
-        df_db_objects_refresh.sync_local_cache_from_nb_db({tenant_id})
+        self.controller.sync.add_topic(tenant_id)
 
     def _clear_tenant_topology(self, tenant_id):
-        df_db_objects_refresh.clear_local_cache({tenant_id})
+        self.controller.sync.remove_topic(tenant_id)
 
     def _get_lport(self, port_id, topic=None):
         if topic is None:
