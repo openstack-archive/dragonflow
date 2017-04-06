@@ -13,7 +13,6 @@
 from oslo_log import log
 
 from dragonflow.common import constants
-from dragonflow.controller import df_db_objects_refresh
 from dragonflow.db import db_store2
 from dragonflow.db import models as db_models
 from dragonflow.db.models import l2
@@ -263,10 +262,10 @@ class Topology(object):
         return set(self.topic_subscribed)
 
     def _pull_tenant_topology_from_db(self, tenant_id):
-        df_db_objects_refresh.sync_local_cache_from_nb_db({tenant_id})
+        self.controller.sync.add_topic(tenant_id)
 
     def _clear_tenant_topology(self, tenant_id):
-        df_db_objects_refresh.clear_local_cache({tenant_id})
+        self.controller.sync.remove_topic(tenant_id)
 
     def _get_lport(self, port_id, topic=None):
         lport = self.db_store.get_port(port_id)

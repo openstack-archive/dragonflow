@@ -18,7 +18,6 @@ import copy
 import mock
 from oslo_config import cfg
 
-from dragonflow.controller import df_db_objects_refresh
 from dragonflow.tests.unit import test_app_base
 
 
@@ -69,8 +68,7 @@ class TestTopology(test_app_base.DFAppTestBase):
             test_app_base.fake_ovs_port1)
 
     def _reset_refresher(self):
-        df_db_objects_refresh.items = []
-        self.controller._register_models()
+        pass
 
     def test_vm_port_online_offline(self):
         self.nb_api.get_all.side_effect = nb_api_get_all_func(
