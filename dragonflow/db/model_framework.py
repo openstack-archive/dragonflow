@@ -404,11 +404,10 @@ def get_model(arg):
 def iter_models(first_class_only=True):
     '''Iterate over all registered models'''
     for model in _registered_models:
-        yield model
+        if first_class_only and not model.is_first_class():
+            continue
 
-        if not first_class_only:
-            for submodel in model.iterate_embedded_model_types():
-                yield model
+        yield model
 
 
 def iter_tables():
