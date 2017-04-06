@@ -220,7 +220,7 @@ class DfLocalController(object):
 
         for model in model_framework.iter_models_by_dependency_order():
             # FIXME (dimak) do not register topicless models for now
-            if issubclass(model, mixins.Topic):
+            if model.is_first_class() and issubclass(model, mixins.Topic):
                 df_db_objects_refresh.add_refresher(
                     df_db_objects_refresh.DfObjectRefresher(
                         model.__name__,
