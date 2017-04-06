@@ -132,8 +132,6 @@ class L2App(df_base_app.DFlowApp):
         lport_id = lport.get_id()
         mac = lport.get_mac()
         network_id = lport.get_external_value('local_network_id')
-        network_type = lport.get_external_value('network_type')
-        segmentation_id = lport.get_external_value('segmentation_id')
         port_key = lport.get_unique_key()
         topic = lport.get_topic()
         device_owner = lport.get_device_owner()
@@ -158,13 +156,10 @@ class L2App(df_base_app.DFlowApp):
         self._remove_local_port(lport_id,
                                 mac,
                                 topic,
-                                network_id,
-                                segmentation_id,
-                                network_type)
+                                network_id)
 
     def _remove_local_port(self, lport_id, mac, topic,
-                           local_network_id, segmentation_id,
-                           network_type):
+                           local_network_id):
         parser = self.parser
         ofproto = self.ofproto
 
