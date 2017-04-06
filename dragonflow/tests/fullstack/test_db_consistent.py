@@ -13,7 +13,6 @@
 import time
 
 from dragonflow.controller.common import constants as const
-from dragonflow.db import db_consistent
 from dragonflow.db.models import l2
 from dragonflow.tests.common import constants
 from dragonflow.tests.common import utils
@@ -39,8 +38,6 @@ class TestDbConsistent(test_base.DFTestBase):
 
     def test_db_consistent(self):
         self.db_sync_time = self.conf.db_sync_time
-        if self.db_sync_time < db_consistent.MIN_SYNC_INTERVAL_TIME:
-            self.db_sync_time = db_consistent.MIN_SYNC_INTERVAL_TIME
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
         topic = network.get_topic()
