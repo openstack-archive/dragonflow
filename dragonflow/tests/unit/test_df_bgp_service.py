@@ -22,7 +22,7 @@ from dragonflow.db.models import bgp
 from dragonflow.tests import base as tests_base
 
 
-def get_all_side_effect(model, topic):
+def get_all_side_effect(model, topic=None):
     if model == bgp.BGPPeer:
         return [bgp.BGPPeer(id="peer1",
                             topic="topic1",
@@ -110,7 +110,10 @@ class TestDFBGPService(tests_base.BaseTestCase):
         self.bgp_service.bgp_driver.add_bgp_peer.assert_called_once_with(
             1234, "172.24.4.88", 4321)
 
-        self.bgp_service.nb_api.get_all.side_effect = lambda x, y: []
+        def empty_get_all(model, topic=None):
+            return []
+
+        self.bgp_service.nb_api.get_all.side_effect = empty_get_all
         # Give fixed interval another round.
         self.bgp_service.bgp_pulse.fire()
         self.bgp_service.bgp_driver.delete_bgp_peer.assert_called_once_with(
@@ -122,7 +125,7 @@ class TestDFBGPService(tests_base.BaseTestCase):
         self.bgp_service.nb_api.get_all.side_effect = get_all_side_effect
         # Give fixed interval a chance to run.
 
-        def get_all_with_routes_side_effect(model, topic):
+        def get_all_with_routes_side_effect(model, topic=None):
             if model == bgp.BGPPeer:
                 return [bgp.BGPPeer(id="peer1",
                                     topic="topic1",

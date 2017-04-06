@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import functools
 import sys
 
 from neutron.common import config as common_config
@@ -20,12 +19,12 @@ from oslo_service import service
 from oslo_utils import importutils
 
 from dragonflow import conf as cfg
-from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
 from dragonflow.db.models import bgp  # noqa
+from dragonflow.db import sync
 
 
 LOG = logging.getLogger(__name__)
@@ -39,6 +38,11 @@ class BGPService(service.Service):
 
         self.nb_api = nb_api
 
+        self.sync = sync.Sync(
+            self.nb_api,
+            self.update_model_object,
+            self.delete_model_object,
+        )
         self.bgp_pulse = loopingcall.FixedIntervalLoopingCall(
             self.sync_data_from_nb_db)
 
@@ -57,6 +61,7 @@ class BGPService(service.Service):
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                                db_port=cfg.CONF.df.remote_db_port)
         self.register_bgp_models()
+        self.sync.add_topic(sync.ALL_TOPICS)
         self.bgp_pulse.start(cfg.CONF.df_bgp.pulse_interval)
 
     def stop(self):
@@ -65,27 +70,17 @@ class BGPService(service.Service):
 
     def register_bgp_models(self):
         for model in model_framework.iter_models_by_dependency_order():
-            df_db_objects_refresh.add_refresher(
-                df_db_objects_refresh.DfObjectRefresher(
-                    model.__name__,
-                    functools.partial(self.db_store.get_keys_by_topic,
-                                      model),
-                    functools.partial(self.nb_api.get_all, model),
-                    self.update_model_object,
-                    functools.partial(self.delete_model_object, model),
-                ),
-            )
+            self.sync.add_model(model)
 
     def sync_data_from_nb_db(self):
-        df_db_objects_refresh.sync_local_cache_from_nb_db()
+        self.sync.sync()
 
     def update_model_object(self, obj):
         original_obj = self.db_store.get_one(obj)
         getattr(self, "update_" + obj.table_name)(obj, original_obj)
         self.db_store.update(obj)
 
-    def delete_model_object(self, model, obj_id):
-        obj = self.db_store.get_one(model(id=obj_id))
+    def delete_model_object(self, obj):
         LOG.info("Delete %(table)s with data %(data)s.",
                  {'table': obj.table_name, 'data': obj})
         getattr(self, "delete_" + obj.table_name)(obj)
@@ -128,7 +123,7 @@ class BGPService(service.Service):
                 self.bgp_driver.delete_bgp_peer(speaker.local_as,
                                                 str(p.peer_ip))
 
-        # Add new peers
+        # Add new peerstest_vm_port_online_offline
         for p in new_peers:
             if p not in old_peers:
                 self.bgp_driver.add_bgp_peer(speaker.local_as,
