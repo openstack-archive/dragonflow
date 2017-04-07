@@ -10,8 +10,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from neutron.callbacks import events
+from neutron.callbacks import registry
+from neutron.callbacks import resources
 from neutron_dynamic_routing.db import bgp_db
 from neutron_dynamic_routing.extensions import bgp as bgp_ext
+from neutron_lib import context
 from neutron_lib.plugins import directory
 from neutron_lib.services import base as service_base
 from oslo_log import log as logging
@@ -73,8 +77,41 @@ class DFBgpPlugin(service_base.ServicePluginBase,
                 "for private networks and floating IP's host routes.")
 
     def _register_callbacks(self):
-        # TODO(xiaohhui): Add subscribers to router and floatingip changes.
-        pass
+        # TODO(xiaohhui): Add subscribers to floatingip changes.
+        registry.subscribe(self.router_port_callback,
+                           resources.ROUTER_INTERFACE,
+                           events.AFTER_CREATE)
+        registry.subscribe(self.router_port_callback,
+                           resources.ROUTER_INTERFACE,
+                           events.AFTER_DELETE)
+        registry.subscribe(self.router_port_callback,
+                           resources.ROUTER_GATEWAY,
+                           events.AFTER_CREATE)
+        registry.subscribe(self.router_port_callback,
+                           resources.ROUTER_GATEWAY,
+                           events.AFTER_DELETE)
+
+    def router_port_callback(self, resource, event, trigger, **kwargs):
+        gw_network = kwargs['network_id']
+        ctx = context.get_admin_context()
+        speakers = self._bgp_speakers_for_gateway_network(ctx, gw_network)
+
+        for speaker in speakers:
+            prefixes = self._get_tenant_network_routes_by_bgp_speaker(
+                ctx, speaker.id)
+            routes = self._route_list_from_prefixes_and_next_hop(prefixes)
+            self._update_bgp_speaker_routes(None, speaker.id, routes)
+
+    def _route_list_from_prefixes_and_next_hop(self, routes):
+        route_list = [{'destination': x['destination'],
+                       'nexthop': x['next_hop']} for x in routes]
+        return route_list
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    def _update_bgp_speaker_routes(self, context, bgp_speaker_id, routes):
+        bgp_speaker = self.nb_api.get(bgp.BGPSpeaker(id=bgp_speaker_id))
+        bgp_speaker.routes = routes
+        self.nb_api.update(bgp_speaker, skip_send_event=True)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_bgp_speaker(self, context, bgp_speaker):
@@ -148,7 +185,15 @@ class DFBgpPlugin(service_base.ServicePluginBase,
     def add_gateway_network(self, context, bgp_speaker_id, network_info):
         ret_value = super(DFBgpPlugin, self).add_gateway_network(
             context, bgp_speaker_id, network_info)
-        # TODO(xiaohhui): Calculate routes for bgp_speaker_id with network.
+
+        tenant_id = context.tenant_id
+        prefixes = self._get_tenant_network_routes_by_bgp_speaker(
+            context, bgp_speaker_id)
+        routes = self._route_list_from_prefixes_and_next_hop(prefixes)
+        self.nb_api.update(bgp.BGPSpeaker(id=bgp_speaker_id,
+                                          topic=tenant_id,
+                                          routes=routes),
+                           skip_send_event=True)
         return ret_value
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
@@ -168,4 +213,6 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         tenant_id = context.tenant_id
         bgp_speaker = self.nb_api.get(bgp.BGPSpeaker(id=bgp_speaker_id,
                                                      topic=tenant_id))
-        return bgp_speaker.routes
+        return {'advertised_routes': [{'destination': r.destination,
+                                       'next_hop': r.nexthop}
+                                      for r in bgp_speaker.routes]}

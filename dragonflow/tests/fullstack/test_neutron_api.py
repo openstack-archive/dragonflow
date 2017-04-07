@@ -629,17 +629,61 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
 
     @lockutils.synchronized('need-external-net')
     def test_add_remove_bgp_network(self):
-        bgp_peer = self.store(
-            objects.BGPPeerTestObj(self.neutron, self.nb_api))
         bgp_speaker = self.store(
             objects.BGPSpeakerTestObj(self.neutron, self.nb_api))
-        bgp_peer.create()
         bgp_speaker.create()
-        with self._prepare_ext_net() as external_network_id:
-            bgp_speaker.add_network(external_network_id)
-            # TODO(xiaohhui): Verify the routes has been added to
-            # bgp speaker nb db data
+        address_scope = self.store(
+            objects.AddressScopeTestObj(self.neutron, self.nb_api))
+        as_id = address_scope.create()
+        private_subnetpool = self.store(
+            objects.SubnetPoolTestObj(self.neutron, self.nb_api))
+        private_sp_id = private_subnetpool.create(
+            subnetpool={'name': "private_sp",
+                        'default_prefixlen': 24,
+                        'prefixes': ["20.0.0.0/8"],
+                        'address_scope_id': as_id})
+        public_subnetpool = self.store(
+            objects.SubnetPoolTestObj(self.neutron, self.nb_api))
+        public_sp_id = public_subnetpool.create(
+            subnetpool={'name': "public_sp",
+                        'default_prefixlen': 24,
+                        'prefixes': ["172.24.4.0/24"],
+                        'address_scope_id': as_id})
+        public_network = self.store(
+            objects.NetworkTestObj(self.neutron, self.nb_api))
+        public_network_id = public_network.create(
+            network={'name': 'public', 'router:external': True})
+        public_subnet = self.store(objects.SubnetTestObj(
+                self.neutron,
+                self.nb_api,
+                public_network_id,
+        ))
+        public_subnet.create(subnet={'ip_version': 4,
+                                     'network_id': public_network_id,
+                                     'subnetpool_id': public_sp_id})
+        private_network = self.store(
+            objects.NetworkTestObj(self.neutron, self.nb_api))
+        private_network_id = private_network.create(network={'name': "public"})
+        private_subnet = self.store(objects.SubnetTestObj(
+                self.neutron,
+                self.nb_api,
+                private_network_id,
+        ))
+        private_sn_id = private_subnet.create(
+            subnet={'ip_version': 4,
+                    'network_id': private_network_id,
+                    'subnetpool_id': private_sp_id})
+        bgp_speaker.add_network(public_network_id)
+        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        router_id = router.create()
+        self.neutron.add_interface_router(
+            router_id, body={'subnet_id': private_sn_id})
+        self.neutron.add_gateway_router(
+            router_id, body={'network_id': public_network_id})
+        # Finnally, verify the route has been set in nb db.
+        nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
+        self.assertTrue(nb_bgp_speaker.routes)
 
-            bgp_speaker.remove_network(external_network_id)
-            nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
-            self.assertFalse(nb_bgp_speaker.routes)
+        bgp_speaker.remove_network(public_network_id)
+        nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
+        self.assertFalse(nb_bgp_speaker.routes)
