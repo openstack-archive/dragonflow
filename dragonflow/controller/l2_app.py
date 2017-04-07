@@ -172,7 +172,7 @@ class L2App(df_base_app.DFlowApp):
         self.mod_flow(
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
+            priority=const.PRIORITY_HIGH,
             match=match)
 
         # Update multicast and broadcast
