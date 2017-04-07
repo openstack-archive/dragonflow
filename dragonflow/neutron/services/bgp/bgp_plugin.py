@@ -10,8 +10,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from neutron.callbacks import events
+from neutron.callbacks import registry
+from neutron.callbacks import resources
 from neutron_dynamic_routing.db import bgp_db
 from neutron_dynamic_routing.extensions import bgp as bgp_ext
+from neutron_lib import context as n_context
 from neutron_lib.plugins import directory
 from neutron_lib.services import base as service_base
 from oslo_log import log as logging
@@ -73,8 +77,44 @@ class DFBgpPlugin(service_base.ServicePluginBase,
                 "for private networks and floating IP's host routes.")
 
     def _register_callbacks(self):
-        # TODO(xiaohhui): Add subscribers to router and floatingip changes.
-        pass
+        # TODO(xiaohhui): Add subscribers to floatingip changes.
+        registry.subscribe(self.router_port_callback,
+                           resources.ROUTER_INTERFACE,
+                           events.AFTER_CREATE)
+        registry.subscribe(self.router_port_callback,
+                           resources.ROUTER_INTERFACE,
+                           events.AFTER_DELETE)
+        registry.subscribe(self.router_port_callback,
+                           resources.ROUTER_GATEWAY,
+                           events.AFTER_CREATE)
+        registry.subscribe(self.router_port_callback,
+                           resources.ROUTER_GATEWAY,
+                           events.AFTER_DELETE)
+
+    def router_port_callback(self, resource, event, trigger, **kwargs):
+        gw_network = kwargs['network_id']
+        # NOTE(xiaohhui) Not all events have context in kwargs(e.g router
+        # gw after create event), just get a admin context here.
+        admin_ctx = n_context.get_admin_context()
+        speakers = self._bgp_speakers_for_gateway_network(admin_ctx,
+                                                          gw_network)
+
+        for speaker in speakers:
+            self._update_bgp_speaker_routes(admin_ctx,
+                                            speaker.id,
+                                            speaker.project_id)
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    def _update_bgp_speaker_routes(self, context, bgp_speaker_id, topic):
+        prefixes = self._get_tenant_network_routes_by_bgp_speaker(
+            context, bgp_speaker_id)
+        # Translate to the format of dragonflow db data.
+        routes = [{'destination': x['destination'],
+                   'nexthop': x['next_hop']} for x in prefixes]
+        bgp_speaker = self.nb_api.get(bgp.BGPSpeaker(id=bgp_speaker_id,
+                                                     topic=topic))
+        bgp_speaker.routes = routes
+        self.nb_api.update(bgp_speaker, skip_send_event=True)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_bgp_speaker(self, context, bgp_speaker):
@@ -144,19 +184,24 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         self.nb_api.update(bgp_speaker, skip_send_event=True)
         return ret_value
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
     def add_gateway_network(self, context, bgp_speaker_id, network_info):
         ret_value = super(DFBgpPlugin, self).add_gateway_network(
             context, bgp_speaker_id, network_info)
-        # TODO(xiaohhui): Calculate routes for bgp_speaker_id with network.
+
+        tenant_id = context.tenant_id
+        self._update_bgp_speaker_routes(context,
+                                        bgp_speaker_id,
+                                        tenant_id)
         return ret_value
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
     def remove_gateway_network(self, context, bgp_speaker_id, network_info):
         ret_value = super(DFBgpPlugin, self).remove_gateway_network(
             context, bgp_speaker_id, network_info)
 
-        # TODO(xiaohhui): Calculate routes for bgp_speaker_id without network.
+        tenant_id = context.tenant_id
+        self._update_bgp_speaker_routes(context,
+                                        bgp_speaker_id,
+                                        tenant_id)
         return ret_value
 
     def get_advertised_routes(self, context, bgp_speaker_id):
