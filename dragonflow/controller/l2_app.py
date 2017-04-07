@@ -27,8 +27,6 @@ from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import nd_advertisers
 from dragonflow.controller import df_base_app
-from dragonflow.db.models import constants as model_constants
-from dragonflow.db.models import l2
 
 
 # TODO(gsagie) currently the number set in Ryu for this
@@ -45,9 +43,6 @@ class _LocalNetwork(object):
     def __init__(self):
         self.local_ports = {}
         self.remote_ports = {}
-
-    def is_empty(self):
-        return not self.local_ports and not self.remote_ports
 
 
 class L2App(df_base_app.DFlowApp):
@@ -196,7 +191,7 @@ class L2App(df_base_app.DFlowApp):
 
         if not network.local_ports:
             self._del_multicast_broadcast_flows_for_local(local_network_id)
-            if network.is_empty():
+            if not network.remote_ports:
                 del self.local_networks[local_network_id]
         else:
             self._update_multicast_broadcast_flows_for_local(
@@ -207,7 +202,7 @@ class L2App(df_base_app.DFlowApp):
     def _del_multicast_broadcast_flows_for_local(self, local_network_id):
         ofproto = self.ofproto
 
-        # Ingress for broadcast and multicast
+        # Egress for broadcast and multicast
         match = self._get_multicast_broadcast_match(local_network_id)
 
         self.mod_flow(
@@ -216,7 +211,7 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-        # Egress for broadcast and multicast
+        # Ingress for broadcast and multicast
         match = self._get_multicast_broadcast_match(local_network_id)
 
         self.mod_flow(
@@ -335,7 +330,7 @@ class L2App(df_base_app.DFlowApp):
         if lport.get_device_owner() != common_const.DEVICE_OWNER_ROUTER_INTF:
             self._add_dst_classifier_flow_for_port(network_id, mac, port_key)
 
-        # Go to dispatch table according to unique metadata & mac
+        # Go to ingress conntrack table according to unique metadata & mac
         match = parser.OFPMatch()
         match.set_metadata(network_id)
         match.set_dl_dst(haddr_to_bin(mac))
@@ -377,32 +372,21 @@ class L2App(df_base_app.DFlowApp):
         local_network = self.local_networks[network_id]
         if not local_network.local_ports:
             command = ofproto.OFPFC_ADD
-
         local_network.local_ports[lport_id] = port_key
 
         ingress = []
-        ingress.append(parser.OFPActionSetField(reg7=port_key))
-        ingress.append(parser.NXActionResubmitTable(
-            OF_IN_PORT,
-            const.INGRESS_CONNTRACK_TABLE))
-
         egress = []
-
-        egress.append(parser.OFPActionSetField(reg7=port_key))
-        egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
-                                                   const.EGRESS_TABLE))
-
-        for port_id_in_network in local_network.local_ports:
-            lport = self.db_store.get_port(port_id_in_network, topic)
-            if lport is None or lport_id == lport.get_id():
+        for port_id in local_network.local_ports:
+            lport = self.db_store.get_port(port_id, topic)
+            if lport is None:
                 continue
-            port_key_in_network = local_network.local_ports[port_id_in_network]
+            port_key = local_network.local_ports[port_id]
 
-            egress.append(parser.OFPActionSetField(reg7=port_key_in_network))
+            egress.append(parser.OFPActionSetField(reg7=port_key))
             egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
                                                        const.EGRESS_TABLE))
 
-            ingress.append(parser.OFPActionSetField(reg7=port_key_in_network))
+            ingress.append(parser.OFPActionSetField(reg7=port_key))
             ingress.append(parser.NXActionResubmitTable(
                 OF_IN_PORT,
                 const.INGRESS_CONNTRACK_TABLE))
@@ -429,20 +413,6 @@ class L2App(df_base_app.DFlowApp):
             inst=ingress_inst,
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
             command=command,
-            priority=const.PRIORITY_HIGH,
-            match=match)
-
-    @df_base_app.register_event(l2.LogicalSwitch,
-                                model_constants.EVENT_DELETED)
-    def remove_logical_switch(self, lswitch):
-        ofproto = self.ofproto
-
-        network_id = lswitch.unique_key
-        match = self._get_multicast_broadcast_match(network_id)
-
-        self.mod_flow(
-            table_id=const.L2_LOOKUP_TABLE,
-            command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
             match=match)
 
