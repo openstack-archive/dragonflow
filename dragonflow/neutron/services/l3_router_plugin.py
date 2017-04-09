@@ -17,12 +17,16 @@
 import netaddr
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import l3_rpc
+from neutron.callbacks import events
+from neutron.callbacks import registry
+from neutron.callbacks import resources
 from neutron.common import exceptions as n_common_exc
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.db import common_db_mixin
 from neutron.db import extraroute_db
 from neutron.db import l3_agentschedulers_db
+from neutron.db import l3_attrs_db
 from neutron.db import l3_gwmode_db
 from neutron.db.models import l3 as l3_db
 from neutron.quota import resource_registry
@@ -47,6 +51,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                        common_db_mixin.CommonDbMixin,
                        extraroute_db.ExtraRoute_dbonly_mixin,
                        l3_gwmode_db.L3_NAT_db_mixin,
+                       l3_attrs_db.ExtraAttributesMixin,
                        l3_agentschedulers_db.L3AgentSchedulerDbMixin):
 
     """Implementation of the Dragonflow Neutron L3 Router Service Plugin.
@@ -68,6 +73,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         super(DFL3RouterPlugin, self).__init__()
         self._nb_api = None
         self._start_rpc_notifiers()
+        self._register_callbacks()
 
     @property
     def core_plugin(self):
@@ -81,6 +87,16 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             self._nb_api = mech_driver.nb_api
 
         return self._nb_api
+
+    def _register_callbacks(self):
+        registry.subscribe(self.router_create_callback,
+                           resources.ROUTER,
+                           events.PRECOMMIT_CREATE)
+
+    def router_create_callback(self, resource, event, trigger, context,
+                               router, router_db, **kwargs):
+        with context.session.begin(subtransactions=True):
+            self._ensure_extra_attr_model(context, router_db)
 
     def _start_rpc_notifiers(self):
         """Initialization RPC notifiers for agents"""

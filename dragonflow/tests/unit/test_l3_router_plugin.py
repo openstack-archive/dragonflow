@@ -15,6 +15,7 @@
 #    under the License.
 
 import mock
+from neutron.db.models import l3
 from neutron_lib import context as nctx
 from neutron_lib.plugins import directory
 import testtools
@@ -131,3 +132,12 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                     {'floatingip': {'floating_network_id': n['network']['id'],
                                     'tenant_id': n['network']['tenant_id']}})
                 self.assertTrue(floatingip)
+
+    def test_create_router_have_extra_attrs(self):
+        r = {'router': {'name': 'router', 'tenant_id': 'tenant',
+                        'admin_state_up': True}}
+        router = self.l3p.create_router(self.context, r)
+        record = (self.context.session.query(l3.Router).
+                  filter_by(id=router['id']).
+                  one())
+        self.assertIsNotNone(record['extra_attributes'])
