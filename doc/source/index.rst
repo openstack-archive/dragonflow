@@ -35,6 +35,7 @@ Dragonflow Specs
    :maxdepth: 1
 
    specs/index
+   specs/tunneling_app
 
 Developer References
 ====================
