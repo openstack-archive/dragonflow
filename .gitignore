@@ -53,7 +53,7 @@ ChangeLog
 .*.swp
 .*sw?
 .idea
-
+.idea
 # Vagrant
 .vagrant
 
