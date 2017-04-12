@@ -20,9 +20,6 @@ OVS_PATCH_INTERFACE = "patch"
 OVS_TUNNEL_INTERFACE = "tunnel"
 OVS_UNKNOWN_INTERFACE = "unknown"
 
-PORT_STATUS_UP = "up"
-PORT_STATUS_DOWN = "down"
-
 DEVICE_OWNER_LOCAL_GW = (
             n_const.DEVICE_OWNER_NETWORK_PREFIX + "local_router_gateway")
 
