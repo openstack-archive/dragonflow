@@ -251,12 +251,13 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         except df_exceptions.DBKeyNotFound:
             LOG.exception("floatingip %s is not found in DF DB", id)
 
-    def get_floatingip(self, context, id, fields=None):
-        with context.session.begin(subtransactions=True):
-            fip = super(DFL3RouterPlugin, self).get_floatingip(context, id,
-                                                               fields)
-            fip['status'] = self.nb_api.get_floatingip(id).get_status()
-            return fip
+    def update_fip_status(self, context, fip_id, status):
+        self.update_floatingip_status(context, fip_id, status)
+        self.nb_api.update_floatingip(
+            id=fip_id,
+            topic=None,
+            notify=False,
+            status=status)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def add_router_interface(self, context, router_id, interface_info):
