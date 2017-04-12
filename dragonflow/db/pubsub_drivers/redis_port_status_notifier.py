@@ -18,10 +18,11 @@ import os
 import random
 import time
 
+from neutron_lib import context as n_context
+from neutron_lib.plugins import directory
 from oslo_config import cfg
 from oslo_log import log
 
-from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import models
@@ -105,11 +106,10 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
 
     def port_status_callback(self, table, key, action, value, topic=None):
         if models.LogicalPort.table_name == table and 'update' == action:
-            LOG.info("Process port %s status update event", str(key))
-            if constants.PORT_STATUS_UP == value:
-                self.mech_driver.set_port_status_up(key)
-            if constants.PORT_STATUS_DOWN == value:
-                self.mech_driver.set_port_status_down(key)
+            LOG.info("Process port %s status update event", key)
+            core_plugin = directory.get_plugin()
+            core_plugin.update_port_status(n_context.get_admin_context(),
+                                           key, value)
 
 
 class HeartBeatReporter(object):
