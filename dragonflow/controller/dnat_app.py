@@ -459,10 +459,8 @@ class DNATApp(df_base_app.DFlowApp):
 
     def update_floatingip_status(self, floatingip, status):
         floatingip.update_fip_status(status)
-        self.nb_api.update_floatingip(id=floatingip.get_id(),
-                                      topic=floatingip.get_topic(),
-                                      notify=False,
-                                      status=status)
+        if self.neutron_server_notifier:
+            self.neutron_server_notifier.notify_fip_status(floatingip, status)
 
     def associate_floatingip(self, floatingip):
         self.local_floatingips[floatingip.get_id()] = floatingip

@@ -15,10 +15,14 @@
 #    under the License.
 
 import mock
+from neutron_lib import constants as n_const
 from neutron_lib import context as nctx
 from neutron_lib.plugins import directory
+from oslo_config import cfg
 import testtools
 
+from dragonflow.common import utils as df_utils
+from dragonflow.db import models
 from dragonflow.neutron.db.models import l3 as neutron_l3
 from dragonflow.tests.unit import test_mech_driver
 
@@ -150,3 +154,29 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                     {'floatingip': {'floating_network_id': n['network']['id'],
                                     'tenant_id': n['network']['tenant_id']}})
                 self.assertTrue(floatingip)
+
+    def test_notify_update_fip_status(self):
+        cfg.CONF.set_override('port_status_notifier',
+                              'redis_port_status_notifier_driver',
+                              group='df')
+        notifier = df_utils.load_driver(
+            cfg.CONF.df.port_status_notifier,
+            df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
+
+        kwargs = {'arg_list': ('router:external',),
+                  'router:external': True}
+        with self.network(**kwargs) as n:
+            with self.subnet(network=n):
+                floatingip = self.l3p.create_floatingip(
+                    self.context,
+                    {'floatingip': {'floating_network_id': n['network']['id'],
+                                    'tenant_id': n['network']['tenant_id']}})
+
+        self.assertEqual(n_const.FLOATINGIP_STATUS_DOWN, floatingip['status'])
+        notifier.port_status_callback(models.Floatingip.table_name,
+                                      floatingip['id'],
+                                      "update",
+                                      n_const.FLOATINGIP_STATUS_ACTIVE)
+        floatingip = self.l3p.get_floatingip(self.context, floatingip['id'])
+        self.assertEqual(n_const.FLOATINGIP_STATUS_ACTIVE,
+                         floatingip['status'])
