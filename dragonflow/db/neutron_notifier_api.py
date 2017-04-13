@@ -16,25 +16,29 @@ import six
 
 
 @six.add_metaclass(abc.ABCMeta)
-class PortStatusDriver(object):
-    # PortStatus implements port status update southbound
-    # notification mechanism.
+class NeutronNotifierDriver(object):
+    # NeutronNotifierDriver implements notification mechanism from
+    # Dragonflow controller to northbound neutron server.
 
     @abc.abstractmethod
     def initialize(self, nb_api, is_neutron_server):
-        """Initialise the portstatus both in server
-           compute node
+        """Initialise the NeutronNotifierDriver both in neutron server and
+           compute node.
 
         :nb_api:               nb_api driver
-        :is_neutron_server     server or compute
+        :is_neutron_server     Neutron server or compute
         :return:    None
         """
 
     @abc.abstractmethod
-    def notify_port_status(self, ovs_port, status):
-        """notify port status changes to server
+    def notify_neutron_server(self, table, key, action, value, topic):
+        """Notify the change to neutron server. Note that this method
+           will run in neutron server.
 
-        :param ovs_port:    which port status changed
-        :param status:      notify port status up or down
-        :return:            None
+        :param table:    which db model
+        :param key:      the id of db model data
+        :param action:   the action of data, create/update/delete
+        :param value:    the value of db model data
+        :param topic:    the topic of neutron server's corresponding listener
+        :return:         None
         """
