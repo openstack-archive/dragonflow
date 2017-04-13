@@ -155,10 +155,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         req = self.new_update_request('subnets', data, subnet_id)
         req.get_response(self.api)
         network = new_network
-        # FIXME(xiaohhui): It seems to be a neutron issue to force using a
-        #                  new context here. See bug/1666749 for more details.
-        ctx = context.get_admin_context()
-        new_network = self.driver.get_network(ctx, network['id'])
+        new_network = self.driver.get_network(self.context, network['id'])
         new_lswitch = neutron_l2.logical_switch_from_neutron_network(
             new_network)
         updated_subnet = self.driver.get_subnet(self.context,
