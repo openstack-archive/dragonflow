@@ -52,8 +52,8 @@ OVS_DB_PID=$OVS_DIR"/"$OVS_DB_SERVICE".pid"
 OVS_VSWITCHD_PID=$OVS_DIR"/"$OVS_VSWITCHD_SERVICE".pid"
 OVS_VSWITCH_OCSSCHEMA_FILE=${OVS_VSWITCH_OCSSCHEMA_FILE:-"/usr/share/openvswitch/vswitch.ovsschema"}
 
-# Port status notifier
-ENABLE_PORT_STATUS_NOTIFIER=${ENABLE_PORT_STATUS_NOTIFIER:-"False"}
+# Neutron notifier
+ENABLE_NEUTRON_NOTIFIER=${ENABLE_NEUTRON_NOTIFIER:-"False"}
 
 # Set value of TUNNEL_ENDPOINT_IP if unset
 TUNNEL_ENDPOINT_IP=${TUNNEL_ENDPOINT_IP:-$HOST_IP}
@@ -234,7 +234,7 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
     iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
     iniset $DRAGONFLOW_CONF df port_status_notifier "$PORT_STATUS_NOTIFIER"
-    iniset $DRAGONFLOW_CONF df enable_port_status_notifier "$ENABLE_PORT_STATUS_NOTIFIER"
+    iniset $DRAGONFLOW_CONF df enable_neutron_notifier "$ENABLE_NEUTRON_NOTIFIER"
     iniset $DRAGONFLOW_CONF df enable_dpdk "$ENABLE_DPDK"
     iniset $DRAGONFLOW_CONF df management_ip "$HOST_IP"
     iniset $DRAGONFLOW_CONF df local_ip "$TUNNEL_ENDPOINT_IP"

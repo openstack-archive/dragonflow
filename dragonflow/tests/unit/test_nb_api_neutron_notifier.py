@@ -22,18 +22,18 @@ from dragonflow.tests import base as tests_base
 from dragonflow.tests.common import utils
 
 
-class TestRedisPortStatus(tests_base.BaseTestCase):
+class TestNbApiNeutronNotifier(tests_base.BaseTestCase):
 
     def setUp(self):
-        cfg.CONF.set_override('port_status_notifier',
-                              'redis_port_status_notifier_driver',
+        cfg.CONF.set_override('neutron_notifier',
+                              'nb_api_neutron_notifier_driver',
                               group='df')
         mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
                    side_effect=utils.empty_wrapper).start()
-        super(TestRedisPortStatus, self).setUp()
+        super(TestNbApiNeutronNotifier, self).setUp()
         self.notifier = df_utils.load_driver(
-                                    cfg.CONF.df.port_status_notifier,
-                                    df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
+            cfg.CONF.df.neutron_notifier,
+            df_utils.DF_NEUTRON_NOTIFIER_DRIVER_NAMESPACE)
 
     def test_create_heart_beat_reporter(self):
         nb_api = mock.Mock()
@@ -56,13 +56,13 @@ class TestRedisPortStatus(tests_base.BaseTestCase):
         self.notifier.create_heart_beat_reporter('fake_host')
         self.assertFalse(nb_api.register_listener_callback.called)
 
-    def test_port_status_callback(self):
+    def test_notify_neutron_server(self):
         core_plugin = mock.Mock()
         with mock.patch("neutron_lib.plugins.directory.get_plugin",
                         return_value=core_plugin):
-            self.notifier.port_status_callback(models.LogicalPort.table_name,
-                                               "fake_port",
-                                               "update",
-                                               "up")
+            self.notifier.notify_neutron_server(models.LogicalPort.table_name,
+                                                "fake_port",
+                                                "update",
+                                                "up")
             core_plugin.update_port_status.assert_called_once_with(
                 mock.ANY, "fake_port", "up")

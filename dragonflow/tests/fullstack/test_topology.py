@@ -60,7 +60,7 @@ class TestTopology(test_base.DFTestBase):
         self.assertTrue(vm_mac is not None)
         vm_flows = self._get_vm_flows(vm_mac)
         self.assertTrue(any(vm_flows))
-        if cfg.CONF.df.enable_port_status_notifier:
+        if cfg.CONF.df.enable_neutron_notifier:
             # test port status update
             utils.wait_until_true(
                 lambda: self._is_VM_port_status(vm, 'ACTIVE'),
@@ -71,7 +71,7 @@ class TestTopology(test_base.DFTestBase):
 
     def _remove_vm(self, vm):
         vm_mac = vm.get_first_mac()
-        if cfg.CONF.df.enable_port_status_notifier:
+        if cfg.CONF.df.enable_neutron_notifier:
             # test port status update
             vm.server.stop()
             utils.wait_until_true(
