@@ -137,12 +137,12 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                 self.assertTrue(floatingip)
 
     def test_notify_update_fip_status(self):
-        cfg.CONF.set_override('port_status_notifier',
-                              'redis_port_status_notifier_driver',
+        cfg.CONF.set_override('neutron_notifier',
+                              'redis_neutron_notifier_driver',
                               group='df')
         notifier = df_utils.load_driver(
-            cfg.CONF.df.port_status_notifier,
-            df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
+            cfg.CONF.df.neutron_notifier,
+            df_utils.DF_NEUTRON_NOTIFIER_DRIVER_NAMESPACE)
 
         kwargs = {'arg_list': ('router:external',),
                   'router:external': True}
@@ -154,10 +154,10 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                                     'tenant_id': n['network']['tenant_id']}})
 
         self.assertEqual(n_const.FLOATINGIP_STATUS_DOWN, floatingip['status'])
-        notifier.port_status_callback(models.Floatingip.table_name,
-                                      floatingip['id'],
-                                      "update",
-                                      n_const.FLOATINGIP_STATUS_ACTIVE)
+        notifier.notify_neutron_server(models.Floatingip.table_name,
+                                       floatingip['id'],
+                                       "update",
+                                       n_const.FLOATINGIP_STATUS_ACTIVE)
         floatingip = self.l3p.get_floatingip(self.context, floatingip['id'])
         self.assertEqual(n_const.FLOATINGIP_STATUS_ACTIVE,
                          floatingip['status'])
