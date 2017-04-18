@@ -254,6 +254,10 @@ class _CommonBase(models.Base):
                 if isinstance(subobj, ModelBase):
                     yield subobj
 
+    @classmethod
+    def get_index(cls, index):
+        return cls.get_indexes()[index]
+
 
 def _add_event_funcs(cls_, event):
     @classmethod
