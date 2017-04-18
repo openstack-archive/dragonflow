@@ -14,6 +14,7 @@ import contextlib
 
 from neutronclient.common import exceptions as n_exc
 from oslo_concurrency import lockutils
+import testtools
 
 from dragonflow.db.models import l2
 from dragonflow.tests.common import utils
@@ -175,6 +176,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         network.close()
         self.assertFalse(network.exists())
 
+    @testtools.skip("bug/1683784")
     def test_create_port_with_qospolicy(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
@@ -206,6 +208,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         qospolicy.close()
         self.assertFalse(qospolicy.exists())
 
+    @testtools.skip("bug/1683784")
     def test_update_port_with_qospolicy(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
@@ -305,6 +308,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         secgroup.close()
         self.assertFalse(secgroup.exists())
 
+    @testtools.skip("bug/1683784")
     def test_create_delete_qos_policy(self):
         qospolicy = self.store(
             objects.QosPolicyTestObj(self.neutron, self.nb_api))
