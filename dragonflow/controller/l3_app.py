@@ -65,7 +65,7 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         router_unique_key = msg.match.get('reg5')
         router = self.db_store2.get_all(
             l3.LogicalRouter(unique_key=router_unique_key),
-            l3.LogicalRouter.get_indexes()['unique_key'])
+            l3.LogicalRouter.get_index('unique_key'))
         for router_port in router.ports:
             if ip_addr in router_port.network:
                 dst_ports = self.db_store.get_ports_by_network_id(

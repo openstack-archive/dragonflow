@@ -209,7 +209,7 @@ then query db_store by providing the index and the keys:
 
    all_1968_movies = db_store.get_all(
        Movie(year=1968),
-       index=Movie.get_indexes()['by_year'],
+       index=Movie.get_index('by_year'),
    )
 
 Hooks
