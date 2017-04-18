@@ -10,15 +10,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.conf.services import qos_driver_manager as driver_mgr_config
 from neutron.objects.qos import rule
 from neutron.plugins.ml2 import config as ml2_config
 from neutron_lib.plugins import directory
+import testtools
 
 from dragonflow.db.models import qos
 from dragonflow.tests.unit import test_mech_driver
 
 
+@testtools.skip("bug/1683784")
 class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
 
     """Test case of df qos notification drvier"""
@@ -31,7 +32,6 @@ class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
 
     def setUp(self):
         self._extension_drivers.append('qos')
-        driver_mgr_config.register_qos_plugin_opts(ml2_config.cfg.CONF)
         ml2_config.cfg.CONF.set_override('notification_drivers',
                                          ['df_notification_driver'], 'qos')
         super(TestDFQosNotificationDriver, self).setUp()
