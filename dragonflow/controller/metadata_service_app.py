@@ -50,13 +50,8 @@ TCP_ACK = 0x010
 
 
 class MetadataServiceApp(df_base_app.DFlowApp):
-    def __init__(self, api, db_store=None, vswitch_api=None, nb_api=None):
-        super(MetadataServiceApp, self).__init__(
-            api,
-            db_store=db_store,
-            vswitch_api=vswitch_api,
-            nb_api=nb_api
-        )
+    def __init__(self, *args, **kwargs):
+        super(MetadataServiceApp, self).__init__(*args, **kwargs)
         self._arp_responder = None
         self._ofport = None
         self._interface_mac = ""
