@@ -9,35 +9,39 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import mock
 
 from neutron.objects.qos import rule
-from neutron.plugins.ml2 import config as ml2_config
+from neutron.plugins.common import constants as service_constants
 from neutron_lib.plugins import directory
-import testtools
 
 from dragonflow.db.models import qos
+from dragonflow.tests.common import utils
 from dragonflow.tests.unit import test_mech_driver
 
 
-@testtools.skip("bug/1683784")
-class TestDFQosNotificationDriver(test_mech_driver.DFMechanismDriverTestCase):
+def _get_df_qos_driver():
+    # Imported here because of lockedobjects_db mock
+    from dragonflow.neutron.services.qos.drivers import df_qos
+    return df_qos._driver
+
+
+class TestDFQosDriver(test_mech_driver.DFMechanismDriverTestCase):
 
     """Test case of df qos notification drvier"""
 
     def get_additional_service_plugins(self):
-        p = super(TestDFQosNotificationDriver,
+        p = super(TestDFQosDriver,
                   self).get_additional_service_plugins()
         p.update({'qos_plugin_name': 'qos'})
         return p
 
     def setUp(self):
         self._extension_drivers.append('qos')
-        ml2_config.cfg.CONF.set_override('notification_drivers',
-                                         ['df_notification_driver'], 'qos')
-        super(TestDFQosNotificationDriver, self).setUp()
-        self.plugin = directory.get_plugin('QOS')
-        self.driver = (
-            self.plugin.notification_driver_manager.notification_drivers[0])
+        super(TestDFQosDriver, self).setUp()
+        self.plugin = directory.get_plugin(service_constants.QOS)
+        self.driver = _get_df_qos_driver()
+        self.plugin.driver_manager.register_driver(self.driver)
 
     def _test_create_policy(self):
         qos_policy = {'policy': {'name': "policy1", 'project_id': 'project1'}}

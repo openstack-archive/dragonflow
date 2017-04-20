@@ -62,9 +62,6 @@ Basic Configurations
     service_plugins = df-l3,qos
     core_plugin = neutron.plugins.ml2.plugin.Ml2Plugin
 
-    [qos]
-    notification_drivers = df_notification_driver
-
 /etc/neutron/plugins/ml2/ml2_conf.ini
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
