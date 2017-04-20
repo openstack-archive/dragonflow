@@ -62,20 +62,6 @@ id, type, etc, the QoS may have all of the attributes in the qos_policy
 when the type of QoS is "all" and only have the dscp attribute in the
 qos_policy when the type of QoS is "dscp".
 
-QoS Notification Driver
------------------------
-
-QoS plugin uses "message_queue" as default notification driver. Dragonflow
-will add a new notification driver named "qos_notification_driver" to deal
-with the CRUD operations of QoS policies.
-
-If you want to use ML2 as core plugin and use dragonflow as ML2 mech driver,
-you should edit neutron.conf file to configure
-"notification_drivers = df_notification_driver" in [QoS] section.
-
-You can see the implement of qos_notification_driver in patch:
-https://review.openstack.org/#/c/331932/
-
 ML2 Mechanism Driver
 --------------------
 
