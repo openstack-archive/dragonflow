@@ -19,7 +19,6 @@ from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
 
-@testtools.skip("bug/1683784")
 class TestPortQos(test_base.DFTestBase):
     def test_port_with_qospolicy(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
