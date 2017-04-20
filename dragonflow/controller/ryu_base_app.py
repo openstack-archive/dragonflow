@@ -36,9 +36,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     OF_AUTO_PORT_DESC_STATS_REQ_VER = 0x04
 
     def __init__(self, db_store=None, vswitch_api=None, nb_api=None):
-        super(RyuDFAdapter, self).__init__(db_store=db_store,
-                                           vswitch_api=vswitch_api,
-                                           nb_api=nb_api)
+        super(RyuDFAdapter, self).__init__()
         self.dispatcher = dispatcher.AppDispatcher('dragonflow.controller',
                                                    cfg.CONF.df.apps_list)
         self.db_store = db_store
