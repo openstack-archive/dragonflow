@@ -365,6 +365,30 @@ class TestModelFramework(tests_base.BaseTestCase):
                 first_class_only=False,
             )
 
+    def test_loop_detection_with_ref_to_embedded(self):
+        with clean_registry():
+            @mf.construct_nb_db_model
+            class EmbeddedModel(mf.ModelBase):
+                pass
+
+            @mf.register_model
+            @mf.construct_nb_db_model
+            class EmbeddingModel(mf.ModelBase):
+                table_name = '1'
+                link = fields.EmbeddedField('EmbeddedModel')
+
+            @mf.register_model
+            @mf.construct_nb_db_model
+            class ReferencingModel(mf.ModelBase):
+                table_name = '2'
+                link = df_fields.ReferenceField('EmbeddedModel')
+
+            sorted_models = mf.iter_models_by_dependency_order(
+                first_class_only=True,
+            )
+            self.assertItemsEqual([EmbeddingModel, ReferencingModel],
+                                  sorted_models)
+
     def test_invalid_kwargs_init(self):
         self.assertRaises(
             TypeError,
