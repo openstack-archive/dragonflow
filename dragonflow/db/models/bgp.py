@@ -39,7 +39,8 @@ class BGPSpeaker(mf.ModelBase, mixins.Topic, mixins.Name):
 
     local_as = fields.IntField(required=True)
     peers = df_fields.ReferenceListField(BGPPeer)
-    routes = fields.ListField(host_route.HostRoute)
+    host_routes = fields.ListField(host_route.HostRoute)
+    prefix_routes = fields.ListField(host_route.HostRoute)
     ip_version = fields.IntField(required=True)
 
     def remove_peer(self, peer_id):

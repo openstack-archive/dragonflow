@@ -16,6 +16,7 @@ from neutronclient.common import exceptions as n_exc
 from oslo_concurrency import lockutils
 import testtools
 
+from dragonflow.db.models import host_route
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
 from dragonflow.db.models import secgroups
@@ -690,8 +691,27 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             router_id, body={'network_id': public_network_id})
         # Finnally, verify the route has been set in nb db.
         nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
-        self.assertTrue(nb_bgp_speaker.routes)
+        self.assertEqual(1, len(nb_bgp_speaker.prefix_routes))
+
+        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm_id = vm.create(network=private_network)
+        vm_port = self.neutron.list_ports(device_id=vm_id).get('ports')[0]
+        vm_port_id = vm_port.get('id')
+        fip = self.store(objects.FloatingipTestObj(self.neutron, self.nb_api))
+        fip.create({'floating_network_id': public_network_id,
+                    'port_id': vm_port_id})
+        fip_addr = fip.get_floatingip().get_ip_address()
+        nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
+        self.assertEqual(1, len(nb_bgp_speaker.host_routes))
+        self.assertIn(
+            host_route.HostRoute(destination=fip_addr + '/32',
+                                 nexthop='172.24.4.100'),
+            nb_bgp_speaker.host_routes)
+
+        fip.update({'port_id': None})
+        nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
+        self.assertFalse(nb_bgp_speaker.host_routes)
 
         bgp_speaker.remove_network(public_network_id)
         nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
-        self.assertFalse(nb_bgp_speaker.routes)
+        self.assertFalse(nb_bgp_speaker.prefix_routes)
