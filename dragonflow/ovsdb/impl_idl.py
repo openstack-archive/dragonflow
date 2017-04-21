@@ -12,10 +12,10 @@
 
 import functools
 
-from neutron.agent.ovsdb import impl_idl
-from neutron.agent.ovsdb.native import connection
 from oslo_config import cfg
 from ovs.db import idl
+from ovsdbapp.backend.ovs_idl import connection
+from ovsdbapp.schema.open_vswitch import impl_idl
 
 from dragonflow.common import constants
 from dragonflow.ovsdb import commands
@@ -123,21 +123,15 @@ class DFOvsdbApi(impl_idl.OvsdbIdl):
     """
     ovsdb_connection = None
 
-    def __init__(self, context, nb_api, db_connection, timeout):
-        self.context = context
-        self._nested_txn = None
+    def __init__(self, nb_api, db_connection, timeout):
         if DFOvsdbApi.ovsdb_connection is None:
             DFOvsdbApi.ovsdb_connection = DFConnection(
                 db_connection,
                 timeout,
                 'Open_vSwitch',
                 idl_class=functools.partial(DFIdl, nb_api))
-            # Override the super class's attribute
-            impl_idl.OvsdbIdl.ovsdb_connection = DFOvsdbApi.ovsdb_connection
 
-    def start(self):
-        DFOvsdbApi.ovsdb_connection.start()
-        self.idl = DFOvsdbApi.ovsdb_connection.idl
+        super(DFOvsdbApi, self).__init__(DFOvsdbApi.ovsdb_connection)
 
     def get_bridge_ports(self, bridge):
         return commands.GetBridgePorts(self, bridge)

@@ -10,9 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.agent.ovsdb.native import commands
-from neutron.agent.ovsdb.native import idlutils
 from oslo_config import cfg
+from ovsdbapp.backend.ovs_idl import idlutils
+from ovsdbapp.schema.open_vswitch import commands
 
 
 class AddPatchPort(commands.BaseCommand):

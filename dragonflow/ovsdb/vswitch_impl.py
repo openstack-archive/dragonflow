@@ -55,13 +55,12 @@ class OvsApi(object):
 
     def initialize(self, nb_api):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
-        self.ovsdb = impl_idl.DFOvsdbApi(
-            self, nb_api, db_connection, self.vsctl_timeout)
 
         table = constants.OVS_INTERFACE
         nb_api.db_change_callback(table, None, 'sync_started', None)
 
-        self.ovsdb.start()
+        self.ovsdb = impl_idl.DFOvsdbApi(
+            nb_api, db_connection, self.vsctl_timeout)
 
         nb_api.db_change_callback(table, None, 'sync_finished', None)
 
