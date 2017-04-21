@@ -11,6 +11,7 @@
 #    under the License.
 
 import mock
+from oslo_config import cfg
 
 from dragonflow.common import utils
 from dragonflow.controller import df_local_controller
@@ -266,3 +267,18 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_get_local.return_value = lport
         self.assertIsNone(self.controller.delete_activeport('fake_id'))
         mock_notify.assert_called_once_with(active_port)
+
+    def test_register_chassis(self):
+        cfg.CONF.set_override('external_host_ip',
+                              '172.24.4.100',
+                              group='df_snat_app')
+        self.controller.register_chassis()
+        expected_chassis = core.Chassis(
+            id=self.controller.chassis_name,
+            ip=self.controller.ip,
+            external_host_ip="172.24.4.100",
+            tunnel_types=self.controller.tunnel_types,
+        )
+
+        self.assertIn(expected_chassis, self.controller.db_store2)
+        self.nb_api.update.assert_called_once_with(expected_chassis)

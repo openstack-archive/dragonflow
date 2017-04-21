@@ -432,6 +432,9 @@ class DfLocalController(object):
             ip=self.ip,
             tunnel_types=self.tunnel_types,
         )
+        if cfg.CONF.df_snat_app.external_host_ip:
+            chassis.external_host_ip = cfg.CONF.df_snat_app.external_host_ip
+
         self.db_store2.update(chassis)
 
         if old_chassis is None:
