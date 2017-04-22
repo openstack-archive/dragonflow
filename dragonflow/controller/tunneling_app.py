@@ -74,14 +74,14 @@ class TunnelingApp(df_base_app.DFlowApp):
                 network_id=network_id,
                 network_type=network_type)
         if port_count == 0:
-            self._remove_network_ingress_flow(lport, network_id, network_type)
+            self._remove_network_ingress_flow(lport, network_type)
 
     def _new_network_ingress_flow(self, lport, network_id, network_type):
         LOG.debug("adding new %(net_type)s network %(network_id)s",
                   {'net_type': network_type,
                    'network_id': network_id})
 
-        match = self._make_network_match(lport, network_id, network_type)
+        match = self._make_network_match(lport, network_type)
         actions = [self.parser.OFPActionSetField(metadata=network_id)]
         action_inst = self.parser.OFPInstructionActions(
             self.ofproto.OFPIT_APPLY_ACTIONS, actions)
@@ -96,15 +96,15 @@ class TunnelingApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def _remove_network_ingress_flow(self, lport, network_id, network_type):
-        match = self._make_network_match(lport, network_id, network_type)
+    def _remove_network_ingress_flow(self, lport, network_type):
+        match = self._make_network_match(lport, network_type)
         self.mod_flow(
                 command=self.ofproto.OFPFC_DELETE,
                 table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
                 priority=const.PRIORITY_MEDIUM,
                 match=match)
 
-    def _make_network_match(self, lport, network_id, network_type):
+    def _make_network_match(self, lport, network_type):
         segmentation_id = lport.get_external_value('segmentation_id')
         ofport = self.vswitch_api.get_vtp_ofport(network_type)
         return self.parser.OFPMatch(tunnel_id_nxm=segmentation_id,
