@@ -16,13 +16,13 @@ from neutron.callbacks import resources
 from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import extra_dhcp_opt as edo_ext
 from neutron.extensions import portsecurity as psec
-from neutron.plugins.ml2 import driver_api
-from neutron.plugins.ml2 import models
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
 from neutron_lib import constants as n_const
 from neutron_lib import exceptions as n_exc
 from neutron_lib.plugins import directory
+from neutron_lib.plugins.ml2 import driver_api
+from neutron_lib.plugins.ml2 import models
 from oslo_log import log
 
 from dragonflow._i18n import _

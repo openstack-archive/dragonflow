@@ -14,10 +14,10 @@
 
 import mock
 import netaddr
-from neutron.plugins.ml2 import config
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_plugin
+from neutron_lib.plugins.ml2 import config
 
 from dragonflow.db.models import host_route
 from dragonflow.db.models import l2

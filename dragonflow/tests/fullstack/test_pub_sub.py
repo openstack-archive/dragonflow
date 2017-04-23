@@ -19,6 +19,7 @@ import six
 
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
+from dragonflow.db.models import core
 from dragonflow.db import pub_sub_api
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils as test_utils
@@ -73,9 +74,9 @@ class PubSubTestBase(test_base.DFTestBase):
             cfg.CONF.df.publisher_port
         )
         subscriber.register_listen_address(uri)
-        publishers = self.nb_api.get_publishers()
+        publishers = self.nb_api.get_all(core.Publisher)
         for publisher in publishers:
-            subscriber.register_listen_address(publisher.get_uri())
+            subscriber.register_listen_address(publisher.uri)
         subscriber.daemonize()
         return subscriber
 
