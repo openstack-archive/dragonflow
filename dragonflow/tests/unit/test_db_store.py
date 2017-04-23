@@ -126,22 +126,6 @@ class TestDbStore(tests_base.BaseTestCase):
         self.db_store.delete_floatingip('id3', 'topic2')
         self.assertIsNone(self.db_store.get_floatingip('id3', 'topic2'))
 
-    def test_publisher(self):
-        pub1 = mock.Mock()
-        pub1.get_topic.return_value = None
-        pub2 = mock.Mock()
-        pub2.get_topic.return_value = None
-        pub3 = mock.Mock()
-        pub3.get_topic.return_value = None
-        self.db_store.update_publisher('id1', pub1)
-        self.db_store.update_publisher('id2', pub2)
-        self.db_store.update_publisher('id3', pub3)
-        self.assertEqual(pub1, self.db_store.get_publisher('id1'))
-        self.assertEqual(pub2, self.db_store.get_publisher('id2'))
-        self.assertEqual(pub3, self.db_store.get_publisher('id3'))
-        self.db_store.delete_publisher('id3')
-        self.assertIsNone(self.db_store.get_publisher('id3'))
-
 
 class NestedNestedModel(models.Base):
     name = fields.StringField()

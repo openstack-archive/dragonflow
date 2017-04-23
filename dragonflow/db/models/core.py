@@ -9,6 +9,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import time
+
+from jsonmodels import fields
+from oslo_config import cfg
+
 from dragonflow import conf
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
@@ -23,3 +28,19 @@ class Chassis(mf.ModelBase, mixins.BasicEvents):
     ip = df_fields.IpAddressField(required=True)
     tunnel_types = df_fields.EnumListField(conf.CONF.df.tunnel_types,
                                            required=True)
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class Publisher(mf.ModelBase, mixins.BasicEvents, mixins.Name):
+    table_name = 'publisher'
+    uri = fields.StringField()
+    last_activity_timestamp = fields.FloatField()
+
+    def is_stale(self):
+        timeout = cfg.CONF.df.publisher_timeout
+        return (time.time() - self.last_activity_timestamp) > timeout
+
+    @classmethod
+    def on_get_all_post(self, instances):
+        return [o for o in instances if not o.is_stale()]

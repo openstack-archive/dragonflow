@@ -19,7 +19,6 @@ LogicalPort = legacy.LogicalPort
 SecurityGroup = legacy.SecurityGroup
 SecurityGroupRule = legacy.SecurityGroupRule
 Floatingip = legacy.Floatingip
-Publisher = legacy.Publisher
 AllowedAddressPairsActivePort = legacy.AllowedAddressPairsActivePort
 Listener = legacy.Listener
 OvsPort = legacy.OvsPort

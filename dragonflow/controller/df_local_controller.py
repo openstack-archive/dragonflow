@@ -510,18 +510,14 @@ class DfLocalController(object):
         self.db_store.delete_floatingip(floatingip_id)
 
     def update_publisher(self, publisher):
-        self.db_store.update_publisher(publisher.get_id(), publisher)
+        self.db_store2.update(publisher)
         LOG.info('Registering to new publisher: %s', str(publisher))
-        self.nb_api.subscriber.register_listen_address(publisher.get_uri())
+        self.nb_api.subscriber.register_listen_address(publisher.uri)
 
-    def delete_publisher(self, uuid):
-        publisher = self.db_store.get_publisher(uuid)
-        if publisher:
-            LOG.info('Deleting publisher: %s', str(publisher))
-            self.nb_api.subscriber.unregister_listen_address(
-                publisher.get_uri()
-            )
-            self.db_store.delete_publisher(uuid)
+    def delete_publisher(self, publisher):
+        LOG.info('Deleting publisher: %s', str(publisher))
+        self.nb_api.subscriber.unregister_listen_address(publisher.uri)
+        self.db_store2.delete(publisher)
 
     def _associate_floatingip(self, floatingip):
         self.db_store.update_floatingip(floatingip.get_id(), floatingip)

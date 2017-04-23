@@ -250,21 +250,6 @@ class Floatingip(NbDbObject):
 
 
 @register_model_class
-class Publisher(NbDbObject):
-
-    table_name = "publisher"
-
-    def get_uri(self):
-        return self.inner_obj.get('uri')
-
-    def get_last_activity_timestamp(self):
-        return self.inner_obj.get('last_activity_timestamp')
-
-    def get_version(self):
-        return 0
-
-
-@register_model_class
 class AllowedAddressPairsActivePort(NbDbObject):
 
     table_name = "activeport"
