@@ -24,14 +24,13 @@ import six
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
-from dragonflow.db import models
 from dragonflow.db.models import core
 
 LOG = logging.getLogger(__name__)
 
 eventlet.monkey_patch(socket=False)
 
-MONITOR_TABLES = [core.Chassis.table_name, models.Publisher.table_name]
+MONITOR_TABLES = [core.Chassis.table_name, core.Publisher.table_name]
 
 
 def pack_message(message):
@@ -305,7 +304,7 @@ class StalePublisherMonitor(TableMonitor):
 
     def __init__(self, driver, publisher, timeout, polling_time=10):
         super(StalePublisherMonitor, self).__init__(
-            models.Publisher.table_name,
+            core.Publisher.table_name,
             driver,
             publisher,
             polling_time

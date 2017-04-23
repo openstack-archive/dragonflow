@@ -17,7 +17,6 @@ NbDbObject = legacy.NbDbObject
 UniqueKeyMixin = legacy.UniqueKeyMixin
 LogicalPort = legacy.LogicalPort
 Floatingip = legacy.Floatingip
-Publisher = legacy.Publisher
 AllowedAddressPairsActivePort = legacy.AllowedAddressPairsActivePort
 Listener = legacy.Listener
 OvsPort = legacy.OvsPort

@@ -25,14 +25,12 @@ class TenantDbStore(object):
         self.ports = {}
         self.local_ports = {}
         self.floatingips = {}
-        self.publishers = {}
         self.activeports = {}
         self.lock = threading.Lock()
         self._table_name_mapping = {
             models.LogicalPort.table_name: self.ports,
             'local_ports': self.local_ports,
             models.Floatingip.table_name: self.floatingips,
-            models.Publisher.table_name: self.publishers,
             models.AllowedAddressPairsActivePort.table_name: self.activeports
         }
 
@@ -67,9 +65,6 @@ class TenantDbStore(object):
     def clear(self):
         with self.lock:
             for table_name in self._table_name_mapping:
-                if table_name == models.Publisher.table_name:
-                    continue
-
                 self._table_name_mapping[table_name].clear()
 
 
@@ -192,18 +187,6 @@ class DbStore(object):
 
     def get_floatingips(self, topic=None):
         return self.values(models.Floatingip.table_name, topic)
-
-    def update_publisher(self, uuid, publisher, topic=None):
-        self.set(models.Publisher.table_name, uuid, publisher, topic)
-
-    def get_publisher(self, uuid, topic=None):
-        return self.get(models.Publisher.table_name, uuid, topic)
-
-    def get_publishers(self, topic=None):
-        return self.values(models.Publisher.table_name, topic)
-
-    def delete_publisher(self, uuid, topic=None):
-        self.delete(models.Publisher.table_name, uuid, topic)
 
     def get_active_port(self, active_port_key, topic=None):
         return self.get(models.AllowedAddressPairsActivePort.table_name,
