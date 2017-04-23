@@ -18,13 +18,13 @@ import traceback
 
 from neutron.common import config as common_config
 from oslo_log import log as logging
-from oslo_serialization import jsonutils
 
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.db import api_nb
 from dragonflow.db import db_common
-from dragonflow.db import models
+from dragonflow.db.models import core
 from dragonflow.db import pub_sub_api
 
 
@@ -34,22 +34,15 @@ LOG = logging.getLogger(__name__)
 class PublisherService(object):
     def __init__(self):
         self._queue = queue.Queue()
-        self.publisher = self._get_publisher()
+        self.nb_api = api_nb.NbApi.get_instance(False)
+        self.publisher = self.nb_api.publisher
+        self.db = self.nb_api.driver
         self.multiproc_subscriber = self._get_multiproc_subscriber()
-        self.db = df_utils.load_driver(
-            cfg.CONF.df.nb_db_class,
-            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
         self.uuid = pub_sub_api.generate_publisher_uuid()
         self._rate_limit = df_utils.RateLimiter(
             cfg.CONF.df.publisher_rate_limit_count,
             cfg.CONF.df.publisher_rate_limit_timeout,
         )
-
-    def _get_publisher(self):
-        pub_sub_driver = df_utils.load_driver(
-                                    cfg.CONF.df.pub_sub_driver,
-                                    df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
-        return pub_sub_driver.get_publisher()
 
     def _get_multiproc_subscriber(self):
         """
@@ -76,18 +69,13 @@ class PublisherService(object):
     def run(self):
         if self.multiproc_subscriber:
             self.multiproc_subscriber.daemonize()
-        self.db.initialize(
-            db_ip=cfg.CONF.df.remote_db_ip,
-            db_port=cfg.CONF.df.remote_db_port,
-            config=cfg.CONF.df
-        )
         self._register_as_publisher()
         self._start_db_table_monitors()
         while True:
             try:
                 event = self._queue.get()
                 self.publisher.send_event(event)
-                if event.table != models.Publisher.table_name:
+                if event.table != core.Publisher.table_name:
                     self._update_timestamp_in_db()
                 eventlet.sleep(0)
             except Exception as e:
@@ -99,31 +87,24 @@ class PublisherService(object):
         if self._rate_limit():
             return
         try:
-            publisher_json = self.db.get_key(
-                models.Publisher.table_name,
-                self.uuid,
-            )
-            publisher = jsonutils.loads(publisher_json)
-            publisher['last_activity_timestamp'] = time.time()
-            publisher_json = jsonutils.dumps(publisher)
-            self.db.set_key(
-                models.Publisher.table_name,
-                self.uuid,
-                publisher_json
+            self.nb_api.update(
+                core.Publisher(
+                    id=self.uuid,
+                    last_activity_timestamp=time.time(),
+                ),
+                skip_send_event=True,
             )
         except exceptions.DBKeyNotFound:
             self._register_as_publisher()
 
     def _register_as_publisher(self):
-        publisher = {
-            'id': self.uuid,
-            'uri': self._get_uri(),
-            'last_activity_timestamp': time.time(),
-        }
-        publisher_json = jsonutils.dumps(publisher)
-        self.db.create_key(
-            models.Publisher.table_name,
-            self.uuid, publisher_json
+        self.nb_api.create(
+            core.Publisher(
+                id=self.uuid,
+                uri=self._get_uri(),
+                last_activity_timestamp=time.time(),
+            ),
+            skip_send_event=True,
         )
 
     def _get_uri(self):
