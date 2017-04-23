@@ -11,7 +11,6 @@
 #    under the License.
 from jsonmodels import fields
 
-from dragonflow.db import api_nb
 import dragonflow.db.model_framework as mf
 from dragonflow.db.models import constants
 
@@ -48,5 +47,10 @@ class UniqueKey(mf.MixinBase):
 
     def on_create_pre(self):
         super(UniqueKey, self).on_create_pre()
+
+        # TODO(dimak) This is here due to api_nb->models.core->models.mixins
+        # import cycle. Maybe we can break it by taking publisher/subscriber
+        # initialization out of api_nb
+        from dragonflow.db import api_nb
         nb_api = api_nb.NbApi.get_instance(True)
         self.unique_key = nb_api.driver.allocate_unique_key(self.table_name)

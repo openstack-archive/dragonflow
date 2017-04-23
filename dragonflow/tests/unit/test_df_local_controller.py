@@ -81,12 +81,6 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.controller.delete_floatingip(fip_id)
         mock_notify.assert_called_once_with(fip)
 
-    def _get_mock_publisher(self, uri, publisher_id):
-        publisher = mock.Mock()
-        publisher.get_uri.return_value = uri
-        publisher.get_id.return_value = publisher_id
-        return publisher
-
     @mock.patch.object(ryu_base_app.RyuDFAdapter,
                        'notify_associate_floatingip')
     @mock.patch.object(db_store.DbStore, 'update_floatingip')
