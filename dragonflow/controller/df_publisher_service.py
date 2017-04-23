@@ -18,13 +18,12 @@ import traceback
 
 from neutron.common import config as common_config
 from oslo_log import log as logging
-from oslo_serialization import jsonutils
 
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.db import db_common
-from dragonflow.db import models
+from dragonflow.db.models import core
 from dragonflow.db import pub_sub_api
 
 
@@ -87,7 +86,7 @@ class PublisherService(object):
             try:
                 event = self._queue.get()
                 self.publisher.send_event(event)
-                if event.table != models.Publisher.table_name:
+                if event.table != core.Publisher.table_name:
                     self._update_timestamp_in_db()
                 eventlet.sleep(0)
             except Exception as e:
@@ -99,31 +98,31 @@ class PublisherService(object):
         if self._rate_limit():
             return
         try:
-            publisher_json = self.db.get_key(
-                models.Publisher.table_name,
-                self.uuid,
+            publisher = core.Publisher.from_json(
+                self.db.get_key(
+                    core.Publisher.table_name,
+                    self.uuid,
+                ),
             )
-            publisher = jsonutils.loads(publisher_json)
-            publisher['last_activity_timestamp'] = time.time()
-            publisher_json = jsonutils.dumps(publisher)
+            publisher.last_activity_timestamp = time.time()
             self.db.set_key(
-                models.Publisher.table_name,
-                self.uuid,
-                publisher_json
+                publisher.table_name,
+                publisher.id,
+                publisher.to_json(),
             )
         except exceptions.DBKeyNotFound:
             self._register_as_publisher()
 
     def _register_as_publisher(self):
-        publisher = {
-            'id': self.uuid,
-            'uri': self._get_uri(),
-            'last_activity_timestamp': time.time(),
-        }
-        publisher_json = jsonutils.dumps(publisher)
+        publisher = core.Publisher(
+            id=self.uuid,
+            uri=self._get_uri(),
+            last_activity_timestamp=time.time(),
+        )
         self.db.create_key(
-            models.Publisher.table_name,
-            self.uuid, publisher_json
+            publisher.table_name,
+            publisher.id,
+            publisher.to_json(),
         )
 
     def _get_uri(self):
