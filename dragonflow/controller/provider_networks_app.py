@@ -213,8 +213,8 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                                                  network_id,
                                                  network_type)
         self._remove_l2_lookup_flow(network_id)
-        self._remove_egress_flow(lport, network_id)
-        self._remove_egress_external_flow(lport, network_id)
+        self._remove_egress_flow(network_id)
+        self._remove_egress_external_flow(network_id)
 
     def _remove_network_classification_flow(self,
                                             lport,
@@ -237,7 +237,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def _remove_egress_flow(self, lport, network_id):
+    def _remove_egress_flow(self, network_id):
         match = self.parser.OFPMatch(metadata=network_id)
         self.mod_flow(
             command=self.ofproto.OFPFC_DELETE,
@@ -245,7 +245,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_LOW,
             match=match)
 
-    def _remove_egress_external_flow(self, lport, network_id):
+    def _remove_egress_external_flow(self, network_id):
         match = self.parser.OFPMatch(metadata=network_id)
         self.mod_flow(
                 command=self.ofproto.OFPFC_DELETE,
