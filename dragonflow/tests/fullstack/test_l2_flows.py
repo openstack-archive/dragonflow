@@ -197,10 +197,6 @@ class TestL2FLows(test_base.DFTestBase):
                                  ',dl_dst=' + mac
         l2_lookup_unicast_action = 'goto_table:' + \
                                    str(const.EGRESS_TABLE)
-        l2_lookup_unknown_match = 'metadata=0x' + metadtata + \
-                                  ',dl_dst=00:00:00:00:00:00/01:00:00:00:00:00'
-        l2_lookup_unkown_action = 'goto_table:' + \
-                                  str(const.EGRESS_TABLE)
         l2_lookup_multicast_match = 'metadata=0x' + metadtata + ',dl_dst=' + \
                                     '01:00:00:00:00:00/01:00:00:00:00:00'
         l2_lookup_multicast_action = 'set_field:' + port_key_hex + \
@@ -223,7 +219,6 @@ class TestL2FLows(test_base.DFTestBase):
 
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
-        l2_lookup_unkown_check = None
         egress_check = None
         ingress_check = None
 
@@ -237,11 +232,6 @@ class TestL2FLows(test_base.DFTestBase):
                     if l2_lookup_unicast_action in flow['actions']:
                         l2_lookup_unicast_check = True
                         continue
-                if (l2_lookup_unknown_match in flow['match']):
-                    if l2_lookup_unkown_action in flow['actions']:
-                        l2_lookup_unkown_check = True
-                        continue
-
             if flow['table'] == str(const.EGRESS_TABLE):
                 if (egress_match in flow['match']):
                     if egress_action in flow['actions']:
@@ -256,7 +246,6 @@ class TestL2FLows(test_base.DFTestBase):
 
         return {'l2_lookup_multicast_check': l2_lookup_multicast_check,
                 'l2_lookup_unicast_check': l2_lookup_unicast_check,
-                'l2_lookup_unkown_check': l2_lookup_unkown_check,
                 'egress_vlan_tag': egress_check,
                 'ingress_check': ingress_check}
 
@@ -325,10 +314,6 @@ class TestL2FLows(test_base.DFTestBase):
                                  ',dl_dst=' + mac
         l2_lookup_unicast_action = 'goto_table:' + \
                                    str(const.EGRESS_TABLE)
-        l2_lookup_unkown_match = 'metadata=0x' + metadtata + \
-                                 ',dl_dst=00:00:00:00:00:00/01:00:00:00:00:00'
-        l2_lookup_unkown_action = 'goto_table:' + \
-                                  str(const.EGRESS_TABLE)
         l2_lookup_multicast_match = 'metadata=0x' + metadtata + ',dl_dst=' + \
                                     '01:00:00:00:00:00/01:00:00:00:00:00'
         l2_lookup_multicast_action = 'set_field:' + port_key_hex + \
@@ -348,7 +333,6 @@ class TestL2FLows(test_base.DFTestBase):
 
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
-        l2_lookup_unkown_check = None
         ingress_check = None
         egress_check = None
 
@@ -361,10 +345,6 @@ class TestL2FLows(test_base.DFTestBase):
                 if (l2_lookup_unicast_match in flow['match']):
                     if l2_lookup_unicast_action in flow['actions']:
                         l2_lookup_unicast_check = True
-                        continue
-                if (l2_lookup_unkown_match in flow['match']):
-                    if l2_lookup_unkown_action in flow['actions']:
-                        l2_lookup_unkown_check = True
                         continue
             if flow['table'] == str(const.EGRESS_TABLE):
                 if (egress_match in flow['match']):
@@ -380,7 +360,6 @@ class TestL2FLows(test_base.DFTestBase):
 
         return {'l2_lookup_multicast_check': l2_lookup_multicast_check,
                 'l2_lookup_unicast_check': l2_lookup_unicast_check,
-                'l2_lookup_unkown_check': l2_lookup_unkown_check,
                 'egress_check': egress_check,
                 'ingress_check': ingress_check}
 
