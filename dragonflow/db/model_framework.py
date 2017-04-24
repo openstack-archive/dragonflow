@@ -430,7 +430,11 @@ def iter_models_by_dependency_order(first_class_only=True):
     unsorted_models = {}
     # Gather all models and their dependencies
     for model in iter_models(first_class_only=first_class_only):
-        unsorted_models[model] = model.dependencies()
+        dependencies = model.dependencies()
+        if first_class_only:
+            dependencies = {dep
+                            for dep in dependencies if dep.is_first_class()}
+        unsorted_models[model] = dependencies
 
     # Perform a topological sort
     sorted_models = []
