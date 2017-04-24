@@ -37,6 +37,7 @@ from dragonflow.db.models import l2
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
 from dragonflow.neutron.db.models import l2 as neutron_l2
+from dragonflow.neutron.services.qos.drivers import df_qos
 
 LOG = log.getLogger(__name__)
 
@@ -66,11 +67,13 @@ class DFMechDriver(driver_api.MechanismDriver):
         self._set_base_port_binding()
         self.port_status = n_const.PORT_STATUS_ACTIVE
         self.subscribe_registries()
+        df_qos.register()
 
     def post_fork_initialize(self, resource, event, trigger, **kwargs):
         # NOTE(nick-ma-z): This will initialize all workers (API, RPC,
         # plugin service, etc) and threads with network connections.
         self.nb_api = api_nb.NbApi.get_instance(True)
+        df_qos.initialize(self.nb_api)
         if cfg.CONF.df.enable_port_status_notifier:
             port_status_notifier = df_utils.load_driver(
                 cfg.CONF.df.port_status_notifier,
