@@ -20,7 +20,6 @@ from dragonflow.controller.common import logical_networks
 from dragonflow.controller import df_base_app
 from neutron_lib.utils import helpers
 from oslo_log import log
-from ryu.lib import mac as mac_api
 
 
 NET_VLAN = 'vlan'
@@ -112,21 +111,8 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                   {'net_type': network_type,
                    'net_id': network_id})
         self._network_classification_flow(lport, network_id, network_type)
-        self._l2_lookup_flow(network_id)
         self._egress_flow(lport, network_id, network_type)
         self._egress_external_flow(lport, network_id)
-
-    def _l2_lookup_flow(self, network_id):
-        LOG.debug('l2 lookup flow for network %(net_id)s',
-                  {'net_id': network_id})
-
-        match = self._make_bum_match(metadata=network_id)
-        inst = [self.parser.OFPInstructionGotoTable(const.EGRESS_TABLE)]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.L2_LOOKUP_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
 
     def _egress_flow(self, lport, network_id, network_type):
         LOG.debug('Add egress flow for network %(net_id)s',
@@ -212,7 +198,6 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         self._remove_network_classification_flow(lport,
                                                  network_id,
                                                  network_type)
-        self._remove_l2_lookup_flow(network_id)
         self._remove_egress_flow(network_id)
         self._remove_egress_external_flow(network_id)
 
@@ -227,14 +212,6 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=self.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,
-            match=match)
-
-    def _remove_l2_lookup_flow(self, network_id):
-        match = self._make_bum_match(metadata=network_id)
-        self.mod_flow(
-            table_id=const.L2_LOOKUP_TABLE,
-            command=self.ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
             match=match)
 
     def _remove_egress_flow(self, network_id):
@@ -252,11 +229,3 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                 table_id=const.EGRESS_EXTERNAL_TABLE,
                 priority=const.PRIORITY_HIGH,
                 match=match)
-
-    def _make_bum_match(self, metadata):
-        match = self.parser.OFPMatch()
-        match.set_metadata(metadata)
-        encoded_mac = mac_api.haddr_to_bin(mac_api.DONTCARE_STR)
-        encoded_mask = mac_api.haddr_to_bin(mac_api.UNICAST)
-        match.set_dl_dst_masked(encoded_mac, encoded_mask)
-        return match
