@@ -20,7 +20,15 @@ df_bgp_app_opts = [
         'pulse_interval',
         default=5,
         help=_('The interval(in seconds) of BGP service to get data updates '
-               'and advertise BGP routes'))
+               'and advertise BGP routes')),
+    cfg.StrOpt('bgp_speaker_driver',
+               default='neutron_dynamic_routing.services.bgp.agent.driver.'
+                       'ryu.driver.RyuBgpDriver',
+               help=_("BGP speaker driver class to be instantiated.")),
+    cfg.StrOpt('bgp_router_id',
+               default='127.0.0.1',
+               help=_("32-bit BGP identifier, typically an IPv4 address "
+                      "owned by the system running the BGP DrAgent."))
 ]
 
 
