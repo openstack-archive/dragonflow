@@ -15,6 +15,7 @@
 
 import mock
 
+from dragonflow.db.models import ovs
 from dragonflow.tests.unit import test_app_base
 
 
@@ -33,34 +34,31 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
         with mock.patch.object(self.dnat_app,
                                '_install_dnat_egress_rules') as mock_func:
-            fake_ovs_port = mock.Mock()
-            fake_ovs_port.get_ofport = mock.Mock(return_value=-1)
-            fake_ovs_port.get_name = mock.Mock(
-                return_value=self.dnat_app.external_network_bridge)
-            # Device without mac will not trigger update flow
-            fake_ovs_port.get_mac_in_use = mock.Mock(return_value="")
-            self.controller.ovs_port_updated(fake_ovs_port)
+
+            fake_ovs_port = ovs.OvsPort(
+                id='fake_ovs_port',
+                name=self.dnat_app.external_network_bridge,
+            )
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_not_called()
             mock_func.reset_mock()
 
             # Other device update will not trigger update flow
-            fake_ovs_port.get_mac_in_use = mock.Mock(
-                return_value="aa:bb:cc:dd:ee:ff")
-            fake_ovs_port.get_name = mock.Mock(return_value="no-bridge")
-            self.controller.ovs_port_updated(fake_ovs_port)
+            fake_ovs_port.mac_in_use = "aa:bb:cc:dd:ee:ff"
+            fake_ovs_port.name = 'no-bridge'
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_not_called()
             mock_func.reset_mock()
 
             # Device with mac will trigger update flow
-            fake_ovs_port.get_name = mock.Mock(
-                return_value=self.dnat_app.external_network_bridge)
-            self.controller.ovs_port_updated(fake_ovs_port)
+            fake_ovs_port.name = self.dnat_app.external_network_bridge
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_called_once_with(test_app_base.fake_floatingip1,
                                               "aa:bb:cc:dd:ee:ff")
             mock_func.reset_mock()
 
             # Duplicated updated will not trigger update flow
-            self.controller.ovs_port_updated(fake_ovs_port)
+            self.controller.update_ovs_port(fake_ovs_port)
             mock_func.assert_not_called()
 
     def test_delete_port_with_deleted_floatingip(self):
@@ -90,5 +88,5 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             'delete_floatingip'
         ) as mock_func:
             self.controller.topology.ovs_port_deleted(
-                test_app_base.fake_ovs_port1.get_id())
+                test_app_base.fake_ovs_port1)
             mock_func.assert_not_called()
