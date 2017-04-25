@@ -34,7 +34,9 @@ from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
+from dragonflow.db.models import constants as model_const
 from dragonflow.db.models import l2
+from dragonflow.db.models import ovs
 
 
 LOG = log.getLogger(__name__)
@@ -64,12 +66,13 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             # the flows.
             self._add_tap_metadata_port(self._ofport, self._interface_mac)
 
+    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
     def ovs_port_updated(self, ovs_port):
-        if ovs_port.get_name() != cfg.CONF.df_metadata.metadata_interface:
+        if ovs_port.name != cfg.CONF.df_metadata.metadata_interface:
             return
 
-        ofport = ovs_port.get_ofport()
-        mac = ovs_port.get_mac_in_use()
+        ofport = ovs_port.ofport
+        mac = ovs_port.mac_in_use
         if not ofport or not mac:
             return
 
@@ -83,8 +86,9 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         self._ofport = ofport
         self._interface_mac = mac
 
+    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_DELETED)
     def ovs_port_deleted(self, ovs_port):
-        if ovs_port.get_name() != cfg.CONF.df_metadata.metadata_interface:
+        if ovs_port.name != cfg.CONF.df_metadata.metadata_interface:
             return
 
         self._remove_metadata_interface_flows()

@@ -15,10 +15,11 @@ import collections
 from neutron_lib import constants as n_const
 from oslo_log import log
 
+from dragonflow.common import constants
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.db import db_store2
-from dragonflow.db import models as db_models
 from dragonflow.db.models import l2
+from dragonflow.db.models import ovs
 
 LOG = log.getLogger(__name__)
 
@@ -33,9 +34,9 @@ OvsLportMapping = collections.namedtuple('OvsLportMapping',
 class Topology(object):
 
     def __init__(self, controller, enable_selective_topology_distribution):
-        self.ovs_port_type = (db_models.OvsPort.TYPE_VM,
-                              db_models.OvsPort.TYPE_TUNNEL,
-                              db_models.OvsPort.TYPE_PATCH)
+        self.ovs_port_type = (constants.OVS_VM_INTERFACE,
+                              constants.OVS_TUNNEL_INTERFACE,
+                              constants.OVS_PATCH_INTERFACE)
 
         # Stores topics(tenants) subscribed by lports in the current local
         # controller. I,e, {tenant1:{lport1, lport2}, tenant2:{lport3}}
@@ -51,6 +52,9 @@ class Topology(object):
         self.openflow_app = controller.get_openflow_app()
         self.chassis_name = controller.get_chassis_name()
         self.db_store2 = db_store2.get_instance()
+
+        ovs.OvsPort.register_updated(self.ovs_port_updated)
+        ovs.OvsPort.register_deleted(self.ovs_port_deleted)
 
     def ovs_port_updated(self, ovs_port):
         """
@@ -68,7 +72,7 @@ class Topology(object):
         # ignore port that misses some parameters
         if not self._check_ovs_port_integrity(ovs_port):
             return
-        port_id = ovs_port.get_id()
+        port_id = ovs_port.id
         old_port = self.ovs_ports.get(port_id)
         if old_port is None:
             action = "added"
@@ -76,7 +80,7 @@ class Topology(object):
             action = 'updated'
 
         self.ovs_ports[port_id] = ovs_port
-        port_type = ovs_port.get_type()
+        port_type = ovs_port.type
         if port_type not in self.ovs_port_type:
             LOG.info("Unmanaged port online: %s", ovs_port)
             return
@@ -91,20 +95,20 @@ class Topology(object):
             LOG.exception(
                 "Exception occurred when handling port online event")
 
-    def ovs_port_deleted(self, ovs_port_id):
+    def ovs_port_deleted(self, ovs_port):
         """
         Changes in ovs port status will be monitored by ovsdb monitor thread
         and notified to topology. This method is the entrance port to process
         port offline event
 
-        @param ovs_port_id:
+        @param ovs_port:
         @return : None
         """
-        ovs_port = self.ovs_ports.get(ovs_port_id)
+        ovs_port = self.ovs_ports.get(ovs_port.id)
         if ovs_port is None:
             return
 
-        port_type = ovs_port.get_type()
+        port_type = ovs_port.type
         if port_type not in self.ovs_port_type:
             LOG.info("Unmanaged port offline: %s", ovs_port)
             return
@@ -121,7 +125,7 @@ class Topology(object):
             LOG.exception("Exception occurred when handling "
                           "ovs port update event")
         finally:
-            del self.ovs_ports[ovs_port_id]
+            del self.ovs_ports[ovs_port.id]
 
     def _check_ovs_port_integrity(self, ovs_port):
         """
@@ -129,14 +133,14 @@ class Topology(object):
         then the event will be discarded
         """
 
-        ofport = ovs_port.get_ofport()
-        port_type = ovs_port.get_type()
+        ofport = ovs_port.ofport
+        port_type = ovs_port.type
 
         if (ofport is None) or (ofport < 0) or (port_type is None):
             return False
 
-        if (port_type == db_models.OvsPort.TYPE_VM and
-                ovs_port.get_iface_id() is None):
+        if (port_type == constants.OVS_VM_INTERFACE and
+                ovs_port.iface_id is None):
             return False
 
         return True
@@ -145,7 +149,7 @@ class Topology(object):
         self._tunnel_port_updated(ovs_port)
 
     def _process_ovs_tunnel_port(self, ovs_port, action):
-        tunnel_type = ovs_port.get_tunnel_type()
+        tunnel_type = ovs_port.tunnel_type
         if not tunnel_type:
             return
 
@@ -184,7 +188,7 @@ class Topology(object):
             ovs_port, n_const.PORT_STATUS_ACTIVE)
 
     def _vm_port_updated(self, ovs_port):
-        lport_id = ovs_port.get_iface_id()
+        lport_id = ovs_port.iface_id
         lport = self._get_lport(lport_id)
         if lport is None:
             LOG.warning("No logical port found for ovs port: %s",
@@ -195,8 +199,7 @@ class Topology(object):
             return
         self._add_to_topic_subscribed(topic, lport_id)
 
-        ovs_port_id = ovs_port.get_id()
-        self.ovs_to_lport_mapping[ovs_port_id] = OvsLportMapping(
+        self.ovs_to_lport_mapping[ovs_port.id] = OvsLportMapping(
                 lport_id=lport_id, topic=topic)
 
         chassis = lport.chassis
@@ -222,8 +225,8 @@ class Topology(object):
                               'event: %s', lport)
 
     def _vm_port_deleted(self, ovs_port):
-        ovs_port_id = ovs_port.get_id()
-        lport_id = ovs_port.get_iface_id()
+        ovs_port_id = ovs_port.id
+        lport_id = ovs_port.iface_id
         lport = self.db_store2.get_one(l2.LogicalPort(id=lport_id))
         if lport is None:
             lport = self.ovs_to_lport_mapping.get(ovs_port_id)
@@ -316,8 +319,8 @@ class Topology(object):
         add_ovs_to_lport_mapping = {}
         delete_ovs_to_lport_mapping = self.ovs_to_lport_mapping
         for key, ovs_port in self.ovs_ports.items():
-            if ovs_port.get_type() == db_models.OvsPort.TYPE_VM:
-                lport_id = ovs_port.get_iface_id()
+            if ovs_port.type == constants.OVS_VM_INTERFACE:
+                lport_id = ovs_port.iface_id
                 lport = self._get_lport(lport_id)
                 if lport is None:
                     LOG.warning("No logical port found for ovs port: %s",
