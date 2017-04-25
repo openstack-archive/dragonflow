@@ -17,8 +17,8 @@ from ovsdbapp.backend.ovs_idl import idlutils
 from ovsdbapp.schema.open_vswitch import impl_idl
 
 from dragonflow.common import constants
+from dragonflow.db.models import ovs
 from dragonflow.ovsdb import commands
-from dragonflow.ovsdb import objects
 
 ovsdb_monitor_table_filter_default = {
     'Interface': [
@@ -83,19 +83,21 @@ class DFIdl(idl.Idl):
             return False
         return True
 
-    def _notify_update_local_interface(self, local_interface, action):
-        if self._is_handle_interface_update(local_interface):
-            table = constants.OVS_INTERFACE
-            key = local_interface.uuid
-            self.nb_api.db_change_callback(table, key, action, local_interface)
-
     def notify(self, event, row, updates=None):
         if not row or not hasattr(row, '_table'):
             return
-        if row._table.name == 'Interface':
-            _interface = objects.LocalInterface.from_idl_row(row)
-            action = event if event != 'update' else 'set'
-            self._notify_update_local_interface(_interface, action)
+        if row._table.name != 'Interface':
+            return
+
+        local_interface = ovs.OvsPort.from_idl_row(row)
+        action = event if event != 'update' else 'set'
+        if self._is_handle_interface_update(local_interface):
+            self.nb_api.db_change_callback(
+                local_interface.table_name,
+                local_interface.id,
+                action,
+                local_interface.to_json(),
+            )
 
 
 def df_idl_from_server(nb_api, connection_string, schema_name):
