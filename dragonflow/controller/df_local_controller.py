@@ -470,13 +470,13 @@ class DfLocalController(object):
             if new_floatingip.get_lport_id():
                 self._associate_floatingip(new_floatingip)
 
-    def ovs_port_updated(self, ovs_port):
-        self.open_flow_app.notify_ovs_port_updated(ovs_port)
-        self.topology.ovs_port_updated(ovs_port)
+    # TODO(dimak) have ovs ports behave like rest of the modes and store
+    #             in db_store.
+    def update_ovs_port(self, ovs_port):
+        ovs_port.emit_updated()
 
-    def ovs_port_deleted(self, ovs_port):
-        self.open_flow_app.notify_ovs_port_deleted(ovs_port)
-        self.topology.ovs_port_deleted(ovs_port.get_id())
+    def delete_ovs_port(self, ovs_port):
+        ovs_port.emit_deleted()
 
     def ovs_sync_finished(self):
         self.open_flow_app.notify_ovs_sync_finished()

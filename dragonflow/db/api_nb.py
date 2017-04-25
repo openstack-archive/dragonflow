@@ -235,43 +235,14 @@ class NbApi(object):
 
         if action == 'sync':
             self.controller.run_sync(value)
-            return
         elif action == 'dbrestart':
             self.db_recover_callback()
-            return
         elif action == 'db_sync':
             self.db_consistency_manager.process(direct=False)
-            return
-
-        try:
-            model_class = mf.get_model(table)
-        except KeyError:
-            # Model class not found, possibly update was not about a model
-            pass
-        else:
-            if action == 'delete':
-                self.controller.delete_by_id(model_class, key)
-            else:
-                obj = model_class.from_json(value)
-                self.controller.update(obj)
-            return
-
-        if 'ovsinterface' == table:
-            if action == 'set' or action == 'create':
-                ovs_port = db_models.OvsPort(value)
-                self.controller.ovs_port_updated(ovs_port)
-            elif action == 'sync_finished':
-                self.controller.ovs_sync_finished()
-            elif action == 'sync_started':
-                self.controller.ovs_sync_started()
-            elif action == 'delete':
-                ovs_port = db_models.OvsPort(value)
-                self.controller.ovs_port_deleted(ovs_port)
-        # Added lport migration for VM migration flag
-        elif 'lport_migration' == table:
-            if action == 'migrate':
-                lport = db_models.LogicalPort(value)
-                self.controller.update_migrating_flows(lport)
+        elif action == 'ovs_sync_finished':
+            self.controller.ovs_sync_finished()
+        elif action == 'ovs_sync_started':
+            self.controller.ovs_sync_started()
         elif 'log' == action:
             message = ('Log event (Info): table: %(table)s key: %(key)s '
                        'action: %(action)s value: %(value)s')
@@ -282,8 +253,22 @@ class NbApi(object):
                 'action': str(action),
                 'value': str(value),
             })
-        else:
-            LOG.warning('Unknown table %s', table)
+        elif table == 'lport_migration' and action == 'migrate':
+            lport = db_models.LogicalPort(value)
+            self.controller.update_migrating_flows(lport)
+        elif table is not None:
+            try:
+                model_class = mf.get_model(table)
+            except KeyError:
+                # Model class not found, possibly update was not about a model
+                # Added lport migration for VM migration flag
+                LOG.warning('Unknown table %s', table)
+            else:
+                if action == 'delete':
+                    self.controller.delete_by_id(model_class, key)
+                else:
+                    obj = model_class.from_json(value)
+                    self.controller.update(obj)
 
     # lport process for VM migration
     def set_lport_migration(self, port_id, chassis):
