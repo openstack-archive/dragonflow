@@ -78,6 +78,8 @@ class _ModelProxyBase(object):
         return '{0}(id={1})'.format(self.__class__.__name__, self._id)
 
     def __eq__(self, other):
+        if type(other) is not type(self):
+            return False
         return self._id == other.id
 
     def __ne__(self, other):
