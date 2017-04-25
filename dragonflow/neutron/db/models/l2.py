@@ -36,6 +36,5 @@ def subnet_from_neutron_subnet(subnet):
         enable_dhcp=subnet['enable_dhcp'],
         cidr=subnet['cidr'],
         gateway_ip=subnet['gateway_ip'],
-        dns_nameservers=[{'addr': nameserver} for nameserver in
-                         subnet.get('dns_nameservers', [])],
+        dns_nameservers=subnet.get('dns_nameservers', []),
         host_routes=subnet.get('host_routes', []))
