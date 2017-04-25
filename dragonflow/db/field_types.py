@@ -87,7 +87,27 @@ class ReferenceField(fields.BaseField):
             return obj.id
 
 
-class ReferenceListField(fields.ListField):
+class ListOfField(fields.ListField):
+    def __init__(self, field, *args, **kwargs):
+        super(ListOfField, self).__init__(
+                items_types=field.types, *args, **kwargs)
+        if not isinstance(field, fields.BaseField):
+            raise TypeError('field must be an instance of BaseField. Got: %s' %
+                    (type(field)))
+        self.field = field
+
+    def parse_value(self, values):
+        if not values:
+            return []
+        return [self.field.parse_value(value) for value in values]
+
+    def to_struct(self, objs):
+        if not objs:
+            return []
+        return [self.field.to_struct(obj) for obj in objs]
+
+
+class ReferenceListField(ListOfField):
     '''A field that holds a sequence of 'foreign-keys'
 
     Much like ReferenceField above, this class allows accessing objects
@@ -103,20 +123,8 @@ class ReferenceListField(fields.ListField):
 
     '''
     def __init__(self, target_model, lazy=True, *args, **kwargs):
-        self._proxy_type = model_proxy.create_model_proxy(
-            model_framework.get_model(target_model))
-        self._lazy = lazy
         super(ReferenceListField, self).__init__(
-            self._proxy_type, *args, **kwargs)
-
-    def parse_value(self, values):
-        return [
-            _create_ref(self._proxy_type, v, self._lazy) for v in values or []
-        ]
-
-    def to_struct(self, objs):
-        if objs:
-            return [o.id for o in objs]
+                ReferenceField(target_model, lazy), *args, **kwargs)
 
 
 class IpAddressField(fields.BaseField):

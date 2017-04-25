@@ -26,7 +26,7 @@ class Subnet(mf.ModelBase, mixins.Name, mixins.Topic):
     dhcp_ip = df_fields.IpAddressField()
     cidr = df_fields.IpNetworkField()
     gateway_ip = df_fields.IpAddressField()
-    dns_nameservers = fields.ListField(netaddr.IPAddress)
+    dns_nameservers = df_fields.ListOfField(df_fields.IpAddressField())
     host_routes = fields.ListField(host_route.HostRoute)
 
 

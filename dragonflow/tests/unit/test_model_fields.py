@@ -13,6 +13,7 @@ from jsonmodels import errors
 from jsonmodels import fields
 import mock
 import netaddr
+import six
 
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
@@ -32,6 +33,7 @@ class FieldTestModel(mf.ModelBase):
     ipnetwork = df_fields.IpNetworkField()
     ref = df_fields.ReferenceField(ReffedTestModel)
     ref_list = df_fields.ReferenceListField(ReffedTestModel)
+    ip_list = df_fields.ListOfField(df_fields.IpAddressField())
 
     def __init__(self, **kwargs):
         super(FieldTestModel, self).__init__(id='id1', **kwargs)
@@ -80,3 +82,15 @@ class TestFields(tests_base.BaseTestCase):
         m.ref_list[1]._fetch_obj = mock.MagicMock(
             return_value=ReffedTestModel(id='id2', name='name2'))
         self.assertEqual('name2', m.ref_list[1].name)
+
+    def test_list_of_field(self):
+        m = FieldTestModel(ip_list=['1.1.1.1', '2.2.2.2'])
+        self.assertEqual(netaddr.IPAddress('1.1.1.1'), m.ip_list[0])
+        self.assertEqual(netaddr.IPAddress('2.2.2.2'), m.ip_list[1])
+        self.assertIsInstance(m.ip_list[0], netaddr.IPAddress)
+        self.assertIsInstance(m.ip_list[1], netaddr.IPAddress)
+        m_struct = m.to_struct()
+        self.assertEqual('1.1.1.1', m_struct['ip_list'][0])
+        self.assertEqual('2.2.2.2', m_struct['ip_list'][1])
+        self.assertIsInstance(m_struct['ip_list'][0], six.string_types)
+        self.assertIsInstance(m_struct['ip_list'][1], six.string_types)
