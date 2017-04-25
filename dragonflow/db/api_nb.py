@@ -288,16 +288,7 @@ class NbApi(object):
             return
 
         if 'ovsinterface' == table:
-            # FIXME(dimak) use 'ovs_port' table to avoid custom code path
-            if action in ('set', 'create'):
-                self.controller.update(
-                    ovs.OvsPort.from_json(value),
-                )
-            elif action == 'delete':
-                self.controller.delete(
-                    ovs.OvsPort.from_json(value),
-                )
-            elif action == 'sync_finished':
+            if action == 'sync_finished':
                 self.controller.ovs_sync_finished()
             elif action == 'sync_started':
                 self.controller.ovs_sync_started()

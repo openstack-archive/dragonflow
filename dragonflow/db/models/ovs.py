@@ -39,8 +39,6 @@ def _get_interface_type(row):
 
 @mf.construct_nb_db_model
 class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
-    table_name = 'ovs_port'
-
     ofport = fields.IntField()
     admin_state = df_fields.EnumField(('up', 'down'))
     iface_id = fields.StringField()

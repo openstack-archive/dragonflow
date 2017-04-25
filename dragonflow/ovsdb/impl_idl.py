@@ -90,16 +90,11 @@ class DFIdl(idl.Idl):
         if row._table.name != 'Interface':
             return
 
-        local_interface = ovs.OvsPort.from_idl_row(row)
-        action = event if event != 'update' else 'set'
-        if self._is_handle_interface_update(local_interface):
-            self.nb_api.db_change_callback(
-                constants.OVS_INTERFACE,
-                local_interface.id,
-                action,
-                local_interface,
-                local_interface.to_json(),
-            )
+        ovs_port = ovs.OvsPort.from_idl_row(row)
+        if event in (idl.ROW_CREATE, idl.ROW_UPDATE):
+            ovs_port.emit_updated()
+        elif event == idl.ROW_DELETE:
+            ovs_port.emit_deleted()
 
 
 class DFConnection(connection.Connection):

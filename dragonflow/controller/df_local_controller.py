@@ -400,12 +400,6 @@ class DfLocalController(object):
             if new_floatingip.get_lport_id():
                 self._associate_floatingip(new_floatingip)
 
-    def ovs_port_updated(self, ovs_port):
-        ovs_port.emit_updated()
-
-    def ovs_port_deleted(self, ovs_port):
-        ovs_port.emit_deleted()
-
     def ovs_sync_finished(self):
         self.open_flow_app.notify_ovs_sync_finished()
 
