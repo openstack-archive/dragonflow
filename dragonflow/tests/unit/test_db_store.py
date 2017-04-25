@@ -235,7 +235,7 @@ class TestDbStore2(tests_base.BaseTestCase):
             (o1,),
             self.db_store.get_all(
                 ModelTest(id='id1'),
-                index=ModelTest.get_indexes()['id'],
+                index=ModelTest.get_index('id'),
             ),
         )
 
@@ -334,7 +334,7 @@ class TestDbStore2(tests_base.BaseTestCase):
                         submodel2=NestedNestedModel(name='name1'),
                     ),
                 ),
-                index=ModelTest.get_indexes()['twicenested'],
+                index=ModelTest.get_index('twicenested'),
             ),
         )
 
@@ -346,7 +346,7 @@ class TestDbStore2(tests_base.BaseTestCase):
                         submodel2=NestedNestedModel(name='name2'),
                     ),
                 ),
-                index=ModelTest.get_indexes()['twicenested'],
+                index=ModelTest.get_index('twicenested'),
             ),
         )
 
@@ -367,7 +367,7 @@ class TestDbStore2(tests_base.BaseTestCase):
                 ('id2',),
                 self.db_store.get_keys(
                     ModelTest(ref1=ReffedModel(id='id1')),
-                    index=ModelTest.get_indexes()['refnested'],
+                    index=ModelTest.get_index('refnested'),
                 ),
             )
 
@@ -418,7 +418,7 @@ class TestDbStore2(tests_base.BaseTestCase):
                         ),
                     ],
                 ),
-                index=ModelTest.get_indexes()['listnested'],
+                index=ModelTest.get_index('listnested'),
             ),
         )
 
@@ -434,7 +434,7 @@ class TestDbStore2(tests_base.BaseTestCase):
                         ),
                     ],
                 ),
-                index=ModelTest.get_indexes()['listnested'],
+                index=ModelTest.get_index('listnested'),
             ),
         )
 
@@ -450,7 +450,7 @@ class TestDbStore2(tests_base.BaseTestCase):
                         ),
                     ],
                 ),
-                index=ModelTest.get_indexes()['listnested'],
+                index=ModelTest.get_index('listnested'),
             ),
         )
 
@@ -467,7 +467,7 @@ class TestDbStore2(tests_base.BaseTestCase):
                         ),
                     ],
                 ),
-                index=ModelTest.get_indexes()['listnested'],
+                index=ModelTest.get_index('listnested'),
             ),
         )
 

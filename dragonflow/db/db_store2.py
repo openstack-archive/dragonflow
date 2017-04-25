@@ -116,7 +116,7 @@ class _ModelCache(object):
     def __init__(self, model):
         self._objs = {}
         self._indexes = {}
-        self._id_index = model.get_indexes()['id']
+        self._id_index = model.get_index('id')
 
         indexes = model.get_indexes()
         for index in indexes.values():
@@ -197,7 +197,7 @@ class DbStore2(object):
            Lport(...)
 
            >>> db_store.get(Lport(unique_key=1),
-                            index=Lport.get_indexes()['unique_key'])
+                            index=Lport.get_index('unique_key'))
            Lport(...)
         """
         model = type(obj)
@@ -208,7 +208,7 @@ class DbStore2(object):
            lookup.
 
             >>> db_store.get_all(Lport(topic='topic1'),
-                                 index=Lport.get_indexes()['topic'])
+                                 index=Lport.get_index('topic'))
             (Lport(...), Lport(...), ...)
         """
         if type(obj) == type:
@@ -224,7 +224,7 @@ class DbStore2(object):
            we assume result should contain all object of the model.
 
            >>> db_store.get_keys(Lport(topic='topic1'),
-                                 index=Lport.get_indexes()['topic'])
+                                 index=Lport.get_index('topic'))
            ('id1', 'id2', 'id3', ...)
         '''
         if type(obj) == type:
@@ -288,7 +288,7 @@ class DbStore2(object):
         if topic:
             return self.get_all(
                 model(topic=topic),
-                index=model.get_indexes()['topic'],
+                index=model.get_index('topic'),
             )
 
         return self.get_all(model)
@@ -297,7 +297,7 @@ class DbStore2(object):
         if topic:
             return self.get_keys(
                 model(topic=topic),
-                index=model.get_indexes()['topic'],
+                index=model.get_index('topic'),
             )
 
         return self.get_keys(model)
