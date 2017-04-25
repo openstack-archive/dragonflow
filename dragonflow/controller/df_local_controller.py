@@ -471,12 +471,10 @@ class DfLocalController(object):
                 self._associate_floatingip(new_floatingip)
 
     def ovs_port_updated(self, ovs_port):
-        self.open_flow_app.notify_ovs_port_updated(ovs_port)
-        self.topology.ovs_port_updated(ovs_port)
+        ovs_port.emit_updated()
 
     def ovs_port_deleted(self, ovs_port):
-        self.open_flow_app.notify_ovs_port_deleted(ovs_port)
-        self.topology.ovs_port_deleted(ovs_port.get_id())
+        ovs_port.emit_deleted()
 
     def ovs_sync_finished(self):
         self.open_flow_app.notify_ovs_sync_finished()
