@@ -20,7 +20,9 @@ from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.controller import snat_app_mixin as snat_mixin
+from dragonflow.db.models import constants as model_const
 from dragonflow.db.models import l2
+from dragonflow.db.models import ovs
 
 LOG = log.getLogger(__name__)
 
@@ -67,12 +69,13 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
         else:
             self.install_strategy_based_flows()
 
+    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
     def ovs_port_updated(self, ovs_port):
-        if ovs_port.get_name() != self.external_network_bridge:
+        if ovs_port.name != self.external_network_bridge:
             return
 
         LOG.debug("Ex. Bridge port update is called ... ")
-        mac = ovs_port.get_mac_in_use()
+        mac = ovs_port.mac_in_use
         if mac in (None, const.EMPTY_MAC, self.external_bridge_mac):
             return
 
