@@ -35,6 +35,7 @@ from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
+from dragonflow.db.models import ovs
 
 
 LOG = log.getLogger(__name__)
@@ -179,11 +180,12 @@ class DNATApp(df_base_app.DFlowApp):
         reply_pkt.add_protocol(icmp_pkt)
         return reply_pkt
 
+    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_UPDATED)
     def ovs_port_updated(self, ovs_port):
-        if ovs_port.get_name() != self.external_network_bridge:
+        if ovs_port.name != self.external_network_bridge:
             return
 
-        mac = ovs_port.get_mac_in_use()
+        mac = ovs_port.mac_in_use
         if (self.external_bridge_mac == mac
                 or not mac
                 or mac == '00:00:00:00:00:00'):
