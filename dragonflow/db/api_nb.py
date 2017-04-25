@@ -286,16 +286,10 @@ class NbApi(object):
             return
 
         if 'ovsinterface' == table:
-            if action == 'set' or action == 'create':
-                ovs_port = db_models.OvsPort(value)
-                self.controller.ovs_port_updated(ovs_port)
-            elif action == 'sync_finished':
+            if action == 'sync_finished':
                 self.controller.ovs_sync_finished()
             elif action == 'sync_started':
                 self.controller.ovs_sync_started()
-            elif action == 'delete':
-                ovs_port = db_models.OvsPort(value)
-                self.controller.ovs_port_deleted(ovs_port)
         # Added lport migration for VM migration flag
         elif 'lport_migration' == table:
             if action == 'migrate':
