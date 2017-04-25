@@ -28,6 +28,7 @@ from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import model_framework as mf
 from dragonflow.db import models as db_models
+from dragonflow.db.models import ovs
 
 LOG = log.getLogger(__name__)
 
@@ -286,16 +287,19 @@ class NbApi(object):
             return
 
         if 'ovsinterface' == table:
-            if action == 'set' or action == 'create':
-                ovs_port = db_models.OvsPort(value)
-                self.controller.ovs_port_updated(ovs_port)
+            # FIXME(dimak) use 'ovs_port' table to avoid custom code path
+            if action in ('set', 'create'):
+                self.controller.update(
+                    ovs.OvsPort.from_json(value),
+                )
+            elif action == 'delete':
+                self.controller.delete(
+                    ovs.OvsPort.from_json(value),
+                )
             elif action == 'sync_finished':
                 self.controller.ovs_sync_finished()
             elif action == 'sync_started':
                 self.controller.ovs_sync_started()
-            elif action == 'delete':
-                ovs_port = db_models.OvsPort(value)
-                self.controller.ovs_port_deleted(ovs_port)
         elif 'log' == action:
             message = ('Log event (Info): table: %(table)s key: %(key)s '
                        'action: %(action)s value: %(value)s')
