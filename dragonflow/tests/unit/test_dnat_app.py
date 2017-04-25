@@ -39,26 +39,26 @@ class TestDNATApp(test_app_base.DFAppTestBase):
                 id='fake_ovs_port',
                 name=self.dnat_app.external_network_bridge,
             )
-            self.controller.ovs_port_updated(fake_ovs_port)
+            fake_ovs_port.emit_updated()
             mock_func.assert_not_called()
             mock_func.reset_mock()
 
             # Other device update will not trigger update flow
             fake_ovs_port.mac_in_use = "aa:bb:cc:dd:ee:ff"
             fake_ovs_port.name = 'no-bridge'
-            self.controller.ovs_port_updated(fake_ovs_port)
+            fake_ovs_port.emit_updated()
             mock_func.assert_not_called()
             mock_func.reset_mock()
 
             # Device with mac will trigger update flow
             fake_ovs_port.name = self.dnat_app.external_network_bridge
-            self.controller.ovs_port_updated(fake_ovs_port)
+            fake_ovs_port.emit_updated()
             mock_func.assert_called_once_with(test_app_base.fake_floatingip1,
                                               "aa:bb:cc:dd:ee:ff")
             mock_func.reset_mock()
 
             # Duplicated updated will not trigger update flow
-            self.controller.ovs_port_updated(fake_ovs_port)
+            fake_ovs_port.emit_updated()
             mock_func.assert_not_called()
 
     def test_delete_port_with_deleted_floatingip(self):

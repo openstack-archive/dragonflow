@@ -28,7 +28,6 @@ from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import model_framework as mf
 from dragonflow.db import models as db_models
-from dragonflow.db.models import ovs
 
 LOG = log.getLogger(__name__)
 
@@ -287,16 +286,7 @@ class NbApi(object):
             return
 
         if 'ovsinterface' == table:
-            # FIXME(dimak) use 'ovs_port' table to avoid custom code path
-            if action in ('set', 'create'):
-                self.controller.update(
-                    ovs.OvsPort.from_json(value),
-                )
-            elif action == 'delete':
-                self.controller.delete(
-                    ovs.OvsPort.from_json(value),
-                )
-            elif action == 'sync_finished':
+            if action == 'sync_finished':
                 self.controller.ovs_sync_finished()
             elif action == 'sync_started':
                 self.controller.ovs_sync_started()
