@@ -19,7 +19,6 @@ Floatingip = legacy.Floatingip
 Publisher = legacy.Publisher
 AllowedAddressPairsActivePort = legacy.AllowedAddressPairsActivePort
 Listener = legacy.Listener
-OvsPort = legacy.OvsPort
 
 UNIQUE_KEY = legacy.UNIQUE_KEY
 
