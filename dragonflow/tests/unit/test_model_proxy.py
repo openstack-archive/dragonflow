@@ -111,3 +111,12 @@ class TestObjectProxy(tests_base.BaseTestCase):
                          model_proxy.create_model_proxy(ModelTest))
         self.assertNotEqual(ModelTestProxy,
                             model_proxy.create_model_proxy(ModelTest2))
+
+    def test_null_comparison(self):
+        self.assertNotEqual(model_proxy.create_reference(ModelTest, '4321'),
+                         None)  # noqa: H203
+        m = RefferingModel(other_field='hi there')
+        ref = ModelTest(id='1234', topic='3')
+        m1 = RefferingModel(model_test=ref)
+        m.update(m1)
+        self.assertEqual('1234', m.model_test.id)
