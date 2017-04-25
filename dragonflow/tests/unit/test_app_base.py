@@ -17,6 +17,7 @@ import mock
 from neutron_lib import constants as n_const
 from oslo_config import cfg
 
+from dragonflow.common import constants
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
@@ -28,6 +29,7 @@ from dragonflow.db import models as db_models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
+from dragonflow.db.models import ovs
 from dragonflow.db.models import secgroups
 from dragonflow.tests import base as tests_base
 
@@ -213,16 +215,16 @@ fake_local_port1 = make_fake_local_port(
     extra_dhcp_opts=fake_local_port1_dhcp_opts)
 
 
-fake_ovs_port1 = mock.Mock(name='fake_ovs_port1')
-fake_ovs_port1.get_id.return_value = 'fake_ovs_port1'
-fake_ovs_port1.get_ofport.return_value = 2
-fake_ovs_port1.get_name.return_value = 'tap-fake_port1'
-fake_ovs_port1.get_admin_state.return_value = True
-fake_ovs_port1.get_type.return_value = db_models.OvsPort.TYPE_VM
-fake_ovs_port1.get_iface_id.return_value = 'fake_port1'
-fake_ovs_port1.get_peer.return_value = ''
-fake_ovs_port1.get_attached_mac.return_value = 'fa:16:3e:8c:2e:b3'
-fake_ovs_port1.get_tunnel_type.return_value = 'vxlan'
+fake_ovs_port1 = ovs.OvsPort(
+    id='fake_ovs_port1',
+    ofport=2,
+    name='tap-fake_port1',
+    admin_state='up',
+    type=constants.OVS_VM_INTERFACE,
+    iface_id='fake_port1',
+    attached_mac='fa:16:3e:8c:2e:b3',
+    tunnel_type='vxlan',
+)
 
 
 fake_local_port2 = make_fake_local_port(
@@ -237,16 +239,16 @@ fake_local_port2 = make_fake_local_port(
     local_network_id=1)
 
 
-fake_ovs_port2 = mock.Mock(name='fake_ovs_port2')
-fake_ovs_port2.get_id.return_value = 'fake_ovs_port2'
-fake_ovs_port2.get_ofport.return_value = 3
-fake_ovs_port2.get_name.return_value = 'tap-fake_port2'
-fake_ovs_port2.get_admin_state.return_value = True
-fake_ovs_port2.get_type.return_value = db_models.OvsPort.TYPE_VM
-fake_ovs_port2.get_iface_id.return_value = 'fake_port2'
-fake_ovs_port2.get_peer.return_value = ''
-fake_ovs_port2.get_attached_mac.return_value = 'fa:16:3e:8c:2e:b4'
-fake_ovs_port2.get_tunnel_type.return_value = 'vxlan'
+fake_ovs_port2 = ovs.OvsPort(
+    id='fake_ovs_port2',
+    ofport=3,
+    name='tap-fake_port2',
+    admin_state='up',
+    type=constants.OVS_VM_INTERFACE,
+    iface_id='fake_port2',
+    attached_mac='fa:16:3e:8c:2e:b4',
+    tunnel_type='vxlan',
+)
 
 
 def make_fake_remote_port(**kargs):
