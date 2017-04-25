@@ -82,9 +82,8 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
         self.heart_beat_reporter.daemonize()
 
     def notify_port_status(self, ovs_port, status):
-        port_id = ovs_port.get_iface_id()
-        self._send_event(l2.LogicalPort.table_name,
-                         port_id, 'update', status)
+        port_id = ovs_port.iface_id
+        self._send_event(l2.LogicalPort.table_name, port_id, 'update', status)
 
     def notify_fip_status(self, fip, status):
         self._send_event(models.Floatingip.table_name,
