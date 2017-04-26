@@ -55,3 +55,14 @@ class TestRedisPortStatus(tests_base.BaseTestCase):
                                                     jsonutils.dumps(listener))
         self.notifier.create_heart_beat_reporter('fake_host')
         self.assertFalse(nb_api.register_listener_callback.called)
+
+    def test_port_status_callback(self):
+        core_plugin = mock.Mock()
+        with mock.patch("neutron_lib.plugins.directory.get_plugin",
+                        return_value=core_plugin):
+            self.notifier.port_status_callback(models.LogicalPort.table_name,
+                                               "fake_port",
+                                               "update",
+                                               "up")
+            core_plugin.update_port_status.assert_called_once_with(
+                mock.ANY, "fake_port", "up")

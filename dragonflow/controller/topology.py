@@ -10,9 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron_lib import constants as n_const
 from oslo_log import log
 
-from dragonflow.common import constants
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.db import db_store2
 from dragonflow.db import models as db_models
@@ -170,7 +170,7 @@ class Topology(object):
     def _vm_port_added(self, ovs_port):
         self._vm_port_updated(ovs_port)
         self.controller.notify_port_status(
-            ovs_port, constants.PORT_STATUS_UP)
+            ovs_port, n_const.PORT_STATUS_ACTIVE)
 
     def _vm_port_updated(self, ovs_port):
         lport_id = ovs_port.get_iface_id()
@@ -223,7 +223,7 @@ class Topology(object):
                 'Failed to process logical port offline event %s', lport_id)
         finally:
             self.controller.notify_port_status(
-                ovs_port, constants.PORT_STATUS_DOWN)
+                ovs_port, n_const.PORT_STATUS_DOWN)
 
             del self.ovs_to_lport_mapping[ovs_port_id]
             self._del_from_topic_subscribed(topic, lport_id)

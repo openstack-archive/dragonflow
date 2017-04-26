@@ -22,7 +22,6 @@ from neutron.plugins.ml2 import models
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
 from neutron_lib import constants as n_const
-from neutron_lib import context as n_context
 from neutron_lib import exceptions as n_exc
 from neutron_lib.plugins import directory
 from oslo_log import log
@@ -693,15 +692,3 @@ class DFMechDriver(driver_api.MechanismDriver):
                                                     constants.TYPE_GENEVE,
                                                     constants.TYPE_GRE,
                                                     constants.TYPE_LOCAL]
-
-    def set_port_status_up(self, port_id):
-        LOG.debug("DF reports status up for port: %s", port_id)
-        self.core_plugin.update_port_status(n_context.get_admin_context(),
-                                            port_id,
-                                            n_const.PORT_STATUS_ACTIVE)
-
-    def set_port_status_down(self, port_id):
-        LOG.debug("DF reports status down for port: %s", port_id)
-        self.core_plugin.update_port_status(n_context.get_admin_context(),
-                                            port_id,
-                                            n_const.PORT_STATUS_DOWN)
