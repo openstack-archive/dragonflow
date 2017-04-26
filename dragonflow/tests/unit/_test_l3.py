@@ -48,28 +48,11 @@ class L3AppTestCaseMixin(object):
             self.assertEqual(1, method.call_count)
 
     def test_del_add_router(self):
-        _add_subnet_send_to_snat = mock.patch.object(
-            self.app,
-            '_add_subnet_send_to_snat'
-        )
-        self.addCleanup(_add_subnet_send_to_snat.stop)
-        _add_subnet_send_to_snat.start()
-        _del_subnet_send_to_snat = mock.patch.object(
-            self.app,
-            '_delete_subnet_send_to_snat'
-        )
-        self.addCleanup(_del_subnet_send_to_snat.stop)
-        _del_subnet_send_to_snat.start()
-
         self.app.mod_flow.reset_mock()
         # delete router
         self.controller.delete(self.router)
         # 5 mod flows, l2 -> l3, arp, icmp, router interface and route.
         self.assertEqual(5, self.app.mod_flow.call_count)
-        self.app._delete_subnet_send_to_snat.assert_called_once_with(
-            test_app_base.fake_logic_switch1.unique_key,
-            self.router.ports[0].mac,
-        )
 
         # add router
         self.app.mod_flow.reset_mock()
@@ -78,11 +61,6 @@ class L3AppTestCaseMixin(object):
         self.assertEqual(5, self.app.mod_flow.call_count)
         args, kwargs = self.app.mod_flow.call_args
         self.assertEqual(const.L3_LOOKUP_TABLE, kwargs['table_id'])
-        self.app._add_subnet_send_to_snat.assert_called_once_with(
-            test_app_base.fake_logic_switch1.unique_key,
-            self.router.ports[0].mac,
-            self.router.ports[0].unique_key
-        )
 
     def test_reply_ttl_invalid_message_with_rate_limit(self):
         event = mock.Mock()

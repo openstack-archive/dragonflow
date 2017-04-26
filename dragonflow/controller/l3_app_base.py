@@ -372,7 +372,6 @@ class L3AppMixin(object):
 
         mac = router_port.mac
         router_unique_key = router.unique_key
-        tunnel_key = router_port.unique_key
         dst_ip = router_port.network.ip
         is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
 
@@ -427,9 +426,6 @@ class L3AppMixin(object):
                                              router_port.network.netmask)
         self._add_subnet_send_to_route(match, local_network_id, router_port)
 
-        # Fall through to sNAT
-        self._add_subnet_send_to_snat(local_network_id, mac, tunnel_key)
-
     def _delete_router_port(self, router, router_port):
         LOG.info("Removing logical router interface = %s",
                  router_port)
@@ -477,34 +473,6 @@ class L3AppMixin(object):
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-        # Delete rule for SNAT
-        self._delete_subnet_send_to_snat(local_network_id, mac)
-
-    def _add_subnet_send_to_snat(self, network_id, mac, tunnel_key):
-        ofproto = self.ofproto
-        parser = self.parser
-        match = parser.OFPMatch(metadata=network_id, eth_dst=mac)
-        actions = [parser.OFPActionSetField(reg7=tunnel_key)]
-        inst = [
-            parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
-            parser.OFPInstructionGotoTable(const.EGRESS_TABLE),
-        ]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.L3_LOOKUP_TABLE,
-            priority=const.PRIORITY_VERY_LOW,
-            match=match)
-
-    def _delete_subnet_send_to_snat(self, network_id, mac):
-        ofproto = self.ofproto
-        parser = self.parser
-        match = parser.OFPMatch(metadata=network_id, eth_dst=mac)
-        self.mod_flow(
-            command=ofproto.OFPFC_DELETE_STRICT,
-            table_id=const.L3_LOOKUP_TABLE,
-            priority=const.PRIORITY_VERY_LOW,
             match=match)
 
     def add_local_port(self, lport):
