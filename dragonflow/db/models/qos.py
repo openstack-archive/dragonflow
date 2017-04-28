@@ -21,6 +21,7 @@ from dragonflow.db.models import mixins
 RULE_TYPE_DSCP_MARKING = 'dscp_marking'
 RULE_TYPE_BANDWIDTH_LIMIT = 'bandwidth_limit'
 RULE_TYPES = (RULE_TYPE_DSCP_MARKING, RULE_TYPE_BANDWIDTH_LIMIT)
+DIRECTIONS = ('egress',)
 
 
 @mf.construct_nb_db_model
@@ -29,6 +30,7 @@ class QosPolicyRule(mf.ModelBase, mixins.BasicEvents):
     dscp_mark = fields.IntField()
     max_kbps = fields.IntField()
     max_burst_kbps = fields.IntField()
+    direction = df_fields.EnumField(DIRECTIONS)
 
     def validate(self):
         """
