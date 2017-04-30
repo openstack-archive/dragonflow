@@ -123,3 +123,9 @@ class TestObjectProxy(tests_base.BaseTestCase):
         m1 = RefferingModel(model_test=ref)
         m.update(m1)
         self.assertEqual('1234', m.model_test.id)
+
+    def test_is_model_proxy(self):
+        model_instance = ModelTest(id='id1', topic='topic1')
+        self.assertFalse(model_proxy.is_model_proxy(model_instance))
+        model_ref = model_proxy.create_reference(ModelTest, id='id1')
+        self.assertTrue(model_proxy.is_model_proxy(model_ref))
