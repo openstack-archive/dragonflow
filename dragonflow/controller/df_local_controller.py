@@ -33,6 +33,7 @@ from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db import model_framework
+from dragonflow.db import model_proxy
 from dragonflow.db import models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
@@ -270,7 +271,11 @@ class DfLocalController(object):
                 self.db_store.delete_active_port(active_port.get_id())
 
     def _is_physical_chassis(self, chassis):
-        if not chassis or chassis == constants.DRAGONFLOW_VIRTUAL_PORT:
+        if not chassis:
+            return False
+        if chassis.id == constants.DRAGONFLOW_VIRTUAL_PORT:
+            return False
+        if model_proxy.is_model_proxy(chassis) and not chassis.get_object():
             return False
         return True
 
@@ -437,8 +442,10 @@ class DfLocalController(object):
         return True
 
     def update_lport(self, lport):
-        chassis = lport.get_chassis()
-        if not self._is_physical_chassis(chassis):
+        chassis = model_proxy.create_reference(
+                core.Chassis, lport.get_chassis())
+        if (not lport.get_remote_vtep() and
+                not self._is_physical_chassis(chassis)):
             LOG.debug(("Port %s has not been bound or it is a vPort"),
                       lport.get_id())
             return
