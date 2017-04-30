@@ -12,11 +12,13 @@
 
 import mock
 
+from dragonflow.common import constants
 from dragonflow.common import utils
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
 from dragonflow.db import db_store2
+from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.tests.unit import test_app_base
 
@@ -202,3 +204,21 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_get_local.return_value = lport
         self.assertIsNone(self.controller.delete_activeport('fake_id'))
         mock_notify.assert_called_once_with(active_port)
+
+    @mock.patch.object(db_store2.DbStore2, 'get_one')
+    def test__is_physical_chassis(self, get_one):
+        # real chassis
+        chassis_real = core.Chassis(id='ch1', ip='10.0.0.3')
+        self.assertTrue(self.controller._is_physical_chassis(chassis_real))
+
+        self.db_store2 = mock.MagicMock()
+        get_one.return_value = core.Chassis(id='ch2', ip='10.0.0.4')
+        chassis_ref = model_proxy.create_reference(core.Chassis, 'ch2')
+        self.assertTrue(self.controller._is_physical_chassis(chassis_ref))
+
+        get_one.return_value = None
+        chassis_bad_ref = model_proxy.create_reference(core.Chassis, 'ch3')
+        self.assertFalse(self.controller._is_physical_chassis(chassis_bad_ref))
+
+        chassis_virt = core.Chassis(id=constants.DRAGONFLOW_VIRTUAL_PORT)
+        self.assertFalse(self.controller._is_physical_chassis(chassis_virt))
