@@ -124,6 +124,10 @@ class _CommonBase(models.Base):
         cls._event_callbacks[event].remove(cb)
 
     @classmethod
+    def clear_registered_callbacks(cls):
+        cls._event_callbacks.clear()
+
+    @classmethod
     def get_events(cls):
         '''Events defined for this model'''
         return frozenset()

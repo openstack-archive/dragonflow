@@ -21,6 +21,7 @@ from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
 from dragonflow.db import db_store2
+from dragonflow.db import model_framework
 from dragonflow.db import models as db_models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
@@ -67,6 +68,11 @@ class DFAppTestBase(tests_base.BaseTestCase):
         mock.patch('dragonflow.controller.df_base_app.DFlowApp.'
                    'add_flow_go_to_table').start()
         mock.patch('neutron.agent.common.utils.execute').start()
+
+    def tearDown(self):
+        for model in model_framework.iter_models(False):
+            model.clear_registered_callbacks()
+        super(DFAppTestBase, self).tearDown()
 
 
 fake_logical_router_ports = [l3.LogicalRouterPort(network="10.0.0.1/24",

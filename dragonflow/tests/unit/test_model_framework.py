@@ -217,6 +217,19 @@ class TestModelFramework(tests_base.BaseTestCase):
 
         m1.assert_not_called()
 
+    def test_clear_registered_callbacks(self):
+        m1 = mock.MagicMock()
+        m1.__name__ = 'mock'
+        m1.__module__ = 'mock'
+        ModelWithEvents.register_event1(m1)
+        ModelWithEvents().emit_event1()
+        m1.assert_called_once()
+        m1.reset_mock()
+
+        ModelWithEvents.clear_registered_callbacks()
+        ModelWithEvents().emit_event1()
+        m1.assert_not_called()
+
     def test_register_as_decorator(self):
         cb = mock.MagicMock()
 
