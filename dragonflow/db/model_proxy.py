@@ -146,3 +146,7 @@ def create_reference(model, id=None, lazy=True, **kwargs):
     reference_model = create_model_proxy(model)
     instance = reference_model(lazy=lazy, id=id, **kwargs)
     return instance
+
+
+def is_model_proxy(model):
+    return isinstance(model, _ModelProxyBase)
