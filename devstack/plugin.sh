@@ -13,8 +13,8 @@ OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
 # The branch to use from $OVS_REPO
 OVS_BRANCH=${OVS_BRANCH:-branch-2.6}
 
-#Set empty SNAT_HOST_IP
-SNAT_HOST_IP=${SNAT_HOST_IP:-}
+# Set empty EXTERNAL_HOST_IP
+EXTERNAL_HOST_IP=${EXTERNAL_HOST_IP:-}
 
 DEFAULT_TUNNEL_TYPE="geneve"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
@@ -31,7 +31,7 @@ if [[ "$ENABLE_ACTIVE_DETECTION" == "True" ]]; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,active_port_detection_app.ActivePortDetectionApp"
 fi
 
-if [[ ! -z ${SNAT_HOST_IP} ]]; then
+if [[ ! -z ${EXTERNAL_HOST_IP} ]]; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,chassis_snat_app.ChassisSNATApp"
 fi
 
@@ -247,8 +247,8 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
     iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
     iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
-    if [[ ! -z ${SNAT_HOST_IP} ]]; then
-        iniset $DRAGONFLOW_CONF df_snat_app external_host_ip "$SNAT_HOST_IP"
+    if [[ ! -z ${EXTERNAL_HOST_IP} ]]; then
+        iniset $DRAGONFLOW_CONF df external_host_ip "$EXTERNAL_HOST_IP"
     fi
 
     if [[ "$DF_PUB_SUB" == "True" ]]; then

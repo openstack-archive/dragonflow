@@ -27,7 +27,7 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
     def setUp(self):
         cfg.CONF.set_override('external_host_ip',
                               self.external_host_ip,
-                              group='df_snat_app')
+                              group='df')
         super(TestChassisSNATApp, self).setUp()
         self.SNAT_app = self.open_flow_app.dispatcher.apps[0]
         self.SNAT_app.external_ofport = 99

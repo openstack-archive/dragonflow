@@ -170,7 +170,9 @@ df_opts = [
     cfg.IntOpt('neutron_listener_report_delay',
                default=10,
                help=_('The max delay in seconds for Neutron to report heart'
-                      'beat to df-db'))
+                      'beat to df-db')),
+    cfg.StrOpt('external_host_ip',
+               help=_("Compute node external IP"))
 ]
 
 

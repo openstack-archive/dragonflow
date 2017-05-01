@@ -56,7 +56,7 @@ class TestSnatFlows(test_base.DFTestBase):
                   'name': 'private',
                   'enable_dhcp': True}
 
-        external_host_ip = cfg.CONF.df_snat_app.external_host_ip
+        external_host_ip = cfg.CONF.df.external_host_ip
         self.assertIsNotNone(external_host_ip)
         split_ip = external_host_ip.split('.')
         ip2mac = '{:02x}:{:02x}:{:02x}:{:02x}'.format(*map(int, split_ip))
