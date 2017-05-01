@@ -75,7 +75,8 @@ class DfLocalController(object):
         kwargs = dict(
             nb_api=self.nb_api,
             vswitch_api=self.vswitch_api,
-            db_store=self.db_store
+            db_store=self.db_store,
+            neutron_server_notifier=self.port_status_notifier
         )
         app_mgr = app_manager.AppManager.get_instance()
         self.open_flow_app = app_mgr.instantiate(ryu_base_app.RyuDFAdapter,

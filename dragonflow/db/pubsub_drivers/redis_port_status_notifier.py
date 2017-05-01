@@ -18,6 +18,7 @@ import os
 import random
 import time
 
+from neutron_lib import constants as n_const
 from neutron_lib import context as n_context
 from neutron_lib.plugins import directory
 from oslo_config import cfg
@@ -79,6 +80,10 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         self._send_event(models.LogicalPort.table_name,
                          port_id, 'update', status)
 
+    def notify_fip_status(self, fip, status):
+        self._send_event(models.Floatingip.table_name,
+                         fip.get_id(), 'update', status)
+
     def _send_event(self, table, key, action, value):
         listeners = self.nb_api.get_all_neutron_listeners()
         listeners_num = len(listeners)
@@ -110,6 +115,10 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
             core_plugin = directory.get_plugin()
             core_plugin.update_port_status(n_context.get_admin_context(),
                                            key, value)
+        elif models.Floatingip.table_name == table and 'update' == action:
+            l3_plugin = directory.get_plugin(n_const.L3)
+            l3_plugin.update_fip_status(n_context.get_admin_context(),
+                                        key, value)
 
 
 class HeartBeatReporter(object):
