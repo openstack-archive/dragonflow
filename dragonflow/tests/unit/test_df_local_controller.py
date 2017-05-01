@@ -207,7 +207,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
     def test_register_chassis(self):
         cfg.CONF.set_override('external_host_ip',
                               '172.24.4.100',
-                              group='df_snat_app')
+                              group='df')
         self.controller.register_chassis()
         expected_chassis = core.Chassis(
             id=self.controller.chassis_name,

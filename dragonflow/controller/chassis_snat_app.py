@@ -43,7 +43,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
         self.chassis = None
 
         # new application configuration
-        self.external_host_ip = cfg.CONF.df_snat_app.external_host_ip
+        self.external_host_ip = cfg.CONF.df.external_host_ip
         self.enable_goto_flows = cfg.CONF.df_snat_app.enable_goto_flows
 
         # create mac address based on given 'external_host_ip'
