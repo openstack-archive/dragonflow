@@ -86,8 +86,9 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
         self.nb_api.get_logical_port.return_value = mock_lport
 
         self.nb_api.get.side_effect = nb_api_get_func(lrouter)
-        with self.subnet() as s:
+        with self.subnet(enable_dhcp=False) as s:
             data = {'subnet_id': s['subnet']['id']}
+            self.nb_api.update.reset_mock()
             self.l3p.add_router_interface(self.context, router['id'], data)
             router_with_int = self.l3p.get_router(self.context, router['id'])
             self.assertGreater(router_with_int['revision_number'],
