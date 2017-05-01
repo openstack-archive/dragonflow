@@ -157,11 +157,6 @@ df_opts = [
                default="/var/run/openvswitch",
                help=_("The directory in which vhost virtio socket"
                       "is created by all the vswitch daemons")),
-    cfg.StrOpt(
-        'metadata_interface',
-        default='tap-metadata',
-        help=_('The name of the interface to bind the metadata'
-               'service proxy')),
     cfg.IntOpt('neutron_listener_report_interval',
                default=25,
                help=_('Neutron report heart beat every this number in seconds'
