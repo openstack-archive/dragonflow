@@ -21,5 +21,6 @@ class Chassis(mf.ModelBase, mixins.BasicEvents):
     table_name = 'chassis'
 
     ip = df_fields.IpAddressField(required=True)
+    external_host_ip = df_fields.IpAddressField()
     tunnel_types = df_fields.EnumListField(conf.CONF.df.tunnel_types,
                                            required=True)
