@@ -76,7 +76,7 @@ class DFIdl(idl.Idl):
                                constants.OVS_BRIDGE_INTERFACE)
 
     def _is_handle_interface_update(self, interface):
-        if interface.name == cfg.CONF.df.metadata_interface:
+        if interface.name == cfg.CONF.df_metadata.metadata_interface:
             return True
         if interface.type not in self.interface_type:
             return False

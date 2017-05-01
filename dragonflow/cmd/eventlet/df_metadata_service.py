@@ -31,7 +31,7 @@ METADATA_ROUTE_TABLE_ID = '2'
 
 def environment_setup():
     bridge = cfg.CONF.df.integration_bridge
-    interface = cfg.CONF.df.metadata_interface
+    interface = cfg.CONF.df_metadata.metadata_interface
     if ip_lib.device_exists(interface):
         LOG.info("Device %s already exists", interface)
         # Destroy the environment when the device exists.
@@ -59,7 +59,7 @@ def environment_setup():
 
 def environment_destroy():
     bridge = cfg.CONF.df.integration_bridge
-    interface = cfg.CONF.df.metadata_interface
+    interface = cfg.CONF.df_metadata.metadata_interface
     cmd = ["ovs-vsctl", "del-port", bridge, interface]
     utils.execute(cmd, run_as_root=True, check_exit_code=[0])
 
