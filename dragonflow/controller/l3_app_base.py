@@ -565,7 +565,7 @@ class L3AppMixin(object):
 
         @param lport: The lport related to extra routes.
         """
-        LOG.debug("Reprocess to add extra routes that use lport %(lport)s "
+        LOG.debug("Reprocess to add extra routes that use lport %s "
                   "as nexthop", lport)
         lswitch_id = lport.get_lswitch_id()
         port_ip = lport.get_ip()
@@ -606,7 +606,7 @@ class L3AppMixin(object):
 
         @param lport: The lport related to extra routes.
         """
-        LOG.debug("Reprocess to delete extra routes that use lport %(lport)s "
+        LOG.debug("Reprocess to delete extra routes that use lport %s "
                   "as nexthop", lport)
         lswitch_id = lport.get_lswitch_id()
         port_ip = lport.get_ip()
