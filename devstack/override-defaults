@@ -15,7 +15,7 @@ function neutron_plugin_install_agent_packages {
 }
 
 if is_service_enabled df-l3-agent ; then
-    AGENT_L3_BINARY=${AGENT_L3_BINARY:-"df-l3-agent"}
+    AGENT_L3_BINARY=${AGENT_L3_BINARY:-"$NEUTRON_BIN_DIR/df-l3-agent"}
     enable_service q-l3
 fi
 
