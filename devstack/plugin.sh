@@ -428,7 +428,7 @@ function stop_pubsub_service {
 function start_df_metadata_agent {
     if is_service_enabled df-metadata ; then
         echo "Starting Dragonflow metadata service"
-        run_process df-metadata "python $DF_METADATA_SERVICE --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
+        run_process df-metadata "$DF_METADATA_SERVICE --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
     fi
 }
 
@@ -443,7 +443,7 @@ function stop_df_metadata_agent {
 function start_df_bgp_service {
     if is_service_enabled df-bgp ; then
         echo "Starting Dragonflow BGP dynamic routing service"
-        run_process df-bgp "python $DF_BGP_SERVICE --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
+        run_process df-bgp "$DF_BGP_SERVICE --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
     fi
 }
 
