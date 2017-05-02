@@ -235,7 +235,7 @@ class L3AppMixin(object):
         @param lport_mac: The mac address of lport which will act as nexthop
         @param route: The extra route dict
         """
-        LOG.info('Add extra route %(route)s to router', route)
+        LOG.info('Add extra route %s to router', route)
 
         ofproto = self.ofproto
         parser = self.parser
@@ -275,7 +275,7 @@ class L3AppMixin(object):
         @param router_if_mac: The mac address of related router port
         @param route: The extra route dict
         """
-        LOG.info('Delete extra route %(route)s from router', route)
+        LOG.info('Delete extra route %s from router', route)
 
         ofproto = self.ofproto
 
@@ -565,7 +565,7 @@ class L3AppMixin(object):
 
         @param lport: The lport related to extra routes.
         """
-        LOG.debug("Reprocess to add extra routes that use lport %(lport)s "
+        LOG.debug("Reprocess to add extra routes that use lport %s "
                   "as nexthop", lport)
         lswitch_id = lport.get_lswitch_id()
         port_ip = lport.get_ip()
@@ -606,7 +606,7 @@ class L3AppMixin(object):
 
         @param lport: The lport related to extra routes.
         """
-        LOG.debug("Reprocess to delete extra routes that use lport %(lport)s "
+        LOG.debug("Reprocess to delete extra routes that use lport %s "
                   "as nexthop", lport)
         lswitch_id = lport.get_lswitch_id()
         port_ip = lport.get_ip()
