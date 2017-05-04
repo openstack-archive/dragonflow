@@ -603,3 +603,44 @@ class BGPSpeakerTestObj(object):
     def exists(self):
         bgp_speaker = self.nb_api.get(bgp.BGPSpeaker(id=self.speaker_id))
         return bool(bgp_speaker)
+
+
+class AddressScopeTestObj(object):
+    def __init__(self, neutron, nb_api):
+        self.address_scope_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.closed = False
+
+    def create(self, address_scope={'name': "scope1",
+                                    'ip_version': 4}):
+        address_scope = self.neutron.create_address_scope(
+            {'address_scope': address_scope})
+        self.address_scope_id = address_scope['address_scope']['id']
+        return self.address_scope_id
+
+    def close(self):
+        if self.closed or self.address_scope_id is None:
+            return
+        self.neutron.delete_address_scope(self.address_scope_id)
+        self.closed = True
+
+
+class SubnetPoolTestObj(object):
+    def __init__(self, neutron, nb_api):
+        self.subnetpool_id = None
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.closed = False
+
+    def create(self, subnetpool):
+        subnetpool = self.neutron.create_subnetpool(
+            {'subnetpool': subnetpool})
+        self.subnetpool_id = subnetpool['subnetpool']['id']
+        return self.subnetpool_id
+
+    def close(self):
+        if self.closed or self.subnetpool_id is None:
+            return
+        self.neutron.delete_subnetpool(self.subnetpool_id)
+        self.closed = True
