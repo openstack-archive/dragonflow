@@ -16,7 +16,6 @@ from neutron.callbacks import resources
 from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import extra_dhcp_opt as edo_ext
 from neutron.extensions import portsecurity as psec
-from neutron.plugins.common import constants
 from neutron.plugins.ml2 import driver_api
 from neutron.plugins.ml2 import models
 from neutron_lib.api.definitions import portbindings
@@ -670,9 +669,9 @@ class DFMechDriver(driver_api.MechanismDriver):
 
     def _check_segment(self, segment):
         """Verify a segment is valid for the dragonflow MechanismDriver."""
-        return segment[driver_api.NETWORK_TYPE] in [constants.TYPE_VLAN,
-                                                    constants.TYPE_VXLAN,
-                                                    constants.TYPE_FLAT,
-                                                    constants.TYPE_GENEVE,
-                                                    constants.TYPE_GRE,
-                                                    constants.TYPE_LOCAL]
+        return segment[driver_api.NETWORK_TYPE] in [n_const.TYPE_VLAN,
+                                                    n_const.TYPE_VXLAN,
+                                                    n_const.TYPE_FLAT,
+                                                    n_const.TYPE_GENEVE,
+                                                    n_const.TYPE_GRE,
+                                                    n_const.TYPE_LOCAL]
