@@ -42,6 +42,8 @@ class _ModelProxyBase(object):
     def get_object(self):
         if self._obj is None:
             self._obj = self._fetch_obj()
+        elif self._obj._is_object_stale:
+            self._obj = self._fetch_obj()
         return self._obj
 
     @property
