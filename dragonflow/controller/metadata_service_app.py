@@ -57,7 +57,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         self._interface_mac = ""
         self._ip = cfg.CONF.df_metadata.ip
         self._port = cfg.CONF.df_metadata.port
-        self._interface = cfg.CONF.df.metadata_interface
+        self._interface = cfg.CONF.df_metadata.metadata_interface
 
     def switch_features_handler(self, ev):
         if self._interface_mac and self._ofport and self._ofport > 0:
@@ -66,7 +66,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             self._add_tap_metadata_port(self._ofport, self._interface_mac)
 
     def ovs_port_updated(self, ovs_port):
-        if ovs_port.get_name() != cfg.CONF.df.metadata_interface:
+        if ovs_port.get_name() != cfg.CONF.df_metadata.metadata_interface:
             return
 
         ofport = ovs_port.get_ofport()
@@ -85,7 +85,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         self._interface_mac = mac
 
     def ovs_port_deleted(self, ovs_port):
-        if ovs_port.get_name() != cfg.CONF.df.metadata_interface:
+        if ovs_port.get_name() != cfg.CONF.df_metadata.metadata_interface:
             return
 
         self._remove_metadata_interface_flows()

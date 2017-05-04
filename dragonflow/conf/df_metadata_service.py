@@ -30,6 +30,11 @@ df_metadata_opts = [
         default='18080',
         help=_('The port to which the DF metadata service proxy is bound'),
     ),
+    cfg.StrOpt(
+        'metadata_interface',
+        default='tap-metadata',
+        help=_('The name of the interface to bind the metadata'
+               'service proxy'))
 ]
 
 
