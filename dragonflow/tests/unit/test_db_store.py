@@ -522,3 +522,10 @@ class TestDbStore2(tests_base.BaseTestCase):
         self.db_store.update(embedding2)
         self.db_store.update(embedding1)
         self.assertIn(embedded, self.db_store)
+
+    def test_mark_object_as_stale(self):
+        o1 = ModelTest(id='id1', topic='topic')
+        o2 = ModelTest(id='id1', topic='topic', extra_field='test')
+        self.db_store.update(o1)
+        self.db_store.update(o2)
+        self.assertTrue(o1._is_object_stale)
