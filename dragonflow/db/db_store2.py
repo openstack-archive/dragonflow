@@ -138,6 +138,9 @@ class _ModelCache(object):
         for index in self._indexes.values():
             index.update(obj)
 
+        old_obj = self._objs.get(obj.id)
+        if old_obj:
+            old_obj._is_object_stale = True
         self._objs[obj.id] = obj
 
     def get_one(self, obj, index):
