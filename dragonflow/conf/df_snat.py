@@ -18,8 +18,6 @@ from oslo_config import cfg
 from dragonflow._i18n import _
 
 df_snat_app_opts = [
-    cfg.StrOpt('external_host_ip',
-               help=_("Compute node external IP")),
     cfg.BoolOpt('enable_goto_flows',
                 default=True,
                 help=_("Enable install of common goto flows to ingress/egress "
