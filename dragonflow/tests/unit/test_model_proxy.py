@@ -12,6 +12,7 @@
 from jsonmodels import fields
 import mock
 
+from dragonflow.db import db_store2
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
 from dragonflow.db import model_proxy
@@ -139,3 +140,30 @@ class TestObjectProxy(tests_base.BaseTestCase):
         self.assertFalse(model_proxy.is_model_proxy(model_instance))
         model_ref = model_proxy.create_reference(ModelTest, id='id1')
         self.assertTrue(model_proxy.is_model_proxy(model_ref))
+
+    def test_stale_model_refresh(self):
+        model_test1 = ModelTest(id='1', topic='topic')
+        model_test2 = ModelTest(id='1', topic='topic2')
+        self.db_store2.get_one.return_value = model_test1
+        reffing_model = RefferingModel(id='2', model_test='1')
+        reffing_model.model_test.get_object()
+        self.db_store2.get_one.assert_called_once_with(ModelTest(id='1'))
+        self.db_store2.get_one.reset_mock()
+        self.db_store2.get_one.return_value = model_test2
+        model_test1._is_object_stale = True
+        reffing_model.model_test.get_object()
+        self.db_store2.get_one.assert_called_once_with(ModelTest(id='1'))
+
+    def test_integration_stale_model_db_store(self):
+        db_store = db_store2.DbStore2()
+        with mock.patch('dragonflow.db.db_store2.get_instance',
+                        return_value=db_store):
+            model_test1 = ModelTest(id='1', topic='topic')
+            db_store.update(model_test1)
+            reffing_model = RefferingModel(id='2', model_test='1')
+            self.assertEqual(model_test1,
+                             reffing_model.model_test.get_object())
+            model_test2 = ModelTest(id='1', topic='topic2')
+            db_store.update(model_test2)
+            self.assertEqual(model_test2,
+                             reffing_model.model_test.get_object())
