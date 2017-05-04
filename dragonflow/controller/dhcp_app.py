@@ -20,7 +20,6 @@ import struct
 
 import netaddr
 from neutron.conf import common as common_config
-from neutron.plugins.common import constants as n_p_const
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.lib import addrconv
@@ -281,13 +280,13 @@ class DHCPApp(df_base_app.DFlowApp):
         mtu = self._get_lswitch_by_port(lport).mtu
 
         tunnel_type = cfg.CONF.df.tunnel_type
-        if tunnel_type == n_p_const.TYPE_VXLAN:
-            return mtu - n_p_const.VXLAN_ENCAP_OVERHEAD if mtu else 0
-        elif tunnel_type == n_p_const.TYPE_GENEVE:
+        if tunnel_type == n_const.TYPE_VXLAN:
+            return mtu - n_const.VXLAN_ENCAP_OVERHEAD if mtu else 0
+        elif tunnel_type == n_const.TYPE_GENEVE:
             # TODO(gampel) use max_header_size param when we move to ML2
-            return mtu - n_p_const.GENEVE_ENCAP_MIN_OVERHEAD if mtu else 0
-        elif tunnel_type == n_p_const.TYPE_GRE:
-            return mtu - n_p_const.GRE_ENCAP_OVERHEAD if mtu else 0
+            return mtu - n_const.GENEVE_ENCAP_MIN_OVERHEAD if mtu else 0
+        elif tunnel_type == n_const.TYPE_GRE:
+            return mtu - n_const.GRE_ENCAP_OVERHEAD if mtu else 0
         return self.default_interface_mtu
 
     def remove_local_port(self, lport):

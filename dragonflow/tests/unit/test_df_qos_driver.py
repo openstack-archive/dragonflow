@@ -11,7 +11,7 @@
 #    under the License.
 import mock
 from neutron.objects.qos import rule
-from neutron.plugins.common import constants as service_constants
+from neutron_lib.plugins import constants as service_constants
 from neutron_lib.plugins import directory
 
 from dragonflow.db.models import qos
