@@ -62,6 +62,7 @@ class _CommonBase(models.Base):
                 )
         super(_CommonBase, self).__init__(**kwargs)
         self._set_fields = set(kwargs.keys()).intersection(self._field_names)
+        self._is_object_stale = False
 
     @classmethod
     def from_json(cls, data):
