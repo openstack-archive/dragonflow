@@ -17,6 +17,7 @@ from dragonflow import conf as cfg
 from dragonflow.controller import df_bgp_service
 from dragonflow.db.models import bgp
 from dragonflow.tests import base as tests_base
+from dragonflow.tests.common import utils as test_utils
 
 
 def get_all_side_effect(model, topic):
@@ -110,13 +111,17 @@ class TestDFBGPService(tests_base.BaseTestCase):
 
         self.bgp_service.nb_api.get_all.side_effect = (
             get_all_with_routes_side_effect)
-        # Give fixed interval another round.
-        eventlet.sleep(cfg.CONF.df_bgp.pulse_interval + 1)
+        test_utils.wait_until_true(
+            lambda: self.bgp_service.bgp_driver.advertise_route.called,
+            cfg.CONF.df_bgp.pulse_interval * 2,
+            1)
         self.bgp_service.bgp_driver.advertise_route.assert_called_once_with(
             1234, "10.0.0.0/24", "172.24.4.66")
 
         self.bgp_service.nb_api.get_all.side_effect = get_all_side_effect
-        # Give fixed interval another round.
-        eventlet.sleep(cfg.CONF.df_bgp.pulse_interval + 1)
+        test_utils.wait_until_true(
+            lambda: self.bgp_service.bgp_driver.withdraw_route.called,
+            cfg.CONF.df_bgp.pulse_interval * 2,
+            1)
         self.bgp_service.bgp_driver.withdraw_route.assert_called_once_with(
             1234, "10.0.0.0/24")
