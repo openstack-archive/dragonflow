@@ -93,6 +93,11 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
         with self.subnet() as s:
             data = {'subnet_id': s['subnet']['id']}
             self.l3p.add_router_interface(self.context, router['id'], data)
+            # NOTE(oanson) The calls to expire_all may need to be removed once
+            # Neutron complete the move to EngineFacade. Currently they exist
+            # to make sure we don't get stale Router objects with the old
+            # version
+            self.context.session.expire_all()
             router_with_int = self.l3p.get_router(self.context, router['id'])
             self.assertGreater(router_with_int['revision_number'],
                                old_version)
@@ -101,6 +106,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
             self.nb_api.update.reset_mock()
 
             self.l3p.remove_router_interface(self.context, router['id'], data)
+            self.context.session.expire_all()
             router_without_int = self.l3p.get_router(self.context,
                                                      router['id'])
             self.assertGreater(router_without_int['revision_number'],
