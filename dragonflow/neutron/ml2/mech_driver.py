@@ -74,13 +74,12 @@ class DFMechDriver(driver_api.MechanismDriver):
         # plugin service, etc) and threads with network connections.
         self.nb_api = api_nb.NbApi.get_instance(True)
         df_qos.initialize(self.nb_api)
-        if cfg.CONF.df.enable_port_status_notifier:
-            port_status_notifier = df_utils.load_driver(
-                cfg.CONF.df.port_status_notifier,
-                df_utils.DF_PORT_STATUS_DRIVER_NAMESPACE)
-            port_status_notifier.initialize(self.nb_api,
-                                            is_neutron_server=True)
-
+        if cfg.CONF.df.enable_neutron_notifier:
+            neutron_notifier = df_utils.load_driver(
+                cfg.CONF.df.neutron_notifier,
+                df_utils.DF_NEUTRON_NOTIFIER_DRIVER_NAMESPACE)
+            neutron_notifier.initialize(self.nb_api,
+                                        is_neutron_server=True)
             self.port_status = None
 
     def subscribe_registries(self):
@@ -556,7 +555,7 @@ class DFMechDriver(driver_api.MechanismDriver):
 
         # Here we do not want port status update to trigger
         # sending event to other compute node.
-        if (cfg.CONF.df.enable_port_status_notifier and
+        if (cfg.CONF.df.enable_neutron_notifier and
                 n_const.DEVICE_OWNER_COMPUTE_PREFIX
                 in updated_port['device_owner'] and
                 context.status != context.original_status and

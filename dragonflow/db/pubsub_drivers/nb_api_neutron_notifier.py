@@ -28,14 +28,14 @@ from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import models
 from dragonflow.db.neutron import lockedobjects_db as lock_db
-from dragonflow.db import port_status_api
+from dragonflow.db import neutron_notifier_api
 
 LOG = log.getLogger(__name__)
 
 
-class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
-    # PortStatusNotifier implements port status update
-    # southbound notification mechanism based on redis
+class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
+    # NbApiNeutronNotifier implements notification mechanism from
+    # Dragonflow controller to northbound neutron server, based on
     # pub/sub driver at present.
     def __init__(self):
         self.nb_api = None
@@ -46,7 +46,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
             self.create_heart_beat_reporter(cfg.CONF.host)
         else:
             if not cfg.CONF.df.enable_df_pub_sub:
-                LOG.warning("RedisPortStatusNotifier cannot "
+                LOG.warning("NbApiNeutronNotifier cannot "
                             "work when enable_df_pub_sub is disabled")
                 return
             self.nb_api.publisher.initialize()
@@ -69,7 +69,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
                 self._create_heart_beat_reporter(host)
 
     def _create_heart_beat_reporter(self, host):
-        self.nb_api.register_listener_callback(self.port_status_callback,
+        self.nb_api.register_listener_callback(self.notify_neutron_server,
                                                'listener_' + host)
         LOG.info("Register listener %s", host)
         self.heart_beat_reporter = HeartBeatReporter(self.nb_api)
@@ -109,7 +109,7 @@ class RedisPortStatusNotifier(port_status_api.PortStatusDriver):
         LOG.info("Publish to neutron %s", topic)
         self.nb_api.publisher.send_event(update)
 
-    def port_status_callback(self, table, key, action, value, topic=None):
+    def notify_neutron_server(self, table, key, action, value, topic=None):
         if models.LogicalPort.table_name == table and 'update' == action:
             LOG.info("Process port %s status update event", key)
             core_plugin = directory.get_plugin()
