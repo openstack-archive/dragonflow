@@ -15,6 +15,7 @@ import mock
 from dragonflow.common import exceptions
 from dragonflow.db import api_nb
 from dragonflow.db import db_common
+import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
 from dragonflow.db.models import mixins
 from dragonflow.tests import base as tests_base
@@ -162,3 +163,15 @@ class TestNbApi(tests_base.BaseTestCase):
         self.api_nb.get(TopicModelTest(id='id2', topic='topic1'))
         self.api_nb.driver.get_key.assert_called_once_with('topic_model_test',
                                                            'id2', 'topic1')
+
+    def test_get_on_model_proxy(self):
+        @mf.construct_nb_db_model
+        class RefferingModel(mf.ModelBase):
+            table_name = 'reffering_model_test'
+            reffering_field = df_fields.ReferenceField(ModelTest)
+
+        m = RefferingModel(id='id1', reffering_field='id2')
+        self.api_nb.driver.get_key.return_value = ModelTest(id='id2').to_json()
+        self.api_nb.get(m.reffering_field)
+        self.api_nb.driver.get_key.assert_called_once_with('dummy_table',
+                                                           'id2', None)
