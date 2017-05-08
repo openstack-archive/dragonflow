@@ -34,7 +34,8 @@ def get_all_side_effect(model, topic):
                                name="speaker1",
                                local_as=1234,
                                peers=["peer1"],
-                               routes=[],
+                               host_routes=[],
+                               prefix_routes=[],
                                ip_version=4)]
 
 
@@ -106,7 +107,8 @@ class TestDFBGPService(tests_base.BaseTestCase):
                                        name="speaker1",
                                        local_as=1234,
                                        peers=["peer1"],
-                                       routes=routes,
+                                       prefix_routes=routes,
+                                       host_routes=[],
                                        ip_version=4)]
 
         self.bgp_service.nb_api.get_all.side_effect = (

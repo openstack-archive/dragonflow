@@ -115,8 +115,14 @@ class BGPService(service.Service):
 
         old_peers = original_speaker.peers if original_speaker else []
         new_peers = speaker.peers
-        old_routes = original_speaker.routes if original_speaker else []
-        new_routes = speaker.routes
+        old_host_routes = (original_speaker.host_routes
+                           if original_speaker else [])
+        new_host_routes = speaker.host_routes
+        old_prefix_routes = (original_speaker.prefix_routes
+                             if original_speaker else [])
+        new_prefix_routes = speaker.prefix_routes
+        old_routes = old_host_routes + old_prefix_routes
+        new_routes = new_host_routes + new_prefix_routes
 
         # Delete stale peers, note that deleting bgp peer will close the bgp
         # connection between peer and local speaker, and routes in remote peer
