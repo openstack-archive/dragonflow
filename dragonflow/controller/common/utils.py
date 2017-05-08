@@ -18,6 +18,7 @@ from neutron.agent.common import utils
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.lib import addrconv
+from ryu.ofproto import ether
 
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as const
@@ -90,6 +91,20 @@ def ethertype_to_ip_version(ethertype):
     if ethertype == n_const.IPv6:
         return n_const.IP_VERSION_6
     raise exceptions.InvalidEtherTypeException(ethertype=ethertype)
+
+
+def get_eth_type_from_ip(ip):
+    """
+    Returns the eth_type that should be matched to the received ip
+
+    :param ip IP in String format xxx.xxx.xxx.xxx
+    """
+    ip_version = netaddr.IPAddress(ip).version
+    match_items = {
+        (n_const.IP_VERSION_4): ether.ETH_TYPE_IP,
+        (n_const.IP_VERSION_6): ether.ETH_TYPE_IPV6
+    }
+    return match_items[ip_version]
 
 
 def get_port_match_list_from_port_range(port_range_min, port_range_max):
