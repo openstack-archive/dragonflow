@@ -17,9 +17,12 @@ import netaddr
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.lib.packet import arp
+# from ryu.lib.packet import icmpv6
+from ryu.lib.packet import in_proto
 from ryu.ofproto import ether
 
 from dragonflow.controller.common import constants as const
+# from dragonflow.controller.commom import utils
 from dragonflow.controller import df_base_app
 
 
@@ -67,54 +70,93 @@ class PortSecApp(df_base_app.DFlowApp):
 
         return allowed_macs
 
-    def _install_flows_check_valid_ip_and_mac(self, unique_key, ip, mac):
-        if netaddr.IPNetwork(ip).version == 6:
-            LOG.info("IPv6 addresses are not supported yet")
-            return
+    @classmethod
+    def _get_eth_type(self, ip):
+        """
+        Returns the eth_type that should be matched to the received ip
 
+        :param ip IP in String format xxx.xxx.xxx.xxx
+        """
+        ip_version = netaddr.IPAddress(ip).version
+        match_items = {
+            (n_const.IP_VERSION_4): ether.ETH_TYPE_IP,
+            (n_const.IP_VERSION_6): ether.ETH_TYPE_IPV6
+        }
+        return match_items.get(ip_version)
+
+    @classmethod
+    def _get_ip_address_match_item(self, ethertype):
+        """
+        Returns the match_item that should be matched in the flow
+
+        :param ethertype: The ethernet type relevant to the flow {IPv4 | IPv6}
+        :param flow_direction: The fidirection of the flow {ingress | egress}
+        """
+        match_items = {
+            (n_const.IPv4): 'ipv4_src',
+            (n_const.IPv6): 'ipv6_src'
+        }
+        return match_items.get(ethertype)
+
+    def _get_ip_match_obj(self, unique_key, mac, ip=None):
         parser = self.parser
+        ip_match_item = self._get_ip_address_match_item(ip)
+        match_items = {'reg6': unique_key,
+                       'eth_src': mac,
+                       'eth_type': self._get_eth_type(ip)}
+        match_items[ip_match_item] = ip
 
-        # Valid ip mac pair pass
-        match = parser.OFPMatch(reg6=unique_key,
-                                eth_src=mac,
-                                eth_type=ether.ETH_TYPE_IP,
-                                ipv4_src=ip)
-        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
-                                  const.PRIORITY_HIGH,
-                                  const.EGRESS_CONNTRACK_TABLE,
-                                  match=match)
+        match = parser.OFPMatch(**match_items)
+        return match
 
-        # Valid arp request/reply pass
+    def _get_arp_match_obj(self, unique_key, mac, ip=0):
+        parser = self.parser
         match = parser.OFPMatch(reg6=unique_key,
                                 eth_src=mac,
                                 eth_type=ether.ETH_TYPE_ARP,
                                 arp_spa=ip,
                                 arp_sha=mac)
+        return match
+
+    def _get_nd_match_object(self, unique_key, mac, ip=None):
+        parser = self.parser
+        match = parser.OFPMatch(reg6=unique_key,
+                                eth_src=mac,
+                                eth_type=ether.ETH_TYPE_IPV6)
+        match.set_ip_proto(in_proto.IPPROTO_ICMPV6)
+        if ip:
+            match.set_ipv6_src(ip)
+        return match
+
+    def _install_flows_check_valid_ip_and_mac(self, unique_key, ip, mac):
+        match = self._get_ip_match_obj(unique_key, mac, ip)
+        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+                                  const.PRIORITY_HIGH,
+                                  const.EGRESS_CONNTRACK_TABLE,
+                                  match=match)
+
+        ip_version = netaddr.IPAddress(ip).version
+        if (ip_version == n_const.IP_VERSION_4):
+            # Valid arp request
+            match = self._get_arp_match_obj(unique_key, mac, ip)
+        else:
+            match = self._get_nd_match_object(unique_key, mac, ip)
         self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
                                   const.PRIORITY_HIGH,
                                   const.SERVICES_CLASSIFICATION_TABLE,
                                   match=match)
 
     def _uninstall_flows_check_valid_ip_and_mac(self, unique_key, ip, mac):
-        if netaddr.IPNetwork(ip).version == 6:
-            LOG.info("IPv6 addresses are not supported yet")
-            return
-
-        parser = self.parser
-
         # Remove valid ip mac pair pass
-        match = parser.OFPMatch(reg6=unique_key,
-                                eth_src=mac,
-                                eth_type=ether.ETH_TYPE_IP,
-                                ipv4_src=ip)
+        match = self._get_ip_match_obj(unique_key, ip, mac)
         self._remove_one_port_security_flow(const.PRIORITY_HIGH, match)
 
-        # Remove valid arp request/reply pass
-        match = parser.OFPMatch(reg6=unique_key,
-                                eth_src=mac,
-                                eth_type=ether.ETH_TYPE_ARP,
-                                arp_spa=ip,
-                                arp_sha=mac)
+        ip_version = netaddr.IPAddress(ip).version
+        if (ip_version == n_const.IP_VERSION_4):
+            # Remove valid arp request
+            match = self._get_arp_match_obj(unique_key, mac, ip)
+        else:
+            match = self._get_nd_match_object(unique_key, mac, ip)
         self._remove_one_port_security_flow(const.PRIORITY_HIGH, match)
 
     def _install_flows_check_valid_mac(self, unique_key, mac):
@@ -147,18 +189,34 @@ class PortSecApp(df_base_app.DFlowApp):
                                 ip_proto=n_const.PROTO_NUM_UDP,
                                 udp_src=const.DHCP_CLIENT_PORT,
                                 udp_dst=const.DHCP_SERVER_PORT)
+
+        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+                                  const.PRIORITY_HIGH,
+                                  const.EGRESS_CONNTRACK_TABLE,
+                                  match=match)
+
+        # DHCPv6 packets with the vm mac pass
+        match = parser.OFPMatch(reg6=unique_key,
+                                eth_src=vm_mac,
+                                eth_dst=const.BROADCAST_MAC,
+                                eth_type=ether.ETH_TYPE_IPV6,
+                                ip_proto=n_const.PROTO_NUM_UDP,
+                                udp_src=const.DHCP_CLIENT_PORT,
+                                udp_dst=const.DHCP_SERVER_PORT)
+
         self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
                                   const.PRIORITY_HIGH,
                                   const.EGRESS_CONNTRACK_TABLE,
                                   match=match)
 
         # Arp probe packets with the vm mac pass
-        match = parser.OFPMatch(reg6=unique_key,
-                                eth_src=vm_mac,
-                                eth_type=ether.ETH_TYPE_ARP,
-                                arp_op=arp.ARP_REQUEST,
-                                arp_spa=0,
-                                arp_sha=vm_mac)
+        match = self._get_arp_match_obj(unique_key, vm_mac)
+        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+                                  const.PRIORITY_HIGH,
+                                  const.SERVICES_CLASSIFICATION_TABLE,
+                                  match=match)
+
+        match = self._get_nd_match_obj(unique_key, vm_mac)
         self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
                                   const.PRIORITY_HIGH,
                                   const.SERVICES_CLASSIFICATION_TABLE,
@@ -177,6 +235,15 @@ class PortSecApp(df_base_app.DFlowApp):
                                 udp_dst=const.DHCP_SERVER_PORT)
         self._remove_one_port_security_flow(const.PRIORITY_HIGH, match)
 
+        # Remove DHCPv6 packets with the vm mac pass
+        match = parser.OFPMatch(reg6=unique_key,
+                                eth_src=vm_mac,
+                                eth_dst=const.BROADCAST_MAC,
+                                eth_type=ether.ETH_TYPE_IPV6,
+                                ip_proto=n_const.PROTO_NUM_UDP,
+                                udp_src=const.DHCP_CLIENT_PORT,
+                                udp_dst=const.DHCP_SERVER_PORT)
+
         # Remove arp probe packets with the vm mac pass
         match = parser.OFPMatch(reg6=unique_key,
                                 eth_src=vm_mac,
@@ -184,6 +251,10 @@ class PortSecApp(df_base_app.DFlowApp):
                                 arp_op=arp.ARP_REQUEST,
                                 arp_spa=0,
                                 arp_sha=vm_mac)
+        self._remove_one_port_security_flow(const.PRIORITY_HIGH, match)
+
+        # Remove arp probe packets with the vm mac pass
+        match = self._get_nd_match_obj(unique_key, vm_mac)
         self._remove_one_port_security_flow(const.PRIORITY_HIGH, match)
 
     def _install_port_security_flows(self, lport):
@@ -312,6 +383,9 @@ class PortSecApp(df_base_app.DFlowApp):
 
         # Ip default drop
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP)
+        self._add_flow_drop(const.PRIORITY_MEDIUM, match)
+
+        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IPV6)
         self._add_flow_drop(const.PRIORITY_MEDIUM, match)
 
         # Arp default drop
