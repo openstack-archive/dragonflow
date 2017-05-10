@@ -99,7 +99,7 @@ Important parameters that needs to be set in ``local.conf`` :
     HOST_IP <- The management IP address of the current node
     FIXED_RANGE <- The overlay network address and mask
     FIXED_NETWORK_SIZE <- Size of the overlay network
-    NETWORK_GATEWAY <- Default gateway for the overlay netowrk
+    NETWORK_GATEWAY <- Default gateway for the overlay network
     FLOATING_RANGE <- Network address and range for Floating IP addresses (in the public network)
     Q_FLOATING_ALLOCATION_POOL <- range to allow allocation of floating IP from (within FLOATING_RANGE)
     PUBLIC_NETWORK_GATEWAY <- Default gateway for the public network

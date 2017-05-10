@@ -106,7 +106,7 @@ API Authentication
 ------------------
 DF will provide authentication and authorization services by integrating
 with external identity services. Dragonflow will be responsible to enforce the
-authorization by quering the identity service.
+authorization by querying the identity service.
 Keystone can be used for the API server authentication, as it is part of
 the OpenStack deployment anyway. Other authentication service alternatives
 can be considered later, therefore implementation should not make an

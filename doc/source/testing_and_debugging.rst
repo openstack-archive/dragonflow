@@ -51,7 +51,7 @@ This command will display the pipeline that has been installed in OVS. See the
 manual page for ovs-ofctl for more info.
 
 It is worthwhile to note that each flow contains statistics such as how many
-packets matched this flow, and what is the cummulative size.
+packets matched this flow, and what is the cumulative size.
 
 ::
 

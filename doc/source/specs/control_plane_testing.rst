@@ -41,7 +41,7 @@ We check only time required to deploy these rules in this project.
 Our goals:
 ----------
 In this project we would like to see that the time required to add new configuration
-element to the system will not exceed XXX Miliseconds and we do not have a noticeable
+element to the system will not exceed XXX milliseconds and we do not have a noticeable
 degradation when the system has more configuration entities.
 
 

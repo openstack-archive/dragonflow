@@ -12,7 +12,7 @@ https://blueprints.launchpad.net/dragonflow/+spec/traceroute-support
 
 Traceroute is a handy network diagnostic tool. Network administrators use
 this tool most commonly in their day to day activities. It can provide the
-following informations of network:
+following information of network:
 
 #. The entire path that a packet travels through
 #. Names and identity of routers and devices in the path

@@ -193,7 +193,7 @@ To allow easy retrieval and lookup of in memory objects we use DbStore module
 to fetch by IDs and other properties, the new DbStore takes note of model's
 indexes and creates lookups to allow faster retrieval. Indexes, similar to events
 are passed in `indexes=` parameter of construct_nb_db_model decorator and
-speficied as a dictionary where the key is the index name and the value is the
+specified as a dictionary where the key is the index name and the value is the
 field indexed by (or a tuple of fields, if the index is multi-key). For example
 if we'd like to add index by year we can define it as:
 

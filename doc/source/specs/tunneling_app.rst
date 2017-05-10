@@ -49,8 +49,8 @@ Set fields are:
    net-show bc5eb406-f338-401a-a8db-18bb9536ad54 (private)
    | provider:segmentation_id  | 73
 
-Ingress Proccessing
--------------------
+Ingress Processing
+------------------
 
 The classification flow should match against the tunnel in_port, a port of a
 specific segmentation id and tunnel's virtual network key, according
@@ -91,8 +91,8 @@ the packet is matched against vm's port's key, and forwarded to the local vm por
 
    table=115, priority=100,reg7=0x6 actions=output:7
 
-Egress Proccessing
-------------------
+Egress Processing
+-----------------
 A classification flow related to egress dispatching is set to be initially
 filtered by the security table, the flow sets port key and network id to reg6,
 and metadata ovs registers, respectively.
@@ -201,4 +201,4 @@ Work Items
 1. Create a new tunneling application.
 2. Add tunneling app to "Plugin.sh".
 3. Remove the tunneling code from the l2 application.
-3. Add unit tests, to refelect code changes.
+3. Add unit tests, to reflect code changes.

@@ -61,7 +61,7 @@ Each local controller will publish port status event to the topic selected
 randomly.
 
 Assuming there are 4 server nodes and 3 compute nodes. Base on the previous
-description, there are 4 topics, that will be subscribed by 4 neturon servers.
+description, there are 4 topics, that will be subscribed by 4 neutron servers.
 Server will update its topic timestamp stored in DF DB which representing its
 status. If a new server node is added to server cluster, it will add a new
 topic to DF DB, and next time the compute node might publish event to that

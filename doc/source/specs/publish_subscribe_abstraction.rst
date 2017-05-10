@@ -264,7 +264,7 @@ Delivery
 Each publisher on startup selects a GUID and publish it to all the subscribers via the
 hello message descend below.
 
-Subscribers will store in memory the publisher UUID on receiving the hello message and its cuurent message ID.
+Subscribers will store in memory the publisher UUID on receiving the hello message and its current message ID.
 
 In order to detect message delay/loss, we introduce a *per-pub-per-message* sequence ID.
 The client verifies the sequence order of messages by tracking *current per-pub-message-id*.

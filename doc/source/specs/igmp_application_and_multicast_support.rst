@@ -181,8 +181,8 @@ Agent application in Dragonflow) to enable reactive programming.
 For the sake of clarity and simplicity, we have omitted filtering by tenant
 and network from this example.
 
-Databse Structure
------------------
+Database Structure
+------------------
 
 VM group registration information is stored in the *Multicast* table in the DF
 database.
