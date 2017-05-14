@@ -22,6 +22,9 @@ from dragonflow.tests import base as tests_base
 class ModelTest(mf.ModelBase):
     topic = fields.StringField()
 
+    def method(self):
+        return 1
+
 
 @mf.construct_nb_db_model
 class ModelTest2(mf.ModelBase):
@@ -123,3 +126,10 @@ class TestObjectProxy(tests_base.BaseTestCase):
         m1 = RefferingModel(model_test=ref)
         m.update(m1)
         self.assertEqual('1234', m.model_test.id)
+
+    def test_proxied_method(self):
+        self.db_store2.get_one.return_value = ModelTest(
+            id='id1', topic='topic1')
+
+        mtp = ModelTestProxy(id='id1')
+        self.assertEqual(1, mtp.method())
