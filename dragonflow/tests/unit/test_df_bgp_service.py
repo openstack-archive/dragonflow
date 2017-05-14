@@ -10,7 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import threading
+
 import eventlet
+from eventlet import greenthread
 import mock
 
 from dragonflow import conf as cfg
@@ -39,6 +42,32 @@ def get_all_side_effect(model, topic):
                                ip_version=4)]
 
 
+class LoopingCallByEvent(object):
+    def __init__(self, func):
+        self.func = func
+        self.thread = None
+        self.event = None
+        self.is_running = False
+
+    def start(self, *args):
+        self.event = threading.Event()
+        self.is_running = True
+        self.thread = greenthread.spawn(self.run)
+
+    def stop(self):
+        self.is_running = False
+
+    def fire(self):
+        self.event.set()
+
+    def run(self):
+        self.event.wait()
+        while self.is_running:
+            self.func()
+            self.event.clear()
+            self.event.wait()
+
+
 class TestDFBGPService(tests_base.BaseTestCase):
 
     def setUp(self):
@@ -50,6 +79,8 @@ class TestDFBGPService(tests_base.BaseTestCase):
         self.addCleanup(mock_nb_api.stop)
         self.bgp_service = df_bgp_service.BGPService()
         self.bgp_service.bgp_driver = mock.Mock()
+        self.bgp_service.bgp_pulse = LoopingCallByEvent(
+                self.bgp_service.sync_data_from_nb_db)
 
         iter_models = mock.patch('dragonflow.db.model_framework.iter_models',
                                  return_value={bgp.BGPSpeaker, bgp.BGPPeer})
@@ -61,7 +92,8 @@ class TestDFBGPService(tests_base.BaseTestCase):
     def test_sync_bgp_data_to_db_store(self):
         self.bgp_service.nb_api.get_all.side_effect = get_all_side_effect
         # Give fixed interval a chance to run.
-        eventlet.sleep(0)
+        self.bgp_service.bgp_pulse.fire()
+        eventlet.sleep(1)
 
         self.assertTrue(
             self.bgp_service.db_store.get_one(bgp.BGPPeer(id="peer1")))
@@ -71,7 +103,8 @@ class TestDFBGPService(tests_base.BaseTestCase):
     def test_add_remove_bgp_peer_speaker(self):
         self.bgp_service.nb_api.get_all.side_effect = get_all_side_effect
         # Give fixed interval a chance to run.
-        eventlet.sleep(0)
+        self.bgp_service.bgp_pulse.fire()
+        eventlet.sleep(1)
 
         self.bgp_service.bgp_driver.add_bgp_speaker.assert_called_once_with(
             1234)
@@ -80,7 +113,8 @@ class TestDFBGPService(tests_base.BaseTestCase):
 
         self.bgp_service.nb_api.get_all.side_effect = lambda x, y: []
         # Give fixed interval another round.
-        eventlet.sleep(cfg.CONF.df_bgp.pulse_interval + 1)
+        self.bgp_service.bgp_pulse.fire()
+        eventlet.sleep(1)
         self.bgp_service.bgp_driver.delete_bgp_peer.assert_called_once_with(
             1234, "172.24.4.88")
         self.bgp_service.bgp_driver.delete_bgp_speaker.assert_called_once_with(
@@ -113,17 +147,17 @@ class TestDFBGPService(tests_base.BaseTestCase):
 
         self.bgp_service.nb_api.get_all.side_effect = (
             get_all_with_routes_side_effect)
-        test_utils.wait_until_true(
-            lambda: self.bgp_service.bgp_driver.advertise_route.called,
-            cfg.CONF.df_bgp.pulse_interval * 2,
-            1)
+
+        self.bgp_service.bgp_pulse.fire()
+        eventlet.sleep(1)
+
+        self.assertTrue(self.bgp_service.bgp_driver.advertise_route.called)
         self.bgp_service.bgp_driver.advertise_route.assert_called_once_with(
             1234, "10.0.0.0/24", "172.24.4.66")
 
         self.bgp_service.nb_api.get_all.side_effect = get_all_side_effect
-        test_utils.wait_until_true(
-            lambda: self.bgp_service.bgp_driver.withdraw_route.called,
-            cfg.CONF.df_bgp.pulse_interval * 2,
-            1)
+        self.bgp_service.bgp_pulse.fire()
+        eventlet.sleep(1)
+        self.assertTrue(self.bgp_service.bgp_driver.withdraw_route.called)
         self.bgp_service.bgp_driver.withdraw_route.assert_called_once_with(
             1234, "10.0.0.0/24")
