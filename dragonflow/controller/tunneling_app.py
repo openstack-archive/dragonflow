@@ -27,16 +27,8 @@ LOG = log.getLogger(__name__)
 class TunnelingApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(TunnelingApp, self).__init__(*args, **kwargs)
-        self.initalize_tunnel_types()
+        self.tunnel_types = cfg.CONF.df.tunnel_types
         self.local_networks = logical_networks.LogicalNetworks()
-
-    def initalize_tunnel_types(self):
-        # TODO(itamaro) this method should be removed once
-        # cfg.CONF.df.tunnel_type is made obsolete.
-        if cfg.CONF.df.tunnel_types:
-            self.tunnel_types = cfg.CONF.df.tunnel_types
-        else:
-            self.tunnel_types = [cfg.CONF.df.tunnel_type]
 
     def add_local_port(self, lport):
         network_type = lport.get_external_value('network_type')

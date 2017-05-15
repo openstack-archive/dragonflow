@@ -52,13 +52,8 @@ class DfLocalController(object):
         self.chassis_name = chassis_name
         self.mgt_ip = cfg.CONF.df.management_ip
         self.ip = cfg.CONF.df.local_ip
-        if cfg.CONF.df.tunnel_types:
-            # Virtual tunnel port support multiple tunnel types together
-            self.tunnel_types = cfg.CONF.df.tunnel_types
-        else:
-            # NOTE(xiaohhui): This should be removed along with the config
-            # option tunnel_type
-            self.tunnel_types = [cfg.CONF.df.tunnel_type]
+        # Virtual tunnel port support multiple tunnel types together
+        self.tunnel_types = cfg.CONF.df.tunnel_types
         self.sync_finished = False
         self.neutron_notifier = None
         nb_driver = df_utils.load_driver(
