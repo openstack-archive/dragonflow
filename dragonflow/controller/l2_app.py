@@ -113,8 +113,8 @@ class L2App(df_base_app.DFlowApp):
                 arp_responder.ArpResponder(self,
                                            network_id, ip, mac).add()
             elif ip_version == 6:
-                nd_advertisers.NeighAdvertiser(self,
-                                               network_id, ip, mac).add()
+                nd_advertisers.NeighborAdvertiser(self,
+                                                  network_id, ip, mac).add()
 
     def _remove_l2_responders(self, lport):
         if not self.is_install_l2_responder:
@@ -127,8 +127,8 @@ class L2App(df_base_app.DFlowApp):
                 arp_responder.ArpResponder(self,
                                            network_id, ip).remove()
             elif ip_version == 6:
-                nd_advertisers.NeighAdvertiser(self,
-                                               network_id, ip).remove()
+                nd_advertisers.NeighborAdvertiser(self,
+                                                  network_id, ip).remove()
 
     def remove_local_port(self, lport):
         lport_id = lport.get_id()
