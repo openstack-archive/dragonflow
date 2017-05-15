@@ -18,7 +18,7 @@ from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 
 
-class NeighAdvertiser(object):
+class NeighborAdvertiser(object):
     """
     A class for creating and removing Neighbor Advertisers (Neighbor Discovery)
     The class will match Neighbor Solicitation requests, and advertise
