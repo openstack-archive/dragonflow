@@ -15,21 +15,6 @@ from dragonflow._i18n import _
 from dragonflow.db import db_store2
 
 
-class _ProxiedField(object):
-    '''Descriptor for intercepting access to reference fields and relaying them
-    to the actual object.
-    '''
-    def __init__(self, name):
-        self._name = name
-
-    def __get__(self, obj, objtype=None):
-        if obj is not None:
-            return getattr(obj.get_object(), self._name)
-
-    def __set__(self, obj, value):
-        return setattr(obj.get_object(), self._name, value)
-
-
 class _ModelProxyBase(object):
     '''Base for proxy objects
 
@@ -85,6 +70,10 @@ class _ModelProxyBase(object):
     def __ne__(self, other):
         return not self == other
 
+    def __getattr__(self, name):
+        if name != '_obj':
+            return getattr(self.get_object(), name)
+
 
 def _memoize_model_proxies(f):
     """
@@ -113,13 +102,7 @@ def create_model_proxy(model):
     >>> ref_to_lport.name
     'port-name'
     '''
-    attrs = {
-        name: _ProxiedField(name)
-        for name, _ in model.iterate_over_fields()
-        if name != 'id'
-    }
-
-    attrs['_model'] = model
+    attrs = {'_model': model}
 
     return type(
         '{name}Proxy'.format(name=model.__name__),
