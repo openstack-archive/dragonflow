@@ -10,12 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import functools
-
 from oslo_config import cfg
 from ovs.db import idl
 from ovsdbapp.backend.ovs_idl import connection
+from ovsdbapp.backend.ovs_idl import idlutils
 from ovsdbapp.schema.open_vswitch import impl_idl
+
 
 from dragonflow.common import constants
 from dragonflow.ovsdb import commands
@@ -99,19 +99,16 @@ class DFIdl(idl.Idl):
             self._notify_update_local_interface(_interface, action)
 
 
-class DFConnection(connection.Connection):
-    """
-    Extend the Neutron OVS Connection class to support being given the IDL
-    schema externally or manually.
-    Much of this code was taken directly from connection.Connection class.
-    """
-    def update_schema_helper(self, helper):
-        tables = ovsdb_monitor_table_filter_default
-        for table_name, columns in tables.items():
-            if columns == 'all':
-                helper.register_table(table_name)
-            else:
-                helper.register_columns(table_name, columns)
+def df_idl_from_server(nb_api, connection_string, schema_name):
+    """Create the Idl instance by pulling the schema from OVSDB server"""
+    helper = idlutils.get_schema_helper(connection_string, schema_name)
+    tables = ovsdb_monitor_table_filter_default
+    for table_name, columns in tables.items():
+        if columns == 'all':
+            helper.register_table(table_name)
+        else:
+            helper.register_columns(table_name, columns)
+    return DFIdl(nb_api, connection_string, helper)
 
 
 class DFOvsdbApi(impl_idl.OvsdbIdl):
@@ -125,11 +122,8 @@ class DFOvsdbApi(impl_idl.OvsdbIdl):
 
     def __init__(self, nb_api, db_connection, timeout):
         if DFOvsdbApi.ovsdb_connection is None:
-            DFOvsdbApi.ovsdb_connection = DFConnection(
-                db_connection,
-                timeout,
-                'Open_vSwitch',
-                idl_class=functools.partial(DFIdl, nb_api))
+            idl = df_idl_from_server(nb_api, db_connection, 'Open_vSwitch')
+            DFOvsdbApi.ovsdb_connection = connection.Connection(idl, timeout)
 
         super(DFOvsdbApi, self).__init__(DFOvsdbApi.ovsdb_connection)
 
