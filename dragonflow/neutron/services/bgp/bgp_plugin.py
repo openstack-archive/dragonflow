@@ -252,9 +252,14 @@ class DFBgpPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_PEER)
     def delete_bgp_peer(self, context, bgp_peer_id):
+        speakers = self._get_bgp_speakers_by_bgp_peer(context, bgp_peer_id)
         super(DFBgpPlugin, self).delete_bgp_peer(context, bgp_peer_id)
         self.nb_api.delete(bgp.BGPPeer(id=bgp_peer_id),
                            skip_send_event=True)
+
+        for s in speakers:
+            self._remove_bgp_peer_from_bgp_speaker(context, s['id'],
+                                                   bgp_peer_id, s['tenant_id'])
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
     def add_bgp_peer(self, context, bgp_speaker_id, bgp_peer_info):
@@ -268,16 +273,15 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         self.nb_api.update(bgp_speaker, skip_send_event=True)
         return ret_value
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
     def remove_bgp_peer(self, context, bgp_speaker_id, bgp_peer_info):
         ret_value = super(DFBgpPlugin, self).remove_bgp_peer(context,
                                                              bgp_speaker_id,
                                                              bgp_peer_info)
         tenant_id = context.tenant_id
-        bgp_speaker = self.nb_api.get(bgp.BGPSpeaker(id=bgp_speaker_id,
-                                                     topic=tenant_id))
-        bgp_speaker.remove_peer(ret_value['bgp_peer_id'])
-        self.nb_api.update(bgp_speaker, skip_send_event=True)
+        self._remove_bgp_peer_from_bgp_speaker(context,
+                                               bgp_speaker_id,
+                                               ret_value['bgp_peer_id'],
+                                               tenant_id)
         return ret_value
 
     def add_gateway_network(self, context, bgp_speaker_id, network_info):
@@ -325,6 +329,24 @@ class DFBgpPlugin(service_base.ServicePluginBase,
                                           prefix_routes=prefix_routes,
                                           host_routes=host_routes)
         self.nb_api.update(lean_bgp_speaker, skip_send_event=True)
+
+    def _get_bgp_speakers_by_bgp_peer(self, context, bgp_peer_id):
+        bgp_binding = bgp_db.BgpSpeakerPeerBinding
+        filters = [bgp_binding.bgp_speaker_id == bgp_db.BgpSpeaker.id,
+                   bgp_binding.bgp_peer_id == bgp_peer_id]
+        with context.session.begin(subtransactions=True):
+            query = context.session.query(bgp_db.BgpSpeaker)
+            query = query.filter(*filters)
+            return [{'id': x['id'], 'tenant_id': x['tenant_id']}
+                    for x in query.all()]
+
+    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    def _remove_bgp_peer_from_bgp_speaker(self, context,
+                                          bgp_speaker_id, peer_id, topic):
+        bgp_speaker = self.nb_api.get(bgp.BGPSpeaker(id=bgp_speaker_id,
+                                                     topic=topic))
+        bgp_speaker.remove_peer(peer_id)
+        self.nb_api.update(bgp_speaker, skip_send_event=True)
 
     def get_advertised_routes(self, context, bgp_speaker_id):
         tenant_id = context.tenant_id

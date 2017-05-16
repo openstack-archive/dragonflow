@@ -98,9 +98,7 @@ class BGPService(service.Service):
         pass
 
     def delete_bgp_peer(self, peer):
-        # TODO(xiaohhui): Neutron allows delete bgp peers that are still used
-        # by speaker. Need to clear the peer in speaker in nb db and delete
-        # peer by using bgp_driver.
+        # update of bgp speaker will delete bgp peer, nothing need to do here.
         pass
 
     def update_bgp_speaker(self, speaker, original_speaker=None):

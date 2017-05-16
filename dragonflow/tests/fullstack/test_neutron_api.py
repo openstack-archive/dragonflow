@@ -636,6 +636,23 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         peers = [peer.id for peer in nb_bgp_speaker.peers]
         self.assertNotIn(bgp_peer.peer_id, nb_bgp_speaker.peers)
 
+    def test_delete_bgp_peer_update_bgp_speaker(self):
+        bgp_peer = self.store(
+            objects.BGPPeerTestObj(self.neutron, self.nb_api))
+        bgp_speaker = self.store(
+            objects.BGPSpeakerTestObj(self.neutron, self.nb_api))
+        bgp_peer.create()
+        bgp_speaker.create()
+        bgp_speaker.add_peer(bgp_peer.peer_id)
+        nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
+        peers = [peer.id for peer in nb_bgp_speaker.peers]
+        self.assertIn(bgp_peer.peer_id, peers)
+
+        bgp_peer.close()
+        nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
+        peers = [peer.id for peer in nb_bgp_speaker.peers]
+        self.assertNotIn(bgp_peer.peer_id, nb_bgp_speaker.peers)
+
     @lockutils.synchronized('need-external-net')
     def test_add_remove_bgp_network(self):
         bgp_speaker = self.store(
