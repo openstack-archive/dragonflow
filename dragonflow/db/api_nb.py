@@ -389,21 +389,6 @@ class NbApi(object):
         self._send_db_change_event(db_models.LogicalPort.table_name,
                                    id, 'delete', id, topic)
 
-    def get_security_group(self, sg_id, topic=None):
-        try:
-            secgroup_value = self.driver.get_key(
-                db_models.SecurityGroup.table_name, sg_id, topic)
-            return db_models.SecurityGroup(secgroup_value)
-        except Exception:
-            return None
-
-    def get_security_groups(self, topic=None):
-        res = []
-        for secgroup_value in self.driver.get_all_entries(
-                db_models.SecurityGroup.table_name, topic):
-            res.append(db_models.SecurityGroup(secgroup_value))
-        return res
-
     def create_floatingip(self, id, topic, **columns):
         floatingip = {}
         floatingip['id'] = id
