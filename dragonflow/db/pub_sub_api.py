@@ -132,16 +132,16 @@ class SubscriberApi(object):
         """Initialize the DB client
 
         :param callback:  callback method to call for every db change
-        :type callback :  callback method of type:
+        :type callback:   callback method of type:
                           callback(table, key, action, value, topic)
                           table - table name
                           key - object key
                           action = 'create' / 'set' / 'delete' / 'sync'
                           value = new object value
                           topic - the topic with which the event was received
-        :param args:       Additional args
-        :type args:        dictionary of <string, object>
-        :returns:          None
+        :param args:      Additional args
+        :type args:       dictionary of <string, object>
+        :returns:         None
         """
 
     @abc.abstractmethod
@@ -149,9 +149,9 @@ class SubscriberApi(object):
         """Will register publisher address to listen on
 
         NOTE Must be called prior to calling daemonize
-        :parm uri:  uri to connect to
-        :type string:   '<protocol>:address:port;....'
-        :returns:   Boolean True if new
+        :param uri: uri to connect to
+        :type uri: string '<protocol>:address:port;....'
+        :returns: Boolean True if new
         """
 
     @abc.abstractmethod
@@ -159,8 +159,8 @@ class SubscriberApi(object):
         """Will unregister publisher address to listen on
 
         NOTE Must be called prior to calling daemonize
-        :parm uri:  uri to connect to
-        :type string:   '<protocol>:address:port;....'
+        :param uri: uri to connect to
+        :type uri: string '<protocol>:address:port;....'
         """
 
     @abc.abstractmethod
