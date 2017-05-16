@@ -16,13 +16,13 @@ from neutron.callbacks import resources
 from neutron.extensions import allowedaddresspairs as addr_pair
 from neutron.extensions import extra_dhcp_opt as edo_ext
 from neutron.extensions import portsecurity as psec
-from neutron.plugins.ml2 import driver_api
 from neutron.plugins.ml2 import models
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
 from neutron_lib import constants as n_const
 from neutron_lib import exceptions as n_exc
 from neutron_lib.plugins import directory
+from neutron_lib.plugins.ml2 import api
 from oslo_log import log
 
 from dragonflow._i18n import _
@@ -42,7 +42,7 @@ from dragonflow.neutron.services.qos.drivers import df_qos
 LOG = log.getLogger(__name__)
 
 
-class DFMechDriver(driver_api.MechanismDriver):
+class DFMechDriver(api.MechanismDriver):
 
     """Dragonflow ML2 MechanismDriver for Neutron.
 
@@ -651,7 +651,7 @@ class DFMechDriver(driver_api.MechanismDriver):
         # Prepared porting binding data
         for segment in context.segments_to_bind:
             if self._check_segment(segment):
-                context.set_binding(segment[driver_api.ID],
+                context.set_binding(segment[api.ID],
                                     self.vif_type,
                                     self.vif_details,
                                     status=self.port_status)
@@ -661,16 +661,16 @@ class DFMechDriver(driver_api.MechanismDriver):
                 LOG.debug("Refusing to bind port for segment ID %(id)s, "
                           "segment %(seg)s, phys net %(physnet)s, and "
                           "network type %(nettype)s",
-                          {'id': segment[driver_api.ID],
-                           'seg': segment[driver_api.SEGMENTATION_ID],
-                           'physnet': segment[driver_api.PHYSICAL_NETWORK],
-                           'nettype': segment[driver_api.NETWORK_TYPE]})
+                          {'id': segment[api.ID],
+                           'seg': segment[api.SEGMENTATION_ID],
+                           'physnet': segment[api.PHYSICAL_NETWORK],
+                           'nettype': segment[api.NETWORK_TYPE]})
 
     def _check_segment(self, segment):
         """Verify a segment is valid for the dragonflow MechanismDriver."""
-        return segment[driver_api.NETWORK_TYPE] in [n_const.TYPE_VLAN,
-                                                    n_const.TYPE_VXLAN,
-                                                    n_const.TYPE_FLAT,
-                                                    n_const.TYPE_GENEVE,
-                                                    n_const.TYPE_GRE,
-                                                    n_const.TYPE_LOCAL]
+        return segment[api.NETWORK_TYPE] in [n_const.TYPE_VLAN,
+                                             n_const.TYPE_VXLAN,
+                                             n_const.TYPE_FLAT,
+                                             n_const.TYPE_GENEVE,
+                                             n_const.TYPE_GRE,
+                                             n_const.TYPE_LOCAL]

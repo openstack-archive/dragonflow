@@ -60,7 +60,7 @@ Basic Configurations
     notify_nova_on_port_status_changes = True
     allow_overlapping_ips = True
     service_plugins = df-l3,qos
-    core_plugin = neutron.plugins.ml2.plugin.Ml2Plugin
+    core_plugin = neutron_lib.plugins.ml2.plugin.Ml2Plugin
 
 /etc/neutron/plugins/ml2/ml2_conf.ini
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
