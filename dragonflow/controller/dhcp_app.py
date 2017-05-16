@@ -277,9 +277,10 @@ class DHCPApp(df_base_app.DFlowApp):
 
     def _get_port_mtu(self, lport):
         # get network mtu from lswitch
-        mtu = self._get_lswitch_by_port(lport).mtu
+        lswitch = self._get_lswitch_by_port(lport)
+        mtu = lswitch.mtu
+        tunnel_type = lswitch.network_type
 
-        tunnel_type = cfg.CONF.df.tunnel_type
         if tunnel_type == n_const.TYPE_VXLAN:
             return mtu - n_const.VXLAN_ENCAP_OVERHEAD if mtu else 0
         elif tunnel_type == n_const.TYPE_GENEVE:
