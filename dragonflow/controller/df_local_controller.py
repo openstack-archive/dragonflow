@@ -50,7 +50,6 @@ class DfLocalController(object):
         self.db_store2 = db_store2.get_instance()
 
         self.chassis_name = chassis_name
-        self.mgt_ip = cfg.CONF.df.management_ip
         self.ip = cfg.CONF.df.local_ip
         if cfg.CONF.df.tunnel_types:
             # Virtual tunnel port support multiple tunnel types together
@@ -60,33 +59,33 @@ class DfLocalController(object):
             # option tunnel_type
             self.tunnel_types = [cfg.CONF.df.tunnel_type]
         self.sync_finished = False
-        self.neutron_notifier = None
         nb_driver = df_utils.load_driver(
             cfg.CONF.df.nb_db_class,
             df_utils.DF_NB_DB_DRIVER_NAMESPACE)
         self.nb_api = api_nb.NbApi(
             nb_driver,
             use_pubsub=cfg.CONF.df.enable_df_pub_sub)
-        self.vswitch_api = vswitch_impl.OvsApi(self.mgt_ip)
+        self.vswitch_api = vswitch_impl.OvsApi(cfg.CONF.df.management_ip)
+
+        self.neutron_notifier = None
         if cfg.CONF.df.enable_neutron_notifier:
             self.neutron_notifier = df_utils.load_driver(
                      cfg.CONF.df.neutron_notifier,
                      df_utils.DF_NEUTRON_NOTIFIER_DRIVER_NAMESPACE)
-        kwargs = dict(
+
+        app_mgr = app_manager.AppManager.get_instance()
+        self.open_flow_app = app_mgr.instantiate(
+            ryu_base_app.RyuDFAdapter,
             nb_api=self.nb_api,
             vswitch_api=self.vswitch_api,
             db_store=self.db_store,
-            neutron_server_notifier=self.neutron_notifier
+            neutron_server_notifier=self.neutron_notifier,
         )
-        app_mgr = app_manager.AppManager.get_instance()
-        self.open_flow_app = app_mgr.instantiate(ryu_base_app.RyuDFAdapter,
-                                                 **kwargs)
         self.topology = None
         self.db_consistency_manager = None
         self.enable_db_consistency = cfg.CONF.df.enable_df_db_consistency
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
-        self.integration_bridge = cfg.CONF.df.integration_bridge
 
     def run(self):
         self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
@@ -110,13 +109,14 @@ class DfLocalController(object):
         targets = ('tcp:' + cfg.CONF.df_ryu.of_listen_address + ':' +
                    str(cfg.CONF.df_ryu.of_listen_port))
         is_controller_set = self.vswitch_api.check_controller(targets)
+        integration_bridge = cfg.CONF.df.integration_bridge
         if not is_controller_set:
-            self.vswitch_api.set_controller(self.integration_bridge, [targets])
+            self.vswitch_api.set_controller(integration_bridge, [targets])
         is_fail_mode_set = self.vswitch_api.check_controller_fail_mode(
             'secure')
         if not is_fail_mode_set:
             self.vswitch_api.set_controller_fail_mode(
-                self.integration_bridge, 'secure')
+                integration_bridge, 'secure')
         self.open_flow_app.start()
         self.create_tunnels()
         self._register_models()
