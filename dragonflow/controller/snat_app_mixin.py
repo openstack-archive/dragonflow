@@ -83,12 +83,18 @@ class SNATApp_mixin(object):
     def _install_ingress_goto_rules(self):
         parser = self.parser
         match = parser.OFPMatch(in_port=self.external_ofport)
+        actions = [parser.NXActionRegLoad(
+                dst='in_port',
+                value=0,
+                ofs_nbits=nicira_ext.ofs_nbits(0, 31))]
 
-        self.add_flow_go_to_table(
-            const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            const.PRIORITY_DEFAULT,
-            const.INGRESS_NAT_TABLE,
-            match=match)
+        inst = [parser.OFPInstructionActions(
+                    self.datapath.ofproto.OFPIT_APPLY_ACTIONS, actions),
+                parser.OFPInstructionGotoTable(const.INGRESS_NAT_TABLE)]
+        self.mod_flow(inst=inst,
+                      table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                      priority=const.PRIORITY_DEFAULT,
+                      match=match)
 
     def _install_snat_egress_conntrack(self, match, ext_host_ip):
         """implements single sNAT pass for multiple tenant deployment
@@ -247,3 +253,10 @@ class SNATApp_mixin(object):
             table_id=const.INGRESS_SNAT_TABLE,
             priority=const.PRIORITY_LOW,
             match=match)
+
+        actions = [self.parser.OFPActionOutput(
+                self.external_ofport, self.ofproto.OFPCML_NO_BUFFER)]
+        self.mod_flow(
+            actions=actions,
+            table_id=const.INGRESS_DISPATCH_TABLE,
+            priority=const.PRIORITY_DEFAULT)
