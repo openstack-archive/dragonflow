@@ -23,14 +23,12 @@ class DbUpdate(object):
 
     An instance of this object carries the information necessary to prioritize
     and process a request to update a DB entry.
-    Lower value is higher priority !
     """
-    def __init__(self, table, key, action, value, priority=5,
-                 timestamp=None, topic=SEND_ALL_TOPIC):
-        self.priority = priority
+    def __init__(self, table, key, action, value, timestamp=None,
+                 topic=SEND_ALL_TOPIC):
+        if timestamp is None:
+            timestamp = timeutils.utcnow()
         self.timestamp = timestamp
-        if not timestamp:
-            self.timestamp = timeutils.utcnow()
         self.key = key
         self.action = action
         self.table = table
@@ -48,25 +46,24 @@ class DbUpdate(object):
         return update
 
     def __str__(self):
-        return "Action:%s, Table:%s, Key:%s Value:%s Topic:%s" % (
+        return (
+            "Action:%s, Table:%s, Key:%s Value:%s Topic:%s Timestamp: %s"
+        ) % (
             self.action,
             self.table,
             self.key,
             self.value,
             self.topic,
+            self.timestamp,
         )
 
     def __lt__(self, other):
         """Implements priority among updates
 
-        Lower numerical priority always gets precedence. When comparing two
-        updates of the same priority then the one with the earlier timestamp
-        gets procedence.  In the unlikely event that the timestamps are also
-        equal it falls back to a simple comparison of ids meaning the
-        precedence is essentially random.
+        Earlier timestamp always gets precedence. In the unlikely event that
+        the timestamps are equal it falls back to a simple comparison of ids
+        meaning the precedence is deteministic but meaningless.
         """
-        if self.priority != other.priority:
-            return self.priority < other.priority
         if self.timestamp != other.timestamp:
             return self.timestamp < other.timestamp
         return self.key < other.key
