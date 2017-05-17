@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import collections
+import multiprocessing
 import os
 import sys
 import time
@@ -32,6 +33,10 @@ DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
 DF_NB_DB_DRIVER_NAMESPACE = 'dragonflow.nb_db_driver'
 DF_NEUTRON_NOTIFIER_DRIVER_NAMESPACE = 'dragonflow.neutron_notifier_driver'
 LOG = logging.getLogger(__name__)
+
+
+def get_process_name():
+    return multiprocessing.current_process().name
 
 
 def get_vhu_sockpath(sock_dir, port_id):

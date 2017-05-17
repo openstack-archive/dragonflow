@@ -56,7 +56,10 @@ def generate_publisher_uuid():
     Generate a non-random uuid based on the fully qualified domain name.
     This UUID is supposed to remain the same across service restarts.
     """
-    return str(uuid.uuid5(uuid.NAMESPACE_DNS, socket.getfqdn()))
+    fqdn = socket.getfqdn()
+    process_name = df_utils.get_process_name()
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS,
+               "{0}.{1}".format(process_name, fqdn)))
 
 
 @six.add_metaclass(abc.ABCMeta)
