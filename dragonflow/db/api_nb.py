@@ -233,35 +233,31 @@ class NbApi(object):
         sync_rate_limiter = df_utils.RateLimiter(
             max_rate=1, time_unit=db_common.DB_SYNC_MINIMUM_INTERVAL)
         while True:
-            self.next_update = self._queue.get(block=True)
-            LOG.debug("Event update: %s", self.next_update)
+            next_update = self._queue.get(block=True)
+            LOG.debug("Event update: %s", next_update)
             try:
-                value = self.next_update.value
-                if (not value and
-                        self.next_update.action not in {'delete', 'log',
-                                                        'dbrestart'}):
-                    if self.next_update.table and self.next_update.key:
-                        value = self.driver.get_key(self.next_update.table,
-                                                    self.next_update.key)
-
-                self.apply_db_change(self.next_update.table,
-                                     self.next_update.key,
-                                     self.next_update.action,
-                                     value)
+                if next_update.table is not None:
+                    self.process_db_change(next_update)
+                else:
+                    self.process_db_event(next_update.action,
+                                          next_update.value)
             except Exception as e:
                 if "ofport is 0" not in e.message:
                     LOG.exception(e)
                 if not sync_rate_limiter():
-                    self.apply_db_change(None, None, 'sync', None)
+                    self.process_db_event('sync')
             self._queue.task_done()
 
-    def apply_db_change(self, table, key, action, value):
-        # determine if the action is allowed or not
-        if action not in DB_ACTION_LIST:
-            LOG.warning('Unknown action %(action)s for table '
-                        '%(table)s', {'action': action, 'table': table})
-            return
+    def process_db_change(self, change):
+        model_class = mf.get_model(change.table)
+        if change.action == 'delete':
+            self.controller.delete_by_id(model_class, change.key)
+        else:
+            obj = model_class.from_json(change.value)
+            self.controller.update(obj)
 
+    def process_db_event(self, action, value=None):
+        # determine if the action is allowed or not
         if action == 'sync':
             self.controller.run_sync(value)
             return
@@ -271,42 +267,20 @@ class NbApi(object):
         elif action == 'db_sync':
             self.db_consistency_manager.process(direct=False)
             return
-
-        try:
-            model_class = mf.get_model(table)
-        except KeyError:
-            # Model class not found, possibly update was not about a model
-            pass
-        else:
-            if action == 'delete':
-                self.controller.delete_by_id(model_class, key)
-            else:
-                obj = model_class.from_json(value)
-                self.controller.update(obj)
-            return
-
-        if 'ovsinterface' == table:
-            if action == 'sync_finished':
-                self.controller.ovs_sync_finished()
-            elif action == 'sync_started':
-                self.controller.ovs_sync_started()
+        elif action == 'sync_finished':
+            self.controller.ovs_sync_finished()
+        elif action == 'sync_started':
+            self.controller.ovs_sync_started()
         # Added lport migration for VM migration flag
-        elif 'lport_migration' == table:
-            if action == 'migrate':
-                lport = db_models.LogicalPort(value)
-                self.controller.update_migrating_flows(lport)
+        # elif 'lport_migration' == table:
+        #     if action == 'migrate':
+        #         lport = db_models.LogicalPort(value)
+        #         self.controller.update_migrating_flows(lport)
         elif 'log' == action:
-            message = ('Log event (Info): table: %(table)s key: %(key)s '
-                       'action: %(action)s value: %(value)s')
-
-            LOG.info(message, {
-                'table': str(table),
-                'key': str(key),
+            LOG.info('Log event (Info) action: %(action)s value: %(value)s', {
                 'action': str(action),
                 'value': str(value),
             })
-        else:
-            LOG.warning('Unknown table %s', table)
 
     # lport process for VM migration
     def set_lport_migration(self, port_id, chassis):
