@@ -37,6 +37,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         cfg.CONF.set_override('apps_list', self.apps_list, group='df')
         super(DFAppTestBase, self).setUp()
         mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
+        mock.patch('dragonflow.db.api_nb.NbApi.get_instance').start()
 
         # CLear old objects from cache
         db_store2._instance = None

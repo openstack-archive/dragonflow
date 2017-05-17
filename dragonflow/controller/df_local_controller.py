@@ -55,12 +55,7 @@ class DfLocalController(object):
         # Virtual tunnel port support multiple tunnel types together
         self.tunnel_types = cfg.CONF.df.tunnel_types
         self.sync_finished = False
-        nb_driver = df_utils.load_driver(
-            cfg.CONF.df.nb_db_class,
-            df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-        self.nb_api = api_nb.NbApi(
-            nb_driver,
-            use_pubsub=cfg.CONF.df.enable_df_pub_sub)
+        self.nb_api = api_nb.NbApi.get_instance(False)
         self.vswitch_api = vswitch_impl.OvsApi(cfg.CONF.df.management_ip)
 
         self.neutron_notifier = None
