@@ -168,36 +168,6 @@ class NbApi(object):
         self.publisher.send_event(update)
         eventlet.sleep(0)
 
-    def get_neutron_listener(self, id):
-        try:
-            listener = self.driver.get_key(db_models.Listener.table_name, id)
-            return db_models.Listener(listener)
-        except Exception:
-            return None
-
-    def get_all_neutron_listeners(self):
-        listeners = self.driver.get_all_entries(db_models.Listener.table_name)
-        return [db_models.Listener(l) for l in listeners]
-
-    def create_neutron_listener(self, id, **columns):
-        listener = {
-            'id': id
-        }
-        listener.update(columns)
-        listener_json = jsonutils.dumps(listener)
-        self.driver.create_key(db_models.Listener.table_name, id,
-                               listener_json)
-
-    def update_neutron_listener(self, id, **columns):
-        listener_json = self.driver.get_key(db_models.Listener.table_name, id)
-        listener = jsonutils.loads(listener_json)
-        listener.update(columns)
-        listener_json = jsonutils.dumps(listener)
-        self.driver.set_key(db_models.Listener.table_name, id, listener_json)
-
-    def delete_neutron_listener(self, host):
-        self.driver.delete_key(db_models.Listener.table_name, host)
-
     def register_notification_callback(self, controller):
         self.controller = controller
         LOG.info("DB configuration sync finished, waiting for changes")

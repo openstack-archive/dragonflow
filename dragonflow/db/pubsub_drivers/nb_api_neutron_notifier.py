@@ -27,6 +27,7 @@ from oslo_log import log
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import models
+from dragonflow.db.models import core
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.db import neutron_notifier_api
 
@@ -53,11 +54,11 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_NEUTRON_LISTENER)
     def create_heart_beat_reporter(self, host):
-        listener = self.nb_api.get_neutron_listener(host)
-        if not listener:
+        listener = self.nb_api.get(core.Listener(id=host))
+        if listener is None:
             self._create_heart_beat_reporter(host)
         else:
-            ppid = listener.get_ppid()
+            ppid = listener.ppid
             my_ppid = os.getppid()
             LOG.info("Listener %(l)s exists, my ppid is %(ppid)s",
                      {'l': listener, 'ppid': my_ppid})
@@ -65,14 +66,18 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
             # equal to my_ppid. I tried to set api_worker=1, still multiple
             # neutron-server processes were created.
             if ppid != my_ppid:
-                self.nb_api.delete_neutron_listener(host)
+                self.nb_api.delete(listener)
                 self._create_heart_beat_reporter(host)
 
     def _create_heart_beat_reporter(self, host):
+        listener = core.Listener(
+            id=host,
+            ppid=os.getppid(),
+        )
         self.nb_api.register_listener_callback(self.notify_neutron_server,
-                                               'listener_' + host)
-        LOG.info("Register listener %s", host)
-        self.heart_beat_reporter = HeartBeatReporter(self.nb_api)
+                                               listener.topic)
+        LOG.info("Register listener %s", listener.id)
+        self.heart_beat_reporter = HeartBeatReporter(self.nb_api, listener)
         self.heart_beat_reporter.daemonize()
 
     def notify_port_status(self, ovs_port, status):
@@ -85,7 +90,7 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
                          fip.get_id(), 'update', status)
 
     def _send_event(self, table, key, action, value):
-        listeners = self.nb_api.get_all_neutron_listeners()
+        listeners = self.nb_api.get_all(core.Listener)
         listeners_num = len(listeners)
         if listeners_num > 1:
             # Sort by timestamp and choose from the latest ones randomly.
@@ -97,14 +102,14 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
             # one is chosen. For users, do not need to figure out what is
             # the best report interval. A big interval increase the possility a
             # dead one is chosen, while a small one may affect the performance
-            listeners.sort(key=lambda l: l.get_timestamp(), reverse=True)
+            listeners.sort(key=lambda l: l.timestamp, reverse=True)
             selected = random.choice(listeners[:len(listeners) / 2])
         elif listeners_num == 1:
             selected = listeners[0]
         else:
             LOG.warning("No neutron listener found")
             return
-        topic = selected.get_topic()
+        topic = selected.topic
         update = db_common.DbUpdate(table, key, action, value, topic=topic)
         LOG.info("Publish to neutron %s", topic)
         self.nb_api.publisher.send_event(update)
@@ -124,8 +129,9 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
 class HeartBeatReporter(object):
     """Updates heartbeat timestamp periodically with a random delay."""
 
-    def __init__(self, api_nb):
+    def __init__(self, api_nb, listener):
         self.api_nb = api_nb
+        self.listener = listener
         self._daemon = df_utils.DFDaemon()
 
     def daemonize(self):
@@ -135,11 +141,7 @@ class HeartBeatReporter(object):
         return self._daemon.stop()
 
     def run(self):
-        listener = cfg.CONF.host
-        ppid = os.getppid()
-        self.api_nb.create_neutron_listener(listener,
-                                            timestamp=int(time.time()),
-                                            ppid=ppid)
+        self.api_nb.create(self.listener)
 
         cfg_interval = cfg.CONF.df.neutron_listener_report_interval
         delay = cfg.CONF.df.neutron_listener_report_delay
@@ -150,9 +152,7 @@ class HeartBeatReporter(object):
                 # throughput and pressure for df-db in a big scale
                 interval = random.randint(cfg_interval, cfg_interval + delay)
                 time.sleep(interval)
-                timestamp = int(time.time())
-                self.api_nb.update_neutron_listener(listener,
-                                                    timestamp=timestamp,
-                                                    ppid=ppid)
+                self.api_nb.update(self.listener)
             except Exception:
-                LOG.exception("Failed to report heart beat for %s", listener)
+                LOG.exception("Failed to report heart beat for %s",
+                              self.listener)
