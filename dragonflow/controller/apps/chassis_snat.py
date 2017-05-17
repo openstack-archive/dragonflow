@@ -40,6 +40,8 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
         LOG.info("Loading SNAT application ... ")
         self.external_network_bridge = (
             cfg.CONF.df_snat_app.external_network_bridge)
+        self.external_bridge_mac = self.vswitch_api.get_port_mac_in_use(
+                self.external_network_bridge) or const.EMPTY_MAC
         self.chassis = None
 
         # new application configuration
@@ -58,7 +60,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
     def switch_features_handler(self, ev):
         self._setup_patch_ports()
         self.external_bridge_mac = self.vswitch_api.get_port_mac_in_use(
-            self.external_network_bridge)
+            self.external_network_bridge) or const.EMPTY_MAC
 
         # install static strategy flows
         if self.external_host_ip is None:
