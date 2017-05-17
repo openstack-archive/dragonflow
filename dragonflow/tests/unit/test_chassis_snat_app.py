@@ -39,11 +39,6 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
 
         self.SNAT_app.add_flow_go_to_table.assert_has_calls(
             [mock.call(
-                       constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                       constants.PRIORITY_DEFAULT,
-                       constants.INGRESS_NAT_TABLE,
-                       match=mock.ANY),
-             mock.call(
                        constants.L3_LOOKUP_TABLE,
                        constants.PRIORITY_MEDIUM_LOW,
                        constants.EGRESS_NAT_TABLE,
@@ -51,6 +46,11 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
 
         self.SNAT_app.mod_flow.assert_has_calls(
              [mock.call(
+                   inst=mock.ANY,
+                   table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                   priority=constants.PRIORITY_DEFAULT,
+                   match=mock.ANY),
+              mock.call(
                    inst=mock.ANY,
                    table_id=constants.INGRESS_NAT_TABLE,
                    priority=constants.PRIORITY_LOW,
@@ -61,7 +61,7 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
                    priority=constants.PRIORITY_LOW,
                    match=mock.ANY),
               mock.call(
-                   inst=mock.ANY,
+                   actions=mock.ANY,
                    table_id=constants.EGRESS_SNAT_TABLE,
                    priority=constants.PRIORITY_LOW,
                    match=mock.ANY)])
