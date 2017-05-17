@@ -40,7 +40,8 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
             cfg.CONF.df_dnat_app.external_network_bridge)
         self.ex_peer_patch_port = (
             cfg.CONF.df_dnat_app.ex_peer_patch_port)
-        self.external_bridge_mac = const.EMPTY_MAC
+        self.external_bridge_mac = self.vswitch_api.get_port_mac(
+                self.external_network_bridge) or const.EMPTY_MAC
         self.chassis = None
 
         # new application configuration
