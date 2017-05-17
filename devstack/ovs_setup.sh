@@ -69,7 +69,7 @@ function _neutron_ovs_install_ovs_fedora {
 }
 
 function _neutron_ovs_install_ovs_deps_ubuntu {
-    install_package -y build-essential fakeroot devscripts equivs dkms
+    install_package -y build-essential fakeroot devscripts equivs dkms linux-libc-dev linux-headers
     sudo mk-build-deps -i -t "/usr/bin/apt-get --no-install-recommends -y"
 }
 
