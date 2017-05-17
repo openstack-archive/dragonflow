@@ -44,3 +44,19 @@ class Publisher(mf.ModelBase, mixins.Name):
     @classmethod
     def on_get_all_post(self, instances):
         return [o for o in instances if not o.is_stale()]
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class Listener(mf.ModelBase):
+    table_name = "listener"
+
+    timestamp = fields.IntField()
+    ppid = fields.IntField()
+
+    @property
+    def topic(self):
+        return 'listener_{id}'.format(id=self.id)
+
+    def update_timestamp(self):
+        self.timestamp = int(time.time())

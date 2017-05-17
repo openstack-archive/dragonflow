@@ -14,7 +14,6 @@ import copy
 
 import mock
 
-from dragonflow.db import models as db_models
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
 from dragonflow.tests.fullstack import test_base
@@ -99,50 +98,3 @@ class Test_API_NB(test_base.DFTestBase):
         self.assertIsNotNone(lrouter1.unique_key)
 
         self.assertNotEqual(lrouter.unique_key, lrouter1.unique_key)
-
-    def test_create_listener(self):
-        # prepare
-        fake_listener1 = db_models.Listener("{}")
-        fake_listener1.inner_obj = {"id": "fake_host1",
-                                    "timestamp": 1,
-                                    "ppid": -1}
-
-        fake_listener2 = db_models.Listener("{}")
-        fake_listener2.inner_obj = {"id": "fake_host2",
-                                    "timestamp": 2,
-                                    "ppid": -2}
-
-        # test creating
-        self.nb_api.create_neutron_listener('fake_host1',
-                                            timestamp=1,
-                                            ppid=-1)
-        self.nb_api.create_neutron_listener('fake_host2',
-                                            timestamp=2,
-                                            ppid=-2)
-
-        listeners = self.nb_api.get_all_neutron_listeners()
-        self.assertIn(fake_listener1, listeners)
-        self.assertIn(fake_listener2, listeners)
-
-        # test updating timestamp
-        self.nb_api.update_neutron_listener('fake_host1',
-                                            timestamp=11)
-        listener1 = self.nb_api.get_neutron_listener('fake_host1')
-        self.assertEqual(listener1.get_timestamp(), 11)
-        self.assertEqual(listener1.get_ppid(), -1)
-
-        # test updating timestamp and ppid
-        self.nb_api.update_neutron_listener('fake_host2',
-                                            timestamp=22,
-                                            ppid=-22)
-        listener2 = self.nb_api.get_neutron_listener('fake_host2')
-        self.assertEqual(listener2.get_timestamp(), 22)
-        self.assertEqual(listener2.get_ppid(), -22)
-
-        # test deleting
-        self.nb_api.delete_neutron_listener('fake_host1')
-        self.nb_api.delete_neutron_listener('fake_host2')
-        listener1 = self.nb_api.get_neutron_listener('fake_host1')
-        listener2 = self.nb_api.get_neutron_listener('fake_host2')
-        self.assertIsNone(listener1)
-        self.assertIsNone(listener2)

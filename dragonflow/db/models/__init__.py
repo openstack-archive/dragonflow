@@ -18,7 +18,6 @@ UniqueKeyMixin = legacy.UniqueKeyMixin
 LogicalPort = legacy.LogicalPort
 Floatingip = legacy.Floatingip
 AllowedAddressPairsActivePort = legacy.AllowedAddressPairsActivePort
-Listener = legacy.Listener
 OvsPort = legacy.OvsPort
 
 UNIQUE_KEY = legacy.UNIQUE_KEY
