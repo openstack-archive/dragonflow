@@ -247,3 +247,10 @@ class SNATApp_mixin(object):
             table_id=const.INGRESS_SNAT_TABLE,
             priority=const.PRIORITY_LOW,
             match=match)
+
+        actions = [self.parser.OFPActionOutput(
+                self.external_ofport, self.ofproto.OFPCML_NO_BUFFER)]
+        self.mod_flow(
+            actions=actions,
+            table_id=const.INGRESS_DISPATCH_TABLE,
+            priority=const.PRIORITY_DEFAULT)
