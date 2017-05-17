@@ -26,6 +26,7 @@ import dragonflow.common.exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import model_framework as mf
+from dragonflow.db import model_proxy as mproxy
 from dragonflow.db import models as db_models
 from dragonflow.db.models import core
 
@@ -554,6 +555,8 @@ class NbApi(object):
            Chassis(id="One", ip="192.168.121.22", tunnel_types=["vxlan"])
 
         """
+        if mproxy.is_model_proxy(lean_obj):
+            lean_obj = lean_obj.get_proxied_model()(id=lean_obj.id)
         model = type(lean_obj)
         try:
             serialized_obj = self.driver.get_key(
