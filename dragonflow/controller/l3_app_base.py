@@ -154,22 +154,22 @@ class L3AppMixin(object):
     def _update_router_interfaces(self, old_router, new_router):
         old_ports = old_router.ports
         new_ports = new_router.ports
-        for new_port in new_ports:
-            if new_port not in old_ports:
-                self._add_new_router_port(new_router, new_port)
         for old_port in old_ports:
             if old_port not in new_ports:
                 self._delete_router_port(new_router, old_port)
+        for new_port in new_ports:
+            if new_port not in old_ports:
+                self._add_new_router_port(new_router, new_port)
 
     def _update_router_attributes(self, old_router, new_router):
         old_routes = old_router.routes
         new_routes = new_router.routes
-        for new_route in new_routes:
-            if new_route not in old_routes:
-                self._add_router_extra_route(new_router, new_route)
         for old_route in old_routes:
             if old_route not in new_routes:
                 self._delete_router_extra_route(new_router, old_route)
+        for new_route in new_routes:
+            if new_route not in old_routes:
+                self._add_router_extra_route(new_router, new_route)
 
     def _get_port_by_lswitch_and_ip(self, ip, lswitch_id):
         ports = self.db_store.get_ports()
@@ -188,7 +188,7 @@ class L3AppMixin(object):
             record='RouterPort(router=%s, ip=%s)' % (router.name, ip))
 
     def _add_router_extra_route(self, router, route):
-        """Add extra router to router."""
+        """Add extra route to router."""
 
         LOG.debug('Add extra route %(route)s to router %(router)s',
                   {'route': route, 'router': router})
