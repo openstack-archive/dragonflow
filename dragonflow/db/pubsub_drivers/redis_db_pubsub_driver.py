@@ -182,20 +182,15 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                         elif 'unsubscribe' == data['type']:
                             continue
                         elif 'message' == data['type']:
-                            message = pub_sub_api.unpack_message(data['data'])
-
-                            if message['table'] != 'ha':
-                                self.db_changes_callback(
-                                    message['table'],
-                                    message['key'],
-                                    message['action'],
-                                    message['value'],
-                                    message['topic'])
-                            else:
+                            if data['channel'] == 'redis':
                                 # redis ha message
+                                message = pub_sub_api.unpack_message(
+                                    data['data'])
                                 value = jsonutils.loads(message['value'])
                                 self.redis_mgt.redis_failover_callback(
                                     value)
+                            else:
+                                self._handle_incoming_event(data['data'])
                         else:
                             LOG.warning("receive unknown message in "
                                         "subscriber %(type)s",

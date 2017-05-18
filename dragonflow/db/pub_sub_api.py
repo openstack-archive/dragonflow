@@ -269,6 +269,16 @@ class SubscriberAgentBase(SubscriberApi):
     def process_ha(self):
         pass
 
+    def _handle_incoming_event(self, data):
+        message = unpack_message(data)
+        self.db_changes_callback(
+            message['table'],
+            message['key'],
+            message['action'],
+            message['value'],
+            message['topic'],
+        )
+
 
 class TableMonitor(object):
 
