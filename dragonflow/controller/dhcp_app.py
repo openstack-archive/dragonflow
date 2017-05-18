@@ -474,7 +474,7 @@ class DHCPApp(df_base_app.DFlowApp):
                 self._uninstall_dhcp_flow_for_vm_port(port)
 
     def _is_ipv4(self, subnet):
-        return subnet.cidr.version == 4
+        return subnet.cidr.version == n_const.IP_VERSION_4
 
     def _block_port_dhcp_traffic(self, unique_key, hard_timeout):
         match = self.parser.OFPMatch(reg6=unique_key)

@@ -162,7 +162,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     def _get_floatingip_subnet(self, context, subnet_id):
         gateway_subnet = self.core_plugin.get_subnet(context, subnet_id)
-        if gateway_subnet['ip_version'] == 4:
+        if gateway_subnet['ip_version'] == const.IP_VERSION_4:
             return gateway_subnet
         return None
 
