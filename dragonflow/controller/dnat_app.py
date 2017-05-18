@@ -234,7 +234,8 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _install_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
-        if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
+        if netaddr.IPAddress(floatingip.get_ip_address()).version != \
+                n_const.IP_VERSION_4:
             return
         arp_responder.ArpResponder(self,
                                    None,
@@ -244,7 +245,8 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _remove_floatingip_arp_responder(self, floatingip):
         # install floatingip arp responder flow rules
-        if netaddr.IPAddress(floatingip.get_ip_address()).version != 4:
+        if netaddr.IPAddress(floatingip.get_ip_address()).version != \
+                n_const.IP_VERSION_4:
             return
         arp_responder.ArpResponder(self,
                                    None,
@@ -393,7 +395,7 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _install_egress_nat_rules(self, floatingip):
         net = netaddr.IPNetwork(floatingip.get_external_cidr())
-        if net.version != 4:
+        if net.version != n_const.IP_VERSION_4:
             return
 
         match = self._get_dnat_egress_match(floatingip)
@@ -408,7 +410,7 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _remove_egress_nat_rules(self, floatingip):
         net = netaddr.IPNetwork(floatingip.get_external_cidr())
-        if net.version != 4:
+        if net.version != n_const.IP_VERSION_4:
             return
 
         ofproto = self.ofproto

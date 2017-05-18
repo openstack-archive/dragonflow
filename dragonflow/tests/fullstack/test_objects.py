@@ -14,6 +14,7 @@ import time
 
 import netaddr
 from neutron.agent.common import utils as agent_utils
+from neutron_lib import constants as n_const
 from neutronclient.common import exceptions
 from oslo_log import log
 
@@ -222,7 +223,7 @@ class ExternalNetworkTestObj(NetworkTestObj):
         net_id = super(ExternalNetworkTestObj, self).create(network)
         subnet = SubnetTestObj(self.neutron, self.nb_api, net_id)
         subnet.create({'cidr': self.GW_CIDR,
-                       'ip_version': 4,
+                       'ip_version': n_const.IP_VERSION_4,
                        'enable_dhcp': False,
                        'network_id': net_id})
         # Hardcode the external bridge name here, as it is the
@@ -282,9 +283,10 @@ class VMTestObj(object):
         self.parent.assertIsNotNone(net_id)
         nic = {'net-id': net_id}
         if net_address:
-            if netaddr.IPAddress(net_address).version == 4:
+            if netaddr.IPAddress(net_address).version == n_const.IP_VERSION_4:
                 nic['v4-fixed-ip'] = net_address
-            elif netaddr.IPAddress(net_address).version == 6:
+            elif netaddr.IPAddress(net_address).version == \
+                    n_const.IP_VERSION_6:
                 nic['v6-fixed-ip'] = net_address
         nics = [nic]
         self.server = self.nova.servers.create(

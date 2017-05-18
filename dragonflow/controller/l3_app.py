@@ -14,6 +14,8 @@
 #    under the License.
 
 import netaddr
+
+from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
@@ -88,7 +90,7 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         parser = self.parser
         ofproto = self.ofproto
 
-        if netaddr.IPAddress(dst_ip).version == 4:
+        if netaddr.IPAddress(dst_ip).version == n_const.IP_VERSION_4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     metadata=src_network_id,
                                     ipv4_dst=dst_ip)

@@ -16,6 +16,7 @@
 import collections
 import netaddr
 
+from neutron_lib import constants as n_const
 from oslo_log import log
 from oslo_service import loopingcall
 from ryu.lib.packet import arp
@@ -74,7 +75,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         allowed_address_pairs = lport.get_allowed_address_pairs()
         for pair in allowed_address_pairs:
             ip = pair["ip_address"]
-            if netaddr.IPNetwork(ip).version == 4:
+            if netaddr.IPNetwork(ip).version == n_const.IP_VERSION_4:
                 ips.add(ip)
             else:
                 # IPv6 addresses are not supported yet
