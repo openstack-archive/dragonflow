@@ -225,8 +225,8 @@ class SubscriberAgentBase(SubscriberApi):
         self.topic_list = []
         self.uri_list = []
 
-    def initialize(self, callback):
-        self.db_changes_callback = callback
+    def initialize(self, recv_callback):
+        self.recv_callback = recv_callback
         self.daemon = df_utils.DFDaemon()
 
     def register_listen_address(self, uri):
@@ -270,13 +270,7 @@ class SubscriberAgentBase(SubscriberApi):
 
     def _handle_incoming_event(self, data):
         message = unpack_message(data)
-        self.db_changes_callback(
-            message['table'],
-            message['key'],
-            message['action'],
-            message['value'],
-            message['topic'],
-        )
+        self.recv_callback(db_common.DbUpdate(**message))
 
 
 class TableMonitor(object):

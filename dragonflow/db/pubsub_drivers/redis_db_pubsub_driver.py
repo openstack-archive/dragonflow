@@ -18,6 +18,7 @@ from oslo_serialization import jsonutils
 import redis
 
 from dragonflow import conf as cfg
+from dragonflow.db import db_common
 from dragonflow.db.drivers import redis_mgt
 from dragonflow.db import pub_sub_api
 
@@ -212,10 +213,15 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                     connection = self.pub_sub.connection
                     connection.connect()
                     self.pub_sub.on_connect(connection)
-                    # self.db_changes_callback(None, None, 'sync', None, None)
                     # notify restart
-                    self.db_changes_callback(None, None, 'dbrestart', False,
-                                             None)
+                    self.recv_callback(
+                        db_common.DbUpdate(
+                            action='dbrestart',
+                            table=None,
+                            key=None,
+                            value=None,
+                        ),
+                    )
                 except Exception:
                     self.redis_mgt.remove_node_from_master_list(self.remote)
                     self._update_client()
@@ -223,8 +229,14 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                     if self.remote is not None:
                         # to re-subscribe
                         self.register_hamsg_for_db()
-                        self.db_changes_callback(None, None, 'dbrestart',
-                                                 True, None)
+                        self.recv_callback(
+                            db_common.DbUpdate(
+                                action='dbrestart',
+                                table=None,
+                                key=None,
+                                value=None,
+                            ),
+                        )
                     else:
                         LOG.warning("there is no more db node available")
 
