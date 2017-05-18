@@ -24,6 +24,7 @@ from oslo_config import cfg
 import testtools
 
 from dragonflow.common import utils as df_utils
+from dragonflow.db import db_common
 from dragonflow.db.models import l3 as df_l3
 from dragonflow.neutron.db.models import l3 as neutron_l3
 from dragonflow.tests.unit import test_mech_driver
@@ -194,10 +195,14 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                                     'tenant_id': n['network']['tenant_id']}})
 
         self.assertEqual(n_const.FLOATINGIP_STATUS_DOWN, floatingip['status'])
-        notifier.notify_neutron_server(df_l3.FloatingIp.table_name,
-                                       floatingip['id'],
-                                       "update",
-                                       n_const.FLOATINGIP_STATUS_ACTIVE)
+        notifier.notify_neutron_server(
+            db_common.DbUpdate(
+                table=df_l3.FloatingIp.table_name,
+                key=floatingip['id'],
+                action='update',
+                value=n_const.FLOATINGIP_STATUS_ACTIVE,
+            ),
+        )
         floatingip = self.l3p.get_floatingip(self.context, floatingip['id'])
         self.assertEqual(n_const.FLOATINGIP_STATUS_ACTIVE,
                          floatingip['status'])

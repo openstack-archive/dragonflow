@@ -24,7 +24,6 @@ from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
-from dragonflow.db import db_common
 from dragonflow.db.models import core
 from dragonflow.db import pub_sub_api
 
@@ -69,9 +68,8 @@ class PublisherService(object):
             self.multiproc_subscriber.initialize(self._append_event_to_queue)
         self.publisher.initialize()
 
-    def _append_event_to_queue(self, table, key, action, value, topic):
-        event = db_common.DbUpdate(table, key, action, value, topic=topic)
-        self._queue.put(event)
+    def _append_event_to_queue(self, update):
+        self._queue.put(update)
         eventlet.sleep(0)
 
     def run(self):
