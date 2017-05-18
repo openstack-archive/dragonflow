@@ -96,7 +96,7 @@ class TestPubSub(PubSubTestBase):
         if not self.do_test:
             return
 
-        def _db_change_callback(table, key, action, value, topic):
+        def _db_change_callback(update):
             global events_num
             events_num += 1
         subscriber = self.get_subscriber(_db_change_callback)
@@ -332,13 +332,13 @@ class TestMultiprocPubSub(PubSubTestBase):
         self.stop_publisher(self.publisher)
         super(TestMultiprocPubSub, self).tearDown()
 
-    def _verify_event(self, table, key, action, value, topic):
-        self.assertEqual(self.event.table, table)
-        self.assertEqual(self.event.key, key)
-        self.assertEqual(self.event.action, action)
+    def _verify_event(self, event):
+        self.assertEqual(self.event.table, event.table)
+        self.assertEqual(self.event.key, event.key)
+        self.assertEqual(self.event.action, event.action)
         # Value is not tested, since it's currently set to None
         # self.assertEqual(self.event.value, value)
-        self.assertEqual(self.event.topic, topic)
+        self.assertEqual(self.event.topic, event.topic)
         self.event_received = True
 
     def test_multiproc_pub_sub(self):

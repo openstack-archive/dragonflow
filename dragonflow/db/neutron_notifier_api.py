@@ -31,14 +31,10 @@ class NeutronNotifierDriver(object):
         """
 
     @abc.abstractmethod
-    def notify_neutron_server(self, table, key, action, value, topic):
+    def notify_neutron_server(self, update):
         """Notify the change to neutron server. Note that this method
            will run in neutron server.
 
-        :param table:    which db model
-        :param key:      the id of db model data
-        :param action:   the action of data, create/update/delete
-        :param value:    the value of db model data
-        :param topic:    the topic of neutron server's corresponding listener
+        :param update:   DbUpdate object
         :return:         None
         """

@@ -18,6 +18,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 
 from dragonflow.common import exceptions
+from dragonflow.db import db_common
 from dragonflow.db import pub_sub_api
 
 LOG = logging.getLogger(__name__)
@@ -160,8 +161,14 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
                 LOG.warning(e)
                 self.sub_socket.close()
                 self.connect()
-                self.db_changes_callback(None, None, 'sync',
-                                         None, None)
+                self.recv_callback(
+                    db_common.DbUpdate(
+                        action='sync',
+                        table=None,
+                        key=None,
+                        value=None,
+                    ),
+                )
 
 
 class ZMQSubscriberMultiprocAgent(ZMQSubscriberAgentBase):

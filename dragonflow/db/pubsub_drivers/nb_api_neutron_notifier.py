@@ -115,16 +115,18 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
         LOG.info("Publish to neutron %s", topic)
         self.nb_api.publisher.send_event(update)
 
-    def notify_neutron_server(self, table, key, action, value, topic=None):
+    def notify_neutron_server(self, update):
+        action = update.action
+        table = update.table
         if l2.LogicalPort.table_name == table and 'update' == action:
-            LOG.info("Process port %s status update event", key)
+            LOG.info("Process port %s status update event", update.key)
             core_plugin = directory.get_plugin()
             core_plugin.update_port_status(n_context.get_admin_context(),
-                                           key, value)
+                                           update.key, update.value)
         elif l3.FloatingIp.table_name == table and 'update' == action:
             l3_plugin = directory.get_plugin(n_const.L3)
             l3_plugin.update_fip_status(n_context.get_admin_context(),
-                                        key, value)
+                                        update.key, update.value)
 
 
 class HeartBeatReporter(object):

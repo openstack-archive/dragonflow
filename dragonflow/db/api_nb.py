@@ -174,8 +174,7 @@ class NbApi(object):
         self.subscriber.register_topic(topic)
         self.subscriber.daemonize()
 
-    def db_change_callback(self, table, key, action, value, topic=None):
-        update = db_common.DbUpdate(table, key, action, value, topic=topic)
+    def db_change_callback(self, update):
         LOG.debug("Pushing Update to Queue: %s", update)
         self._queue.put(update)
         eventlet.sleep(0)

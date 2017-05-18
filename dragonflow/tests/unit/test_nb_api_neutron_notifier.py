@@ -14,6 +14,7 @@ import mock
 from oslo_config import cfg
 
 from dragonflow.common import utils as df_utils
+from dragonflow.db import db_common
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.tests import base as tests_base
@@ -59,9 +60,13 @@ class TestNbApiNeutronNotifier(tests_base.BaseTestCase):
         core_plugin = mock.Mock()
         with mock.patch("neutron_lib.plugins.directory.get_plugin",
                         return_value=core_plugin):
-            self.notifier.notify_neutron_server(l2.LogicalPort.table_name,
-                                                "fake_port",
-                                                "update",
-                                                "up")
+            self.notifier.notify_neutron_server(
+                db_common.DbUpdate(
+                    table=l2.LogicalPort.table_name,
+                    key="fake_port",
+                    action="update",
+                    value="up",
+                ),
+            )
             core_plugin.update_port_status.assert_called_once_with(
                 mock.ANY, "fake_port", "up")
