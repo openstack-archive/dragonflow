@@ -28,11 +28,35 @@ import six
 from stevedore import driver
 
 from dragonflow._i18n import _
+from dragonflow import conf as cfg
+from dragonflow import version
 
 DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
 DF_NB_DB_DRIVER_NAMESPACE = 'dragonflow.nb_db_driver'
 DF_NEUTRON_NOTIFIER_DRIVER_NAMESPACE = 'dragonflow.neutron_notifier_driver'
 LOG = logging.getLogger(__name__)
+
+
+ROOTDIR = '/'
+ETCDIR = os.path.join(ROOTDIR, 'etc/neutron')
+
+
+def etcdir(*p):
+    return os.path.join(ETCDIR, *p)
+
+
+def config_parse(conf=None, args=None, **kwargs):
+    if args is None:
+        args = []
+    args += ['--config-file', etcdir('neutron.conf')]
+    args += ['--config-file', etcdir('dragonflow.ini')]
+    if conf is None:
+        release = version.version_info.release_string()
+        cfg.CONF(args=args, project='dragonflow',
+                 version='%%(prog)s %s' % release,
+                 **kwargs)
+    else:
+        conf(args)
 
 
 def get_process_name():

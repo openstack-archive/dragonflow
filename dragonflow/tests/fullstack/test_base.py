@@ -14,9 +14,9 @@ import os
 import random
 import string
 
-from neutron.common import config as common_config
 from oslo_log import log
 
+from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.db import api_nb
 from dragonflow.tests import base
@@ -50,10 +50,7 @@ class DFTestBase(base.BaseTestCase):
         if not self.get_default_subnetpool():
             self.create_default_subnetpool()
 
-        common_config.init(['--config-file',
-                            '/etc/neutron/dragonflow.ini',
-                            '--config-file',
-                            '/etc/neutron/neutron.conf'])
+        df_utils.config_parse()
         self.conf = cfg.CONF.df
         self.integration_bridge = self.conf.integration_bridge
 
