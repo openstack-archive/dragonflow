@@ -52,7 +52,8 @@ class TestZMQPubSub(tests_base.BaseTestCase):
             log_debug.assert_called()
             args = self.ZMQPublisherAgent.socket.send_multipart.call_args
             self.ZMQPublisherAgent.socket.send_multipart.assert_called_once()
-            self.assertEqual(db_common.SEND_ALL_TOPIC, args[0][0][0])
+            self.assertEqual(db_common.SEND_ALL_TOPIC.encode('utf-8'),
+                             args[0][0][0])
             self.assertIsNone(result)
 
     def test_publisher_reconnection(self):
@@ -67,7 +68,7 @@ class TestZMQPubSub(tests_base.BaseTestCase):
             self.ZMQPublisherAgent.socket.bind.assert_called_once()
             self.ZMQPublisherAgent.socket.send_multipart.assert_called_once()
             log_debug.assert_called()
-            self.assertEqual(2, log_debug.call_count)
+            self.assertEqual(1, log_debug.call_count)
             self.assertIsNone(result)
 
     def test_subscribe_success(self):
