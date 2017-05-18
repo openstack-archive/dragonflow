@@ -39,7 +39,7 @@ class RedisPubSub(pub_sub_api.PubSubApi):
         return self.subscriber
 
 
-class RedisPublisherAgent(pub_sub_api.PublisherApi):
+class RedisPublisherAgent(pub_sub_api.PublisherAgentBase):
 
     publish_retry_times = 5
 
@@ -88,19 +88,15 @@ class RedisPublisherAgent(pub_sub_api.PublisherApi):
         if result:
             self._update_client()
 
-    def send_event(self, update, topic=None):
-        if topic:
-            update.topic = topic
-        local_topic = update.topic
-        local_topic = local_topic.encode('utf8')
-        data = pub_sub_api.pack_message(update.to_dict())
+    def _send_event(self, data, topic):
+        topic = topic.encode('utf8')
         ttl = self.publish_retry_times
         alreadysync = False
         while ttl > 0:
             ttl -= 1
             try:
                 if self.client is not None:
-                    self.client.publish(local_topic, data)
+                    self.client.publish(topic, data)
                     break
             except Exception:
                 if not alreadysync:
