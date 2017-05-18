@@ -109,10 +109,10 @@ class L2App(df_base_app.DFlowApp):
         mac = lport.get_mac()
         for ip in ips:
             ip_version = netaddr.IPAddress(ip).version
-            if ip_version == 4:
+            if ip_version == common_const.IP_VERSION_4:
                 arp_responder.ArpResponder(self,
                                            network_id, ip, mac).add()
-            elif ip_version == 6:
+            elif ip_version == common_const.IP_VERSION_6:
                 nd_advertisers.NeighborAdvertiser(self,
                                                   network_id, ip, mac).add()
 
@@ -123,10 +123,10 @@ class L2App(df_base_app.DFlowApp):
         network_id = lport.get_external_value('local_network_id')
         for ip in ips:
             ip_version = netaddr.IPAddress(ip).version
-            if ip_version == 4:
+            if ip_version == common_const.IP_VERSION_4:
                 arp_responder.ArpResponder(self,
                                            network_id, ip).remove()
-            elif ip_version == 6:
+            elif ip_version == common_const.IP_VERSION_6:
                 nd_advertisers.NeighborAdvertiser(self,
                                                   network_id, ip).remove()
 

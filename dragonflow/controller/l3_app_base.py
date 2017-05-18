@@ -296,7 +296,7 @@ class L3AppMixin(object):
                                     destination):
         dst_network = destination.network
         dst_netmask = destination.netmask
-        if destination.version == 4:
+        if destination.version == common_const.IP_VERSION_4:
             match = self.parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                          reg5=router_unique_key,
                                          eth_dst=router_if_mac,
@@ -337,7 +337,7 @@ class L3AppMixin(object):
         self._add_to_route_cache(to_part, router_id, route)
 
     def _get_router_interface_match(self, router_unique_key, rif_ip):
-        if netaddr.IPAddress(rif_ip).version == 4:
+        if netaddr.IPAddress(rif_ip).version == common_const.IP_VERSION_4:
             return self.parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                         reg5=router_unique_key,
                                         ipv4_dst=rif_ip)
@@ -350,7 +350,7 @@ class L3AppMixin(object):
                                 dst_network, dst_netmask):
         parser = self.parser
 
-        if netaddr.IPAddress(dst_network).version == 4:
+        if netaddr.IPAddress(dst_network).version == common_const.IP_VERSION_4:
             match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                     reg5=router_unique_key,
                                     ipv4_dst=(dst_network, dst_netmask))
@@ -373,7 +373,8 @@ class L3AppMixin(object):
         mac = router_port.mac
         router_unique_key = router.unique_key
         dst_ip = router_port.network.ip
-        is_ipv4 = netaddr.IPAddress(dst_ip).version == 4
+        is_ipv4 = (netaddr.IPAddress(dst_ip).version ==
+                   common_const.IP_VERSION_4)
 
         # Add rule for making packets go from L2_LOOKUP_TABLE
         # to L3_LOOKUP_TABLE
@@ -450,7 +451,7 @@ class L3AppMixin(object):
             match=match)
 
         # Delete ARP & ICMP responder for router interface
-        if netaddr.IPAddress(ip).version == 4:
+        if netaddr.IPAddress(ip).version == common_const.IP_VERSION_4:
             self.router_port_rarp_cache.pop(mac, None)
 
             arp_responder.ArpResponder(self, local_network_id, ip).remove()

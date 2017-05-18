@@ -14,6 +14,7 @@
 #    under the License.
 
 import netaddr
+
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.lib.packet import arp
@@ -68,7 +69,7 @@ class PortSecApp(df_base_app.DFlowApp):
         return allowed_macs
 
     def _install_flows_check_valid_ip_and_mac(self, unique_key, ip, mac):
-        if netaddr.IPNetwork(ip).version == 6:
+        if netaddr.IPNetwork(ip).version == n_const.IP_VERSION_6:
             LOG.info("IPv6 addresses are not supported yet")
             return
 
@@ -96,7 +97,7 @@ class PortSecApp(df_base_app.DFlowApp):
                                   match=match)
 
     def _uninstall_flows_check_valid_ip_and_mac(self, unique_key, ip, mac):
-        if netaddr.IPNetwork(ip).version == 6:
+        if netaddr.IPNetwork(ip).version == n_const.IP_VERSION_6:
             LOG.info("IPv6 addresses are not supported yet")
             return
 

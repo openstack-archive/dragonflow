@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import netaddr
+
+from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
 from ryu.ofproto import nicira_ext
@@ -39,7 +41,7 @@ class SNATApp_mixin(object):
     """
     def _install_arp_responder(self, host_ip, host_mac):
         # install host arp responder flow rules
-        if netaddr.IPAddress(host_ip).version != 4:
+        if netaddr.IPAddress(host_ip).version != n_const.IP_VERSION_4:
             return
         arp_responder.ArpResponder(
             self,
@@ -50,7 +52,7 @@ class SNATApp_mixin(object):
 
     def _remove_arp_responder(self, host_ip, host_mac):
         # install host arp responder flow rules
-        if netaddr.IPAddress(host_ip).version != 4:
+        if netaddr.IPAddress(host_ip).version != n_const.IP_VERSION_4:
             return
         arp_responder.ArpResponder(
             self,
