@@ -74,20 +74,12 @@ class ZMQPublisherAgentBase(pub_sub_api.PublisherApi):
     def _connect(self):
         pass
 
-    def send_event(self, update, topic=None):
+    def send_data(self, data, topic):
         if not self.socket:
             self._connect()
 
-        if topic:
-            update.topic = topic
-        elif update.topic:
-            topic = update.topic.encode('utf-8')
-        else:
-            topic = db_common.SEND_ALL_TOPIC
-            update.topic = topic
-        data = pub_sub_api.pack_message(update.to_dict())
+        topic = topic.encode('utf-8')
         self.socket.send_multipart([topic, data])
-        LOG.debug("Sending %s", update)
 
     def close(self):
         if self.socket:

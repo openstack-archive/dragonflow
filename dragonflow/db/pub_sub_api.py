@@ -102,11 +102,29 @@ class PublisherApi(object):
         """
 
     @abc.abstractmethod
-    def send_event(self, update, topic):
+    def send_event(self, update, topic=None):
         """Publish the update
 
         :param update:  Encapsulates a Publisher update
         :type update:   DbUpdate object
+        :param topic:   topic to send event to
+        :type topic:    string
+        :returns:       None
+        """
+        if topic is None:
+            topic = update.topic or db_common.SEND_ALL_TOPIC
+
+        LOG.debug("Sending %s to ", update, topic)
+
+        data = pack_message(update.to_dict())
+        self.send_data(data, topic)
+
+    @abc.abstractmethod
+    def send_data(self, data, topic):
+        """Publish data to a topic
+
+        :param data:    Stream of data to publish
+        :type data:     bytes
         :param topic:   topic to send event to
         :type topic:    string
         :returns:       None
