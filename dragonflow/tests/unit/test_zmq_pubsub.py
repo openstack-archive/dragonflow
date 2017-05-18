@@ -67,7 +67,7 @@ class TestZMQPubSub(tests_base.BaseTestCase):
             self.ZMQPublisherAgent.socket.bind.assert_called_once()
             self.ZMQPublisherAgent.socket.send_multipart.assert_called_once()
             log_debug.assert_called()
-            self.assertEqual(2, log_debug.call_count)
+            self.assertEqual(1, log_debug.call_count)
             self.assertIsNone(result)
 
     def test_subscribe_success(self):
