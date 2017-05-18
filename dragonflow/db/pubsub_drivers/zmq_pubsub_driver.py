@@ -155,14 +155,7 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
             try:
                 eventlet.sleep(0)
                 [topic, data] = self.sub_socket.recv_multipart()
-                message = pub_sub_api.unpack_message(data)
-                self.db_changes_callback(
-                    message['table'],
-                    message['key'],
-                    message['action'],
-                    message['value'],
-                    message['topic'],
-                )
+                self._handle_incoming_event(data)
             except Exception as e:
                 LOG.warning(e)
                 self.sub_socket.close()

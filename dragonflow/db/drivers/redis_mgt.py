@@ -370,7 +370,7 @@ class RedisMgt(object):
                         update = db_common.DbUpdate('ha', 'nodes',
                                                     'set', nodes_json,
                                                     topic='redis')
-                        self.publisher.send_event(update)
+                        self.publisher.send_event(update, 'redis')
 
                     # process new nodes got
                     self.redis_failover_callback(nodes)
