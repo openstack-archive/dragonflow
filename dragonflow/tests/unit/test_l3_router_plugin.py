@@ -189,10 +189,14 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                                     'tenant_id': n['network']['tenant_id']}})
 
         self.assertEqual(n_const.FLOATINGIP_STATUS_DOWN, floatingip['status'])
-        notifier.notify_neutron_server(models.Floatingip.table_name,
-                                       floatingip['id'],
-                                       "update",
-                                       n_const.FLOATINGIP_STATUS_ACTIVE)
+        notifier.notify_neutron_server(
+            db_common.DbUpdate(
+                table=models.Floatingip.table_name,
+                key=floatingip['id'],
+                action="update",
+                value=n_const.FLOATINGIP_STATUS_ACTIVE,
+            ),
+        )
         floatingip = self.l3p.get_floatingip(self.context, floatingip['id'])
         self.assertEqual(n_const.FLOATINGIP_STATUS_ACTIVE,
                          floatingip['status'])
