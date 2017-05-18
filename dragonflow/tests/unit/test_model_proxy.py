@@ -9,6 +9,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import copy
+
 from jsonmodels import fields
 import mock
 
@@ -167,3 +169,13 @@ class TestObjectProxy(tests_base.BaseTestCase):
             db_store.update(model_test2)
             self.assertEqual(model_test2,
                              reffing_model.model_test.get_object())
+
+    def test_model_proxy_copy(self):
+        reffing_model = RefferingModel(id='2', model_test='1')
+        model_test_ref = reffing_model.model_test
+        model_test_ref_copy = copy.copy(model_test_ref)
+        model_test_ref_deepcopy = copy.deepcopy(model_test_ref)
+        self.assertEqual(model_test_ref, model_test_ref_copy)
+        self.assertEqual(model_test_ref, model_test_ref_deepcopy)
+        self.assertNotEqual(id(model_test_ref), id(model_test_ref_copy))
+        self.assertNotEqual(id(model_test_ref), id(model_test_ref_deepcopy))

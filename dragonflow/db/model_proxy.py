@@ -9,6 +9,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import copy
 import six
 
 from dragonflow._i18n import _
@@ -75,6 +76,12 @@ class _ModelProxyBase(object):
     def __getattr__(self, name):
         if name != '_obj':
             return getattr(self.get_object(), name)
+
+    def __copy__(self):
+        return self.__class__(self._id)
+
+    def __deepcopy__(self, memo):
+        return copy.copy(self)
 
 
 def _memoize_model_proxies(f):
