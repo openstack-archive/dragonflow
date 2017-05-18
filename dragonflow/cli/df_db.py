@@ -13,7 +13,6 @@
 import argparse
 import socket
 
-from neutron.common import config as common_config
 from oslo_serialization import jsonutils
 
 from dragonflow.cli import utils as cli_utils
@@ -270,10 +269,7 @@ def main():
     add_dropall_command(subparsers)
     args = parser.parse_args()
 
-    common_config.init(['--config-file',
-                        '/etc/neutron/dragonflow.ini',
-                        '--config-file',
-                        '/etc/neutron/neutron.conf'])
+    df_utils.config_parse()
     db_driver = df_utils.load_driver(
         cfg.CONF.df.nb_db_class,
         df_utils.DF_NB_DB_DRIVER_NAMESPACE)
