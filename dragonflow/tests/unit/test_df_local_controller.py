@@ -256,3 +256,18 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
         chassis_virt = core.Chassis(id=constants.DRAGONFLOW_VIRTUAL_PORT)
         self.assertFalse(self.controller._is_physical_chassis(chassis_virt))
+
+    @mock.patch.object(db_store2.DbStore2, 'get_one')
+    def test_delete_model_object(self, get_one):
+        obj = mock.MagicMock()
+        obj.emit_deleted = mock.MagicMock()
+
+        get_one.return_value = obj
+        self.controller.delete_model_object(obj)
+        self.assertTrue(obj.emit_deleted.called)
+
+        with mock.patch.object(df_local_controller.LOG, 'warning') as log_w:
+            get_one.return_value = None
+            self.controller.delete_model_object(obj)
+            self.assertFalse(obj.emit_deleted.called)
+            log_w.assert_called_once()

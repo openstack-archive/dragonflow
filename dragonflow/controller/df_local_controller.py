@@ -624,8 +624,11 @@ class DfLocalController(object):
     def delete_model_object(self, obj):
         # Retrieve full object (in case we only got Model(id='id'))
         obj = self.db_store2.get_one(obj)
-        obj.emit_deleted()
-        self.db_store2.delete(obj)
+        if obj:
+            obj.emit_deleted()
+            self.db_store2.delete(obj)
+        else:
+            LOG.warning("The object %s has been deleted before.", obj)
 
     def get_nb_api(self):
         return self.nb_api
