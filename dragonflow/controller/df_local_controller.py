@@ -27,6 +27,7 @@ from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import ryu_base_app
+from dragonflow.controller import service
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
@@ -46,18 +47,17 @@ LOG = log.getLogger(__name__)
 
 class DfLocalController(object):
 
-    def __init__(self, chassis_name):
+    def __init__(self, chassis_name, nb_api):
         self.db_store = db_store.DbStore()
         self.db_store2 = db_store2.get_instance()
 
         self.chassis_name = chassis_name
+        self.nb_api = nb_api
         self.ip = cfg.CONF.df.local_ip
         # Virtual tunnel port support multiple tunnel types together
         self.tunnel_types = cfg.CONF.df.tunnel_types
         self.sync_finished = False
-        self.nb_api = api_nb.NbApi.get_instance(False)
         self.vswitch_api = vswitch_impl.OvsApi(cfg.CONF.df.management_ip)
-
         self.neutron_notifier = None
         if cfg.CONF.df.enable_neutron_notifier:
             self.neutron_notifier = df_utils.load_driver(
@@ -79,8 +79,6 @@ class DfLocalController(object):
             cfg.CONF.df.enable_selective_topology_distribution
 
     def run(self):
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                               db_port=cfg.CONF.df.remote_db_port)
         self.vswitch_api.initialize(self.nb_api)
         if cfg.CONF.df.enable_neutron_notifier:
             self.neutron_notifier.initialize(nb_api=self.nb_api,
@@ -687,5 +685,7 @@ def main():
     common_config.init(sys.argv[1:])
     common_config.setup_logging()
     init_ryu_config()
-    controller = DfLocalController(chassis_name)
+    nb_api = api_nb.NbApi.get_instance(False)
+    controller = DfLocalController(chassis_name, nb_api)
+    service.register_service('df-local-controller', nb_api, controller)
     controller.run()
