@@ -44,7 +44,7 @@ class TestL2App(test_app_base.DFAppTestBase):
                 macs=['00:0b:0c:0d:0e:0f'],
                 ips=['10.0.0.11'],
                 lswitch='fake_local_switch1')
-        self.controller.update_lport(fake_local_port1)
+        self.controller.update(fake_local_port1)
         self.app.mod_flow.assert_any_call(
             inst=mock.ANY,
             command=self.app.ofproto.OFPFC_ADD,
@@ -59,7 +59,7 @@ class TestL2App(test_app_base.DFAppTestBase):
                 macs=['1a:0b:0c:0d:0e:0f'],
                 ips=['10.0.0.12'],
                 ofport=2)
-        self.controller.update_lport(fake_local_port2)
+        self.controller.update(fake_local_port2)
         self.app.mod_flow.assert_any_call(
             inst=mock.ANY,
             command=self.app.ofproto.OFPFC_MODIFY,
