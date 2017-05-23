@@ -26,6 +26,10 @@ if is_service_enabled df-metadata ; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,metadata_service_app.MetadataServiceApp"
 fi
 
+if is_service_enabled q-trunk ; then
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,trunk_app.TrunkApp"
+fi
+
 ENABLE_ACTIVE_DETECTION=${ENABLE_ACTIVE_DETECTION:-True}
 if [[ "$ENABLE_ACTIVE_DETECTION" == "True" ]]; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,active_port_detection_app.ActivePortDetectionApp"
@@ -155,6 +159,12 @@ function configure_qos {
     iniset /$Q_PLUGIN_CONF_FILE ml2 extension_drivers "$Q_ML2_PLUGIN_EXT_DRIVERS"
 }
 
+function configure_trunk {
+    Q_SERVICE_PLUGIN_CLASSES+=",trunk"
+    Q_ML2_PLUGIN_EXT_DRIVERS+=",trunk"
+    iniset /$Q_PLUGIN_CONF_FILE ml2 extension_drivers "$Q_ML2_PLUGIN_EXT_DRIVERS"
+}
+
 function configure_bgp {
     setup_develop $DEST/neutron-dynamic-routing
     sudo install -d -o $STACK_USER $NEUTRON_CONF_DIR/policy.d
@@ -194,6 +204,10 @@ function configure_df_plugin {
 
         if [[ "$DR_MODE" == "df-bgp" ]]; then
             configure_bgp
+        fi
+
+        if is_service_enabled q-trunk ; then
+            configure_trunk
         fi
 
         # NOTE(gsagie) needed for tempest

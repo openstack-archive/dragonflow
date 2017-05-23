@@ -30,6 +30,7 @@ from ryu.lib.packet import icmpv6
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
+from ryu.lib.packet import vlan
 
 from dragonflow.common import utils as d_utils
 from dragonflow import conf as cfg
@@ -889,6 +890,34 @@ class RyuICMPUnreachFilter(RyuICMPFilter):
             return False
 
         return True
+
+
+class RyuVLANTagFilter(object):
+    """
+    A filter that detects a VLAN tagged packet
+    :param tag:     The VLAN tag to detect. None for any
+    :type tag:      Integer values 0-4096, or None
+    """
+    def __init__(self, tag):
+        self.tag = tag
+
+    def __call__(self, buf):
+        pkt = packet.Packet(buf)
+        vlan_pkt = pkt.get_protocol(vlan.vlan)
+        if not vlan_pkt:
+            return False
+        if self.tag and self.tag != vlan_pkt.vid:
+            return False
+        return True
+
+
+class AndingFilter(object):
+    def __init__(self, *filters):
+        self.filters = filters
+
+    def __call__(self, buf):
+        """Return false if any filter returns false. Otherwise, return True"""
+        return not any((not filter_(buf) for filter_ in self.filters))
 
 
 class Action(object):

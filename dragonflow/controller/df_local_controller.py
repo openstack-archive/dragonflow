@@ -39,6 +39,7 @@ from dragonflow.db import models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
+from dragonflow.db.models import trunk
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -321,7 +322,8 @@ class DfLocalController(object):
         is_local = (chassis.id == self.chassis_name)
         lport.is_local = is_local
         if is_local:
-            lport.ofport = self.vswitch_api.get_port_ofport_by_id(lport.id)
+            if not lport.ofport:
+                lport.ofport = self.vswitch_api.get_port_ofport_by_id(lport.id)
         else:
             lport.peer_vtep_address = (chassis.id if lport.remote_vtep else
                                        chassis.ip)
@@ -357,9 +359,26 @@ class DfLocalController(object):
 
         return True
 
+    def _is_trunk_subport(self, lport):
+        try:
+            cps = self.db_store2.get_one(
+                    trunk.ChildPortSegmentation(port=lport.id),
+                    trunk.ChildPortSegmentation.get_index('lport_id'))
+            if cps:
+                LOG.debug('Found CPS: %r %r', cps, cps.parent)
+                lport.ofport = cps.parent.ofport
+                lport.chassis = self.chassis_name
+                return True
+        except Exception:
+            # Not found. Do nothing
+            LOG.exception('cps get_one')
+            pass
+        return False
+
     def update_lport(self, lport):
         chassis = lport.chassis
         if (not lport.remote_vtep and
+                not self._is_trunk_subport(lport) and
                 not self._is_physical_chassis(chassis)):
             LOG.debug(("Port %s has not been bound or it is a vPort"),
                       lport.id)
@@ -566,6 +585,12 @@ class DfLocalController(object):
     def _get_delete_handler(self, table):
         method_name = 'delete_{0}'.format(table)
         return getattr(self, method_name, self.delete_model_object)
+
+    def update_child_port_segmentation(self, obj):
+        self.update_model_object(obj)
+        child = obj.port.get_object()
+        if child:
+            self.update(child)
 
     def update(self, obj):
         handler = getattr(
