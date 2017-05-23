@@ -100,12 +100,13 @@ class Topology(object):
         self._is_closed = False
         self.neutron = neutron
         self.nb_api = nb_api
-        self.network = objects.NetworkTestObj(neutron, nb_api)
         self.external_network = objects.ExternalNetworkTestObj(neutron, nb_api)
         self.exist_external_net = False
         self.subnets = []
         self.routers = []
-        self.network.create()
+        network = objects.NetworkTestObj(neutron, nb_api)
+        network.create()
+        self.networks = [network]
         # Because it's hard to get the default security group in this
         # context, we create a fake one here to act like the default security
         # group when creating a port with no security group specified.
@@ -134,7 +135,8 @@ class Topology(object):
         for subnet in self.subnets:
             subnet.delete()
         self.subnets = []
-        self.network.close()
+        for network in self.networks:
+            network.close()
         if not self.exist_external_net:
             self.external_network.close()
         self.fake_default_security_group.close()
@@ -144,7 +146,16 @@ class Topology(object):
             self._is_closed = True
             self.delete()
 
-    def create_subnet(self, cidr=None, enable_dhcp=True):
+    def create_network(self):
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.networks.append(network)
+        network.create()
+        return network
+
+    def get_networks(self):
+        return self.networks
+
+    def create_subnet(self, network=None, cidr=None, enable_dhcp=True):
         """Create a subnet in this topology, with the given subnet address
         range.
         :param cidr: The subnet's address range, in form <IP>/<mask len>.
@@ -154,8 +165,10 @@ class Topology(object):
         :param enable_dhcp: Whether to enable dhcp for this subnet.
         :type cidr:  Boolean
         """
+        if not network:
+            network = self.networks[0]
         subnet_id = len(self.subnets)
-        subnet = Subnet(self, subnet_id, cidr, enable_dhcp)
+        subnet = Subnet(self, network, subnet_id, cidr, enable_dhcp)
         self.subnets.append(subnet)
         return subnet
 
@@ -190,11 +203,13 @@ class Topology(object):
 
 class Subnet(object):
     """Represent a single subnet."""
-    def __init__(self, topology, subnet_id, cidr, enable_dhcp):
+    def __init__(self, topology, network, subnet_id, cidr, enable_dhcp):
         """Create the subnet under the given topology, with the given ID, and
         the given address range.
         :param topology:  The topology to which the subnet belongs
         :type topology:   Topology
+        :param network:   The network to which the subnet belongs
+        :type network:    NetworkTestObj
         :param subnet_id: The subnet's ID in the topology. Created by topology
         :type subnet_id:  Number (Opaque)
         :param cidr:      The address range for this subnet. Format IP/MaskLen.
@@ -207,10 +222,11 @@ class Subnet(object):
         self.topology = topology
         self.subnet_id = subnet_id
         self.ports = []
+        self.network = network
         self.subnet = objects.SubnetTestObj(
             self.topology.neutron,
             self.topology.nb_api,
-            self.topology.network.network_id
+            self.network.network_id
         )
         if cidr:
             ip_version = self._get_ip_version(cidr)
@@ -218,7 +234,7 @@ class Subnet(object):
                 'cidr': cidr,
                 'enable_dhcp': enable_dhcp,
                 'ip_version': ip_version,
-                'network_id': topology.network.network_id
+                'network_id': self.network.network_id
             })
         else:
             self.subnet.create()
@@ -273,7 +289,7 @@ class Port(object):
         """
         self.subnet = subnet
         self.port_id = port_id
-        network_id = self.subnet.topology.network.network_id
+        network_id = self.subnet.network.network_id
         self.port = objects.PortTestObj(
             self.subnet.topology.neutron,
             self.subnet.topology.nb_api,
