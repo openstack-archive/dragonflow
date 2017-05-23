@@ -538,9 +538,14 @@ class DfLocalController(object):
 
     def delete_model_object(self, obj):
         # Retrieve full object (in case we only got Model(id='id'))
-        obj = self.db_store2.get_one(obj)
-        obj.emit_deleted()
-        self.db_store2.delete(obj)
+        org_obj = self.db_store2.get_one(obj)
+        if org_obj:
+            org_obj.emit_deleted()
+            self.db_store2.delete(org_obj)
+        else:
+            # NOTE(nick-ma-z): Ignore the null object because
+            # it has been deleted before.
+            pass
 
     def get_nb_api(self):
         return self.nb_api
