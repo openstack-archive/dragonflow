@@ -35,6 +35,7 @@ from dragonflow.neutron.common import constants as df_const
 from dragonflow.neutron.db.models import l2 as neutron_l2
 from dragonflow.neutron.db.models import secgroups as neutron_secgroups
 from dragonflow.neutron.services.qos.drivers import df_qos
+from dragonflow.neutron.services.trunk import driver as trunk_driver
 
 LOG = log.getLogger(__name__)
 
@@ -51,7 +52,8 @@ class DFMechDriver(api.MechanismDriver):
                                    'external-net',
                                    'port-security',
                                    'allowed-address-pairs',
-                                   'net-mtu']
+                                   'net-mtu',
+                                   'trunk']
 
     def initialize(self):
         LOG.info("Starting DFMechDriver")
@@ -63,6 +65,7 @@ class DFMechDriver(api.MechanismDriver):
         self.vif_type = portbindings.VIF_TYPE_OVS
         self._set_base_port_binding()
         self.port_status = n_const.PORT_STATUS_ACTIVE
+        self.trunk_driver = trunk_driver.DragonflowDriver()
         self.subscribe_registries()
         df_qos.register()
 

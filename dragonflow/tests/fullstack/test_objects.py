@@ -646,3 +646,31 @@ class SubnetPoolTestObj(object):
             return
         self.neutron.delete_subnetpool(self.subnetpool_id)
         self.closed = True
+
+
+class ChildPortSegmentationTestObj(object):
+    def __init__(self, neutron, nb_api):
+        self.neutron = neutron
+        self.nb_api = nb_api
+        self.closed = False
+        self.trunk = None
+
+    def create(self, parent_id, child_id, type_, id_):
+        if not self.trunk:
+            trunk_dict = {'port_id': parent_id}
+            result = self.neutron.create_trunk({'trunk': trunk_dict})
+            self.trunk = result['trunk']
+        self.subport = {'segmentation_type': type_,
+                        'segmentation_id': id_,
+                        'port_id': child_id}
+        self.neutron.trunk_add_subports(
+                self.trunk['id'], {'sub_ports': [self.subport]})
+        return self.subport
+
+    def close(self, keep_trunk=False):
+        self.neutron.trunk_remove_subports(
+               self.trunk['id'],
+               {'sub_ports': [self.subport],
+                'tenant_id': self.trunk['tenant_id']})
+        if not keep_trunk:
+            self.neutron.delete_trunk(self.trunk['id'])
