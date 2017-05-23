@@ -30,6 +30,7 @@ from ryu.lib.packet import icmpv6
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
+from ryu.lib.packet import vlan
 
 from dragonflow.common import utils as d_utils
 from dragonflow import conf as cfg
@@ -315,6 +316,14 @@ class Port(object):
         self.tap.delete()
         self.port.close()
 
+    def unbind(self):
+        """
+        Unbind this port. Delete the underlying tap device, and updated
+        Neutron's binding profile
+        """
+        self.tap.delete()
+        self.update({'binding:host_id': ''})
+
     @property
     def name(self):
         """Return the name of this port, i.e. the name of the underlying tap
@@ -335,6 +344,7 @@ class LogicalPortTap(object):
         self.lport = self.port.get_logical_port()
         self.tap = self._create_tap_device()
         self.is_blocking = True
+        self._is_deleted = False
 
     def _create_tap_device(self):
         flags = pytun.IFF_TAP | pytun.IFF_NO_PI
@@ -371,6 +381,9 @@ class LogicalPortTap(object):
         utils.execute(full_args, run_as_root=True, process_input=None)
 
     def delete(self):
+        if self._is_deleted:
+            return
+        self._is_deleted = True
         self._disconnect_tap_device_to_vswitch(self.integration_bridge,
                                                self.tap.name)
         LOG.info('Closing tap interface {} ({})'.format(
@@ -889,6 +902,34 @@ class RyuICMPUnreachFilter(RyuICMPFilter):
             return False
 
         return True
+
+
+class RyuVLANTagFilter(object):
+    """
+    A filter that detects a VLAN tagged packet
+    :param tag:     The VLAN tag to detect. None for any
+    :type tag:      Integer values 0-4096, or None
+    """
+    def __init__(self, tag):
+        self.tag = tag
+
+    def __call__(self, buf):
+        pkt = packet.Packet(buf)
+        vlan_pkt = pkt.get_protocol(vlan.vlan)
+        if not vlan_pkt:
+            return False
+        if self.tag and self.tag != vlan_pkt.vid:
+            return False
+        return True
+
+
+class AndingFilter(object):
+    def __init__(self, *filters):
+        self.filters = filters
+
+    def __call__(self, buf):
+        """Return false if any filter returns false. Otherwise, return True"""
+        return all(filter_(buf) for filter_ in self.filters)
 
 
 class Action(object):
