@@ -102,13 +102,13 @@ class PublisherApi(object):
         """
 
     @abc.abstractmethod
-    def send_event(self, update, topic):
-        """Publish the update
+    def _send_event(self, data, topic):
+        """Publish data to a topic
 
-        :param update:  Encapsulates a Publisher update
-        :type update:   DbUpdate object
+        :param data:    Stream of data to publish
+        :type data:     bytes
         :param topic:   topic to send event to
-        :type topic:    string
+        :type topic:    bytes
         :returns:       None
         """
 
@@ -124,6 +124,27 @@ class PublisherApi(object):
 
     def process_ha(self):
         pass
+
+
+class PublisherAgentBase(PublisherApi):
+    def send_event(self, update, topic=None):
+        """Publish the update
+
+        :param update:  Encapsulates a Publisher update
+        :type update:   DbUpdate object
+        :param topic:   topic to send event to
+        :type topic:    string
+        :returns:       None
+        """
+        if topic is None:
+            topic = update.topic or db_common.SEND_ALL_TOPIC
+
+        topic = topic.encode('utf8')
+
+        LOG.debug("Sending %s to %s", update, topic)
+
+        data = pack_message(update.to_dict())
+        self._send_event(data, topic)
 
 
 @six.add_metaclass(abc.ABCMeta)
