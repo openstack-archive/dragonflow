@@ -490,11 +490,11 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
         tunnel_key = int(netaddr.IPAddress(remote_addr) & ~0x80000000)
         lport = self._get_logical_port_by_tunnel_key(tunnel_key)
         headers = dict(req.headers)
-        tenant_id = lport.get_topic()
-        instance_id = lport.get_device_id()
-        ip = lport.get_ip()
+        tenant_id = lport.topic
+        instance_id = lport.device_id
+        ip = lport.ip
         headers.update({
-            'X-Forwarded-For': ip,
+            'X-Forwarded-For': str(ip),
             'X-Tenant-ID': tenant_id,
             'X-Instance-ID': instance_id,
             'X-Instance-ID-Signature': self._sign_instance_id(instance_id),
