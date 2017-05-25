@@ -295,7 +295,7 @@ class NbApi(object):
         try:
             migration_json = self.driver.get_key('lport_migration', port_id)
         except df_exceptions.DBKeyNotFound:
-            LOG.exception("migration for lport %s not found", port_id)
+            LOG.debug("migration for lport %s not found", port_id)
             return
 
         port_migration = jsonutils.loads(migration_json)
