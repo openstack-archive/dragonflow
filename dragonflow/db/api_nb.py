@@ -271,7 +271,7 @@ class NbApi(object):
         elif 'lport_migration' == table:
             if action == 'migrate':
                 lport = db_models.LogicalPort(value)
-                self.controller.update_migrating_flows(lport)
+                self.controller.update_migration_flows(lport)
         elif 'log' == action:
             message = ('Log event (Info): table: %(table)s key: %(key)s '
                        'action: %(action)s value: %(value)s')
