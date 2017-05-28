@@ -337,7 +337,12 @@ class DfLocalController(object):
                          'port': lport})
             return
 
-        lport.emit_updated()
+        original_lport = self.db_store2.get_one(lport)
+        self.db_store2.update(lport)
+        if original_lport is None:
+            lport.emit_created()
+        else:
+            lport.emit_updated(original_lport)
 
     def _set_lport_external_values(self, lport):
         lswitch = lport.lswitch
