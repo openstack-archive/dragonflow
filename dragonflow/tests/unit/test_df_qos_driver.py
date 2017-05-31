@@ -30,7 +30,9 @@ class TestDfQosDriver(test_mech_driver.DFMechanismDriverTestCase):
         return p
 
     def setUp(self):
-        self._extension_drivers.append('qos')
+        if 'qos' not in self._extension_drivers:
+            self._extension_drivers.append('qos')
+
         mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
                    side_effect=utils.empty_wrapper).start()
         mock.patch('dragonflow.neutron.services.qos.drivers.df_qos._driver',

@@ -11,7 +11,7 @@
 #    under the License.
 
 from neutron.extensions import allowedaddresspairs as addr_pair
-from neutron.extensions import extra_dhcp_opt
+from neutron_lib.api.definitions import extra_dhcp_opt
 from neutron_lib.api.definitions import port_security as psec
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
