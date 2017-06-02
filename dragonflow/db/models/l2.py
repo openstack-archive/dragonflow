@@ -16,7 +16,6 @@ from neutron_lib.api.definitions import portbindings
 from neutron_lib import constants as n_const
 from oslo_log import log
 
-from dragonflow.db import db_store2
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
 from dragonflow.db.models import core
@@ -160,32 +159,31 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
                 data[name] = getattr(self, name)
         return str(data)
 
-    def emit_updated(self):
+    def emit_created(self):
         ofport = getattr(self, 'ofport', None)
         if not ofport:
             return
         is_local = getattr(self, 'is_local', None)
-        db_store_inst = db_store2.get_instance()
-        original_lport = db_store_inst.get_one(self)
-        # TODO(oanson) This should be done in df_local_controller, not here.
-        # See Dragonflow bug/1690775
-        db_store_inst.update(self)
-        if original_lport is None:
-            LOG.info("Adding new logical port = %s", self)
-            if is_local:
-                self.emit_local_created()
-            else:
-                self.emit_remote_created()
+        LOG.info("Adding new logical port = %s", self)
+        if is_local:
+            self.emit_local_created()
         else:
-            LOG.info("Updating %(location)s logical port = %(port)s, "
-                     "original port = %(original_port)s",
-                     {'port': self,
-                      'original_port': original_lport,
-                      'location': 'local' if is_local else 'remote'})
-            if is_local:
-                self.emit_local_updated(original_lport)
-            else:
-                self.emit_remote_updated(original_lport)
+            self.emit_remote_created()
+
+    def emit_updated(self, original_lport):
+        ofport = getattr(self, 'ofport', None)
+        if not ofport:
+            return
+        is_local = getattr(self, 'is_local', None)
+        LOG.info("Updating %(location)s logical port = %(port)s, "
+                 "original port = %(original_port)s",
+                 {'port': self,
+                  'original_port': original_lport,
+                  'location': 'local' if is_local else 'remote'})
+        if is_local:
+            self.emit_local_updated(original_lport)
+        else:
+            self.emit_remote_updated(original_lport)
 
     def emit_deleted(self):
         is_local = getattr(self, 'is_local', None)
