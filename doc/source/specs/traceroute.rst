@@ -41,9 +41,9 @@ For each router, that will require it to decrease TTL of IP packets when it
 routes them. Meanwhile, that will also require each router to discard the
 original IP packet and reply an ICMP Time Exceeded message, when the TTL is
 invalid. An invalid TTL means its value is not bigger than zero. The details
-are defined at RFC1812[#]_.
+are defined at RFC1812 [RFC1812]_.
 
-.. [#] https://tools.ietf.org/html/rfc1812
+.. [RFC1812] https://tools.ietf.org/html/rfc1812
 
 There are 3 kinds of implementations of traceroute. They are based on UDP, TCP
 and ICMP respectively. Different implementations send different IP packets to
@@ -58,21 +58,21 @@ router ports. If the destination of traceroute is virtual router ports, they
 should response with ICMP Destination Unreachable Message.
 
 The ICMP error message should contain at least 28 bytes of original datagram's
-data, according to RFC792[#]_. And traceroute depends on the original
+data, according to RFC792 [RFC792]_. And traceroute depends on the original
 datagram's data to match the detecting IP packets. So the virtual routers in
 Dragonflow should also copy the data to the ICMP messages mentioned above.
 
-.. [#] https://tools.ietf.org/html/rfc792
+.. [RFC792] https://tools.ietf.org/html/rfc792
 
 The virtual routers in Dragonflow are also NAT(network address translation)
 devices. The NAT here refers to one-one NAT, which is floating IP in
 Dragonflow. As mentioned above, the ICMP error message will contain original
-datagram's data. It is an embedded packet. According to RFC5508[#]_, NAT
+datagram's data. It is an embedded packet. According to RFC5508 [RFC5508]_, NAT
 devices should also revert the IP of embedded packet. Or else, it will be
 an invalid ICMP packet. Since the header embedded packet will change, its
 checksum will be re-calculated when encoded.
 
-.. [#] https://tools.ietf.org/html/rfc5508
+.. [RFC5508] https://tools.ietf.org/html/rfc5508
 
 A valid ICMP Time Exceeded message should looks like:
 
@@ -88,11 +88,11 @@ Dragonflow controller impact
 
 The virtual switch should be configured to packet-in invalid TTL packets. So
 that the Dragonflow controller applications can handle the TTL invalid packets
-accordingly. This feature is available in OpenFlow 1.3[#]_. It is also
+accordingly. This feature is available in OpenFlow 1.3 [OF13]_. It is also
 available in OpenFlow 1.2 with different configuration. To make things simple,
 this spec will not cover OpenFlow 1.2.
 
-.. [#] https://www.opennetworking.org/images/stories/downloads/sdn-resources/onf-specifications/openflow/openflow-spec-v1.3.0.pdf
+.. [OF13] https://www.opennetworking.org/images/stories/downloads/sdn-resources/onf-specifications/openflow/openflow-spec-v1.3.0.pdf
 
 Dragonflow Applications Impact
 ------------------------------
