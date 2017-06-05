@@ -2,8 +2,8 @@
 Team and repository tags
 ========================
 
-.. image:: http://governance.openstack.org/badges/dragonflow.svg
-    :target: http://governance.openstack.org/reference/tags/index.html
+.. image:: https://governance.openstack.org/badges/dragonflow.svg
+    :target: https://governance.openstack.org/reference/tags/index.html
 
 .. Change things from this point on
 
@@ -48,7 +48,7 @@ Overview and details are available in the `Distributed Dragonflow Section`_
     :align: center
 
 Mitaka Version Features
-========================
+=======================
 
 * L2 core API
 
@@ -85,12 +85,12 @@ Mitaka Version Features
     Tenant Based Selective data distribution to the compute nodes
 
 Experimental Mitaka Features
-=============================
+============================
 
     * Local Controller Reliability
 
 In progress
-============
+===========
 
   * IGMP Distributed application
   * Allowed Address Pairs
@@ -104,7 +104,7 @@ In progress
   * Smart broadcast/multicast
 
 In planning
-=============
+===========
 
   * Distributed Load Balancing (East/West)
   * DNS service
