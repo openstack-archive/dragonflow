@@ -23,6 +23,7 @@ from ryu.ofproto import inet
 
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants
+from dragonflow.db.models import active_port
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
 from dragonflow.tests.common import app_testing_objects
@@ -2036,9 +2037,10 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
         return True
 
     def _if_the_expected_active_port_exists(self):
-        active_ports = self.nb_api.get_active_ports()
-        for active_port in active_ports:
-            if self._is_expected_active_port(active_port):
+        active_ports = self.nb_api.get_all(
+                active_port.AllowedAddressPairsActivePort)
+        for port in active_ports:
+            if self._is_expected_active_port(port):
                 return True
         return False
 

@@ -27,7 +27,6 @@ class TenantDbStore(object):
         self.lock = threading.Lock()
         self._table_name_mapping = {
             models.Floatingip.table_name: self.floatingips,
-            models.AllowedAddressPairsActivePort.table_name: self.activeports
         }
 
     def _get_table_by_name(self, table_name):
@@ -126,32 +125,6 @@ class DbStore(object):
 
     def get_floatingips(self, topic=None):
         return self.values(models.Floatingip.table_name, topic)
-
-    def get_active_port(self, active_port_key, topic=None):
-        return self.get(models.AllowedAddressPairsActivePort.table_name,
-                        active_port_key, topic)
-
-    def update_active_port(self, active_port_key, active_port, topic=None):
-        self.set(models.AllowedAddressPairsActivePort.table_name,
-                 active_port_key, active_port, topic)
-
-    def delete_active_port(self, active_port_key, topic=None):
-        self.delete(models.AllowedAddressPairsActivePort.table_name,
-                    active_port_key, topic)
-
-    def get_active_ports(self, topic=None):
-        return self.values(models.AllowedAddressPairsActivePort.table_name,
-                           topic)
-
-    def get_active_port_keys(self, topic=None):
-        return self.keys(models.AllowedAddressPairsActivePort.table_name,
-                         topic)
-
-    def get_active_ports_by_network_id(self, network_id, topic=None):
-        activeports = self.values(
-            models.AllowedAddressPairsActivePort.table_name, topic)
-        return [activeport for activeport in activeports
-                if activeport.get_network_id() == network_id]
 
     def clear(self, topic=None):
         if not topic:
