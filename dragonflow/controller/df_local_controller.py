@@ -260,9 +260,6 @@ class DfLocalController(object):
                      lport)
             return
 
-        if not self._set_lport_external_values(lport):
-            return
-
         if dest_chassis == self.chassis_name:
             # destination node
             ofport = self.vswitch_api.get_port_ofport_by_id(port_id)
@@ -309,8 +306,6 @@ class DfLocalController(object):
     # REVISIT(oanson) The special handling of logical port process should be
     # removed from DF controller. (bug/1690775)
     def _logical_port_process(self, lport):
-        if not self._set_lport_external_values(lport):
-            return
         lswitch = lport.lswitch
         if not lswitch:
             LOG.warning("Could not find lswitch for lport: %s",
@@ -344,14 +339,6 @@ class DfLocalController(object):
             lport.emit_created()
         else:
             lport.emit_updated(original_lport)
-
-    def _set_lport_external_values(self, lport):
-        lswitch = lport.lswitch
-        if not lswitch:
-            LOG.warning("Could not find lswitch for lport: %s", lport.id)
-            return False
-        lport.local_network_id = lswitch.unique_key
-        return True
 
     def update_lport(self, lport):
         chassis = lport.chassis

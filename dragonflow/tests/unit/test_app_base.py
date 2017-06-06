@@ -163,7 +163,6 @@ def make_fake_port(id=None,
                    security_groups=['fake_security_group_id1'],
                    device_id='fake_device_id',
                    ofport=1,
-                   local_network_id=11,
                    extra_dhcp_opts=None):
     fake_port = l2.LogicalPort(
         id="%s_%s" % (name, ofport) if not id else id,
@@ -186,7 +185,6 @@ def make_fake_port(id=None,
     )
     fake_port.is_local = is_local
     fake_port.ofport = ofport
-    fake_port.local_network_id = local_network_id
     fake_port.tunnel_key = tunnel_key
     return fake_port
 
@@ -228,8 +226,7 @@ fake_local_port2 = make_fake_local_port(
     tunnel_key=3,
     id='fake_port2',
     ofport=3,
-    subnets=['fake_subnet1'],
-    local_network_id=1)
+    subnets=['fake_subnet1'])
 
 
 fake_ovs_port2 = ovs.OvsPort(
@@ -257,8 +254,7 @@ fake_remote_port1 = make_fake_remote_port(
     chassis='fake_host2',
     unique_key=5,
     ofport=1,
-    subnets=['fake_subnet1'],
-    local_network_id=1)
+    subnets=['fake_subnet1'])
 
 
 fake_chassis1 = core.Chassis(

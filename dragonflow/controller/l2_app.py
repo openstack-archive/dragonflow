@@ -104,7 +104,7 @@ class L2App(df_base_app.DFlowApp):
         if not self.is_install_l2_responder:
             return
         ips = lport.ips
-        network_id = lport.local_network_id
+        network_id = lport.lswitch.unique_key
         mac = lport.mac
         for ip in ips:
             ip_version = ip.version
@@ -119,7 +119,7 @@ class L2App(df_base_app.DFlowApp):
         if not self.is_install_l2_responder:
             return
         ips = lport.ips
-        network_id = lport.local_network_id
+        network_id = lport.lswitch.unique_key
         for ip in ips:
             ip_version = ip.version
             if ip_version == common_const.IP_VERSION_4:
@@ -140,7 +140,7 @@ class L2App(df_base_app.DFlowApp):
 
     def _remove_port(self, lport):
         mac = lport.mac
-        network_id = lport.local_network_id
+        network_id = lport.lswitch.unique_key
         device_owner = lport.device_owner
 
         # Remove destination classifier for port
@@ -152,6 +152,7 @@ class L2App(df_base_app.DFlowApp):
     def _remove_local_port_pipeline_interface(self, lport):
         parser = self.parser
         ofproto = self.ofproto
+        local_network_id = lport.lswitch.unique_key
 
         # Remove egress classifier for port
         match = parser.OFPMatch(reg7=lport.unique_key)
@@ -163,7 +164,7 @@ class L2App(df_base_app.DFlowApp):
 
         # Remove ingress destination lookup for port
         match = parser.OFPMatch()
-        match.set_metadata(lport.local_network_id)
+        match.set_metadata(local_network_id)
         match.set_dl_dst(haddr_to_bin(lport.mac))
         self.mod_flow(
             table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE,
@@ -175,7 +176,7 @@ class L2App(df_base_app.DFlowApp):
         self._del_multicast_broadcast_handling_for_local(
             lport.id,
             lport.topic,
-            lport.local_network_id)
+            local_network_id)
 
     def _del_multicast_broadcast_handling_for_local(self,
                                                     lport_id,
@@ -304,7 +305,7 @@ class L2App(df_base_app.DFlowApp):
 
     def _add_port(self, lport):
         mac = lport.mac
-        network_id = lport.local_network_id
+        network_id = lport.lswitch.unique_key
         port_key = lport.unique_key
 
         # REVISIT(xiaohhui): This check might be removed when l3-agent is
@@ -322,7 +323,7 @@ class L2App(df_base_app.DFlowApp):
         lport_id = lport.id
         mac = lport.mac
         port_key = lport.unique_key
-        network_id = lport.local_network_id
+        network_id = lport.lswitch.unique_key
         topic = lport.topic
 
         parser = self.parser
