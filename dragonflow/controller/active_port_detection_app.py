@@ -25,6 +25,7 @@ from ryu.ofproto import ether
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as controller_const
 from dragonflow.controller import df_base_app
+from dragonflow.db.models import active_port
 from dragonflow.db.models import l2
 
 LOG = log.getLogger(__name__)
@@ -64,10 +65,16 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             arp_pkt.src_ip == arp_pkt.dst_ip) or \
                 arp_pkt.opcode == arp.ARP_REPLY:
             match = msg.match
-            in_port = match.get('in_port', None)
-            if in_port:
-                self._update_active_port_in_db(
-                    arp_pkt.src_ip, arp_pkt.src_mac, in_port)
+            unique_key = match.get('reg6')
+            if not unique_key:
+                return
+            lport = self.db_store2.get_one(
+                        l2.LogicalPort(unique_key=unique_key),
+                        index=l2.LogicalPort.get_index('unique_key'))
+            if not lport:
+                return
+            self._update_active_port_in_db(
+                arp_pkt.src_ip, arp_pkt.src_mac, lport)
 
     def _get_ips_in_allowed_address_pairs(self, lport):
         ips = set()
@@ -161,59 +168,42 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             match=gratuitous_arp_match,
             command=ofproto.OFPFC_DELETE)
 
-    def _if_old_active_port_need_update(self, old_port, ip, mac, found_lport):
-        if (old_port.get_network_id() == found_lport.lswitch.id and
-           old_port.get_ip() == ip and
-           old_port.get_detected_mac() == mac and
-           old_port.get_topic() == found_lport.topic and
-           old_port.get_detected_lport_id() == found_lport.id):
-            return False
+    def _get_active_port_id(self, lswitch, ip_str):
+        return lswitch.id + ip_str
 
-        return True
-
-    def _update_active_port_in_db(self, ip, mac, ofport):
-        lports = self.db_store2.get_all(l2.LogicalPort)
-        found_lport = None
-        for lport in lports:
-            if ofport == lport.ofport:
-                found_lport = lport
-                break
-        if found_lport is None:
-            LOG.info("There is no logical port matched this "
-                     "ofport(%s).", ofport)
-            return
-
-        lswitch = found_lport.lswitch
-        topic = found_lport.topic
-        found_lport_id = found_lport.id
-        key = lswitch.id + ip
-        old_active_port = self.db_store.get_active_port(key)
-        if (not old_active_port or self._if_old_active_port_need_update(
-                old_active_port, ip, mac, found_lport)):
-            LOG.info("Detected new active node. ip=%(ip)s, "
+    def _update_active_port_in_db(self, ip_str, mac, lport):
+        lswitch = lport.lswitch
+        topic = lport.topic
+        found_lport_id = lport.id
+        key = self._get_active_port_id(lswitch, ip_str)
+        old_active_port = self.db_store2.get_one(
+                active_port.AllowedAddressPairsActivePort(id=key))
+        new_active_port = active_port.AllowedAddressPairsActivePort(
+            id=key,
+            topic=topic,
+            network=lswitch.id,
+            ip=ip_str,
+            detected_mac=mac,
+            detected_lport=found_lport_id
+        )
+        if not old_active_port:
+            LOG.info("Detected new active node. ip=%(ip_str)s, "
                      "mac=%(mac)s, lport_id=%(lport_id)s",
-                     {'ip': ip, 'mac': mac, 'lport_id': found_lport_id})
-            if old_active_port:
-                self.nb_api.update_active_port(
-                    id=key,
-                    topic=topic,
-                    detected_mac=mac,
-                    detected_lport_id=found_lport_id)
-            else:
-                self.nb_api.create_active_port(
-                    id=key,
-                    topic=topic,
-                    network_id=lswitch.id,
-                    ip=ip,
-                    detected_mac=mac,
-                    detected_lport_id=found_lport_id)
+                     {'ip': ip_str, 'mac': mac, 'lport_id': found_lport_id})
+            self.nb_api.create(new_active_port)
+        elif old_active_port != new_active_port:
+            LOG.info("Detected update in active node. ip=%(ip_str)s, "
+                     "mac=%(mac)s, lport_id=%(lport_id)s",
+                     {'ip': ip_str, 'mac': mac, 'lport_id': found_lport_id})
+            self.nb_api.update(new_active_port)
 
-    def _remove_active_port_from_db_by_lport(self, network_id, ip, lport):
-        key = network_id + ip
-        old_active_port = self.db_store.get_active_port(key)
+    def _remove_active_port_from_db_by_lport(self, lswitch, ip_str, lport):
+        key = self._get_active_port_id(lswitch, ip_str)
+        old_active_port = self.db_store2.get_one(
+                active_port.AllowedAddressPairsActivePort(id=key))
         if (old_active_port and
-                old_active_port.get_detected_lport_id() == lport.id):
-            self.nb_api.delete_active_port(key, lport.topic)
+                old_active_port.detected_lport.id == lport.id):
+            self.nb_api.delete(old_active_port)
 
     def _add_target_ip(self, ip, lport):
         # install flows which send the arp reply or gratuitous arp to
@@ -243,7 +233,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
         # Try to remove the active node detected from this lport and used
         # this ip from dragonflow DB
-        self._remove_active_port_from_db_by_lport(lport.lswitch.id,
+        self._remove_active_port_from_db_by_lport(lport.lswitch,
                                                   str(ip), lport)
 
     def _get_detect_items(self):
