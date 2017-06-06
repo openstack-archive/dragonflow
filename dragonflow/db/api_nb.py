@@ -255,7 +255,7 @@ class NbApi(object):
             })
         elif table == 'lport_migration' and action == 'migrate':
             lport = db_models.LogicalPort(value)
-            self.controller.update_migrating_flows(lport)
+            self.controller.update_migration_flows(lport)
         elif table is not None:
             try:
                 model_class = mf.get_model(table)
