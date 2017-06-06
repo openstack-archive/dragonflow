@@ -33,7 +33,7 @@ class TunnelingApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
     def _add_local_port(self, lport):
-        network_type = lport.network_type
+        network_type = lport.lswitch.network_type
         if network_type not in self.tunnel_types:
             LOG.warning("added unsupported network %(net_type)s lport",
                         {'net_type': network_type})
@@ -56,7 +56,7 @@ class TunnelingApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
     def _remove_local_port(self, lport):
-        network_type = lport.network_type
+        network_type = lport.lswitch.network_type
         if network_type not in self.tunnel_types:
             LOG.warning("removed unsupported network %(net_type)s lport",
                         {'net_type': network_type})
@@ -107,7 +107,7 @@ class TunnelingApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_CREATED)
     def _add_remote_port(self, lport):
-        network_type = lport.network_type
+        network_type = lport.lswitch.network_type
         if network_type not in self.tunnel_types:
             return
         segmentation_id = lport.lswitch.segmentation_id
@@ -126,7 +126,7 @@ class TunnelingApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_DELETED)
     def remove_remote_port(self, lport):
-        network_type = lport.network_type
+        network_type = lport.lswitch.network_type
         if network_type not in self.tunnel_types:
             return
         self._remove_egress_dispatch_flow(lport)

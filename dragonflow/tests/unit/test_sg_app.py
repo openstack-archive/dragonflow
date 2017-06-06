@@ -78,7 +78,6 @@ class TestSGApp(test_app_base.DFAppTestBase):
         )
         fake_local_port.is_local = True
         fake_local_port.ofport = 20
-        fake_local_port.network_type = 'vxlan'
         fake_local_port.local_network_id = 1
         return fake_local_port
 

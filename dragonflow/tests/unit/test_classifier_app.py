@@ -38,7 +38,6 @@ class TestClassifierApp(test_app_base.DFAppTestBase):
 
     def test_classifier_for_vlan_port(self):
         fake_local_vlan_port = make_fake_local_port(
-            network_type='vlan',
             lswitch='fake_vlan_switch1')
         port_key = fake_local_vlan_port.unique_key
         match = self.app.parser.OFPMatch(reg7=port_key)

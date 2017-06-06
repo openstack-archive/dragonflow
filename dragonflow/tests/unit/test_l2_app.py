@@ -40,7 +40,6 @@ class TestL2App(test_app_base.DFAppTestBase):
 
     def test_multicast_local_port(self):
         fake_local_port1 = test_app_base.make_fake_local_port(
-                network_type='local',
                 macs=['00:0b:0c:0d:0e:0f'],
                 ips=['10.0.0.11'],
                 lswitch='fake_local_switch1')
@@ -54,7 +53,6 @@ class TestL2App(test_app_base.DFAppTestBase):
         self.app.mod_flow.reset_mock()
 
         fake_local_port2 = test_app_base.make_fake_local_port(
-                network_type='local',
                 lswitch='fake_local_switch1',
                 macs=['1a:0b:0c:0d:0e:0f'],
                 ips=['10.0.0.12'],

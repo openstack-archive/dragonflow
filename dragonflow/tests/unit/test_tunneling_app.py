@@ -42,7 +42,6 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
 
     def test_tunneling_for_local_port(self):
         fake_local_gre_port1 = make_fake_local_port(
-                network_type='gre',
                 lswitch='fake_gre_switch1',
                 ofport=11,
                 local_network_id=21)
@@ -62,7 +61,6 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
         self.app.mod_flow.reset_mock()
 
         fake_local_gre_port2 = make_fake_local_port(
-                network_type='gre',
                 lswitch='fake_gre_switch1',
                 macs=['1a:0b:0c:0d:0e:0f'],
                 ips=['10.0.0.12'],
@@ -74,7 +72,6 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
 
     def test_multicast_flow_for_remote_port(self):
         fake_remote_gre_port1 = make_fake_remote_port(
-                network_type='gre',
                 lswitch='fake_gre_switch1',
                 chassis='fake_host2',
                 local_network_id=21,
@@ -103,7 +100,6 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
         self.app.mod_flow.reset_mock()
 
         fake_remote_gre_port2 = make_fake_remote_port(
-                network_type='gre',
                 lswitch='fake_gre_switch1',
                 chassis='fake_host2',
                 local_network_id=21,

@@ -285,7 +285,7 @@ class DfLocalController(object):
 
         # Here It could be either source node or other nodes, so
         # get ofport from chassis.
-        ofport = self.vswitch_api.get_vtp_ofport(lport.network_type)
+        ofport = self.vswitch_api.get_vtp_ofport(lport.lswitch.network_type)
         lport.ofport = ofport
         remote_chassis = self.db_store2.get_one(core.Chassis(id=dest_chassis))
         if not remote_chassis:
@@ -325,7 +325,8 @@ class DfLocalController(object):
         else:
             lport.peer_vtep_address = (chassis.id if lport.remote_vtep else
                                        chassis.ip)
-            lport.ofport = self.vswitch_api.get_vtp_ofport(lport.network_type)
+            lport.ofport = self.vswitch_api.get_vtp_ofport(
+                    lswitch.network_type)
 
         if not lport.ofport:
             # The tunnel port online event will update the remote logical
@@ -350,10 +351,6 @@ class DfLocalController(object):
             LOG.warning("Could not find lswitch for lport: %s", lport.id)
             return False
         lport.local_network_id = lswitch.unique_key
-        network_type = lswitch.network_type
-
-        lport.network_type = network_type
-
         return True
 
     def update_lport(self, lport):
