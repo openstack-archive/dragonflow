@@ -294,47 +294,6 @@ class NbApi(object):
         self._send_db_change_event('lport_migration', port_id, 'migrate',
                                    lport_json, topic=lport.lport['topic'])
 
-    def create_active_port(self, id, topic, **columns):
-        active_port = {'topic': topic}
-        for col, val in columns.items():
-            active_port[col] = val
-        active_port_json = jsonutils.dumps(active_port)
-        self.driver.create_key(
-            db_models.AllowedAddressPairsActivePort.table_name, id,
-            active_port_json, topic)
-        self._send_db_change_event(
-            db_models.AllowedAddressPairsActivePort.table_name, id, 'create',
-            active_port_json, topic)
-
-    def update_active_port(self, id, topic, **columns):
-        active_port_json = self.driver.get_key(
-            db_models.AllowedAddressPairsActivePort.table_name, id, topic)
-        active_port = jsonutils.loads(active_port_json)
-        active_port['topic'] = topic
-        for col, val in columns.items():
-            active_port[col] = val
-        active_port_json = jsonutils.dumps(active_port)
-        self.driver.set_key(db_models.AllowedAddressPairsActivePort.table_name,
-                            id, active_port_json, topic)
-        self._send_db_change_event(
-            db_models.AllowedAddressPairsActivePort.table_name, id, 'set',
-            active_port_json, topic)
-
-    def delete_active_port(self, id, topic):
-        self.driver.delete_key(
-            db_models.AllowedAddressPairsActivePort.table_name, id, topic)
-        self._send_db_change_event(
-            db_models.AllowedAddressPairsActivePort.table_name, id, 'delete',
-            id, topic)
-
-    def get_active_ports(self, topic=None):
-        res = []
-        for active_port_json in self.driver.get_all_entries(
-                db_models.AllowedAddressPairsActivePort.table_name, topic):
-            res.append(db_models.AllowedAddressPairsActivePort(
-                active_port_json))
-        return res
-
     def create(self, obj, skip_send_event=False):
         """Create the provided object in the database and publish an event
            about its creation.

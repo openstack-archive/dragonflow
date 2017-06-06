@@ -16,7 +16,6 @@ from oslo_config import cfg
 from dragonflow.common import constants
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
-from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db import model_proxy
 from dragonflow.db.models import core
@@ -52,51 +51,6 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.controller.delete(chassis)
         mock_delete_lport.assert_called_once_with(lport)
         mock_db_store2_delete.assert_called_once_with(chassis)
-
-    @mock.patch.object(ryu_base_app.RyuDFAdapter,
-                       'notify_update_active_port')
-    @mock.patch.object(db_store.DbStore, 'update_active_port')
-    @mock.patch.object(db_store2.DbStore2, 'get_one')
-    @mock.patch.object(db_store.DbStore, 'get_active_port')
-    def test_update_activeport(self, mock_get_active, mock_get_one,
-                               mock_update, mock_notify):
-        active_port = mock.Mock()
-        active_port.get_id.return_value = 'fake_id'
-        active_port.get_topic.return_value = 'fake_topic'
-        active_port.get_detected_lport_id.return_value = 'fake_lport_id'
-        mock_get_active.return_value = None
-        mock_update.return_value = None
-
-        mock_get_one.return_value = None
-        self.assertIsNone(self.controller.update_activeport(active_port))
-        mock_notify.assert_not_called()
-
-        lport = mock.Mock()
-        mock_get_one.return_value = lport
-        self.assertIsNone(self.controller.update_activeport(active_port))
-        mock_notify.assert_called_once_with(active_port, None)
-
-    @mock.patch.object(ryu_base_app.RyuDFAdapter,
-                       'notify_remove_active_port')
-    @mock.patch.object(db_store.DbStore, 'delete_active_port')
-    @mock.patch.object(db_store2.DbStore2, 'get_one')
-    @mock.patch.object(db_store.DbStore, 'get_active_port')
-    def test_delete_activeport(self, mock_get_active, mock_get_one,
-                               mock_delete, mock_notify):
-        active_port = mock.Mock()
-        active_port.get_topic.return_value = 'fake_topic'
-        active_port.get_detected_lport_id.return_value = 'fake_lport_id'
-        mock_get_active.return_value = None
-
-        self.assertIsNone(self.controller.delete_activeport('fake_id'))
-        mock_notify.assert_not_called()
-
-        mock_get_active.return_value = active_port
-        mock_delete.return_value = None
-        lport = mock.Mock()
-        mock_get_one.return_value = lport
-        self.assertIsNone(self.controller.delete_activeport('fake_id'))
-        mock_notify.assert_called_once_with(active_port)
 
     def test_register_chassis(self):
         cfg.CONF.set_override('external_host_ip',
