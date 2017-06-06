@@ -70,6 +70,7 @@ Specs
     vlan_aware_vms
     fwaas
     bgp_dynamic_routing
+    tunneling_app
 
 Templates
 ---------
