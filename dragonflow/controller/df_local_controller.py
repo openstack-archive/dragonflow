@@ -111,20 +111,6 @@ class DfLocalController(object):
         self._register_models()
         self.db_sync_loop()
 
-    def _register_legacy_model_refreshers(self):
-        refreshers = [
-            df_db_objects_refresh.DfObjectRefresher(
-                'Active Ports',
-                self.db_store.get_active_port_keys,
-                self.nb_api.get_active_ports,
-                self.update_activeport,
-                self.delete_activeport,
-            ),
-        ]
-
-        for refresher in refreshers:
-            df_db_objects_refresh.add_refresher(refresher)
-
     def _register_models(self):
         for model in model_framework.iter_models_by_dependency_order():
             # FIXME (dimak) do not register topicless models for now
@@ -149,8 +135,6 @@ class DfLocalController(object):
                             self,
                         ),
                     )
-
-        self._register_legacy_model_refreshers()
 
     def db_sync_loop(self):
         while True:
@@ -334,35 +318,6 @@ class DfLocalController(object):
 
     def ovs_sync_started(self):
         self.open_flow_app.notify_ovs_sync_started()
-
-    def update_activeport(self, active_port):
-        old_active_port = self.db_store.get_active_port(active_port.get_id())
-        lean_lport = l2.LogicalPort(id=active_port.get_detected_lport_id(),
-                                    topic=active_port.get_topic())
-        lport = self.db_store2.get_one(lean_lport)
-        LOG.info("Active port updated. Active port = %(new)s, "
-                 "old active port = %(old)s",
-                 {'new': active_port, 'old': old_active_port})
-        self.db_store.update_active_port(active_port.get_id(),
-                                         active_port)
-        if lport:
-            self.open_flow_app.notify_update_active_port(active_port,
-                                                         old_active_port)
-        else:
-            LOG.info("The logical port is not ready for the "
-                     "active node: %s", active_port)
-
-    def delete_activeport(self, active_port_key):
-        active_port = self.db_store.get_active_port(active_port_key)
-        if active_port is not None:
-            self.db_store.delete_active_port(active_port_key)
-            LOG.info("Active node was removed. Active node = %s",
-                     active_port)
-            lean_lport = l2.LogicalPort(id=active_port.get_detected_lport_id(),
-                                        topic=active_port.get_topic())
-            lport = self.db_store2.get_one(lean_lport)
-            if lport is not None:
-                self.open_flow_app.notify_remove_active_port(active_port)
 
     def _is_newer(self, obj, cached_obj):
         '''Check wether obj is newer than cached_on.

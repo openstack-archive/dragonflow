@@ -18,7 +18,6 @@ import eventlet
 from jsonmodels import errors
 from oslo_config import cfg
 from oslo_log import log
-from oslo_serialization import jsonutils
 from oslo_utils import excutils
 
 import dragonflow.common.exceptions as df_exceptions
@@ -26,7 +25,6 @@ from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import model_framework as mf
 from dragonflow.db import model_proxy as mproxy
-from dragonflow.db import models as db_models
 from dragonflow.db.models import core
 
 
@@ -266,47 +264,6 @@ class NbApi(object):
                 else:
                     obj = model_class.from_json(value)
                     self.controller.update(obj)
-
-    def create_active_port(self, id, topic, **columns):
-        active_port = {'topic': topic}
-        for col, val in columns.items():
-            active_port[col] = val
-        active_port_json = jsonutils.dumps(active_port)
-        self.driver.create_key(
-            db_models.AllowedAddressPairsActivePort.table_name, id,
-            active_port_json, topic)
-        self._send_db_change_event(
-            db_models.AllowedAddressPairsActivePort.table_name, id, 'create',
-            active_port_json, topic)
-
-    def update_active_port(self, id, topic, **columns):
-        active_port_json = self.driver.get_key(
-            db_models.AllowedAddressPairsActivePort.table_name, id, topic)
-        active_port = jsonutils.loads(active_port_json)
-        active_port['topic'] = topic
-        for col, val in columns.items():
-            active_port[col] = val
-        active_port_json = jsonutils.dumps(active_port)
-        self.driver.set_key(db_models.AllowedAddressPairsActivePort.table_name,
-                            id, active_port_json, topic)
-        self._send_db_change_event(
-            db_models.AllowedAddressPairsActivePort.table_name, id, 'set',
-            active_port_json, topic)
-
-    def delete_active_port(self, id, topic):
-        self.driver.delete_key(
-            db_models.AllowedAddressPairsActivePort.table_name, id, topic)
-        self._send_db_change_event(
-            db_models.AllowedAddressPairsActivePort.table_name, id, 'delete',
-            id, topic)
-
-    def get_active_ports(self, topic=None):
-        res = []
-        for active_port_json in self.driver.get_all_entries(
-                db_models.AllowedAddressPairsActivePort.table_name, topic):
-            res.append(db_models.AllowedAddressPairsActivePort(
-                active_port_json))
-        return res
 
     def create(self, obj, skip_send_event=False):
         """Create the provided object in the database and publish an event
