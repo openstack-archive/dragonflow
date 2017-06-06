@@ -164,7 +164,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         LOG.debug('Add egress external flow for network %(net_id)s',
                   {'net_id': network_id})
 
-        physical_network = lport.physical_network
+        physical_network = lport.lswitch.physical_network
         match = self.parser.OFPMatch(metadata=network_id)
         ofport = self.int_ofports[physical_network]
         actions = [
