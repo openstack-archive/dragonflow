@@ -100,7 +100,7 @@ class TunnelingApp(df_base_app.DFlowApp):
                 match=match)
 
     def _make_network_match(self, lport, network_type):
-        segmentation_id = lport.segmentation_id
+        segmentation_id = lport.lswitch.segmentation_id
         ofport = self.vswitch_api.get_vtp_ofport(network_type)
         return self.parser.OFPMatch(tunnel_id_nxm=segmentation_id,
                                     in_port=ofport)
@@ -110,7 +110,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         network_type = lport.network_type
         if network_type not in self.tunnel_types:
             return
-        segmentation_id = lport.segmentation_id
+        segmentation_id = lport.lswitch.segmentation_id
         self._add_egress_dispatch_flow(lport, segmentation_id)
         network_id = lport.local_network_id
         LOG.info("adding remote %(net_type)s lport %(lport)s",
@@ -131,7 +131,7 @@ class TunnelingApp(df_base_app.DFlowApp):
             return
         self._remove_egress_dispatch_flow(lport)
         network_id = lport.local_network_id
-        segmentation_id = lport.segmentation_id
+        segmentation_id = lport.lswitch.segmentation_id
         self.local_networks.remove_remote_port(port_id=lport.id,
                                                network_id=network_id,
                                                network_type=network_type)
