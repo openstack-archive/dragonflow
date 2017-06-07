@@ -63,7 +63,7 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
             fake_add_port_process.assert_called_once_with(
                 lport.ip,
                 lport.mac,
-                lport.local_network_id,
+                lport.lswitch.unique_key,
                 lport.unique_key
             )
 
@@ -75,7 +75,7 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
             self.controller.delete(lport)
             fake_remove_port_process.assert_called_once_with(
                 lport.ip,
-                lport.local_network_id,
+                lport.lswitch.unique_key,
             )
 
     def test_add_local_port(self):

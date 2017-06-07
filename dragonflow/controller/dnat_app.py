@@ -263,7 +263,7 @@ class DNATApp(df_base_app.DFlowApp):
         mac = lport.mac
         ip = lport.ip
         tunnel_key = lport.unique_key
-        local_network_id = lport.local_network_id
+        local_network_id = lport.lswitch.unique_key
 
         return mac, ip, tunnel_key, local_network_id
 

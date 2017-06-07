@@ -119,10 +119,11 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
     def _install_flows_for_target_ip(self, ip, lport):
         instructions = self._get_instructions_packet_in()
+        local_network_id = lport.lswitch.unique_key
 
         arp_reply_match = self._get_match_arp_reply(
             lport.ofport,
-            lport.local_network_id,
+            local_network_id,
             ip)
         self.mod_flow(
             inst=instructions,
@@ -132,7 +133,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
         gratuitous_arp_match = self._get_match_gratuitous_arp(
             lport.ofport,
-            lport.local_network_id,
+            local_network_id,
             ip)
         self.mod_flow(
             inst=instructions,
@@ -142,10 +143,11 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
     def _uninstall_flows_for_target_ip(self, ip, lport):
         ofproto = self.ofproto
+        local_network_id = lport.lswitch.unique_key
 
         arp_reply_match = self._get_match_arp_reply(
             lport.ofport,
-            lport.local_network_id,
+            local_network_id,
             ip)
         self.mod_flow(
             table_id=controller_const.ARP_TABLE,
@@ -154,7 +156,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
         gratuitous_arp_match = self._get_match_gratuitous_arp(
             lport.ofport,
-            lport.local_network_id,
+            local_network_id,
             ip)
         self.mod_flow(
             table_id=controller_const.ARP_TABLE,

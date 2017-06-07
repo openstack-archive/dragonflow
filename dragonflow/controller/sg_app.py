@@ -1179,7 +1179,7 @@ class SGApp(df_base_app.DFlowApp):
             for port_id in associating_port_ids:
                 lport = self.db_store2.get_one(l2.LogicalPort(id=port_id))
                 removed_ips = self._get_ips_in_logical_port(lport)
-                zone_id = lport.local_network_id
+                zone_id = lport.lswitch.unique_key
                 associating_ports_info.append({'removed_ips': removed_ips,
                                                'zone_id': zone_id})
 
@@ -1198,7 +1198,7 @@ class SGApp(df_base_app.DFlowApp):
             removed_ips = original_ips - ips
         else:
             removed_ips = ips
-        zone_id = lport.local_network_id
+        zone_id = lport.lswitch.unique_key
 
         local_port_info = {'removed_ips': removed_ips, 'zone_id': zone_id}
         sg_obj = sg_model.SecurityGroup(id=secgroup_id)

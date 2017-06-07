@@ -44,8 +44,7 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
 
     def test_provider_vlan_port(self):
         fake_local_vlan_port1 = make_fake_local_port(
-                lswitch='fake_vlan_switch1',
-                local_network_id=21)
+                lswitch='fake_vlan_switch1')
         self.app.int_ofports['phynet'] = 1
         self.app.mod_flow.reset_mock()
         self.controller.update(fake_local_vlan_port1)

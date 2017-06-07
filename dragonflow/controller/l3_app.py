@@ -89,7 +89,7 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
         dst_ip = dst_port.ip
         src_mac = dst_router_port.mac
         dst_mac = dst_port.mac
-        dst_network_id = dst_port.local_network_id
+        dst_network_id = dst_port.lswitch.unique_key
 
         parser = self.parser
         ofproto = self.ofproto
