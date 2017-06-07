@@ -78,7 +78,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
     def _add_local_port(self, lport):
-        network_type = lport.network_type
+        network_type = lport.lswitch.network_type
         if network_type not in NETWORK_TYPES:
             return
         network_id = lport.local_network_id
@@ -199,7 +199,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
     def _remove_local_port(self, lport):
-        network_type = lport.network_type
+        network_type = lport.lswitch.network_type
         if network_type not in NETWORK_TYPES:
             return
         network_id = lport.local_network_id
