@@ -351,11 +351,8 @@ class DfLocalController(object):
             return False
         lport.local_network_id = lswitch.unique_key
         network_type = lswitch.network_type
-        segment_id = lswitch.segmentation_id
 
         lport.network_type = network_type
-        if segment_id is not None:
-            lport.segmentation_id = int(segment_id)
 
         return True
 

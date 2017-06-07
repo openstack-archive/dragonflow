@@ -101,7 +101,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             self.parser.OFPActionSetField(metadata=network_id)]
         match = None
         if network_type == NET_VLAN:
-            segmentation_id = lport.segmentation_id
+            segmentation_id = lport.lswitch.segmentation_id
             match = self.parser.OFPMatch()
             match.set_vlan_vid(segmentation_id)
             actions.append(self.parser.OFPActionPopVlan())
@@ -138,7 +138,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         inst = [self.parser.OFPInstructionGotoTable(
                 const.EGRESS_EXTERNAL_TABLE)]
         if network_type == NET_VLAN:
-            segmentation_id = lport.segmentation_id
+            segmentation_id = lport.lswitch.segmentation_id
             vlan_tag = (segmentation_id & VLAN_MASK)
             # from open flow documentation:
             # https://www.opennetworking.org/images/stories/downloads/\
