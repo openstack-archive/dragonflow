@@ -31,6 +31,11 @@ if [[ "$ENABLE_ACTIVE_DETECTION" == "True" ]]; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,active_port_detection_app.ActivePortDetectionApp"
 fi
 
+ENABLE_LIVE_MIGRATION=${ENABLE_LIVE_MIGRATION:-True}
+if [[ "$ENABLE_LIVE_MIGRATION" == "True" ]]; then
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,migration_app.MigrationApp"
+fi
+
 if [[ ! -z ${EXTERNAL_HOST_IP} ]]; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,chassis_snat_app.ChassisSNATApp"
 fi
