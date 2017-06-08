@@ -104,10 +104,11 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.controller.update.reset_mock()
         self.nb_api.get_all.return_value = []
         self.topology.ovs_port_deleted(test_app_base.fake_ovs_port1)
-        self.controller.delete.assert_called_once_with(
-            test_app_base.fake_local_port1)
-        self.controller.delete_by_id.assert_has_calls([
-             mock.call(l2.LogicalSwitch, test_app_base.fake_logic_switch1.id)
+        self.controller.delete.assert_has_calls([
+            mock.call(test_app_base.fake_local_port1),
+            mock.call(
+                l2.LogicalSwitch(id=test_app_base.fake_logic_switch1.id),
+            ),
         ])
         self.nb_api.subscriber.unregister_topic.assert_called_once_with(
             test_app_base.fake_local_port1.topic)

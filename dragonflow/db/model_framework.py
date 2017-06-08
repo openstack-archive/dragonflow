@@ -20,7 +20,6 @@ from oslo_serialization import jsonutils
 import six
 
 from dragonflow._i18n import _
-from dragonflow.db.models import legacy
 
 LOG = log.getLogger(__name__)
 
@@ -405,7 +404,6 @@ def get_model(arg):
     for lookup in (
         _lookup_by_class_name,
         _lookup_by_table_name,
-        legacy.table_class_mapping,
     ):
         try:
             return lookup[arg]
