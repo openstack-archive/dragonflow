@@ -48,7 +48,6 @@ class Topology(object):
 
         self.controller = controller
         self.nb_api = controller.get_nb_api()
-        self.db_store = controller.get_db_store()
         self.openflow_app = controller.get_openflow_app()
         self.chassis_name = controller.get_chassis_name()
         self.db_store2 = db_store2.get_instance()

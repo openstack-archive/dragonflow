@@ -35,12 +35,11 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OF_AUTO_PORT_DESC_STATS_REQ_VER = 0x04
 
-    def __init__(self, db_store=None, vswitch_api=None, nb_api=None,
+    def __init__(self, vswitch_api=None, nb_api=None,
                  neutron_server_notifier=None):
         super(RyuDFAdapter, self).__init__()
         self.dispatcher = dispatcher.AppDispatcher('dragonflow.controller',
                                                    cfg.CONF.df.apps_list)
-        self.db_store = db_store
         self.vswitch_api = vswitch_api
         self.nb_api = nb_api
         self.neutron_server_notifier = neutron_server_notifier
@@ -54,7 +53,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
 
     def start(self):
         super(RyuDFAdapter, self).start()
-        self.load(self, db_store=self.db_store,
+        self.load(self,
                   vswitch_api=self.vswitch_api,
                   nb_api=self.nb_api,
                   neutron_server_notifier=self.neutron_server_notifier)
