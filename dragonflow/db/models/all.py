@@ -14,7 +14,6 @@ from dragonflow.db.models import bgp  # noqa
 from dragonflow.db.models import core  # noqa
 from dragonflow.db.models import l2  # noqa
 from dragonflow.db.models import l3  # noqa
-from dragonflow.db.models import legacy  # noqa
 from dragonflow.db.models import migration  # noqa
 from dragonflow.db.models import qos  # noqa
 from dragonflow.db.models import secgroups  # noqa
