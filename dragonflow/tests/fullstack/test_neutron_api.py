@@ -12,6 +12,7 @@
 
 import contextlib
 
+import netaddr
 from neutronclient.common import exceptions as n_exc
 from oslo_concurrency import lockutils
 import testtools
@@ -410,7 +411,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             # associate with port
             fip.update({'port_id': port_id})
             fip_obj = fip.get_floatingip()
-            self.assertEqual(fip_obj.get_lport_id(), port_id)
+            self.assertEqual(fip_obj.lport.id, port_id)
 
             fip.close()
             self.assertFalse(fip.exists())
@@ -471,7 +472,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             # disassociate with port
             fip.update({})
             fip_obj = fip.get_floatingip()
-            self.assertIsNone(fip_obj.get_lport_id())
+            self.assertIsNone(fip_obj.lport)
 
             fip.close()
             self.assertFalse(fip.exists())
@@ -719,11 +720,11 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         fip = self.store(objects.FloatingipTestObj(self.neutron, self.nb_api))
         fip.create({'floating_network_id': public_network_id,
                     'port_id': vm_port_id})
-        fip_addr = fip.get_floatingip().get_ip_address()
+        fip_addr = fip.get_floatingip().floating_ip_address
         nb_bgp_speaker = bgp_speaker.get_nb_bgp_speaker()
         self.assertEqual(1, len(nb_bgp_speaker.host_routes))
         self.assertIn(
-            host_route.HostRoute(destination=fip_addr + '/32',
+            host_route.HostRoute(destination=netaddr.IPNetwork(fip_addr),
                                  nexthop='172.24.4.100'),
             nb_bgp_speaker.host_routes)
 

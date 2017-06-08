@@ -211,8 +211,6 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.topology.topic_subscribed = {
             'fake_tenant1': test_app_base.fake_local_port1}
         self.controller.update = mock.Mock()
-        self.controller.update_lrouter = mock.Mock()
-        self.controller.update_floatingip = mock.Mock()
         self._reset_refresher()
 
         # Verify the db sync will work for topology
@@ -223,5 +221,3 @@ class TestTopology(test_app_base.DFAppTestBase):
         ]
         self.controller.update.assert_has_calls(update_calls, any_order=True)
         self.assertEqual(2, self.controller.update.call_count)
-        self.assertFalse(self.controller.update_lrouter.called)
-        self.assertFalse(self.controller.update_floatingip.called)
