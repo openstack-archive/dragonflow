@@ -235,7 +235,7 @@ class L2App(df_base_app.DFlowApp):
 
         for port_id_in_network in local_ports:
             lean_lport = l2.LogicalPort(id=port_id_in_network, topic=topic)
-            lport = self.db_store2.get_one(lean_lport)
+            lport = self.db_store.get_one(lean_lport)
             if lport is None:
                 continue
             port_key_in_network = local_ports[port_id_in_network]
@@ -387,7 +387,7 @@ class L2App(df_base_app.DFlowApp):
 
         for port_id_in_network in local_network.local_ports:
             lean_lport = l2.LogicalPort(id=port_id_in_network, topic=topic)
-            lport = self.db_store2.get_one(lean_lport)
+            lport = self.db_store.get_one(lean_lport)
             if lport is None or lport_id == lport.id:
                 continue
             port_key_in_network = local_network.local_ports[port_id_in_network]

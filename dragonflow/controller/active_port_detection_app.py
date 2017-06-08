@@ -68,7 +68,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             unique_key = match.get('reg6')
             if not unique_key:
                 return
-            lport = self.db_store2.get_one(
+            lport = self.db_store.get_one(
                         l2.LogicalPort(unique_key=unique_key),
                         index=l2.LogicalPort.get_index('unique_key'))
             if not lport:
@@ -178,7 +178,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         topic = lport.topic
         found_lport_id = lport.id
         key = self._get_active_port_id(lswitch, ip_str)
-        old_active_port = self.db_store2.get_one(
+        old_active_port = self.db_store.get_one(
                 active_port.AllowedAddressPairsActivePort(id=key))
         new_active_port = active_port.AllowedAddressPairsActivePort(
             id=key,
@@ -201,7 +201,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
     def _remove_active_port_from_db_by_lport(self, lswitch, ip_str, lport):
         key = self._get_active_port_id(lswitch, ip_str)
-        old_active_port = self.db_store2.get_one(
+        old_active_port = self.db_store.get_one(
                 active_port.AllowedAddressPairsActivePort(id=key))
         if (old_active_port and
                 old_active_port.detected_lport.id == lport.id):
@@ -243,7 +243,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
         for target_ip, refs in self.allowed_address_pairs_refs_list.items():
             for lport_id in refs:
-                lport = self.db_store2.get_one(l2.LogicalPort(id=lport_id))
+                lport = self.db_store.get_one(l2.LogicalPort(id=lport_id))
                 if lport is not None:
                     items.append((target_ip, lport))
 

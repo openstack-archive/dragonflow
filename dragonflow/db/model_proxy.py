@@ -13,7 +13,7 @@ import copy
 import six
 
 from dragonflow._i18n import _
-from dragonflow.db import db_store2
+from dragonflow.db import db_store
 
 
 class _ModelProxyBase(object):
@@ -36,7 +36,7 @@ class _ModelProxyBase(object):
 
     def _fetch_obj(self):
         # _model attribute is provided by the deriving class
-        obj = db_store2.get_instance().get_one(self._model(id=self._id))
+        obj = db_store.get_instance().get_one(self._model(id=self._id))
         # FIXME fetch from NbApi
         return obj
 

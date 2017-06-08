@@ -552,7 +552,7 @@ class DNATApp(df_base_app.DFlowApp):
             # Associate only when lport becomes local
             return
 
-        fips = self.db_store2.get_all(
+        fips = self.db_store.get_all(
             l3.FloatingIp(lport=lport),
             index=l3.FloatingIp.get_index('lport'),
         )

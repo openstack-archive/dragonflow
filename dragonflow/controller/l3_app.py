@@ -66,13 +66,13 @@ class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
     def _get_route(self, pkt_ip, network_id, msg):
         ip_addr = netaddr.IPAddress(pkt_ip.dst)
         router_unique_key = msg.match.get('reg5')
-        router = self.db_store2.get_all(
+        router = self.db_store.get_all(
             l3.LogicalRouter(unique_key=router_unique_key),
             l3.LogicalRouter.get_index('unique_key'))
         for router_port in router.ports:
             if ip_addr in router_port.network:
                 index = l2.LogicalPort.get_index('lswitch_id')
-                dst_ports = self.db_store2.get_all(
+                dst_ports = self.db_store.get_all(
                     l2.LogicalPort(lswitch=l2.LogicalSwitch(
                         id=router_port.lswitch.id)),
                     index=index)

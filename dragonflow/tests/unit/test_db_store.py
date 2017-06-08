@@ -14,7 +14,7 @@ from jsonmodels import fields
 from jsonmodels import models
 import mock
 
-from dragonflow.db import db_store2
+from dragonflow.db import db_store
 from dragonflow.db import field_types as df_fields
 from dragonflow.db import model_framework
 from dragonflow.db.models import mixins
@@ -62,12 +62,12 @@ class EmbeddingModel(model_framework.ModelBase):
     list_field = fields.ListField(EmbeddedModel)
 
 
-class TestDbStore2(tests_base.BaseTestCase):
+class TestDbStore(tests_base.BaseTestCase):
     def setUp(self):
-        super(TestDbStore2, self).setUp()
+        super(TestDbStore, self).setUp()
 
         # Skip singleton instance to have clean state for each test
-        self.db_store = db_store2.DbStore2()
+        self.db_store = db_store.DbStore()
 
     def test_store_retrieve(self):
         o1 = ModelTest(id='id1', topic='topic')
@@ -107,7 +107,7 @@ class TestDbStore2(tests_base.BaseTestCase):
         self.assertItemsEqual((o1, o2), self.db_store.get_all(ModelTest))
         self.assertItemsEqual(
             (o1, o2),
-            self.db_store.get_all(ModelTest(extra_field=db_store2.ANY)),
+            self.db_store.get_all(ModelTest(extra_field=db_store.ANY)),
         )
         self.assertItemsEqual(
             (o1,),
@@ -230,7 +230,7 @@ class TestDbStore2(tests_base.BaseTestCase):
 
     def test_reffed_nested_keys(self):
         with mock.patch(
-            'dragonflow.db.db_store2.get_instance',
+            'dragonflow.db.db_store.get_instance',
             return_value=self.db_store,
         ):
             self.db_store.update(ReffedModel(id='id1', name='name1'))
