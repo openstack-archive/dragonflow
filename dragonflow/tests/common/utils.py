@@ -21,7 +21,7 @@ import six
 
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as df_const
-from dragonflow.db import db_store2
+from dragonflow.db import db_store
 from dragonflow.db.models import l2
 from dragonflow.ovsdb import vswitch_impl
 from dragonflow.tests.common import constants as const
@@ -213,13 +213,13 @@ def add_objs_to_db_store(*objs):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            db_store = db_store2.get_instance()
+            db_store_inst = db_store.get_instance()
             for obj in objs:
-                db_store.update(obj)
+                db_store_inst.update(obj)
             try:
                 return func(*args, **kwargs)
             finally:
                 for obj in objs:
-                    db_store.delete(obj)
+                    db_store_inst.delete(obj)
         return wrapper
     return decorator

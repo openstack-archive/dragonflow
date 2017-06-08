@@ -31,7 +31,7 @@ from dragonflow.controller import service
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
-from dragonflow.db import db_store2
+from dragonflow.db import db_store
 from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
 from dragonflow.db import models
@@ -47,7 +47,7 @@ LOG = log.getLogger(__name__)
 class DfLocalController(object):
 
     def __init__(self, chassis_name, nb_api):
-        self.db_store2 = db_store2.get_instance()
+        self.db_store = db_store.get_instance()
 
         self.chassis_name = chassis_name
         self.nb_api = nb_api
@@ -115,7 +115,7 @@ class DfLocalController(object):
                 df_db_objects_refresh.add_refresher(
                     df_db_objects_refresh.DfObjectRefresher(
                         model.__name__,
-                        functools.partial(self.db_store2.get_keys_by_topic,
+                        functools.partial(self.db_store.get_keys_by_topic,
                                           model),
                         functools.partial(self.nb_api.get_all, model),
                         self.update,
@@ -146,7 +146,7 @@ class DfLocalController(object):
             # For a full sync, df needs to clean the local cache, so that
             # all resources will be treated as new resource, and thus be
             # applied to local.
-            self.db_store2.clear()
+            self.db_store.clear()
         while True:
             time.sleep(1)
             self.run_db_poll()
@@ -166,15 +166,15 @@ class DfLocalController(object):
             LOG.exception(e)
 
     def update_chassis(self, chassis):
-        self.db_store2.update(chassis)
+        self.db_store.update(chassis)
         remote_chassis_name = chassis.id
         if self.chassis_name == remote_chassis_name:
             return
 
         # Notify about remote port update
         index = l2.LogicalPort.get_index('chassis_id')
-        remote_ports = self.db_store2.get_all(l2.LogicalPort(chassis=chassis),
-                                              index=index)
+        remote_ports = self.db_store.get_all(l2.LogicalPort(chassis=chassis),
+                                             index=index)
         for port in remote_ports:
             self._logical_port_process(port)
 
@@ -183,11 +183,11 @@ class DfLocalController(object):
         # Chassis is deleted, there is no reason to keep the remote port
         # in it.
         index = l2.LogicalPort.get_indexes()['chassis_id']
-        remote_ports = self.db_store2.get_all(l2.LogicalPort(chassis=chassis),
-                                              index=index)
+        remote_ports = self.db_store.get_all(l2.LogicalPort(chassis=chassis),
+                                             index=index)
         for port in remote_ports:
             self._delete_lport_instance(port)
-        self.db_store2.delete(chassis)
+        self.db_store.delete(chassis)
 
     def _is_physical_chassis(self, chassis):
         if not chassis:
@@ -228,8 +228,8 @@ class DfLocalController(object):
                          'port': lport})
             return
 
-        original_lport = self.db_store2.get_one(lport)
-        self.db_store2.update(lport)
+        original_lport = self.db_store.get_one(lport)
+        self.db_store.update(lport)
         if original_lport is None:
             lport.emit_created()
         else:
@@ -242,27 +242,27 @@ class DfLocalController(object):
             LOG.debug(("Port %s has not been bound or it is a vPort"),
                       lport.id)
             return
-        original_lport = self.db_store2.get_one(lport)
+        original_lport = self.db_store.get_one(lport)
 
         if lport.is_newer_than(original_lport):
             self._logical_port_process(lport)
 
     def delete_lport(self, lport):
-        lport = self.db_store2.get_one(lport)
+        lport = self.db_store.get_one(lport)
         if lport is None:
             return
         self._delete_lport_instance(lport)
 
     def _delete_lport_instance(self, lport):
         lport.emit_deleted()
-        self.db_store2.delete(lport)
+        self.db_store.delete(lport)
 
     def register_chassis(self):
         # Get all chassis from nb db to db store.
         for c in self.nb_api.get_all(core.Chassis):
-            self.db_store2.update(c)
+            self.db_store.update(c)
 
-        old_chassis = self.db_store2.get_one(
+        old_chassis = self.db_store.get_one(
             core.Chassis(id=self.chassis_name))
 
         chassis = core.Chassis(
@@ -273,7 +273,7 @@ class DfLocalController(object):
         if cfg.CONF.df.external_host_ip:
             chassis.external_host_ip = cfg.CONF.df.external_host_ip
 
-        self.db_store2.update(chassis)
+        self.db_store.update(chassis)
 
         if old_chassis is None:
             self.nb_api.create(chassis)
@@ -292,14 +292,14 @@ class DfLocalController(object):
             self.vswitch_api.add_virtual_tunnel_port(t)
 
     def update_publisher(self, publisher):
-        self.db_store2.update(publisher)
+        self.db_store.update(publisher)
         LOG.info('Registering to new publisher: %s', str(publisher))
         self.nb_api.subscriber.register_listen_address(publisher.uri)
 
     def delete_publisher(self, publisher):
         LOG.info('Deleting publisher: %s', str(publisher))
         self.nb_api.subscriber.unregister_listen_address(publisher.uri)
-        self.db_store2.delete(publisher)
+        self.db_store.delete(publisher)
 
     # TODO(dimak) have ovs ports behave like rest of the modes and store
     #             in db_store.
@@ -328,7 +328,7 @@ class DfLocalController(object):
             return True
 
     def update_model_object(self, obj):
-        original_obj = self.db_store2.get_one(obj)
+        original_obj = self.db_store.get_one(obj)
         if original_obj is None:
             obj.emit_created()
         elif self._is_newer(obj, original_obj):
@@ -336,14 +336,14 @@ class DfLocalController(object):
         else:
             return
 
-        self.db_store2.update(obj)
+        self.db_store.update(obj)
 
     def delete_model_object(self, obj):
         # Retrieve full object (in case we only got Model(id='id'))
-        org_obj = self.db_store2.get_one(obj)
+        org_obj = self.db_store.get_one(obj)
         if org_obj:
             org_obj.emit_deleted()
-            self.db_store2.delete(org_obj)
+            self.db_store.delete(org_obj)
         else:
             # NOTE(nick-ma-z): Ignore the null object because
             # it has been deleted before.

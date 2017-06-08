@@ -177,7 +177,7 @@ def _obj_key(obj):
     return (type(obj), obj.id)
 
 
-class DbStore2(object):
+class DbStore(object):
     def __init__(self):
         self._cache = {}
 
@@ -318,5 +318,5 @@ def get_instance():
 
     with _instance_lock:
         if _instance is None:
-            _instance = DbStore2()
+            _instance = DbStore()
         return _instance

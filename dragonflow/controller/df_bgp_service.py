@@ -23,7 +23,7 @@ from dragonflow import conf as cfg
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
-from dragonflow.db import db_store2
+from dragonflow.db import db_store
 from dragonflow.db import model_framework
 from dragonflow.db.models import bgp  # noqa
 
@@ -35,7 +35,7 @@ class BGPService(service.Service):
     def __init__(self, nb_api):
         super(BGPService, self).__init__()
         self.initialize_driver()
-        self.db_store = db_store2.get_instance()
+        self.db_store = db_store.get_instance()
 
         self.nb_api = nb_api
 

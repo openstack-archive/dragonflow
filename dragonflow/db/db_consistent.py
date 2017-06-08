@@ -62,7 +62,7 @@ class ModelHandler(object):
         return cls(
             model=model,
             db_store_func=functools.partial(
-                controller.db_store2.get_all_by_topic,
+                controller.db_store.get_all_by_topic,
                 model,
             ),
             nb_api_func=functools.partial(

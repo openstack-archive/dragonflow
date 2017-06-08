@@ -103,7 +103,7 @@ class DHCPApp(df_base_app.DFlowApp):
                         {'port_id': lport.id,
                          'time': self.block_hard_timeout})
             return
-        if not self.db_store2.get_one(lport):
+        if not self.db_store.get_one(lport):
             LOG.error("Port %s no longer found.", lport.id)
             return
         try:
@@ -460,14 +460,14 @@ class DHCPApp(df_base_app.DFlowApp):
     def _install_dhcp_flow_for_vm_in_subnet(self, subnet_id):
         local_ports = self.subnet_vm_port_map[subnet_id]
         for p_id in local_ports:
-            port = self.db_store2.get_one(l2.LogicalPort(id=p_id))
+            port = self.db_store.get_one(l2.LogicalPort(id=p_id))
             if port and port.is_local:
                 self._install_dhcp_flow_for_vm_port(port)
 
     def _uninstall_dhcp_flow_for_vm_in_subnet(self, subnet_id):
         local_ports = self.subnet_vm_port_map[subnet_id]
         for p_id in local_ports:
-            port = self.db_store2.get_one(l2.LogicalPort(id=p_id))
+            port = self.db_store.get_one(l2.LogicalPort(id=p_id))
             if port and port.is_local:
                 self._uninstall_dhcp_flow_for_vm_port(port)
 

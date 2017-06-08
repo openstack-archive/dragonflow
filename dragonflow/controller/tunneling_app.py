@@ -221,7 +221,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         actions = []
         peer_ip_list = set()
         for port_id in remote_ports:
-            lport = self.db_store2.get_one(l2.LogicalPort(id=port_id))
+            lport = self.db_store.get_one(l2.LogicalPort(id=port_id))
             if not lport:
                 continue
             peer_ip = lport.peer_vtep_address

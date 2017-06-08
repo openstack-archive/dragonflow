@@ -22,7 +22,7 @@ from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
-from dragonflow.db import db_store2
+from dragonflow.db import db_store
 from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
 from dragonflow.db.models import core
@@ -49,7 +49,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         execute = mock.patch('neutron.agent.common.utils.execute').start()
 
         # CLear old objects from cache
-        db_store2._instance = None
+        db_store._instance = None
 
         nb_api = api_nb.NbApi.get_instance(False)
         self.controller = df_local_controller.DfLocalController('fake_host',
@@ -71,8 +71,8 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.controller.update(fake_logic_switch1)
         self.controller.update(fake_external_switch1)
         self.controller.update(fake_logic_router1)
-        self.controller.db_store2.update(fake_chassis1)
-        self.controller.db_store2.update(fake_chassis2)
+        self.controller.db_store.update(fake_chassis1)
+        self.controller.db_store.update(fake_chassis2)
 
         mod_flow.reset_mock()
         add_flow_go_to_table.reset_mock()
