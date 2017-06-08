@@ -19,6 +19,7 @@ from dragonflow.common import constants
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.db import db_store2
 from dragonflow.db.models import l2
+from dragonflow.db.models import migration
 from dragonflow.db.models import ovs
 
 LOG = log.getLogger(__name__)
@@ -209,7 +210,9 @@ class Topology(object):
             if n_const.DEVICE_OWNER_COMPUTE_PREFIX in device_owner:
                 LOG.info("Prepare migrate lport %(lport)s to %(chassis)s",
                          {"lport": lport_id, "chassis": chassis})
-                self.nb_api.set_lport_migration(lport_id, self.chassis_name)
+                self.nb_api.create(migration.Migration(
+                        id=lport_id, chassis=self.chassis_name,
+                        status=migration.MIGRATION_STATUS_DEST_PLUG))
             return
 
         cached_lport = self.db_store2.get_one(l2.LogicalPort(id=lport_id))
@@ -249,10 +252,12 @@ class Topology(object):
             self.controller.notify_port_status(
                 ovs_port, n_const.PORT_STATUS_DOWN)
 
-            migration = self.nb_api.get_lport_migration(lport_id)
-            if migration and migration.get('migration'):
+            migration_obj = self.nb_api.get(migration.Migration(id=lport_id))
+            if migration_obj and migration_obj.chassis:
                 LOG.info("Sending migrating event for %s", lport_id)
-                self.nb_api.notify_migration_event(lport_id, lport)
+                migration_obj.lport = lport_id
+                migration_obj.status = migration.MIGRATION_STATUS_SRC_UNPLUG
+                self.nb_api.update(migration_obj)
 
             del self.ovs_to_lport_mapping[ovs_port_id]
             self._del_from_topic_subscribed(topic, lport_id)
