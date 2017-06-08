@@ -31,7 +31,6 @@ from dragonflow.controller import service
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
-from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
@@ -48,7 +47,6 @@ LOG = log.getLogger(__name__)
 class DfLocalController(object):
 
     def __init__(self, chassis_name, nb_api):
-        self.db_store = db_store.DbStore()
         self.db_store2 = db_store2.get_instance()
 
         self.chassis_name = chassis_name
@@ -69,7 +67,6 @@ class DfLocalController(object):
             ryu_base_app.RyuDFAdapter,
             nb_api=self.nb_api,
             vswitch_api=self.vswitch_api,
-            db_store=self.db_store,
             neutron_server_notifier=self.neutron_notifier,
         )
         self.topology = None
@@ -149,7 +146,6 @@ class DfLocalController(object):
             # For a full sync, df needs to clean the local cache, so that
             # all resources will be treated as new resource, and thus be
             # applied to local.
-            self.db_store.clear()
             self.db_store2.clear()
         while True:
             time.sleep(1)
@@ -355,9 +351,6 @@ class DfLocalController(object):
 
     def get_nb_api(self):
         return self.nb_api
-
-    def get_db_store(self):
-        return self.db_store
 
     def get_openflow_app(self):
         return self.open_flow_app
