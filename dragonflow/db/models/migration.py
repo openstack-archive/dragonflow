@@ -14,6 +14,7 @@ from dragonflow.db import field_types as df_fields
 import dragonflow.db.model_framework as mf
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
+from dragonflow.db.models import mixins
 
 
 MIGRATION_STATUS_DEST_PLUG = 'dest_plug'
@@ -25,8 +26,8 @@ MIGRATION_STATUSES = (MIGRATION_STATUS_DEST_PLUG,
 
 
 @mf.register_model
-class Migration(mf.ModelBase):
 @mf.construct_nb_db_model
+class Migration(mf.ModelBase, mixins.BasicEvents):
     table_name = 'migration'
     chassis = df_fields.ReferenceField(core.Chassis)
     lport = df_fields.ReferenceField(l2.LogicalPort)
