@@ -38,6 +38,7 @@ from dragonflow.db import model_proxy
 from dragonflow.db import models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
+from dragonflow.db.models import migration
 from dragonflow.db.models import mixins
 from dragonflow.ovsdb import vswitch_impl
 
@@ -219,23 +220,22 @@ class DfLocalController(object):
         return True
 
     # update migration flows for VM migration
-    def update_migration_flows(self, lport):
+    def update_migration(self, migration_obj):
         # This method processes the migration event sent from source node.
         # There are three parts for event process, source node, destination
         # node, other nodes which related to topic of migrating VM, according
         # to the chassis ID in lport, and local chassis..
+        if migration_obj.status != migration.MIGRATION_STATUS_SRC_UNPLUG:
+            return
+        original_lport = migration_obj.lport.get_object()
+        lport = self.nb_api.get(original_lport)
         port_id = lport.id
-        migration = self.nb_api.get_lport_migration(port_id)
-        original_lport = self.db_store2.get_one(lport)
 
-        if migration:
-            dest_chassis = migration['migration']
-        else:
-            LOG.info("last lport deleted of this topic, do nothing %s",
-                     lport)
+        dest_chassis = migration_obj.source_chassis
+        if not dest_chassis:
             return
 
-        if dest_chassis == self.chassis_name:
+        if dest_chassis.id == self.chassis_name:
             # destination node
             ofport = self.vswitch_api.get_port_ofport_by_id(port_id)
             lport.ofport = ofport
@@ -248,7 +248,7 @@ class DfLocalController(object):
                      "self_chassis = %(self_chassis)s",
                      {'port': lport,
                       'original_port': original_lport,
-                      'chassis': dest_chassis,
+                      'chassis': dest_chassis.id,
                       'self_chassis': self.chassis_name})
             if original_lport:
                 original_lport.emit_remote_deleted()
@@ -259,7 +259,7 @@ class DfLocalController(object):
         # get ofport from chassis.
         ofport = self.vswitch_api.get_vtp_ofport(lport.lswitch.network_type)
         lport.ofport = ofport
-        remote_chassis = self.db_store2.get_one(core.Chassis(id=dest_chassis))
+        remote_chassis = dest_chassis.get_object()
         if not remote_chassis:
             # chassis has not been online yet.
             return

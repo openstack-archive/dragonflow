@@ -20,6 +20,7 @@ from dragonflow.db import db_store
 from dragonflow.db import db_store2
 from dragonflow.db import model_proxy
 from dragonflow.db.models import core
+from dragonflow.db.models import migration
 from dragonflow.tests.unit import test_app_base
 
 
@@ -114,12 +115,15 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         self.nb_api.update.assert_called_once_with(expected_chassis)
 
     def test_update_migration_flows(self):
-        self.controller.nb_api.get_lport_migration.return_value = \
-            {'migration': 'fake_host'}
         lport = test_app_base.fake_local_port1
         fake_lswitch = test_app_base.fake_logic_switch1
+        migration_obj = migration.Migration(
+                id=lport.id, source_chassis='fake_host', lport=lport,
+                status=migration.MIGRATION_STATUS_SRC_UNPLUG)
+        self.controller.nb_api.get.return_value = lport
 
         self.controller.db_store2.update(fake_lswitch)
+        self.controller.db_store2.update(lport)
         self.controller.vswitch_api.get_chassis_ofport.return_value = 3
         self.controller.vswitch_api.get_port_ofport_by_id.retrun_value = 2
 
@@ -136,7 +140,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_emit_created = mock_emit_created_patch.start()
         self.addCleanup(mock_emit_created_patch.stop)
 
-        self.controller.update_migration_flows(lport)
+        self.controller.update_migration(migration_obj)
         mock_update.assert_called_with(lport)
         mock_emit_created.assert_called_with()
 
