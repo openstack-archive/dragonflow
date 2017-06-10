@@ -108,9 +108,6 @@ class CassandraDbDriver(db_api.DbApi):
         self.session.default_consistency_level = consistency
         self.session.row_factory = query.dict_factory
 
-    def support_publish_subscribe(self):
-        return False
-
     def create_table(self, table):
         self.session.execute("CREATE TABLE IF NOT EXISTS %s "
                              "(key text PRIMARY KEY, value text);" % table)
@@ -192,15 +189,6 @@ class CassandraDbDriver(db_api.DbApi):
                 return self._allocate_unique_key(table)
             except Exception:
                 pass
-
-    def register_notification_callback(self, callback):
-        pass
-
-    def register_topic_for_notification(self, topic):
-        pass
-
-    def unregister_topic_for_notification(self, topic):
-        pass
 
     def process_ha(self):
         pass

@@ -30,9 +30,6 @@ class RamCloudDbDriver(db_api.DbApi):
                                + ',port=' + str(db_port) + ''
         self.client.connect(self.service_locator, self.db_name)
 
-    def support_publish_subscribe(self):
-        return False
-
     def create_table(self, table):
         self.client.create_table(table)
 
@@ -95,17 +92,6 @@ class RamCloudDbDriver(db_api.DbApi):
 
     def allocate_unique_key(self, table):
         return self._allocate_unique_key(table)
-
-    def register_notification_callback(self, callback):
-        pass
-
-    def register_topic_for_notification(self, topic):
-        # Not needed until register notification callback is implemented
-        pass
-
-    def unregister_topic_for_notification(self, topic):
-        # Not needed until register notification callback is implemented
-        pass
 
     def process_ha(self):
         # Not needed in rmc
