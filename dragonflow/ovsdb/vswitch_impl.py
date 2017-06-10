@@ -19,6 +19,7 @@ from oslo_config import cfg
 from oslo_log import log
 from ovs import vlog
 
+from dragonflow.controller.common import constants
 from dragonflow.ovsdb import impl_idl
 from dragonflow.ovsdb import objects
 
@@ -55,12 +56,14 @@ class OvsApi(object):
     def initialize(self, nb_api):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
 
-        nb_api.db_change_callback(None, None, 'ovs_sync_started', None)
+        nb_api.db_change_callback(None, None,
+                                  constants.CONTROLLER_OVS_SYNC_STARTED, None)
 
         self.ovsdb = impl_idl.DFOvsdbApi(
             nb_api, db_connection, self.vsctl_timeout)
 
-        nb_api.db_change_callback(None, None, 'ovs_sync_finished', None)
+        nb_api.db_change_callback(None, None,
+                                  constants.CONTROLLER_OVS_SYNC_FINISHED, None)
 
     def _db_get_val(self, table, record, column, check_error=False,
                     log_errors=True):
