@@ -22,6 +22,7 @@ from oslo_service import loopingcall
 import redis
 import six
 
+from dragonflow.controller.common import constants
 from dragonflow.db import db_common
 from dragonflow.db.drivers import redis_calckey
 
@@ -325,7 +326,9 @@ class RedisMgt(object):
             # send restart message
             if self._check_master_nodes_connection():
                 if self.db_callback is not None:
-                    self.db_callback(None, None, 'dbrestart', False, None)
+                    self.db_callback(None, None,
+                                     constants.CONTROLLER_DBRESTART,
+                                     False, None)
                 elif self.db_recover_callback is not None:
                     self.db_recover_callback()
 
