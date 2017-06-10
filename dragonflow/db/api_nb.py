@@ -25,18 +25,11 @@ from oslo_utils import excutils
 import dragonflow.common.exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
-from dragonflow.db import model_framework as mf
 from dragonflow.db import model_proxy as mproxy
 from dragonflow.db.models import core
 
 
 LOG = log.getLogger(__name__)
-
-
-DB_ACTION_LIST = ['create', 'set', 'delete', 'log',
-                  'sync', 'sync_started', 'sync_finished', 'dbrestart',
-                  'db_sync', 'migrate']
-
 _nb_api = None
 
 
@@ -161,8 +154,8 @@ class NbApi(object):
         self.publisher.send_event(update)
         time.sleep(0)
 
-    def register_controller(self, controller):
-        self.controller = controller
+    def register_notification_callback(self, notification_cb):
+        self._notification_cb = notification_cb
 
     def register_listener_callback(self, cb, topic):
         """Register a callback for Neutron listener
@@ -189,69 +182,11 @@ class NbApi(object):
         time.sleep(0)
 
     def process_changes(self):
-        sync_rate_limiter = df_utils.RateLimiter(
-            max_rate=1, time_unit=db_common.DB_SYNC_MINIMUM_INTERVAL)
         while True:
-            self.next_update = self._queue.get(block=True)
-            LOG.debug("Event update: %s", self.next_update)
-            try:
-                value = self.next_update.value
-                if (not value and
-                        self.next_update.action not in {'delete', 'log',
-                                                        'dbrestart'}):
-                    if self.next_update.table and self.next_update.key:
-                        value = self.driver.get_key(self.next_update.table,
-                                                    self.next_update.key)
-
-                self.apply_db_change(self.next_update.table,
-                                     self.next_update.key,
-                                     self.next_update.action,
-                                     value)
-            except Exception as e:
-                if "ofport is 0" not in e.message:
-                    LOG.exception(e)
-                if not sync_rate_limiter():
-                    self.controller.sync()
+            next_update = self._queue.get(block=True)
+            LOG.debug("Event update: %s", next_update)
+            self._notification_cb(next_update)
             self._queue.task_done()
-
-    def apply_db_change(self, table, key, action, value):
-        # determine if the action is allowed or not
-        if action not in DB_ACTION_LIST:
-            LOG.warning('Unknown action %(action)s for table '
-                        '%(table)s', {'action': action, 'table': table})
-            return
-
-        if action == 'sync':
-            self.controller.sync(value)
-        elif action == 'dbrestart':
-            self.db_recover_callback()
-        elif action == 'ovs_sync_finished':
-            self.controller.ovs_sync_finished()
-        elif action == 'ovs_sync_started':
-            self.controller.ovs_sync_started()
-        elif 'log' == action:
-            message = ('Log event (Info): table: %(table)s key: %(key)s '
-                       'action: %(action)s value: %(value)s')
-
-            LOG.info(message, {
-                'table': str(table),
-                'key': str(key),
-                'action': str(action),
-                'value': str(value),
-            })
-        elif table is not None:
-            try:
-                model_class = mf.get_model(table)
-            except KeyError:
-                # Model class not found, possibly update was not about a model
-                # Added lport migration for VM migration flag
-                LOG.warning('Unknown table %s', table)
-            else:
-                if action == 'delete':
-                    self.controller.delete_by_id(model_class, key)
-                else:
-                    obj = model_class.from_json(value)
-                    self.controller.update(obj)
 
     def create(self, obj, skip_send_event=False):
         """Create the provided object in the database and publish an event

@@ -25,10 +25,12 @@ from ryu import cfg as ryu_cfg
 from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.controller.common import constants as ctrl_const
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import service
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
+from dragonflow.db import db_common
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
@@ -50,6 +52,7 @@ class DfLocalController(object):
 
         self.chassis_name = chassis_name
         self.nb_api = nb_api
+        self.use_pubsub = nb_api.support_publish_subscribe()
         self.ip = cfg.CONF.df.local_ip
         # Virtual tunnel port support multiple tunnel types together
         self.tunnel_types = cfg.CONF.df.tunnel_types
@@ -80,9 +83,12 @@ class DfLocalController(object):
             selective=self.enable_selective_topo_dist,
         )
 
+        self.sync_rate_limiter = df_utils.RateLimiter(
+                max_rate=1, time_unit=db_common.DB_SYNC_MINIMUM_INTERVAL)
+
     def run(self):
         self.vswitch_api.initialize(self.nb_api)
-        self.nb_api.register_controller(self)
+        self.nb_api.register_notification_callback(self._handle_update)
         if cfg.CONF.df.enable_neutron_notifier:
             self.neutron_notifier.initialize(nb_api=self.nb_api,
                                              is_neutron_server=False)
@@ -92,6 +98,7 @@ class DfLocalController(object):
             interval=cfg.CONF.df.db_sync_time,
             initial_delay=cfg.CONF.df.db_sync_time,
         )
+
         # both set_controller and del_controller will delete flows.
         # for reliability, here we should check if controller is set for OVS,
         # if yes, don't set controller and don't delete controller.
@@ -115,15 +122,14 @@ class DfLocalController(object):
         self.nb_api.process_changes()
 
     def _submit_sync_event(self):
-        self.nb_api.db_change_callback(None, None, 'sync', None)
+        self.nb_api.db_change_callback(None, None,
+                                       ctrl_const.CONTROLLER_SYNC, None)
 
     def _register_models(self):
         for model in model_framework.iter_models_by_dependency_order():
             self._sync.add_model(model)
 
     def sync(self, value=None):
-        if value == 'full_sync':
-            self.db_store.clear()
         self.register_chassis()  # FIXME (dimak) move elsewhere
         self.topology.check_topology_info()
         self._sync.sync()
@@ -373,6 +379,45 @@ class DfLocalController(object):
     def delete_by_id(self, model, obj_id):
         # FIXME (dimak) Probably won't be needed once we're done porting
         return self.delete(model(id=obj_id))
+
+    def _handle_update(self, update):
+        try:
+            self._handle_db_change(update)
+        except Exception as e:
+            if "ofport is 0" not in e.message:
+                LOG.exception(e)
+            if not self.sync_rate_limiter():
+                self.sync()
+
+    def _handle_db_change(self, update):
+        action = update.action
+        if action == ctrl_const.CONTROLLER_REINITIALIZE:
+            self.db_store.clear()
+            self.sync()
+        elif action == ctrl_const.CONTROLLER_SYNC:
+            self.sync()
+        elif action == ctrl_const.CONTROLLER_DBRESTART:
+            self.nb_api.db_recover_callback()
+        elif action == ctrl_const.CONTROLLER_OVS_SYNC_FINISHED:
+            self.ovs_sync_finished()
+        elif action == ctrl_const.CONTROLLER_OVS_SYNC_STARTED:
+            self.ovs_sync_started()
+        elif action == ctrl_const.CONTROLLER_LOG:
+            LOG.info('Log event: %s', str(update))
+        elif update.table is not None:
+            try:
+                model_class = model_framework.get_model(update.table)
+            except KeyError:
+                # Model class not found, possibly update was not about a model
+                LOG.warning('Unknown table %s', update.table)
+            else:
+                if action == 'delete':
+                    self.delete_by_id(model_class, update.key)
+                else:
+                    obj = model_class.from_json(update.value)
+                    self.update(obj)
+        else:
+            LOG.warning('Unfamiliar update: %s', str(update))
 
 
 def _has_basic_events(obj):
