@@ -30,6 +30,7 @@ from dragonflow.controller import ryu_base_app
 from dragonflow.controller import service
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
+from dragonflow.db import db_common
 from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
@@ -50,6 +51,7 @@ class DfLocalController(object):
 
         self.chassis_name = chassis_name
         self.nb_api = nb_api
+        self.use_pubsub = nb_api.support_publish_subscribe()
         self.ip = cfg.CONF.df.local_ip
         # Virtual tunnel port support multiple tunnel types together
         self.tunnel_types = cfg.CONF.df.tunnel_types
@@ -73,6 +75,8 @@ class DfLocalController(object):
         self.enable_db_consistency = cfg.CONF.df.enable_df_db_consistency
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
+        self.sync_rate_limiter = df_utils.RateLimiter(
+                max_rate=1, time_unit=db_common.DB_SYNC_MINIMUM_INTERVAL)
 
     def run(self):
         self.vswitch_api.initialize(self.nb_api)
@@ -105,6 +109,7 @@ class DfLocalController(object):
         self.open_flow_app.start()
         self.create_tunnels()
         self._register_models()
+        self.nb_api.register_notification_callback(self._handle_update)
         self.db_sync_loop()
 
     def _register_models(self):
@@ -136,9 +141,8 @@ class DfLocalController(object):
         while True:
             time.sleep(1)
             self.run_db_poll()
-            if self.sync_finished and (
-                    self.nb_api.support_publish_subscribe()):
-                self.nb_api.register_notification_callback(self)
+            if self.sync_finished and self.use_pubsub:
+                self.nb_api.process_notifications()
 
     def run_sync(self, mode=None):
         if mode == 'full_sync':
@@ -380,6 +384,47 @@ class DfLocalController(object):
     def delete_by_id(self, model, obj_id):
         # FIXME (dimak) Probably won't be needed once we're done porting
         return self.delete(model(id=obj_id))
+
+    def _handle_update(self, update):
+        try:
+            self._handle_db_change(update)
+        except Exception as e:
+            if "ofport is 0" not in e.message:
+                LOG.exception(e)
+            if not self.sync_rate_limiter():
+                self.run_sync()
+
+    def _handle_db_change(self, update):
+        action = update.action
+        if action == 'sync':
+            self.run_sync(update.value)
+        elif action == 'dbrestart':
+            self.nb_api.db_recover_callback()
+            if self.db_consistency_manager is not None:
+                self.db_consistency_manager.process(direct=True)
+        elif action == 'db_sync' and self.db_consistency_manager is not None:
+            self.db_consistency_manager.process(direct=False)
+        elif action == 'ovs_sync_finished':
+            self.ovs_sync_finished()
+        elif action == 'ovs_sync_started':
+            self.ovs_sync_started()
+        elif 'log' == action:
+            LOG.info('Log event: %s', str(update))
+        elif update.table is not None:
+            try:
+                model_class = model_framework.get_model(update.table)
+            except KeyError:
+                # Model class not found, possibly update was not about a model
+                # Added lport migration for VM migration flag
+                LOG.warning('Unknown table %s', update.table)
+            else:
+                if action == 'delete':
+                    self.delete_by_id(model_class, update.key)
+                else:
+                    obj = model_class.from_json(update.value)
+                    self.update(obj)
+        else:
+            LOG.warning('Unfamiliar update type: %s', str(update))
 
 
 def init_ryu_config():
