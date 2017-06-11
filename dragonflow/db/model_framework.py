@@ -41,6 +41,11 @@ def _normalize_tuple(v):
     return tuple(v)
 
 
+def is_submodel(instance):
+    return (isinstance(instance, ModelBase) or
+            hasattr(instance, 'get_object'))
+
+
 class _CommonBase(models.Base):
     '''Base class for extending jsonmodels' Base
 
@@ -267,6 +272,16 @@ class _CommonBase(models.Base):
             for subobj in subobjs:
                 if isinstance(subobj, ModelBase):
                     yield subobj
+
+    def iter_submodels(self):
+        for name, field in self.iterate_over_set_fields():
+            member = getattr(self, name)
+            if isinstance(member, list):
+                for instance in member:
+                    if is_submodel(instance):
+                        yield instance
+            elif is_submodel(member):
+                yield member
 
     @classmethod
     def get_index(cls, index):

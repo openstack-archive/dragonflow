@@ -487,3 +487,8 @@ class TestModelFramework(tests_base.BaseTestCase):
             sorted_models.index(ReffingModel3)
         )
         self.assertIn(ReffedModel, ReffingModel3.dependencies())
+
+    def test_iter_submodels(self):
+        model = EmbeddingModel(id='1', embedded=ModelTest(id='2'))
+        submodels = [inst.id for inst in model.iter_submodels()]
+        self.assertEqual(['2'], submodels)
