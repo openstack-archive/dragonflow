@@ -474,3 +474,40 @@ class TestModelFramework(tests_base.BaseTestCase):
             sorted_models.index(ReffingModel3)
         )
         self.assertIn(ReffedModel, ReffingModel3.dependencies())
+
+    @mock.patch("dragonflow.db.api_nb._nb_api")
+    def test_iter_references(self, nb_api):
+        models = {}
+        nb_api.get = lambda m: models[m.id]
+        ref1 = ReffingModel(id='2', ref1='3')
+        models['2'] = ref1
+        models['3'] = ReffedModel(id='3')
+        ref2 = ReffingModel(id='4', ref1='5')
+        models['4'] = ref2
+        models['5'] = ReffedModel(id='5')
+        model = ListReffingModel(id='1', ref2=[ref1, ref2])
+        models['1'] = model
+        references = [inst.id for inst in model.iter_references()]
+        self.assertItemsEqual(['2', '4'], references)
+
+    @mock.patch("dragonflow.db.api_nb._nb_api")
+    def test_iter_references_deep(self, nb_api):
+        models = {}
+        nb_api.get = lambda m: models[m.id]
+        ref1 = ReffingModel(id='2', ref1='3')
+        models['2'] = ref1
+        models['3'] = ReffedModel(id='3')
+        ref2 = ReffingModel(id='4', ref1='5')
+        models['4'] = ref2
+        models['5'] = ReffedModel(id='5')
+        model = ListReffingModel(id='1', ref2=[ref1, ref2])
+        models['1'] = model
+        references = [inst.id for inst in model.iter_references_deep(nb_api)]
+        self.assertItemsEqual(['2', '3', '4', '5'], references)
+        self.assertLess(references.index('2'), references.index('3'))
+        self.assertLess(references.index('4'), references.index('5'))
+
+    def test_iter_submodels(self):
+        model = EmbeddingModel(id='1', embedded=ModelTest(id='2'))
+        submodels = [inst.id for inst in model.iter_submodels()]
+        self.assertEqual(['2'], submodels)

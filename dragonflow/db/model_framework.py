@@ -39,6 +39,11 @@ def _normalize_tuple(v):
     return tuple(v)
 
 
+def is_submodel(instance):
+    return (isinstance(instance, ModelBase) or
+            hasattr(instance, 'get_object'))
+
+
 class _CommonBase(models.Base):
     '''Base class for extending jsonmodels' Base
 
@@ -257,6 +262,43 @@ class _CommonBase(models.Base):
             for subobj in subobjs:
                 if isinstance(subobj, ModelBase):
                     yield subobj
+
+    def iter_submodels(self):
+        for name, field in self:
+            member = getattr(self, name)
+            if isinstance(member, list):
+                for instance in member:
+                    if is_submodel(instance):
+                        yield instance
+            elif is_submodel(member):
+                yield member
+
+    def iter_references(self):
+        for submodel in self.iter_submodels():
+            try:
+                yield submodel
+            except AttributeError:
+                pass  # Not a reference
+
+    def iter_references_deep(self, nb_api):
+        seen = set()
+        queue = collections.deque((self,))
+        while len(queue) > 0:
+            item = queue.pop()
+            do_yield = False
+            try:
+                dereffed = item.dereference(nb_api)
+                do_yield = True
+                item = dereffed
+            except AttributeError:
+                do_yield = False  # Not a reference
+            if item.id in seen:
+                continue
+            seen.add(item.id)
+            if do_yield:
+                yield item
+            for submodel in item.iter_submodels():
+                queue.append(submodel)
 
     @classmethod
     def get_index(cls, index):

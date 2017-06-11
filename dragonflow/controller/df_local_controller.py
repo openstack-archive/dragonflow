@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import sys
 
 from neutron.common import config as common_config
@@ -418,9 +419,16 @@ class DfLocalController(object):
                     self.delete_by_id(model_class, update.key)
                 else:
                     obj = model_class.from_json(update.value)
-                    self.update(obj)
+                    queue = collections.deque(
+                            obj.iter_references_deep(self.nb_api))
+                    queue.appendLeft(obj)
+                    self._send_update_events(reversed(queue))
         else:
             LOG.warning('Unfamiliar update: %s', str(update))
+
+    def _send_update_events(self, iterable):
+        for instance in iterable:
+            self.update(instance)
 
 
 def _has_basic_events(obj):
