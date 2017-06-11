@@ -30,6 +30,7 @@ class DragonflowException(Exception):
         try:
             super(DragonflowException, self).__init__(self.message % kwargs)
             self.msg = self.message % kwargs
+            self.kwargs = kwargs
         except Exception:
             with excutils.save_and_reraise_exception() as ctxt:
                 if not self.use_fatal_exceptions():

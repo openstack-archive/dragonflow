@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
+import itertools
 import sys
 
 from oslo_log import log
@@ -21,6 +23,7 @@ from ryu.app.ofctl import service as of_service
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
+from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as ctrl_const
@@ -32,6 +35,7 @@ from dragonflow.db import api_nb
 from dragonflow.db import db_common
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
+from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
@@ -47,6 +51,7 @@ class DfLocalController(object):
 
     def __init__(self, chassis_name, nb_api):
         self.db_store = db_store.get_instance()
+        self._waiting = collections.defaultdict(set)
 
         self.chassis_name = chassis_name
         self.nb_api = nb_api
@@ -323,9 +328,55 @@ class DfLocalController(object):
                     self.delete_by_id(model_class, update.key)
                 else:
                     obj = model_class.from_json(update.value)
-                    self.update(obj)
+                    self._send_updates_for_object(obj)
         else:
             LOG.warning('Unfamiliar update: %s', str(update))
+
+    def _send_updates_for_object(self, obj):
+        try:
+            references = tuple(self.iter_model_references_deep(obj))
+        except exceptions.ReferencedObjectNotFound as e:
+            proxy = e.kwargs['proxy']
+            reference_id = proxy.id
+            self._waiting[reference_id].add(obj.id)
+        else:
+            queue = itertools.chain(reversed(references), (obj,))
+            self._send_update_events(queue)
+            self._send_pending_events(obj)
+
+    def _send_pending_events(self, obj):
+        try:
+            pending = self._waiting.pop(obj.id)
+        except KeyError:
+            return  # Nothing to do
+        for item in pending:
+            self._send_updates_for_object(item)
+
+    def iter_model_references_deep(self, obj):
+        seen = set()
+        queue = collections.deque((obj,))
+        while queue:
+            item = queue.pop()
+            if item.id in seen:
+                continue
+            seen.add(item.id)
+            if model_proxy.is_model_proxy(item):
+                item = self._dereference(item)
+                yield item
+            for submodel in item.iter_submodels():
+                queue.append(submodel)
+
+    def _dereference(self, reference):
+        item = reference.get_object()
+        if item is None:
+            item = self.nb_api.get(reference)
+        if item is None:
+            raise exceptions.ReferencedObjectNotFound(proxy=reference)
+        return item
+
+    def _send_update_events(self, iterable):
+        for instance in iterable:
+            self.update(instance)
 
 
 def _has_basic_events(obj):
