@@ -16,6 +16,7 @@ from oslo_config import cfg
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
+from dragonflow.db import field_types as df_fields
 from dragonflow.db import model_framework
 from dragonflow.db.models import core
 from dragonflow.db.models import mixins
@@ -164,3 +165,42 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         get_one.return_value = None
         self.controller.delete_model_object(None)
         delete.assert_not_called()
+
+    def test_iter_references_deep(self):
+
+        @model_framework.register_model
+        @model_framework.construct_nb_db_model
+        class LocalReffedModel(model_framework.ModelBase):
+            table_name = 'LocalReffedModel'
+            pass
+
+        @model_framework.register_model
+        @model_framework.construct_nb_db_model
+        class LocalReffingModel(model_framework.ModelBase):
+            table_name = 'LocalReffingModel'
+            ref1 = df_fields.ReferenceField(LocalReffedModel)
+
+        @model_framework.register_model
+        @model_framework.construct_nb_db_model
+        class LocalListReffingModel(model_framework.ModelBase):
+            table_name = 'LocalListReffingModel'
+            ref2 = df_fields.ReferenceListField(LocalReffingModel)
+
+        models = {}
+        nb_api_mocker = mock.patch.object(self.controller, 'nb_api')
+        nb_api = nb_api_mocker.start()
+        self.addCleanup(nb_api_mocker.stop)
+        nb_api.get = lambda m: models[m.id]
+        models['3'] = LocalReffedModel(id='3')
+        ref1 = LocalReffingModel(id='2', ref1='3')
+        models['2'] = ref1
+        models['5'] = LocalReffedModel(id='5')
+        ref2 = LocalReffingModel(id='4', ref1='5')
+        models['4'] = ref2
+        model = LocalListReffingModel(id='1', ref2=[ref1, ref2])
+        models['1'] = model
+        references = [inst.id for inst in
+                      self.controller.iter_model_references_deep(model)]
+        self.assertItemsEqual(['2', '3', '4', '5'], references)
+        self.assertLess(references.index('2'), references.index('3'))
+        self.assertLess(references.index('4'), references.index('5'))

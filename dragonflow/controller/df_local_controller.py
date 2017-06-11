@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
+import itertools
 import sys
 import time
 
@@ -23,6 +25,7 @@ from ryu.app.ofctl import service as of_service
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
+from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as ctrl_const
@@ -34,6 +37,7 @@ from dragonflow.db import api_nb
 from dragonflow.db import db_common
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
+from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
@@ -50,6 +54,11 @@ class DfLocalController(object):
     def __init__(self, chassis_name, nb_api):
         self.db_store = db_store.get_instance()
         self._queue = queue.PriorityQueue()
+        # pending_id -> (model, pender_id)
+        #       'pending_id' is the ID of the object for which we are waiting.
+        #       'model' and 'pender_id' are the model and the ID of the object
+        #       which is waiting for the object described by 'pending_id'
+        self._pending_objects = collections.defaultdict(set)
 
         self.chassis_name = chassis_name
         self.nb_api = nb_api
@@ -341,9 +350,109 @@ class DfLocalController(object):
                     self.delete_by_id(model_class, update.key)
                 else:
                     obj = model_class.from_json(update.value)
-                    self.update(obj)
+                    self._send_updates_for_object(obj)
         else:
             LOG.warning('Unfamiliar update: %s', str(update))
+
+    def _get_model(self, obj):
+        if model_proxy.is_model_proxy(obj):
+            return obj.get_proxied_model()
+        return type(obj)
+
+    def _send_updates_for_object(self, obj):
+        try:
+            references = self.get_model_references_deep(obj)
+        except exceptions.ReferencedObjectNotFound as e:
+            proxy = e.kwargs['proxy']
+            reference_id = proxy.id
+            model = self._get_model(obj)
+            self._pending_objects[reference_id].add((model, obj.id))
+        else:
+            queue = itertools.chain(reversed(references), (obj,))
+            self._send_update_events(queue)
+            self._send_pending_events(obj)
+
+    def _send_pending_events(self, obj):
+        try:
+            pending = self._pending_objects.pop(obj.id)
+        except KeyError:
+            return  # Nothing to do
+        for model, item_id in pending:
+            lean_obj = model(id=item_id)
+            item = self.nb_api.get(lean_obj)
+            self._send_updates_for_object(item)
+
+    def get_model_references_deep(self, obj):
+        """
+        Return a tuple of all model instances referenced by the given model
+        instance, including indirect references. e.g. if an lport references
+        a network, and that network references a QoS policy, then both are
+        returned in the iterator.
+
+        Raises a ReferencedObjectNotFound exception if a referenced model
+        cannot be found in the db_store or NB DB.
+
+        :param obj: Model instance
+        :type obj:  model_framework.ModelBase
+        :return:    iterator
+        :raises:    exceptions.ReferencedObjectNotFound
+        """
+        return tuple(self.iter_model_references_deep(obj))
+
+    def iter_model_references_deep(self, obj):
+        """
+        Return an iterator on all model instances referenced by the given model
+        instance, including indirect references. e.g. if an lport references
+        a network, and that network references a QoS policy, then both are
+        returned in the iterator.
+
+        Raises a ReferencedObjectNotFound exception upon a referenced model
+        cannot be found in the db_store or NB DB. The exception is thrown
+        when that object is reached by the iterator, allowing other objects
+        to be processed. If you need to verify all objects can be referenced,
+        use 'get_model_references_deep'.
+
+        :param obj: Model instance
+        :type obj:  model_framework.ModelBase
+        :return:    iterator
+        :raises:    exceptions.ReferencedObjectNotFound
+        """
+        seen = set()
+        queue = collections.deque((obj,))
+        while queue:
+            item = queue.pop()
+            if item.id in seen:
+                continue
+            seen.add(item.id)
+            if model_proxy.is_model_proxy(item):
+                # NOTE(oanson) _dereference raises an exception for unknown
+                # objectes, i.e. objects not found in the NB DB.
+                item = self._dereference(item)
+                yield item
+            for submodel in item.iter_submodels():
+                queue.append(submodel)
+
+    def _dereference(self, reference):
+        """
+        Dereference a model proxy object. Return first from the db_store, and
+        if it is not there, from the NB DB. Raise a ReferencedObjectNotFound
+        exception if it is not in the NB DB either.
+
+        :param reference: Model instance
+        :type reference:  model_framework.ModelBase
+        :return:          iterator
+        :raises:          exceptions.ReferencedObjectNotFound
+        """
+        item = reference.get_object()
+        if item is None:
+            item = self.nb_api.get(reference)
+        if item is None:
+            raise exceptions.ReferencedObjectNotFound(proxy=reference)
+        return item
+
+    def _send_update_events(self, iterable):
+        for instance in iterable:
+            self.update(instance)
 
 
 def _has_basic_events(obj):
