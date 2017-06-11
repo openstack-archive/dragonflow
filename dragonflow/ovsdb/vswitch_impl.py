@@ -157,6 +157,15 @@ class OvsApi(object):
         if iface and netaddr.valid_mac(iface['mac_in_use']):
             return iface['mac_in_use']
 
+    def get_port_id_by_ofport(self, ofport):
+        columns = {'ofport', 'external_ids'}
+        ifaces = self.ovsdb.db_find('Interface', ('ofport', '=', str(ofport)),
+                                    columns=columns).execute()
+        try:
+            return ifaces[0]['external_ids']['iface-id']
+        except Exception:
+            LOG.exception('Failed to retrieve port id for ofport: %s', ofport)
+
     def _get_port_name_by_id(self, port_id):
         ifaces = self.ovsdb.db_find(
             'Interface', ('external_ids', '=', {'iface-id': port_id}),
