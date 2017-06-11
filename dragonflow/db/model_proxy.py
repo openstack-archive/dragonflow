@@ -47,6 +47,12 @@ class _ModelProxyBase(object):
             self._obj = self._fetch_obj()
         return self._obj
 
+    def dereference(self, nb_api):
+        result = self.get_object()
+        if not result:
+            result = nb_api.get(self)
+        return result
+
     @property
     def id(self):
         return self._id

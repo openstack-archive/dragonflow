@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
+import itertools
 import sys
 
 from neutron.common import config as common_config
@@ -326,9 +328,32 @@ class DfLocalController(object):
                     self.delete_by_id(model_class, update.key)
                 else:
                     obj = model_class.from_json(update.value)
-                    self.update(obj)
+                    references = tuple(self.iter_model_references_deep(obj))
+                    queue = itertools.chain(reversed(references), (obj,))
+                    self._send_update_events(queue)
         else:
             LOG.warning('Unfamiliar update: %s', str(update))
+
+    def iter_model_references_deep(self, obj):
+        seen = set()
+        queue = collections.deque((obj,))
+        while queue:
+            item = queue.pop()
+            if item.id in seen:
+                continue
+            seen.add(item.id)
+            try:
+                item = item.dereference(self.nb_api)
+                yield item
+            except AttributeError:
+                # Do nothing. Not a reference
+                pass
+            for submodel in item.iter_submodels():
+                queue.append(submodel)
+
+    def _send_update_events(self, iterable):
+        for instance in iterable:
+            self.update(instance)
 
 
 def _has_basic_events(obj):
