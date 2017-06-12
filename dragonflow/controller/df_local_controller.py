@@ -34,7 +34,6 @@ from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
-from dragonflow.db import models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
@@ -376,20 +375,11 @@ class DfLocalController(object):
 
     def delete(self, obj):
         handler = self._get_delete_handler(obj.table_name)
-
-        if isinstance(obj, models.NbDbObject):
-            return handler(obj.id)
-        else:
-            return handler(obj)
+        return handler(obj)
 
     def delete_by_id(self, model, obj_id):
         # FIXME (dimak) Probably won't be needed once we're done porting
-        handler = self._get_delete_handler(model.table_name)
-
-        if issubclass(model, models.NbObject):
-            return handler(obj_id)
-        else:
-            return handler(model(id=obj_id))
+        return self.delete(model(id=obj_id))
 
 
 def init_ryu_config():
