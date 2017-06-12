@@ -83,14 +83,6 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def notify_ovs_sync_started(self):
         self.dispatcher.dispatch('ovs_sync_started')
 
-    def notify_update_active_port(self, active_port, old_active_port):
-        self.dispatcher.dispatch('update_active_port',
-                                 active_port=active_port,
-                                 old_active_port=old_active_port)
-
-    def notify_remove_active_port(self, active_port):
-        self.dispatcher.dispatch('remove_active_port', active_port)
-
     @handler.set_ev_handler(ofp_event.EventOFPSwitchFeatures,
                             handler.CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
