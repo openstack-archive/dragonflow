@@ -25,10 +25,9 @@ from dragonflow.db import db_store2
 
 
 class DFlowApp(object):
-    def __init__(self, api, db_store=None, vswitch_api=None, nb_api=None,
+    def __init__(self, api, vswitch_api=None, nb_api=None,
                  neutron_server_notifier=None):
         self.api = api
-        self.db_store = db_store
         self.db_store2 = db_store2.get_instance()
         self.vswitch_api = vswitch_api
         self.nb_api = nb_api
