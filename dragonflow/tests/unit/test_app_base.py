@@ -162,6 +162,7 @@ def make_fake_port(id=None,
                    device_id='fake_device_id',
                    ofport=1,
                    extra_dhcp_opts=None):
+
     fake_port = l2.LogicalPort(
         id="%s_%s" % (name, ofport) if not id else id,
         topic=topic,
@@ -179,7 +180,7 @@ def make_fake_port(id=None,
         device_owner=device_owner,
         device_id=device_id,
         # binding_vnic_type=binding_vnic_type,
-        extra_dhcp_options=extra_dhcp_opts,
+        extra_dhcp_options={} if not extra_dhcp_opts else extra_dhcp_opts,
     )
     fake_port.is_local = is_local
     fake_port.ofport = ofport
@@ -192,10 +193,10 @@ def make_fake_local_port(**kargs):
     return make_fake_port(**kargs)
 
 
-fake_local_port1_dhcp_opts = [
-    l2.DHCPOption(tag=3, value='10.0.0.1'),
-    l2.DHCPOption(tag=121, value='0.0.0.0/0,10.0.0.1'),
-]
+fake_local_port1_dhcp_opts = {
+    3: '10.0.0.1',
+    121: '0.0.0.0/0,10.0.0.1'
+}
 
 
 fake_local_port1 = make_fake_local_port(
