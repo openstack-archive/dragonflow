@@ -40,10 +40,6 @@ from dragonflow.db.models import l2
 
 LOG = log.getLogger(__name__)
 
-DHCP_DOMAIN_NAME_OPT = 15
-DHCP_INTERFACE_MTU_OPT = 26
-DHCP_CLASSLESS_ROUTE_OPT = 121
-
 
 class DHCPApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
@@ -170,8 +166,8 @@ class DHCPApp(df_base_app.DFlowApp):
             dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT,
                         dhcp_server_address.packed),
             dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns),
-            dhcp.option(DHCP_DOMAIN_NAME_OPT, domain_name_bin),
-            dhcp.option(DHCP_CLASSLESS_ROUTE_OPT, host_routes),
+            dhcp.option(dhcp.DHCP_DOMAIN_NAME_OPT, domain_name_bin),
+            dhcp.option(dhcp.DHCP_CLASSLESS_ROUTE_OPT, host_routes),
         ]
         gw_ip = self._get_port_gateway_address(subnet, lport)
         if gw_ip:
@@ -181,7 +177,8 @@ class DHCPApp(df_base_app.DFlowApp):
         if pkt_type == dhcp.DHCP_ACK:
             intreface_mtu = self._get_port_mtu(lport)
             mtu_bin = struct.pack('!H', intreface_mtu)
-            option_list.append(dhcp.option(DHCP_INTERFACE_MTU_OPT, mtu_bin))
+            option_list.append(dhcp.option(dhcp.DHCP_INTERFACE_MTU_OPT,
+                                           mtu_bin))
         options = dhcp.options(option_list=option_list)
         dhcp_pkt = ryu_packet.Packet()
         dhcp_pkt.add_protocol(ethernet.ethernet(
@@ -221,12 +218,12 @@ class DHCPApp(df_base_app.DFlowApp):
 
         routes_bin = b''
 
-        dhcp_opts = lport.extra_dhcp_options
-        for opt in dhcp_opts:
-            if opt.tag == DHCP_CLASSLESS_ROUTE_OPT:
-                dest_cidr, _c, via = opt.value.partition(',')
-                host_routes.append(host_route.HostRoute(destination=dest_cidr,
-                                                        nexthop=via))
+        opt = lport.extra_dhcp_options.get(dhcp.DHCP_CLASSLESS_ROUTE_OPT)
+        if opt:
+            dest_cidr, _c, via = opt.partition(',')
+            host_routes.append(
+                host_route.HostRoute(destination=dest_cidr,
+                                     nexthop=via))
 
         for route in host_routes:
             dest = route.destination.network
@@ -258,10 +255,7 @@ class DHCPApp(df_base_app.DFlowApp):
         if gateway_ip:
             return gateway_ip
 
-        dhcp_opts = lport.extra_dhcp_options
-        for opt in dhcp_opts:
-            if opt.tag == dhcp.DHCP_GATEWAY_ADDR_OPT:
-                return opt.value
+        return lport.extra_dhcp_options.get(dhcp.DHCP_GATEWAY_ADDR_OPT)
 
     def _is_dhcp_enabled_for_port(self, lport):
         try:
