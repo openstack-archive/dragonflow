@@ -70,9 +70,14 @@ def _validate_ip_prefix_allowed_address_pairs(allowed_address_pairs):
     return supported_allowed_address_pairs
 
 
-def _rename_extra_dhcp_opts_keys(neutron_extra_dhcp_opt):
-    return {'tag': int(neutron_extra_dhcp_opt['opt_name']),
-            'value': neutron_extra_dhcp_opt['opt_value']}
+def _build_extra_dhcp_options(port):
+    dhcp_opt_dict = {}
+    opts = port.get(extra_dhcp_opt.EXTRADHCPOPTS, [])
+
+    for opt in opts:
+        dhcp_opt_dict[int(opt['opt_name'])] = opt['opt_value']
+
+    return dhcp_opt_dict
 
 
 def logical_port_from_neutron_port(port):
@@ -94,5 +99,4 @@ def logical_port_from_neutron_port(port):
                 port.get(addr_pair.ADDRESS_PAIRS, [])),
             binding_vnic_type=port.get(portbindings.VNIC_TYPE),
             qos_policy=port.get('qos_policy_id'),
-            extra_dhcp_options=[_rename_extra_dhcp_opts_keys(edo) for edo in
-                                port.get(extra_dhcp_opt.EXTRADHCPOPTS, [])])
+            extra_dhcp_options=_build_extra_dhcp_options(port))
