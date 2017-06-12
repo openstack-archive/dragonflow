@@ -232,3 +232,24 @@ class EnumListField(fields.ListField):
                     _('{value} is not one of: [{valid_values}]').format(
                         value=value,
                         valid_values=', '.join(self._valid_values)))
+
+
+class IntStringDictField(fields.BaseField):
+    '''A field that stores a string -> string dictionary'''
+    types = (dict,)
+
+    def validate(self, value):
+        super(IntStringDictField, self).validate(value)
+        if not value:
+            return
+        for key, inner_val in value.items():
+            if not isinstance(key, six.integer_types):
+                raise errors.ValidationError(
+                    _('Key {} is not a int').format(key))
+            if not isinstance(inner_val, six.string_types):
+                raise errors.ValidationError(
+                    _('Value {value} to key {key} is not a string').format(
+                        key=key, value=inner_val))
+
+    def get_default_value(self):
+        return {}
