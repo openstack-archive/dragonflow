@@ -17,7 +17,7 @@ from oslo_log import log
 
 from dragonflow.common import constants
 from dragonflow.controller import df_db_objects_refresh
-from dragonflow.db import db_store2
+from dragonflow.db import db_store
 from dragonflow.db.models import l2
 from dragonflow.db.models import migration
 from dragonflow.db.models import ovs
@@ -51,7 +51,7 @@ class Topology(object):
         self.nb_api = controller.get_nb_api()
         self.openflow_app = controller.get_openflow_app()
         self.chassis_name = controller.get_chassis_name()
-        self.db_store2 = db_store2.get_instance()
+        self.db_store = db_store.get_instance()
 
         ovs.OvsPort.register_updated(self.ovs_port_updated)
         ovs.OvsPort.register_deleted(self.ovs_port_deleted)
@@ -153,13 +153,13 @@ class Topology(object):
         if not tunnel_type:
             return
 
-        lswitches = self.db_store2.get_all(
+        lswitches = self.db_store.get_all(
             l2.LogicalSwitch(network_type=tunnel_type),
             l2.LogicalSwitch.get_index('network_type'))
         for lswitch in lswitches:
             index = l2.LogicalPort.get_indexes()['lswitch_id']
-            lports = self.db_store2.get_all(l2.LogicalPort(lswitch=lswitch),
-                                            index=index)
+            lports = self.db_store.get_all(l2.LogicalPort(lswitch=lswitch),
+                                           index=index)
             for lport in lports:
                 if lport.is_local:
                     continue
@@ -214,7 +214,7 @@ class Topology(object):
                         status=migration.MIGRATION_STATUS_DEST_PLUG))
             return
 
-        cached_lport = self.db_store2.get_one(l2.LogicalPort(id=lport_id))
+        cached_lport = self.db_store.get_one(l2.LogicalPort(id=lport_id))
         if not cached_lport or not cached_lport.ofport:
             # If the logical port is not in db store or its ofport is not
             # valid. It has not been applied to dragonflow apps. We need to
@@ -229,7 +229,7 @@ class Topology(object):
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.id
         lport_id = ovs_port.iface_id
-        lport = self.db_store2.get_one(l2.LogicalPort(id=lport_id))
+        lport = self.db_store.get_one(l2.LogicalPort(id=lport_id))
         if lport is None:
             lport = self.ovs_to_lport_mapping.get(ovs_port_id)
             if lport is None:
@@ -306,7 +306,7 @@ class Topology(object):
             lean_lport = l2.LogicalPort(id=port_id)
         else:
             lean_lport = l2.LogicalPort(id=port_id, topic=topic)
-        lport = self.db_store2.get_one(lean_lport)
+        lport = self.db_store.get_one(lean_lport)
         if lport is None:
             lport = self.nb_api.get(lean_lport)
 

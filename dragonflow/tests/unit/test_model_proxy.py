@@ -14,7 +14,7 @@ import copy
 from jsonmodels import fields
 import mock
 
-from dragonflow.db import db_store2
+from dragonflow.db import db_store
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
 from dragonflow.db import model_proxy
@@ -46,10 +46,10 @@ ModelTestProxy = model_proxy.create_model_proxy(ModelTest)
 class TestObjectProxy(tests_base.BaseTestCase):
     def setUp(self):
         super(TestObjectProxy, self).setUp()
-        self.db_store2 = mock.MagicMock()
+        self.db_store = mock.MagicMock()
         self.get_inst_mock = mock.patch(
-            'dragonflow.db.db_store2.get_instance',
-            return_value=self.db_store2
+            'dragonflow.db.db_store.get_instance',
+            return_value=self.db_store
         )
         self.addCleanup(self.get_inst_mock.stop)
         self.get_inst_mock.start()
@@ -64,49 +64,49 @@ class TestObjectProxy(tests_base.BaseTestCase):
         self.assertEqual(obj1, obj2)
 
     def test_proxied_attrs(self):
-        self.db_store2.get_one.return_value = ModelTest(
+        self.db_store.get_one.return_value = ModelTest(
             id='id1', topic='topic1')
 
         mtp = ModelTestProxy(id='id1')
         self.assertEqual('id1', mtp.id)
         self.assertEqual('topic1', mtp.topic)
-        self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
+        self.db_store.get_one.assert_called_once_with(ModelTest(id='id1'))
 
-        self.db_store2.get_one.reset_mock()
+        self.db_store.get_one.reset_mock()
         mtp = model_proxy.create_reference(ModelTest, id='id1')
         self.assertEqual('id1', mtp.id)
         self.assertEqual('topic1', mtp.topic)
-        self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
+        self.db_store.get_one.assert_called_once_with(ModelTest(id='id1'))
 
     def test_lazyness(self):
-        self.db_store2.get_one.return_value = ModelTest(
+        self.db_store.get_one.return_value = ModelTest(
             id='id1', topic='topic1')
 
         mtp = ModelTestProxy(id='id1')
         self.assertEqual('id1', mtp.id)
-        self.db_store2.get_one.assert_not_called()
+        self.db_store.get_one.assert_not_called()
 
         self.assertEqual('topic1', mtp.topic)
-        self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
+        self.db_store.get_one.assert_called_once_with(ModelTest(id='id1'))
 
-        self.db_store2.get_one.reset_mock()
+        self.db_store.get_one.reset_mock()
         mtp = model_proxy.create_reference(ModelTest, id='id1')
         self.assertEqual('id1', mtp.id)
-        self.db_store2.get_one.assert_not_called()
+        self.db_store.get_one.assert_not_called()
 
         self.assertEqual('topic1', mtp.topic)
-        self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
+        self.db_store.get_one.assert_called_once_with(ModelTest(id='id1'))
 
     def test_eagerness(self):
-        self.db_store2.get_one.return_value = ModelTest(
+        self.db_store.get_one.return_value = ModelTest(
             id='id1', topic='topic1')
 
         ModelTestProxy(id='id1', lazy=False)
-        self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
+        self.db_store.get_one.assert_called_once_with(ModelTest(id='id1'))
 
-        self.db_store2.get_one.reset_mock()
+        self.db_store.get_one.reset_mock()
         model_proxy.create_reference(ModelTest, lazy=False, id='id1')
-        self.db_store2.get_one.assert_called_once_with(ModelTest(id='id1'))
+        self.db_store.get_one.assert_called_once_with(ModelTest(id='id1'))
 
     def test_none_reference(self):
         self.assertIsNone(model_proxy.create_reference(ModelTest, id=None))
@@ -131,7 +131,7 @@ class TestObjectProxy(tests_base.BaseTestCase):
         self.assertEqual('1234', m.model_test.id)
 
     def test_proxied_method(self):
-        self.db_store2.get_one.return_value = ModelTest(
+        self.db_store.get_one.return_value = ModelTest(
             id='id1', topic='topic1')
 
         mtp = ModelTestProxy(id='id1')
@@ -146,27 +146,27 @@ class TestObjectProxy(tests_base.BaseTestCase):
     def test_stale_model_refresh(self):
         model_test1 = ModelTest(id='1', topic='topic')
         model_test2 = ModelTest(id='1', topic='topic2')
-        self.db_store2.get_one.return_value = model_test1
+        self.db_store.get_one.return_value = model_test1
         reffing_model = RefferingModel(id='2', model_test='1')
         reffing_model.model_test.get_object()
-        self.db_store2.get_one.assert_called_once_with(ModelTest(id='1'))
-        self.db_store2.get_one.reset_mock()
-        self.db_store2.get_one.return_value = model_test2
+        self.db_store.get_one.assert_called_once_with(ModelTest(id='1'))
+        self.db_store.get_one.reset_mock()
+        self.db_store.get_one.return_value = model_test2
         model_test1._is_object_stale = True
         reffing_model.model_test.get_object()
-        self.db_store2.get_one.assert_called_once_with(ModelTest(id='1'))
+        self.db_store.get_one.assert_called_once_with(ModelTest(id='1'))
 
     def test_integration_stale_model_db_store(self):
-        db_store = db_store2.DbStore2()
-        with mock.patch('dragonflow.db.db_store2.get_instance',
-                        return_value=db_store):
+        db_store_inst = db_store.DbStore()
+        with mock.patch('dragonflow.db.db_store.get_instance',
+                        return_value=db_store_inst):
             model_test1 = ModelTest(id='1', topic='topic')
-            db_store.update(model_test1)
+            db_store_inst.update(model_test1)
             reffing_model = RefferingModel(id='2', model_test='1')
             self.assertEqual(model_test1,
                              reffing_model.model_test.get_object())
             model_test2 = ModelTest(id='1', topic='topic2')
-            db_store.update(model_test2)
+            db_store_inst.update(model_test2)
             self.assertEqual(model_test2,
                              reffing_model.model_test.get_object())
 

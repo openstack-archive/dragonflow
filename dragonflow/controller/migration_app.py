@@ -49,7 +49,7 @@ class MigrationApp(df_base_app.DFlowApp):
             ofport = self.vswitch_api.get_port_ofport_by_id(port_id)
             lport.ofport = ofport
             lport.is_local = True
-            self.db_store2.update(lport)
+            self.db_store.update(lport)
 
             LOG.info("dest process migration event port = %(port)s"
                      "original_port = %(original_port)s"

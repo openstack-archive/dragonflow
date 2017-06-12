@@ -377,7 +377,7 @@ class SGApp(df_base_app.DFlowApp):
             security_group_id, DIRECTION_EGRESS)
 
         sg_obj = sg_model.SecurityGroup(id=security_group_id)
-        secgroup = self.db_store2.get_one(sg_obj)
+        secgroup = self.db_store.get_one(sg_obj)
         if secgroup is not None:
             for rule in secgroup.rules:
                 self.add_security_group_rule(secgroup, rule)
@@ -409,7 +409,7 @@ class SGApp(df_base_app.DFlowApp):
             security_group_id, DIRECTION_EGRESS)
 
         sg_obj = sg_model.SecurityGroup(id=security_group_id)
-        secgroup = self.db_store2.get_one(sg_obj)
+        secgroup = self.db_store.get_one(sg_obj)
         if secgroup is not None:
             for rule in secgroup.rules:
                 self.remove_security_group_rule(secgroup, rule)
@@ -788,7 +788,7 @@ class SGApp(df_base_app.DFlowApp):
             return self.next_secgroup_rule_id
 
     def _get_secgroup_conj_id_and_priority(self, secgroup_id):
-        sg = self.db_store2.get_one(sg_model.SecurityGroup(id=secgroup_id))
+        sg = self.db_store.get_one(sg_model.SecurityGroup(id=secgroup_id))
         sg_unique_key = sg.unique_key
         return sg_unique_key, (SG_PRIORITY_OFFSET + sg_unique_key)
 
@@ -1177,7 +1177,7 @@ class SGApp(df_base_app.DFlowApp):
             associating_port_ids = self.secgroup_associate_local_ports.get(
                 rule.security_group_id)
             for port_id in associating_port_ids:
-                lport = self.db_store2.get_one(l2.LogicalPort(id=port_id))
+                lport = self.db_store.get_one(l2.LogicalPort(id=port_id))
                 removed_ips = self._get_ips_in_logical_port(lport)
                 zone_id = lport.lswitch.unique_key
                 associating_ports_info.append({'removed_ips': removed_ips,
@@ -1202,7 +1202,7 @@ class SGApp(df_base_app.DFlowApp):
 
         local_port_info = {'removed_ips': removed_ips, 'zone_id': zone_id}
         sg_obj = sg_model.SecurityGroup(id=secgroup_id)
-        secgroup = self.db_store2.get_one(sg_obj)
+        secgroup = self.db_store.get_one(sg_obj)
         if secgroup is not None:
             for rule in secgroup.rules:
                 self._delete_conntrack_entries_by_rule(

@@ -16,7 +16,7 @@ from oslo_config import cfg
 from dragonflow.common import constants
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
-from dragonflow.db import db_store2
+from dragonflow.db import db_store
 from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.tests.unit import test_app_base
@@ -38,9 +38,9 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
     @mock.patch.object(df_local_controller.DfLocalController,
                        '_delete_lport_instance')
-    @mock.patch.object(db_store2.DbStore2, 'get_all')
-    @mock.patch.object(db_store2.DbStore2, 'delete')
-    def test_delete_chassis(self, mock_db_store2_delete,
+    @mock.patch.object(db_store.DbStore, 'get_all')
+    @mock.patch.object(db_store.DbStore, 'delete')
+    def test_delete_chassis(self, mock_db_store_delete,
                             mock_get_ports, mock_delete_lport):
         lport_id = 'fake_lport_id'
         chassis = core.Chassis(id='fake_chassis_id')
@@ -50,7 +50,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
         self.controller.delete(chassis)
         mock_delete_lport.assert_called_once_with(lport)
-        mock_db_store2_delete.assert_called_once_with(chassis)
+        mock_db_store_delete.assert_called_once_with(chassis)
 
     def test_register_chassis(self):
         cfg.CONF.set_override('external_host_ip',
@@ -64,16 +64,16 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
             tunnel_types=self.controller.tunnel_types,
         )
 
-        self.assertIn(expected_chassis, self.controller.db_store2)
+        self.assertIn(expected_chassis, self.controller.db_store)
         self.nb_api.update.assert_called_once_with(expected_chassis)
 
-    @mock.patch.object(db_store2.DbStore2, 'get_one')
+    @mock.patch.object(db_store.DbStore, 'get_one')
     def test__is_physical_chassis(self, get_one):
         # real chassis
         chassis_real = core.Chassis(id='ch1', ip='10.0.0.3')
         self.assertTrue(self.controller._is_physical_chassis(chassis_real))
 
-        self.db_store2 = mock.MagicMock()
+        self.db_store = mock.MagicMock()
         get_one.return_value = core.Chassis(id='ch2', ip='10.0.0.4')
         chassis_ref = model_proxy.create_reference(core.Chassis, 'ch2')
         self.assertTrue(self.controller._is_physical_chassis(chassis_ref))
@@ -85,8 +85,8 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         chassis_virt = core.Chassis(id=constants.DRAGONFLOW_VIRTUAL_PORT)
         self.assertFalse(self.controller._is_physical_chassis(chassis_virt))
 
-    @mock.patch.object(db_store2.DbStore2, 'get_one')
-    @mock.patch.object(db_store2.DbStore2, 'update')
+    @mock.patch.object(db_store.DbStore, 'get_one')
+    @mock.patch.object(db_store.DbStore, 'update')
     def test_update_model_object_created_called(self, update, get_one):
         obj = mock.MagicMock()
         obj.version = 1
@@ -96,8 +96,8 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         update.assert_called_once_with(obj)
         obj.emit_created.assert_called_once()
 
-    @mock.patch.object(db_store2.DbStore2, 'get_one')
-    @mock.patch.object(db_store2.DbStore2, 'update')
+    @mock.patch.object(db_store.DbStore, 'get_one')
+    @mock.patch.object(db_store.DbStore, 'update')
     def test_update_model_object_updated_called(self, update, get_one):
         obj = mock.MagicMock()
         obj.version = 2
@@ -110,8 +110,8 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         update.assert_called_once_with(obj)
         obj.emit_updated.assert_called_once_with(old_obj)
 
-    @mock.patch.object(db_store2.DbStore2, 'get_one')
-    @mock.patch.object(db_store2.DbStore2, 'update')
+    @mock.patch.object(db_store.DbStore, 'get_one')
+    @mock.patch.object(db_store.DbStore, 'update')
     def test_update_model_object_not_called(self, update, get_one):
         obj = mock.MagicMock()
         obj.version = 1
@@ -125,8 +125,8 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         update.assert_not_called()
         obj.emit_updated.assert_not_called()
 
-    @mock.patch.object(db_store2.DbStore2, 'get_one')
-    @mock.patch.object(db_store2.DbStore2, 'delete')
+    @mock.patch.object(db_store.DbStore, 'get_one')
+    @mock.patch.object(db_store.DbStore, 'delete')
     def test_delete_model_object_called(self, delete, get_one):
         obj = mock.MagicMock()
         obj.emit_deleted = mock.MagicMock()
@@ -136,8 +136,8 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         delete.assert_called_once()
         obj.emit_deleted.assert_called_once()
 
-    @mock.patch.object(db_store2.DbStore2, 'get_one')
-    @mock.patch.object(db_store2.DbStore2, 'delete')
+    @mock.patch.object(db_store.DbStore, 'get_one')
+    @mock.patch.object(db_store.DbStore, 'delete')
     def test_delete_model_object_not_called(self, delete, get_one):
         get_one.return_value = None
         self.controller.delete_model_object(None)

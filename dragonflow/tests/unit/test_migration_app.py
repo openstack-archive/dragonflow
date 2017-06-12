@@ -29,15 +29,15 @@ class TestMigrationApp(test_app_base.DFAppTestBase):
                 status=migration.MIGRATION_STATUS_SRC_UNPLUG)
         self.controller.nb_api.get.return_value = lport
 
-        self.controller.db_store2.update(fake_lswitch)
-        self.controller.db_store2.update(lport)
+        self.controller.db_store.update(fake_lswitch)
+        self.controller.db_store.update(lport)
         self.controller.vswitch_api.get_chassis_ofport.return_value = 3
         self.controller.vswitch_api.get_port_ofport_by_id.retrun_value = 2
 
         mock_update_patch = mock.patch.object(
-                self.controller.db_store2,
+                self.controller.db_store,
                 'update',
-                side_effect=self.controller.db_store2.update
+                side_effect=self.controller.db_store.update
         )
         mock_update = mock_update_patch.start()
         self.addCleanup(mock_update_patch.stop)

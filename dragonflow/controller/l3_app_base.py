@@ -174,9 +174,9 @@ class L3AppMixin(object):
 
     def _get_port_by_lswitch_and_ip(self, ip, lswitch_id):
         ip_lswitch_idx = l2.LogicalPort.get_index('ip,lswitch')
-        ports = self.db_store2.get_all(l2.LogicalPort(lswitch=lswitch_id,
-                                                      ips=[ip]),
-                                       index=ip_lswitch_idx)
+        ports = self.db_store.get_all(l2.LogicalPort(lswitch=lswitch_id,
+                                                     ips=[ip]),
+                                      index=ip_lswitch_idx)
         return next(ports, None)
 
     def _get_gateway_port_by_ip(self, router, ip):
@@ -407,7 +407,7 @@ class L3AppMixin(object):
         # controller will create icmp unreachable mesage. A virtual router
         # interface will not be in local cache, as it doesn't have chassis
         # information.
-        lport = self.db_store2.get_one(l2.LogicalPort(id=router_port.id))
+        lport = self.db_store.get_one(l2.LogicalPort(id=router_port.id))
         if not lport:
             match = self._get_router_interface_match(router_unique_key, dst_ip)
             actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
@@ -491,7 +491,7 @@ class L3AppMixin(object):
         # The router interace is concrete, direct the packets to the real
         # port of router interface. The flow here will overwrite
         # the flow that packet-in the packets to local controller.
-        router = router or self.db_store2.get_one(
+        router = router or self.db_store.get_one(
             l3.LogicalRouter(id=lport.device_id))
         if not router:
             return
@@ -518,7 +518,7 @@ class L3AppMixin(object):
         @param port_ip: The ip of lport
         @return Router and the router port that is the gateway of lport
         """
-        for router in self.db_store2.get_all(l3.LogicalRouter):
+        for router in self.db_store.get_all(l3.LogicalRouter):
             for port in router.ports:
                 if (lswitch_id == port.lswitch.id and
                         netaddr.IPAddress(port_ip) in port.network):

@@ -199,7 +199,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.topology.topic_subscribed = {
             topic: {lport_id2, lport_id3}
         }
-        self.controller.db_store2.update(test_app_base.fake_local_port1)
+        self.controller.db_store.update(test_app_base.fake_local_port1)
         self.topology.check_topology_info()
         self.assertEqual(1, len(self.topology.topic_subscribed[topic]))
 
