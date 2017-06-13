@@ -151,9 +151,7 @@ class NbApi(object):
         self.subscriber.daemonize()
 
     def support_publish_subscribe(self):
-        if self.use_pubsub:
-            return True
-        return self.driver.support_publish_subscribe()
+        return self.use_pubsub
 
     def _send_db_change_event(self, table, key, action, value, topic):
         if not self.use_pubsub:
@@ -168,9 +166,6 @@ class NbApi(object):
     def register_notification_callback(self, controller):
         self.controller = controller
         LOG.info("DB configuration sync finished, waiting for changes")
-        if not self.use_pubsub:
-            self.driver.register_notification_callback(
-                self.db_change_callback)
         self._read_db_changes_from_queue()
 
     def register_listener_callback(self, cb, topic):
@@ -186,7 +181,6 @@ class NbApi(object):
                       hostname of the node
         """
         if not self.use_pubsub:
-            self.driver.register_notification_callback(cb)
             return
         self.subscriber.initialize(cb)
         self.subscriber.register_topic(topic)

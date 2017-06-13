@@ -49,9 +49,6 @@ class RedisDbDriver(db_api.DbApi):
                 self.clients[remote_ip_port] = \
                     redis_client.StrictRedis(host=ip_port[0], port=ip_port[1])
 
-    def support_publish_subscribe(self):
-        return True
-
     def create_table(self, table):
         # Not needed in redis
         pass
@@ -324,9 +321,6 @@ class RedisDbDriver(db_api.DbApi):
                       {'e': e})
             return
 
-    def register_notification_callback(self, callback, topics=None):
-        pass
-
     def _uuid_to_key(self, table, key, topic):
         if not topic:
             local_key = ('{' + table + '.' + '}' + '.' + key)
@@ -353,12 +347,6 @@ class RedisDbDriver(db_api.DbApi):
             self._sync_master_list()
         else:
             self._update_server_list()
-
-    def register_topic_for_notification(self, topic):
-        pass
-
-    def unregister_topic_for_notification(self, topic):
-        pass
 
     def set_neutron_server(self, is_neutron_server):
         self.is_neutron_server = is_neutron_server

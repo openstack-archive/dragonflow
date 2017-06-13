@@ -14,7 +14,6 @@ from contextlib import contextmanager
 from socket import timeout as SocketTimeout
 
 import etcd
-import eventlet
 from oslo_log import log
 import urllib3
 from urllib3 import connection
@@ -109,7 +108,6 @@ class EtcdDbDriver(db_api.DbApi):
         self.client = None
         self.current_key = 0
         self.notify_callback = None
-        self.pool = eventlet.GreenPool(size=1)
 
     def initialize(self, db_ip, db_port, **args):
         hosts = _parse_hosts(args['config'].remote_db_hosts)
@@ -117,9 +115,6 @@ class EtcdDbDriver(db_api.DbApi):
             self.client = etcd.Client(host=hosts, allow_reconnect=True)
         else:
             self.client = etcd.Client(host=db_ip, port=db_port)
-
-    def support_publish_subscribe(self):
-        return True
 
     def create_table(self, table):
         # Not needed in etcd
@@ -189,18 +184,6 @@ class EtcdDbDriver(db_api.DbApi):
             except Exception:
                 pass
 
-    def register_notification_callback(self, callback):
-        self.notify_callback = callback
-        self.pool.spawn_n(self._db_changes_updater)
-
-    def register_topic_for_notification(self, topic):
-        # TODO(gsagie) implement this
-        pass
-
-    def unregister_topic_for_notification(self, topic):
-        # TODO(gsagie) implement this
-        pass
-
     def process_ha(self):
         # Not needed in etcd
         pass
@@ -208,19 +191,3 @@ class EtcdDbDriver(db_api.DbApi):
     def set_neutron_server(self, is_neutron_server):
         # Not needed in etcd
         pass
-
-    def _db_changes_updater(self):
-        while True:
-            try:
-                entry = self.client.read('/', wait=True, recursive=True,
-                                         waitIndex=self.current_key,
-                                         timeout=ETCD_READ_TIMEOUT)
-                keys = entry.key.split('/')
-                self.notify_callback(keys[1], keys[2], entry.action,
-                                     entry.value, None)
-                self.current_key = entry.modifiedIndex + 1
-            except Exception as e:
-                if "Read timed out" not in e.message:
-                    LOG.warning(e)
-                    self.notify_callback(None, None, 'sync',
-                                         None, None)

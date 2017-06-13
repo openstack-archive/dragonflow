@@ -33,16 +33,6 @@ class DbApi(object):
         """
 
     @abc.abstractmethod
-    def support_publish_subscribe(self):
-        """Return if this DB support publish-subscribe
-
-           If this method returns True, the DB driver needs to
-           implement register_notification_callback() API in this class
-
-        :returns:          boolean (True or False)
-        """
-
-    @abc.abstractmethod
     def create_table(self, table):
         """Create a table
 
@@ -141,47 +131,6 @@ class DbApi(object):
         :type topic:       string
         :returns:          list of keys
         :raises DragonflowException.DBKeyNotFound: if key not found
-        """
-
-    @abc.abstractmethod
-    def register_notification_callback(self, callback, topics=None):
-        """Register for DB changes notifications, DB driver should
-           call callback method for every change.
-           DB driver is responsible to start the appropriate listener
-           threads on DB changes and send changes to callback.
-
-           Returning the callback with action=='sync' will trigger
-           a full sync process by the controller
-           (Reading all entries for all tables)
-
-        :param callback:  callback method to call for every db change
-        :type callback :  callback method of type:
-                          callback(table, key, action, value)
-                          table - table name
-                          key - object key
-                          action = 'create' / 'set' / 'delete' / 'sync'
-                          value = new object value
-        :param topics:    topics to register for DB notifications
-        :type topics :     list of strings (topics)
-        :returns:         None
-        """
-
-    @abc.abstractmethod
-    def register_topic_for_notification(self, topic):
-        """Register new topic, start receiving updates on this topic
-
-        :param topic:  topic to register for DB notifications
-        :type topic :  string
-        :returns:      None
-        """
-
-    @abc.abstractmethod
-    def unregister_topic_for_notification(self, topic):
-        """Un-register topic, stop receiving updates on this topic
-
-        :param topic:  topic to un-register for DB notifications
-        :type topic :  string
-        :returns:      None
         """
 
     @abc.abstractmethod
