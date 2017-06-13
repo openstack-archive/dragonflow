@@ -37,6 +37,7 @@ from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
+from dragonflow.db.models import trunk
 from dragonflow.ovsdb import vswitch_impl
 
 
@@ -210,7 +211,11 @@ class DfLocalController(object):
         is_local = (chassis.id == self.chassis_name)
         lport.is_local = is_local
         if is_local:
-            lport.ofport = self.vswitch_api.get_port_ofport_by_id(lport.id)
+            if not lport.ofport:
+                lport.ofport = self.vswitch_api.get_port_ofport_by_id(lport.id)
+            if not lport.ofport:
+                # Not attached to the switch. Maybe it's a subport?
+                lport.ofport = self._get_trunk_subport_ofport(lport)
         else:
             lport.peer_vtep_address = (chassis.id if lport.remote_vtep else
                                        chassis.ip)
@@ -233,6 +238,17 @@ class DfLocalController(object):
             lport.emit_created()
         else:
             lport.emit_updated(original_lport)
+
+    def _get_trunk_subport_ofport(self, lport):
+        try:
+            cps = self.db_store.get_one(
+                    trunk.ChildPortSegmentation(port=lport.id),
+                    trunk.ChildPortSegmentation.get_index('lport_id'))
+            if cps:
+                return cps.parent.ofport
+        except Exception:
+            # Not found. Do nothing
+            pass
 
     def update_lport(self, lport):
         chassis = lport.chassis
@@ -364,6 +380,12 @@ class DfLocalController(object):
     def _get_delete_handler(self, table):
         method_name = 'delete_{0}'.format(table)
         return getattr(self, method_name, self.delete_model_object)
+
+    def update_child_port_segmentation(self, obj):
+        self.update_model_object(obj)
+        child = obj.port.get_object()
+        if child:
+            self.update(child)
 
     def update(self, obj):
         handler = getattr(
