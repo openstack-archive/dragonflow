@@ -154,6 +154,28 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.assertEqual(cfg.CONF.df_dhcp_app.df_default_network_device_mtu,
                          mtu)
 
+    def _build_dhcp_test_fake_lport(self, dhcp_params=None):
+        fake_loprt = test_app_base.make_fake_local_port(
+            lswitch=test_app_base.fake_logic_switch1,
+            subnets=test_app_base.fake_lswitch_default_subnets,
+            ips=('10.0.0.1',),
+            dhcp_params = dhcp_params
+        )
+
+        return fake_loprt
+
+    def _send_dhcp_req_to_app(self, lport, options=None):
+        req = dhcp.dhcp(op=dhcp.DHCP_DISCOVER,
+                        chaddr='aa:aa:aa:aa:aa:aa',
+                        options=dhcp.options(options))
+        pkt = self._create_fake_empty_packet()
+        dhcp_response_pkt = self.app._create_dhcp_response(pkt,
+                                                           req,
+                                                           dhcp.DHCP_OFFER,
+                                                           lport)
+
+        return dhcp_response_pkt
+
     def _create_fake_empty_packet(self):
         pkt = ryu_packet.Packet()
         pkt.add_protocol(ethernet.ethernet(
@@ -163,19 +185,69 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
 
     def test_dhcp_repsonse(self):
 
-        req = dhcp.dhcp(op=dhcp.DHCP_DISCOVER, chaddr='aa:aa:aa:aa:aa:aa')
-
-        fake_lport = test_app_base.make_fake_local_port(
-            lswitch=test_app_base.fake_logic_switch1,
-            subnets=test_app_base.fake_lswitch_default_subnets,
-            ips=('1.2.3.4',)
-        )
-
-        pkt = self._create_fake_empty_packet()
-        dhcp_response_pkt = self.app._create_dhcp_response(pkt,
-                                                           req,
-                                                           dhcp.DHCP_OFFER,
-                                                           fake_lport)
-
+        fake_loprt = self._build_dhcp_test_fake_lport()
+        dhcp_response_pkt = self._send_dhcp_req_to_app(fake_loprt)
+        self.assertTrue(dhcp_response_pkt)
         dhcp_response = dhcp_response_pkt.get_protocol(dhcp.dhcp)
-        self.assertEqual(str(dhcp_response.yiaddr), '1.2.3.4')
+        self.assertEqual('10.0.0.1', str(dhcp_response.yiaddr))
+
+    def _create_dhcp_reponse(self, dhcp_opts, requested):
+
+        dhcp_params = {"opts": {} if not dhcp_opts else dhcp_opts}
+        print(dhcp_params)
+
+        fake_lport = self._build_dhcp_test_fake_lport(dhcp_params)
+
+        requested_option_connected = ''.join([chr(x) for x in requested])
+
+        option_list = [dhcp.option(dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT,
+                                   requested_option_connected,
+                                   len(requested))
+                       ]
+
+        dhcp_response_pkt = self._send_dhcp_req_to_app(fake_lport,
+                                                       option_list)
+
+        dhcp_res = dhcp_response_pkt.get_protocol(dhcp.dhcp)
+        self.assertTrue(dhcp_res.options)
+        self.assertTrue(dhcp_res.options.option_list)
+
+        return dhcp_res
+
+    def test_dhcp_request_params_response_not_override_defualt(self):
+
+        dhcp_opts = {
+            1: "error"
+        }
+
+        dhcp_res = self._create_dhcp_reponse(dhcp_opts, [1])
+
+        val = self.app._get_dhcp_option_by_tag(dhcp_res, 1)
+        self.assertNotEqual(b'error', val)
+
+    def test_dhcp_request_params_response_according_to_opt(self):
+
+        dhcp_opts = {
+            31: "a"
+        }
+
+        dhcp_res = self._create_dhcp_reponse(dhcp_opts, [31])
+
+        val = self.app._get_dhcp_option_by_tag(dhcp_res, 31)
+        self.assertEqual(b'a', val)
+
+    def test_dhcp_esponse_not_answer_unrequested_param(self):
+
+        dhcp_opts = {
+            31: "a"
+        }
+
+        dhcp_res = self._create_dhcp_reponse(dhcp_opts, [32])
+
+        val = self.app._get_dhcp_option_by_tag(dhcp_res, 31)
+        self.assertIsNone(val)
+
+    def test_dhcp_requested_not_answer_on_unconfigured(self):
+        dhcp_res = self._create_dhcp_reponse(None, [33])
+        val = self.app._get_dhcp_option_by_tag(dhcp_res, 33)
+        self.assertIsNone(val)
