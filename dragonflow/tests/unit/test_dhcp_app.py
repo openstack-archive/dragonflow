@@ -18,11 +18,15 @@ import copy
 import mock
 import netaddr
 from oslo_config import cfg
-from ryu.lib import addrconv
-from ryu.lib.packet import dhcp
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.unit import test_app_base
+from ryu.lib import addrconv
+from ryu.lib.packet import dhcp
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import ipv4
+from ryu.lib.packet import packet as ryu_packet
+from ryu.ofproto import ether
 
 
 class Option(object):
@@ -149,3 +153,77 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         mtu = self.app._get_port_mtu(test_app_base.fake_local_port1)
         self.assertEqual(cfg.CONF.df_dhcp_app.df_default_network_device_mtu,
                          mtu)
+
+    def _build_dhcp_test_fake_lport(self, dhcp_params=None):
+        fake_loprt = test_app_base.make_fake_local_port(
+            lswitch=test_app_base.fake_logic_switch1,
+            subnets=test_app_base.fake_lswitch_default_subnets,
+            ips=('10.0.0.1',),
+            dhcp_params=dhcp_params
+        )
+
+        return fake_loprt
+
+    def _send_dhcp_req_to_app(self, lport, options=None):
+        req = dhcp.dhcp(op=dhcp.DHCP_DISCOVER,
+                        chaddr='aa:aa:aa:aa:aa:aa',
+                        options=dhcp.options(options))
+        pkt = self._create_fake_empty_packet()
+        dhcp_response_pkt = self.app._create_dhcp_response(pkt,
+                                                           req,
+                                                           dhcp.DHCP_OFFER,
+                                                           lport)
+
+        return dhcp_response_pkt
+
+    def _create_fake_empty_packet(self):
+        pkt = ryu_packet.Packet()
+        pkt.add_protocol(ethernet.ethernet(
+            ethertype=ether.ETH_TYPE_IP))
+        pkt.add_protocol(ipv4.ipv4())
+        return pkt
+
+    def test_dhcp_repsonse(self):
+
+        fake_loprt = self._build_dhcp_test_fake_lport()
+        dhcp_response_pkt = self._send_dhcp_req_to_app(fake_loprt)
+        self.assertTrue(dhcp_response_pkt)
+        dhcp_response = dhcp_response_pkt.get_protocol(dhcp.dhcp)
+        self.assertEqual(str(dhcp_response.yiaddr), '10.0.0.1')
+
+    def test_dhcp_request_parmas_response(self):
+
+        dhcp_opts = {
+            "1": "error",
+            "31": "a",
+            "32": "b"
+        }
+
+        dhcp_params = {"opts": dhcp_opts}
+
+        fake_lport = self._build_dhcp_test_fake_lport(dhcp_params)
+        requested_option = [chr(1), chr(31), chr(33)]
+        requested_option_connected = ''.join(requested_option)
+        option_list = [dhcp.option(dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT,
+                                   requested_option_connected,
+                                   len(requested_option))
+                       ]
+
+        dhcp_response_pkt = self._send_dhcp_req_to_app(fake_lport,
+                                                       option_list)
+
+        dhcp_res = dhcp_response_pkt.get_protocol(dhcp.dhcp)
+        self.assertTrue(dhcp_res.options)
+        self.assertTrue(dhcp_res.options.option_list)
+
+        # don't override default config
+        val = self.app._get_dhcp_option_by_tag(dhcp_res, 1)
+        self.assertNotEqual(val, "error")
+        # normal behaviour
+        val = self.app._get_dhcp_option_by_tag(dhcp_res, 31)
+        self.assertEqual(val, b'a')
+        # don't reponse on parameter that not requested
+        val = self.app._get_dhcp_option_by_tag(dhcp_res, 32)
+        self.assertFalse(val)
+        # don't response on requested parameter that not configured
+        val = self.app._get_dhcp_option_by_tag(dhcp_res, 33)
