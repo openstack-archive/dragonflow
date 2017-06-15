@@ -18,7 +18,6 @@ import copy
 import math
 import struct
 
-import netaddr
 from neutron.conf import common as common_config
 from neutron_lib import constants as n_const
 from oslo_log import log
@@ -112,7 +111,7 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_message_type = self._get_dhcp_message_type_opt(dhcp_packet)
         send_packet = None
         if dhcp_message_type == dhcp.DHCP_DISCOVER:
-            send_packet = self._create_dhcp_packet(
+            send_packet = self._create_dhcp_response(
                                 packet,
                                 dhcp_packet,
                                 dhcp.DHCP_OFFER,
@@ -121,7 +120,7 @@ class DHCPApp(df_base_app.DFlowApp):
                      "port id %(port_id)s",
                      {'port_ip': lport.ip, 'port_id': lport.id})
         elif dhcp_message_type == dhcp.DHCP_REQUEST:
-            send_packet = self._create_dhcp_packet(
+            send_packet = self._create_dhcp_response(
                                 packet,
                                 dhcp_packet,
                                 dhcp.DHCP_ACK,
@@ -137,7 +136,8 @@ class DHCPApp(df_base_app.DFlowApp):
             unique_key = lport.unique_key
             self.dispatch_packet(send_packet, unique_key)
 
-    def _create_dhcp_packet(self, packet, dhcp_packet, pkt_type, lport):
+    def _create_dhcp_response(self, packet, dhcp_request,
+                              response_type, lport):
         pkt_ipv4 = packet.get_protocol(ipv4.ipv4)
         pkt_ethernet = packet.get_protocol(ethernet.ethernet)
 
@@ -147,57 +147,124 @@ class DHCPApp(df_base_app.DFlowApp):
             LOG.warning("No subnet found for port %s", lport.id)
             return
 
-        pkt_type_packed = struct.pack('!B', pkt_type)
-        dns = self._get_dns_address_list_bin(subnet)
-        host_routes = self._get_host_routes_list_bin(subnet, lport)
         dhcp_server_address = subnet.dhcp_ip
         if not dhcp_server_address:
             LOG.warning("Could not find DHCP server address for subnet %s",
                         subnet.id)
             return
-        netmask_bin = subnet.cidr.netmask.packed
-        domain_name_bin = struct.pack('!%ss' % len(self.domain_name),
-                                      self.domain_name)
-        lease_time_bin = struct.pack('!I', self.lease_time)
-        option_list = [
-            dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, pkt_type_packed),
-            dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, netmask_bin),
-            dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT, lease_time_bin),
-            dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT,
-                        dhcp_server_address.packed),
-            dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, dns),
-            dhcp.option(dhcp.DHCP_DOMAIN_NAME_OPT, domain_name_bin),
-            dhcp.option(dhcp.DHCP_CLASSLESS_ROUTE_OPT, host_routes),
-        ]
-        gw_ip = self._get_port_gateway_address(subnet, lport)
-        if gw_ip:
-            option_list.append(dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT,
-                                           netaddr.IPAddress(gw_ip).packed))
 
-        if pkt_type == dhcp.DHCP_ACK:
-            intreface_mtu = self._get_port_mtu(lport)
-            mtu_bin = struct.pack('!H', intreface_mtu)
-            option_list.append(dhcp.option(dhcp.DHCP_INTERFACE_MTU_OPT,
-                                           mtu_bin))
+        option_list = self._build_dhcp_options(dhcp_request,
+                                               response_type,
+                                               lport,
+                                               subnet,
+                                               dhcp_server_address)
+
         options = dhcp.options(option_list=option_list)
-        dhcp_pkt = ryu_packet.Packet()
-        dhcp_pkt.add_protocol(ethernet.ethernet(
+
+        dhcp_server_address = subnet.dhcp_ip
+        dhcp_response = ryu_packet.Packet()
+        dhcp_response.add_protocol(ethernet.ethernet(
                                                 ethertype=ether.ETH_TYPE_IP,
                                                 dst=pkt_ethernet.src,
                                                 src=pkt_ethernet.dst))
-        dhcp_pkt.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
-                                        src=dhcp_server_address,
-                                        proto=pkt_ipv4.proto))
-        dhcp_pkt.add_protocol(udp.udp(src_port=const.DHCP_SERVER_PORT,
-                                      dst_port=const.DHCP_CLIENT_PORT))
-        dhcp_pkt.add_protocol(dhcp.dhcp(op=dhcp.DHCP_BOOT_REPLY,
-                                        chaddr=pkt_ethernet.src,
-                                        siaddr=dhcp_server_address,
-                                        boot_file=dhcp_packet.boot_file,
-                                        yiaddr=lport.ip,
-                                        xid=dhcp_packet.xid,
-                                        options=options))
-        return dhcp_pkt
+        dhcp_response.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
+                                             src=dhcp_server_address,
+                                             proto=pkt_ipv4.proto))
+        dhcp_response.add_protocol(udp.udp(src_port=const.DHCP_SERVER_PORT,
+                                           dst_port=const.DHCP_CLIENT_PORT))
+
+        dhcp_response.add_protocol(dhcp.dhcp(op=dhcp.DHCP_BOOT_REPLY,
+                                             chaddr=pkt_ethernet.src,
+                                             siaddr=dhcp_server_address,
+                                             boot_file=dhcp_request.boot_file,
+                                             yiaddr=lport.ip,
+                                             xid=dhcp_request.xid,
+                                             options=options))
+        return dhcp_response
+
+    def _build_dhcp_options(self, dhcp_request, response_type,
+                            lport, subnet, srv_addr):
+        """
+        according the RFC the server need to response with
+        with all the option that "explicitly configured options"
+        and supply as many of the "requested parameters" as
+        possible
+
+        https://www.ietf.org/rfc/rfc2131.txt (page 29)
+         """
+
+        # explicitly configured options
+        default_opts = self._build_response_default_options(response_type,
+                                                            lport, subnet,
+                                                            srv_addr)
+
+        # requested options (according to dhcp_params.opt)
+        response_opts = self._build_response_requested_options(dhcp_request,
+                                                               lport,
+                                                               default_opts)
+
+        response_opts.update(default_opts)
+
+        option_list = [dhcp.option(tag, value)
+                       for tag, value in response_opts.items()]
+
+        return option_list
+
+    def _build_response_default_options(self, response_type, lport,
+                                        subnet, srv_addr):
+        options_dict = {}
+        pkt_type_packed = struct.pack('!B', response_type)
+        dns = self._get_dns_address_list_bin(subnet)
+        host_routes = self._get_host_routes_list_bin(subnet, lport)
+
+        server_addr_bin = srv_addr.packed
+        netmask_bin = subnet.cidr.netmask.packed
+        domain_name_bin = struct.pack('!%ss' % len(self.domain_name),
+                                      self.domain_name.encode())
+        lease_time_bin = struct.pack('!I', self.lease_time)
+
+        options_dict[dhcp.DHCP_MESSAGE_TYPE_OPT] = pkt_type_packed
+        options_dict[dhcp.DHCP_SUBNET_MASK_OPT] = netmask_bin
+        options_dict[dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT] = lease_time_bin
+        options_dict[dhcp.DHCP_SERVER_IDENTIFIER_OPT] = server_addr_bin
+        options_dict[dhcp.DHCP_DNS_SERVER_ADDR_OPT] = dns
+        options_dict[dhcp.DHCP_DOMAIN_NAME_OPT] = domain_name_bin
+        options_dict[dhcp.DHCP_CLASSLESS_ROUTE_OPT] = host_routes
+
+        gw_ip = self._get_port_gateway_address(subnet, lport)
+        if gw_ip:
+            gw_ip_bin = gw_ip.packed
+            options_dict[dhcp.DHCP_GATEWAY_ADDR_OPT] = gw_ip_bin
+
+        if response_type == dhcp.DHCP_ACK:
+            intreface_mtu = self._get_port_mtu(lport)
+            mtu_bin = struct.pack('!H', intreface_mtu)
+            options_dict[dhcp.DHCP_INTERFACE_MTU_OPT] = mtu_bin
+
+        return options_dict
+
+    def _build_response_requested_options(self, dhcp_request,
+                                          lport, default_opts):
+        options_dict = {}
+        req_list_opt = dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT
+        requested_opts = self._get_dhcp_option_by_tag(dhcp_request,
+                                                      req_list_opt)
+        if not requested_opts:
+            return {}
+
+        for opt in requested_opts:
+            opt_int = ord(opt)
+            if opt_int in default_opts:
+                # already answered by the default options
+                continue
+
+            value = lport.dhcp_params.opts.get(opt_int)
+            if value:
+                value_bin = struct.pack('!%ss' % len(value),
+                                        value.encode())
+                options_dict[opt_int] = value_bin
+
+        return options_dict
 
     def _get_dns_address_list_bin(self, subnet):
         dns_servers = self.global_dns_list
@@ -255,10 +322,17 @@ class DHCPApp(df_base_app.DFlowApp):
 
         return routes_bin
 
+    def _get_dhcp_option_by_tag(self, dhcp_packet, tag):
+        if dhcp_packet.options:
+            for opt in dhcp_packet.options.option_list:
+                if opt.tag == tag:
+                    return opt.value
+
     def _get_dhcp_message_type_opt(self, dhcp_packet):
-        for opt in dhcp_packet.options.option_list:
-            if opt.tag == dhcp.DHCP_MESSAGE_TYPE_OPT:
-                return ord(opt.value)
+        opt_value = self._get_dhcp_option_by_tag(dhcp_packet,
+                                                 dhcp.DHCP_MESSAGE_TYPE_OPT)
+        if opt_value:
+            return ord(opt_value)
 
     def _get_port_gateway_address(self, subnet, lport):
         gateway_ip = subnet.gateway_ip
