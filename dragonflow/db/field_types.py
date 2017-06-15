@@ -235,7 +235,7 @@ class EnumListField(fields.ListField):
 
 
 class IntStringDictField(fields.BaseField):
-    '''A field that stores a string -> string dictionary'''
+    '''A field that stores a int -> string dictionary'''
     types = (dict,)
 
     def validate(self, value):

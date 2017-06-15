@@ -486,8 +486,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                                  'tag': 121}]
 
                 for edo in expected_edo:
-                    self.assertItemsEqual(edo['value'],
-                                          lport.extra_dhcp_options[edo['tag']])
+                    self.assertEqual(edo['value'],
+                                     lport.extra_dhcp_options[edo['tag']])
 
                 self.nb_api.update.reset_mock()
                 data = {'port': {'extra_dhcp_opts': [{'opt_name': '3',
