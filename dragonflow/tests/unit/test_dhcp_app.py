@@ -18,13 +18,15 @@ import copy
 import mock
 import netaddr
 from oslo_config import cfg
-from ryu.lib import addrconv
-from ryu.lib.packet import dhcp
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.unit import test_app_base
-
-from dragonflow.db.models import l2
+from ryu.lib import addrconv
+from ryu.lib.packet import dhcp
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import ipv4
+from ryu.lib.packet import packet as ryu_packet
+from ryu.ofproto import ether
 
 
 class Option(object):
