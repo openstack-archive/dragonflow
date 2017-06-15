@@ -18,11 +18,15 @@ import copy
 import mock
 import netaddr
 from oslo_config import cfg
-from ryu.lib import addrconv
-from ryu.lib.packet import dhcp
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.unit import test_app_base
+from ryu.lib import addrconv
+from ryu.lib.packet import dhcp
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import ipv4
+from ryu.lib.packet import packet as ryu_packet
+from ryu.ofproto import ether
 
 from dragonflow.db.models import l2
 
@@ -144,3 +148,31 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         json = fake_lport.to_json()
         loaded_lport = l2.LogicalPort.from_json(json)
         loaded_lport.validate()
+
+    def _create_fake_empty_packet(self):
+        pkt = ryu_packet.Packet()
+        pkt.add_protocol(ethernet.ethernet(
+            ethertype=ether.ETH_TYPE_IP))
+        pkt.add_protocol(ipv4.ipv4())
+        return pkt
+
+    def test_dhcp_repsonse(self):
+
+        req = dhcp.dhcp(op=dhcp.DHCP_DISCOVER, chaddr='aa:aa:aa:aa:aa:aa')
+
+        fake_loprt = test_app_base.make_fake_local_port(
+            lswitch=test_app_base.fake_logic_switch1,
+            subnets=test_app_base.fake_lswitch_default_subnets,
+            ips=('1.2.3.4',)
+        )
+
+        pkt = self._create_fake_empty_packet()
+        dhcp_response_pkt = self.app._create_dhcp_response(pkt,
+                                                           req,
+                                                           dhcp.DHCP_OFFER,
+                                                           fake_loprt)
+
+        self.assertTrue(dhcp_response_pkt)
+
+        dhcp_response = dhcp_response_pkt.get_protocol(dhcp.dhcp)
+        self.assertEqual(str(dhcp_response.yiaddr), '1.2.3.4')
