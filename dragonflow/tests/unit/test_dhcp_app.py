@@ -18,13 +18,15 @@ import copy
 import mock
 import netaddr
 from oslo_config import cfg
-from ryu.lib import addrconv
-from ryu.lib.packet import dhcp
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.unit import test_app_base
-
-from dragonflow.db.models import l2
+from ryu.lib import addrconv
+from ryu.lib.packet import dhcp
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import ipv4
+from ryu.lib.packet import packet as ryu_packet
+from ryu.ofproto import ether
 
 
 class Option(object):
@@ -138,9 +140,3 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         gateway_ip = self.app._get_port_gateway_address(
             subnet, test_app_base.fake_local_port1)
         self.assertEqual('10.0.0.1', str(gateway_ip))
-
-    def test_extra_dhcp_opts_serilization(self):
-        fake_lport = copy.deepcopy(test_app_base.fake_local_port1)
-        json = fake_lport.to_json()
-        loaded_lport = l2.LogicalPort.from_json(json)
-        loaded_lport.validate()
