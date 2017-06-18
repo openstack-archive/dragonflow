@@ -2327,6 +2327,7 @@ class TestDNATApp(test_base.DFTestBase):
                 unknown_port_action=ignore_action
             )
         )
+
         policy.start(self.topology)
         policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(policy.exceptions) > 0:
