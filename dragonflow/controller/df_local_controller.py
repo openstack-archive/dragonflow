@@ -85,6 +85,13 @@ class DfLocalController(object):
             delete_cb=self.delete,
             selective=self.enable_selective_topo_dist,
         )
+
+        if self.enable_selective_topo_dist:
+            # FIP ports are created with '' topic in neutron, add the topic
+            # to receive those.
+            # No models registered at this point so nothing will get fetched.
+            self.register_topic('')
+
         self._sync_pulse = loopingcall.FixedIntervalLoopingCall(
             self._submit_sync_event)
 

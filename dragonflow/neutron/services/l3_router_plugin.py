@@ -194,7 +194,6 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 lport=floatingip_dict['port_id'],
                 floating_lport=floatingip_port['id'],
             ),
-            skip_send_event=('port_id' not in floatingip_dict),
         )
 
         return floatingip_dict
