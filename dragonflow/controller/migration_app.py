@@ -14,11 +14,14 @@ from oslo_log import log
 
 from dragonflow import conf as cfg
 from dragonflow.controller import df_base_app
+from dragonflow.db import model_proxy
 from dragonflow.db.models import constants as model_constants
+from dragonflow.db.models import core
 from dragonflow.db.models import migration
 
 
 LOG = log.getLogger(__name__)
+ChassisProxy = model_proxy.create_model_proxy(core.Chassis)
 
 
 class MigrationApp(df_base_app.DFlowApp):
@@ -48,7 +51,7 @@ class MigrationApp(df_base_app.DFlowApp):
             # destination node
             ofport = self.vswitch_api.get_port_ofport_by_id(port_id)
             lport.ofport = ofport
-            lport.is_local = True
+            lport.chassis = ChassisProxy(id=chassis_name)
             self.db_store.update(lport)
 
             LOG.info("dest process migration event port = %(port)s"
