@@ -34,6 +34,7 @@ from dragonflow.tests import base as tests_base
 
 
 _DEFAULT = object()
+_lport_index = 0
 
 
 class DFAppTestBase(tests_base.BaseTestCase):
@@ -168,7 +169,6 @@ def chassis_binding(chassis):
 
 local_binding = chassis_binding(fake_chassis1)
 remote_binding = chassis_binding(fake_chassis2)
-_lport_index = 0
 
 
 def make_fake_port(id=None,
@@ -287,7 +287,6 @@ fake_floatingip1 = l3.FloatingIp(
     id='fake_floatingip_id1',
     topic='fake_tenant1',
     name='no_fip_name',
-    unique_key=4444,
     version=7,
     status=n_const.FLOATINGIP_STATUS_DOWN,
     floating_ip_address='172.24.4.2',

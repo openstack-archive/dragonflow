@@ -16,6 +16,7 @@
 from neutron_lib.utils import helpers
 from oslo_log import log
 from ryu.lib import mac as mac_api
+from ryu.ofproto import nicira_ext
 
 from dragonflow.common import utils
 from dragonflow import conf as cfg
@@ -138,7 +139,13 @@ class ProviderApp(df_base_app.DFlowApp):
 
     def _match_actions_by_network_type(self, lport, network_id, network_type):
         actions = [
-            self.parser.OFPActionSetField(metadata=network_id)]
+            self.parser.NXActionRegLoad(
+                dst='in_port',
+                value=0,
+                ofs_nbits=nicira_ext.ofs_nbits(0, 31),
+            ),
+            self.parser.OFPActionSetField(metadata=network_id),
+        ]
 
         if network_type == NET_VLAN:
             vlan_vid = self.ofproto.OFPVID_PRESENT
