@@ -12,7 +12,6 @@
 # limitations under the License.
 from neutron_lib import constants as n_const
 
-DRAGONFLOW_VIRTUAL_PORT = "DragonflowVirtualPort"
 OVS_VM_INTERFACE = "vm"
 OVS_BRIDGE_INTERFACE = "bridge"
 OVS_PATCH_INTERFACE = "patch"
