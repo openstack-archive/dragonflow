@@ -16,6 +16,7 @@ from neutron_lib.api.definitions import portbindings
 from neutron_lib import constants as n_const
 from oslo_log import log
 
+from dragonflow.common import constants as df_const
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
 from dragonflow.db.models import core
@@ -86,17 +87,25 @@ class DHCPOption(models.Base):
 # LogicalPort events
 EVENT_LOCAL_CREATED = 'local_created'
 EVENT_REMOTE_CREATED = 'remote_created'
+EVENT_VIRTUAL_CREATED = 'virtual_created'
 EVENT_LOCAL_UPDATED = 'local_updated'
 EVENT_REMOTE_UPDATED = 'remote_updated'
+EVENT_VIRTUAL_UPDATED = 'virtual_updated'
 EVENT_LOCAL_DELETED = 'local_deleted'
 EVENT_REMOTE_DELETED = 'remote_deleted'
+EVENT_VIRTUAL_DELETED = 'virtual_deleted'
+
+# Whitelist the port types we want to be cached
+_CACHED_VIRTUAL_PORT_TYPES = (
+    n_const.DEVICE_OWNER_FLOATINGIP,
+)
 
 
 @mf.register_model
 @mf.construct_nb_db_model(events={
-    EVENT_LOCAL_CREATED, EVENT_REMOTE_CREATED,
-    EVENT_LOCAL_UPDATED, EVENT_REMOTE_UPDATED,
-    EVENT_LOCAL_DELETED, EVENT_REMOTE_DELETED,
+    EVENT_LOCAL_CREATED, EVENT_REMOTE_CREATED, EVENT_VIRTUAL_CREATED,
+    EVENT_LOCAL_UPDATED, EVENT_REMOTE_UPDATED, EVENT_VIRTUAL_UPDATED,
+    EVENT_LOCAL_DELETED, EVENT_REMOTE_DELETED, EVENT_VIRTUAL_DELETED,
 }, indexes={
     'chassis_id': 'chassis.id',
     'lswitch_id': 'lswitch.id',
@@ -151,6 +160,19 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
             return True
         return False
 
+    @property
+    def is_virtual(self):
+        return self.device_owner in _CACHED_VIRTUAL_PORT_TYPES
+
+    @property
+    def is_remote(self):
+        return (
+            not self.is_local and
+            not self.is_virtual and
+            self.chassis is not None and
+            self.chassis.id != df_const.DRAGONFLOW_VIRTUAL_PORT
+        )
+
     def __str__(self):
         data = {}
         for name in dir(self):
@@ -165,37 +187,40 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
         return str(data)
 
     def emit_created(self):
-        ofport = getattr(self, 'ofport', None)
-        if not ofport:
+        if not self.is_virtual and self.ofport is None:
             return
-        is_local = getattr(self, 'is_local', None)
+
         LOG.info("Adding new logical port = %s", self)
-        if is_local:
+        if self.is_local:
             self.emit_local_created()
-        else:
+        elif self.is_remote:
             self.emit_remote_created()
+        elif self.is_virtual:
+            self.emit_virtual_created()
 
     def emit_updated(self, original_lport):
-        ofport = getattr(self, 'ofport', None)
-        if not ofport:
+        if not self.is_virtual and self.ofport is None:
             return
-        is_local = getattr(self, 'is_local', None)
+
         LOG.info("Updating %(location)s logical port = %(port)s, "
                  "original port = %(original_port)s",
                  {'port': self,
                   'original_port': original_lport,
-                  'location': 'local' if is_local else 'remote'})
-        if is_local:
+                  'location': 'local' if self.is_local else 'remote'})
+        if self.is_local:
             self.emit_local_updated(original_lport)
-        else:
+        elif self.is_remote:
             self.emit_remote_updated(original_lport)
+        elif self.is_virtual:
+            self.emit_virtual_updated(original_lport)
 
     def emit_deleted(self):
-        is_local = getattr(self, 'is_local', None)
-        ofport = getattr(self, 'ofport', None)
-        if not ofport:
+        if not self.is_virtual and self.ofport is None:
             return
-        if is_local:
+
+        if self.is_local:
             self.emit_local_deleted()
-        else:
+        elif self.is_remote:
             self.emit_remote_deleted()
+        elif self.is_virtual:
+            self.emit_virtual_deleted()
