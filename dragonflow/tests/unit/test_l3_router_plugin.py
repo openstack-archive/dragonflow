@@ -65,6 +65,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase,
         self.l3p = directory.get_plugin('L3_ROUTER_NAT')
         self.nb_api = self.l3p.nb_api
         self.nb_api.get().unique_key = 5
+        self.nb_api.get().topic = 'topic'
         self.ext_api = test_extensions.setup_extensions_middleware(
             test_l3.L3TestExtensionManager()
         )
