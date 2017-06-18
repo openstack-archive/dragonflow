@@ -45,7 +45,7 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
                        match=mock.ANY),
              mock.call(
                        constants.L3_LOOKUP_TABLE,
-                       constants.PRIORITY_MEDIUM_LOW,
+                       constants.PRIORITY_LOW,
                        constants.EGRESS_NAT_TABLE,
                        match=mock.ANY)])
 

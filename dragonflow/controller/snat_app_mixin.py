@@ -76,7 +76,7 @@ class SNATApp_mixin(object):
 
         self.add_flow_go_to_table(
             const.L3_LOOKUP_TABLE,
-            const.PRIORITY_MEDIUM_LOW,
+            const.PRIORITY_LOW,
             const.EGRESS_NAT_TABLE,
             match=match)
 
