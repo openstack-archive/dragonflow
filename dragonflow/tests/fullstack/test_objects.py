@@ -229,7 +229,14 @@ class ExternalNetworkTestObj(NetworkTestObj):
 
     GW_CIDR = "172.24.4.0/24"
 
-    def create(self, network={'name': 'public', 'router:external': True}):
+    def create(self, network=None):
+        if network is None:
+            network = {
+                'name': 'public',
+                'router:external': True,
+                'provider:network_type': 'flat',
+                'provider:physical_network': 'public',
+            }
         net_id = super(ExternalNetworkTestObj, self).create(network)
         subnet = SubnetTestObj(self.neutron, self.nb_api, net_id)
         subnet.create({'cidr': self.GW_CIDR,
