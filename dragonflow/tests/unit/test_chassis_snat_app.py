@@ -40,7 +40,7 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
         self.SNAT_app.add_flow_go_to_table.assert_has_calls(
             [mock.call(
                        constants.L3_LOOKUP_TABLE,
-                       constants.PRIORITY_MEDIUM_LOW,
+                       constants.PRIORITY_LOW,
                        constants.EGRESS_NAT_TABLE,
                        match=mock.ANY)])
 
