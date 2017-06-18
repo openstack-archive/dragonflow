@@ -138,6 +138,15 @@ class L2App(df_base_app.DFlowApp):
         self._remove_port(lport)
         self._remove_local_port_pipeline_interface(lport)
 
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_VIRTUAL_DELETED)
+    def _remove_virtual_port(self, lport):
+        self._remove_port(lport)
+        self._del_multicast_broadcast_handling_for_local(
+            lport.id,
+            lport.topic,
+            lport.lswitch.unique_key,
+        )
+
     def _remove_port(self, lport):
         mac = lport.mac
         network_id = lport.lswitch.unique_key
@@ -318,6 +327,16 @@ class L2App(df_base_app.DFlowApp):
     def _add_local_port(self, lport):
         self._add_port(lport)
         self._add_local_port_dispatch(lport)
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_VIRTUAL_CREATED)
+    def _add_virtual_port(self, lport):
+        self._add_port(lport)
+        self._add_multicast_broadcast_handling_for_local_port(
+            lport.id,
+            lport.unique_key,
+            lport.lswitch.unique_key,
+            lport.topic,
+        )
 
     def _add_local_port_dispatch(self, lport):
         lport_id = lport.id
