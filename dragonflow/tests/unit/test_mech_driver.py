@@ -143,8 +143,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.assertGreater(new_network['revision_number'],
                            network['revision_number'])
         lswitch.version = new_network['revision_number']
-        # Once for lswitch, once for DHCP lport
-        self.assertEqual(2, self.nb_api.update.call_count)
+        # Once for lswitch
+        self.assertEqual(1, self.nb_api.update.call_count)
         self.nb_api.update.assert_called_with(lswitch)
         self.nb_api.update.reset_mock()
 
@@ -185,7 +185,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
         with self.subnet(network={'network': network}, enable_dhcp=True,
                          set_context=True) as subnet:
-            self.assertEqual(2, self.nb_api.update.call_count)
+            self.assertEqual(1, self.nb_api.update.call_count)
             lswitch = self.nb_api.update.call_args_list[0][0][0]
             if isinstance(lswitch, l2.LogicalPort):
                 self.assertEqual('network:dhcp', lswitch.device_owner)
@@ -214,7 +214,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
         with self.subnet(network={'network': network},
                          set_context=True) as subnet:
-            self.assertEqual(2, self.nb_api.update.call_count)
+            self.assertEqual(1, self.nb_api.update.call_count)
             lswitch = self.nb_api.update.call_args_list[0][0][0]
             if isinstance(lswitch, l2.LogicalPort):
                 self.assertEqual('network:dhcp', lswitch.device_owner)
@@ -243,7 +243,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
         with self.subnet(network={'network': network}, set_context=True,
                          dns_nameservers=['1.1.1.1']) as subnet:
-            self.assertEqual(2, self.nb_api.update.call_count)
+            self.assertEqual(1, self.nb_api.update.call_count)
             lswitch = self.nb_api.update.call_args_list[0][0][0]
             if isinstance(lswitch, l2.LogicalPort):
                 self.assertEqual('network:dhcp', lswitch.device_owner)
@@ -274,7 +274,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
         with self.subnet(network={'network': network}, host_routes=host_routes,
                          set_context=True) as subnet:
-            self.assertEqual(2, self.nb_api.update.call_count)
+            self.assertEqual(1, self.nb_api.update.call_count)
             lswitch = self.nb_api.update.call_args_list[0][0][0]
             if isinstance(lswitch, l2.LogicalPort):
                 self.assertEqual('network:dhcp', lswitch.device_owner)
