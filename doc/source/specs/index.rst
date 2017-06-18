@@ -72,6 +72,7 @@ Specs
     bgp_dynamic_routing
     tunneling_app
     logical_port_locality
+    l3_flavor
 
 Templates
 ---------
