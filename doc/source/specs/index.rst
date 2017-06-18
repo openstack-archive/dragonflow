@@ -71,6 +71,7 @@ Specs
     fwaas
     bgp_dynamic_routing
     tunneling_app
+    l3_flavor
 
 Templates
 ---------
