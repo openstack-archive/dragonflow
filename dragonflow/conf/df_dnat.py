@@ -20,13 +20,16 @@ from dragonflow._i18n import _
 df_dnat_app_opts = [
     cfg.StrOpt('external_network_bridge',
                default='br-ex',
-               help=_("Name of bridge used for external network traffic")),
+               help=_("Name of bridge used for external network traffic"),
+               deprecated_for_removal=True),
     cfg.StrOpt('int_peer_patch_port', default='patch-ex',
                help=_("Peer patch port in integration bridge for external "
-                      "bridge.")),
+                      "bridge."),
+               deprecated_for_removal=True),
     cfg.StrOpt('ex_peer_patch_port', default='patch-int',
                help=_("Peer patch port in external bridge for integration "
-                      "bridge.")),
+                      "bridge."),
+               deprecated_for_removal=True),
     cfg.IntOpt('dnat_ttl_invalid_max_rate', default=3,
                help=_('Max rate to reply ICMP time exceeded message per '
                       'second.')),
