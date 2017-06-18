@@ -77,6 +77,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         self._setup_physical_bridges(self.bridge_mappings)
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_VIRTUAL_CREATED)
     def _add_local_port(self, lport):
         lswitch = lport.lswitch
         network_type = lswitch.network_type
@@ -199,6 +200,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             match=match)
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_VIRTUAL_DELETED)
     def _remove_local_port(self, lport):
         network_type = lport.lswitch.network_type
         if network_type not in NETWORK_TYPES:
