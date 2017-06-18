@@ -263,9 +263,9 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
     iniset $DRAGONFLOW_CONF df enable_df_pub_sub "$DF_PUB_SUB"
     iniset $DRAGONFLOW_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
-    iniset $DRAGONFLOW_CONF df_dnat_app external_network_bridge "$PUBLIC_BRIDGE"
-    iniset $DRAGONFLOW_CONF df_dnat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
-    iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
+    iniset $DRAGONFLOW_CONF df_snat_app external_network_bridge "$PUBLIC_BRIDGE"
+    iniset $DRAGONFLOW_CONF df_snat_app int_peer_patch_port "$INTEGRATION_PEER_PORT"
+    iniset $DRAGONFLOW_CONF df_snat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
     if [[ ! -z ${EXTERNAL_HOST_IP} ]]; then
         iniset $DRAGONFLOW_CONF df external_host_ip "$EXTERNAL_HOST_IP"
     fi
