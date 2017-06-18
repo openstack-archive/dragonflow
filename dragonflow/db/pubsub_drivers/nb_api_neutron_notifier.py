@@ -16,15 +16,14 @@
 
 import os
 import random
-import time
 
 from neutron_lib import constants as n_const
 from neutron_lib import context as n_context
 from neutron_lib.plugins import directory
 from oslo_config import cfg
 from oslo_log import log
+from oslo_service import loopingcall
 
-from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db import models
 from dragonflow.db.models import core
@@ -133,27 +132,22 @@ class HeartBeatReporter(object):
     def __init__(self, api_nb, listener):
         self.api_nb = api_nb
         self.listener = listener
-        self._daemon = df_utils.DFDaemon()
+        # We delay a random time to avoid a periodical peak of network
+        # throughput and pressure for df-db in a big scale
+        self._loopingcall = loopingcall.DynamicLoopingCall(self.run)
 
-    def daemonize(self):
-        return self._daemon.daemonize(self.run)
-
-    def stop(self):
-        return self._daemon.stop()
-
-    def run(self):
-        self.api_nb.create(self.listener)
-
+    def get_delay(self):
         cfg_interval = cfg.CONF.df.neutron_listener_report_interval
         delay = cfg.CONF.df.neutron_listener_report_delay
+        return random.randint(cfg_interval, cfg_interval + delay)
 
-        while True:
-            try:
-                # We delay a random time to avoid a periodical peak of network
-                # throughput and pressure for df-db in a big scale
-                interval = random.randint(cfg_interval, cfg_interval + delay)
-                time.sleep(interval)
-                self.api_nb.update(self.listener)
-            except Exception:
-                LOG.exception("Failed to report heart beat for %s",
-                              self.listener)
+    def daemonize(self):
+        self.api_nb.create(self.listener)
+        self._loopingcall.start(self.get_delay())
+
+    def stop(self):
+        return self._loopingcall.stop()
+
+    def run(self):
+        self.api_nb.update(self.listener)
+        return self.get_delay()

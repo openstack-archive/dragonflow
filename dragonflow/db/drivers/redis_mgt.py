@@ -15,14 +15,13 @@ import multiprocessing
 import random
 import string
 
-import eventlet
 import msgpack
 from oslo_log import log
 from oslo_serialization import jsonutils
+from oslo_service import loopingcall
 import redis
 import six
 
-from dragonflow.common import utils as df_utils
 from dragonflow.db import db_common
 from dragonflow.db.drivers import redis_calckey
 
@@ -53,7 +52,7 @@ class RedisMgt(object):
         self.cluster_slots = None
         self.calc_key = redis_calckey.key2slot
         self.master_list = []
-        self.daemon = df_utils.DFDaemon()
+        self._loopingcall = loopingcall.FixedIntervalLoopingCall(self.run)
         self.db_callback = None
         self.db_recover_callback = None
         self.subscriber = None
@@ -343,7 +342,7 @@ class RedisMgt(object):
         self.subscriber = sub
 
     def daemonize(self):
-        self.daemon.daemonize(self.run)
+        self._loopingcall.start(INTERVAL_TIME, initial_delay=INTERVAL_TIME)
 
     def _check_master_nodes_connection(self):
         try:
@@ -359,25 +358,17 @@ class RedisMgt(object):
             return False
 
     def run(self):
-        while True:
-            # fetch cluster topology info every 3 sec
-            eventlet.sleep(INTERVAL_TIME)
-            try:
-                nodes = self.get_cluster_topology_by_all_nodes()
-                if len(nodes) > 0:
-                    if self.publisher is not None:
-                        nodes_json = jsonutils.dumps(nodes)
-                        update = db_common.DbUpdate('ha', 'nodes',
-                                                    'set', nodes_json,
-                                                    topic='redis')
-                        self.publisher.send_event(update)
+        nodes = self.get_cluster_topology_by_all_nodes()
+        if len(nodes) > 0:
+            if self.publisher is not None:
+                nodes_json = jsonutils.dumps(nodes)
+                update = db_common.DbUpdate('ha', 'nodes',
+                                            'set', nodes_json,
+                                            topic='redis')
+                self.publisher.send_event(update)
 
-                    # process new nodes got
-                    self.redis_failover_callback(nodes)
-
-            except Exception:
-                LOG.exception("exception happened "
-                              "when receive messages from plugin")
+            # process new nodes got
+            self.redis_failover_callback(nodes)
 
     def redis_get_master_list_from_syncstring(self, syncstring):
         try:
