@@ -39,7 +39,7 @@ def nb_api_get_all_func(*instances):
 
     def nb_api_get_all(inst, topic=None):
         try:
-            if not topic:
+            if topic is None:
                 return alls[inst]
             return [obj for obj in alls[inst] if obj.topic == topic]
         except KeyError:
@@ -63,6 +63,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.fake_invalid_ovs_port = copy.deepcopy(
             test_app_base.fake_ovs_port1)
         self.controller._register_models()
+        self.nb_api.subscriber.register_topic.reset_mock()
 
     def test_vm_port_online_offline(self):
         self.nb_api.get_all.side_effect = nb_api_get_all_func(
@@ -171,7 +172,6 @@ class TestTopology(test_app_base.DFAppTestBase):
                  mock.call(test_app_base.fake_local_port2)]
         self.controller.update.assert_has_calls(
             calls, any_order=True)
-        print(self.controller.update.call_args_list)
         self.assertEqual(4, self.controller.update.call_count)
         self.nb_api.subscriber.register_topic.assert_called_once()
 

@@ -468,14 +468,23 @@ class DFMechDriver(api.MechanismDriver):
             remote_vtep = True
         return chassis, remote_vtep
 
+    def _get_lswitch_topic(self, port):
+        lswitch = self.nb_api.get(l2.LogicalSwitch(id=port['network_id']))
+        return lswitch.topic
+
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
     def create_port_postcommit(self, context):
         port = context.current
         chassis, remote_vtep = self._get_chassis_and_remote_vtep(port)
 
         lport = neutron_l2.logical_port_from_neutron_port(port)
+        # Update topic for FIP ports
+        if lport.topic == '':
+            lport.topic = self._get_lswitch_topic(port)
+
         lport.chassis = chassis
         lport.remote_vtep = remote_vtep
+
         self.nb_api.create(lport)
 
         LOG.info("DFMechDriver: create port %s", port['id'])
@@ -533,6 +542,9 @@ class DFMechDriver(api.MechanismDriver):
         lport = neutron_l2.logical_port_from_neutron_port(updated_port)
         lport.chassis = chassis
         lport.remote_vtep = remote_vtep
+        # Update topic for FIP ports
+        if lport.topic == '':
+            lport.topic = self._get_lswitch_topic(updated_port)
         self.nb_api.update(lport)
 
         LOG.info("DFMechDriver: update port %s", updated_port['id'])
@@ -544,6 +556,10 @@ class DFMechDriver(api.MechanismDriver):
         port_id = port['id']
         lean_port = l2.LogicalPort(id=port_id,
                                    topic=port['tenant_id'])
+
+        # Update topic for FIP ports
+        if lean_port.topic == '':
+            lean_port.topic = self._get_lswitch_topic(port)
         try:
             self.nb_api.delete(lean_port)
         except df_exceptions.DBKeyNotFound:
