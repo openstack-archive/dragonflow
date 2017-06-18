@@ -15,6 +15,7 @@
 import contextlib
 
 import mock
+from oslo_config import cfg
 
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
@@ -27,22 +28,22 @@ local_lport1 = l2.LogicalPort(
     id='lport1',
     topic='topic1',
     unique_key=1,
+    chassis=cfg.CONF.host,
 )
-local_lport1.is_local = True
 local_lport2 = l2.LogicalPort(
     id='lport2',
     topic='topic1',
     unique_key=2,
+    chassis=cfg.CONF.host,
 )
-local_lport2.is_local = True
 
 
 remote_lport = l2.LogicalPort(
     id='lport3',
     topic='topic1',
     unique_key=3,
+    chassis='nonlocal'
 )
-remote_lport.is_local = False
 
 
 class TestDNATApp(test_app_base.DFAppTestBase):
