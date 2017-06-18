@@ -34,7 +34,8 @@ class ArpResponder(object):
     def __init__(self, app, network_id, interface_ip,
                  interface_mac=None, table_id=const.ARP_TABLE,
                  priority=const.PRIORITY_MEDIUM,
-                 goto_table_id=const.INGRESS_DISPATCH_TABLE):
+                 goto_table_id=const.INGRESS_DISPATCH_TABLE,
+                 source_port_key=None):
         self.app = app
         self.datapath = app.datapath
         self.network_id = network_id
@@ -43,6 +44,7 @@ class ArpResponder(object):
         self.table_id = table_id
         self.priority = priority
         self.goto_table_id = goto_table_id
+        self.source_port_key = source_port_key
 
     def _get_match(self):
         parser = self.datapath.ofproto_parser
@@ -75,6 +77,10 @@ class ArpResponder(object):
                                           n_bits=32)]
 
         need_resubmit = self.table_id >= self.goto_table_id
+
+        if self.source_port_key is not None:
+            actions.append(
+                parser.OFPActionSetField(reg6=self.source_port_key))
 
         if need_resubmit:
             actions.append(
