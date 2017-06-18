@@ -44,11 +44,11 @@ def nb_api_get_funcs(*instances):
         except KeyError:
             return mock.MagicMock(name='NbApi.get_instance().get()')
 
-    def nb_api_create(inst):
+    def nb_api_create(inst, skip_send_event=False):
         inst.on_create_pre()
         ids[inst.id] = inst
 
-    def nb_api_update(inst):
+    def nb_api_update(inst, skip_send_event=False):
         ids[inst.id].update(inst)
 
     return nb_api_get, nb_api_create, nb_api_update
@@ -140,6 +140,12 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase,
         return floatingip
 
     def test_create_update_floatingip_revision(self):
+        nb_api_get, nb_api_create, nb_api_update = nb_api_get_funcs()
+        self.nb_api.get.side_effect = nb_api_get
+        self.nb_api.update.side_effect = nb_api_update
+        self.nb_api.create.side_effect = nb_api_create
+        self.nb_api.driver.allocate_unique_key.side_effect = range(100)
+
         floatingip = self._test_create_floatingip_revision()
         old_version = floatingip['revision_number']
         floatingip['tenant_id'] = 'another_tenant'
@@ -153,6 +159,12 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase,
         self.assertEqual(new_fip['revision_number'], nb_fip.version)
 
     def test_create_floatingip_with_normal_user(self):
+        nb_api_get, nb_api_create, nb_api_update = nb_api_get_funcs()
+        self.nb_api.get.side_effect = nb_api_get
+        self.nb_api.update.side_effect = nb_api_update
+        self.nb_api.create.side_effect = nb_api_create
+        self.nb_api.driver.allocate_unique_key.side_effect = range(100)
+
         normal_context = nctx.Context(is_admin=False, overwrite=False)
         kwargs = {'arg_list': ('router:external',),
                   'router:external': True}

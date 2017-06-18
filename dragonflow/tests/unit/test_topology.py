@@ -40,7 +40,7 @@ def nb_api_get_all_func(*instances):
 
     def nb_api_get_all(inst, topic=None):
         try:
-            if not topic:
+            if topic is None:
                 return alls[inst]
             return [obj for obj in alls[inst] if obj.topic == topic]
         except KeyError:
@@ -64,6 +64,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.fake_invalid_ovs_port = copy.deepcopy(
             test_app_base.fake_ovs_port1)
         self.controller._register_models()
+        self.nb_api.subscriber.register_topic.reset_mock()
 
     @utils.with_nb_objects(
         test_app_base.fake_chassis1,
