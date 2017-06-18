@@ -221,7 +221,10 @@ def add_objs_to_db_store(*objs):
                 return func(*args, **kwargs)
             finally:
                 for obj in objs:
-                    db_store_inst.delete(obj)
+                    try:
+                        db_store_inst.delete(obj)
+                    except KeyError:
+                        pass
         return wrapper
     return decorator
 
