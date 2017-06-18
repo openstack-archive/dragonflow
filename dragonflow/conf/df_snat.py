@@ -23,6 +23,15 @@ df_snat_app_opts = [
                 help=_("Enable install of common goto flows to ingress/egress "
                        "NAT tables or re-use goto flows installed by "
                        "other DF application")),
+    cfg.StrOpt('external_network_bridge',
+               default='br-ex',
+               help=_("Name of bridge used for external network traffic")),
+    cfg.StrOpt('int_peer_patch_port', default='patch-ex',
+               help=_("Peer patch port in integration bridge for external "
+                      "bridge.")),
+    cfg.StrOpt('ex_peer_patch_port', default='patch-int',
+               help=_("Peer patch port in external bridge for integration "
+                      "bridge.")),
 ]
 
 

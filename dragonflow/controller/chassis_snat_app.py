@@ -39,10 +39,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
         super(ChassisSNATApp, self).__init__(*args, **kwargs)
         LOG.info("Loading SNAT application ... ")
         self.external_network_bridge = (
-            cfg.CONF.df_dnat_app.external_network_bridge)
-        self.ex_peer_patch_port = (
-            cfg.CONF.df_dnat_app.ex_peer_patch_port)
-        self.external_bridge_mac = const.EMPTY_MAC
+            cfg.CONF.df_snat_app.external_network_bridge)
         self.chassis = None
 
         # new application configuration
@@ -59,8 +56,9 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
                               'to enable SNAT application'))
 
     def switch_features_handler(self, ev):
-        self.external_ofport = self.vswitch_api.get_port_ofport(
-                self.ex_peer_patch_port)
+        self._setup_patch_ports()
+        self.external_bridge_mac = self.vswitch_api.get_port_mac_in_use(
+            self.external_network_bridge)
 
         # install static strategy flows
         if self.external_host_ip is None:
@@ -68,6 +66,20 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
                               'to enable SNAT application'))
         else:
             self.install_strategy_based_flows()
+
+    def _setup_patch_ports(self):
+        integration_bridge = cfg.CONF.df.integration_bridge
+        ex_peer_patch_port = cfg.CONF.df_snat_app.ex_peer_patch_port
+        int_peer_patch_port = cfg.CONF.df_snat_app.int_peer_patch_port
+
+        self.external_ofport = self.vswitch_api.create_patch_port(
+            integration_bridge,
+            ex_peer_patch_port,
+            int_peer_patch_port)
+        self.vswitch_api.create_patch_port(
+            self.external_network_bridge,
+            int_peer_patch_port,
+            ex_peer_patch_port)
 
     @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
     def ovs_port_updated(self, ovs_port):
