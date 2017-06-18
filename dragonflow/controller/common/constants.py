@@ -60,6 +60,10 @@ EGRESS_SNAT_TABLE = 71
 # Depending on reg7, packet is pushed locally to EGRESS_EXTERNAL_TABLE or
 # translated to tunnel.
 EGRESS_TABLE = 75
+# Table to handle FIP-to-VM DNAT traffic
+INGRESS_DNAT_TABLE = 76
+# Table to handle VM-to-FIP DNAT traffic
+EGRESS_DNAT_TABLE = 77
 # Push packet to local ovs port.
 EGRESS_EXTERNAL_TABLE = 80
 # All packets that come from remote host will go through this table
