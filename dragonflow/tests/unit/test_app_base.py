@@ -52,7 +52,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         db_store._instance = None
 
         self.nb_api = api_nb.NbApi.get_instance(False)
-        self.controller = df_local_controller.DfLocalController('fake_host',
+        self.controller = df_local_controller.DfLocalController(cfg.CONF.host,
                                                                 self.nb_api)
         self.vswitch_api = self.controller.vswitch_api = mock.MagicMock()
         kwargs = dict(
@@ -143,7 +143,6 @@ fake_external_switch1 = l2.LogicalSwitch(
 
 def make_fake_port(id=None,
                    subnets=None,
-                   is_local=None,
                    macs=('00:00:00:00:00:00',),
                    ips=('0.0.0.0',),
                    name='fake_local_port',
@@ -151,7 +150,7 @@ def make_fake_port(id=None,
                    enabled=True,
                    topic='fake_tenant1',
                    device_owner='compute:None',
-                   chassis='fake_host',
+                   chassis=cfg.CONF.host,
                    version=2,
                    tunnel_key=None,
                    unique_key=2,
@@ -181,14 +180,13 @@ def make_fake_port(id=None,
         # binding_vnic_type=binding_vnic_type,
         extra_dhcp_options={} if not extra_dhcp_opts else extra_dhcp_opts,
     )
-    fake_port.is_local = is_local
     fake_port.ofport = ofport
     fake_port.tunnel_key = tunnel_key
     return fake_port
 
 
 def make_fake_local_port(**kargs):
-    kargs['is_local'] = True
+    kargs['chassis'] = cfg.CONF.host
     return make_fake_port(**kargs)
 
 
@@ -240,7 +238,7 @@ fake_ovs_port2 = ovs.OvsPort(
 
 
 def make_fake_remote_port(**kargs):
-    kargs['is_local'] = False
+    kargs['chassis'] = 'nonlocal'
     return make_fake_port(**kargs)
 
 
@@ -256,14 +254,14 @@ fake_remote_port1 = make_fake_remote_port(
 
 
 fake_chassis1 = core.Chassis(
-    id='fake_host',
+    id=cfg.CONF.host,
     ip='172.24.4.50',
     tunnel_types=('vxlan',),
 )
 
 
 fake_chassis2 = core.Chassis(
-    id='fake_host2',
+    id='nonlocal',
     ip='172.24.4.51',
     tunnel_types=('vxlan',),
 )
