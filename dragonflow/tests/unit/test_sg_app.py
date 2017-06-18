@@ -17,6 +17,7 @@ import mock
 import netaddr
 from neutron.agent.common import utils
 from neutron_lib import constants as n_const
+from oslo_config import cfg
 
 from dragonflow.db.models import l2
 from dragonflow.db.models import secgroups
@@ -64,7 +65,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
                  netaddr.IPAddress('2222:2222::2')],
             subnets=['fake_subnet1'],
             macs=[netaddr.EUI('fa:16:3e:8c:2e:12')],
-            chassis='fake_host',
+            chassis=cfg.CONF.host,
             lswitch='fake_switch1',
             security_groups=['fake_security_group_id1'],
             allowed_address_pairs=[],
@@ -72,11 +73,9 @@ class TestSGApp(test_app_base.DFAppTestBase):
             device_owner='compute:None',
             device_id='fake_device_id',
             ofport=20,
-            is_local=True,
             # 'binding_profile': {},
             # 'binding_vnic_type': 'normal',
         )
-        fake_local_port.is_local = True
         fake_local_port.ofport = 20
         return fake_local_port
 

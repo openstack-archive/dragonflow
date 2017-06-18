@@ -53,6 +53,7 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
 
     def _create_2nd_lswitch(self):
         lswitch = l2.LogicalSwitch(id='lswitch2',
+                                   version=1,
                                    unique_key=17,
                                    segmentation_id=17,
                                    topic='fake_tenant1')
@@ -68,6 +69,7 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
 
     def _create_child_port(self):
         return l2.LogicalPort(id='lport2',
+                              version=1,
                               ips=['192.168.18.3'],
                               subnets=['subnet2'],
                               macs=['fa:16:3e:00:00:01'],
