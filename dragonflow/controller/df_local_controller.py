@@ -79,6 +79,7 @@ class DfLocalController(object):
             delete_cb=self.delete,
             selective=self.enable_selective_topo_dist,
         )
+
         self._sync_pulse = loopingcall.FixedIntervalLoopingCall(
             self._submit_sync_event)
 

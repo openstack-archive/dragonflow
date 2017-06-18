@@ -50,9 +50,14 @@ class LogicalRouter(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
 
 
 @mf.register_model
-@mf.construct_nb_db_model(indexes={'lport': 'lport.id'})
+@mf.construct_nb_db_model(
+    indexes={
+        'lport': 'lport.id',
+        'floating_lport': 'floating_lport.id',
+    },
+)
 class FloatingIp(mf.ModelBase, mixins.Version, mixins.Topic,
-                 mixins.UniqueKey, mixins.Name, mixins.BasicEvents):
+                 mixins.Name, mixins.BasicEvents):
     table_name = 'floatingip'
 
     floating_ip_address = df_fields.IpAddressField()
@@ -60,11 +65,3 @@ class FloatingIp(mf.ModelBase, mixins.Version, mixins.Topic,
     lport = df_fields.ReferenceField(l2.LogicalPort)
     floating_lport = df_fields.ReferenceField(l2.LogicalPort)
     lrouter = df_fields.ReferenceField(LogicalRouter)
-
-    @property
-    def is_local(self):
-        if self.lport is None:
-            return False
-
-        lport = self.lport.get_object()
-        return lport is not None and lport.is_local
