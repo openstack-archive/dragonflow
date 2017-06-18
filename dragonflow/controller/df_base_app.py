@@ -207,30 +207,38 @@ class DFlowApp(object):
         )
 
     def send_packet(self, port, pkt):
-        datapath = self.datapath
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-        actions = [parser.OFPActionOutput(port=port)]
-        out = parser.OFPPacketOut(datapath=datapath,
-                                  buffer_id=ofproto.OFP_NO_BUFFER,
-                                  in_port=ofproto.OFPP_CONTROLLER,
-                                  actions=actions,
-                                  data=pkt)
-        datapath.send_msg(out)
+        self.reinject_packet(
+            pkt,
+            actions=[self.parser.OFPActionOutput(port=port)]
+        )
 
     def dispatch_packet(self, pkt, unique_key):
+        self.reinject_packet(
+            pkt,
+            table_id=constants.INGRESS_DISPATCH_TABLE,
+            actions=[
+                self.parser.OFPActionSetField(reg7=unique_key),
+            ]
+        )
+
+    def reinject_packet(self, pkt, table_id=None, actions=None):
         datapath = self.datapath
         ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-        actions = [parser.OFPActionSetField(reg7=unique_key),
-                   parser.NXActionResubmitTable(
-                       table_id=constants.INGRESS_DISPATCH_TABLE)]
-        out = parser.OFPPacketOut(datapath=datapath,
-                                  buffer_id=ofproto.OFP_NO_BUFFER,
-                                  in_port=ofproto.OFPP_CONTROLLER,
-                                  actions=actions,
-                                  data=pkt)
-        datapath.send_msg(out)
+        parser = self.parser
+
+        actions = actions or []
+        if table_id is not None:
+            actions.append(parser.NXActionResubmitTable(table_id=table_id))
+
+        datapath.send_msg(
+            parser.OFPPacketOut(
+                datapath=datapath,
+                buffer_id=ofproto.OFP_NO_BUFFER,
+                in_port=ofproto.OFPP_CONTROLLER,
+                actions=actions,
+                data=pkt,
+            ),
+        )
 
     def send_arp_request(self, src_mac, src_ip, dst_ip, port):
         arp_request_pkt = packet.Packet()
