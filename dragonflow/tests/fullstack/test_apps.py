@@ -2180,6 +2180,19 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
 
 
 class TestDNATApp(test_base.DFTestBase):
+    def trace(self):
+        test_utils.print_command(['ip', 'addr'])
+        test_utils.print_command(['ip', 'link'])
+        test_utils.print_command(['ovs-vsctl', 'show'], True)
+        test_utils.print_command(
+            ['ovs-ofctl', 'show', self.integration_bridge],
+            True
+        )
+        test_utils.print_command(
+            ['ovs-ofctl', 'dump-flows', self.integration_bridge],
+            True
+        )
+
     def setUp(self):
         super(TestDNATApp, self).setUp()
 
@@ -2299,6 +2312,10 @@ class TestDNATApp(test_base.DFTestBase):
                 unknown_port_action=ignore_action
             )
         )
+
+        # FIXME remove
+        time.sleep(10)
+        self.trace()
         policy.start(self.topology)
         policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(policy.exceptions) > 0:
@@ -2391,6 +2408,9 @@ class TestDNATApp(test_base.DFTestBase):
                 unknown_port_action=ignore_action
             )
         )
+        # FIXME remove
+        time.sleep(10)
+        self.trace()
         policy.start(self.topology)
         policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(policy.exceptions) > 0:
