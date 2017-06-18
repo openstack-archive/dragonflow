@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import collections
-
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.lib.packet import ethernet
@@ -23,24 +21,20 @@ from ryu.lib.packet import in_proto
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
-from ryu.ofproto import nicira_ext
 
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import icmp_error_generator
-from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
+from dragonflow.controller import port_locator
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
-from dragonflow.db.models import ovs
 
 
 LOG = log.getLogger(__name__)
-
-FIP_GW_RESOLVING_STATUS = 'resolving'
 
 EGRESS = 'egress'
 
@@ -51,17 +45,8 @@ class DNATApp(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
         super(DNATApp, self).__init__(*args, **kwargs)
-        self.external_network_bridge = \
-            cfg.CONF.df_dnat_app.external_network_bridge
-        self.external_bridge_mac = ""
-        self.integration_bridge = cfg.CONF.df.integration_bridge
         self.conf = cfg.CONF.df_dnat_app
-        self.int_peer_patch_port = self.conf.int_peer_patch_port
-        self.ex_peer_patch_port = self.conf.ex_peer_patch_port
-        self.external_networks = collections.defaultdict(int)
-        self.local_floatingips = collections.defaultdict(str)
         # Map between fixed ip mac to floating ip
-        self.fip_port_key_cache = {}
         self.egress_ttl_invalid_handler_rate_limit = df_utils.RateLimiter(
             max_rate=self.conf.dnat_ttl_invalid_max_rate,
             time_unit=1)
@@ -74,27 +59,20 @@ class DNATApp(df_base_app.DFlowApp):
         self.ingress_icmp_error_rate_limit = df_utils.RateLimiter(
             max_rate=self.conf.dnat_icmp_error_max_rate,
             time_unit=1)
-        self.api.register_table_handler(const.INGRESS_NAT_TABLE,
+        self.api.register_table_handler(const.INGRESS_DNAT_TABLE,
                                         self.ingress_packet_in_handler)
-        self.api.register_table_handler(const.EGRESS_NAT_TABLE,
+        self.api.register_table_handler(const.EGRESS_DNAT_TABLE,
                                         self.egress_packet_in_handler)
-
-    def switch_features_handler(self, ev):
-        self._init_external_bridge()
-        self._install_output_to_physical_patch(self.external_ofport)
-        self.external_networks.clear()
-        self.local_floatingips.clear()
-        self.fip_port_key_cache.clear()
 
     def _handle_ingress_invalid_ttl(self, event):
         LOG.debug("Get an invalid TTL packet at table %s",
-                  const.INGRESS_NAT_TABLE)
+                  const.INGRESS_DNAT_TABLE)
 
         if self.ingress_ttl_invalid_handler_rate_limit():
             LOG.warning("Get more than %(rate)s TTL invalid "
                         "packets per second at table %(table)s",
                         {'rate': self.conf.dnat_ttl_invalid_max_rate,
-                         'table': const.INGRESS_NAT_TABLE})
+                         'table': const.INGRESS_DNAT_TABLE})
             return
 
         msg = event.msg
@@ -113,7 +91,7 @@ class DNATApp(df_base_app.DFlowApp):
             LOG.warning("Get more than %(rate)s ICMP error messages "
                         "per second at table %(table)s",
                         {'rate': self.conf.dnat_icmp_error_max_rate,
-                         'table': const.INGRESS_NAT_TABLE})
+                         'table': const.INGRESS_DNAT_TABLE})
             return
 
         msg = event.msg
@@ -130,13 +108,13 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _handle_egress_invalid_ttl(self, event):
         LOG.debug("Get an invalid TTL packet at table %s",
-                  const.EGRESS_NAT_TABLE)
+                  const.EGRESS_DNAT_TABLE)
 
         if self.egress_ttl_invalid_handler_rate_limit():
             LOG.warning("Get more than %(rate)s TTL invalid "
                         "packets per second at table %(table)s",
                         {'rate': self.conf.dnat_ttl_invalid_max_rate,
-                         'table': const.EGRESS_NAT_TABLE})
+                         'table': const.EGRESS_DNAT_TABLE})
             return
 
         msg = event.msg
@@ -144,7 +122,14 @@ class DNATApp(df_base_app.DFlowApp):
         pkt = packet.Packet(msg.data)
         e_pkt = pkt.get_protocol(ethernet.ethernet)
         port_key = msg.match.get('reg6')
-        floatingip = self.fip_port_key_cache.get(port_key)
+        lport = self.db_store.get_one(
+            l2.LogicalPort(unique_key=port_key),
+            index=l2.LogicalPort.get_index('unique_key'),
+        )
+        floatingip = self.db_store.get_one(
+            l3.FloatingIp(lport=lport.id),
+            index=l3.FloatingIp.get_index('lport'),
+        )
         if floatingip is None:
             LOG.warning("The invalid TTL packet's destination mac %s "
                         "can't be recognized.", e_pkt.src)
@@ -160,7 +145,7 @@ class DNATApp(df_base_app.DFlowApp):
             LOG.warning("Get more than %(rate)s ICMP error messages "
                         "per second at table %(table)s",
                         {'rate': self.conf.dnat_icmp_error_max_rate,
-                         'table': const.INGRESS_NAT_TABLE})
+                         'table': const.INGRESS_DNAT_TABLE})
             return
 
         msg = event.msg
@@ -204,91 +189,7 @@ class DNATApp(df_base_app.DFlowApp):
         reply_pkt.add_protocol(icmp_pkt)
         return reply_pkt
 
-    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_CREATED)
-    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_UPDATED)
-    def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
-        if ovs_port.name != self.external_network_bridge:
-            return
-
-        mac = ovs_port.mac_in_use
-        if (self.external_bridge_mac == mac
-                or not mac
-                or mac == '00:00:00:00:00:00'):
-            return
-
-        for key, floatingip in self.local_floatingips.items():
-            self._install_dnat_egress_rules(floatingip, mac)
-
-        self.external_bridge_mac = mac
-
-    def _init_external_bridge(self):
-        mapping = self.vswitch_api.create_patch_pair(
-                self.integration_bridge,
-                self.external_network_bridge,
-                self.int_peer_patch_port,
-                self.ex_peer_patch_port)
-        self.external_ofport = self.vswitch_api.get_port_ofport(
-            mapping[0])
-
-    def _increase_external_network_count(self, network_id):
-        self.external_networks[network_id] += 1
-
-    def _decrease_external_network_count(self, network_id):
-        self.external_networks[network_id] -= 1
-
-    def _get_external_network_count(self, network_id):
-        return self.external_networks[network_id]
-
-    def _is_first_external_network(self, network_id):
-        if self._get_external_network_count(network_id) == 0:
-            # check whether there are other networks
-            for key, val in self.external_networks.items():
-                if key != network_id and val > 0:
-                    return False
-            return True
-        return False
-
-    def _is_last_external_network(self, network_id):
-        if self._get_external_network_count(network_id) == 1:
-            # check whether there are other networks
-            for key, val in self.external_networks.items():
-                if key != network_id and val > 0:
-                    return False
-            return True
-        return False
-
-    def _install_floatingip_arp_responder(self, floatingip):
-        # install floatingip arp responder flow rules
-        if floatingip.floating_ip_address.version != n_const.IP_VERSION_4:
-            return
-        floating_lport = floatingip.floating_lport
-        arp_responder.ArpResponder(self,
-                                   None,
-                                   floatingip.floating_ip_address,
-                                   floating_lport.mac,
-                                   const.INGRESS_NAT_TABLE).add()
-
-    def _remove_floatingip_arp_responder(self, floatingip):
-        # install floatingip arp responder flow rules
-        if floatingip.floating_ip_address.version != n_const.IP_VERSION_4:
-            return
-        floating_lport = floatingip.floating_lport
-        arp_responder.ArpResponder(self,
-                                   None,
-                                   floatingip.floating_ip_address,
-                                   floating_lport.mac,
-                                   const.INGRESS_NAT_TABLE).remove()
-
-    def _get_vm_port_info(self, floatingip):
-        lport = floatingip.lport
-        mac = lport.mac
-        ip = lport.ip
-        tunnel_key = lport.unique_key
-        local_network_id = lport.lswitch.unique_key
-
-        return mac, ip, tunnel_key, local_network_id
-
-    def _get_vm_gateway_info(self, floatingip):
+    def _get_vm_gateway_mac(self, floatingip):
         lport = floatingip.lport
         lrouter = floatingip.lrouter
         for router_port in lrouter.ports:
@@ -296,79 +197,143 @@ class DNATApp(df_base_app.DFlowApp):
                 return router_port.mac
         return None
 
-    def _install_dnat_ingress_rules(self, floatingip):
-        parser = self.parser
-        ofproto = self.ofproto
-        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=floatingip.floating_ip_address)
+    def _get_arp_responder(self, floatingip):
+        # ARP responder is placed in L2. This is needed to avoid the multicast
+        # flow for provider network in L2 table.
+        # The packet is egressed to EGRESS_TABLE so it can reach the provider
+        # network.
+        return arp_responder.ArpResponder(
+            app=self,
+            network_id=floatingip.floating_lport.lswitch.unique_key,
+            interface_ip=floatingip.floating_lport.ip,
+            interface_mac=floatingip.floating_lport.mac,
+            table_id=const.L2_LOOKUP_TABLE,
+            priority=const.PRIORITY_HIGH,
+            goto_table_id=const.EGRESS_TABLE,
+            source_port_key=floatingip.floating_lport.unique_key,
+        )
 
-        vm_mac, vm_ip, lport_key, local_network_id = \
-            self._get_vm_port_info(floatingip)
-        vm_gateway_mac = self._get_vm_gateway_info(floatingip)
+    def _get_ingress_nat_actions(self, floatingip):
+        vm_gateway_mac = self._get_vm_gateway_mac(floatingip)
         if vm_gateway_mac is None:
             vm_gateway_mac = floatingip.floating_lport.mac
-        actions = [
-            parser.OFPActionDecNwTtl(),
-            parser.OFPActionSetField(eth_src=vm_gateway_mac),
-            parser.OFPActionSetField(eth_dst=vm_mac),
-            parser.OFPActionSetField(ipv4_dst=vm_ip),
-            parser.OFPActionSetField(reg7=lport_key),
-            parser.OFPActionSetField(metadata=local_network_id)
+
+        return [
+            self.parser.OFPActionDecNwTtl(),
+            self.parser.OFPActionSetField(eth_src=vm_gateway_mac),
+            self.parser.OFPActionSetField(eth_dst=floatingip.lport.mac),
+            self.parser.OFPActionSetField(ipv4_dst=floatingip.lport.ip),
+            self.parser.OFPActionSetField(reg7=floatingip.lport.unique_key),
+            self.parser.OFPActionSetField(
+                metadata=floatingip.lport.lswitch.unique_key),
         ]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(
-            const.INGRESS_CONNTRACK_TABLE)
-        inst = [action_inst, goto_inst]
 
+    def _get_dnat_ingress_match(self, floatingip, **kwargs):
+        return self.parser.OFPMatch(
+            reg7=floatingip.floating_lport.unique_key,
+            **kwargs
+        )
+
+    def _install_ingress_capture_flow(self, floatingip):
+        # Capture flow:
+        # Each packet bound for a floating port is forwarded to DNAT table
+        # This is done so we can be the handler for any PACKET_INs there
         self.mod_flow(
-            inst=inst,
-            table_id=const.INGRESS_NAT_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
+            table_id=const.EGRESS_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=self._get_dnat_ingress_match(floatingip),
+            inst=[
+                self.parser.OFPInstructionGotoTable(const.INGRESS_DNAT_TABLE),
+            ],
+        )
 
+    def _uninstall_ingress_capture_flow(self, floatingip):
+        self.mod_flow(
+            command=self.ofproto.OFPFC_DELETE_STRICT,
+            table_id=const.EGRESS_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=self._get_dnat_ingress_match(floatingip),
+        )
+
+    def _install_ingress_translate_flow(self, floatingip):
+        self.mod_flow(
+            table_id=const.INGRESS_DNAT_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=self._get_dnat_ingress_match(
+                floatingip,
+                eth_type=ether.ETH_TYPE_IP,
+            ),
+            actions=self._get_ingress_nat_actions(floatingip) + [
+                self.parser.NXActionResubmitTable(
+                    table_id=const.L2_LOOKUP_TABLE),
+            ],
+        )
+
+    def _uninstall_ingress_translate_flow(self, floatingip):
+        self.mod_flow(
+            command=self.ofproto.OFPFC_DELETE_STRICT,
+            table_id=const.INGRESS_DNAT_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=self._get_dnat_ingress_match(
+                floatingip,
+                eth_type=ether.ETH_TYPE_IP,
+            ),
+        )
+
+    def _get_ingress_icmp_flow_match(self, floatingip, icmp_type):
+        return self._get_dnat_ingress_match(
+            floatingip,
+            eth_type=ether.ETH_TYPE_IP,
+            ip_proto=in_proto.IPPROTO_ICMP,
+            icmpv4_type=icmp_type,
+        )
+
+    def _install_ingress_icmp_flows(self, floatingip):
+        # Translate flow
         # Add flows to packet-in icmp time exceed and icmp unreachable message
-        actions = [
-            parser.OFPActionDecNwTtl(),
-            parser.OFPActionSetField(eth_src=vm_gateway_mac),
-            parser.OFPActionSetField(eth_dst=vm_mac),
-            parser.OFPActionSetField(ipv4_dst=vm_ip),
-            parser.OFPActionSetField(reg7=lport_key),
-            parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                   ofproto.OFPCML_NO_BUFFER)
-        ]
-        action_inst = [parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
         for icmp_type in (icmp.ICMP_DEST_UNREACH, icmp.ICMP_TIME_EXCEEDED):
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    ip_proto=in_proto.IPPROTO_ICMP,
-                                    icmpv4_type=icmp_type,
-                                    ipv4_dst=floatingip.floating_ip_address)
             self.mod_flow(
-                inst=action_inst,
-                table_id=const.INGRESS_NAT_TABLE,
+                table_id=const.INGRESS_DNAT_TABLE,
                 priority=const.PRIORITY_HIGH,
-                match=match)
+                match=self._get_ingress_icmp_flow_match(floatingip, icmp_type),
+                actions=self._get_ingress_nat_actions(floatingip) + [
+                    self.parser.OFPActionOutput(
+                        self.ofproto.OFPP_CONTROLLER,
+                        self.ofproto.OFPCML_NO_BUFFER,
+                    ),
+                ],
+            )
 
-    def _remove_dnat_ingress_rules(self, floatingip):
-        parser = self.parser
-        ofproto = self.ofproto
-        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=floatingip.floating_ip_address)
-        self.mod_flow(
-            command=ofproto.OFPFC_DELETE,
-            table_id=const.INGRESS_NAT_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
+    def _uninstall_ingress_icmp_flows(self, floatingip):
+        for icmp_type in (icmp.ICMP_DEST_UNREACH, icmp.ICMP_TIME_EXCEEDED):
+            self.mod_flow(
+                command=self.ofproto.OFPFC_DELETE_STRICT,
+                table_id=const.INGRESS_DNAT_TABLE,
+                priority=const.PRIORITY_HIGH,
+                match=self._get_ingress_icmp_flow_match(floatingip, icmp_type),
+            )
 
-    def _get_dnat_egress_match(self, floatingip):
-        _, vm_ip, _, local_network_id = self._get_vm_port_info(floatingip)
-        parser = self.parser
-        match = parser.OFPMatch()
-        match.set_dl_type(ether.ETH_TYPE_IP)
-        match.set_metadata(local_network_id)
-        match.set_ipv4_src(utils.ipv4_text_to_int(vm_ip))
-        return match
+    def _install_ingress_nat_flows(self, floatingip):
+        self._get_arp_responder(floatingip).add()
+        self._install_ingress_capture_flow(floatingip)
+        self._install_ingress_translate_flow(floatingip)
+        self._install_ingress_icmp_flows(floatingip)
+
+    def _remove_ingress_nat_rules(self, floatingip):
+        self._get_arp_responder(floatingip).remove()
+        self._uninstall_ingress_capture_flow(floatingip)
+        self._uninstall_ingress_translate_flow(floatingip)
+        self._uninstall_ingress_icmp_flows(floatingip)
+
+    def _get_dnat_egress_match(self, floatingip, **kwargs):
+        return self.parser.OFPMatch(
+            metadata=floatingip.lport.lswitch.unique_key,
+            reg6=floatingip.lport.unique_key,
+            reg5=floatingip.lrouter.unique_key,
+            eth_type=ether.ETH_TYPE_IP,
+            ipv4_src=floatingip.lport.ip,
+            **kwargs
+        )
 
     def _get_external_subnet(self, fip):
         subnets = fip.floating_lport.lswitch.subnets
@@ -379,204 +344,210 @@ class DNATApp(df_base_app.DFlowApp):
     def _get_external_cidr(self, fip):
         return self._get_external_subnet(fip).cidr
 
-    def _install_dnat_egress_rules(self, floatingip, network_bridge_mac):
-        fip_mac = floatingip.floating_lport.mac
-        fip_ip = floatingip.floating_ip_address
+    def _get_egress_nat_actions(self, floatingip):
         parser = self.parser
-        ofproto = self.ofproto
-        match = self._get_dnat_egress_match(floatingip)
-        actions = [
+
+        return [
             parser.OFPActionDecNwTtl(),
-            parser.OFPActionSetField(eth_src=fip_mac),
-            parser.OFPActionSetField(eth_dst=network_bridge_mac),
-            parser.OFPActionSetField(ipv4_src=fip_ip)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        goto_inst = parser.OFPInstructionGotoTable(const.EGRESS_EXTERNAL_TABLE)
+            parser.OFPActionSetField(eth_src=floatingip.floating_lport.mac),
+            parser.OFPActionSetField(eth_dst=const.EMPTY_MAC),
+            parser.OFPActionSetField(ipv4_src=floatingip.floating_ip_address),
+            parser.OFPActionSetField(
+                metadata=floatingip.floating_lport.lswitch.unique_key),
+            parser.OFPActionSetField(reg6=floatingip.floating_lport.unique_key)
+        ]
 
-        inst = [action_inst, goto_inst]
-
+    def _install_egress_capture_flow(self, floatingip):
+        # Capture flow: relevant packets in L3 go to EGRESS_DNAT
         self.mod_flow(
-            inst=inst,
-            table_id=const.EGRESS_NAT_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-        # Add flows to packet-in icmp time exceed and icmp unreachable message
-        actions.append(parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                              ofproto.OFPCML_NO_BUFFER))
-        action_inst = [parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        for icmp_type in (icmp.ICMP_DEST_UNREACH, icmp.ICMP_TIME_EXCEEDED):
-            match = self._get_dnat_egress_match(floatingip)
-            match.set_ip_proto(in_proto.IPPROTO_ICMP)
-            match.set_icmpv4_type(icmp_type)
-            self.mod_flow(
-                inst=action_inst,
-                table_id=const.EGRESS_NAT_TABLE,
-                priority=const.PRIORITY_HIGH,
-                match=match)
-
-    def _remove_dnat_egress_rules(self, floatingip):
-        ofproto = self.ofproto
-        match = self._get_dnat_egress_match(floatingip)
-        self.mod_flow(
-            command=ofproto.OFPFC_DELETE,
-            table_id=const.EGRESS_NAT_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-    def _install_egress_nat_rules(self, floatingip):
-        if self._get_external_cidr(floatingip).version != n_const.IP_VERSION_4:
-            return
-
-        match = self._get_dnat_egress_match(floatingip)
-        self.add_flow_go_to_table(
-            const.L3_LOOKUP_TABLE,
-            const.PRIORITY_LOW,
-            const.EGRESS_NAT_TABLE,
-            match=match)
-        if self.external_bridge_mac:
-            self._install_dnat_egress_rules(floatingip,
-                                            self.external_bridge_mac)
-
-    def _remove_egress_nat_rules(self, floatingip):
-        if self._get_external_cidr(floatingip).version != n_const.IP_VERSION_4:
-            return
-
-        ofproto = self.ofproto
-        match = self._get_dnat_egress_match(floatingip)
-        self.mod_flow(
-            command=ofproto.OFPFC_DELETE,
             table_id=const.L3_LOOKUP_TABLE,
-            priority=const.PRIORITY_LOW,
-            match=match)
-
-        self._remove_dnat_egress_rules(floatingip)
-
-    def _install_ingress_nat_rules(self, floatingip):
-        network_id = floatingip.floating_lport.lswitch.unique_key
-        # TODO(Fei Rao) check the network type
-        if self._is_first_external_network(network_id):
-            # if it is the first floating ip on this node, then
-            # install the common goto flow rule.
-            parser = self.parser
-            self.mod_flow(
-                table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                priority=const.PRIORITY_DEFAULT,
-                match=parser.OFPMatch(in_port=self.external_ofport),
-                inst=[
-                    parser.OFPInstructionActions(
-                        self.ofproto.OFPIT_APPLY_ACTIONS,
-                        [
-                            parser.NXActionRegLoad(
-                                dst='in_port',
-                                value=0,
-                                ofs_nbits=nicira_ext.ofs_nbits(0, 31),
-                            ),
-                        ],
-                    ),
-                    parser.OFPInstructionGotoTable(const.INGRESS_NAT_TABLE),
-                ],
-            )
-            # Take over reg7 == 0 for the external_ofport
-            match = parser.OFPMatch(reg7=0)
-            actions = [self.parser.OFPActionOutput(
-                    self.external_ofport, self.ofproto.OFPCML_NO_BUFFER)]
-            self.mod_flow(
-                actions=actions,
-                table_id=const.INGRESS_DISPATCH_TABLE,
-                priority=const.PRIORITY_MEDIUM,
-                match=match)
-        self._install_floatingip_arp_responder(floatingip)
-        self._install_dnat_ingress_rules(floatingip)
-        self._increase_external_network_count(network_id)
-
-    def _remove_ingress_nat_rules(self, floatingip):
-        network_id = floatingip.floating_lport.lswitch.unique_key
-        if self._is_last_external_network(network_id):
-            # if it is the last floating ip on this node, then
-            # remove the common goto flow rule.
-            parser = self.parser
-            ofproto = self.ofproto
-            match = parser.OFPMatch()
-            match.set_in_port(self.external_ofport)
-            self.mod_flow(
-                command=ofproto.OFPFC_DELETE,
-                table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                priority=const.PRIORITY_DEFAULT,
-                match=match)
-            match = parser.OFPMatch(reg7=0)
-            self.mod_flow(
-                command=ofproto.OFPFC_DELETE,
-                table_id=const.INGRESS_DISPATCH_TABLE,
-                priority=const.PRIORITY_MEDIUM,
-                match=match)
-        self._remove_floatingip_arp_responder(floatingip)
-        self._remove_dnat_ingress_rules(floatingip)
-        self._decrease_external_network_count(network_id)
-
-    @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_CREATED)
-    def _create_floatingip(self, fip):
-        if fip.is_local:
-            self._associate_floatingip(fip)
-
-    @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_UPDATED)
-    def _update_floatingip(self, fip, original_fip):
-        if original_fip.lport == fip.lport:
-            return
-
-        if original_fip.is_local:
-            self._disassociate_floatingip(original_fip)
-
-        if fip.is_local:
-            self._associate_floatingip(fip)
-
-    def _associate_floatingip(self, floatingip):
-        self.local_floatingips[floatingip.id] = floatingip
-        lport = floatingip.lport
-        self.fip_port_key_cache[lport.unique_key] = floatingip
-        self._install_ingress_nat_rules(floatingip)
-        self._install_egress_nat_rules(floatingip)
-
-    def _disassociate_floatingip(self, floatingip):
-        self.local_floatingips.pop(floatingip.id, 0)
-        lport = floatingip.lport
-        self.fip_port_key_cache.pop(lport.unique_key, None)
-        self._remove_ingress_nat_rules(floatingip)
-        self._remove_egress_nat_rules(floatingip)
-
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
-    def _create_local_port(self, lport):
-        fips = self.db_store.get_all(
-            l3.FloatingIp(lport=lport),
-            index=l3.FloatingIp.get_index('lport'),
+            priority=const.PRIORITY_MEDIUM_LOW,
+            match=self._get_dnat_egress_match(floatingip),
+            inst=[
+                self.parser.OFPInstructionGotoTable(const.EGRESS_DNAT_TABLE)
+            ],
         )
 
-        for fip in fips:
-            self._associate_floatingip(fip)
+    def _uninstall_egress_capture_flow(self, floatingip):
+        self.mod_flow(
+            command=self.ofproto.OFPFC_DELETE_STRICT,
+            table_id=const.L3_LOOKUP_TABLE,
+            priority=const.PRIORITY_MEDIUM_LOW,
+            match=self._get_dnat_egress_match(floatingip),
+        )
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
-    def _remove_local_port(self, lport):
-        ips_to_disassociate = (
-            fip for fip in self.local_floatingips.values()
-            if fip.lport.id == lport.id)
-        for floatingip in ips_to_disassociate:
-            self._disassociate_floatingip(floatingip)
+    def _install_egress_translate_flow(self, floatingip):
+        self.mod_flow(
+            table_id=const.EGRESS_DNAT_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=self._get_dnat_egress_match(floatingip),
+            actions=self._get_egress_nat_actions(floatingip) + [
+                self.parser.NXActionResubmitTable(
+                    table_id=const.L2_LOOKUP_TABLE,
+                )
+            ],
+        )
+
+    def _uninstall_egress_translate_flow(self, floatingip):
+        self.mod_flow(
+            command=self.ofproto.OFPFC_DELETE_STRICT,
+            table_id=const.EGRESS_DNAT_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=self._get_dnat_egress_match(floatingip),
+        )
+
+    def _install_egress_icmp_flows(self, floatingip):
+        # Add flows to packet-in icmp time exceed and icmp unreachable message
+        for icmp_type in (icmp.ICMP_DEST_UNREACH, icmp.ICMP_TIME_EXCEEDED):
+            self.mod_flow(
+                table_id=const.EGRESS_DNAT_TABLE,
+                priority=const.PRIORITY_HIGH,
+                match=self._get_dnat_egress_match(
+                    floatingip,
+                    ip_proto=in_proto.IPPROTO_ICMP,
+                    icmpv4_type=icmp_type,
+                ),
+                actions=self._get_egress_nat_actions(floatingip) + [
+                    self.parser.OFPActionOutput(
+                        self.ofproto.OFPP_CONTROLLER,
+                        self.ofproto.OFPCML_NO_BUFFER,
+                    ),
+                ],
+            )
+
+    def _uninstall_egress_icmp_flows(self, floatingip):
+        for icmp_type in (icmp.ICMP_DEST_UNREACH, icmp.ICMP_TIME_EXCEEDED):
+            self.mod_flow(
+                command=self.ofproto.OFPFC_DELETE_STRICT,
+                table_id=const.EGRESS_DNAT_TABLE,
+                priority=const.PRIORITY_HIGH,
+                match=self._get_dnat_egress_match(
+                    floatingip,
+                    ip_proto=in_proto.IPPROTO_ICMP,
+                    icmpv4_type=icmp_type,
+                ),
+            )
+
+    def _install_egress_nat_rules(self, floatingip):
+        self._install_egress_capture_flow(floatingip)
+        self._install_egress_translate_flow(floatingip)
+        self._install_egress_icmp_flows(floatingip)
+
+    def _remove_egress_nat_rules(self, floatingip):
+        self._uninstall_egress_capture_flow(floatingip)
+        self._uninstall_egress_translate_flow(floatingip)
+        self._uninstall_egress_icmp_flows(floatingip)
+
+    @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_CREATED)
+    def _create_floatingip(self, floatingip):
+        if floatingip.lport is not None:
+            self._install_floatingip(floatingip)
+
+    @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_UPDATED)
+    def _update_floatingip(self, floatingip, orig_floatingip):
+        if orig_floatingip.lport == floatingip.lport:
+            return
+
+        if orig_floatingip.lport is not None:
+            # Update here only if we're disassociating
+            self._uninstall_floatingip(orig_floatingip)
+
+        if floatingip.lport is not None:
+            # Update here only if we're associating
+            self._install_floatingip(floatingip)
 
     @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_DELETED)
     def _delete_floatingip(self, floatingip):
-        if floatingip.is_local:
-            self._disassociate_floatingip(floatingip)
+        if floatingip.lport is None:
+            return
 
-    def _install_output_to_physical_patch(self, ofport):
-        parser = self.parser
-        ofproto = self.ofproto
-        actions = [parser.OFPActionOutput(ofport,
-                                          ofproto.OFPCML_NO_BUFFER)]
-        actions_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [actions_inst]
-        self.mod_flow(inst=inst,
-                      table_id=const.EGRESS_EXTERNAL_TABLE,
-                      priority=const.PRIORITY_MEDIUM, match=None)
+        # FIXME lport in self.db_store
+        if floatingip.floating_lport.get_object() is None:
+            return
+
+        self._uninstall_floatingip(floatingip)
+
+    def _install_floatingip(self, floatingip):
+        if floatingip.lport.is_local:
+            self._install_local_floatingip(floatingip)
+        elif floatingip.lport.is_remote:
+            self._install_remote_floatingip(floatingip)
+
+    def _uninstall_floatingip(self, floatingip):
+        if floatingip.lport.is_local:
+            self._uninstall_local_floatingip(floatingip)
+        elif floatingip.lport.is_remote:
+            self._uninstall_remote_floatingip(floatingip)
+
+    def _install_local_floatingip(self, floatingip):
+        if self._get_external_cidr(floatingip).version != n_const.IP_VERSION_4:
+            return
+
+        self._install_ingress_nat_flows(floatingip)
+        self._install_egress_nat_rules(floatingip)
+
+        port_locator.copy_port_binding(
+            floatingip.floating_lport,
+            floatingip.lport,
+        )
+        floatingip.floating_lport.emit_bind_local()
+
+    def _uninstall_local_floatingip(self, floatingip, emit_unbind=True):
+        if self._get_external_cidr(floatingip).version != n_const.IP_VERSION_4:
+            return
+
+        port_locator.clear_port_binding(floatingip.floating_lport)
+        if emit_unbind:
+            floatingip.floating_lport.emit_unbind_local()
+
+        self._remove_ingress_nat_rules(floatingip)
+        self._remove_egress_nat_rules(floatingip)
+
+    def _install_remote_floatingip(self, floatingip):
+        port_locator.copy_port_binding(
+            floatingip.floating_lport, floatingip.lport)
+
+        floatingip.floating_lport.emit_bind_remote()
+
+    def _uninstall_remote_floatingip(self, floatingip, emit_unbind=True):
+        port_locator.clear_port_binding(floatingip.floating_lport)
+        if emit_unbind:
+            floatingip.floating_lport.emit_unbind_remote()
+
+    def _get_floatingips_by_lport(self, lport):
+        return self.db_store.get_all(
+            l3.FloatingIp(lport=lport.id),
+            index=l3.FloatingIp.get_index('lport'),
+        )
+
+    def _get_floatingips_by_floating_lport(self, lport):
+        return self.db_store.get_all(
+            l3.FloatingIp(floating_lport=lport.id),
+            index=l3.FloatingIp.get_index('floating_lport'),
+        )
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
+    def _local_port_bound(self, lport):
+        for floatingip in self._get_floatingips_by_lport(lport):
+            self._install_local_floatingip(floatingip)
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
+    def _local_port_unbound(self, lport):
+        for floatingip in self._get_floatingips_by_lport(lport):
+            self._uninstall_local_floatingip(floatingip)
+
+        for floatingip in self._get_floatingips_by_floating_lport(lport):
+            self._uninstall_local_floatingip(floatingip, emit_unbind=False)
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
+    def _remote_port_bound(self, lport):
+        for floatingip in self._get_floatingips_by_lport(lport):
+            self._install_remote_floatingip(floatingip)
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
+    def _remote_port_unbound(self, lport):
+        for floatingip in self._get_floatingips_by_lport(lport):
+            self._uninstall_remote_floatingip(floatingip)
+
+        for floatingip in self._get_floatingips_by_floating_lport(lport):
+            self._uninstall_remote_floatingip(floatingip, emit_unbind=False)
