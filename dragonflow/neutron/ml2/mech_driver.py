@@ -23,7 +23,6 @@ from neutron_lib.plugins.ml2 import api
 from oslo_log import log
 
 from dragonflow._i18n import _
-from dragonflow.common import constants as df_common_const
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
@@ -285,8 +284,6 @@ class DFMechDriver(api.MechanismDriver):
         """
         port = {'port': {'tenant_id': context.tenant_id,
                          'network_id': subnet['network_id'], 'name': '',
-                         'binding:host_id': (
-                             df_common_const.DRAGONFLOW_VIRTUAL_PORT),
                          'admin_state_up': True, 'device_id': '',
                          'device_owner': n_const.DEVICE_OWNER_DHCP,
                          'mac_address': n_const.ATTR_NOT_SPECIFIED,
@@ -462,7 +459,7 @@ class DFMechDriver(api.MechanismDriver):
         else:
             chassis = port.get('binding:host_id') or None
 
-        binding_profile = port.get('binding:profile')
+        binding_profile = port.get(portbindings.PROFILE)
         remote_vtep = False
         if binding_profile and binding_profile.get(
                 df_const.DF_BINDING_PROFILE_PORT_KEY) ==\
@@ -477,7 +474,8 @@ class DFMechDriver(api.MechanismDriver):
         chassis, remote_vtep = self._get_chassis_and_remote_vtep(port)
 
         lport = neutron_l2.logical_port_from_neutron_port(port)
-        lport.chassis = chassis
+        if chassis is not None:
+            lport.chassis = chassis
         lport.remote_vtep = remote_vtep
         self.nb_api.create(lport)
 
@@ -490,7 +488,6 @@ class DFMechDriver(api.MechanismDriver):
         # In ml2/plugin.py, when delete subnet, it will call
         # update_port_postcommit, DFMechDriver should judge the port is dhcp
         # port or not, if it is, then delete it.
-        host_id = port.get('binding:host_id')
         subnet_id = None
 
         for fixed_ip in port['fixed_ips']:
@@ -498,11 +495,8 @@ class DFMechDriver(api.MechanismDriver):
             if subnet_id:
                 break
 
-        if host_id == df_common_const.DRAGONFLOW_VIRTUAL_PORT \
-                and subnet_id is None:
-            return True
-        else:
-            return False
+        owner = port['device_owner']
+        return owner == n_const.DEVICE_OWNER_DHCP and subnet_id is None
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
     def update_port_postcommit(self, context):
@@ -538,7 +532,8 @@ class DFMechDriver(api.MechanismDriver):
         chassis, remote_vtep = self._get_chassis_and_remote_vtep(updated_port)
 
         lport = neutron_l2.logical_port_from_neutron_port(updated_port)
-        lport.chassis = chassis
+        if chassis is not None:
+            lport.chassis = chassis
         lport.remote_vtep = remote_vtep
         self.nb_api.update(lport)
 
