@@ -18,12 +18,12 @@ import sys
 import time
 
 from neutron.common import config as common_config
+from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.app.ofctl import service as of_service
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
-from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller import df_db_objects_refresh
@@ -34,7 +34,6 @@ from dragonflow.db import api_nb
 from dragonflow.db import db_consistent
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
-from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
@@ -43,6 +42,11 @@ from dragonflow.ovsdb import vswitch_impl
 
 
 LOG = log.getLogger(__name__)
+
+# Whitelist the port types we want to be cached
+_CACHED_VIRTUAL_PORT_TYPES = (
+    n_const.DEVICE_OWNER_FLOATINGIP,
+)
 
 
 class DfLocalController(object):
@@ -193,26 +197,16 @@ class DfLocalController(object):
             self._delete_lport_instance(port)
         self.db_store.delete(chassis)
 
-    def _is_physical_chassis(self, chassis):
-        if not chassis:
-            return False
-        if chassis.id == constants.DRAGONFLOW_VIRTUAL_PORT:
-            return False
-        if model_proxy.is_model_proxy(chassis) and not chassis.get_object():
-            return False
-        return True
-
     # REVISIT(oanson) The special handling of logical port process should be
     # removed from DF controller. (bug/1690775)
     def _logical_port_process(self, lport):
         lswitch = lport.lswitch
-        if not lswitch:
-            LOG.warning("Could not find lswitch for lport: %s",
-                        lport.id)
+        if lswitch.get_object() is None:
+            LOG.warning("Could not find lswitch for lport: %s", lport.id)
             return
 
         chassis = lport.chassis
-        is_local = (chassis.id == self.chassis_name)
+        is_local = chassis is not None and (chassis.id == self.chassis_name)
         lport.is_local = is_local
         if is_local:
             if not lport.ofport:
@@ -220,13 +214,19 @@ class DfLocalController(object):
             if not lport.ofport:
                 # Not attached to the switch. Maybe it's a subport?
                 lport.ofport = self._get_trunk_subport_ofport(lport)
-        else:
+        elif lport.is_remote:
             lport.peer_vtep_address = (chassis.id if lport.remote_vtep else
                                        chassis.ip)
             lport.ofport = self.vswitch_api.get_vtp_ofport(
                     lswitch.network_type)
+        elif (
+            lport.is_virtual and
+            lport.device_owner not in _CACHED_VIRTUAL_PORT_TYPES
+        ):
+            # Virtual port is of not relevant type, discard it
+            return
 
-        if not lport.ofport:
+        if not lport.is_virtual and not lport.ofport:
             # The tunnel port online event will update the remote logical
             # port. Log this warning first.
             LOG.warning("%(location)s logical port %(port)s"
@@ -255,12 +255,6 @@ class DfLocalController(object):
             pass
 
     def update_lport(self, lport):
-        chassis = lport.chassis
-        if (not lport.remote_vtep and
-                not self._is_physical_chassis(chassis)):
-            LOG.debug(("Port %s has not been bound or it is a vPort"),
-                      lport.id)
-            return
         original_lport = self.db_store.get_one(lport)
 
         if lport.is_newer_than(original_lport):
