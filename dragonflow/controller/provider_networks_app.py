@@ -42,6 +42,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         self.bridge_mappings = self._parse_bridge_mappings(
                 cfg.CONF.df_provider_networks.bridge_mappings)
         self.int_ofports = {}
+        self.int_macs = {}
 
     def _parse_bridge_mappings(self, bridge_mappings):
         try:
@@ -72,6 +73,9 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                 'phy-' + bridge,
                 'int-' + bridge)
             self.int_ofports[physical_network] = int_ofport
+
+            mac = self.vswitch_api.get_port_mac_in_use(bridge)
+            self.int_macs[physical_network] = mac
 
     def switch_features_handler(self, ev):
         self._setup_physical_bridges(self.bridge_mappings)
@@ -166,19 +170,49 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                   {'net_id': network_id})
 
         physical_network = lport.lswitch.physical_network
-        match = self.parser.OFPMatch(metadata=network_id)
         ofport = self.int_ofports[physical_network]
-        actions = [
-                self.parser.OFPActionOutput(ofport,
-                                            self.ofproto.OFPCML_NO_BUFFER)]
-        actions_inst = self.parser.OFPInstructionActions(
-                self.ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [actions_inst]
+
+        # Output without updating MAC:
         self.mod_flow(
-                inst=inst,
-                table_id=const.EGRESS_EXTERNAL_TABLE,
-                priority=const.PRIORITY_HIGH,
-                match=match)
+            table_id=const.EGRESS_EXTERNAL_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=self.parser.OFPMatch(metadata=network_id),
+            inst=[
+                self.parser.OFPInstructionActions(
+                    self.ofproto.OFPIT_APPLY_ACTIONS,
+                    [
+                        self.parser.OFPActionOutput(
+                            ofport,
+                            self.ofproto.OFPCML_NO_BUFFER,
+                        ),
+                    ]
+                ),
+            ],
+        )
+
+        # If dest MAC is the placeholder, update it to bridge MAC
+        self.mod_flow(
+            table_id=const.EGRESS_EXTERNAL_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=self.parser.OFPMatch(
+                metadata=network_id,
+                eth_dst=cfg.CONF.df_provider_networks.bridge_mac_placeholder,
+            ),
+            inst=[
+                self.parser.OFPInstructionActions(
+                    self.ofproto.OFPIT_APPLY_ACTIONS,
+                    [
+                        self.parser.OFPActionSetField(
+                            eth_dst=self.int_macs[physical_network],
+                        ),
+                        self.parser.OFPActionOutput(
+                            ofport,
+                            self.ofproto.OFPCML_NO_BUFFER,
+                        ),
+                    ]
+                ),
+            ],
+        )
 
     def _network_classification_flow(self, lport, network_id, network_type):
         LOG.debug('network classification flow for network_id: %(net_id)s',
