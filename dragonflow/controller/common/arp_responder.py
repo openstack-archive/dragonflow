@@ -67,10 +67,10 @@ class ArpResponder(object):
                    parser.NXActionRegLoad(
                            dst='in_port',
                            ofs_nbits=nicira_ext.ofs_nbits(0, 31),
-                           value=0)]
+                           value=0),
+                   parser.NXActionResubmitTable(table_id=const.EGRESS_TABLE)]
         instructions = [
             parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
-            parser.OFPInstructionGotoTable(const.INGRESS_DISPATCH_TABLE),
         ]
         return instructions
 
