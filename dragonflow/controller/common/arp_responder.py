@@ -28,15 +28,22 @@ class ArpResponder(object):
     @param interface_ip The port's IPv4 address
     @param interface_mac The port's physical address. Optional only in case
             of remove.
+    @param table_id The table to install the ARP responder at.
+    @param priority Priority of the installed responder flows.
+    @param goto_table_id The table that will receive the response.
     """
     def __init__(self, app, network_id, interface_ip,
-                 interface_mac=None, table_id=const.ARP_TABLE):
+                 interface_mac=None, table_id=const.ARP_TABLE,
+                 priority=const.PRIORITY_MEDIUM,
+                 goto_table_id=const.INGRESS_DISPATCH_TABLE):
         self.app = app
         self.datapath = app.datapath
         self.network_id = network_id
         self.interface_ip = interface_ip
         self.mac_address = interface_mac
         self.table_id = table_id
+        self.priority = priority
+        self.goto_table_id = goto_table_id
 
     def _get_match(self):
         parser = self.datapath.ofproto_parser
@@ -68,10 +75,22 @@ class ArpResponder(object):
                            dst='in_port',
                            ofs_nbits=nicira_ext.ofs_nbits(0, 31),
                            value=0)]
+
+        need_resubmit = self.table_id >= self.goto_table_id
+
+        if need_resubmit:
+            actions.append(
+                parser.NXActionResubmitTable(table_id=self.goto_table_id))
+
         instructions = [
             parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
-            parser.OFPInstructionGotoTable(const.INGRESS_DISPATCH_TABLE),
         ]
+
+        # If we don't resubmit we can use a goto
+        if not need_resubmit:
+            instructions.append(
+                parser.OFPInstructionGotoTable(self.goto_table_id))
+
         return instructions
 
     def add(self):
@@ -81,7 +100,7 @@ class ArpResponder(object):
         self.app.mod_flow(
                 table_id=self.table_id,
                 command=ofproto.OFPFC_ADD,
-                priority=const.PRIORITY_MEDIUM,
+                priority=self.priority,
                 match=match,
                 flags=ofproto.OFPFF_SEND_FLOW_REM,
                 inst=instructions)
@@ -91,6 +110,6 @@ class ArpResponder(object):
         match = self._get_match()
         self.app.mod_flow(
                 table_id=self.table_id,
-                command=ofproto.OFPFC_DELETE,
-                priority=const.PRIORITY_MEDIUM,
+                command=ofproto.OFPFC_DELETE_STRICT,
+                priority=self.priority,
                 match=match)
