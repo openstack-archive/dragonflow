@@ -46,6 +46,7 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
         fake_local_vlan_port1 = make_fake_local_port(
                 lswitch='fake_vlan_switch1')
         self.app.int_ofports['phynet'] = 1
+        self.app.int_macs['phynet'] = '00:12:23:34:45:56'
         self.app.mod_flow.reset_mock()
         self.controller.update(fake_local_vlan_port1)
         match = self.app.parser.OFPMatch(metadata=21)
