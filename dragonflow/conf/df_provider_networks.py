@@ -30,6 +30,11 @@ df_provider_networks_opts = [
                        "networks configured on the server should have "
                        "mappings to appropriate bridges on each dragonflow "
                        "node.")),
+    cfg.StrOpt('bridge_mac_placeholder',
+               default='00:00:00:00:00:00',
+               help=_('DNAT app will replace this MAC address with the MAC of '
+                      'the bridge in eth_dst. This can be used where apps want'
+                      ' to forward packets into the provider network.')),
 ]
 
 
