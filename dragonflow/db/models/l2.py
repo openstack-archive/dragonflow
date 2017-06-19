@@ -38,7 +38,12 @@ class Subnet(mf.ModelBase, mixins.Name, mixins.Topic):
 
 
 @mf.register_model
-@mf.construct_nb_db_model(indexes={'network_type': 'network_type'})
+@mf.construct_nb_db_model(
+    indexes={
+        'network_type': 'network_type',
+        'physical_network': 'physical_network',
+    },
+)
 class LogicalSwitch(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
                     mixins.UniqueKey, mixins.BasicEvents):
 
