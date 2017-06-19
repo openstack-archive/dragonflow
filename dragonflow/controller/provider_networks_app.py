@@ -22,7 +22,9 @@ from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import logical_networks
 from dragonflow.controller import df_base_app
+from dragonflow.db.models import constants as model_const
 from dragonflow.db.models import l2
+from dragonflow.db.models import ovs
 
 
 NET_VLAN = 'vlan'
@@ -41,7 +43,11 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         self.logical_networks = logical_networks.LogicalNetworks()
         self.bridge_mappings = self._parse_bridge_mappings(
                 cfg.CONF.df_provider_networks.bridge_mappings)
+        self.reverse_bridge_mappings = {
+            v: k for (k, v) in self.bridge_mappings.items()
+        }
         self.int_ofports = {}
+        self.bridge_macs = {}
 
     def _parse_bridge_mappings(self, bridge_mappings):
         try:
@@ -72,6 +78,38 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                 'phy-' + bridge,
                 'int-' + bridge)
             self.int_ofports[physical_network] = int_ofport
+
+            mac = self.vswitch_api.get_port_mac_in_use(bridge)
+            self.bridge_macs[physical_network] = mac
+
+    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
+    def _bridge_updated(self, ovsport):
+        self._update_bridge_mac(ovsport.name, ovsport.mac_in_use)
+
+    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_DELETED)
+    def _bridge_deleted(self, ovsport):
+        self._update_bridge_mac(ovsport.name, None)
+
+    def _update_bridge_mac(self, bridge, mac):
+        if bridge not in self.bridge_macs:
+            return
+
+        old_mac = self.bridge_macs[bridge]
+        if old_mac == mac:
+            return
+
+        physical_network = self.reverse_bridge_mappings[bridge]
+        lswitch = self.db_store.get_one(
+            l2.LogicalSwitch(physical_network=physical_network),
+            index=l2.LogicalSwitch.get_index('physical_network'))
+
+        if old_mac is not None:
+            self._remove_egress_placeholder_flow(lswitch.unique_key)
+
+        if mac is not None:
+            self._egress_placeholder_flow(lswitch.unique_key)
+
+        self.bridge_macs[physical_network] = mac
 
     def switch_features_handler(self, ev):
         self._setup_physical_bridges(self.bridge_mappings)
@@ -166,19 +204,57 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                   {'net_id': network_id})
 
         physical_network = lport.lswitch.physical_network
-        match = self.parser.OFPMatch(metadata=network_id)
         ofport = self.int_ofports[physical_network]
-        actions = [
-                self.parser.OFPActionOutput(ofport,
-                                            self.ofproto.OFPCML_NO_BUFFER)]
-        actions_inst = self.parser.OFPInstructionActions(
-                self.ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [actions_inst]
+
+        # Output without updating MAC:
         self.mod_flow(
-                inst=inst,
-                table_id=const.EGRESS_EXTERNAL_TABLE,
-                priority=const.PRIORITY_HIGH,
-                match=match)
+            table_id=const.EGRESS_EXTERNAL_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=self.parser.OFPMatch(metadata=network_id),
+            inst=[
+                self.parser.OFPInstructionActions(
+                    self.ofproto.OFPIT_APPLY_ACTIONS,
+                    [
+                        self.parser.OFPActionOutput(
+                            ofport,
+                            self.ofproto.OFPCML_NO_BUFFER,
+                        ),
+                    ]
+                ),
+            ],
+        )
+
+        if self.bridge_macs.get(physical_network) is not None:
+            self._egress_placeholder_flow(lport)
+
+    def _egress_placeholder_flow(self, lport):
+        # If dest MAC is the placeholder, update it to bridge MAC
+        network_id = lport.lswitch.unique_key
+        physical_network = lport.lswitch.physical_network
+        ofport = self.int_ofports[physical_network]
+
+        self.mod_flow(
+            table_id=const.EGRESS_EXTERNAL_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=self.parser.OFPMatch(
+                metadata=network_id,
+                eth_dst=const.EMPTY_MAC,
+            ),
+            inst=[
+                self.parser.OFPInstructionActions(
+                    self.ofproto.OFPIT_APPLY_ACTIONS,
+                    [
+                        self.parser.OFPActionSetField(
+                            eth_dst=self.bridge_macs[physical_network],
+                        ),
+                        self.parser.OFPActionOutput(
+                            ofport,
+                            self.ofproto.OFPCML_NO_BUFFER,
+                        ),
+                    ]
+                ),
+            ],
+        )
 
     def _network_classification_flow(self, lport, network_id, network_type):
         LOG.debug('network classification flow for network_id: %(net_id)s',
@@ -257,6 +333,19 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                 table_id=const.EGRESS_EXTERNAL_TABLE,
                 priority=const.PRIORITY_HIGH,
                 match=match)
+
+        # This removes the placeholder flow as well
+
+    def _remove_egress_placeholder_flow(self, network_id):
+        self.mod_flow(
+                command=self.ofproto.OFPFC_DELETE,
+                table_id=const.EGRESS_EXTERNAL_TABLE,
+                priority=const.PRIORITY_HIGH,
+                match=self.parser.OFPMatch(
+                    metadata=network_id,
+                    eth_dst=const.EMPTY_MAC,
+                ),
+        )
 
     def _make_bum_match(self, metadata):
         match = self.parser.OFPMatch()
