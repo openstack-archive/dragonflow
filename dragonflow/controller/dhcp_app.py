@@ -199,11 +199,13 @@ class DHCPApp(df_base_app.DFlowApp):
          """
 
         options_dict = {}
+
         # explicitly configured options
         self._build_response_default_options(response_type, lport,
                                              subnet, options_dict, srv_addr)
 
-        # Here the code for requested-dhcp-options should come
+        # requested options
+        self._build_response_requested_options(dhcp_request, lport, options_dict)
 
         option_list = [dhcp.option(tag, value)
                        for tag, value in options_dict.items()]
@@ -239,6 +241,25 @@ class DHCPApp(df_base_app.DFlowApp):
             intreface_mtu = self._get_port_mtu(lport)
             mtu_bin = struct.pack('!H', intreface_mtu)
             options_dict[dhcp.DHCP_INTERFACE_MTU_OPT] = mtu_bin
+
+    def _build_response_requested_options(self, dhcp_request,
+                                          lport, options_dict):
+
+        req_list_opt = dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT
+        requested_opts = self._get_dhcp_option_by_tag(dhcp_request,
+                                                      req_list_opt)
+        if not requested_opts:
+            return
+
+        for opt in requested_opts:
+            opt_int = ord(opt)
+            if opt_int in options_dict:
+                # already answered by the default options
+                continue
+
+            value = lport.extra_dhcp_options.get(str(ord(opt)))
+            if value:
+                options_dict[opt_int] = value
 
     def _get_dns_address_list_bin(self, subnet):
         dns_servers = self.global_dns_list
@@ -297,10 +318,17 @@ class DHCPApp(df_base_app.DFlowApp):
 
         return routes_bin
 
+    def _get_dhcp_option_by_tag(self, dhcp_packet, tag):
+        if dhcp_packet.options:
+            for opt in dhcp_packet.options.option_list:
+                if opt.tag == tag:
+                    return opt.value
+
     def _get_dhcp_message_type_opt(self, dhcp_packet):
-        for opt in dhcp_packet.options.option_list:
-            if opt.tag == dhcp.DHCP_MESSAGE_TYPE_OPT:
-                return ord(opt.value)
+        opt_value = self._get_dhcp_option_by_tag(dhcp_packet,
+                                                 dhcp.DHCP_MESSAGE_TYPE_OPT)
+        if opt_value:
+            return ord(opt_value)
 
     def _get_port_gateway_address(self, subnet, lport):
         gateway_ip = subnet.gateway_ip
