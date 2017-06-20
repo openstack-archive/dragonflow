@@ -206,7 +206,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         requested_option_connected = ''.join(requested_option)
         option_list = [dhcp.option(dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT,
                                    requested_option_connected,
-                                   len(requested_option)) 
+                                   len(requested_option))
                        ]
 
         dhcp_response_pkt = self._send_dhcp_req_to_app(fake_lport,
