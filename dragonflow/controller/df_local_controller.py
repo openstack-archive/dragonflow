@@ -371,9 +371,6 @@ class DfLocalController(object):
     def get_nb_api(self):
         return self.nb_api
 
-    def get_openflow_app(self):
-        return self.open_flow_app
-
     def get_chassis_name(self):
         return self.chassis_name
 
