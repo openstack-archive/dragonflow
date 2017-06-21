@@ -13,9 +13,11 @@
 import collections
 
 from neutron_lib import constants as n_const
+from neutron_lib.utils import helpers
 from oslo_log import log
 
 from dragonflow.common import constants
+from dragonflow import conf as cfg
 from dragonflow.controller import df_db_objects_refresh
 from dragonflow.db import db_store
 from dragonflow.db.models import l2
@@ -30,6 +32,7 @@ LOG = log.getLogger(__name__)
 # tenant (or project).
 OvsLportMapping = collections.namedtuple('OvsLportMapping',
                                          ('lport_id', 'topic'))
+_PROVIDER_ID = object()
 
 
 class Topology(object):
@@ -55,6 +58,12 @@ class Topology(object):
 
         ovs.OvsPort.register_updated(self.ovs_port_updated)
         ovs.OvsPort.register_deleted(self.ovs_port_deleted)
+
+        if self.enable_selective_topo_dist:
+            self._provider_topics = ('',) + tuple(
+                self._get_provider_network_topics())
+            for topic in self._provider_topics:
+                self._add_to_topic_subscribed(topic, _PROVIDER_ID)
 
     def ovs_port_updated(self, ovs_port):
         """
@@ -262,7 +271,7 @@ class Topology(object):
             self._del_from_topic_subscribed(topic, lport_id)
 
     def _add_to_topic_subscribed(self, topic, lport_id):
-        if not self.enable_selective_topo_dist or not topic:
+        if not self.enable_selective_topo_dist or topic is None:
             return
 
         if topic not in self.topic_subscribed:
@@ -339,6 +348,12 @@ class Topology(object):
                     add_ovs_to_lport_mapping[key] = OvsLportMapping(
                         lport_id=lport_id, topic=topic)
         self.ovs_to_lport_mapping = new_ovs_to_lport_mapping
+
+        # Add provider topics:
+        if self.enable_selective_topo_dist:
+            for topic in self._provider_topics:
+                self._add_to_topic_subscribed(topic, _PROVIDER_ID)
+
         for value in add_ovs_to_lport_mapping.values():
             lport_id = value.lport_id
             topic = value.topic
@@ -348,3 +363,14 @@ class Topology(object):
             lport_id = value.lport_id
             topic = value.topic
             self._del_from_topic_subscribed(topic, lport_id)
+
+    def _get_provider_network_topics(self):
+        lswitches = self.nb_api.get_all(l2.LogicalSwitch)
+        bridge_mappings = helpers.parse_mappings(
+                cfg.CONF.df_provider_networks.bridge_mappings)
+
+        local_external_apps = [
+            l for l in lswitches
+            if l.is_external and l.physical_network in bridge_mappings
+        ]
+        return set(l.topic for l in local_external_apps)

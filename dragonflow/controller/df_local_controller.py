@@ -79,6 +79,9 @@ class DfLocalController(object):
         self.topology = None
         self.db_consistency_manager = None
         self.enable_db_consistency = cfg.CONF.df.enable_df_db_consistency
+        if self.enable_db_consistency:
+            self.db_consistency_manager = \
+                db_consistent.DBConsistencyManager(self)
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
 
@@ -87,11 +90,12 @@ class DfLocalController(object):
         if cfg.CONF.df.enable_neutron_notifier:
             self.neutron_notifier.initialize(nb_api=self.nb_api,
                                              is_neutron_server=False)
+        self.open_flow_app.start()
+        self._register_models()
         self.topology = topology.Topology(self,
                                           self.enable_selective_topo_dist)
+
         if self.enable_db_consistency:
-            self.db_consistency_manager = \
-                db_consistent.DBConsistencyManager(self)
             self.nb_api.set_db_consistency_manager(self.db_consistency_manager)
             self.db_consistency_manager.daemonize()
 
@@ -111,9 +115,7 @@ class DfLocalController(object):
             self.vswitch_api.set_controller_fail_mode(
                 integration_bridge, 'secure')
         self.open_flow_service.start()
-        self.open_flow_app.start()
         self.create_tunnels()
-        self._register_models()
         self.db_sync_loop()
 
     def _register_models(self):
