@@ -97,17 +97,20 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                                              network_id=network_id,
                                              network_type=network_type)
 
-    def _match_actions_by_network_type(self, lport, network_id, network_type):
+    def _match_actions_by_network_type(self, lswitch):
         actions = [
-            self.parser.OFPActionSetField(metadata=network_id)]
-        match = None
-        if network_type == NET_VLAN:
-            segmentation_id = lport.lswitch.segmentation_id
-            match = self.parser.OFPMatch()
-            match.set_vlan_vid(segmentation_id)
+            self.parser.OFPActionSetField(metadata=lswitch.unique_key)]
+
+        if lswitch.network_type == NET_VLAN:
+            vlan_vid = lswitch.segmentation_id
             actions.append(self.parser.OFPActionPopVlan())
-        elif network_type == NET_FLAT:
-            match = self.parser.OFPMatch(vlan_vid=0)
+        elif lswitch.network_type == NET_FLAT:
+            vlan_vid = 0
+
+        match = self.parser.OFPMatch(
+            in_port=self.int_ofports[lswitch.physical_network],
+            vlan_vid=vlan_vid,
+        )
 
         return match, actions
 
@@ -115,7 +118,7 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         LOG.debug('new %(net_type)s network: %(net_id)s',
                   {'net_type': network_type,
                    'net_id': network_id})
-        self._network_classification_flow(lport, network_id, network_type)
+        self._network_classification_flow(lport.lswitch)
         self._l2_lookup_flow(network_id)
         self._egress_flow(lport, network_id, network_type)
         self._egress_external_flow(lport, network_id)
@@ -180,12 +183,11 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
                 priority=const.PRIORITY_HIGH,
                 match=match)
 
-    def _network_classification_flow(self, lport, network_id, network_type):
+    def _network_classification_flow(self, lswitch):
         LOG.debug('network classification flow for network_id: %(net_id)s',
-                  {'net_id': network_id})
-        match, actions = self._match_actions_by_network_type(lport,
-                                                             network_id,
-                                                             network_type)
+                  {'net_id': lswitch.unique_key})
+        match, actions = self._match_actions_by_network_type(lswitch)
+
         action_inst = self.parser.OFPInstructionActions(
             self.ofproto.OFPIT_APPLY_ACTIONS, actions)
 
@@ -214,20 +216,13 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
             self._remove_network_flow(lport, network_id, network_type)
 
     def _remove_network_flow(self, lport, network_id, network_type):
-        self._remove_network_classification_flow(lport,
-                                                 network_id,
-                                                 network_type)
+        self._remove_network_classification_flow(lport.lswitch)
         self._remove_l2_lookup_flow(network_id)
         self._remove_egress_flow(network_id)
         self._remove_egress_external_flow(network_id)
 
-    def _remove_network_classification_flow(self,
-                                            lport,
-                                            network_id,
-                                            network_type):
-        match, actions = self._match_actions_by_network_type(lport,
-                                                             network_id,
-                                                             network_type)
+    def _remove_network_classification_flow(self, lswitch):
+        match, actions = self._match_actions_by_network_type(lswitch)
         self.mod_flow(
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=self.ofproto.OFPFC_DELETE,
