@@ -109,6 +109,8 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
         elif network_type == NET_FLAT:
             match = self.parser.OFPMatch(vlan_vid=0)
 
+        match.set_in_port(self.int_ofports[lport.lswitch.physical_network])
+
         return match, actions
 
     def _new_network_flow(self, lport, network_id, network_type):
