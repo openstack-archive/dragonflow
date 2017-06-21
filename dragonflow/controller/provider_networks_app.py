@@ -100,14 +100,18 @@ class ProviderNetworksApp(df_base_app.DFlowApp):
     def _match_actions_by_network_type(self, lport, network_id, network_type):
         actions = [
             self.parser.OFPActionSetField(metadata=network_id)]
-        match = None
+
         if network_type == NET_VLAN:
-            segmentation_id = lport.lswitch.segmentation_id
-            match = self.parser.OFPMatch()
-            match.set_vlan_vid(segmentation_id)
+            vlan_vid = self.ofproto.OFPVID_PRESENT
+            vlan_vid |= lport.lswitch.segmentation_id
             actions.append(self.parser.OFPActionPopVlan())
         elif network_type == NET_FLAT:
-            match = self.parser.OFPMatch(vlan_vid=0)
+            vlan_vid = 0
+
+        match = self.parser.OFPMatch(
+            in_port=self.int_ofports[lport.lswitch.physical_network],
+            vlan_vid=vlan_vid,
+        )
 
         return match, actions
 
