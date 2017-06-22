@@ -47,11 +47,6 @@ fi
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
 TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
 
-# How to connect to the database storing the virtual topology.
-REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
-REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
-REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
-
 # OVS related pid files
 #----------------------
 OVS_DB_SERVICE="ovsdb-server"
@@ -84,6 +79,7 @@ if is_service_enabled df-etcd ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/etcd_driver
     NB_DRIVER_CLASS="etcd_nb_db_driver"
+    REMOTE_DB_PORT=${REMOTE_DB_PORT:-2379}
 fi
 if is_service_enabled df-ramcloud ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
@@ -108,6 +104,11 @@ if is_service_enabled df-redis ; then
 else
     DF_REDIS_PUBSUB="False"
 fi
+
+# How to connect to the database storing the virtual topology.
+REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
+REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
+REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
 
 # As the function returns actual value only on pre-install, ignore it on later stages
 if [[ "$ACTION" == "stack" && "$STAGE" == "pre-install" ]]; then
