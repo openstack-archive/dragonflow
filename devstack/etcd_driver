@@ -10,76 +10,8 @@
 # - nb_db_driver_clean
 # - nb_db_driver_configure
 
-ETCD_VERSION=${ETCD_VERSION:-v3.0.15}
-OVERRIDE_FILE=$DEST/dragonflow/devstack/etcd.override
-
-if is_ubuntu ; then
-    UBUNTU_RELEASE_BASE_NUM=`lsb_release -r | awk '{print $2}' | cut -d '.' -f 1`
-fi
-
-function _configure_etcd_systemd_service {
-    ETCD_CONF_DIR=/etc/etcd
-    ETCD_CONF=$ETCD_CONF_DIR/etcd.conf
-    ETCD_DATA_DIR="/var/lib/etcd"
-    sudo mkdir -p $ETCD_DATA_DIR
-    sudo install -d -o $STACK_USER $ETCD_CONF_DIR
-    cp $DEST/dragonflow/devstack/etcd.service.conf $ETCD_CONF
-
-    iniset $ETCD_CONF DEFAULT ETCD_INITIAL_CLUSTER "$HOSTNAME=http://$REMOTE_DB_IP:2380"
-    iniset $ETCD_CONF DEFAULT ETCD_INITIAL_CLUSTER_STATE "new"
-    iniset $ETCD_CONF DEFAULT ETCD_INITIAL_CLUSTER_TOKEN "etcd-cluster-01"
-    iniset $ETCD_CONF DEFAULT ETCD_INITIAL_ADVERTISE_PEER_URLS "http://$REMOTE_DB_IP:2380"
-    iniset $ETCD_CONF DEFAULT ETCD_DATA_DIR "$ETCD_DATA_DIR"
-    iniset $ETCD_CONF DEFAULT ETCD_LISTEN_PEER_URLS "http://0.0.0.0:2380"
-    iniset $ETCD_CONF DEFAULT ETCD_LISTEN_CLIENT_URLS "http://$REMOTE_DB_IP:4001"
-    iniset $ETCD_CONF DEFAULT ETCD_ADVERTISE_CLIENT_URLS "http://$REMOTE_DB_IP:4001"
-    iniset $ETCD_CONF DEFAULT ETCD_NAME "$HOSTNAME"
-
-    sudo cp $DEST/dragonflow/devstack/etcd.service /lib/systemd/system/
-    enable_service etcd
-}
-
-function _configure_etcd {
-    sudo cp $DEST/dragonflow/devstack/etcd.conf /etc/init/etcd.conf
-
-cat <<EOF > $OVERRIDE_FILE
-# Override file for etcd Upstart script providing some environment variables
-env ETCD_INITIAL_CLUSTER="$HOSTNAME=http://$REMOTE_DB_IP:2380"
-env ETCD_INITIAL_CLUSTER_STATE="new"
-env ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-01"
-env ETCD_INITIAL_ADVERTISE_PEER_URLS="http://$REMOTE_DB_IP:2380"
-env ETCD_DATA_DIR="/var/etcd"
-env ETCD_LISTEN_PEER_URLS="http://0.0.0.0:2380"
-env ETCD_LISTEN_CLIENT_URLS="http://$REMOTE_DB_IP:4001"
-env ETCD_ADVERTISE_CLIENT_URLS="http://$REMOTE_DB_IP:4001"
-env ETCD_NAME="$HOSTNAME"
-EOF
-
-    sudo cp $OVERRIDE_FILE /etc/init/etcd.override
-}
-
 function nb_db_driver_install_server {
-    if is_service_enabled df-etcd-server ; then
-        echo "Installing etcd"
-        if [ ! -f "$DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd" ]; then
-            mkdir -p $DEST/etcd
-            wget https://github.com/coreos/etcd/releases/download/$ETCD_VERSION/etcd-$ETCD_VERSION-linux-amd64.tar.gz -O $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz
-            tar xzvf $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64.tar.gz -C $DEST/etcd
-            sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
-        fi
-        if [ ! -f "/usr/local/bin/etcd" ]; then
-            sudo cp $DEST/etcd/etcd-$ETCD_VERSION-linux-amd64/etcd /usr/local/bin/etcd
-        fi
-        if is_ubuntu; then
-            if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
-                _configure_etcd_systemd_service
-            else
-                _configure_etcd
-            fi
-        elif is_fedora; then
-            _configure_etcd_systemd_service
-        fi
-    fi
+    :
 }
 
 function nb_db_driver_install_client {
@@ -87,24 +19,15 @@ function nb_db_driver_install_client {
 }
 
 function nb_db_driver_start_server {
-    if is_service_enabled df-etcd-server ; then
-        start_service etcd
-    fi
+    :
 }
 
 function nb_db_driver_stop_server {
-    if is_service_enabled df-etcd-server ; then
-        stop_service etcd
-    fi
+    :
 }
 
 function nb_db_driver_clean {
-    sudo rm -rf $ETCD_DATA_DIR
-    sudo rm -rf $ETCD_CONF_DIR
-    sudo rm -rf /var/etcd
-    sudo rm -f $OVERRIDE_FILE
-    sudo rm /lib/systemd/system/etcd.service
-    sudo rm /usr/local/bin/etcd
+    :
 }
 
 function nb_db_driver_configure {
