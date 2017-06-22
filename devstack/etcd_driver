@@ -99,12 +99,14 @@ function nb_db_driver_stop_server {
 }
 
 function nb_db_driver_clean {
-    sudo rm -rf $ETCD_DATA_DIR
-    sudo rm -rf $ETCD_CONF_DIR
-    sudo rm -rf /var/etcd
-    sudo rm -f $OVERRIDE_FILE
-    sudo rm /lib/systemd/system/etcd.service
-    sudo rm /usr/local/bin/etcd
+    if is_service_enabled df-etcd-server ; then
+           sudo rm -rf $ETCD_DATA_DIR
+           sudo rm -rf $ETCD_CONF_DIR
+           sudo rm -rf /var/etcd
+           sudo rm -f $OVERRIDE_FILE
+           sudo rm /lib/systemd/system/etcd.service
+           sudo rm /usr/local/bin/etcd
+    fi
 }
 
 function nb_db_driver_configure {
