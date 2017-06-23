@@ -49,7 +49,6 @@ class L3AppMixin(object):
 
     def __init__(self, *args, **kwargs):
         super(L3AppMixin, self).__init__()
-        self.router_port_rarp_cache = {}
         self.route_cache = {}
 
         self.conf = cfg.CONF.df_l3_app
@@ -63,8 +62,65 @@ class L3AppMixin(object):
                                         self.packet_in_handler)
 
     def switch_features_handler(self, ev):
-        self.router_port_rarp_cache.clear()
         self.route_cache.clear()
+
+    def _handle_ttl_expired(self, msg):
+        if self.ttl_invalid_handler_rate_limit():
+            LOG.warning("Get more than %(rate)s TTL invalid packets per "
+                        "second at table %(table)s",
+                        {'rate': self.conf.router_ttl_invalid_max_rate,
+                         'table': const.L3_LOOKUP_TABLE})
+            return
+
+        LOG.debug("Get an invalid TTL packet at table %s",
+                  const.L3_LOOKUP_TABLE)
+
+        pkt = packet.Packet(msg.data)
+        e_pkt = pkt.get_protocol(ethernet.ethernet)
+        router_key = msg.match.get('reg5')
+        lrouter = self.db_store.get_one(
+            l3.LogicalRouter(unique_key=router_key),
+            index=l3.LogicalRouter.get_index('unique_key'),
+        )
+        router_port_ip = None
+        for port in lrouter.ports:
+            if port.mac == e_pkt.dst:
+                router_port_ip = port.network.ip
+                break
+
+        if router_port_ip:
+            icmp_ttl_pkt = icmp_error_generator.generate(
+                icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE,
+                msg.data, str(router_port_ip), pkt)
+            unique_key = msg.match.get('reg6')
+            self.dispatch_packet(icmp_ttl_pkt, unique_key)
+        else:
+            LOG.warning("The invalid TTL packet's destination mac %s "
+                        "can't be recognized.", e_pkt.dst)
+
+    def _handle_invalid_dest(self, msg):
+        # If the destination is router interface, the unique key of router
+        # interface will be set to reg7 before sending to local controller.
+        # Code will hit here only when the router interface is not
+        # concrete.
+        if self.port_icmp_unreach_respond_rate_limit():
+            LOG.warning(
+                "Get more than %(rate)s packets to router port "
+                "per second at table %(table)s",
+                {'rate': self.conf.router_port_unreach_max_rate,
+                 'table': const.L3_LOOKUP_TABLE})
+            return
+
+        # Response icmp unreachable to udp or tcp.
+        pkt = packet.Packet(msg.data)
+        tcp_pkt = pkt.get_protocol(tcp.tcp)
+        udp_pkt = pkt.get_protocol(udp.udp)
+        if tcp_pkt or udp_pkt:
+            icmp_dst_unreach = icmp_error_generator.generate(
+                icmp.ICMP_DEST_UNREACH, icmp.ICMP_PORT_UNREACH_CODE,
+                msg.data, pkt=pkt)
+            unique_key = msg.match.get('reg6')
+            self.dispatch_packet(icmp_dst_unreach, unique_key)
 
     def router_function_packet_in_handler(self, msg):
         """React to packet as what a normal router will do.
@@ -75,59 +131,13 @@ class L3AppMixin(object):
         """
 
         if msg.reason == self.ofproto.OFPR_INVALID_TTL:
-            LOG.debug("Get an invalid TTL packet at table %s",
-                      const.L3_LOOKUP_TABLE)
-            if self.ttl_invalid_handler_rate_limit():
-                LOG.warning("Get more than %(rate)s TTL invalid packets per "
-                            "second at table %(table)s",
-                            {'rate': self.conf.router_ttl_invalid_max_rate,
-                             'table': const.L3_LOOKUP_TABLE})
-                return True
+            self._handle_ttl_expired(msg)
+        elif msg.match.get('reg7'):
+            self._handle_invalid_dest(msg)
+        else:
+            return False
 
-            pkt = packet.Packet(msg.data)
-            e_pkt = pkt.get_protocol(ethernet.ethernet)
-            mac = netaddr.EUI(e_pkt.dst)
-            router_port_ip = self.router_port_rarp_cache.get(mac)
-            if router_port_ip:
-                icmp_ttl_pkt = icmp_error_generator.generate(
-                    icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE,
-                    msg.data, str(router_port_ip), pkt)
-                unique_key = msg.match.get('reg6')
-                self.dispatch_packet(icmp_ttl_pkt, unique_key)
-            else:
-                LOG.warning("The invalid TTL packet's destination mac %s "
-                            "can't be recognized.", e_pkt.dst)
-            return True
-
-        if msg.match.get('reg7'):
-            # If the destination is router interface, the unique key of router
-            # interface will be set to reg7 before sending to local controller.
-            # Code will hit here only when the router interface is not
-            # concrete.
-            if self.port_icmp_unreach_respond_rate_limit():
-                LOG.warning(
-                    "Get more than %(rate)s packets to router port "
-                    "per second at table %(table)s",
-                    {'rate': self.conf.router_port_unreach_max_rate,
-                     'table': const.L3_LOOKUP_TABLE})
-                return True
-
-            # Response icmp unreachable to udp or tcp.
-            pkt = packet.Packet(msg.data)
-            tcp_pkt = pkt.get_protocol(tcp.tcp)
-            udp_pkt = pkt.get_protocol(udp.udp)
-            if tcp_pkt or udp_pkt:
-                icmp_dst_unreach = icmp_error_generator.generate(
-                    icmp.ICMP_DEST_UNREACH, icmp.ICMP_PORT_UNREACH_CODE,
-                    msg.data, pkt=pkt)
-                unique_key = msg.match.get('reg6')
-                self.dispatch_packet(icmp_dst_unreach, unique_key)
-
-            # Silently drop packet of other protocol.
-            return True
-
-        # No match in previous code.
-        return False
+        return True
 
     @df_base_app.register_event(l3.LogicalRouter,
                                 model_constants.EVENT_CREATED)
@@ -395,7 +405,6 @@ class L3AppMixin(object):
 
         # Add router ARP & ICMP responder for IPv4 Addresses
         if is_ipv4:
-            self.router_port_rarp_cache[mac] = dst_ip
             arp_responder.ArpResponder(self,
                                        local_network_id,
                                        dst_ip, mac).add()
@@ -452,8 +461,6 @@ class L3AppMixin(object):
 
         # Delete ARP & ICMP responder for router interface
         if ip.version == common_const.IP_VERSION_4:
-            self.router_port_rarp_cache.pop(mac, None)
-
             arp_responder.ArpResponder(self, local_network_id, ip).remove()
             icmp_responder.ICMPResponder(self, ip,
                                          router_key=router_unique_key).remove()
