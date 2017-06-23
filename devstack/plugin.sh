@@ -273,6 +273,7 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df_dnat_app ex_peer_patch_port "$PUBLIC_PEER_PORT"
     if [[ ! -z ${EXTERNAL_HOST_IP} ]]; then
         iniset $DRAGONFLOW_CONF df external_host_ip "$EXTERNAL_HOST_IP"
+        iniset $DRAGONFLOW_CONF df_snat_app external_network_bridge "$PUBLIC_BRIDGE"
     fi
 
     if [[ "$DF_PUB_SUB" == "True" ]]; then
