@@ -225,6 +225,17 @@ class DHCPApp(df_base_app.DFlowApp):
                 host_route.HostRoute(destination=dest_cidr,
                                      nexthop=via))
 
+        # We must add the default route here. if a host supports classless
+        # route options, it must ignore the router option
+        gateway = self._get_port_gateway_address(subnet, lport)
+        if gateway is not None:
+            host_routes.append(
+                host_route.HostRoute(
+                    destination='0.0.0.0/0',
+                    nexthop=gateway,
+                ),
+            )
+
         for route in host_routes:
             dest = route.destination.network
             mask = route.destination.prefixlen
