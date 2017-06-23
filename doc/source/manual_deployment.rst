@@ -99,7 +99,7 @@ Basic Configurations
     integration_bridge = br-int
     tunnel_type = geneve
 
-    [df_dnat_app]
+    [df_snat_app]
     ex_peer_patch_port = patch-int
     int_peer_patch_port = patch-ex
     external_network_bridge = br-ex
