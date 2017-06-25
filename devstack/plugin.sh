@@ -61,6 +61,8 @@ OVS_DB_PID=$OVS_DIR"/"$OVS_DB_SERVICE".pid"
 OVS_VSWITCHD_PID=$OVS_DIR"/"$OVS_VSWITCHD_SERVICE".pid"
 OVS_VSWITCH_OCSSCHEMA_FILE=${OVS_VSWITCH_OCSSCHEMA_FILE:-"/usr/share/openvswitch/vswitch.ovsschema"}
 
+NOVA_CONF=${NOVA_CONF:-"/etc/nova/nova.conf"}
+
 # Neutron notifier
 ENABLE_NEUTRON_NOTIFIER=${ENABLE_NEUTRON_NOTIFIER:-"False"}
 
@@ -242,6 +244,7 @@ function configure_df_plugin {
             iniset $NEUTRON_CONF quotas quota_router "-1"
             iniset $NEUTRON_CONF quotas quota_floatingip "-1"
             iniset $NEUTRON_CONF quotas quota_security_group_rule "-1"
+            iniset $NOVA_CONF quota instances "-1"
         fi
 
         # load dragonflow.ini into neutron-server
