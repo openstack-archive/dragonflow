@@ -242,6 +242,7 @@ function configure_df_plugin {
             iniset $NEUTRON_CONF quotas quota_router "-1"
             iniset $NEUTRON_CONF quotas quota_floatingip "-1"
             iniset $NEUTRON_CONF quotas quota_security_group_rule "-1"
+            iniset $NOVA_CONF quota instances "-1"
         fi
 
         # load dragonflow.ini into neutron-server
