@@ -74,6 +74,7 @@ Specs
     tunneling_app
     logical_port_locality
     extra_dhcp_opts
+    lbaas2
 
 Templates
 ---------
