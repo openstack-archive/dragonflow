@@ -160,7 +160,7 @@ def make_fake_port(id=None,
                    security_groups=['fake_security_group_id1'],
                    device_id='fake_device_id',
                    ofport=1,
-                   extra_dhcp_opts=None):
+                   dhcp_params=None):
 
     fake_port = l2.LogicalPort(
         id="%s_%s" % (name, ofport) if not id else id,
@@ -179,7 +179,7 @@ def make_fake_port(id=None,
         device_owner=device_owner,
         device_id=device_id,
         # binding_vnic_type=binding_vnic_type,
-        extra_dhcp_options={} if not extra_dhcp_opts else extra_dhcp_opts,
+        dhcp_params={} if not dhcp_params else dhcp_params,
     )
     fake_port.is_local = is_local
     fake_port.ofport = ofport
@@ -197,13 +197,17 @@ fake_local_port1_dhcp_opts = {
     121: '0.0.0.0/0,10.0.0.1'
 }
 
+fake_dhcp_params = {
+    "siaddr": "10.0.0.1",
+    "opts": fake_local_port1_dhcp_opts
+}
 
 fake_local_port1 = make_fake_local_port(
     macs=['fa:16:3e:8c:2e:b3'],
     ips=['10.0.0.6', '2222:2222::3'],
     subnets=[model_proxy.create_reference(l2.Subnet, 'fake_subnet1')],
     id='fake_port1',
-    extra_dhcp_opts=fake_local_port1_dhcp_opts)
+    dhcp_params=fake_dhcp_params)
 
 
 fake_ovs_port1 = ovs.OvsPort(
