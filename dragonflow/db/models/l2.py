@@ -118,7 +118,7 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
     device_id = fields.StringField()
     qos_policy = df_fields.ReferenceField(qos.QosPolicy)
     remote_vtep = fields.BoolField()
-    extra_dhcp_options = df_fields.IntStringDictField()
+    extra_dhcp_options = df_fields.StringStringDictField()
     binding_vnic_type = df_fields.EnumField(portbindings.VNIC_TYPES)
 
     def __init__(self, ofport=None, is_local=None,
