@@ -234,18 +234,18 @@ class EnumListField(fields.ListField):
                         valid_values=', '.join(self._valid_values)))
 
 
-class IntStringDictField(fields.BaseField):
-    '''A field that stores a int -> string dictionary'''
+class StringStringDictField(fields.BaseField):
+    '''A field that stores a string -> string dictionary'''
     types = (dict,)
 
     def validate(self, value):
-        super(IntStringDictField, self).validate(value)
+        super(StringStringDictField, self).validate(value)
         if not value:
             return
         for key, inner_val in value.items():
-            if not isinstance(key, six.integer_types):
+            if not isinstance(key, six.string_types):
                 raise errors.ValidationError(
-                    _('Key {} is not a int').format(key))
+                    _('Key {} is not a string').format(key))
             if not isinstance(inner_val, six.string_types):
                 raise errors.ValidationError(
                     _('Value {value} to key {key} is not a string').format(
