@@ -75,6 +75,7 @@ Specs
     logical_port_locality
     extra_dhcp_opts
     dhcp_port_per_network
+    lbaas2
 
 Templates
 ---------
