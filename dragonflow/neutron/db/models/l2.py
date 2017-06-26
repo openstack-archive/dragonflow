@@ -16,6 +16,7 @@ from neutron_lib.api.definitions import port_security as psec
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
 
+from dragonflow.common import constants as const
 from dragonflow.db.models import l2
 from dragonflow.neutron.common import constants as df_const
 
@@ -70,14 +71,21 @@ def _validate_ip_prefix_allowed_address_pairs(allowed_address_pairs):
     return supported_allowed_address_pairs
 
 
-def _build_extra_dhcp_options(port):
+def _build_dhcp_params(port):
     dhcp_opt_dict = {}
+    siaddr = None
+
     opts = port.get(extra_dhcp_opt.EXTRADHCPOPTS, [])
-
     for opt in opts:
-        dhcp_opt_dict[int(opt['opt_name'])] = opt['opt_value']
+        if opt['opt_name'] == const.DHCP_SIADDR:
+            siaddr = opt['opt_value']
+        else:
+            dhcp_opt_dict[opt['opt_name']] = opt['opt_value']
 
-    return dhcp_opt_dict
+    ret = {"opts": dhcp_opt_dict,
+           const.DHCP_SIADDR: siaddr}
+
+    return ret
 
 
 def logical_port_from_neutron_port(port):
@@ -99,4 +107,4 @@ def logical_port_from_neutron_port(port):
                 port.get(addr_pair.ADDRESS_PAIRS, [])),
             binding_vnic_type=port.get(portbindings.VNIC_TYPE),
             qos_policy=port.get('qos_policy_id'),
-            extra_dhcp_options=_build_extra_dhcp_options(port))
+            dhcp_params=_build_dhcp_params(port))

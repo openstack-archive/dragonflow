@@ -35,9 +35,11 @@ class FieldTestModel(mf.ModelBase):
     ref_list = df_fields.ReferenceListField(ReffedTestModel)
     ip_list = df_fields.ListOfField(df_fields.IpAddressField())
     port_range = df_fields.PortRangeField()
+    dhcp_opts = df_fields.DhcpOptsDictField()
 
     def __init__(self, **kwargs):
-        super(FieldTestModel, self).__init__(id='id1', **kwargs)
+        id = kwargs.pop("id", 'id1')
+        super(FieldTestModel, self).__init__(id=id, **kwargs)
 
 
 class TestFields(tests_base.BaseTestCase):
@@ -101,3 +103,30 @@ class TestFields(tests_base.BaseTestCase):
         self.assertEqual([100, 200], m.to_struct().get('port_range'))
         self.assertEqual(100, m.port_range.min)
         self.assertEqual(200, m.port_range.max)
+
+    dhcp_params_good = {
+        1: "a",
+        2: "b"
+    }
+
+    dhcp_params_bad1 = {
+        260: "error"
+    }
+
+    dhcp_params_bad2 = {
+        "error": "error"
+    }
+
+    def test_dhcp_parms_fields(self):
+        m = FieldTestModel(dhcp_opts=TestFields.dhcp_params_good)
+        self.assertEqual("a", m.to_struct().get("dhcp_opts")["1"])
+        self.assertEqual("b", m.dhcp_opts[2])
+        json = m.to_json()
+        parsed = FieldTestModel.from_json(json)
+        parsed.validate()
+
+        self.assertRaises(errors.ValidationError, FieldTestModel,
+                          dhcp_opts=TestFields.dhcp_params_bad1)
+
+        self.assertRaises(ValueError, FieldTestModel,
+                          dhcp_opts=TestFields.dhcp_params_bad2)

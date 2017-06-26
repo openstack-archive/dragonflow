@@ -234,18 +234,32 @@ class EnumListField(fields.ListField):
                         valid_values=', '.join(self._valid_values)))
 
 
-class IntStringDictField(fields.BaseField):
-    '''A field that stores a int -> string dictionary'''
+class DhcpOptsDictField(fields.BaseField):
+
+    '''A field that stores a  mapping between
+    int (represented the dhcp tag) ->
+    string (represent the dhcp value)
+    '''
+
     types = (dict,)
 
+    def parse_value(self, value):
+        if value is not None:
+            return {int(key): inner_val for key, inner_val in value.items()}
+
+    def to_struct(self, obj):
+        if obj is not None:
+            return {str(key): inner_val for key, inner_val in obj.items()}
+
     def validate(self, value):
-        super(IntStringDictField, self).validate(value)
+        super(DhcpOptsDictField, self).validate(value)
         if not value:
             return
         for key, inner_val in value.items():
-            if not isinstance(key, six.integer_types):
+            if not isinstance(key, six.integer_types) or (
+                            key < 0 or key > 255):
                 raise errors.ValidationError(
-                    _('Key {} is not a int').format(key))
+                    _('Key {} is not a vaild dhcp opt').format(key))
             if not isinstance(inner_val, six.string_types):
                 raise errors.ValidationError(
                     _('Value {value} to key {key} is not a string').format(

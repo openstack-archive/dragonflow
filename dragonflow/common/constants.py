@@ -19,6 +19,8 @@ OVS_PATCH_INTERFACE = "patch"
 OVS_TUNNEL_INTERFACE = "tunnel"
 OVS_UNKNOWN_INTERFACE = "unknown"
 
+DHCP_SIADDR = "siaddr"
+
 DEVICE_OWNER_LOCAL_GW = (
             n_const.DEVICE_OWNER_NETWORK_PREFIX + "local_router_gateway")
 
