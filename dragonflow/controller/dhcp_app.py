@@ -217,8 +217,8 @@ class DHCPApp(df_base_app.DFlowApp):
                 nexthop=lport.ip))
 
         routes_bin = b''
-
-        opt = lport.extra_dhcp_options.get(dhcp.DHCP_CLASSLESS_ROUTE_OPT)
+        opt_key = str(dhcp.DHCP_CLASSLESS_ROUTE_OPT)
+        opt = lport.extra_dhcp_options.get(opt_key)
         if opt:
             dest_cidr, _c, via = opt.partition(',')
             host_routes.append(
@@ -265,8 +265,8 @@ class DHCPApp(df_base_app.DFlowApp):
         gateway_ip = subnet.gateway_ip
         if gateway_ip:
             return gateway_ip
-
-        return lport.extra_dhcp_options.get(dhcp.DHCP_GATEWAY_ADDR_OPT)
+        opt_key = str(dhcp.DHCP_GATEWAY_ADDR_OPT)
+        return lport.extra_dhcp_options.get(opt_key)
 
     def _is_dhcp_enabled_for_port(self, lport):
         try:

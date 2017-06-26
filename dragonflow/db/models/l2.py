@@ -78,11 +78,6 @@ class AddressPair(models.Base):
     mac_address = df_fields.MacAddressField(required=True)
 
 
-class DHCPOption(models.Base):
-    tag = fields.IntField(required=True)
-    value = fields.StringField(required=True)
-
-
 # LogicalPort events
 EVENT_LOCAL_CREATED = 'local_created'
 EVENT_REMOTE_CREATED = 'remote_created'
@@ -118,7 +113,7 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
     device_id = fields.StringField()
     qos_policy = df_fields.ReferenceField(qos.QosPolicy)
     remote_vtep = fields.BoolField()
-    extra_dhcp_options = df_fields.IntStringDictField()
+    extra_dhcp_options = df_fields.DhcpOptsDictField()
     binding_vnic_type = df_fields.EnumField(portbindings.VNIC_TYPES)
 
     def __init__(self, ofport=None, is_local=None,

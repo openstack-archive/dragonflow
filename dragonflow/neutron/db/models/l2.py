@@ -75,7 +75,7 @@ def _build_extra_dhcp_options(port):
     opts = port.get(extra_dhcp_opt.EXTRADHCPOPTS, [])
 
     for opt in opts:
-        dhcp_opt_dict[int(opt['opt_name'])] = opt['opt_value']
+        dhcp_opt_dict[opt['opt_name']] = opt['opt_value']
 
     return dhcp_opt_dict
 
