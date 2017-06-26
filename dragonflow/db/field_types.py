@@ -11,6 +11,7 @@
 #    under the License.
 from jsonmodels import errors
 from jsonmodels import fields
+from sets import Set
 import netaddr
 import six
 
@@ -234,18 +235,24 @@ class EnumListField(fields.ListField):
                         valid_values=', '.join(self._valid_values)))
 
 
-class IntStringDictField(fields.BaseField):
-    '''A field that stores a int -> string dictionary'''
+class DhcpOptsDictField(fields.BaseField):
+    '''A field that stores a  mapping between
+    string(represented the dhcp tag) ->
+    string - represent the dhcp value '''
+
+    valid_tags = Set([str(x) for x in range(1, 255)])
+    valid_tags.add("siaddr")
+
     types = (dict,)
 
     def validate(self, value):
-        super(IntStringDictField, self).validate(value)
+        super(DhcpOptsDictField, self).validate(value)
         if not value:
             return
         for key, inner_val in value.items():
-            if not isinstance(key, six.integer_types):
+            if key not in self.valid_tags:
                 raise errors.ValidationError(
-                    _('Key {} is not a int').format(key))
+                    _('Key {} is not a vaild dhcp opt').format(key))
             if not isinstance(inner_val, six.string_types):
                 raise errors.ValidationError(
                     _('Value {value} to key {key} is not a string').format(
