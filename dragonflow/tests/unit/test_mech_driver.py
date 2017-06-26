@@ -481,9 +481,9 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 lport = self.nb_api.create.call_args_list[0][0][0]
                 self.assertIsInstance(lport, l2.LogicalPort)
                 expected_edo = [{'value': "192.168.0.1",
-                                 'tag': 3},
+                                 'tag': "3"},
                                 {'value': "0.0.0.0/0,192.168.0.1",
-                                 'tag': 121}]
+                                 'tag': "121"}]
 
                 for edo in expected_edo:
                     self.assertEqual(edo['value'],
