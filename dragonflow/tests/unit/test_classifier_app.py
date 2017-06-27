@@ -14,8 +14,10 @@
 #    under the License.
 import mock
 
+from dragonflow.common import constants
 from dragonflow.controller.common import constants as const
 from dragonflow.db.models import l2
+from dragonflow.db.models import ovs
 from dragonflow.tests.unit import test_app_base
 
 make_fake_local_port = test_app_base.make_fake_local_port
@@ -39,18 +41,52 @@ class TestClassifierApp(test_app_base.DFAppTestBase):
     def test_classifier_for_vlan_port(self):
         fake_local_vlan_port = make_fake_local_port(
             lswitch='fake_vlan_switch1')
+        self.controller.update(fake_local_vlan_port)
+        self.app.mod_flow.assert_not_called()
+        ovs_port = ovs.OvsPort(id='fake_ovs_port', iface=fake_local_vlan_port,
+                               ofport=1, admin_state='up',
+                               type=constants.OVS_VM_INTERFACE)
+        self.controller.update(ovs_port)
         port_key = fake_local_vlan_port.unique_key
         match = self.app.parser.OFPMatch(reg7=port_key)
-        self.controller.update(fake_local_vlan_port)
         self.app.mod_flow.assert_called_with(
             inst=mock.ANY,
             table_id=const.INGRESS_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
         self.app.mod_flow.reset_mock()
-        ofport = fake_local_vlan_port.ofport
+        ofport = ovs_port.ofport
+        match = self.app.parser.OFPMatch(in_port=ofport)
+        self.controller.delete(ovs_port)
+        self.controller.delete(fake_local_vlan_port)
+        self.app.mod_flow.assert_called_with(
+            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            command=self.datapath.ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match)
+        self.app.mod_flow.reset_mock()
+
+    def test_classifier_for_vlan_port2(self):
+        fake_local_vlan_port = make_fake_local_port(
+            lswitch='fake_vlan_switch1')
+        self.controller.update(fake_local_vlan_port)
+        self.app.mod_flow.assert_not_called()
+        ovs_port = ovs.OvsPort(id='fake_ovs_port', iface=fake_local_vlan_port,
+                               ofport=1, admin_state='up',
+                               type=constants.OVS_VM_INTERFACE)
+        self.controller.update(ovs_port)
+        port_key = fake_local_vlan_port.unique_key
+        match = self.app.parser.OFPMatch(reg7=port_key)
+        self.app.mod_flow.assert_called_with(
+            inst=mock.ANY,
+            table_id=const.INGRESS_DISPATCH_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match)
+        self.app.mod_flow.reset_mock()
+        ofport = ovs_port.ofport
         match = self.app.parser.OFPMatch(in_port=ofport)
         self.controller.delete(fake_local_vlan_port)
+        self.controller.delete(ovs_port)
         self.app.mod_flow.assert_called_with(
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=self.datapath.ofproto.OFPFC_DELETE,
