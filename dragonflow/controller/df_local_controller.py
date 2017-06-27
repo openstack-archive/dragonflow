@@ -347,6 +347,11 @@ class DfLocalController(object):
             return True
 
     def update_model_object(self, obj):
+        if not isinstance(obj, mixins.BasicEvents):
+            LOG.debug('Cannot emit create/update events for %r, discarding',
+                      obj)
+            return
+
         original_obj = self.db_store.get_one(obj)
         if original_obj is None:
             obj.emit_created()
@@ -358,6 +363,10 @@ class DfLocalController(object):
         self.db_store.update(obj)
 
     def delete_model_object(self, obj):
+        if not isinstance(obj, mixins.BasicEvents):
+            LOG.debug('Cannot emit deleted event for %r, discarding', obj)
+            return
+
         # Retrieve full object (in case we only got Model(id='id'))
         org_obj = self.db_store.get_one(obj)
         if org_obj:
