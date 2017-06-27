@@ -349,9 +349,11 @@ class DfLocalController(object):
     def update_model_object(self, obj):
         original_obj = self.db_store.get_one(obj)
         if original_obj is None:
-            obj.emit_created()
+            if _has_basic_events(obj):
+                obj.emit_created()
         elif self._is_newer(obj, original_obj):
-            obj.emit_updated(original_obj)
+            if _has_basic_events(obj):
+                obj.emit_updated(original_obj)
         else:
             return
 
@@ -361,7 +363,8 @@ class DfLocalController(object):
         # Retrieve full object (in case we only got Model(id='id'))
         org_obj = self.db_store.get_one(obj)
         if org_obj:
-            org_obj.emit_deleted()
+            if _has_basic_events(org_obj):
+                org_obj.emit_deleted()
             self.db_store.delete(org_obj)
         else:
             # NOTE(nick-ma-z): Ignore the null object because
@@ -403,6 +406,10 @@ class DfLocalController(object):
     def delete_by_id(self, model, obj_id):
         # FIXME (dimak) Probably won't be needed once we're done porting
         return self.delete(model(id=obj_id))
+
+
+def _has_basic_events(obj):
+    return isinstance(obj, mixins.BasicEvents)
 
 
 def init_ryu_config():
