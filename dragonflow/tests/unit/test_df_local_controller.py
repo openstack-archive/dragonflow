@@ -17,9 +17,21 @@ from dragonflow.common import constants
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
+from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
 from dragonflow.db.models import core
+from dragonflow.db.models import mixins
 from dragonflow.tests.unit import test_app_base
+
+
+@model_framework.construct_nb_db_model
+class _Model(model_framework.ModelBase, mixins.BasicEvents, mixins.Version):
+    table_name = 'some_table'
+
+
+@model_framework.construct_nb_db_model
+class _ModelNoEvents(model_framework.ModelBase, mixins.Version):
+    table_name = 'another_table'
 
 
 class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
@@ -88,8 +100,8 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
     @mock.patch.object(db_store.DbStore, 'get_one')
     @mock.patch.object(db_store.DbStore, 'update')
     def test_update_model_object_created_called(self, update, get_one):
-        obj = mock.MagicMock()
-        obj.version = 1
+        obj = _Model(id='foo', version=1)
+        obj.emit_created = mock.Mock()
 
         get_one.return_value = None
         self.controller.update_model_object(obj)
@@ -99,11 +111,10 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
     @mock.patch.object(db_store.DbStore, 'get_one')
     @mock.patch.object(db_store.DbStore, 'update')
     def test_update_model_object_updated_called(self, update, get_one):
-        obj = mock.MagicMock()
-        obj.version = 2
+        obj = _Model(id='foo', version=2)
+        obj.emit_updated = mock.Mock()
 
-        old_obj = mock.MagicMock()
-        old_obj.version = 1
+        old_obj = _Model(id='foo', version=1)
 
         get_one.return_value = old_obj
         self.controller.update_model_object(obj)
@@ -112,13 +123,22 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
     @mock.patch.object(db_store.DbStore, 'get_one')
     @mock.patch.object(db_store.DbStore, 'update')
-    def test_update_model_object_not_called(self, update, get_one):
-        obj = mock.MagicMock()
-        obj.version = 1
-        obj.is_newer_than.return_value = False
+    def test_update_model_object_updated_called_no_events(self, update,
+                                                          get_one):
+        obj = _ModelNoEvents(id='foo', version=2)
+        old_obj = _ModelNoEvents(id='foo', version=1)
 
-        old_obj = mock.MagicMock()
-        old_obj.version = 1
+        get_one.return_value = old_obj
+        self.controller.update_model_object(obj)
+        update.assert_called_once_with(obj)
+
+    @mock.patch.object(db_store.DbStore, 'get_one')
+    @mock.patch.object(db_store.DbStore, 'update')
+    def test_update_model_object_not_called(self, update, get_one):
+        obj = _Model(id='foo', version=1)
+        obj.emit_updated = mock.Mock()
+
+        old_obj = _Model(id='foo', version=1)
 
         get_one.return_value = old_obj
         self.controller.update_model_object(obj)
@@ -126,15 +146,32 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         obj.emit_updated.assert_not_called()
 
     @mock.patch.object(db_store.DbStore, 'get_one')
+    @mock.patch.object(db_store.DbStore, 'update')
+    def test_update_model_object_not_called_no_events(self, update, get_one):
+        obj = _ModelNoEvents(id='foo', version=1)
+        old_obj = _ModelNoEvents(id='foo', version=1)
+        get_one.return_value = old_obj
+        self.controller.update_model_object(obj)
+        update.assert_not_called()
+
+    @mock.patch.object(db_store.DbStore, 'get_one')
     @mock.patch.object(db_store.DbStore, 'delete')
     def test_delete_model_object_called(self, delete, get_one):
-        obj = mock.MagicMock()
+        obj = _Model(id='foo', version=1)
         obj.emit_deleted = mock.MagicMock()
 
         get_one.return_value = obj
         self.controller.delete_model_object(obj)
         delete.assert_called_once()
         obj.emit_deleted.assert_called_once()
+
+    @mock.patch.object(db_store.DbStore, 'get_one')
+    @mock.patch.object(db_store.DbStore, 'delete')
+    def test_delete_model_object_called_no_events(self, delete, get_one):
+        obj = _ModelNoEvents(id='foo', version=1)
+        get_one.return_value = obj
+        self.controller.delete_model_object(obj)
+        delete.assert_called_once()
 
     @mock.patch.object(db_store.DbStore, 'get_one')
     @mock.patch.object(db_store.DbStore, 'delete')
