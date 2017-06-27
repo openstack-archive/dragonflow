@@ -49,7 +49,7 @@ class TestDfQosDriver(test_mech_driver.DFMechanismDriverTestCase):
     def _test_create_policy(self):
         qos_policy = {'policy': {'name': "policy1", 'project_id': 'project1'}}
         qos_obj = self.qos_plugin.create_policy(self.context, qos_policy)
-        self.assertGreater(qos_obj['revision_number'], 0)
+        self.assertEqual(qos_obj['revision_number'], 0)
         self.qos_driver.nb_api.create.assert_called_with(qos.QosPolicy(
             id=qos_obj['id'],
             topic='project1',

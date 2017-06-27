@@ -75,7 +75,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
         r = {'router': {'name': 'router', 'tenant_id': 'tenant',
                         'admin_state_up': True}}
         router = self.l3p.create_router(self.context, r)
-        self.assertGreater(router['revision_number'], 0)
+        self.assertEqual(router['revision_number'], 0)
 
         lrouter = neutron_l3.logical_router_from_neutron_router(router)
         self.nb_api.create.assert_called_once_with(lrouter)
@@ -133,7 +133,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                     self.context,
                     {'floatingip': {'floating_network_id': n['network']['id'],
                                     'tenant_id': n['network']['tenant_id']}})
-                self.assertGreater(floatingip['revision_number'], 0)
+                self.assertEqual(floatingip['revision_number'], 0)
                 nb_fip = self.nb_api.create.call_args_list[-1][0][0]
                 self.assertIsInstance(nb_fip, df_l3.FloatingIp)
                 self.assertEqual(floatingip['id'], nb_fip.id)
