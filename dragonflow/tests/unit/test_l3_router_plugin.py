@@ -75,7 +75,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
         r = {'router': {'name': 'router', 'tenant_id': 'tenant',
                         'admin_state_up': True}}
         router = self.l3p.create_router(self.context, r)
-        self.assertGreater(router['revision_number'], 0)
+        self.assertEqual(router['revision_number'], 0)
 
         lrouter = neutron_l3.logical_router_from_neutron_router(router)
         self.nb_api.create.assert_called_once_with(lrouter)
