@@ -15,7 +15,9 @@
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
+from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import l2
+from dragonflow.db.models import ovs
 from oslo_log import log
 
 
@@ -24,9 +26,19 @@ LOG = log.getLogger(__name__)
 
 class ClassifierApp(df_base_app.DFlowApp):
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
-    def _add_local_port(self, lport):
-        ofport = lport.ofport
+    def __init__(self, *args, **kwargs):
+        super(ClassifierApp, self).__init__(*args, **kwargs)
+        self._ofport_unique_key_map = {}
+
+    def switch_features_handler(self, ev):
+        self._ofport_unique_key_map.clear()
+
+    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_CREATED)
+    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_UPDATED)
+    def _ovs_port_created(self, ovs_port, orig_ovs_port=None):
+        lport = self.nb_api.get(l2.LogicalPort(id=ovs_port.iface_id))
+        ofport = ovs_port.ofport
+        self._ofport_unique_key_map[ofport] = lport.unique_key
         LOG.info("Add local ovs port %(ovs_port)s, logical port "
                  "%(lport)s for classification",
                  {'ovs_port': ofport, 'lport': lport})
@@ -71,13 +83,18 @@ class ClassifierApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
-    def _remove_local_port(self, lport):
-        self._del_ingress_dispatch_flow(lport)
-        self._del_ingress_classification_flow(lport)
+    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_DELETED)
+    def _ovs_port_deleted(self, ovs_port):
+        ofport = ovs_port.ofport
+        try:
+            port_key = self._ofport_unique_key_map.pop(ofport)
+        except KeyError:
+            LOG.debug("Unknown classification/dispatch for ofport %s", ofport)
+            return
+        self._del_ingress_dispatch_flow(port_key)
+        self._del_ingress_classification_flow(ofport)
 
-    def _del_ingress_dispatch_flow(self, lport):
-        port_key = lport.unique_key
+    def _del_ingress_dispatch_flow(self, port_key):
         LOG.debug("delete ingress dispatch flow for port_key=%(port_key)s",
                   {'port_key': port_key})
         match = self.parser.OFPMatch(reg7=port_key)
@@ -87,8 +104,7 @@ class ClassifierApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def _del_ingress_classification_flow(self, lport):
-        ofport = lport.ofport
+    def _del_ingress_classification_flow(self, ofport):
         LOG.debug("delete in_port=%(in_port)s ingress classification",
                   {'in_port': ofport})
         match = self.parser.OFPMatch(in_port=ofport)
