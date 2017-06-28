@@ -188,27 +188,33 @@ class DfLocalController(object):
         chassis = lport.chassis
         is_local = (chassis.id == self.chassis_name)
         lport.is_local = is_local
+        l2_tunnel = lswitch.network_type in self.tunnel_types
         if is_local:
             if not lport.ofport:
                 lport.ofport = self.vswitch_api.get_port_ofport_by_id(lport.id)
             if not lport.ofport:
                 # Not attached to the switch. Maybe it's a subport?
                 lport.ofport = self._get_trunk_subport_ofport(lport)
-        else:
-            lport.peer_vtep_address = (chassis.id if lport.remote_vtep else
-                                       chassis.ip)
+        elif l2_tunnel:
+            LOG.debug("remote tunnel overlay lport %(lport)s ",
+                      {'lport': lport})
+            lport.peer_vtep_address = (
+                    chassis.id if lport.remote_vtep else chassis.ip)
             lport.ofport = self.vswitch_api.get_vtp_ofport(
                     lswitch.network_type)
 
-        if not lport.ofport:
+        if l2_tunnel and not lport.ofport:
             # The tunnel port online event will update the remote logical
             # port. Log this warning first.
             LOG.warning("%(location)s logical port %(port)s"
                         " was not created yet",
                         {'location': "Local" if is_local else
-                                     "Tunnel for remote",
+                                     "Remote via tunnel",
                          'port': lport})
             return
+        else:
+            LOG.debug("Remote not via tunnel lport %(lport)s ",
+                      {'lport': lport})
 
         original_lport = self.db_store.get_one(lport)
         self.db_store.update(lport)

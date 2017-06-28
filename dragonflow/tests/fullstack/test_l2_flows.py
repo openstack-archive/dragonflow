@@ -9,14 +9,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
-import re
-
 from oslo_config import cfg
 
 import ConfigParser
 from dragonflow.common import utils as df_utils
 from dragonflow.controller.common import constants as const
+from dragonflow.db.models import l2
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -28,17 +26,11 @@ VLAN_MIN_DEFAULT = 2
 VLAN_TAG_BITS = 12
 VLAN_MASK = df_utils.get_bitmask(VLAN_TAG_BITS)
 OFPVID_PRESENT = 0x1000
+BUM_MAC_MASK = "00:00:00:00:00:00/01:00:00:00:00:00"
+MULTICAST_MAC_MASK = "01:00:00:00:00:00/01:00:00:00:00:00"
 
 
 class TestL2FLows(test_base.DFTestBase):
-    def _get_metadata_id(self, flows, ip, mac):
-        for flow in flows:
-            if flow['table'] == str(const.L3_PROACTIVE_LOOKUP_TABLE):
-                if 'nw_dst=' + ip in flow['match'] and mac in flow['actions']:
-                    m = re.search('metadata=0x([0-9a-f]+)', flow['match'])
-                    if m:
-                        return m.group(1)
-        return None
 
     def test_tunnel_network_flows(self):
         if self._check_tunneling_app_enable() is False:
@@ -65,11 +57,9 @@ class TestL2FLows(test_base.DFTestBase):
         self.assertIsNotNone(vm.server.addresses['mynetwork'])
         mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
-        metadataid = utils.wait_until_is_and_return(
-            lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
-                                          ip, mac),
-            exception=Exception('Metadata id was not found in OpenFlow rules')
-        )
+        lswitch = self.nb_api.get(
+                l2.LogicalSwitch(id=network_id))
+        metadataid = lswitch.unique_key
         port = utils.wait_until_is_and_return(
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
@@ -123,12 +113,10 @@ class TestL2FLows(test_base.DFTestBase):
         self.assertIsNotNone(ip)
         mac = vm.get_first_mac()
         self.assertIsNotNone(mac)
+        lswitch = self.nb_api.get(
+                l2.LogicalSwitch(id=network_id))
+        metadataid = lswitch.unique_key
 
-        metadataid = utils.wait_until_is_and_return(
-            lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
-                                          ip, mac),
-            exception=Exception('Metadata id was not found in OpenFlow rules')
-        )
         port = utils.wait_until_is_and_return(
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
@@ -147,26 +135,25 @@ class TestL2FLows(test_base.DFTestBase):
         vm.close()
         network.close()
 
-    def _check_tunnel_flows(self, flows, metadtata, segmentation_id,
+    def _check_tunnel_flows(self, flows, metadataid, segmentation_id,
                             port_key_hex, mac, tunnel_ofport):
-        l2_lookup_unicast_match = 'metadata=0x' + metadtata + \
-                                 ',dl_dst=' + mac
-        l2_lookup_unicast_action = 'goto_table:' + \
-                                   str(const.EGRESS_TABLE)
-        l2_lookup_multicast_match = 'metadata=0x' + metadtata + ',dl_dst=' + \
-                                    '01:00:00:00:00:00/01:00:00:00:00:00'
+        metadata = hex(metadataid)
+        l2_lookup_unicast_match = 'metadata=%s' % metadata + \
+                                  ',dl_dst=%s' % mac
+        l2_lookup_unicast_action = 'goto_table:%s' % const.EGRESS_TABLE
+        l2_lookup_multicast_match = 'metadata=%s' % metadata + \
+                                    ',dl_dst=%s' % BUM_MAC_MASK
         l2_lookup_multicast_action = 'set_field:' + port_key_hex + \
-                                     '->reg7,resubmit(,' + \
-                                     str(const.EGRESS_TABLE) + ')' + \
-                                     ',set_field:0' + \
-                                     '->reg7,resubmit(,' + \
-                                     str(const.EGRESS_TABLE) + ')'
+                                     '->reg7,resubmit(,%s)' % \
+                                     const.EGRESS_TABLE + \
+                                     ',set_field:0->reg7,resubmit(,%s)' % \
+                                     const.EGRESS_TABLE
 
         ingress_match = ('tun_id=' + str(segmentation_id)
                          + ",in_port=" + str(tunnel_ofport))
-        ingress_action = 'set_field:0x' + metadtata + '->metadata,' + \
-                         'goto_table:' + \
-                         str(const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
+        ingress_action = 'set_field:%s' % metadata + '->metadata,' + \
+                         'goto_table:%s' % \
+                         const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE
 
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
@@ -191,18 +178,17 @@ class TestL2FLows(test_base.DFTestBase):
                 'l2_lookup_unicast_check': l2_lookup_unicast_check,
                 'ingress_check': ingress_check}
 
-    def _check_vlan_flows(self, flows, metadtata, segmentation_id,
+    def _check_vlan_flows(self, flows, metadataid, segmentation_id,
                           port_key_hex, mac):
-        l2_lookup_unicast_match = 'metadata=0x' + metadtata + \
-                                 ',dl_dst=' + mac
-        l2_lookup_unicast_action = 'goto_table:' + \
-                                   str(const.EGRESS_TABLE)
-        l2_lookup_unknown_match = 'metadata=0x' + metadtata + \
-                                  ',dl_dst=00:00:00:00:00:00/01:00:00:00:00:00'
-        l2_lookup_unkown_action = 'goto_table:' + \
-                                  str(const.EGRESS_TABLE)
-        l2_lookup_multicast_match = 'metadata=0x' + metadtata + ',dl_dst=' + \
-                                    '01:00:00:00:00:00/01:00:00:00:00:00'
+        metadata = hex(metadataid)
+        l2_lookup_unicast_match = 'metadata=%s' % metadata + \
+                                  ',dl_dst=%s' % mac
+        l2_lookup_unicast_action = 'goto_table:%s' % const.EGRESS_TABLE
+        l2_lookup_unknown_match = 'metadata=%s' % metadata + \
+                                  ',dl_dst=%s' % BUM_MAC_MASK
+        l2_lookup_unkown_action = 'goto_table:%s' % const.EGRESS_TABLE
+        l2_lookup_multicast_match = 'metadata=%s' % metadata + \
+                                    ',dl_dst=%s' % MULTICAST_MAC_MASK
         l2_lookup_multicast_action = 'set_field:' + port_key_hex + \
                                      '->reg7,resubmit(,' + \
                                      str(const.EGRESS_TABLE) + ')' + \
@@ -210,16 +196,15 @@ class TestL2FLows(test_base.DFTestBase):
                                      '->reg7,resubmit(,' + \
                                      str(const.EGRESS_TABLE) + ')'
 
-        egress_match = 'metadata=0x' + metadtata
+        egress_match = 'metadata=%s' + metadata
         egress_action = 'push_vlan:0x8100,set_field:' + \
                         str((segmentation_id & VLAN_MASK) | OFPVID_PRESENT) + \
-                        "->vlan_vid,goto_table:" + \
-                        str(const.EGRESS_EXTERNAL_TABLE)
+                        "->vlan_vid,goto_table:%s" % \
+                        const.EGRESS_EXTERNAL_TABLE
 
         ingress_match = 'dl_vlan=%s' % segmentation_id
-        ingress_action = 'set_field:0x' + metadtata + '->metadata,' \
-                                                      'pop_vlan,goto_table:' + \
-                         str(const.L2_LOOKUP_TABLE)
+        ingress_action = 'set_field:%s' % metadata + '->metadata,' \
+                         'pop_vlan,goto_table:%s' % const.L2_LOOKUP_TABLE
 
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
@@ -297,12 +282,10 @@ class TestL2FLows(test_base.DFTestBase):
 
         mac = vm.get_first_mac()
         self.assertIsNotNone(mac)
+        lswitch = self.nb_api.get(
+                l2.LogicalSwitch(id=network_id))
+        metadataid = lswitch.unique_key
 
-        metadataid = utils.wait_until_is_and_return(
-            lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
-                                          ip, mac),
-            exception=Exception('Metadata id was not found in OpenFlow rules')
-        )
         port = utils.wait_until_is_and_return(
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
@@ -319,18 +302,17 @@ class TestL2FLows(test_base.DFTestBase):
         network.close()
         return None
 
-    def _check_flat_flows(self, flows, metadtata,
+    def _check_flat_flows(self, flows, metadataid,
                           port_key_hex, mac):
-        l2_lookup_unicast_match = 'metadata=0x' + metadtata + \
-                                 ',dl_dst=' + mac
-        l2_lookup_unicast_action = 'goto_table:' + \
-                                   str(const.EGRESS_TABLE)
-        l2_lookup_unkown_match = 'metadata=0x' + metadtata + \
-                                 ',dl_dst=00:00:00:00:00:00/01:00:00:00:00:00'
-        l2_lookup_unkown_action = 'goto_table:' + \
-                                  str(const.EGRESS_TABLE)
-        l2_lookup_multicast_match = 'metadata=0x' + metadtata + ',dl_dst=' + \
-                                    '01:00:00:00:00:00/01:00:00:00:00:00'
+        metadata = hex(metadataid)
+        l2_lookup_unicast_match = 'metadata=%s' % metadata + \
+                                  ',dl_dst=%s' % mac
+        l2_lookup_unicast_action = 'goto_table:%s' % const.EGRESS_TABLE
+        l2_lookup_unkown_match = 'metadata=%s' % metadata + \
+                                 ',dl_dst=%s' % BUM_MAC_MASK
+        l2_lookup_unkown_action = 'goto_table:%s' % const.EGRESS_TABLE
+        l2_lookup_multicast_match = 'metadata=%s' % metadata + \
+                                    ',dl_dst=%s' % MULTICAST_MAC_MASK
         l2_lookup_multicast_action = 'set_field:' + port_key_hex + \
                                      '->reg7,resubmit(,' + \
                                      str(const.EGRESS_TABLE) + ')' + \
@@ -338,13 +320,11 @@ class TestL2FLows(test_base.DFTestBase):
                                      '->reg7,resubmit(,' + \
                                      str(const.EGRESS_TABLE) + ')'
 
-        egress_match = 'metadata=0x' + metadtata
-        egress_action = 'goto_table:' + \
-                        str(const.EGRESS_EXTERNAL_TABLE)
+        egress_match = 'metadata=%s' % metadata
+        egress_action = 'goto_table:%s' % const.EGRESS_EXTERNAL_TABLE
         ingress_match = 'vlan_tci=0x0000/0x1fff'
-        ingress_action = 'set_field:0x' + metadtata + \
-                         '->metadata,goto_table:' + \
-                         str(const.L2_LOOKUP_TABLE)
+        ingress_action = 'set_field:%s' % metadata + \
+                         '->metadata,goto_table:%s' % const.L2_LOOKUP_TABLE
 
         l2_lookup_unicast_check = None
         l2_lookup_multicast_check = None
@@ -466,9 +446,8 @@ class TestL2FLows(test_base.DFTestBase):
                 str(const.EGRESS_TABLE) + ')'
         for flow in flows:
             if flow['table'] == str(const.L2_LOOKUP_TABLE):
-                if ('dl_dst=01:00:00:00:00:00/01:00:00:00:00:00' in
-                        flow['match']):
-                    if 'metadata=0x' + metadataid in flow['match']:
+                if ('dl_dst=%s' % MULTICAST_MAC_MASK in flow['match']):
+                    if 'metadata=' + hex(metadataid) in flow['match']:
                         if check in flow['actions']:
                             return flow
         return None
@@ -492,11 +471,9 @@ class TestL2FLows(test_base.DFTestBase):
         self.assertIsNotNone(vm.server.addresses['mynetwork'])
         mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
-        metadataid = utils.wait_until_is_and_return(
-            lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
-                                          ip, mac),
-            exception=Exception('Metadata id was not found in OpenFlow rules')
-        )
+        lswitch = self.nb_api.get(
+            l2.LogicalSwitch(id=network_id))
+        metadataid = lswitch.unique_key
         port = utils.wait_until_is_and_return(
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
