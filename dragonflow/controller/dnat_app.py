@@ -15,7 +15,6 @@
 
 import collections
 
-import netaddr
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.lib.packet import ethernet
@@ -68,7 +67,7 @@ class DNATApp(df_base_app.DFlowApp):
         self.external_networks = collections.defaultdict(int)
         self.local_floatingips = collections.defaultdict(str)
         # Map between fixed ip mac to floating ip
-        self.floatingip_rarp_cache = {}
+        self.fip_port_key_cache = {}
         self.egress_ttl_invalid_handler_rate_limit = df_utils.RateLimiter(
             max_rate=self.conf.dnat_ttl_invalid_max_rate,
             time_unit=1)
@@ -91,28 +90,31 @@ class DNATApp(df_base_app.DFlowApp):
         self._install_output_to_physical_patch(self.external_ofport)
         self.external_networks.clear()
         self.local_floatingips.clear()
-        self.floatingip_rarp_cache.clear()
+        self.fip_port_key_cache.clear()
 
-    def ingress_packet_in_handler(self, event):
-        msg = event.msg
-        ofproto = self.ofproto
+    def _handle_ingress_invalid_ttl(self, event):
+        LOG.debug("Get an invalid TTL packet at table %s",
+                  const.INGRESS_NAT_TABLE)
 
-        if msg.reason == ofproto.OFPR_INVALID_TTL:
-            LOG.debug("Get an invalid TTL packet at table %s",
-                      const.INGRESS_NAT_TABLE)
-            if self.ingress_ttl_invalid_handler_rate_limit():
-                LOG.warning("Get more than %(rate)s TTL invalid "
-                            "packets per second at table %(table)s",
-                            {'rate': self.conf.dnat_ttl_invalid_max_rate,
-                             'table': const.INGRESS_NAT_TABLE})
-                return
-
-            icmp_ttl_pkt = icmp_error_generator.generate(
-                icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE, msg.data)
-            in_port = msg.match.get('in_port')
-            self.send_packet(in_port, icmp_ttl_pkt)
+        if self.ingress_ttl_invalid_handler_rate_limit():
+            LOG.warning("Get more than %(rate)s TTL invalid "
+                        "packets per second at table %(table)s",
+                        {'rate': self.conf.dnat_ttl_invalid_max_rate,
+                         'table': const.INGRESS_NAT_TABLE})
             return
 
+        msg = event.msg
+
+        icmp_ttl_pkt = icmp_error_generator.generate(
+            icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE, msg.data)
+        network_id = msg.match.get('metadata')
+        self.reinject_packet(
+            icmp_ttl_pkt,
+            table_id=const.L2_LOOKUP_TABLE,
+            actions=[self.parser.OFPActionSetField(metadata=network_id)]
+        )
+
+    def _handle_ingress_icmp_translate(self, event):
         if self.ingress_icmp_error_rate_limit():
             LOG.warning("Get more than %(rate)s ICMP error messages "
                         "per second at table %(table)s",
@@ -120,55 +122,76 @@ class DNATApp(df_base_app.DFlowApp):
                          'table': const.INGRESS_NAT_TABLE})
             return
 
+        msg = event.msg
         pkt = packet.Packet(msg.data)
         reply_pkt = self._revert_nat_for_icmp_embedded_packet(pkt, INGRESS)
-        lport_unique_key = msg.match.get('reg7')
-        self.dispatch_packet(reply_pkt, lport_unique_key)
+        port_key = msg.match.get('reg7')
+        self.dispatch_packet(reply_pkt, port_key)
 
-    def egress_packet_in_handler(self, event):
-        msg = event.msg
-        ofproto = self.ofproto
+    def ingress_packet_in_handler(self, event):
+        if event.msg.reason == self.ofproto.OFPR_INVALID_TTL:
+            self._handle_ingress_invalid_ttl(event)
+        else:
+            self._handle_ingress_icmp_translate(event)
 
-        if msg.reason == ofproto.OFPR_INVALID_TTL:
-            LOG.debug("Get an invalid TTL packet at table %s",
-                      const.EGRESS_NAT_TABLE)
-            if self.egress_ttl_invalid_handler_rate_limit():
-                LOG.warning("Get more than %(rate)s TTL invalid "
-                            "packets per second at table %(table)s",
-                            {'rate': self.conf.dnat_ttl_invalid_max_rate,
-                             'table': const.EGRESS_NAT_TABLE})
-                return
+    def _handle_egress_invalid_ttl(self, event):
+        LOG.debug("Get an invalid TTL packet at table %s",
+                  const.EGRESS_NAT_TABLE)
 
-            pkt = packet.Packet(msg.data)
-            e_pkt = pkt.get_protocol(ethernet.ethernet)
-            mac = netaddr.EUI(e_pkt.src)
-            floatingip = self.floatingip_rarp_cache.get(mac)
-            if floatingip:
-                icmp_ttl_pkt = icmp_error_generator.generate(
-                    icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE,
-                    msg.data, floatingip, pkt)
-                unique_key = msg.match.get('reg6')
-                self.dispatch_packet(icmp_ttl_pkt, unique_key)
-            else:
-                LOG.warning("The invalid TTL packet's destination mac %s "
-                            "can't be recognized.", e_pkt.src)
+        if self.egress_ttl_invalid_handler_rate_limit():
+            LOG.warning("Get more than %(rate)s TTL invalid "
+                        "packets per second at table %(table)s",
+                        {'rate': self.conf.dnat_ttl_invalid_max_rate,
+                         'table': const.EGRESS_NAT_TABLE})
             return
 
-        if self.external_bridge_mac:
-            if self.ingress_icmp_error_rate_limit():
-                LOG.warning("Get more than %(rate)s ICMP error messages "
-                            "per second at table %(table)s",
-                            {'rate': self.conf.dnat_icmp_error_max_rate,
-                             'table': const.INGRESS_NAT_TABLE})
-                return
+        msg = event.msg
 
-            pkt = packet.Packet(msg.data)
-            reply_pkt = self._revert_nat_for_icmp_embedded_packet(pkt, EGRESS)
-            self.send_packet(self.external_ofport, reply_pkt)
+        pkt = packet.Packet(msg.data)
+        e_pkt = pkt.get_protocol(ethernet.ethernet)
+        port_key = msg.match.get('reg6')
+        floatingip = self.fip_port_key_cache.get(port_key)
+        if floatingip is None:
+            LOG.warning("The invalid TTL packet's destination mac %s "
+                        "can't be recognized.", e_pkt.src)
+            return
+
+        icmp_ttl_pkt = icmp_error_generator.generate(
+            icmp.ICMP_TIME_EXCEEDED, icmp.ICMP_TTL_EXPIRED_CODE,
+            msg.data, floatingip.floating_ip_address, pkt)
+        self.dispatch_packet(icmp_ttl_pkt, port_key)
+
+    def _handle_egress_icmp_translate(self, event):
+        if self.ingress_icmp_error_rate_limit():
+            LOG.warning("Get more than %(rate)s ICMP error messages "
+                        "per second at table %(table)s",
+                        {'rate': self.conf.dnat_icmp_error_max_rate,
+                         'table': const.INGRESS_NAT_TABLE})
+            return
+
+        msg = event.msg
+
+        pkt = packet.Packet(msg.data)
+
+        reply_pkt = self._revert_nat_for_icmp_embedded_packet(pkt, EGRESS)
+        metadata = msg.match.get('metadata')
+
+        self.reinject_packet(
+            reply_pkt,
+            table_id=const.L2_LOOKUP_TABLE,
+            actions=[self.parser.OFPActionSetField(metadata=metadata)]
+        )
+
+    def egress_packet_in_handler(self, event):
+        if event.msg.reason == self.ofproto.OFPR_INVALID_TTL:
+            self._handle_egress_invalid_ttl(event)
+        else:
+            self._handle_egress_icmp_translate(event)
 
     def _revert_nat_for_icmp_embedded_packet(self, pkt, direction):
         e_pkt = pkt.get_protocol(ethernet.ethernet)
         ipv4_pkt = pkt.get_protocol(ipv4.ipv4)
+        ipv4_pkt.csum = 0
         icmp_pkt = pkt.get_protocol(icmp.icmp)
 
         embeded_ipv4_pkt, _, payload = ipv4.ipv4.parser(icmp_pkt.data.data)
@@ -533,16 +556,14 @@ class DNATApp(df_base_app.DFlowApp):
     def _associate_floatingip(self, floatingip):
         self.local_floatingips[floatingip.id] = floatingip
         lport = floatingip.lport
-        mac = lport.mac
-        self.floatingip_rarp_cache[mac] = floatingip.floating_ip_address
+        self.fip_port_key_cache[lport.unique_key] = floatingip
         self._install_ingress_nat_rules(floatingip)
         self._install_egress_nat_rules(floatingip)
 
     def _disassociate_floatingip(self, floatingip):
         self.local_floatingips.pop(floatingip.id, 0)
         lport = floatingip.lport
-        mac = lport.mac
-        self.floatingip_rarp_cache.pop(mac, None)
+        self.fip_port_key_cache.pop(lport.unique_key, None)
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)
 
