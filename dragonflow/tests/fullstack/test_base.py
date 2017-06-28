@@ -19,6 +19,7 @@ from oslo_log import log
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.db import api_nb
+from dragonflow.db import db_common
 from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
 from dragonflow.tests.common import clients
@@ -65,6 +66,42 @@ class DFTestBase(base.BaseTestCase):
 
         if cfg.CONF.df.enable_selective_topology_distribution:
             self.start_subscribing()
+
+        self._publish_log_event('started')
+
+    def tearDown(self):
+        self._publish_log_event('finished')
+        super(DFTestBase, self).tearDown()
+
+    def _publish_log_event(self, event):
+        publisher = self.get_publisher(port=23456)
+        test_name = self.id()
+        publisher.send_event(
+            db_common.DbUpdate(
+                action='log',
+                table='testing',
+                key=test_name,
+                value='\n{0} {1}\n'.format(test_name, event),
+            ),
+        )
+        publisher.close()
+
+    def _get_publisher(self, pubsub_driver_name):
+        pub_sub_driver = df_utils.load_driver(
+            pubsub_driver_name,
+            df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
+        publisher = pub_sub_driver.get_publisher()
+        publisher.initialize()
+        return publisher
+
+    def get_publisher(self, port=None):
+        if cfg.CONF.df.pub_sub_use_multiproc:
+            pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
+        else:
+            pubsub_driver_name = cfg.CONF.df.pub_sub_driver
+        if port is not None:
+            cfg.CONF.set_override('publisher_port', port, group='df')
+        return self._get_publisher(pubsub_driver_name)
 
     def check_app_loaded(self, app_name):
         apps_list = cfg.CONF.df.apps_list

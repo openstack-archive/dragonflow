@@ -35,21 +35,6 @@ class Namespace(object):
 
 
 class PubSubTestBase(test_base.DFTestBase):
-    def _get_publisher(self, pubsub_driver_name):
-        pub_sub_driver = df_utils.load_driver(
-            pubsub_driver_name,
-            df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
-        publisher = pub_sub_driver.get_publisher()
-        publisher.initialize()
-        return publisher
-
-    def get_publisher(self):
-        if cfg.CONF.df.pub_sub_use_multiproc:
-            pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
-        else:
-            pubsub_driver_name = cfg.CONF.df.pub_sub_driver
-        return self._get_publisher(pubsub_driver_name)
-
     def get_server_publisher(self, bind_address="127.0.0.1", port=12345):
         cfg.CONF.set_override('publisher_port', port, group='df')
         cfg.CONF.set_override('publisher_bind_address',
