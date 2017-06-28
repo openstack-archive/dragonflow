@@ -19,6 +19,7 @@ from oslo_log import log
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.db import api_nb
+from dragonflow.db import db_common
 from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
 from dragonflow.tests.common import clients
@@ -65,6 +66,28 @@ class DFTestBase(base.BaseTestCase):
 
         if cfg.CONF.df.enable_selective_topology_distribution:
             self.start_subscribing()
+
+        self.publisher = self.nb_api._get_publisher()
+        self.publisher.initialize()
+        self.publisher.send_event(
+            db_common.DbUpdate(
+                action='log',
+                table='testing',
+                key=self.id(),
+                value='started',
+            ),
+        )
+
+    def tearDown(self):
+        self.publisher.send_event(
+            db_common.DbUpdate(
+                action='log',
+                table='testing',
+                key=self.id(),
+                value='finished',
+            ),
+        )
+        super(DFTestBase, self).tearDown()
 
     def check_app_loaded(self, app_name):
         apps_list = cfg.CONF.df.apps_list
