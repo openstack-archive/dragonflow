@@ -17,6 +17,7 @@ from oslo_config import cfg
 import ConfigParser
 from dragonflow.common import utils as df_utils
 from dragonflow.controller.common import constants as const
+from dragonflow.db.models import l2
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -31,14 +32,7 @@ OFPVID_PRESENT = 0x1000
 
 
 class TestL2FLows(test_base.DFTestBase):
-    def _get_metadata_id(self, flows, ip, mac):
-        for flow in flows:
-            if flow['table'] == str(const.L3_PROACTIVE_LOOKUP_TABLE):
-                if 'nw_dst=' + ip in flow['match'] and mac in flow['actions']:
-                    m = re.search('metadata=0x([0-9a-f]+)', flow['match'])
-                    if m:
-                        return m.group(1)
-        return None
+
 
     def test_tunnel_network_flows(self):
         if self._check_tunneling_app_enable() is False:
@@ -65,11 +59,9 @@ class TestL2FLows(test_base.DFTestBase):
         self.assertIsNotNone(vm.server.addresses['mynetwork'])
         mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
-        metadataid = utils.wait_until_is_and_return(
-            lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
-                                          ip, mac),
-            exception=Exception('Metadata id was not found in OpenFlow rules')
-        )
+        lswitch = self.nb_api.get(
+                l2.LogicalSwitch(id=network_params['network']['id']))
+        metadataid = lswitch.unique_key
         port = utils.wait_until_is_and_return(
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
@@ -123,12 +115,10 @@ class TestL2FLows(test_base.DFTestBase):
         self.assertIsNotNone(ip)
         mac = vm.get_first_mac()
         self.assertIsNotNone(mac)
+        lswitch = self.nb_api.get(
+                l2.LogicalSwitch(id=network_params['network']['id']))
+        metadataid = lswitch.unique_key
 
-        metadataid = utils.wait_until_is_and_return(
-            lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
-                                          ip, mac),
-            exception=Exception('Metadata id was not found in OpenFlow rules')
-        )
         port = utils.wait_until_is_and_return(
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
@@ -297,12 +287,10 @@ class TestL2FLows(test_base.DFTestBase):
 
         mac = vm.get_first_mac()
         self.assertIsNotNone(mac)
+        lswitch = self.nb_api.get(
+                l2.LogicalSwitch(id=network_params['network']['id']))
+        metadataid = lswitch.unique_key
 
-        metadataid = utils.wait_until_is_and_return(
-            lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
-                                          ip, mac),
-            exception=Exception('Metadata id was not found in OpenFlow rules')
-        )
         port = utils.wait_until_is_and_return(
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
@@ -492,11 +480,9 @@ class TestL2FLows(test_base.DFTestBase):
         self.assertIsNotNone(vm.server.addresses['mynetwork'])
         mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
-        metadataid = utils.wait_until_is_and_return(
-            lambda: self._get_metadata_id(ovs.dump(self.integration_bridge),
-                                          ip, mac),
-            exception=Exception('Metadata id was not found in OpenFlow rules')
-        )
+        lswitch = self.nb_api.get(
+            l2.LogicalSwitch(id=network_params['network']['id']))
+        metadataid = lswitch.unique_key
         port = utils.wait_until_is_and_return(
             lambda: utils.get_vm_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
