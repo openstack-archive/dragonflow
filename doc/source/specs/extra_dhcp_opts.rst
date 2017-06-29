@@ -1,0 +1,70 @@
+..
+ This work is licensed under a Creative Commons Attribution 3.0 Unported
+ License.
+
+ http://creativecommons.org/licenses/by/3.0/legalcode
+
+=======================
+Support extra-dhcp-opts
+=======================
+
+
+Problem Description
+===================
+For enable to users to configure custom dhcp-options neutron-api
+supply the extra-dhcp-opts extension [1]_.
+
+According to RFC 2131 [2]_  -  dhcp-options is list that composed from
+tags-values pairs - when  tag is number in the rage of 0-255,
+and the value is a variable-length byte-sequence.
+(for example RFC 2132 [3]_ define list dhcp options
+for BOOTP vendor-extensions).
+
+Neutron spec define the  extra-extra-dhcp-opts as a set of pairs
+that each pair combined form opt_name and opt_value [1]_ , but the spec
+didn't not define how opt_name should be translated to dhcp-opt number.
+
+According to the examples in the spec, and according to neutron reference
+implementation, the format of the option names is derived from the
+configuration file of dnsmsq-dhcp server ( as it used as the server in the
+reference implementation ) . in addition that configuration enable to
+configure fields in the dhcp-packet itself (the  "server-ip-address"
+as it change the  siaddr -  that isn't part of the
+options-scope in the dhcp-packet [2]_).
+
+In dragonflow we are using custom dhcp-app for supporting our
+distributed-dhcp solution [4]_ . That app currently return a
+pre-defined set of dhcp-optios , ans not using the lport the extra-dhcp-opt
+attribute.
+
+We want to propose a new implementation that support the extra-dhcp-option -
+By supporting the opt-name in format of dnsmasq-conf , alongside with other
+configurations format (for example: dhcpd.conf format or by supplying the tags
+directly as a number - "11" for dhcp-opt 11).
+
+
+Proposed Change
+===============
+
+in the proposed change we want to:
+
+* Define language that acceptable as dhcp tag by the df-dhcp-app (the
+  numbers 0-255 and all the supported-fields as they defined in the RFC [2]_)
+
+* In the L2 plugin - add code that translate the opt_name to the language
+  that described above (in case of unknown option - port creation should fail)
+
+* add type of dhcp-opts-dictonary to the NB-db
+
+* In the DHCP app - add code that answer to dhcp requests according to
+  the configured dhcp-opts
+
+
+References
+==========
+.. [#] https://specs.openstack.org/openstack/neutron-specs/specs/api/extra_dhcp_options__extra-dhcp-opt_.html
+.. [#] https://tools.ietf.org/html/rfc2131
+.. [#] https://tools.ietf.org/html/rfc2132
+.. [#] https://github.com/openstack/dragonflow/blob/master/doc/source/distributed_dhcp.rst
+
+
