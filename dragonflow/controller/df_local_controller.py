@@ -186,7 +186,7 @@ class DfLocalController(object):
         LOG.info("Deleting remote ports in remote chassis %s", chassis.id)
         # Chassis is deleted, there is no reason to keep the remote port
         # in it.
-        index = l2.LogicalPort.get_indexes()['chassis_id']
+        index = l2.LogicalPort.get_index('chassis_id')
         remote_ports = self.db_store.get_all(l2.LogicalPort(chassis=chassis),
                                              index=index)
         for port in remote_ports:

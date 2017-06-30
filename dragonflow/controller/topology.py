@@ -156,7 +156,7 @@ class Topology(object):
             l2.LogicalSwitch(network_type=tunnel_type),
             l2.LogicalSwitch.get_index('network_type'))
         for lswitch in lswitches:
-            index = l2.LogicalPort.get_indexes()['lswitch_id']
+            index = l2.LogicalPort.get_index('lswitch_id')
             lports = self.db_store.get_all(l2.LogicalPort(lswitch=lswitch),
                                            index=index)
             for lport in lports:
