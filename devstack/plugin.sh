@@ -16,7 +16,7 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.6}
 # Set empty EXTERNAL_HOST_IP
 EXTERNAL_HOST_IP=${EXTERNAL_HOST_IP:-}
 
-DEFAULT_TUNNEL_TYPE="geneve"
+DEFAULT_TUNNEL_TYPES="vxlan,geneve,gre"
 DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
 "dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp,"\
 "portqos_app.PortQosApp,classifier_app.ClassifierApp,tunneling_app.TunnelingApp,"\
@@ -50,7 +50,7 @@ if [[ "$ENABLE_AGING_APP" == "True" ]]; then
 fi
 
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
-TUNNEL_TYPE=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPE}
+TUNNEL_TYPES=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPES}
 
 # How to connect to the database storing the virtual topology.
 REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
@@ -262,7 +262,7 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df enable_dpdk "$ENABLE_DPDK"
     iniset $DRAGONFLOW_CONF df management_ip "$HOST_IP"
     iniset $DRAGONFLOW_CONF df local_ip "$TUNNEL_ENDPOINT_IP"
-    iniset $DRAGONFLOW_CONF df tunnel_type "$TUNNEL_TYPE"
+    iniset $DRAGONFLOW_CONF df tunnel_types "$TUNNEL_TYPES"
     iniset $DRAGONFLOW_CONF df integration_bridge "$INTEGRATION_BRIDGE"
     iniset $DRAGONFLOW_CONF df apps_list "$DF_APPS_LIST"
     iniset $DRAGONFLOW_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
