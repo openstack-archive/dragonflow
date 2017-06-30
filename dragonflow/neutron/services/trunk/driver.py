@@ -19,14 +19,14 @@ from neutron.callbacks import registry
 from neutron.services.trunk import constants
 from neutron.services.trunk.drivers import base
 from neutron_lib.api.definitions import portbindings
-from neutron_lib.plugins import directory
 
 from dragonflow import conf as cfg
 from dragonflow.db.models import l2
 from dragonflow.db.models import trunk as trunk_models
+from dragonflow.neutron.services import mixins
 
 
-class DragonflowDriver(base.DriverBase):
+class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
     def __init__(self):
         super(DragonflowDriver, self).__init__(
             'df',
@@ -36,15 +36,6 @@ class DragonflowDriver(base.DriverBase):
         )
         self._nb_api = None
         self._register_init_events()
-
-    @property
-    def nb_api(self):
-        if self._nb_api is None:
-            plugin = directory.get_plugin()
-            mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
-            self._nb_api = mech_driver.nb_api
-
-        return self._nb_api
 
     @property
     def is_loaded(self):

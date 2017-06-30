@@ -17,7 +17,6 @@ from neutron_lib.callbacks import registry
 from neutron_lib.callbacks import resources
 from neutron_lib import constants as n_const
 from neutron_lib import context as n_context
-from neutron_lib.plugins import directory
 from neutron_lib.services import base as service_base
 from oslo_log import log as logging
 
@@ -25,6 +24,7 @@ from dragonflow.db.models import bgp
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.neutron import lockedobjects_db as lock_db
+from dragonflow.neutron.services import mixins
 
 
 LOG = logging.getLogger(__name__)
@@ -50,7 +50,8 @@ def bgp_speaker_from_neutron_bgp_speaker(speaker):
 
 
 class DFBgpPlugin(service_base.ServicePluginBase,
-                  bgp_db.BgpDbMixin):
+                  bgp_db.BgpDbMixin,
+                  mixins.LazyNbApiMixin):
 
     supported_extension_aliases = [bgp_ext.BGP_EXT_ALIAS]
 
@@ -58,15 +59,6 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         super(DFBgpPlugin, self).__init__()
         self._nb_api = None
         self._register_callbacks()
-
-    @property
-    def nb_api(self):
-        if self._nb_api is None:
-            plugin = directory.get_plugin()
-            mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
-            self._nb_api = mech_driver.nb_api
-
-        return self._nb_api
 
     def get_plugin_name(self):
         return bgp_ext.BGP_EXT_ALIAS + '_svc_plugin'

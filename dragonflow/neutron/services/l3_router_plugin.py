@@ -44,6 +44,7 @@ from dragonflow.db.models import l3
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.common import constants as df_const
 from dragonflow.neutron.db.models import l3 as neutron_l3
+from dragonflow.neutron.services import mixins
 
 
 LOG = log.getLogger(__name__)
@@ -54,7 +55,8 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                        extraroute_db.ExtraRoute_dbonly_mixin,
                        l3_gwmode_db.L3_NAT_db_mixin,
                        l3_attrs_db.ExtraAttributesMixin,
-                       l3_agentschedulers_db.L3AgentSchedulerDbMixin):
+                       l3_agentschedulers_db.L3AgentSchedulerDbMixin,
+                       mixins.LazyNbApiMixin):
 
     """Implementation of the Dragonflow Neutron L3 Router Service Plugin.
 
@@ -80,15 +82,6 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @property
     def core_plugin(self):
         return directory.get_plugin()
-
-    @property
-    def nb_api(self):
-        if self._nb_api is None:
-            plugin = self.core_plugin
-            mech_driver = plugin.mechanism_manager.mech_drivers['df'].obj
-            self._nb_api = mech_driver.nb_api
-
-        return self._nb_api
 
     def _register_callbacks(self):
         registry.subscribe(self.router_create_callback,
