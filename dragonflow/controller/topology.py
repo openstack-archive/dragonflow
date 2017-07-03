@@ -138,7 +138,7 @@ class Topology(object):
             return False
 
         if (port_type == constants.OVS_VM_INTERFACE and
-                ovs_port.iface_id is None):
+                ovs_port.iface is None):
             return False
 
         return True
@@ -186,8 +186,7 @@ class Topology(object):
             ovs_port, n_const.PORT_STATUS_ACTIVE)
 
     def _vm_port_updated(self, ovs_port):
-        lport_id = ovs_port.iface_id
-        lport = self._get_lport(lport_id)
+        lport = self._get_lport(ovs_port.iface.id)
         if lport is None:
             LOG.warning("No logical port found for ovs port: %s",
                         ovs_port)
@@ -195,10 +194,10 @@ class Topology(object):
         topic = lport.topic
         if not topic:
             return
-        self._add_to_topic_subscribed(topic, lport_id)
+        self._add_to_topic_subscribed(topic, lport.id)
 
         self.ovs_to_lport_mapping[ovs_port.id] = OvsLportMapping(
-                lport_id=lport_id, topic=topic)
+                lport_id=lport.id, topic=topic)
 
         chassis = lport.chassis
         # check if migration occurs
@@ -206,13 +205,14 @@ class Topology(object):
             device_owner = lport.device_owner
             if n_const.DEVICE_OWNER_COMPUTE_PREFIX in device_owner:
                 LOG.info("Prepare migrate lport %(lport)s to %(chassis)s",
-                         {"lport": lport_id, "chassis": chassis})
+                         {"lport": lport.id, "chassis": chassis})
                 self.nb_api.create(migration.Migration(
-                        id=lport_id, dest_chassis=self.chassis_name,
+                        id=lport.id, dest_chassis=self.chassis_name,
                         status=migration.MIGRATION_STATUS_DEST_PLUG))
             return
 
-        cached_lport = self.db_store.get_one(l2.LogicalPort(id=lport_id))
+        lean_lport = l2.LogicalPort(id=ovs_port.iface.id)
+        cached_lport = self.db_store.get_one(lean_lport)
         if not cached_lport or not cached_lport.ofport:
             # If the logical port is not in db store or its ofport is not
             # valid. It has not been applied to dragonflow apps. We need to
@@ -226,15 +226,16 @@ class Topology(object):
 
     def _vm_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.id
-        lport_id = ovs_port.iface_id
-        lport = self.db_store.get_one(l2.LogicalPort(id=lport_id))
+        lport_ref = ovs_port.iface
+        lean_lport = lport_ref.get_proxied_model()(id=lport_ref.id)
+        lport = self.db_store.get_one(lean_lport)
         if lport is None:
             lport = self.ovs_to_lport_mapping.get(ovs_port_id)
             if lport is None:
                 return
             topic = lport.topic
             del self.ovs_to_lport_mapping[ovs_port_id]
-            self._del_from_topic_subscribed(topic, lport_id)
+            self._del_from_topic_subscribed(topic, lport.id)
             return
 
         topic = lport.topic
@@ -243,21 +244,22 @@ class Topology(object):
         try:
             self.controller.delete(lport)
         except Exception:
-            LOG.exception(
-                'Failed to process logical port offline event %s', lport_id)
+            LOG.exception('Failed to process logical port offline event %s',
+                          lport_ref.id)
         finally:
             self.controller.notify_port_status(
                 ovs_port, n_const.PORT_STATUS_DOWN)
 
-            migration_obj = self.nb_api.get(migration.Migration(id=lport_id))
+            migration_obj = self.nb_api.get(
+                    migration.Migration(id=lport_ref.id))
             if migration_obj and migration_obj.chassis:
-                LOG.info("Sending migrating event for %s", lport_id)
-                migration_obj.lport = lport_id
+                LOG.info("Sending migrating event for %s", lport_ref.id)
+                migration_obj.lport = lport_ref
                 migration_obj.status = migration.MIGRATION_STATUS_SRC_UNPLUG
                 self.nb_api.update(migration_obj)
 
             del self.ovs_to_lport_mapping[ovs_port_id]
-            self._del_from_topic_subscribed(topic, lport_id)
+            self._del_from_topic_subscribed(topic, lport_ref.id)
 
     def _add_to_topic_subscribed(self, topic, lport_id):
         if not self.enable_selective_topo_dist or not topic:
@@ -314,8 +316,7 @@ class Topology(object):
         delete_ovs_to_lport_mapping = self.ovs_to_lport_mapping
         for key, ovs_port in self.ovs_ports.items():
             if ovs_port.type == constants.OVS_VM_INTERFACE:
-                lport_id = ovs_port.iface_id
-                lport = self._get_lport(lport_id)
+                lport = self._get_lport(ovs_port.iface.id)
                 if lport is None:
                     LOG.warning("No logical port found for ovs port: %s",
                                 ovs_port)
@@ -324,10 +325,10 @@ class Topology(object):
                 if not topic:
                     continue
                 new_ovs_to_lport_mapping[key] = OvsLportMapping(
-                    lport_id=lport_id, topic=topic)
+                    lport_id=lport.id, topic=topic)
                 if not delete_ovs_to_lport_mapping.pop(key, None):
                     add_ovs_to_lport_mapping[key] = OvsLportMapping(
-                        lport_id=lport_id, topic=topic)
+                        lport_id=lport.id, topic=topic)
         self.ovs_to_lport_mapping = new_ovs_to_lport_mapping
         for value in add_ovs_to_lport_mapping.values():
             lport_id = value.lport_id

@@ -14,6 +14,7 @@ from jsonmodels import fields
 from dragonflow.common import constants
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
+from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
 
 
@@ -44,7 +45,7 @@ class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
 
     ofport = fields.IntField()
     admin_state = df_fields.EnumField(('up', 'down'))
-    iface_id = fields.StringField()
+    iface = df_fields.ReferenceField(l2.LogicalPort)
     type = df_fields.EnumField(
         (
             constants.OVS_BRIDGE_INTERFACE,
@@ -84,7 +85,7 @@ class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
         external_ids = row.external_ids
         iface_id = external_ids.get('iface-id')
         if iface_id is not None:
-            res.iface_id = iface_id
+            res.iface = iface_id
 
         attached_mac = external_ids.get('attached-mac')
         if attached_mac is not None:

@@ -37,7 +37,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return False
         elif _interface.type != constants.OVS_VM_INTERFACE:
             return False
-        elif _interface.iface_id is None:
+        elif _interface.iface is None:
             return False
         elif _interface.ofport <= 0:
             return False
@@ -58,7 +58,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return False
         elif _interface.type != constants.OVS_VM_INTERFACE:
             return False
-        elif _interface.iface_id is None:
+        elif _interface.iface is None:
             return False
         else:
             return True
