@@ -18,7 +18,6 @@ from ryu.ofproto import nicira_ext
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
-from dragonflow.db.models import l2
 from dragonflow.db.models import ovs
 
 
@@ -43,14 +42,14 @@ class ClassifierApp(df_base_app.DFlowApp):
     @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_UPDATED)
     def _ovs_port_created(self, ovs_port, orig_ovs_port=None):
         ofport = ovs_port.ofport
-        lport_id = ovs_port.iface_id
-        if not lport_id:
+        lport_ref = ovs_port.lport
+        if not lport_ref:
             return  # Not relevant
         if orig_ovs_port and orig_ovs_port.ofport != ofport:
             self._ovs_port_deleted(ovs_port)
         if not ofport or ofport == -1:
             return  # Not ready yet, or error
-        lport = self.nb_api.get(l2.LogicalPort(id=lport_id))
+        lport = self.nb_api.get(lport_ref)
         self._ofport_unique_key_map[ovs_port.id] = (ofport, lport.unique_key)
         LOG.info("Add local ovs port %(ovs_port)s, logical port "
                  "%(lport)s for classification",
