@@ -66,8 +66,6 @@ Etcd Database:
 
     enable_service df-etcd
 
-    enable_service df-etcd-server
-
 Ram Cloud Database:
 
     enable_service df-ramcloud
@@ -87,7 +85,6 @@ Redis Database:
     enable_service df-redis
 
     enable_service df-redis-server
-
 
 Detailed Installation
 ---------------------
