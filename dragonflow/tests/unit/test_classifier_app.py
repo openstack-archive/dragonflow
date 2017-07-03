@@ -55,7 +55,7 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
         self.controller.update(fake_local_vlan_port)
         self.app.mod_flow.assert_not_called()
         ovs_port = ovs.OvsPort(id='fake_ovs_port',
-                               iface_id=fake_local_vlan_port.id,
+                               lport=fake_local_vlan_port.id,
                                ofport=1, admin_state='up',
                                type=constants.OVS_VM_INTERFACE)
         self.controller.update(ovs_port)

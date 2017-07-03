@@ -389,6 +389,7 @@ class DNATApp(df_base_app.DFlowApp):
 
     def _get_external_subnet(self, fip):
         floating_lport = self._get_floating_lport(fip)
+        print("_get_external_subnet: floating_lport: %s", floating_lport)
         subnets = floating_lport.lswitch.subnets
         for subnet in subnets:
             if fip.floating_ip_address in subnet.cidr:
