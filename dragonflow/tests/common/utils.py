@@ -23,6 +23,7 @@ import six
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as df_const
 from dragonflow.db import db_store
+from dragonflow.db import model_proxy
 from dragonflow.db.models import l2
 from dragonflow.ovsdb import vswitch_impl
 from dragonflow.tests.common import constants as const
@@ -246,7 +247,11 @@ def with_nb_objects(*objs):
         return res
 
     def _get(obj):
-        objs = _get_all(type(obj))
+        if model_proxy.is_model_proxy(obj):
+            model = obj.get_proxied_model()
+        else:
+            model = type(obj)
+        objs = _get_all(model)
         for o in objs:
             if obj.id == o.id:
                 return o
