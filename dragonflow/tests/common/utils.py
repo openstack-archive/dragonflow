@@ -13,6 +13,7 @@
 import functools
 import re
 
+import mock
 import netaddr
 from neutron.agent.common import utils as agent_utils
 from neutron.common import utils as n_utils
@@ -221,5 +222,35 @@ def add_objs_to_db_store(*objs):
             finally:
                 for obj in objs:
                     db_store_inst.delete(obj)
+        return wrapper
+    return decorator
+
+
+def with_local_objects(*objs):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            db_store_inst = db_store.get_instance()
+            for obj in objs:
+                db_store_inst.update(obj)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def with_nb_objects(*objs):
+    def _get_all(model, topic=None):
+        res = [o for o in objs if type(o) == model]
+        if topic is not None:
+            res = [o for o in res if o.topic == topic]
+        return res
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(obj, *args, **kwargs):
+            with mock.patch.object(
+                obj.nb_api, 'get_all', side_effect=_get_all
+            ):
+                return func(obj, *args, **kwargs)
         return wrapper
     return decorator
