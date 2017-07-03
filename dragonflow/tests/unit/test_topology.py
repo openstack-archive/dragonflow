@@ -63,7 +63,6 @@ class TestTopology(test_app_base.DFAppTestBase):
         # By default, return empty value for all resources, each case can
         # customize the return value on their own.
         self.nb_api.get_all.return_value = []
-        self.nb_api.get_floatingips.return_value = []
         self.fake_invalid_ovs_port = copy.deepcopy(
             test_app_base.fake_ovs_port1)
 
