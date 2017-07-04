@@ -235,7 +235,6 @@ class EnumListField(fields.ListField):
 
 
 class DhcpOptsDictField(fields.BaseField):
-
     '''A field that stores a  mapping between
     int (represented the dhcp tag) ->
     string (represent the dhcp value)
@@ -251,13 +250,17 @@ class DhcpOptsDictField(fields.BaseField):
         if obj is not None:
             return {str(key): inner_val for key, inner_val in obj.items()}
 
+    @staticmethod
+    def is_tag_valid(tag):
+        return isinstance(tag, six.integer_types) and (
+            0 < tag < 255)
+
     def validate(self, value):
         super(DhcpOptsDictField, self).validate(value)
         if not value:
             return
         for key, inner_val in value.items():
-            if not isinstance(key, six.integer_types) or (
-                            key < 0 or key > 255):
+            if not DhcpOptsDictField.is_tag_valid(key):
                 raise errors.ValidationError(
                     _('Key {} is not a vaild dhcp opt').format(key))
             if not isinstance(inner_val, six.string_types):
