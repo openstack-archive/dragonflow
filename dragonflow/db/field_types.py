@@ -14,6 +14,8 @@ from jsonmodels import fields
 import netaddr
 import six
 
+from dragonflow.common import net_utils
+
 from dragonflow._i18n import _
 from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
@@ -235,7 +237,6 @@ class EnumListField(fields.ListField):
 
 
 class DhcpOptsDictField(fields.BaseField):
-
     '''A field that stores a  mapping between
     int (represented the dhcp tag) ->
     string (represent the dhcp value)
@@ -256,8 +257,7 @@ class DhcpOptsDictField(fields.BaseField):
         if not value:
             return
         for key, inner_val in value.items():
-            if not isinstance(key, six.integer_types) or (
-                            key < 0 or key > 255):
+            if not net_utils.dhcp_is_tag_valid(key):
                 raise errors.ValidationError(
                     _('Key {} is not a vaild dhcp opt').format(key))
             if not isinstance(inner_val, six.string_types):
