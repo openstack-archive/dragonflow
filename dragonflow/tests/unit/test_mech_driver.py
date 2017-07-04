@@ -12,12 +12,15 @@
 
 """Unit testing for dragonflow mechanism driver."""
 
+
 import mock
 import netaddr
+
 from neutron.plugins.ml2 import config
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_plugin
+from oslo_serialization import jsonutils
 
 from dragonflow.db.models import host_route
 from dragonflow.db.models import l2
@@ -452,9 +455,52 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             df_subnet = lswitch.find_subnet(subnet['id'])
             self.assertIsNone(df_subnet.dhcp_ip)
 
+    def _test_create(self, port):
+
+        self.nb_api.create.assert_called_once()
+        lport = self.nb_api.create.call_args_list[0][0][0]
+        self.assertIsInstance(lport, l2.LogicalPort)
+        expected_edo = [{'value': "192.168.0.1",
+                         'tag': 3},
+                        {'value': "0.0.0.0/0,192.168.0.1",
+                         'tag': 121}]
+
+        for edo in expected_edo:
+            self.assertEqual(edo['value'],
+                             lport.dhcp_params.opts[edo['tag']])
+
+    def _test_update(self, port):
+        self.nb_api.update.reset_mock()
+        data = {'port': {'extra_dhcp_opts': [{'opt_name': 'routers',
+                                              'opt_value': None},
+                                             {'opt_name': '121',
+                                              'opt_value': None}]}}
+        req = self.new_update_request(
+            'ports',
+            data, port['id'])
+        req.get_response(self.api)
+        self.nb_api.update.assert_called_once()
+        lport = self.nb_api.update.call_args_list[0][0][0]
+        self.assertIsInstance(lport, l2.LogicalPort)
+        self.assertFalse(lport.dhcp_params.opts)
+
+    def _test_invalid_args(self, port):
+        data = {'port': {'extra_dhcp_opts': [{'opt_name': 'invalid',
+                                              'opt_value': "test"},
+                                             {'opt_name': '121',
+                                              'opt_value': None}]}}
+        req = self.new_update_request(
+            'ports',
+            data, port['id'])
+
+        response = req.get_response(self.api)
+        self.assertEqual(response.status_code, 400)
+        error_type = jsonutils.loads(response.body)["NeutronError"]["type"]
+        self.assertEqual(error_type, "InvalidInput")
+
     def test_create_update_port_extra_dhcp_opts(self):
         kwargs = {'extra_dhcp_opts':
-                  [{'opt_value': "192.168.0.1", 'opt_name': "3"},
+                  [{'opt_value': "192.168.0.1", 'opt_name': "routers"},
                    {'opt_value': "0.0.0.0/0,192.168.0.1", 'opt_name': "121"}]}
         with self.subnet(enable_dhcp=False) as subnet:
             self.nb_api.create.reset_mock()
@@ -462,31 +508,10 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                            arg_list=('extra_dhcp_opts',),
                            **kwargs) as p:
                 port = p['port']
-                self.nb_api.create.assert_called_once()
-                lport = self.nb_api.create.call_args_list[0][0][0]
-                self.assertIsInstance(lport, l2.LogicalPort)
-                expected_edo = [{'value': "192.168.0.1",
-                                 'tag': 3},
-                                {'value': "0.0.0.0/0,192.168.0.1",
-                                 'tag': 121}]
 
-                for edo in expected_edo:
-                    self.assertEqual(edo['value'],
-                                     lport.dhcp_params.opts[edo['tag']])
-
-                self.nb_api.update.reset_mock()
-                data = {'port': {'extra_dhcp_opts': [{'opt_name': '3',
-                                                      'opt_value': None},
-                                                     {'opt_name': '121',
-                                                      'opt_value': None}]}}
-                req = self.new_update_request(
-                        'ports',
-                        data, port['id'])
-                req.get_response(self.api)
-                self.nb_api.update.assert_called_once()
-                lport = self.nb_api.update.call_args_list[0][0][0]
-                self.assertIsInstance(lport, l2.LogicalPort)
-                self.assertFalse(lport.dhcp_params.opts)
+                self._test_create(port)
+                self._test_update(port)
+                self._test_invalid_args(port)
 
 
 class TestDFMechansimDriverAllowedAddressPairs(
