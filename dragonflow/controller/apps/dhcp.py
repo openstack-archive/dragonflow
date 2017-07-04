@@ -174,9 +174,11 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_response.add_protocol(udp.udp(src_port=const.DHCP_SERVER_PORT,
                                            dst_port=const.DHCP_CLIENT_PORT))
 
+        siaddr = lport.dhcp_params.siaddr or dhcp_server_address
+
         dhcp_response.add_protocol(dhcp.dhcp(op=dhcp.DHCP_BOOT_REPLY,
                                              chaddr=pkt_ethernet.src,
-                                             siaddr=dhcp_server_address,
+                                             siaddr=siaddr,
                                              boot_file=dhcp_request.boot_file,
                                              yiaddr=lport.ip,
                                              xid=dhcp_request.xid,
