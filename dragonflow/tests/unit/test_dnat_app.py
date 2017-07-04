@@ -101,6 +101,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             self.dnat_app._remove_local_port(test_app_base.fake_local_port1)
             mock_func.assert_not_called()
 
+    @utils.with_nb_objects(test_app_base.fake_floating_port)
     def test_floatingip_removed_only_once(self):
         self.controller.update(test_app_base.fake_local_port1)
         self.controller.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
@@ -111,6 +112,16 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             self.controller.topology.ovs_port_deleted(
                 test_app_base.fake_ovs_port1)
             mock_func.assert_not_called()
+
+    @utils.with_nb_objects(test_app_base.fake_floating_port)
+    def test_floatingip_ovs_port_removed(self):
+        self.controller.update(test_app_base.fake_local_port1)
+        self.controller.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
+        self.controller.update(test_app_base.fake_floatingip1)
+        with mock.patch.object(self.controller, 'delete') as mock_func:
+            self.controller.topology.ovs_port_deleted(
+                test_app_base.fake_ovs_port1)
+            mock_func.assert_called_once()
 
     @contextlib.contextmanager
     def _mock_assoc_disassoc(self):

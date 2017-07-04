@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
 import functools
 import re
 
@@ -23,6 +24,7 @@ import six
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants as df_const
 from dragonflow.db import db_store
+from dragonflow.db import model_proxy
 from dragonflow.db.models import l2
 from dragonflow.ovsdb import vswitch_impl
 from dragonflow.tests.common import constants as const
@@ -238,19 +240,55 @@ def with_local_objects(*objs):
     return decorator
 
 
-def with_nb_objects(*objs):
-    def _get_all(model, topic=None):
-        res = [o for o in objs if type(o) == model]
+class with_nb_objects(object):
+    """
+    Fake the state of the NB database to have the objects passed to the
+    constructor
+    """
+    def __init__(self, *objs):
+        self._objs = objs
+        self._objs_map = {(type(o), o.id): o for o in objs}
+
+    def _get_all(self, model, topic=None):
+        res = [o for o in self._objs if type(o) == model]
         if topic is not None:
             res = [o for o in res if o.topic == topic]
         return res
 
-    def decorator(func):
+    def _get(self, obj):
+        if model_proxy.is_model_proxy(obj):
+            model = obj.get_proxied_model()
+        else:
+            model = type(obj)
+        return self._objs_map.get((model, obj.id))
+
+    @contextlib.contextmanager
+    def context(self, obj):
+        """
+        Creates a context in which the NB database contains the objects
+        passed to the constructor. The member nb_api in the class
+        containing the function is the NB database
+        Example usage:
+        with utils.with_nb_objects(obj1, obj2, obj3).context(self):
+            ...
+        """
+        with mock.patch.object(
+                    obj.nb_api, 'get_all', side_effect=self._get_all
+               ), mock.patch.object(obj.nb_api, 'get', side_effect=self._get):
+            yield
+
+    def __call__(self, func):
+        """
+        This decorator makes the NB database throughout the function have the
+        objects passed to the constructor. The member nb_api in the class
+        containing the function is the NB database
+        Example usage:
+        @utils.with_nb_objects(obj1, obj2, obj3)
+        def test_func(self):
+            ...
+        """
         @functools.wraps(func)
         def wrapper(obj, *args, **kwargs):
-            with mock.patch.object(
-                obj.nb_api, 'get_all', side_effect=_get_all
-            ):
+            with self.context(obj):
                 return func(obj, *args, **kwargs)
         return wrapper
-    return decorator

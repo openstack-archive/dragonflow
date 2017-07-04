@@ -269,6 +269,17 @@ fake_chassis2 = core.Chassis(
 )
 
 
+fake_floating_port = make_fake_local_port(
+    id='fake_floatingip_port_id',
+    lswitch='fake_external_switch1',
+    subnets=external_switch1_subnets,
+    macs=['91:92:93:12:34:56'],
+    ips=['172.24.4.2'],
+    name='fake_floatingip_port_id',
+    ofport=None,
+)
+
+
 fake_floatingip1 = l3.FloatingIp(
     id='fake_floatingip_id1',
     topic='fake_tenant1',
