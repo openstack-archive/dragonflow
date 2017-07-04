@@ -245,6 +245,10 @@ class DhcpOptsDictField(fields.BaseField):
 
     types = (dict,)
 
+    @staticmethod
+    def get_valid_tags():
+        return DhcpOptsDictField.valid_tags
+
     def validate(self, value):
         super(DhcpOptsDictField, self).validate(value)
         if not value:
