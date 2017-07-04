@@ -468,6 +468,10 @@ class DFMechDriver(api.MechanismDriver):
             remote_vtep = True
         return chassis, remote_vtep
 
+    def create_port_precommit(self, context):
+        port = context.current
+        neutron_l2.validate_extra_dhcp_option(port)
+
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
     def create_port_postcommit(self, context):
         port = context.current
@@ -496,6 +500,10 @@ class DFMechDriver(api.MechanismDriver):
 
         owner = port['device_owner']
         return owner == n_const.DEVICE_OWNER_DHCP and subnet_id is None
+
+    def update_port_precommit(self, context):
+        port = context.current
+        neutron_l2.validate_extra_dhcp_option(port)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
     def update_port_postcommit(self, context):
