@@ -15,9 +15,11 @@ from neutron_lib.api.definitions import extra_dhcp_opt
 from neutron_lib.api.definitions import port_security as psec
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
+from neutron_lib import exceptions as n_exc
 
 from dragonflow.db.models import l2
 from dragonflow.neutron.common import constants as df_const
+from dragonflow.neutron.common import dhcp_opt_map as opt_map
 
 
 def logical_switch_from_neutron_network(network):
@@ -70,14 +72,28 @@ def _validate_ip_prefix_allowed_address_pairs(allowed_address_pairs):
     return supported_allowed_address_pairs
 
 
+def _get_extra_dhcp_options(port):
+    return port.get(extra_dhcp_opt.EXTRADHCPOPTS, [])
+
+
 def _build_extra_dhcp_options(port):
     dhcp_opt_dict = {}
-    opts = port.get(extra_dhcp_opt.EXTRADHCPOPTS, [])
+    opts = _get_extra_dhcp_options(port)
 
     for opt in opts:
-        dhcp_opt_dict[opt['opt_name']] = opt['opt_value']
+        opt_tag = opt_map.dhcp_app_tag_by_user_tag(opt['opt_name'])
+        dhcp_opt_dict[opt_tag] = opt['opt_value']
 
     return dhcp_opt_dict
+
+
+def validate_extra_dhcp_option(port):
+    opts = _get_extra_dhcp_options(port)
+    for opt in opts:
+        if not opt_map.dhcp_app_tag_by_user_tag(opt['opt_name']):
+            msg = "extra_dhcp_opt {} is not supported".format(
+                opt['opt_name'])
+            raise n_exc.InvalidInput(error_message=msg)
 
 
 def logical_port_from_neutron_port(port):
