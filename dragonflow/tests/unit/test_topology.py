@@ -19,6 +19,7 @@ import mock
 from oslo_config import cfg
 
 from dragonflow.controller import topology
+from dragonflow.tests.common import utils
 from dragonflow.tests.unit import test_app_base
 
 
@@ -114,31 +115,22 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.controller.update.assert_not_called()
 
     def test_vm_online_after_topology_pulled(self):
-        self.nb_api.get_all.side_effect = nb_api_get_all_func(
-            test_app_base.fake_logic_switch1,
-            test_app_base.fake_local_port1)
-
-        def _get_logical_port(lport):
-            lport_id = lport.id
-            if lport_id == test_app_base.fake_local_port1.id:
-                return test_app_base.fake_local_port1
-            if lport_id == test_app_base.fake_local_port2.id:
-                return test_app_base.fake_local_port2
-
-        self.nb_api.get.side_effect = _get_logical_port
-
         # Pull topology by first ovs port online
-        self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
+        with utils.with_nb_objects(test_app_base.fake_logic_switch1,
+                                   test_app_base.fake_local_port1).context(
+                                        self):
+            self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
 
         # Another port online
-        self.nb_api.get_all.side_effect = nb_api_get_all_func(
-            test_app_base.fake_local_port1,
-            test_app_base.fake_local_port2)
-        self.controller.update = mock.Mock()
-        self.topology.ovs_port_updated(test_app_base.fake_ovs_port2)
-        self.controller.update.assert_called_once_with(
-            test_app_base.fake_local_port2)
-        self.nb_api.subscriber.register_topic.assert_called_once()
+        with utils.with_nb_objects(test_app_base.fake_logic_switch1,
+                                   test_app_base.fake_local_port1,
+                                   test_app_base.fake_local_port2).context(
+                                        self):
+            self.controller.update = mock.Mock()
+            self.topology.ovs_port_updated(test_app_base.fake_ovs_port2)
+            self.controller.update.assert_called_once_with(
+                test_app_base.fake_local_port2)
+            self.nb_api.subscriber.register_topic.assert_called_once()
 
     def test_multi_vm_port_online_restart_controller(self):
         self.nb_api.get_all.side_effect = nb_api_get_all_func(
