@@ -56,7 +56,7 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
         self.assertEqual(3, self.app.mod_flow.call_count)
 
     def _test_add_port(self, lport):
-        with mock.patch('dragonflow.controller.l3_proactive_app.'
+        with mock.patch('dragonflow.controller.apps.l3_proactive.'
                         'L3ProactiveApp._add_port_process'
                         ) as fake_add_port_process:
             self.controller.update(lport)
@@ -69,7 +69,7 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
 
     def _test_remove_port(self, lport):
         self.controller.update(lport)
-        with mock.patch('dragonflow.controller.l3_proactive_app.'
+        with mock.patch('dragonflow.controller.apps.l3_proactive.'
                         'L3ProactiveApp._remove_port_process'
                         ) as fake_remove_port_process:
             self.controller.delete(lport)
