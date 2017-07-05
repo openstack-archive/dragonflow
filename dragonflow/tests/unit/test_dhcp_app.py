@@ -32,7 +32,7 @@ class Option(object):
 
 
 class TestDHCPApp(test_app_base.DFAppTestBase):
-    apps_list = "dhcp_app.DHCPApp"
+    apps_list = "dhcp"
 
     def setUp(self):
         super(TestDHCPApp, self).setUp()

@@ -17,36 +17,33 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.6}
 EXTERNAL_HOST_IP=${EXTERNAL_HOST_IP:-}
 
 DEFAULT_TUNNEL_TYPES="vxlan,geneve,gre"
-DEFAULT_APPS_LIST="l2_app.L2App,l3_proactive_app.L3ProactiveApp,"\
-"dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp,"\
-"portqos_app.PortQosApp,classifier_app.ClassifierApp,tunneling_app.TunnelingApp,"\
-"provider_networks_app.ProviderNetworksApp"
+DEFAULT_APPS_LIST="l2,l3_proactive,dhcp,dnat,sg,portsec,portqos,classifier,tunneling,provider"
 
 if is_service_enabled df-metadata ; then
-    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,metadata_service_app.MetadataServiceApp"
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,metadata_service"
 fi
 
 if is_service_enabled q-trunk ; then
-    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,trunk_app.TrunkApp"
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,trunk"
 fi
 
 ENABLE_ACTIVE_DETECTION=${ENABLE_ACTIVE_DETECTION:-True}
 if [[ "$ENABLE_ACTIVE_DETECTION" == "True" ]]; then
-    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,active_port_detection_app.ActivePortDetectionApp"
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,active_port_detection"
 fi
 
 ENABLE_LIVE_MIGRATION=${ENABLE_LIVE_MIGRATION:-True}
 if [[ "$ENABLE_LIVE_MIGRATION" == "True" ]]; then
-    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,migration_app.MigrationApp"
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,migration"
 fi
 
 if [[ ! -z ${EXTERNAL_HOST_IP} ]]; then
-    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,chassis_snat_app.ChassisSNATApp"
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,chassis_snat"
 fi
 
 ENABLED_AGING_APP=${ENABLE_AGING_APP:-True}
 if [[ "$ENABLE_AGING_APP" == "True" ]]; then
-    DEFAULT_APPS_LIST="aging_app.Aging,$DEFAULT_APPS_LIST"
+    DEFAULT_APPS_LIST="aging,$DEFAULT_APPS_LIST"
 fi
 
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}

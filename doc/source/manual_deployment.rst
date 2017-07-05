@@ -95,7 +95,7 @@ Basic Configurations
     [df]
     metadata_interface = tap-metadata
     enable_selective_topology_distribution = True
-    apps_list = l2_app.L2App,l3_proactive_app.L3ProactiveApp,dhcp_app.DHCPApp,dnat_app.DNATApp,sg_app.SGApp,portsec_app.PortSecApp,portqos_app.PortQosApp
+    apps_list = l2,l3_proactive,dhcp,dnat,sg,portsec,portqos
     integration_bridge = br-int
     tunnel_type = geneve
 

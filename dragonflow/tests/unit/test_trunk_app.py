@@ -41,7 +41,7 @@ class SettingMock(object):
 
 
 class TestTrunkApp(test_app_base.DFAppTestBase):
-    apps_list = "trunk_app.TrunkApp"
+    apps_list = "trunk"
 
     def setUp(self):
         super(TestTrunkApp, self).setUp()

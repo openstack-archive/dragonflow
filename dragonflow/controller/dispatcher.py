@@ -11,9 +11,8 @@
 #    under the License.
 
 from oslo_log import log
-from oslo_utils import importutils
+import stevedore
 
-from dragonflow._i18n import _
 from dragonflow.common import exceptions
 
 LOG = log.getLogger(__name__)
@@ -21,21 +20,21 @@ LOG = log.getLogger(__name__)
 
 class AppDispatcher(object):
 
-    def __init__(self, apps_location_prefix, app_list):
-        self.apps_location_prefix = apps_location_prefix
+    def __init__(self, app_list):
         self.apps_list = app_list.split(',')
         self.apps = []
 
     def load(self, *args, **kwargs):
-        for app in self.apps_list:
-            app_class_name = self.apps_location_prefix + "." + app
-            try:
-                app_class = importutils.import_class(app_class_name)
-                app = app_class(*args, **kwargs)
-                self.apps.append(app)
-            except ImportError as e:
-                LOG.exception("Error loading application by class, %s", e)
-                raise ImportError(_("Application class not found."))
+        mgr = stevedore.NamedExtensionManager(
+            'dragonflow.controller.apps',
+            self.apps_list,
+            invoke_on_load=True,
+            invoke_args=args,
+            invoke_kwds=kwargs,
+        )
+
+        for ext in mgr:
+            self.apps.append(ext.obj)
 
     def dispatch(self, method, *args, **kwargs):
         errors = []
