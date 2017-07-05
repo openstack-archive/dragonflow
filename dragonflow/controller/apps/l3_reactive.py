@@ -22,9 +22,9 @@ from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 
+from dragonflow.controller.apps import l3_base
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
-from dragonflow.controller import l3_app_base
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
 
@@ -37,9 +37,9 @@ LOG = log.getLogger(__name__)
 ROUTER_PORT_BUFFER_ID = 0xff12
 
 
-class L3App(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
+class L3ReactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
     def __init__(self, *args, **kwargs):
-        super(L3App, self).__init__(*args, **kwargs)
+        super(L3ReactiveApp, self).__init__(*args, **kwargs)
         self.idle_timeout = 30
         self.hard_timeout = 0
 
