@@ -14,14 +14,14 @@ from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
 
+from dragonflow.controller.apps import l3_base
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
-from dragonflow.controller import l3_app_base
 
 LOG = log.getLogger(__name__)
 
 
-class L3ProactiveApp(df_base_app.DFlowApp, l3_app_base.L3AppMixin):
+class L3ProactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
 
     def packet_in_handler(self, event):
         msg = event.msg
