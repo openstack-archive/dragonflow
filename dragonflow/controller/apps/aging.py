@@ -26,10 +26,10 @@ LOG = log.getLogger(__name__)
 AGING_COOKIE_NAME = 'aging'
 
 
-class Aging(df_base_app.DFlowApp):
+class AgingApp(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
-        super(Aging, self).__init__(*args, **kwargs)
+        super(AgingApp, self).__init__(*args, **kwargs)
         self.do_aging = True
         self._aging_cookie = 0
         cookies.add_global_cookie_modifier(AGING_COOKIE_NAME, 1,
