@@ -36,7 +36,7 @@ class _ModelNoEvents(model_framework.ModelBase, mixins.Version):
 
 class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
-    apps_list = "l2"
+    apps_list = ["l2"]
 
     @mock.patch.object(ryu_base_app.RyuDFAdapter, 'notify_ovs_sync_finished')
     def test_ovs_sync_finished(self, mock_notify):

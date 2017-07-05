@@ -20,7 +20,7 @@ from dragonflow.tests.unit import test_app_base
 
 
 class TestLegacySNatApp(test_app_base.DFAppTestBase):
-    apps_list = "legacy_snat"
+    apps_list = ["legacy_snat"]
 
     def setUp(self):
         super(TestLegacySNatApp, self).setUp()
