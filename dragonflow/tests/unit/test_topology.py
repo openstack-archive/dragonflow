@@ -50,7 +50,7 @@ def nb_api_get_all_func(*instances):
 class TestTopology(test_app_base.DFAppTestBase):
     # This is to comply the current code, as the app_list can't be empty.
     # But we don't need any app in this test, acutally.
-    apps_list = "l2"
+    apps_list = ["l2"]
 
     def setUp(self):
         cfg.CONF.set_override('enable_selective_topology_distribution',

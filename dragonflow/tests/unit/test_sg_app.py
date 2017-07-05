@@ -27,7 +27,7 @@ COMMAND_DELETE = 2
 
 
 class TestSGApp(test_app_base.DFAppTestBase):
-    apps_list = "sg"
+    apps_list = ["sg"]
 
     def setUp(self):
         super(TestSGApp, self).setUp()
