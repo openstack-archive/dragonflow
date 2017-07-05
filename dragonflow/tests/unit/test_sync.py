@@ -9,8 +9,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import functools
-
 import mock
 
 from dragonflow.db import api_nb
@@ -19,6 +17,7 @@ import dragonflow.db.model_framework as mf
 from dragonflow.db.models import mixins
 from dragonflow.db import sync
 from dragonflow.tests import base as tests_base
+from dragonflow.tests.common import utils
 
 
 @mf.register_model
@@ -53,53 +52,23 @@ topic2_b = TopicModel2(id='topic2_b', topic='topic2')
 topic2_c = TopicModel2(id='topic2_c', topic='topic3')
 
 
-def with_local_objects(*objs):
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            db_store_inst = db_store.get_instance()
-            for obj in objs:
-                db_store_inst.update(obj)
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
-
-
-def with_nb_objects(*objs):
-    def _get_all(model, topic=None):
-        res = [o for o in objs if type(o) == model]
-        if topic is not None:
-            res = [o for o in res if o.topic == topic]
-        return res
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(obj, *args, **kwargs):
-            with mock.patch.object(
-                obj._nb_api, 'get_all', side_effect=_get_all
-            ):
-                return func(obj, *args, **kwargs)
-        return wrapper
-    return decorator
-
-
 class TestSync(tests_base.BaseTestCase):
     def setUp(self):
         super(TestSync, self).setUp()
         self._db_store = db_store.get_instance()
         self._db_store.clear()
 
-        self._nb_api = api_nb.NbApi(
+        self.nb_api = api_nb.NbApi(
             db_driver=mock.Mock(),
             use_pubsub=True,
             is_neutron_server=True
         )
-        self._nb_api.publisher = mock.Mock()
-        self._nb_api.enable_selective_topo_dist = True
+        self.nb_api.publisher = mock.Mock()
+        self.nb_api.enable_selective_topo_dist = True
         self._update = mock.Mock(side_effect=self._db_store.update)
         self._delete = mock.Mock(side_effect=self._db_store.delete)
         self.sync = sync.Sync(
-            self._nb_api,
+            self.nb_api,
             self._update,
             self._delete,
         )
@@ -107,15 +76,15 @@ class TestSync(tests_base.BaseTestCase):
         self.sync.add_model(TopicModel1)
         self.sync.add_model(TopicModel2)
 
-    @with_local_objects()
-    @with_nb_objects()
+    @utils.with_local_objects()
+    @utils.with_nb_objects()
     def test_no_actions(self):
         self.sync.sync()
         self._update.assert_not_called()
         self._delete.assert_not_called()
 
-    @with_local_objects()
-    @with_nb_objects(topicless_a, topicless_b)
+    @utils.with_local_objects()
+    @utils.with_nb_objects(topicless_a, topicless_b)
     def test_topicless_pulled(self):
         self.sync.sync()
         self.assertItemsEqual(
@@ -123,14 +92,14 @@ class TestSync(tests_base.BaseTestCase):
             self._update.mock_calls,
         )
 
-    @with_local_objects(topicless_a, topicless_b)
-    @with_nb_objects(topicless_b)
+    @utils.with_local_objects(topicless_a, topicless_b)
+    @utils.with_nb_objects(topicless_b)
     def test_topicless_dropped(self):
         self.sync.sync()
         self._delete.assert_called_once_with(topicless_a)
 
-    @with_local_objects()
-    @with_nb_objects(topic1_a, topic1_b, topic1_c)
+    @utils.with_local_objects()
+    @utils.with_nb_objects(topic1_a, topic1_b, topic1_c)
     def test_only_relevant_topic_pulled(self):
         self.sync.add_topic('topic1')
         self.assertItemsEqual(
@@ -138,9 +107,9 @@ class TestSync(tests_base.BaseTestCase):
             self._update.mock_calls,
         )
 
-    @with_local_objects()
-    @with_nb_objects(topicless_a, topic1_a, topic1_b, topic1_c,
-                     topic2_a, topic2_b, topic2_c)
+    @utils.with_local_objects()
+    @utils.with_nb_objects(topicless_a, topic1_a, topic1_b, topic1_c,
+                           topic2_a, topic2_b, topic2_c)
     def test_topic_removed(self):
         self.sync._topics = {'topic1', 'topic2', 'topic3'}
         self.sync.sync()
