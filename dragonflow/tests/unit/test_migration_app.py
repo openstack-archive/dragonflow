@@ -18,7 +18,7 @@ from dragonflow.tests.unit import test_app_base
 
 
 class TestMigrationApp(test_app_base.DFAppTestBase):
-    apps_list = "migration"
+    apps_list = ["migration"]
 
     def test_update_migration_flows(self):
         cfg.CONF.set_override('host', 'fake-local-host')

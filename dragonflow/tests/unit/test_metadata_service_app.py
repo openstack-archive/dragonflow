@@ -25,7 +25,7 @@ from dragonflow.tests.unit import test_app_base
 
 
 class TestMetadataServiceApp(test_app_base.DFAppTestBase):
-    apps_list = "metadata_service"
+    apps_list = ["metadata_service"]
 
     def setUp(self):
         super(TestMetadataServiceApp, self).setUp()
