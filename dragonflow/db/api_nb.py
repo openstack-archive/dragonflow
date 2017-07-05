@@ -91,7 +91,7 @@ class NbApi(object):
                 # FIXME(nick-ma-z): if active-detection is enabled,
                 # we initialize the publisher here. Make sure it
                 # only supports redis-based pub/sub driver.
-                if "ActivePortDetectionApp" in cfg.CONF.df.apps_list:
+                if "active_port_detection" in cfg.CONF.df.apps_list:
                     self.publisher.initialize()
 
                 # NOTE(gampel) we want to start queuing event as soon

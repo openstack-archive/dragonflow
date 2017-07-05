@@ -23,7 +23,7 @@ from dragonflow.tests.unit import test_app_base
 
 class TestL3App(test_app_base.DFAppTestBase,
                 _test_l3.L3AppTestCaseMixin):
-    apps_list = "l3_app.L3App"
+    apps_list = "l3_reactive"
 
     def setUp(self):
         super(TestL3App, self).setUp()

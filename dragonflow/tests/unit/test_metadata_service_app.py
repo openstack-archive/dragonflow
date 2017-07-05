@@ -18,14 +18,14 @@ import netaddr
 from neutron.conf.agent.metadata import config as metadata_config
 from oslo_config import fixture as cfg_fixture
 
-from dragonflow.controller import metadata_service_app
+from dragonflow.controller.apps import metadata_service
 from dragonflow.db.models import ovs
 from dragonflow.tests import base as tests_base
 from dragonflow.tests.unit import test_app_base
 
 
 class TestMetadataServiceApp(test_app_base.DFAppTestBase):
-    apps_list = "metadata_service_app.MetadataServiceApp"
+    apps_list = "metadata_service"
 
     def setUp(self):
         super(TestMetadataServiceApp, self).setUp()
@@ -71,8 +71,8 @@ class TestMetadataServiceProxy(tests_base.BaseTestCase):
         self.cfg.config(nova_metadata_host='nova-host',
                         nova_metadata_port=443,
                         nova_metadata_protocol='https')
-        self.proxy = metadata_service_app.DFMetadataProxyHandler(self.cfg.conf,
-                                                                 self.nb_api)
+        self.proxy = metadata_service.DFMetadataProxyHandler(self.cfg.conf,
+                                                             self.nb_api)
 
     def test_proxy_get_headers(self):
         req = mock.Mock()
