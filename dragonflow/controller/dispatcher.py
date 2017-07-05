@@ -21,7 +21,7 @@ LOG = log.getLogger(__name__)
 class AppDispatcher(object):
 
     def __init__(self, app_list):
-        self.apps_list = app_list.split(',')
+        self.apps_list = app_list
         self.apps = []
 
     def load(self, *args, **kwargs):

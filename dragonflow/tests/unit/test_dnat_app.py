@@ -46,7 +46,7 @@ remote_lport.is_local = False
 
 
 class TestDNATApp(test_app_base.DFAppTestBase):
-    apps_list = "dnat"
+    apps_list = ["dnat"]
 
     def setUp(self):
         super(TestDNATApp, self).setUp(enable_selective_topo_dist=True)

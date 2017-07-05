@@ -21,7 +21,7 @@ from dragonflow.tests.unit import test_app_base
 
 
 class TestChassisSNATApp(test_app_base.DFAppTestBase):
-    apps_list = "chassis_snat"
+    apps_list = ["chassis_snat"]
     external_host_ip = '172.24.4.100'
 
     def setUp(self):

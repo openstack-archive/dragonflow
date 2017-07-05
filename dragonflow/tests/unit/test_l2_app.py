@@ -21,7 +21,7 @@ from dragonflow.tests.unit import test_app_base
 
 
 class TestL2App(test_app_base.DFAppTestBase):
-    apps_list = "l2"
+    apps_list = ["l2"]
 
     def setUp(self):
         super(TestL2App, self).setUp()
