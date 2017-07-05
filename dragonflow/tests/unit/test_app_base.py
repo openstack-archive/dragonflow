@@ -34,7 +34,7 @@ from dragonflow.tests import base as tests_base
 
 
 class DFAppTestBase(tests_base.BaseTestCase):
-    apps_list = ""
+    apps_list = []
 
     def setUp(self, enable_selective_topo_dist=False):
         cfg.CONF.set_override('apps_list', self.apps_list, group='df')

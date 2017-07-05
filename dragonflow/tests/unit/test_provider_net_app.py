@@ -23,7 +23,7 @@ make_fake_remote_port = test_app_base.make_fake_remote_port
 
 
 class TestProviderNetsApp(test_app_base.DFAppTestBase):
-    apps_list = "provider"
+    apps_list = ["provider"]
 
     def setUp(self):
         super(TestProviderNetsApp, self).setUp()

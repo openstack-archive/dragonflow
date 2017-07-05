@@ -20,7 +20,7 @@ SNAT_APP_NAME = 'chassis_snat'
 
 
 class TestSnatFlows(test_base.DFTestBase):
-    apps_list = SNAT_APP_NAME
+    apps_list = [SNAT_APP_NAME]
 
     def _check_if_app_enabled(self):
         return SNAT_APP_NAME in cfg.CONF.df.apps_list
