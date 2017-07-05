@@ -158,7 +158,7 @@ function start_ovs {
 function configure_ovs {
     if is_service_enabled df-controller ; then
         # setup external bridge if necessary
-        check_dnat=$(echo $DF_APPS_LIST | grep "DNATApp")
+        check_dnat=$(echo $DF_APPS_LIST | grep "dnat")
         if [[ "$check_dnat" != "" ]]; then
             echo "Setup external bridge for DNAT"
             sudo ovs-vsctl add-br $PUBLIC_BRIDGE || true

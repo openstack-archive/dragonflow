@@ -41,9 +41,7 @@ df_opts = [
                 default=False,
                 help=_("Enable dpdk")),
     cfg.StrOpt('apps_list',
-               default='l2_app.L2App,'
-                       'l3_proactive_app.L3ProactiveApp,'
-                       'dhcp_app.DHCPApp',
+               default='l2,l3_proactive,dhcp',
                help=_('List of openflow applications classes to load')),
     cfg.StrOpt('integration_bridge', default='br-int',
                help=_("Integration bridge to use. "

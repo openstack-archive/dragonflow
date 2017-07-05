@@ -23,7 +23,7 @@ make_fake_remote_port = test_app_base.make_fake_remote_port
 
 
 class TestTunnelingApp(test_app_base.DFAppTestBase):
-    apps_list = "tunneling_app.TunnelingApp"
+    apps_list = "tunneling"
 
     def setUp(self):
         super(TestTunnelingApp, self).setUp()
