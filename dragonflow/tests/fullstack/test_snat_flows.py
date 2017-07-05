@@ -16,7 +16,7 @@ from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
-SNAT_APP_NAME = 'chassis_snat_app.ChassisSNATApp'
+SNAT_APP_NAME = 'chassis_snat'
 
 
 class TestSnatFlows(test_base.DFTestBase):

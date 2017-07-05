@@ -39,8 +39,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def __init__(self, vswitch_api=None, nb_api=None,
                  neutron_server_notifier=None):
         super(RyuDFAdapter, self).__init__()
-        self.dispatcher = dispatcher.AppDispatcher('dragonflow.controller',
-                                                   cfg.CONF.df.apps_list)
+        self.dispatcher = dispatcher.AppDispatcher(cfg.CONF.df.apps_list)
         self.vswitch_api = vswitch_api
         self.nb_api = nb_api
         self.neutron_server_notifier = neutron_server_notifier
