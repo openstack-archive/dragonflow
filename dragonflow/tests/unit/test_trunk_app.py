@@ -141,6 +141,11 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.assert_has_calls((classification_flow,
                                              dispatch_flow))
 
+    def _get_ofport_by_id(self, lport_id):
+        self.assertEqual('fake_port2', lport_id,
+                         'Unexpected call to get_port_ofport_by_id')
+        return test_app_base.fake_local_port2.ofport
+
     def test__get_classification_match(self):
         lswitch2 = self._create_2nd_lswitch()
         self.db_store.update(lswitch2)
@@ -149,6 +154,9 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         segmentation = self._create_segmentation()
         self.db_store.update(segmentation)
         self.app.parser.OFPMatch.side_effect = SettingMock
+
+        self.app.vswitch_api.get_port_ofport_by_id.side_effect = \
+            self._get_ofport_by_id
         match = self.app._get_classification_match(segmentation)
         match_dict = match._dict
         self.assertEqual({'in_port': test_app_base.fake_local_port2.ofport,
@@ -189,6 +197,8 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.db_store.update(segmentation)
         self.app.parser.OFPActionSetField.side_effect = SettingMock
         self.app.parser.OFPActionOutput.side_effect = SettingMock
+        self.app.vswitch_api.get_port_ofport_by_id.side_effect = \
+            self._get_ofport_by_id
         actions = self.app._get_dispatch_actions(segmentation)
         self.assertEqual(self.app.parser.OFPActionPushVlan(), actions[0])
         self.assertEqual({'vlan_vid': 0x1007}, actions[1]._dict)
