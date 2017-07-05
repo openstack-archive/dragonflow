@@ -36,9 +36,9 @@ VLAN_MASK = utils.get_bitmask(VLAN_TAG_BITS)
 LOG = log.getLogger(__name__)
 
 
-class ProviderNetworksApp(df_base_app.DFlowApp):
+class ProviderApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
-        super(ProviderNetworksApp, self).__init__(*args, **kwargs)
+        super(ProviderApp, self).__init__(*args, **kwargs)
         self.integration_bridge = cfg.CONF.df.integration_bridge
         self.logical_networks = logical_networks.LogicalNetworks()
         self.bridge_mappings = self._parse_bridge_mappings(
