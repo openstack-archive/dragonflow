@@ -90,9 +90,9 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
 
         return ips
 
-    def _get_match_arp_reply(self, in_port, network_id, ip):
+    def _get_match_arp_reply(self, port_key, network_id, ip):
         match = self.parser.OFPMatch()
-        match.set_in_port(in_port)
+        match.set_reg6(port_key)
         match.set_dl_type(ether.ETH_TYPE_ARP)
         match.set_arp_spa(int(ip))
         match.set_arp_tpa(0)
@@ -100,10 +100,10 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         match.set_metadata(network_id)
         return match
 
-    def _get_match_gratuitous_arp(self, in_port, network_id, ip):
+    def _get_match_gratuitous_arp(self, port_key, network_id, ip):
         target_ip = int(ip)
         match = self.parser.OFPMatch()
-        match.set_in_port(in_port)
+        match.set_in_port(port_key)
         match.set_dl_type(ether.ETH_TYPE_ARP)
         match.set_arp_spa(target_ip)
         match.set_arp_tpa(target_ip)
@@ -129,7 +129,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         local_network_id = lport.lswitch.unique_key
 
         arp_reply_match = self._get_match_arp_reply(
-            lport.ofport,
+            lport.unique_key,
             local_network_id,
             ip)
         self.mod_flow(
@@ -139,7 +139,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             match=arp_reply_match)
 
         gratuitous_arp_match = self._get_match_gratuitous_arp(
-            lport.ofport,
+            lport.unique_key,
             local_network_id,
             ip)
         self.mod_flow(
@@ -153,7 +153,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         local_network_id = lport.lswitch.unique_key
 
         arp_reply_match = self._get_match_arp_reply(
-            lport.ofport,
+            lport.unique_key,
             local_network_id,
             ip)
         self.mod_flow(
@@ -162,7 +162,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             command=ofproto.OFPFC_DELETE)
 
         gratuitous_arp_match = self._get_match_gratuitous_arp(
-            lport.ofport,
+            lport.unique_key,
             local_network_id,
             ip)
         self.mod_flow(
