@@ -234,7 +234,7 @@ class DFlowApp(object):
             ),
         )
 
-    def send_arp_request(self, src_mac, src_ip, dst_ip, port):
+    def send_arp_request(self, src_mac, src_ip, dst_ip, port_key):
         arp_request_pkt = packet.Packet()
         arp_request_pkt.add_protocol(ethernet.ethernet(
                                      ethertype=ether.ETH_TYPE_ARP,
@@ -245,10 +245,7 @@ class DFlowApp(object):
                                     src_ip=src_ip,
                                     dst_ip=dst_ip))
 
-        self.reinject_packet(
-            arp_request_pkt,
-            actions=[self.parser.OFPActionOutput(port=port)]
-        )
+        self.dispatch_packet(arp_request_pkt, port_key)
 
     def register_local_cookie_bits(self, name, length):
         cookies.register_cookie_bits(name, length,
