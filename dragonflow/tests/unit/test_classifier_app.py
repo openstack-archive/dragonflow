@@ -22,7 +22,7 @@ make_fake_local_port = test_app_base.make_fake_local_port
 
 
 class TestClassifierApp(test_app_base.DFAppTestBase):
-    apps_list = "classifier_app.ClassifierApp"
+    apps_list = "classifier"
 
     def setUp(self):
         super(TestClassifierApp, self).setUp()

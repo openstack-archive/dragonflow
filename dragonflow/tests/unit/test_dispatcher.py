@@ -30,7 +30,7 @@ class TestAppDispatcher(tests_base.BaseTestCase):
 
     def setUp(self):
         super(TestAppDispatcher, self).setUp()
-        self.dispatcher = dispatcher.AppDispatcher("", "")
+        self.dispatcher = dispatcher.AppDispatcher("")
 
     def test_dispatch_with_exception(self):
         fake_app = mock.MagicMock()
