@@ -263,7 +263,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
             self.send_arp_request(mac,
                                   '0.0.0.0',
                                   ip,
-                                  lport.ofport)
+                                  lport.unique_key)
         else:
             LOG.warning("Couldn't find a valid mac to detect active "
                         "port in lport %s.", lport.id)
