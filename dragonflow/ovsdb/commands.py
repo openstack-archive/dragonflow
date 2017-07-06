@@ -149,7 +149,7 @@ class UpdateQos(commands.BaseCommand):
         super(UpdateQos, self).__init__(api)
         self.port_id = port_id
         self.qos = qos
-
+    #test,please ignore it
     def run_idl(self, txn):
         conditions = [('external_ids', '=', {'iface-id': self.port_id})]
         queue_table = self.api._tables['Queue']
