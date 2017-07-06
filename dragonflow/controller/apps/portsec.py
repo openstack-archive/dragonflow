@@ -240,6 +240,7 @@ class PortSecApp(df_base_app.DFlowApp):
                                 ip_proto=n_const.PROTO_NUM_UDP,
                                 udp_src=const.DHCP_CLIENT_PORT,
                                 udp_dst=const.DHCP_SERVER_PORT)
+        self._remove_one_port_security_flow(const.PRIORITY_HIGH, match)
 
         # Remove arp probe packets with the vm mac pass
         match = self._get_arp_match_obj(unique_key=unique_key,
