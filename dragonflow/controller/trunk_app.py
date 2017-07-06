@@ -34,7 +34,8 @@ class TrunkApp(df_base_app.DFlowApp):
 
     def _get_ofport(self, child_port_segmentation):
         parent = child_port_segmentation.parent
-        return parent.ofport
+        ofport = self.vswitch_api.get_port_ofport_by_id(parent.id)
+        return ofport
 
     def _update_classification_match_vlan(self,
                                           match, child_port_segmentation):
