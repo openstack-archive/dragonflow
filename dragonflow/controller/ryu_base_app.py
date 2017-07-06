@@ -71,7 +71,17 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
             time.sleep(3)
 
     def register_table_handler(self, table_id, handler):
-        assert table_id not in self.table_handlers
+        if table_id in self.table_handlers:
+            raise RuntimeError(
+                _(
+                    'Cannot register handler {new_handler} for table {table},'
+                    'occupied by {existing_handler}'
+                ).format(
+                    table=table_id,
+                    new_handler=handler,
+                    existing_handler=self.table_handlers[table_id],
+                ),
+            )
         self.table_handlers[table_id] = handler
 
     def unregister_table_handler(self, table_id, handler):
