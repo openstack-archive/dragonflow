@@ -13,7 +13,6 @@
 import mock
 from oslo_config import cfg
 
-from dragonflow.common import constants
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
@@ -96,9 +95,6 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         get_one.return_value = None
         chassis_bad_ref = model_proxy.create_reference(core.Chassis, 'ch3')
         self.assertFalse(self.controller._is_physical_chassis(chassis_bad_ref))
-
-        chassis_virt = core.Chassis(id=constants.DRAGONFLOW_VIRTUAL_PORT)
-        self.assertFalse(self.controller._is_physical_chassis(chassis_virt))
 
     @mock.patch.object(db_store.DbStore, 'get_one')
     @mock.patch.object(db_store.DbStore, 'update')

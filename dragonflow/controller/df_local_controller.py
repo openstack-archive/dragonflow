@@ -22,7 +22,6 @@ from ryu.app.ofctl import service as of_service
 from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
-from dragonflow.common import constants
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as ctrl_const
@@ -169,8 +168,6 @@ class DfLocalController(object):
 
     def _is_physical_chassis(self, chassis):
         if not chassis:
-            return False
-        if chassis.id == constants.DRAGONFLOW_VIRTUAL_PORT:
             return False
         if model_proxy.is_model_proxy(chassis) and not chassis.get_object():
             return False
