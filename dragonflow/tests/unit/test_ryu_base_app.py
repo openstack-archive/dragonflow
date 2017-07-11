@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+import testtools
 
 from dragonflow.controller import ryu_base_app
 from dragonflow.tests import base as tests_base
@@ -70,3 +71,8 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
                 10, self.mock_app.packet_in_handler)
         self.ryu_df_adapter.OF_packet_in_handler(ev)
         self.mock_app.assert_has_calls([mock.call.packet_in_handler(ev)])
+
+    def test_register_twice(self):
+        self.ryu_df_adapter.register_table_handler(0, 0)
+        with testtools.ExpectedException(RuntimeError):
+            self.ryu_df_adapter.register_table_handler(0, 0)
