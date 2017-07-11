@@ -132,6 +132,51 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             exception=Exception('Port was not deleted')
         )
 
+    def test_reconnect_events(self):
+        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network_id = network.create()
+        subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
+                                                  network_id))
+        subnet_body = {'network_id': network_id,
+                       'cidr': '10.10.0.0/24',
+                       'gateway_ip': '10.10.0.1',
+                       'ip_version': 4,
+                       'name': 'private',
+                       'enable_dhcp': True}
+        subnet.create(subnet=subnet_body)
+        self.assertTrue(network.exists())
+        self.assertTrue(subnet.exists())
+
+        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm.create(network=network)
+        self.assertIsNotNone(vm.server.addresses['mynetwork'])
+        mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
+        self.assertIsNotNone(mac)
+        # wait util get the message we want
+        utils.wait_until_true(
+            lambda: self._get_wanted_vm_online(mac),
+            timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT, sleep=1,
+            exception=Exception('Could not get wanted online vm')
+        )
+
+        cmd = ["ovs-vsctl", "get-controller", cfg.CONF.df.integration_bridge]
+        controller = utils.execute(cmd, run_as_root=True).strip()
+
+        cmd[1] = "del-controller"
+        utils.execute(cmd, run_as_root=True)
+
+        cmd[1] = "set-controller"
+        cmd.append(controller)
+        utils.execute(cmd, run_as_root=True)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+
+        # wait util get the message we want
+        utils.wait_until_true(
+            lambda: self._get_wanted_vm_online(mac),
+            timeout=const.DEFAULT_RESOURCE_READY_TIMEOUT, sleep=1,
+            exception=Exception('Could not get wanted online vm')
+        )
+
     def test_reply_message(self):
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
