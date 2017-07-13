@@ -75,6 +75,7 @@ class NbApi(object):
         return _nb_api
 
     def initialize(self, db_ip='127.0.0.1', db_port=4001):
+        LOG.info('Initializing db driver with: %s %s. using pubsub=%s' % (db_ip, db_port, self.use_pubsub))
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
         if self.use_pubsub:
             self.publisher = self._get_publisher()
