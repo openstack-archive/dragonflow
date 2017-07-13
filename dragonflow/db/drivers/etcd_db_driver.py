@@ -13,7 +13,7 @@
 from contextlib import contextmanager
 from socket import timeout as SocketTimeout
 
-import etcd
+import etcd3gw as etcd
 from oslo_log import log
 import urllib3
 from urllib3 import connection
@@ -110,11 +110,8 @@ class EtcdDbDriver(db_api.DbApi):
         self.notify_callback = None
 
     def initialize(self, db_ip, db_port, **args):
-        hosts = _parse_hosts(args['config'].remote_db_hosts)
-        if hosts:
-            self.client = etcd.Client(host=hosts, allow_reconnect=True)
-        else:
-            self.client = etcd.Client(host=db_ip, port=db_port)
+        # TODO(lihi) add support in multiple hosts
+        self.client = etcd.client(host=db_ip, port=db_port)
 
     def create_table(self, table):
         # Not needed in etcd
@@ -124,56 +121,57 @@ class EtcdDbDriver(db_api.DbApi):
         # Not needed in etcd
         pass
 
+    @staticmethod
+    def _make_key(table, obj_id):
+        key = '/{}/{}'.format(table, obj_id)
+        return key
+
     def get_key(self, table, key, topic=None):
-        try:
-            return self.client.read('/' + table + '/' + key).value
-        except etcd.EtcdKeyNotFound:
-            raise df_exceptions.DBKeyNotFound(key=key)
+        value = self.client.get(self._make_key(table, key))
+        if len(value) > 0:
+            return value.pop()
+        raise df_exceptions.DBKeyNotFound(key=key)
 
     def set_key(self, table, key, value, topic=None):
-        self.client.write('/' + table + '/' + key, value)
+        self.client.put(self._make_key(table, key), value)
 
     def create_key(self, table, key, value, topic=None):
-        self.client.write('/' + table + '/' + key, value)
+        self.client.put(self._make_key(table, key), value)
 
     def delete_key(self, table, key, topic=None):
-        try:
-            self.client.delete('/' + table + '/' + key)
-        except etcd.EtcdKeyNotFound:
+        deleted = self.client.delete(self._make_key(table, key))
+        if not deleted:
             raise df_exceptions.DBKeyNotFound(key=key)
 
     def get_all_entries(self, table, topic=None):
         res = []
-        try:
-            directory = self.client.get("/" + table)
-        except etcd.EtcdKeyNotFound:
-            return res
-        for entry in directory.children:
-            if entry.value:
-                res.append(entry.value)
+        directory = self.client.get_prefix("/" + table + "/")
+        for entry in directory:
+            value = entry[0]
+            if value:
+                res.append(value)
         return res
 
     def get_all_keys(self, table, topic=None):
         res = []
-        try:
-            directory = self.client.get("/" + table)
-        except etcd.EtcdKeyNotFound:
-            raise df_exceptions.DBKeyNotFound(key=table)
-        for entry in directory.children:
+        directory = self.client.get_prefix("/" + table + "/")
+        for entry in directory:
             table_name_size = len(table) + 2
-            res.append(entry.key[table_name_size:])
+            key = entry[1]["key"]
+            res.append(key[table_name_size:])
         return res
 
     def _allocate_unique_key(self, table):
         key = '/unique_key/%s' % table
         prev_value = 0
         try:
-            prev_value = int(self.client.read(key).value)
-            self.client.test_and_set(key, str(prev_value + 1), str(prev_value))
+            prev_value = int(self.get_key('unique_key', table))
+            # TODO(lihi): race-condition?
+            self.client.replace(key, str(prev_value), str(prev_value + 1))
             return prev_value + 1
-        except Exception:
+        except df_exceptions.DBKeyNotFound:
             if prev_value == 0:
-                self.client.write(key, "1", prevExist=False)
+                self.client.put(key, "1")
                 return 1
             raise
 
