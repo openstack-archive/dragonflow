@@ -280,15 +280,8 @@ class DHCPApp(df_base_app.DFlowApp):
         # get network mtu from lswitch
         lswitch = lport.lswitch
         mtu = lswitch.mtu
-        tunnel_type = lswitch.network_type
-
-        if tunnel_type == n_const.TYPE_VXLAN:
-            return mtu - n_const.VXLAN_ENCAP_OVERHEAD if mtu else 0
-        elif tunnel_type == n_const.TYPE_GENEVE:
-            # TODO(gampel) use max_header_size param when we move to ML2
-            return mtu - n_const.GENEVE_ENCAP_MIN_OVERHEAD if mtu else 0
-        elif tunnel_type == n_const.TYPE_GRE:
-            return mtu - n_const.GRE_ENCAP_OVERHEAD if mtu else 0
+        if mtu:
+            return mtu
         return self.default_interface_mtu
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)

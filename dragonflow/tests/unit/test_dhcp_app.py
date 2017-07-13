@@ -136,3 +136,16 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         gateway_ip = self.app._get_port_gateway_address(
             subnet, test_app_base.fake_local_port1)
         self.assertEqual('10.0.0.1', str(gateway_ip))
+
+    def test__get_port_mtu(self):
+        expected_mtu = test_app_base.fake_local_port1.lswitch.mtu
+        mtu = self.app._get_port_mtu(test_app_base.fake_local_port1)
+        self.assertEqual(expected_mtu, mtu)
+        test_app_base.fake_local_port1.lswitch.mtu = None
+
+        def _cleanUp():
+            test_app_base.fake_local_port1.lswitch.mtu = expected_mtu
+        self.addCleanup(_cleanUp)
+        mtu = self.app._get_port_mtu(test_app_base.fake_local_port1)
+        self.assertEqual(cfg.CONF.df_dhcp_app.df_default_network_device_mtu,
+                         mtu)
