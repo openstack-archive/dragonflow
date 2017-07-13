@@ -78,8 +78,7 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
         Add a VM with allowed address pairs configuration. Verify related
         flows is there.
         """
-        if not self.check_app_loaded(
-             "active_port_detection_app.ActivePortDetectionApp"):
+        if not self.check_app_loaded("active_port_detection"):
             self.skipTest("ActivePortDetectionApp is not enabled")
 
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
