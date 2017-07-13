@@ -17,7 +17,7 @@
 # https://git.openstack.org/cgit/openstack-infra/project-config/tree/jenkins/jobs/dragonflow.yaml
 #
 
-export OVERRIDE_ENABLED_SERVICES=key,n-api,n-api-meta,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,c-sch,c-api,c-vol,rabbit,mysql,dstat,df-controller,df-etcd,etcd3,df-zmq-publisher-service,q-svc,df-l3-agent,df-metadata,q-qos,placement-api,q-trunk
+export OVERRIDE_ENABLED_SERVICES=key,n-api,n-api-meta,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,c-sch,c-api,c-vol,rabbit,mysql,dstat,df-controller,df-etcd,etcd3,df-zmq-publisher-service,q-svc,df-metadata,q-qos,placement-api,q-trunk
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_PUB_SUB=True"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_SELECTIVE_TOPO_DIST=True"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"ENABLE_PORT_STATUS_NOTIFIER=False"
@@ -32,62 +32,3 @@ if [ -n "${DEVSTACK_GATE_TEMPEST}" ] && [ ${DEVSTACK_GATE_TEMPEST} -gt 0 ]; then
 else
     export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=False"
 fi
-
-# Begin list of exclusions.
-r="^(?!.*"
-
-# exclude the slow tag (part of the default for 'full')
-r="$r(?:.*\[.*\bslow\b.*\])"
-
-# exclude things that just aren't enabled:
-r="$r|(?:tempest\.api\.network\.admin\.test_quotas\.QuotasTest\.test_lbaas_quotas.*)"
-r="$r|(?:tempest\.api\.network\.test_load_balancer.*)"
-r="$r|(?:tempest\.scenario\.test_load_balancer.*)"
-r="$r|(?:tempest\.api\.network\.admin\.test_load_balancer.*)"
-r="$r|(?:tempest\.api\.network\.admin\.test_lbaas.*)"
-r="$r|(?:tempest\.api\.network\.test_fwaas_extensions.*)"
-r="$r|(?:tempest\.api\.network\.test_vpnaas_extensions.*)"
-r="$r|(?:tempest\.api\.network\.test_metering_extensions.*)"
-r="$r|(?:tempest\.thirdparty\.boto\.test_s3.*)"
-
-# skip tests unrelated to dragonflow
-r="$r|(?:tempest\.api\.identity*)"
-r="$r|(?:tempest\.api\.image*)"
-r="$r|(?:tempest\.api\.volume*)"
-r="$r|(?:tempest\.api\.compute\.images*)"
-r="$r|(?:tempest\.api\.compute\.keypairs*)"
-r="$r|(?:tempest\.api\.compute\.certificates*)"
-r="$r|(?:tempest\.api\.compute\.flavors*)"
-r="$r|(?:tempest\.api\.compute\.test_quotas*)"
-r="$r|(?:tempest\.api\.compute\.test_versions*)"
-r="$r|(?:tempest\.api\.compute\.volumes*)"
-r="$r|(?:tempest\.scenario\.test_volume_boot_pattern.*)"
-
-# Failing tests that needs to be re-visited
-r="$r|(?:tempest\.api\.network.test_allowed_address_pair.*)"
-r="$r|(?:tempest\.api\.network.admin.test_external_network_extension.*)"
-r="$r|(?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_dhcpv6_stateless*)"
-r="$r|(?:tempest\.scenario\.test_network_advanced_server_ops.*)"
-r="$r|(?:tempest\.scenario\.test_minimum_basic.*)"
-r="$r|(?:tempest\.scenario\.test_network_v6.*)"
-
-r="$r|(?:tempest\.scenario\.test_shelve_instance.*)"
-r="$r|(?:tempest\.scenario\.test_snapshot_pattern.*)"
-
-r="$r|(?:tempest\.api\.network\.test_routers_negative.*)"
-
-# These tests are used for the DHCP agent scheduler, which is not used by default in Dragonflow
-r="$r|(?:tempest\.api\.network.admin.test_dhcp_agent_scheduler.DHCPAgentSchedulersTestJSON.test_add_remove_network_from_dhcp_agent)"
-r="$r|(?:tempest\.api\.network.admin.test_dhcp_agent_scheduler.DHCPAgentSchedulersTestJSON.test_list_networks_hosted_by_one_dhcp)"
-
-# Current list of failing tests that need to be triaged, have bugs filed, and
-# fixed as appropriate.
-# (none)
-
-# End list of exclusions.
-r="$r)"
-
-# only run tempest.api/scenario/thirdparty tests (part of the default for 'full')
-r="$r(tempest\.(api|scenario|thirdparty)).*$"
-
-export DEVSTACK_GATE_TEMPEST_REGEX="$r"
