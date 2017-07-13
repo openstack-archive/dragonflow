@@ -1006,6 +1006,7 @@ class TestL3App(test_base.DFTestBase):
         if len(policy.exceptions) > 0:
             raise policy.exceptions[0]
 
+    @testtools.skip("bug/1706065")
     def test_udp_concrete_router_interface(self):
         # By default, fullstack will start l3 agent. So there will be concrete
         # router interface.
