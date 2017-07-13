@@ -36,7 +36,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OF_AUTO_PORT_DESC_STATS_REQ_VER = 0x04
 
-    def __init__(self, vswitch_api=None, nb_api=None,
+    def __init__(self, vswitch_api, nb_api,
                  neutron_server_notifier=None):
         super(RyuDFAdapter, self).__init__()
         self.dispatcher = dispatcher.AppDispatcher(cfg.CONF.df.apps_list)
@@ -104,8 +104,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
                                            constants.CONTROLLER_REINITIALIZE,
                                            None)
         self.first_connect = False
-        if self.vswitch_api:
-            self.vswitch_api.initialize(self.nb_api)
+        self.vswitch_api.initialize(self.nb_api)
 
     def _send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser

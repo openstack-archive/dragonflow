@@ -33,7 +33,9 @@ class TestRyuBaseApp(test_base.DFTestBase):
         ryu_cfg.CONF.ofp_listen_host = cfg.CONF.df_ryu.of_listen_address
         ryu_cfg.CONF.ofp_tcp_listen_port = cfg.CONF.df_ryu.of_listen_port + 1
         app_mgr = app_manager.AppManager.get_instance()
-        self.open_flow_app = app_mgr.instantiate(ryu_base_app.RyuDFAdapter)
+        self.open_flow_app = app_mgr.instantiate(ryu_base_app.RyuDFAdapter,
+                                                 vswitch_api=mock.Mock(),
+                                                 nb_api=mock.Mock())
         self.open_flow_app.load = mock.Mock()
         self.addCleanup(app_mgr.uninstantiate, self.open_flow_app.name)
 
