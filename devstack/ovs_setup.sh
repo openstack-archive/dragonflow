@@ -164,6 +164,9 @@ function configure_ovs {
         if [[ "$check_dnat" != "" ]]; then
             echo "Setup external bridge for DNAT"
             sudo ovs-vsctl add-br $PUBLIC_BRIDGE || true
+            sudo ip net link set dev $PUBLIC_BRIDGE up || true
+            sudo ip addr add $PUBLIC_NETWORK_GATEWAY dev $PUBLIC_BRIDGE || true
+            sudo iptables -t nat -A POSTROUTING -o $PUBLIC_INTERFACE -j MASQUERADE || true
         fi
 
         _neutron_ovs_base_setup_bridge $INTEGRATION_BRIDGE
