@@ -610,6 +610,7 @@ class TestDHCPApp(test_base.DFTestBase):
         self._create_topology(enable_dhcp=False)
         self._test_disable_dhcp()
         self.subnet1.update({'enable_dhcp': True})
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         self._test_enable_dhcp()
 
 
