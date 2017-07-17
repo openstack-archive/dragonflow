@@ -71,6 +71,7 @@ Specs
     fwaas
     bgp_dynamic_routing
     tunneling_app
+    logical_port_locality
 
 Templates
 ---------
