@@ -23,10 +23,10 @@ from dragonflow.tests.fullstack import test_objects as objects
 
 class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
 
-    def _get_sending_arp_to_controller_flows(self, ofport, arp_op):
+    def _get_sending_arp_to_controller_flows(self, port_key, arp_op):
         ovs_flows_parser = utils.OvsFlowsParser()
         flows = ovs_flows_parser.dump(self.integration_bridge)
-        expected_in_port = "in_port=" + str(ofport)
+        expected_in_port = "reg6=" + hex(port_key)
         expected_arp_op = "arp_op=" + str(arp_op)
         expected_actions = "CONTROLLER:65535," + "goto_table:" + \
                            str(const.L2_LOOKUP_TABLE)
@@ -38,16 +38,16 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
                      (flow['actions'] == expected_actions))]
         return flows
 
-    def _get_sending_arp_reply_to_controller_flows(self, ofport):
-        return self._get_sending_arp_to_controller_flows(ofport,
+    def _get_sending_arp_reply_to_controller_flows(self, port_key):
+        return self._get_sending_arp_to_controller_flows(port_key,
                                                          str(arp.ARP_REPLY))
 
-    def _get_sending_gratuitous_arp_to_controller_flows(self, ofport):
-        return self._get_sending_arp_to_controller_flows(ofport,
+    def _get_sending_gratuitous_arp_to_controller_flows(self, port_key):
+        return self._get_sending_arp_to_controller_flows(port_key,
                                                          str(arp.ARP_REQUEST))
 
-    def _check_sending_arp_reply_to_controller_flows(self, ofport, ip=None):
-        flows = self._get_sending_arp_reply_to_controller_flows(ofport)
+    def _check_sending_arp_reply_to_controller_flows(self, port_key, ip=None):
+        flows = self._get_sending_arp_reply_to_controller_flows(port_key)
         expected_arp_tpa = '0.0.0.0'
         for flow in flows:
             if ip is not None:
@@ -59,9 +59,9 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
             return True
         return False
 
-    def _check_sending_gratuitous_arp_to_controller_flows(self, ofport,
+    def _check_sending_gratuitous_arp_to_controller_flows(self, port_key,
                                                           ip=None):
-        flows = self._get_sending_gratuitous_arp_to_controller_flows(ofport)
+        flows = self._get_sending_gratuitous_arp_to_controller_flows(port_key)
         for flow in flows:
             if ip is not None:
                 expected_arp_spa = 'arp_spa=' + ip
@@ -105,13 +105,15 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
 
         vm_port = objects.PortTestObj(self.neutron, self.nb_api, network_id,
                                       vm_port_id)
-
         of_port = self.vswitch_api.get_port_ofport_by_id(vm_port_id)
         self.assertIsNotNone(of_port)
-        result = self._check_sending_arp_reply_to_controller_flows(of_port)
+        vm_lport = vm_port.get_logical_port()
+        self.assertIsNotNone(vm_lport)
+        result = self._check_sending_arp_reply_to_controller_flows(
+            vm_lport.unique_key)
         self.assertFalse(result)
         result = self._check_sending_gratuitous_arp_to_controller_flows(
-            of_port)
+            vm_lport.unique_key)
         self.assertFalse(result)
 
         ip_address1 = '192.168.97.100'
@@ -123,10 +125,10 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
         time.sleep(test_const.DEFAULT_CMD_TIMEOUT)
 
         result = self._check_sending_arp_reply_to_controller_flows(
-            of_port, ip_address1)
+            vm_lport.unique_key, ip_address1)
         self.assertTrue(result)
         result = self._check_sending_gratuitous_arp_to_controller_flows(
-            of_port, ip_address1)
+            vm_lport.unique_key, ip_address1)
         self.assertTrue(result)
 
         ip_address2 = '192.168.97.101'
@@ -136,16 +138,16 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
         time.sleep(test_const.DEFAULT_CMD_TIMEOUT)
 
         result = self._check_sending_arp_reply_to_controller_flows(
-            of_port, ip_address1)
+            vm_lport.unique_key, ip_address1)
         self.assertFalse(result)
         result = self._check_sending_gratuitous_arp_to_controller_flows(
-            of_port, ip_address1)
+            vm_lport.unique_key, ip_address1)
         self.assertFalse(result)
         result = self._check_sending_arp_reply_to_controller_flows(
-            of_port, ip_address2)
+            vm_lport.unique_key, ip_address2)
         self.assertTrue(result)
         result = self._check_sending_gratuitous_arp_to_controller_flows(
-            of_port, ip_address2)
+            vm_lport.unique_key, ip_address2)
         self.assertTrue(result)
 
         vm.close()
@@ -153,10 +155,10 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
         time.sleep(test_const.DEFAULT_CMD_TIMEOUT)
 
         result = self._check_sending_arp_reply_to_controller_flows(
-            of_port, ip_address2)
+            vm_lport.unique_key, ip_address2)
         self.assertFalse(result)
         result = self._check_sending_gratuitous_arp_to_controller_flows(
-            of_port, ip_address2)
+            vm_lport.unique_key, ip_address2)
         self.assertFalse(result)
 
         network.close()
