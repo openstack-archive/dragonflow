@@ -114,6 +114,8 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
                                            constants.CONTROLLER_REINITIALIZE,
                                            None)
         self.first_connect = False
+        if self.vswitch_api:
+            self.vswitch_api.initialize(self.nb_api)
 
     def _send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
