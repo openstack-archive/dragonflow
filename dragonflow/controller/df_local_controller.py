@@ -194,10 +194,8 @@ class DfLocalController(object):
         else:
             lport.peer_vtep_address = (chassis.id if lport.remote_vtep else
                                        chassis.ip)
-            lport.ofport = self.vswitch_api.get_vtp_ofport(
-                    lswitch.network_type)
 
-        if not lport.ofport:
+        if not lport.ofport and lport.is_local:
             # The tunnel port online event will update the remote logical
             # port. Log this warning first.
             LOG.warning("%(location)s logical port %(port)s"
