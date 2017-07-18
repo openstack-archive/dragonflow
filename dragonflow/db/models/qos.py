@@ -37,14 +37,16 @@ class QosPolicyRule(mf.ModelBase, mixins.BasicEvents):
         Validate the rule. That is, verify dscp_mark is set if type is
         dscp_marking, and that max_burst_kbps is set if type is bandwidth_limit
         """
+        super(QosPolicyRule, self).validate()
+
         if self.type == RULE_TYPE_DSCP_MARKING:
             if self.dscp_mark is None:
-                errors.ValidationError("dscp_mark is required if "
-                                       "type is dscp_marking")
+                raise errors.ValidationError("dscp_mark is required if "
+                                             "type is dscp_marking")
         elif self.type == RULE_TYPE_BANDWIDTH_LIMIT:
             if self.max_burst_kbps is None:
-                errors.ValidationError("max_burst_kbps is required if "
-                                       "type is bandwidth_limit")
+                raise errors.ValidationError("max_burst_kbps is required if "
+                                             "type is bandwidth_limit")
 
 
 @mf.register_model
