@@ -210,8 +210,9 @@ class DNATApp(df_base_app.DFlowApp):
         reply_pkt.add_protocol(icmp_pkt)
         return reply_pkt
 
+    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_CREATED)
     @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_UPDATED)
-    def ovs_port_updated(self, ovs_port):
+    def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
         if ovs_port.name != self.external_network_bridge:
             return
 
