@@ -34,31 +34,50 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
     def test_metadata_interface_online(self):
         with mock.patch.object(self.meta_app,
                                '_add_tap_metadata_port') as mock_func:
-            fake_ovs_port = ovs.OvsPort(
-                id='fake_ovs_port',
-                ofport=1,
-                name=self.meta_app._interface,
-            )
             # Device without mac will not trigger update flow
-            self.controller.update_ovs_port(fake_ovs_port)
+            self.controller.update(
+                ovs.OvsPort(
+                    id='fake_ovs_port',
+                    ofport=1,
+                    name=self.meta_app._interface,
+                )
+            )
             mock_func.assert_not_called()
             mock_func.reset_mock()
 
             # Other device update will not trigger update flow
-            fake_ovs_port.mac_in_use = "aa:bb:cc:dd:ee:ff"
-            fake_ovs_port.name = "no-interface"
-            self.controller.update_ovs_port(fake_ovs_port)
+            self.controller.update(
+                ovs.OvsPort(
+                    id='fake_ovs_port',
+                    ofport=1,
+                    name='no-interface',
+                    mac_in_use='aa:bb:cc:dd:ee:ff',
+                )
+            )
             mock_func.assert_not_called()
             mock_func.reset_mock()
 
             # Device with mac will trigger update flow
-            fake_ovs_port.name = self.meta_app._interface
-            self.controller.update_ovs_port(fake_ovs_port)
+            self.controller.update(
+                ovs.OvsPort(
+                    id='fake_ovs_port',
+                    ofport=1,
+                    name=self.meta_app._interface,
+                    mac_in_use='aa:bb:cc:dd:ee:ff',
+                )
+            )
             mock_func.assert_called_once_with(1, "aa:bb:cc:dd:ee:ff")
             mock_func.reset_mock()
 
             # Duplicated updated will not trigger update flow
-            self.controller.update_ovs_port(fake_ovs_port)
+            self.controller.update(
+                ovs.OvsPort(
+                    id='fake_ovs_port1',
+                    ofport=1,
+                    name=self.meta_app._interface,
+                    mac_in_use='aa:bb:cc:dd:ee:ff',
+                )
+            )
             mock_func.assert_not_called()
 
 
