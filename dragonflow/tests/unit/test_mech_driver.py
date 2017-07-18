@@ -472,7 +472,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
                 for edo in expected_edo:
                     self.assertEqual(edo['value'],
-                                     lport.extra_dhcp_options[edo['tag']])
+                                     lport.dhcp_params.opts[edo['tag']])
 
                 self.nb_api.update.reset_mock()
                 data = {'port': {'extra_dhcp_opts': [{'opt_name': '3',
@@ -486,7 +486,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 self.nb_api.update.assert_called_once()
                 lport = self.nb_api.update.call_args_list[0][0][0]
                 self.assertIsInstance(lport, l2.LogicalPort)
-                self.assertFalse(lport.extra_dhcp_options)
+                self.assertFalse(lport.dhcp_params.opts)
 
 
 class TestDFMechansimDriverAllowedAddressPairs(
