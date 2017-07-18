@@ -82,8 +82,9 @@ class ProviderApp(df_base_app.DFlowApp):
             mac = self.vswitch_api.get_port_mac_in_use(bridge)
             self.bridge_macs[physical_network] = mac
 
+    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_CREATED)
     @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
-    def _bridge_updated(self, ovsport):
+    def _bridge_updated(self, ovsport, orig_ovsport=None):
         self._update_bridge_mac(ovsport.name, ovsport.mac_in_use)
 
     @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_DELETED)

@@ -66,8 +66,9 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             # the flows.
             self._add_tap_metadata_port(self._ofport, self._interface_mac)
 
+    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_CREATED)
     @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
-    def ovs_port_updated(self, ovs_port):
+    def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
         if ovs_port.name != cfg.CONF.df_metadata.metadata_interface:
             return
 
