@@ -93,7 +93,7 @@ class TestArpResponder(test_base.DFTestBase):
             send_arp_request = app_testing_objects.SendAction(
                 subnet1.subnet_id,
                 port1.port_id,
-                str(arp_packet)
+                arp_packet,
             )
             ignore_action = app_testing_objects.IgnoreAction()
             log_action = app_testing_objects.LogAction()
@@ -206,7 +206,7 @@ class TestNeighborAdvertiser(test_base.DFTestBase):
             send_ns_request = app_testing_objects.SendAction(
                 subnet1.subnet_id,
                 port1.port_id,
-                str(ns_packet)
+                ns_packet,
             )
             ignore_action = app_testing_objects.IgnoreAction()
             log_action = app_testing_objects.LogAction()
@@ -516,7 +516,7 @@ class TestDHCPApp(test_base.DFTestBase):
         send_dhcp_offer = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
             self.port1.port_id,
-            str(dhcp_packet)
+            dhcp_packet,
         )
 
         port_policies = self._create_port_policies(disable_rule=False)
@@ -541,7 +541,7 @@ class TestDHCPApp(test_base.DFTestBase):
         send_dhcp_offer = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
             self.port1.port_id,
-            str(dhcp_packet)
+            dhcp_packet,
         )
         key = (self.subnet1.subnet_id, self.port1.port_id)
         rules = [
@@ -591,7 +591,7 @@ class TestDHCPApp(test_base.DFTestBase):
         send_dhcp_offer = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
             self.port1.port_id,
-            str(dhcp_packet)
+            dhcp_packet,
         )
         port_policies = self._create_port_policies()
         policy = self.store(
@@ -817,7 +817,7 @@ class TestL3App(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet1.subnet_id,
                         self.port1.port_id,
-                        str(initial_packet)
+                        initial_packet,
                     ),
                 ],
                 port_policies=port_policies,
@@ -855,7 +855,7 @@ class TestL3App(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet1.subnet_id,
                         self.port1.port_id,
-                        str(initial_packet)
+                        initial_packet,
                     ),
                 ],
                 port_policies=port_policies,
@@ -955,7 +955,7 @@ class TestL3App(test_base.DFTestBase):
         send_action = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
             self.port1.port_id,
-            str(initial_packet))
+            initial_packet)
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
@@ -993,7 +993,7 @@ class TestL3App(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet1.subnet_id,
                         self.port1.port_id,
-                        str(initial_packet)
+                        initial_packet,
                     ),
                 ],
                 port_policies=port_policy,
@@ -1041,7 +1041,7 @@ class TestL3App(test_base.DFTestBase):
         send_action = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
             self.port1.port_id,
-            str(initial_packet))
+            initial_packet)
 
         policy = self.store(
             app_testing_objects.Policy(
@@ -1112,7 +1112,7 @@ class TestL3App(test_base.DFTestBase):
         send_action = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
             self.port1.port_id,
-            str(initial_packet))
+            initial_packet)
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
@@ -1254,12 +1254,12 @@ class TestSGApp(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet.subnet_id,
                         self.port1.port_id,
-                        str(packet1.data)
+                        packet1.data,
                     ),
                     app_testing_objects.SendAction(
                         self.subnet.subnet_id,
                         self.port2.port_id,
-                        str(packet2.data)
+                        packet2.data,
                     )
                 ],
                 port_policies=port_policies,
@@ -1279,7 +1279,7 @@ class TestSGApp(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet.subnet_id,
                         self.port4.port_id,
-                        str(packet1.data)
+                        packet1.data,
                     )
                 ],
                 port_policies=port_policies,
@@ -2291,7 +2291,7 @@ class TestDNATApp(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet.subnet_id,
                         self.port.port_id,
-                        str(initial_packet)
+                        initial_packet,
                     ),
                 ],
                 port_policies=self._create_icmp_test_port_policies(
@@ -2344,7 +2344,7 @@ class TestDNATApp(test_base.DFTestBase):
         send_action = app_testing_objects.SendAction(
             self.subnet.subnet_id,
             self.port.port_id,
-            str(initial_packet))
+            initial_packet)
         ignore_action = app_testing_objects.IgnoreAction()
         policy = self.store(
             app_testing_objects.Policy(
@@ -2383,7 +2383,7 @@ class TestDNATApp(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet.subnet_id,
                         self.port.port_id,
-                        str(initial_packet)
+                        initial_packet,
                     ),
                 ],
                 port_policies=self._create_icmp_test_port_policies(
@@ -2404,7 +2404,7 @@ class TestDNATApp(test_base.DFTestBase):
         send_action = app_testing_objects.SendAction(
             self.subnet.subnet_id,
             self.port.port_id,
-            str(initial_packet))
+            initial_packet)
         ignore_action = app_testing_objects.IgnoreAction()
         policy = self.store(
             app_testing_objects.Policy(
@@ -2543,7 +2543,7 @@ class TestTrunkApp(test_base.DFTestBase):
                     app_testing_objects.SendAction(
                         self.subnet1.subnet_id,
                         self.port1.port_id,
-                        str(initial_packet)
+                        initial_packet,
                     ),
                 ],
                 port_policies=port_policies,
