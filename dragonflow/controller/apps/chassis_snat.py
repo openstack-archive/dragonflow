@@ -82,8 +82,9 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
             int_peer_patch_port,
             ex_peer_patch_port)
 
+    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_CREATED)
     @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
-    def ovs_port_updated(self, ovs_port):
+    def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
         if ovs_port.name != self.external_network_bridge:
             return
 
