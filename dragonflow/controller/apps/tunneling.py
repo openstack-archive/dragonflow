@@ -231,7 +231,7 @@ class TunnelingApp(df_base_app.DFlowApp):
             if peer_ip in peer_ip_list:
                 continue
             peer_ip_list.add(peer_ip)
-            ofport = lport.ofport
+            ofport = self._get_lport_tunnel_ofport(lport)
             ofpact_set_field = self.parser.OFPActionSetField
             actions += [
                     ofpact_set_field(tun_ipv4_dst=peer_ip),
