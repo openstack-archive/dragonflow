@@ -235,14 +235,6 @@ class DfLocalController(object):
         self.nb_api.subscriber.unregister_listen_address(publisher.uri)
         self.db_store.delete(publisher)
 
-    # TODO(dimak) have ovs ports behave like rest of the modes and store
-    #             in db_store.
-    def update_ovs_port(self, ovs_port):
-        ovs_port.emit_updated()
-
-    def delete_ovs_port(self, ovs_port):
-        ovs_port.emit_deleted()
-
     def ovs_sync_finished(self):
         self.open_flow_app.notify_ovs_sync_finished()
 
