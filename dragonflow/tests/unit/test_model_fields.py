@@ -98,7 +98,7 @@ class TestFields(tests_base.BaseTestCase):
         self.assertIsInstance(m_struct['ip_list'][0], six.string_types)
         self.assertIsInstance(m_struct['ip_list'][1], six.string_types)
 
-    def test_prot_range(self):
+    def test_port_range(self):
         m = FieldTestModel(port_range=[100, 200])
         self.assertEqual([100, 200], m.to_struct().get('port_range'))
         self.assertEqual(100, m.port_range.min)

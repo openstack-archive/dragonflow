@@ -9,6 +9,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from jsonmodels import errors
 from jsonmodels import fields
 from neutron_lib import constants
 
@@ -124,6 +125,16 @@ class FlowClassifier(mf.ModelBase,
         if self.dest_port is not None:
             return self.dest_port.is_local
         return True
+
+    def validate(self):
+        '''Make sure exactly one of {source_port, dest_port} is set'''
+        super(FlowClassifier, self).validate()
+        if self.source_port is None and self.dest_port is None:
+            raise errors.ValidationError(
+                'One of source_port or dest_port must be set')
+        elif self.source_port is not None and self.dest_port is not None:
+            raise errors.ValidationError(
+                'source_port and dest_port cannot be both set')
 
 
 @mf.register_model
