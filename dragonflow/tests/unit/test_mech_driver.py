@@ -398,9 +398,9 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 self.nb_api.create.assert_called_once()
                 lport = self.nb_api.create.call_args_list[0][0][0]
                 self.assertIsInstance(lport, l2.LogicalPort)
-                self.assertTrue(lport.remote_vtep)
+                self.assertEqual(l2.BINDING_VTEP, lport.binding.type)
                 # lport.chassis is a proxy, and we don't have a real database
-                self.assertEqual("20.0.0.2", lport.chassis.id)
+                self.assertEqual("20.0.0.2", str(lport.binding.ip))
 
                 self.nb_api.update.reset_mock()
                 profile['host_ip'] = "20.0.0.20"
@@ -410,8 +410,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 self.nb_api.update.assert_called_once()
                 lport = self.nb_api.update.call_args_list[0][0][0]
                 self.assertIsInstance(lport, l2.LogicalPort)
-                self.assertTrue(lport.remote_vtep)
-                self.assertEqual("20.0.0.20", lport.chassis.id)
+                self.assertEqual(l2.BINDING_VTEP, lport.binding.type)
+                self.assertEqual("20.0.0.20", str(lport.binding.ip))
 
     def test_delete_port(self):
         with self.port() as p:

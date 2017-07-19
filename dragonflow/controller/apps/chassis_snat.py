@@ -130,7 +130,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
         if self.external_host_mac is not None:
             # install flows only when compute port is added
             if self.is_data_port(lport):
-                self.chassis = lport.chassis
+                self.chassis = lport.binding.chassis
 
                 self.install_lport_based_flows(lport)
             else:

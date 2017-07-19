@@ -120,13 +120,16 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         """Get the accessible external ip of chassis where lport resides in"""
 
         lport = self.nb_api.get(l2.LogicalPort(id=lport_id, topic=topic))
-        binding_host = lport.chassis
-        if not binding_host:
+        binding = lport.binding
+        if not binding:
             LOG.warning(
                 'Logical port %s has not been bound to any host yet', lport_id)
             return
 
-        return self._get_external_ip_by_host(binding_host.id)
+        if binding.type == l2.BINDING_VTEP:
+            return binding.vtep_address
+        elif binding.type == l2.BINDING_CHASSIS:
+            return self._get_external_ip_by_host(binding.chassis.id)
 
     def _get_external_ip_by_host(self, host):
         chassis = self.nb_api.get(core.Chassis(id=host))

@@ -72,7 +72,8 @@ class MigrationApp(df_base_app.DFlowApp):
         if not remote_chassis:
             # chassis has not been online yet.
             return
-        lport.peer_vtep_address = remote_chassis.ip
+        old_chassis = lport.binding.chassis
+        lport.binding.chassis = dest_chassis
 
         LOG.info("src process migration event port = %(port)s"
                  "original_port = %(original_port)s"
@@ -82,7 +83,7 @@ class MigrationApp(df_base_app.DFlowApp):
                   'chassis': dest_chassis})
 
         # source node and other related nodes
-        if original_lport and lport.chassis.id != chassis_name:
+        if original_lport and old_chassis.id != chassis_name:
             original_lport.emit_remote_deleted()
 
         lport.emit_remote_created()
