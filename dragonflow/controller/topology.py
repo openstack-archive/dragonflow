@@ -200,7 +200,7 @@ class Topology(object):
         self.ovs_to_lport_mapping[ovs_port.id] = OvsLportMapping(
                 lport_id=lport_id, topic=topic)
 
-        chassis = lport.chassis
+        chassis = lport.binding.chassis
         # check if migration occurs
         if chassis.id != self.chassis_name:
             device_owner = lport.device_owner

@@ -142,6 +142,17 @@ class DfLocalController(object):
         self.nb_api.subscriber.unregister_topic(topic)
         self._sync.remove_topic(topic)
 
+    def _get_ports_by_chassis(self, chassis):
+        return self.db_store.get_all(
+            l2.LogicalPort(
+                binding=l2.PortBinding(
+                    type=l2.BINDING_CHASSIS,
+                    chassis=chassis.id,
+                ),
+            ),
+            index=l2.LogicalPort.get_index('chassis_id'),
+        )
+
     def update_chassis(self, chassis):
         self.db_store.update(chassis)
         remote_chassis_name = chassis.id
@@ -149,20 +160,14 @@ class DfLocalController(object):
             return
 
         # Notify about remote port update
-        index = l2.LogicalPort.get_index('chassis_id')
-        remote_ports = self.db_store.get_all(l2.LogicalPort(chassis=chassis),
-                                             index=index)
-        for port in remote_ports:
+        for port in self._get_ports_by_chassis(chassis):
             self._logical_port_process(port)
 
     def delete_chassis(self, chassis):
         LOG.info("Deleting remote ports in remote chassis %s", chassis.id)
         # Chassis is deleted, there is no reason to keep the remote port
         # in it.
-        index = l2.LogicalPort.get_index('chassis_id')
-        remote_ports = self.db_store.get_all(l2.LogicalPort(chassis=chassis),
-                                             index=index)
-        for port in remote_ports:
+        for port in self._get_ports_by_chassis(chassis):
             self._delete_lport_instance(port)
         self.db_store.delete(chassis)
 
@@ -182,8 +187,7 @@ class DfLocalController(object):
                         lport.id)
             return
 
-        chassis = lport.chassis
-        is_local = (chassis.id == self.chassis_name)
+        is_local = lport.binding.is_local
         lport.is_local = is_local
         if is_local:
             if not lport.ofport:
@@ -191,9 +195,6 @@ class DfLocalController(object):
             if not lport.ofport:
                 # Not attached to the switch. Maybe it's a subport?
                 lport.ofport = self._get_trunk_subport_ofport(lport)
-        else:
-            lport.peer_vtep_address = (chassis.id if lport.remote_vtep else
-                                       chassis.ip)
 
         if not lport.ofport and lport.is_local:
             # The tunnel port online event will update the remote logical
@@ -224,9 +225,11 @@ class DfLocalController(object):
             pass
 
     def update_lport(self, lport):
-        chassis = lport.chassis
-        if (not lport.remote_vtep and
-                not self._is_physical_chassis(chassis)):
+        if (
+            lport.binding is None or
+            (lport.binding.type == l2.BINDING_CHASSIS and
+             not self._is_physical_chassis(lport.binding.chassis))
+        ):
             LOG.debug(("Port %s has not been bound or it is a vPort"),
                       lport.id)
             return

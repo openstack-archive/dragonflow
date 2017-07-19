@@ -450,32 +450,11 @@ class DFMechDriver(api.MechanismDriver):
 
         LOG.info("DFMechDriver: delete subnet %s", subnet_id)
 
-    def _get_chassis_and_remote_vtep(self, port):
-        # Router GW ports are not needed by dragonflow controller and
-        # they currently cause error as they couldn't be mapped to
-        # a valid ofport (or location)
-        if port.get('device_owner') == n_const.DEVICE_OWNER_ROUTER_GW:
-            chassis = None
-        else:
-            chassis = port.get('binding:host_id') or None
-
-        binding_profile = port.get('binding:profile')
-        remote_vtep = False
-        if binding_profile and binding_profile.get(
-                df_const.DF_BINDING_PROFILE_PORT_KEY) ==\
-                df_const.DF_REMOTE_PORT_TYPE:
-            chassis = binding_profile.get(df_const.DF_BINDING_PROFILE_HOST_IP)
-            remote_vtep = True
-        return chassis, remote_vtep
-
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
     def create_port_postcommit(self, context):
         port = context.current
-        chassis, remote_vtep = self._get_chassis_and_remote_vtep(port)
 
         lport = neutron_l2.logical_port_from_neutron_port(port)
-        lport.chassis = chassis
-        lport.remote_vtep = remote_vtep
         self.nb_api.create(lport)
 
         LOG.info("DFMechDriver: create port %s", port['id'])
@@ -528,11 +507,7 @@ class DFMechDriver(api.MechanismDriver):
                                           updated_port)
             return None
 
-        chassis, remote_vtep = self._get_chassis_and_remote_vtep(updated_port)
-
         lport = neutron_l2.logical_port_from_neutron_port(updated_port)
-        lport.chassis = chassis
-        lport.remote_vtep = remote_vtep
         self.nb_api.update(lport)
 
         LOG.info("DFMechDriver: update port %s", updated_port['id'])
