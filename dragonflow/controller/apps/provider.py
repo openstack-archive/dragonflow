@@ -69,15 +69,12 @@ class ProviderApp(df_base_app.DFlowApp):
                      "bridge %(bridge)s",
                      {'physical_network': physical_network,
                       'bridge': bridge})
-            int_ofport = self.vswitch_api.create_patch_port(
-                self.integration_bridge,
-                'int-' + bridge,
-                'phy-' + bridge)
-            self.vswitch_api.create_patch_port(
-                bridge,
-                'phy-' + bridge,
-                'int-' + bridge)
-            self.int_ofports[physical_network] = int_ofport
+            mappings = self.vswitch_api.create_patch_pair(
+                self.integration_bridge, bridge)
+
+            self.int_ofports[physical_network] = \
+                self.vswitch_api.get_port_ofport(
+                        mappings[0])
 
             mac = self.vswitch_api.get_port_mac_in_use(bridge)
             self.bridge_macs[physical_network] = mac

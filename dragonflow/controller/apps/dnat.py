@@ -231,14 +231,13 @@ class DNATApp(df_base_app.DFlowApp):
         self.external_bridge_mac = mac
 
     def _init_external_bridge(self):
-        self.external_ofport = self.vswitch_api.create_patch_port(
-            self.integration_bridge,
-            self.ex_peer_patch_port,
-            self.int_peer_patch_port)
-        self.vswitch_api.create_patch_port(
-            self.external_network_bridge,
-            self.int_peer_patch_port,
-            self.ex_peer_patch_port)
+        mapping = self.vswitch_api.create_patch_pair(
+                self.integration_bridge,
+                self.external_network_bridge,
+                self.int_peer_patch_port,
+                self.ex_peer_patch_port)
+        self.external_ofport = self.vswitch_api.get_port_ofport(
+            mapping[0])
 
     def _increase_external_network_count(self, network_id):
         self.external_networks[network_id] += 1
