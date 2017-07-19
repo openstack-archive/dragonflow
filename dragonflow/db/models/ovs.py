@@ -55,6 +55,7 @@ class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
         ),
     )
     peer = fields.StringField()
+    peer_bridge = fields.StringField()
     mac_in_use = df_fields.MacAddressField()
     attached_mac = df_fields.MacAddressField()
     tunnel_type = fields.StringField()
@@ -77,9 +78,10 @@ class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
 
         if res.type == constants.OVS_PATCH_INTERFACE:
             res.peer = row.options['peer']
+            res.peer_bridge = row.external_ids['peer_bridge']
 
         if res.type == constants.OVS_TUNNEL_INTERFACE:
-            res.tunnel_types = row.type
+            res.tunnel_type = row.type
 
         external_ids = row.external_ids
         iface_id = external_ids.get('iface-id')
