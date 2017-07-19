@@ -47,4 +47,4 @@ from different modules of dragonflow.
 References
 ==========
 1. https://github.com/openstack/neutron/commit/71190773e14260fab96e78e65a290356cdc08581
-2. http://docs.openstack.org/developer/oslo.config/generator.html
+2. https://docs.openstack.org/oslo.config/latest/cli/generator.html

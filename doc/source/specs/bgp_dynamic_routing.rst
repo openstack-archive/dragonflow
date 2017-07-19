@@ -18,7 +18,7 @@ prefixes to physical network devices that support BGP, thus removing the
 conventional dependency on static routes. The feature relies on address scopes
 [#]_ in OpenStack Neutron.
 
-.. [#] http://docs.openstack.org/newton/networking-guide/config-address-scopes.html
+.. [#] https://docs.openstack.org/newton/networking-guide/config-address-scopes.html
 
 Problem Description
 ===================

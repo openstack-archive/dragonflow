@@ -76,22 +76,22 @@ Dragonflow Supported Features
 
 Dragonflow Pipeline
 ===================
-`Dragonflow Pipeline <http://docs.openstack.org/developer/dragonflow/pipeline.html>`_
+`Dragonflow Pipeline <https://docs.openstack.org/dragonflow/latest/pipeline.html>`_
 
 Dragonflow Pluggable DB
 =======================
 `Pluggable DB
-<http://docs.openstack.org/developer/dragonflow/pluggable_db.html>`_
+<https://docs.openstack.org/dragonflow/latest/pluggable_db.html>`_
 
 Distributed DHCP Application
 ============================
 
 `Distributed DHCP Application
-<http://docs.openstack.org/developer/dragonflow/distributed_dhcp.html>`_
+<https://docs.openstack.org/dragonflow/latest/distributed_dhcp.html>`_
 
 Containers and Dragonflow
 =========================
-`Dragonflow and Containers <http://docs.openstack.org/developer/dragonflow/containers.html>`_
+`Dragonflow and Containers <https://docs.openstack.org/dragonflow/latest/containers.html>`_
 
 Dragonflow Roadmap
 ==================
@@ -111,7 +111,7 @@ roadmap into Dragonflow project
 How to Install
 --------------
 
-- `Installation Guide <http://docs.openstack.org/developer/dragonflow/readme.html>`_
+- `Installation Guide <https://docs.openstack.org/dragonflow/latest/readme.html>`_
 - `DevStack Single Node Configuration
   <https://github.com/openstack/dragonflow/tree/master/doc/source/single-node-conf>`_
 - `DevStack Multi Node Configuration

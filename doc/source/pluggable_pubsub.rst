@@ -145,7 +145,7 @@ References
 .. _COMMON_PARAMS: https://github.com/openstack/dragonflow/tree/master/dragonflow/common/common_params.py
 .. _ZMQ_DRIVER: https://github.com/openstack/dragonflow/tree/master/dragonflow/db/pubsub_drivers/zmp_pubsub_driver.py
 
-[spec] http://docs.openstack.org/developer/dragonflow/specs/publish_subscribe_abstraction.html
+[spec] https://docs.openstack.org/dragonflow/latest/specs/publish_subscribe_abstraction.html
 
 [pub_sub_api.py] https://github.com/openstack/dragonflow/tree/master/dragonflow/db/pub_sub_api.py
 

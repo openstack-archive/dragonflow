@@ -430,7 +430,7 @@ References
 ==========
 .. [1] https://tools.ietf.org/html/rfc7665
 
-.. [2] http://docs.openstack.org/developer/networking-sfc/api.html
+.. [2] https://docs.openstack.org/networking-sfc/latest/contributor/api.html
 
 .. [3] https://tools.ietf.org/html/draft-ietf-sfc-nsh-10
 
