@@ -75,14 +75,13 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
             self.external_network_bridge)
         int_peer_patch_port = 'patch-snat-int'
 
-        self.external_ofport = self.vswitch_api.create_patch_port(
+        mapping = self.vswitch_api.create_patch_pair(
             integration_bridge,
+            self.external_network_bridge,
             ex_peer_patch_port,
             int_peer_patch_port)
-        self.vswitch_api.create_patch_port(
-            self.external_network_bridge,
-            int_peer_patch_port,
-            ex_peer_patch_port)
+        self.external_ofport = self.vswitch_api.get_port_ofport(
+            mapping[integration_bridge])
 
     @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_CREATED)
     @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
