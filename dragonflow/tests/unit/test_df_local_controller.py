@@ -20,6 +20,7 @@ from dragonflow.db import model_framework
 from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import mixins
+from dragonflow.tests.common import utils
 from dragonflow.tests.unit import test_app_base
 
 
@@ -63,6 +64,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_delete_lport.assert_called_once_with(lport)
         mock_db_store_delete.assert_called_once_with(chassis)
 
+    @utils.with_nb_objects(test_app_base.fake_chassis1)
     def test_register_chassis(self):
         cfg.CONF.set_override('external_host_ip',
                               '172.24.4.100',

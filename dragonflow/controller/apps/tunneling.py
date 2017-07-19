@@ -148,7 +148,7 @@ class TunnelingApp(df_base_app.DFlowApp):
                                      self.ofproto.OFPFC_MODIFY)
 
     def _add_egress_dispatch_flow(self, lport, segmentation_id):
-        remote_ip = lport.peer_vtep_address
+        remote_ip = lport.binding.ip
         ofport = self._get_lport_tunnel_ofport(lport)
         LOG.debug("set egress dispatch flow %(seg)s peer %(remote_ip)s",
                   {'seg': segmentation_id,
@@ -227,7 +227,7 @@ class TunnelingApp(df_base_app.DFlowApp):
             lport = self.db_store.get_one(l2.LogicalPort(id=port_id))
             if not lport:
                 continue
-            peer_ip = lport.peer_vtep_address
+            peer_ip = lport.binding.ip
             if peer_ip in peer_ip_list:
                 continue
             peer_ip_list.add(peer_ip)

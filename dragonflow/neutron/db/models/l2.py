@@ -88,23 +88,42 @@ def _build_dhcp_params(port):
     return ret
 
 
+def _build_port_binding(port):
+    profile = port.get(portbindings.PROFILE)
+    if profile:
+        port_key = profile.get(df_const.DF_BINDING_PROFILE_PORT_KEY)
+        if port_key == df_const.DF_REMOTE_PORT_TYPE:
+            return l2.PortBinding(
+                type=l2.BINDING_VTEP,
+                vtep_address=profile.get(df_const.DF_BINDING_PROFILE_HOST_IP)
+            )
+
+    if port.get('device_owner'):
+        return l2.PortBinding(
+            type=l2.BINDING_CHASSIS,
+            chassis=port.get(portbindings.HOST_ID) or None,
+        )
+
+
 def logical_port_from_neutron_port(port):
     return l2.LogicalPort(
-            id=port['id'],
-            lswitch=port['network_id'],
-            topic=port['tenant_id'],
-            macs=[port['mac_address']],
-            ips=[ip['ip_address'] for ip in port.get('fixed_ips', [])],
-            subnets=[ip['subnet_id'] for ip in port.get('fixed_ips', [])],
-            name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
-            enabled=port.get('admin_state_up', False),
-            version=port['revision_number'],
-            device_owner=port.get('device_owner'),
-            device_id=port.get('device_id'),
-            security_groups=port.get('security_groups', []),
-            port_security_enabled=port.get(psec.PORTSECURITY, False),
-            allowed_address_pairs=_validate_ip_prefix_allowed_address_pairs(
-                port.get(addr_pair.ADDRESS_PAIRS, [])),
-            binding_vnic_type=port.get(portbindings.VNIC_TYPE),
-            qos_policy=port.get('qos_policy_id'),
-            dhcp_params=_build_dhcp_params(port))
+        id=port['id'],
+        lswitch=port['network_id'],
+        topic=port['tenant_id'],
+        macs=[port['mac_address']],
+        ips=[ip['ip_address'] for ip in port.get('fixed_ips', [])],
+        subnets=[ip['subnet_id'] for ip in port.get('fixed_ips', [])],
+        name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
+        enabled=port.get('admin_state_up', False),
+        version=port['revision_number'],
+        device_owner=port.get('device_owner'),
+        device_id=port.get('device_id'),
+        security_groups=port.get('security_groups', []),
+        port_security_enabled=port.get(psec.PORTSECURITY, False),
+        allowed_address_pairs=_validate_ip_prefix_allowed_address_pairs(
+            port.get(addr_pair.ADDRESS_PAIRS, [])),
+        binding_vnic_type=port.get(portbindings.VNIC_TYPE),
+        qos_policy=port.get('qos_policy_id'),
+        dhcp_params=_build_dhcp_params(port),
+        binding=_build_port_binding(port),
+    )

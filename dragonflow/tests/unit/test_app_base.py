@@ -33,11 +33,15 @@ from dragonflow.db.models import secgroups
 from dragonflow.tests import base as tests_base
 
 
+_DEFAULT = object()
+
+
 class DFAppTestBase(tests_base.BaseTestCase):
     apps_list = []
 
     def setUp(self, enable_selective_topo_dist=False):
         cfg.CONF.set_override('apps_list', self.apps_list, group='df')
+        cfg.CONF.set_override('host', fake_chassis1.id)
         super(DFAppTestBase, self).setUp()
         mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
         mock.patch('dragonflow.db.api_nb.NbApi.get_instance').start()
@@ -52,8 +56,8 @@ class DFAppTestBase(tests_base.BaseTestCase):
         db_store._instance = None
 
         self.nb_api = api_nb.NbApi.get_instance(False)
-        self.controller = df_local_controller.DfLocalController('fake_host',
-                                                                self.nb_api)
+        self.controller = df_local_controller.DfLocalController(
+            fake_chassis1.id, self.nb_api)
         self.vswitch_api = self.controller.vswitch_api = mock.MagicMock()
         kwargs = dict(
             nb_api=self.controller.nb_api,
@@ -141,6 +145,27 @@ fake_external_switch1 = l2.LogicalSwitch(
         id='fake_external_switch1')
 
 
+fake_chassis1 = core.Chassis(
+    id='fakehost',
+    ip='172.24.4.50',
+    tunnel_types=('vxlan',),
+)
+
+
+fake_chassis2 = core.Chassis(
+    id='fake_host2',
+    ip='172.24.4.51',
+    tunnel_types=('vxlan',),
+)
+
+
+def chassis_binding(chassis):
+    return l2.PortBinding(
+        type=l2.BINDING_CHASSIS,
+        chassis=chassis,
+    )
+
+
 def make_fake_port(id=None,
                    subnets=None,
                    is_local=None,
@@ -151,16 +176,20 @@ def make_fake_port(id=None,
                    enabled=True,
                    topic='fake_tenant1',
                    device_owner='compute:None',
-                   chassis='fake_host',
+                   binding=_DEFAULT,
                    version=2,
                    tunnel_key=None,
                    unique_key=2,
                    port_security_enabled=True,
+                   allowed_address_pairs=None,
                    binding_vnic_type='normal',
                    security_groups=['fake_security_group_id1'],
                    device_id='fake_device_id',
                    ofport=1,
                    dhcp_params=None):
+
+    if binding == _DEFAULT:
+        binding = chassis_binding(fake_chassis1.id)
 
     fake_port = l2.LogicalPort(
         id="%s_%s" % (name, ofport) if not id else id,
@@ -171,10 +200,10 @@ def make_fake_port(id=None,
         ips=ips,
         subnets=subnets,
         macs=macs,
-        chassis=chassis,
+        binding=binding,
         lswitch=lswitch,
         security_groups=security_groups,
-        allowed_address_pairs=[],
+        allowed_address_pairs=allowed_address_pairs or [],
         port_security_enabled=port_security_enabled,
         device_owner=device_owner,
         device_id=device_id,
@@ -253,24 +282,10 @@ fake_remote_port1 = make_fake_remote_port(
     macs=['fa:16:3e:8c:2e:af'],
     name='fake_remote_port',
     ips=['10.0.0.8'],
-    chassis='fake_host2',
+    binding=chassis_binding('fake_host2'),
     unique_key=5,
     ofport=1,
     subnets=['fake_subnet1'])
-
-
-fake_chassis1 = core.Chassis(
-    id='fake_host',
-    ip='172.24.4.50',
-    tunnel_types=('vxlan',),
-)
-
-
-fake_chassis2 = core.Chassis(
-    id='fake_host2',
-    ip='172.24.4.51',
-    tunnel_types=('vxlan',),
-)
 
 
 fake_floatingip1 = l3.FloatingIp(
