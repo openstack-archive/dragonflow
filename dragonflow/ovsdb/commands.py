@@ -16,14 +16,17 @@ from ovsdbapp.schema.open_vswitch import commands
 
 
 class AddPatchPort(commands.BaseCommand):
-    def __init__(self, api, bridge, port, remote_name):
+    def __init__(self, api, bridge, port, peer_bridge, peer_port):
         super(AddPatchPort, self).__init__(api)
         self.bridge = bridge
         self.port = port
-        self.remote_name = remote_name
+        self.peer_bridge = peer_bridge
+        self.peer_port = peer_port
 
     def run_idl(self, txn):
         br = idlutils.row_by_value(self.api.idl, 'Bridge', 'name', self.bridge)
+        peer = idlutils.row_by_value(self.api.idl, 'Bridge', 'name',
+                                     self.peer_bridge)
         port = txn.insert(self.api.idl.tables['Port'])
         port.name = self.port
         br.verify('ports')
@@ -36,8 +39,11 @@ class AddPatchPort(commands.BaseCommand):
         port.verify('interfaces')
         ifaces = getattr(port, 'interfaces', [])
         options_dict = getattr(iface, 'options', {})
-        options_dict['peer'] = self.remote_name
+        external_ids = getattr(iface, 'external_ids', {})
+        external_ids['peer_br'] = "%s" % peer.name
+        options_dict['peer'] = self.peer_port
         iface.options = options_dict
+        iface.external_ids = external_ids
         iface.type = 'patch'
         ifaces.append(iface)
         port.interfaces = ifaces
