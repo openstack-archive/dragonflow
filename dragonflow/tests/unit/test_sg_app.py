@@ -54,7 +54,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
         return n_const.IPv4
 
     def _get_another_local_lport(self):
-        fake_local_port = l2.LogicalPort(
+        fake_local_port = test_app_base.make_fake_local_port(
             id='fake_port2',
             topic='fake_tenant1',
             name='',
@@ -64,7 +64,6 @@ class TestSGApp(test_app_base.DFAppTestBase):
                  netaddr.IPAddress('2222:2222::2')],
             subnets=['fake_subnet1'],
             macs=[netaddr.EUI('fa:16:3e:8c:2e:12')],
-            chassis='fake_host',
             lswitch='fake_switch1',
             security_groups=['fake_security_group_id1'],
             allowed_address_pairs=[],
@@ -76,8 +75,6 @@ class TestSGApp(test_app_base.DFAppTestBase):
             # 'binding_profile': {},
             # 'binding_vnic_type': 'normal',
         )
-        fake_local_port.is_local = True
-        fake_local_port.ofport = 20
         return fake_local_port
 
     def _get_another_security_group(self, is_ipv6=False):
