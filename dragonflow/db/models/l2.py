@@ -9,11 +9,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import copy
 
 from jsonmodels import fields
 from jsonmodels import models
 from neutron_lib.api.definitions import portbindings
 from neutron_lib import constants as n_const
+from oslo_config import cfg
 from oslo_log import log
 
 import dragonflow.db.field_types as df_fields
@@ -83,6 +85,38 @@ class DhcpParams(models.Base):
     siaddr = df_fields.IpAddressField()
 
 
+BINDING_CHASSIS = 'chassis'
+BINDING_VTEP = 'vtep'
+
+
+class PortBinding(models.Base):
+    type = df_fields.EnumField((BINDING_CHASSIS, BINDING_VTEP), required=True)
+    chassis = df_fields.ReferenceField(core.Chassis)
+    vtep_address = df_fields.IpAddressField()
+
+    @property
+    def ip(self):
+        if self.type == BINDING_CHASSIS:
+            return self.chassis.ip
+        elif self.type == BINDING_VTEP:
+            return self.vtep_address
+
+        return None
+
+    @property
+    def is_local(self):
+        if self.type == BINDING_CHASSIS:
+            return self.chassis.id == cfg.CONF.host
+        return False
+
+    def __deepcopy__(self, memo):
+        return PortBinding(
+            type=self.type,
+            chassis=copy.deepcopy(self.chassis, memo),
+            vtep_address=self.vtep_address,
+        )
+
+
 # LogicalPort events
 EVENT_LOCAL_CREATED = 'local_created'
 EVENT_REMOTE_CREATED = 'remote_created'
@@ -98,7 +132,7 @@ EVENT_REMOTE_DELETED = 'remote_deleted'
     EVENT_LOCAL_UPDATED, EVENT_REMOTE_UPDATED,
     EVENT_LOCAL_DELETED, EVENT_REMOTE_DELETED,
 }, indexes={
-    'chassis_id': 'chassis.id',
+    'chassis_id': 'binding.chassis.id',
     'lswitch_id': 'lswitch.id',
     'ip,lswitch': ('ips', 'lswitch.id'),
 })
@@ -109,7 +143,7 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
     subnets = df_fields.ReferenceListField(Subnet)
     macs = df_fields.ListOfField(df_fields.MacAddressField())
     enabled = fields.BoolField()
-    chassis = df_fields.ReferenceField(core.Chassis)
+    binding = fields.EmbeddedField(PortBinding)
     lswitch = df_fields.ReferenceField(LogicalSwitch)
     security_groups = df_fields.ReferenceListField(secgroups.SecurityGroup)
     allowed_address_pairs = fields.ListField(AddressPair)
@@ -117,16 +151,13 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
     device_owner = fields.StringField()
     device_id = fields.StringField()
     qos_policy = df_fields.ReferenceField(qos.QosPolicy)
-    remote_vtep = fields.BoolField()
     dhcp_params = fields.EmbeddedField(DhcpParams)
     binding_vnic_type = df_fields.EnumField(portbindings.VNIC_TYPES)
 
-    def __init__(self, ofport=None, is_local=None,
-                 peer_vtep_address=None, **kwargs):
+    def __init__(self, ofport=None, is_local=None, **kwargs):
         super(LogicalPort, self).__init__(**kwargs)
         self.ofport = ofport
         self.is_local = is_local
-        self.peer_vtep_address = peer_vtep_address
 
     @property
     def ip(self):

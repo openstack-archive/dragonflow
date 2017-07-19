@@ -19,6 +19,7 @@ import mock
 from oslo_config import cfg
 
 from dragonflow.controller import topology
+from dragonflow.tests.common import utils
 from dragonflow.tests.unit import test_app_base
 
 
@@ -64,15 +65,12 @@ class TestTopology(test_app_base.DFAppTestBase):
             test_app_base.fake_ovs_port1)
         self.controller._register_models()
 
+    @utils.with_nb_objects(
+        test_app_base.fake_chassis1,
+        test_app_base.fake_local_port1,
+        test_app_base.fake_logic_switch1,
+    )
     def test_vm_port_online_offline(self):
-        self.nb_api.get_all.side_effect = nb_api_get_all_func(
-            test_app_base.fake_logic_switch1,
-            test_app_base.fake_local_port1,
-            test_app_base.fake_chassis1,
-        )
-        self.nb_api.get.return_value = (
-            test_app_base.fake_local_port1)
-
         original_update = self.controller.update
         self.controller.update = mock.Mock()
         self.controller.update.side_effect = original_update
@@ -116,25 +114,22 @@ class TestTopology(test_app_base.DFAppTestBase):
     def test_vm_online_after_topology_pulled(self):
         self.nb_api.get_all.side_effect = nb_api_get_all_func(
             test_app_base.fake_logic_switch1,
-            test_app_base.fake_local_port1)
-
-        def _get_logical_port(lport):
-            lport_id = lport.id
-            if lport_id == test_app_base.fake_local_port1.id:
-                return test_app_base.fake_local_port1
-            if lport_id == test_app_base.fake_local_port2.id:
-                return test_app_base.fake_local_port2
-
-        self.nb_api.get.side_effect = _get_logical_port
-
+            test_app_base.fake_local_port1,
+            test_app_base.fake_chassis1,
+        )
+        self.nb_api.get.return_value = test_app_base.fake_local_port1
         # Pull topology by first ovs port online
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
 
         # Another port online
         self.nb_api.get_all.side_effect = nb_api_get_all_func(
+            test_app_base.fake_logic_switch1,
             test_app_base.fake_local_port1,
-            test_app_base.fake_local_port2)
+            test_app_base.fake_local_port2,
+            test_app_base.fake_chassis1,
+        )
         self.controller.update = mock.Mock()
+        self.nb_api.get.return_value = test_app_base.fake_local_port2
         self.topology.ovs_port_updated(test_app_base.fake_ovs_port2)
         self.controller.update.assert_called_once_with(
             test_app_base.fake_local_port2)
@@ -171,7 +166,6 @@ class TestTopology(test_app_base.DFAppTestBase):
                  mock.call(test_app_base.fake_local_port2)]
         self.controller.update.assert_has_calls(
             calls, any_order=True)
-        print(self.controller.update.call_args_list)
         self.assertEqual(4, self.controller.update.call_count)
         self.nb_api.subscriber.register_topic.assert_called_once()
 

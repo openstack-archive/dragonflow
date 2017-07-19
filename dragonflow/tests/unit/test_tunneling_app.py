@@ -71,9 +71,9 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
     def test_multicast_flow_for_remote_port(self):
         fake_remote_gre_port1 = make_fake_remote_port(
                 lswitch='fake_gre_switch1',
-                chassis='fake_host2',
+                binding=test_app_base.chassis_binding('fake_host2'),
                 name='fake_remote_gre_port1')
-        remote_ip = fake_remote_gre_port1.peer_vtep_address
+        remote_ip = fake_remote_gre_port1.binding.ip
         ofport = fake_remote_gre_port1.ofport
         match = self.app._make_bum_match(metadata=21)
         actions = [
@@ -98,7 +98,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
 
         fake_remote_gre_port2 = make_fake_remote_port(
                 lswitch='fake_gre_switch1',
-                chassis='fake_host2',
+                binding=test_app_base.chassis_binding('fake_host2'),
                 name='fake_remote_gre_port2')
         self.controller.update(fake_remote_gre_port2)
         self.app.parser.OFPInstructionActions.assert_called_with(

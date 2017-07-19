@@ -245,11 +245,19 @@ def with_nb_objects(*objs):
             res = [o for o in res if o.topic == topic]
         return res
 
+    def _get(obj):
+        objs = _get_all(type(obj))
+        for o in objs:
+            if obj.id == o.id:
+                return o
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(obj, *args, **kwargs):
             with mock.patch.object(
                 obj.nb_api, 'get_all', side_effect=_get_all
+            ), mock.patch.object(
+                obj.nb_api, 'get', side_effect=_get,
             ):
                 return func(obj, *args, **kwargs)
         return wrapper
