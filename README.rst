@@ -13,7 +13,7 @@ Distributed SDN-based Neutron Implementation
 * Homepage:  https://launchpad.net/dragonflow
 * Source: https://git.openstack.org/cgit/openstack/dragonflow
 * Bugs: https://bugs.launchpad.net/dragonflow
-* Documentation: https://docs.openstack.org/developer/dragonflow
+* Documentation: https://docs.openstack.org/dragonflow/latest/
 
 .. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/df_logo.png
     :alt: Solution Overview
@@ -39,7 +39,7 @@ and more.
 This configuration is the current focus of Dragonflow.
 Overview and details are available in the `Distributed Dragonflow Section`_
 
-.. _Distributed Dragonflow Section: https://docs.openstack.org/developer/dragonflow/distributed_dragonflow.html
+.. _Distributed Dragonflow Section: https://docs.openstack.org/dragonflow/latest/distributed_dragonflow.html
 
 .. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/dragonflow_distributed_architecture.png
     :alt: Solution Overview

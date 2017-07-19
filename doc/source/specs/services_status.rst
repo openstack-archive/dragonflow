@@ -224,6 +224,6 @@ References
 
 https://review.openstack.org/#/c/385719/8/doc/source/specs/support_check_chassis_alive.rst
 
-http://docs.openstack.org/developer/dragonflow/specs/publish_subscribe_abstraction.html
+https://docs.openstack.org/dragonflow/latest/specs/publish_subscribe_abstraction.html
 
 https://specs.openstack.org/openstack/fuel-specs/specs/6.1/neutron-agents-local-reports.html

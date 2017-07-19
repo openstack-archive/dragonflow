@@ -43,7 +43,7 @@ cloud have consistent time. This is a reliable assumption because it is
 recommended to use NTP(Network Time Protocol) to properly synchronize services
 among nodes, according to [#]_.
 
-.. [#] http://docs.openstack.org/newton/install-guide-obs/environment-ntp.html
+.. [#] https://docs.openstack.org/newton/install-guide-obs/environment-ntp.html
 
 As distributed controller of SDN(software defined network), Dragonflow
 controller can be used to monitor and manage other local services, for example,
