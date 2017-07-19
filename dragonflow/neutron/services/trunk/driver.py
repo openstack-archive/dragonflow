@@ -103,8 +103,12 @@ class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
             segmentation_id=subport.segmentation_id,
         )
         self.nb_api.create(model)
+        binding = l2.PortBinding(
+            type=l2.BINDING_CHASSIS,
+            chassis=df_parent.chassis
+        )
         self.nb_api.update(l2.LogicalPort(id=subport.port_id,
-                                          chassis=df_parent.chassis))
+                                          binding=binding))
 
     def _delete_subports_handler(self, *args, **kwargs):
         """Handle the event that subports were deleted"""
@@ -134,4 +138,4 @@ class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
         )
         self.nb_api.delete(model)
         self.nb_api.update(l2.LogicalPort(id=subport.port_id,
-                                          chassis=None))
+                                          binding=None))
