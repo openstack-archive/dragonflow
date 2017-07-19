@@ -34,6 +34,7 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.lib.packet import vlan
+import six
 
 from dragonflow import conf as cfg
 from dragonflow.tests.fullstack import test_objects as objects
@@ -399,15 +400,23 @@ class LogicalPortTap(object):
     def send(self, buf):
         """Send a packet out via the tap device.
         :param buf: Raw packet data to send
-        :type buf:  String (decoded)
+        :type buf:  String or bytes to write
         """
         LOG.info('send: via {}: {}'.format(
             self.tap.name,
             packet_raw_data_to_hex(buf)))
+
+        if isinstance(buf, bytearray):
+            buf = bytes(buf)
+        elif isinstance(buf, six.string_types):
+            buf = buf.encode('utf-8')
+
         if self.is_blocking:
+            # Takes string and read-only bytes-like objects
             return self.tap.write(buf)
         else:
             fd = self.tap.fileno()
+            # python3: os.write doesn't take strings
             return os.write(fd, buf)
 
     def read(self):
