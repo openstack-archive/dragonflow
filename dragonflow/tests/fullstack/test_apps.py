@@ -12,6 +12,7 @@
 
 import copy
 import netaddr
+import struct
 import sys
 import time
 
@@ -19,6 +20,7 @@ from neutron.agent.common import utils
 from neutron_lib import constants as n_const
 from oslo_log import log
 import ryu.lib.packet
+from ryu.lib.packet import dhcp
 from ryu.ofproto import inet
 
 from dragonflow import conf as cfg
@@ -425,6 +427,30 @@ class TestDHCPApp(test_base.DFTestBase):
         if disable_rule:
             actions.append(app_testing_objects.DisableRuleAction())
 
+        testclass = self
+
+        class DHCPAckFilterVerifiesMTU(app_testing_objects.RyuDHCPAckFilter):
+
+            def __init__(self, expected_mtu):
+                super(DHCPAckFilterVerifiesMTU, self).__init__()
+                self.expected_mtu = expected_mtu
+
+            def __call__(self, buf):
+                result = super(DHCPAckFilterVerifiesMTU, self).__call__(buf)
+                if not result:
+                    return result
+                pkt = ryu.lib.packet.packet.Packet(buf)
+                pkt_dhcp_protocol = pkt.get_protocol(dhcp.dhcp)
+                for option in pkt_dhcp_protocol.options.option_list:
+                    if option.tag == dhcp.DHCP_INTERFACE_MTU_OPT:
+                        mtu = struct.unpack('!H', option.value)
+                        testclass.assertEqual((self.expected_mtu,), mtu)
+                return result
+
+        lport1 = self.port1.port.get_logical_port()
+        lswitch_ref = lport1.lswitch
+        lswitch = self.nb_api.get(lswitch_ref)
+        expected_mtu = lswitch.mtu
         rules1 = [
             app_testing_objects.PortPolicyRule(
                 # Detect dhcp offer
@@ -433,7 +459,7 @@ class TestDHCPApp(test_base.DFTestBase):
             ),
             app_testing_objects.PortPolicyRule(
                 # Detect dhcp acknowledge
-                app_testing_objects.RyuDHCPAckFilter(),
+                DHCPAckFilterVerifiesMTU(expected_mtu),
                 actions=[
                     app_testing_objects.DisableRuleAction(),
                     app_testing_objects.WaitAction(5),
@@ -446,7 +472,7 @@ class TestDHCPApp(test_base.DFTestBase):
             ),
             app_testing_objects.PortPolicyRule(
                 # Detect dhcp acknowledge
-                app_testing_objects.RyuDHCPAckFilter(),
+                DHCPAckFilterVerifiesMTU(expected_mtu),
                 actions=[
                     app_testing_objects.StopSimulationAction(),
                     app_testing_objects.DisableRuleAction()
