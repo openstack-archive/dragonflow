@@ -61,9 +61,14 @@ class NeighborAdvertiser(object):
                                    n_bits=48),
             parser.OFPActionSetField(eth_src=self.mac_address),
             parser.OFPActionSetField(ipv6_nd_sll=self.mac_address),
-            parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
-        instructions = [parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+            parser.NXActionRegMove(src_field='reg6',
+                                   dst_field='reg7',
+                                   n_bits=32),
+        ]
+        instructions = [
+            parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
+            parser.OFPInstructionGotoTable(const.INGRESS_DISPATCH_TABLE),
+        ]
         return instructions
 
     def add(self):

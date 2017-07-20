@@ -12,13 +12,14 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from oslo_log import log
+from ryu.ofproto import nicira_ext
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import l2
 from dragonflow.db.models import ovs
-from oslo_log import log
 
 
 LOG = log.getLogger(__name__)
@@ -73,9 +74,16 @@ class ClassifierApp(df_base_app.DFlowApp):
         LOG.debug("match in_port=%(in_port)s for ingress classification "
                   "of %(lport)s in network %(network)s",
                   {'in_port': ofport, 'lport': lport, 'network': network_id})
+        # Reset in_port to 0 to avoid drop by output command.
         actions = [
             self.parser.OFPActionSetField(reg6=lport.unique_key),
-            self.parser.OFPActionSetField(metadata=network_id)]
+            self.parser.OFPActionSetField(metadata=network_id),
+            self.parser.NXActionRegLoad(
+                dst='in_port',
+                value=0,
+                ofs_nbits=nicira_ext.ofs_nbits(0, 31),
+            ),
+        ]
         action_inst = self.parser.OFPInstructionActions(
                 self.ofproto.OFPIT_APPLY_ACTIONS, actions)
 
