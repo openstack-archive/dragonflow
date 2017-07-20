@@ -32,7 +32,7 @@ lport1 = l2.LogicalPort(
     version=10,
     unique_key=22,
     lswitch='lswitch1',
-    is_local=True,
+    binding=test_app_base.local_binding,
 )
 
 lport2 = l2.LogicalPort(
@@ -41,7 +41,7 @@ lport2 = l2.LogicalPort(
     version=10,
     unique_key=24,
     lswitch='lswitch1',
-    is_local=True,
+    binding=test_app_base.local_binding,
 )
 
 lport3 = l2.LogicalPort(
@@ -50,7 +50,7 @@ lport3 = l2.LogicalPort(
     version=10,
     unique_key=29,
     lswitch='lswitch1',
-    is_local=True,
+    binding=test_app_base.local_binding,
 )
 
 fc1 = sfc.FlowClassifier(

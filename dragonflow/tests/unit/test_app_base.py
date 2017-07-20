@@ -166,12 +166,13 @@ def chassis_binding(chassis):
     )
 
 
+local_binding = chassis_binding(fake_chassis1)
+remote_binding = chassis_binding(fake_chassis2)
 _lport_index = 0
 
 
 def make_fake_port(id=None,
                    subnets=None,
-                   is_local=None,
                    macs=('00:00:00:00:00:00',),
                    ips=('0.0.0.0',),
                    name='fake_local_port',
@@ -179,7 +180,7 @@ def make_fake_port(id=None,
                    enabled=True,
                    topic='fake_tenant1',
                    device_owner='compute:None',
-                   binding=_DEFAULT,
+                   binding=None,
                    version=2,
                    tunnel_key=None,
                    unique_key=2,
@@ -189,10 +190,6 @@ def make_fake_port(id=None,
                    security_groups=['fake_security_group_id1'],
                    device_id='fake_device_id',
                    dhcp_params=None):
-
-    if binding == _DEFAULT:
-        binding = chassis_binding(fake_chassis1.id)
-
     if id is None:
         id = 'lport_{0}'.format(_lport_index)
         global _lport_index
@@ -217,13 +214,12 @@ def make_fake_port(id=None,
         # binding_vnic_type=binding_vnic_type,
         dhcp_params={} if not dhcp_params else dhcp_params,
     )
-    fake_port.is_local = is_local
     fake_port.tunnel_key = tunnel_key
     return fake_port
 
 
 def make_fake_local_port(**kargs):
-    kargs['is_local'] = True
+    kargs['binding'] = local_binding
     return make_fake_port(**kargs)
 
 
@@ -276,7 +272,7 @@ fake_ovs_port2 = ovs.OvsPort(
 
 
 def make_fake_remote_port(**kargs):
-    kargs['is_local'] = False
+    kargs['binding'] = remote_binding
     return make_fake_port(**kargs)
 
 
