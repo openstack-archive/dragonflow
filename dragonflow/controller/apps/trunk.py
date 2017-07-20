@@ -44,8 +44,9 @@ class TrunkApp(df_base_app.DFlowApp):
         match.set_vlan_vid(vlan_tag)
 
     def _get_classification_match(self, child_port_segmentation):
-        match = self.parser.OFPMatch()
-        match.set_in_port(self._get_ofport(child_port_segmentation))
+        match = self.parser.OFPMatch(
+            reg6=child_port_segmentation.parent.unique_key,
+        )
         segmentation_type = child_port_segmentation.segmentation_type
         if n_const.TYPE_VLAN == segmentation_type:
             self._update_classification_match_vlan(match,
@@ -90,8 +91,8 @@ class TrunkApp(df_base_app.DFlowApp):
                 constants.EGRESS_PORT_SECURITY_TABLE),
         ]
         self.mod_flow(
-            table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=constants.PRIORITY_HIGH,
+            table_id=constants.INGRESS_RECLASSIFY_SOURCE_PORT_TABLE,
+            priority=constants.PRIORITY_MEDIUM,
             match=match,
             inst=inst,
         )
@@ -145,8 +146,8 @@ class TrunkApp(df_base_app.DFlowApp):
     def _delete_classification_rule(self, child_port_segmentation):
         match = self._get_classification_match(child_port_segmentation)
         self.mod_flow(
-            table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-            priority=constants.PRIORITY_HIGH,
+            table_id=constants.INGRESS_RECLASSIFY_SOURCE_PORT_TABLE,
+            priority=constants.PRIORITY_MEDIUM,
             match=match,
             command=self.ofproto.OFPFC_DELETE_STRICT,
         )

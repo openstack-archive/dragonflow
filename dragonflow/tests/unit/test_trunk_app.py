@@ -95,8 +95,8 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.controller.update(segmentation)
 
         classification_flow = mock.call(
-                table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                priority=constants.PRIORITY_HIGH,
+                table_id=constants.INGRESS_RECLASSIFY_SOURCE_PORT_TABLE,
+                priority=constants.PRIORITY_MEDIUM,
                 match=mock.ANY,
                 inst=[
                         self.app.parser.OFPInstructionActions(
@@ -127,8 +127,8 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.controller.delete_by_id(type(segmentation), segmentation.id)
 
         classification_flow = mock.call(
-                table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                priority=constants.PRIORITY_HIGH,
+                table_id=constants.INGRESS_RECLASSIFY_SOURCE_PORT_TABLE,
+                priority=constants.PRIORITY_MEDIUM,
                 match=mock.ANY,
                 command=self.app.ofproto.OFPFC_DELETE_STRICT,
         )
@@ -155,11 +155,9 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.db_store.update(segmentation)
         self.app.parser.OFPMatch.side_effect = SettingMock
 
-        self.app.vswitch_api.get_port_ofport_by_id.side_effect = \
-            self._get_ofport_by_id
         match = self.app._get_classification_match(segmentation)
         match_dict = match._dict
-        self.assertEqual({'in_port': test_app_base.fake_local_port2.ofport,
+        self.assertEqual({'reg6': test_app_base.fake_local_port2.unique_key,
                           'vlan_vid': 0x1007},
                          match_dict)
 

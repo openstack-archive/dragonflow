@@ -26,6 +26,9 @@
 # translated to network id and the packet is forwarded to
 # INGRESS_DESTINATION_PORT_LOOKUP_TABLE.
 INGRESS_CLASSIFICATION_DISPATCH_TABLE = 0
+# This table allows other apps to reclassify source port (currently need for
+# trunk app).
+INGRESS_RECLASSIFY_SOURCE_PORT_TABLE = 1
 # All packets from unknown ovs ports are dropped here. Other packets
 # are forwarded to table EGRESS_CONNTRACK_TABLE.
 EGRESS_PORT_SECURITY_TABLE = 5
