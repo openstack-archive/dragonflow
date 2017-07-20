@@ -56,20 +56,21 @@ class ClassifierApp(df_base_app.DFlowApp):
         LOG.debug("match in_port=%(in_port)s for ingress classification "
                   "of %(lport)s in network %(network)s",
                   {'in_port': ofport, 'lport': lport, 'network': network_id})
+        # Reset in_port to 0 to avoid drop by output command.
         actions = [
             self.parser.OFPActionSetField(reg6=lport.unique_key),
-            self.parser.OFPActionSetField(metadata=network_id)]
-        action_inst = self.parser.OFPInstructionActions(
-                self.ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        goto_inst = self.parser.OFPInstructionGotoTable(
-            const.EGRESS_PORT_SECURITY_TABLE)
-        inst = [action_inst, goto_inst]
+            self.parser.OFPActionSetField(metadata=network_id),
+            self.parser.NXActionResubmitTable(
+                table_id=const.EGRESS_PORT_SECURITY_TABLE,
+                in_port=0,
+            ),
+        ]
         self.mod_flow(
-            inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
-            match=match)
+            match=match,
+            actions=actions,
+        )
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
     def _remove_local_port(self, lport):
