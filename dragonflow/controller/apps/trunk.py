@@ -32,11 +32,6 @@ class TrunkApp(df_base_app.DFlowApp):
         self._add_classification_rule(child_port_segmentation)
         self._add_dispatch_rule(child_port_segmentation)
 
-    def _get_ofport(self, child_port_segmentation):
-        parent = child_port_segmentation.parent
-        ofport = self.vswitch_api.get_port_ofport_by_id(parent.id)
-        return ofport
-
     def _get_classification_params_vlan(self, child_port_segmentation):
         vlan_vid = (self.ofproto.OFPVID_PRESENT |
                     child_port_segmentation.segmentation_id)
@@ -129,10 +124,14 @@ class TrunkApp(df_base_app.DFlowApp):
             raise exceptions.UnsupportedSegmentationType(
                 segmentation_type=segmentation_type
             )
-        ofport = self._get_ofport(child_port_segmentation)
-        actions.append(
-            self.parser.OFPActionOutput(ofport,
-                                        self.ofproto.OFPCML_NO_BUFFER))
+
+        parent_port_key = child_port_segmentation.parent.unique_key
+
+        actions += [
+            self.parser.OFPActionSetField(reg7=parent_port_key),
+            self.parser.NXActionResubmitTable(
+                table_id=constants.INGRESS_DISPATCH_TABLE),
+        ]
         return actions
 
     @df_base_app.register_event(trunk.ChildPortSegmentation,
