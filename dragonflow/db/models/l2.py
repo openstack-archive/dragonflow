@@ -154,10 +154,6 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
     dhcp_params = fields.EmbeddedField(DhcpParams)
     binding_vnic_type = df_fields.EnumField(portbindings.VNIC_TYPES)
 
-    def __init__(self, is_local=None, **kwargs):
-        super(LogicalPort, self).__init__(**kwargs)
-        self.is_local = is_local
-
     @property
     def ip(self):
         try:
@@ -171,6 +167,18 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
             return self.macs[0]
         except IndexError:
             return None
+
+    @property
+    def is_local(self):
+        if self.binding is not None:
+            return self.binding.is_local
+        return False
+
+    @property
+    def is_remote(self):
+        if self.binding is not None:
+            return not self.binding.is_local
+        return False
 
     def is_vm_port(self):
         """
@@ -195,28 +203,26 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
         return str(data)
 
     def emit_created(self):
-        is_local = getattr(self, 'is_local', None)
         LOG.info("Adding new logical port = %s", self)
-        if is_local:
+        if self.is_local:
             self.emit_local_created()
-        else:
+        elif self.is_remote:
             self.emit_remote_created()
 
     def emit_updated(self, original_lport):
-        is_local = getattr(self, 'is_local', None)
+        # REVISIT (dimak) Only local and remote are cached at the moment
         LOG.info("Updating %(location)s logical port = %(port)s, "
                  "original port = %(original_port)s",
                  {'port': self,
                   'original_port': original_lport,
-                  'location': 'local' if is_local else 'remote'})
-        if is_local:
+                  'location': 'local' if self.is_local else 'remote'})
+        if self.is_local:
             self.emit_local_updated(original_lport)
-        else:
+        elif self.is_remote:
             self.emit_remote_updated(original_lport)
 
     def emit_deleted(self):
-        is_local = getattr(self, 'is_local', None)
-        if is_local:
+        if self.is_local:
             self.emit_local_deleted()
-        else:
+        elif self.is_remote:
             self.emit_remote_deleted()

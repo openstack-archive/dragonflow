@@ -69,7 +69,6 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
     def test_multicast_flow_for_remote_port(self):
         fake_remote_gre_port1 = make_fake_remote_port(
                 lswitch='fake_gre_switch1',
-                binding=test_app_base.chassis_binding('fake_host2'),
                 name='fake_remote_gre_port1')
         remote_ip = fake_remote_gre_port1.binding.ip
         match = self.app._make_bum_match(metadata=21)

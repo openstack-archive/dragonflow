@@ -186,9 +186,6 @@ class DfLocalController(object):
                         lport.id)
             return
 
-        is_local = lport.binding.is_local
-        lport.is_local = is_local
-
         original_lport = self.db_store.get_one(lport)
         self.db_store.update(lport)
         if original_lport is None:
