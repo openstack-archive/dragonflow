@@ -137,7 +137,7 @@ EVENT_REMOTE_DELETED = 'remote_deleted'
     'ip,lswitch': ('ips', 'lswitch.id'),
 })
 class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
-                  mixins.UniqueKey):
+                  mixins.UniqueKey, mixins.BasicEvents):
     table_name = "lport"
     ips = df_fields.ListOfField(df_fields.IpAddressField())
     subnets = df_fields.ReferenceListField(Subnet)

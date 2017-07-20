@@ -48,6 +48,6 @@ class TestMigrationApp(test_app_base.DFAppTestBase):
         self.addCleanup(mock_emit_created_patch.stop)
 
         self.controller.update(migration_obj)
-        self.assertEqual([mock.call(lport), mock.call(migration_obj)],
+        self.assertEqual([mock.call(migration_obj), mock.call(lport)],
                          mock_update.call_args_list)
         mock_emit_created.assert_called_with()
