@@ -165,9 +165,6 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
         return str(data)
 
     def emit_created(self):
-        ofport = getattr(self, 'ofport', None)
-        if not ofport:
-            return
         is_local = getattr(self, 'is_local', None)
         LOG.info("Adding new logical port = %s", self)
         if is_local:
@@ -176,9 +173,6 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
             self.emit_remote_created()
 
     def emit_updated(self, original_lport):
-        ofport = getattr(self, 'ofport', None)
-        if not ofport:
-            return
         is_local = getattr(self, 'is_local', None)
         LOG.info("Updating %(location)s logical port = %(port)s, "
                  "original port = %(original_port)s",
@@ -192,9 +186,6 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
 
     def emit_deleted(self):
         is_local = getattr(self, 'is_local', None)
-        ofport = getattr(self, 'ofport', None)
-        if not ofport:
-            return
         if is_local:
             self.emit_local_deleted()
         else:
