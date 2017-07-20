@@ -37,7 +37,6 @@ class MigrationApp(df_base_app.DFlowApp):
             return
         original_lport = migration_obj.lport.get_object()
         lport = self.nb_api.get(original_lport)
-        port_id = lport.id
 
         dest_chassis = migration_obj.dest_chassis
         if not dest_chassis:
@@ -46,8 +45,6 @@ class MigrationApp(df_base_app.DFlowApp):
         chassis_name = cfg.CONF.host
         if dest_chassis.id == chassis_name:
             # destination node
-            ofport = self.vswitch_api.get_port_ofport_by_id(port_id)
-            lport.ofport = ofport
             lport.is_local = True
             self.db_store.update(lport)
 
@@ -66,8 +63,6 @@ class MigrationApp(df_base_app.DFlowApp):
 
         # Here It could be either source node or other nodes, so
         # get ofport from chassis.
-        ofport = self.vswitch_api.get_vtp_ofport(lport.lswitch.network_type)
-        lport.ofport = ofport
         remote_chassis = dest_chassis.get_object()
         if not remote_chassis:
             # chassis has not been online yet.

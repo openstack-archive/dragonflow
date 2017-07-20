@@ -66,8 +66,7 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
         fake_local_vlan_port2 = make_fake_local_port(
                 lswitch='fake_vlan_switch1',
                 macs=['1a:0b:0c:0d:0f:0f'],
-                ips=['10.0.0.112'],
-                ofport=12)
+                ips=['10.0.0.112'])
         self.controller.update(fake_local_vlan_port2)
         self.app.mod_flow.assert_not_called()
         self.app.mod_flow.reset_mock()

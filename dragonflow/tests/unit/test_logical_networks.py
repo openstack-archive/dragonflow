@@ -26,7 +26,6 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
         fake_local_vlan_port1 = test_app_base.make_fake_local_port(
                 name='fake_local_vlan_port1',
                 unique_key=3,
-                ofport=2,
                 lswitch='fake_vlan_switch1')
         self.logical_networks.add_local_port(
                 port_id=fake_local_vlan_port1.id,
@@ -39,7 +38,6 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
         fake_local_vlan_port2 = test_app_base.make_fake_local_port(
                 name='fake_local_vlan_port2',
                 unique_key=4,
-                ofport=3,
                 lswitch='fake_vlan_switch1')
         self.logical_networks.add_local_port(
                 port_id=fake_local_vlan_port2.id,
@@ -56,8 +54,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
         fake_local_gre_port1 = test_app_base.make_fake_local_port(
                 lswitch='fake_gre_switch1',
                 name='fake_local_gre_port1',
-                unique_key=5,
-                ofport=4)
+                unique_key=5)
         self.logical_networks.add_local_port(
                 port_id=fake_local_gre_port1.id,
                 network_id=2,
@@ -79,7 +76,6 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
         fake_remote_vlan_port1 = test_app_base.make_fake_remote_port(
                 name='fake_remote_vlan_port1',
                 unique_key=30,
-                ofport=12,
                 lswitch='fake_vlan_switch1')
         self.logical_networks.add_remote_port(
                 port_id=fake_remote_vlan_port1.id,
@@ -92,7 +88,6 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
         fake_remote_vlan_port2 = test_app_base.make_fake_remote_port(
                 name='fake_remote_vlan_port2',
                 unique_key=4,
-                ofport=3,
                 lswitch='fake_vlan_switch1')
         self.logical_networks.add_remote_port(
                 port_id=fake_remote_vlan_port2.id,
@@ -109,8 +104,7 @@ class TestLogicalNetworks(tests_base.BaseTestCase):
         fake_local_gre_port1 = test_app_base.make_fake_remote_port(
                 lswitch='fake_gre_switch1',
                 name='fake_remote_gre_port1',
-                unique_key=5,
-                ofport=4)
+                unique_key=5)
         self.logical_networks.add_remote_port(
                 port_id=fake_local_gre_port1.id,
                 network_id=2,
