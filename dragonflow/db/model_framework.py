@@ -263,6 +263,12 @@ class _CommonBase(models.Base):
         return cls.get_indexes()[index]
 
 
+def _setattr_no_overwrite(obj, attr_name, attr):
+    if hasattr(obj, attr_name):
+        return
+    setattr(obj, attr_name, attr)
+
+
 def _add_event_funcs(cls_, event):
     @classmethod
     def register_event(cls, cb):
@@ -270,7 +276,7 @@ def _add_event_funcs(cls_, event):
 
     register_event_name = 'register_{0}'.format(event)
     register_event.__func__.__name__ = register_event_name
-    setattr(cls_, register_event_name, register_event)
+    _setattr_no_overwrite(cls_, register_event_name, register_event)
 
     @classmethod
     def unregister_event(cls, cb):
@@ -278,14 +284,14 @@ def _add_event_funcs(cls_, event):
 
     unregister_event_name = 'unregister_{0}'.format(event)
     unregister_event.__func__.__name__ = unregister_event_name
-    setattr(cls_, unregister_event_name, unregister_event)
+    _setattr_no_overwrite(cls_, unregister_event_name, unregister_event)
 
     def emit_event(self, *args, **kwargs):
         return self._emit(event, *args, **kwargs)
 
     emit_event_name = 'emit_{0}'.format(event)
     emit_event.__name__ = emit_event_name
-    setattr(cls_, emit_event_name, emit_event)
+    _setattr_no_overwrite(cls_, emit_event_name, emit_event)
 
 
 def construct_nb_db_model(cls_=None, indexes=None, events=frozenset()):
