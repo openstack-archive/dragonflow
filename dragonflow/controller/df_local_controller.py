@@ -384,7 +384,7 @@ class DfLocalController(object):
         try:
             self._handle_db_change(update)
         except Exception as e:
-            if "ofport is 0" not in e.message:
+            if "ofport is 0" not in str(e):
                 LOG.exception(e)
             if not self.sync_rate_limiter():
                 self.sync()
