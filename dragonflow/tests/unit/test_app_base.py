@@ -166,6 +166,9 @@ def chassis_binding(chassis):
     )
 
 
+_lport_index = 0
+
+
 def make_fake_port(id=None,
                    subnets=None,
                    is_local=None,
@@ -185,14 +188,18 @@ def make_fake_port(id=None,
                    binding_vnic_type='normal',
                    security_groups=['fake_security_group_id1'],
                    device_id='fake_device_id',
-                   ofport=1,
                    dhcp_params=None):
 
     if binding == _DEFAULT:
         binding = chassis_binding(fake_chassis1.id)
 
+    if id is None:
+        id = 'lport_{0}'.format(_lport_index)
+        global _lport_index
+        _lport_index += 1
+
     fake_port = l2.LogicalPort(
-        id="%s_%s" % (name, ofport) if not id else id,
+        id=id,
         topic=topic,
         name=name,
         unique_key=unique_key,
@@ -211,7 +218,6 @@ def make_fake_port(id=None,
         dhcp_params={} if not dhcp_params else dhcp_params,
     )
     fake_port.is_local = is_local
-    fake_port.ofport = ofport
     fake_port.tunnel_key = tunnel_key
     return fake_port
 
@@ -247,7 +253,6 @@ fake_ovs_port1 = ovs.OvsPort(
     type=constants.OVS_VM_INTERFACE,
     iface_id='fake_port1',
     attached_mac='fa:16:3e:8c:2e:b3',
-    tunnel_type='vxlan',
 )
 
 
@@ -256,7 +261,6 @@ fake_local_port2 = make_fake_local_port(
     ips=['10.0.0.7'],
     tunnel_key=3,
     id='fake_port2',
-    ofport=3,
     subnets=['fake_subnet1'])
 
 
@@ -268,7 +272,6 @@ fake_ovs_port2 = ovs.OvsPort(
     type=constants.OVS_VM_INTERFACE,
     iface_id='fake_port2',
     attached_mac='fa:16:3e:8c:2e:b4',
-    tunnel_type='vxlan',
 )
 
 
@@ -284,7 +287,6 @@ fake_remote_port1 = make_fake_remote_port(
     ips=['10.0.0.8'],
     binding=chassis_binding('fake_host2'),
     unique_key=5,
-    ofport=1,
     subnets=['fake_subnet1'])
 
 

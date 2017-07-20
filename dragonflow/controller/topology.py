@@ -213,10 +213,9 @@ class Topology(object):
             return
 
         cached_lport = self.db_store.get_one(l2.LogicalPort(id=lport_id))
-        if not cached_lport or not cached_lport.ofport:
-            # If the logical port is not in db store or its ofport is not
-            # valid. It has not been applied to dragonflow apps. We need to
-            # update it in dragonflow controller.
+        if not cached_lport:
+            # If the logical port is not in db store it has not been applied
+            # to dragonflow apps. We need to update it in dragonflow controller
             LOG.info("A local logical port(%s) is online", lport)
             try:
                 self.controller.update(lport)

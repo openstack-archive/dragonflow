@@ -55,8 +55,7 @@ class TestL2App(test_app_base.DFAppTestBase):
         fake_local_port2 = test_app_base.make_fake_local_port(
                 lswitch='fake_local_switch1',
                 macs=['1a:0b:0c:0d:0e:0f'],
-                ips=['10.0.0.12'],
-                ofport=2)
+                ips=['10.0.0.12'])
         self.controller.update(fake_local_port2)
         self.app.mod_flow.assert_any_call(
             inst=mock.ANY,
