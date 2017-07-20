@@ -144,7 +144,7 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
     def _get_ofport_by_id(self, lport_id):
         self.assertEqual('fake_port2', lport_id,
                          'Unexpected call to get_port_ofport_by_id')
-        return test_app_base.fake_local_port2.ofport
+        return 3
 
     def test__get_classification_match(self):
         lswitch2 = self._create_2nd_lswitch()
@@ -159,7 +159,7 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
             self._get_ofport_by_id
         match = self.app._get_classification_match(segmentation)
         match_dict = match._dict
-        self.assertEqual({'in_port': test_app_base.fake_local_port2.ofport,
+        self.assertEqual({'in_port': 3,
                           'vlan_vid': 0x1007},
                          match_dict)
 

@@ -154,9 +154,8 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
     dhcp_params = fields.EmbeddedField(DhcpParams)
     binding_vnic_type = df_fields.EnumField(portbindings.VNIC_TYPES)
 
-    def __init__(self, ofport=None, is_local=None, **kwargs):
+    def __init__(self, is_local=None, **kwargs):
         super(LogicalPort, self).__init__(**kwargs)
-        self.ofport = ofport
         self.is_local = is_local
 
     @property
