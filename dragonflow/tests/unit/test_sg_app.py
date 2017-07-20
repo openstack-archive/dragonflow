@@ -70,7 +70,6 @@ class TestSGApp(test_app_base.DFAppTestBase):
             port_security_enabled=True,
             device_owner='compute:None',
             device_id='fake_device_id',
-            is_local=True,
             # 'binding_profile': {},
             # 'binding_vnic_type': 'normal',
         )

@@ -15,6 +15,7 @@ from oslo_log import log
 from dragonflow import conf as cfg
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
+from dragonflow.db.models import l2
 from dragonflow.db.models import migration
 
 
@@ -45,7 +46,10 @@ class MigrationApp(df_base_app.DFlowApp):
         chassis_name = cfg.CONF.host
         if dest_chassis.id == chassis_name:
             # destination node
-            lport.is_local = True
+            lport.binding = l2.PortBinding(
+                type=l2.BINDING_CHASSIS,
+                chassis=chassis_name,
+            )
             self.db_store.update(lport)
 
             LOG.info("dest process migration event port = %(port)s"
