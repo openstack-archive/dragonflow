@@ -24,6 +24,12 @@ LOG = log.getLogger(__name__)
 
 
 class ClassifierApp(df_base_app.DFlowApp):
+    def switch_features_handler(self, ev):
+        self.add_flow_go_to_table(
+            table=const.INGRESS_RECLASSIFY_SOURCE_PORT_TABLE,
+            priority=const.PRIORITY_DEFAULT,
+            goto_table_id=const.EGRESS_PORT_SECURITY_TABLE,
+        )
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
     def _add_local_port(self, lport):
@@ -71,7 +77,7 @@ class ClassifierApp(df_base_app.DFlowApp):
                 self.ofproto.OFPIT_APPLY_ACTIONS, actions)
 
         goto_inst = self.parser.OFPInstructionGotoTable(
-            const.EGRESS_PORT_SECURITY_TABLE)
+            const.INGRESS_RECLASSIFY_SOURCE_PORT_TABLE)
         inst = [action_inst, goto_inst]
         self.mod_flow(
             inst=inst,
