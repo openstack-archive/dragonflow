@@ -37,23 +37,22 @@ class TrunkApp(df_base_app.DFlowApp):
         ofport = self.vswitch_api.get_port_ofport_by_id(parent.id)
         return ofport
 
-    def _update_classification_match_vlan(self,
-                                          match, child_port_segmentation):
-        vlan_tag = (self.ofproto.OFPVID_PRESENT |
+    def _get_classification_params_vlan(self, child_port_segmentation):
+        vlan_vid = (self.ofproto.OFPVID_PRESENT |
                     child_port_segmentation.segmentation_id)
-        match.set_vlan_vid(vlan_tag)
+        return {'vlan_vid': vlan_vid}
 
     def _get_classification_match(self, child_port_segmentation):
-        match = self.parser.OFPMatch()
-        match.set_in_port(self._get_ofport(child_port_segmentation))
+        params = {'reg6': child_port_segmentation.parent.unique_key}
         segmentation_type = child_port_segmentation.segmentation_type
         if n_const.TYPE_VLAN == segmentation_type:
-            self._update_classification_match_vlan(match,
-                                                   child_port_segmentation)
+            params.update(
+                self._get_classification_params_vlan(child_port_segmentation),
+            )
         else:
             raise exceptions.UnsupportedSegmentationType(
                     segmentation_type=segmentation_type)
-        return match
+        return self.parser.OFPMatch(**params)
 
     def _add_classification_actions_vlan(self,
                                          actions, child_port_segmentation):
@@ -78,22 +77,22 @@ class TrunkApp(df_base_app.DFlowApp):
             raise exceptions.UnsupportedSegmentationType(
                 segmentation_type=segmentation_type
             )
+
+        actions.append(
+            self.parser.NXActionResubmitTable(
+                table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            ),
+        )
         return actions
 
     def _add_classification_rule(self, child_port_segmentation):
         match = self._get_classification_match(child_port_segmentation)
         actions = self._get_classification_actions(child_port_segmentation)
-        inst = [
-            self.parser.OFPInstructionActions(
-                self.ofproto.OFPIT_APPLY_ACTIONS, actions),
-            self.parser.OFPInstructionGotoTable(
-                constants.EGRESS_PORT_SECURITY_TABLE),
-        ]
         self.mod_flow(
             table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=constants.PRIORITY_HIGH,
             match=match,
-            inst=inst,
+            actions=actions,
         )
 
     def _add_dispatch_rule(self, child_port_segmentation):
