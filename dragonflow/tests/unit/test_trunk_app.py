@@ -95,17 +95,10 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.controller.update(segmentation)
 
         classification_flow = mock.call(
-                table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                priority=constants.PRIORITY_HIGH,
-                match=mock.ANY,
-                inst=[
-                        self.app.parser.OFPInstructionActions(
-                                self.app.ofproto.OFPIT_APPLY_ACTIONS, mock.ANY
-                        ),
-                        self.app.parser.OFPInstructionGotoTable(
-                            constants.EGRESS_PORT_SECURITY_TABLE
-                        )
-                ]
+            table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            priority=constants.PRIORITY_HIGH,
+            match=mock.ANY,
+            actions=mock.ANY,
         )
         dispatch_flow = mock.call(
             table_id=constants.INGRESS_DISPATCH_TABLE,
@@ -155,11 +148,9 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.db_store.update(segmentation)
         self.app.parser.OFPMatch.side_effect = SettingMock
 
-        self.app.vswitch_api.get_port_ofport_by_id.side_effect = \
-            self._get_ofport_by_id
         match = self.app._get_classification_match(segmentation)
         match_dict = match._dict
-        self.assertEqual({'in_port': 3,
+        self.assertEqual({'reg6': test_app_base.fake_local_port2.unique_key,
                           'vlan_vid': 0x1007},
                          match_dict)
 
@@ -172,9 +163,11 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.db_store.update(segmentation)
         self.app.parser.OFPActionSetField.side_effect = SettingMock
         actions = self.app._get_classification_actions(segmentation)
+        self.assertEqual(4, len(actions))
         self.assertEqual({'reg6': 33}, actions[0]._dict)
         self.assertEqual({'metadata': 17}, actions[1]._dict)
         self.assertEqual(self.app.parser.OFPActionPopVlan(), actions[2])
+        self.assertEqual(self.app.parser.NXActionResubmit(), actions[3])
 
     def test__get_dispatch_match(self):
         lswitch2 = self._create_2nd_lswitch()
