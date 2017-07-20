@@ -15,7 +15,6 @@
 
 from ryu.lib.packet import arp
 from ryu.ofproto import ether
-from ryu.ofproto import nicira_ext
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
@@ -73,11 +72,7 @@ class ArpResponder(object):
                    parser.OFPActionSetField(arp_spa=self.interface_ip),
                    parser.NXActionRegMove(src_field='reg6',
                                           dst_field='reg7',
-                                          n_bits=32),
-                   parser.NXActionRegLoad(
-                           dst='in_port',
-                           ofs_nbits=nicira_ext.ofs_nbits(0, 31),
-                           value=0)]
+                                          n_bits=32)]
 
         need_resubmit = self.table_id >= self.goto_table_id
 

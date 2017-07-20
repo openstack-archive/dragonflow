@@ -86,9 +86,14 @@ class ICMPResponder(object):
                     parser.OFPActionSetField(icmpv4_type=icmp.ICMP_ECHO_REPLY),
                     parser.OFPActionSetField(
                         icmpv4_code=icmp.ICMP_ECHO_REPLY_CODE),
-                    parser.OFPActionOutput(ofproto.OFPP_IN_PORT, 0)]
-        instructions = [parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+                    parser.NXActionRegMove(src_field='reg6',
+                                           dst_field='reg7',
+                                           n_bits=32)]
+
+        instructions = [
+            parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
+            parser.OFPInstructionGotoTable(const.INGRESS_DISPATCH_TABLE),
+        ]
         return instructions
 
     def add(self, **kwargs):
