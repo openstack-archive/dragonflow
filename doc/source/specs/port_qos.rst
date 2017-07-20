@@ -132,6 +132,6 @@ to all the ports which apply the QoS object.
 References
 ==========
 
-http://specs.openstack.org/openstack/neutron-specs/specs/liberty/qos-api-extension.html
+https://specs.openstack.org/openstack/neutron-specs/specs/liberty/qos-api-extension.html
 
 https://review.openstack.org/#/c/331932

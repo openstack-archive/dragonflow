@@ -114,7 +114,7 @@ on a different spec that will address controller reliability concerns.
 
 References
 ==========
-[1] http://specs.openstack.org/openstack/neutron-specs/specs/api/allowed_address_pairs.html
+[1] https://specs.openstack.org/openstack/neutron-specs/specs/api/allowed_address_pairs.html
 
 [2] https://blueprints.launchpad.net/dragonflow/+spec/l2-arp-supression
 

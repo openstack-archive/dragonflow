@@ -21,7 +21,7 @@ Quick Installation
 
 3) Edit local.conf according to your configuration, See `Detailed Installation`_ for more details, or the Devstack_ configuration manual
 
-.. _Devstack: http://docs.openstack.org/developer/devstack/configuration.html
+.. _Devstack: https://docs.openstack.org/devstack/latest/configuration.html
 
 
 DHCP configuration (IPv4 Only Environment):
@@ -112,7 +112,7 @@ You can find example configuration files in the multi-node-conf or the single-no
 Automated setup using Vagrant + Virtualbox
 ==========================================
 
-`Vagrant Installation Guide <http://docs.openstack.org/developer/dragonflow/installation.html>`_
+`Vagrant Installation Guide <https://docs.openstack.org/dragonflow/latest/installation.html>`_
 
 Troubleshooting
 ---------------
