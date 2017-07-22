@@ -22,7 +22,7 @@ from dragonflow.db.models import mixins
 
 @mf.construct_nb_db_model
 class LogicalRouterPort(mf.ModelBase, mixins.Topic, mixins.UniqueKey):
-    mac = fields.StringField()
+    mac = df_fields.MacAddressField()
     lswitch = df_fields.ReferenceField(l2.LogicalSwitch)
     network = df_fields.IpNetworkField()
 
