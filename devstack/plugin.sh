@@ -183,6 +183,10 @@ function configure_trunk {
     iniset /$Q_PLUGIN_CONF_FILE ml2 extension_drivers "$Q_ML2_PLUGIN_EXT_DRIVERS"
 }
 
+function configure_l3 {
+    iniadd /$Q_PLUGIN_CONF_FILE service_providers service_provider L3_ROUTER_NAT:Dragonflow:dragonflow.neutron.services.l3_router.service_provider.DfL3ServiceProvider:default
+}
+
 function configure_bgp {
     setup_develop $DEST/neutron-dynamic-routing
     sudo install -d -o $STACK_USER $NEUTRON_CONF_DIR/policy.d
@@ -216,6 +220,9 @@ function configure_df_plugin {
     cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
 
     if is_service_enabled q-svc ; then
+
+        configure_l3
+
         if is_service_enabled q-qos ; then
             configure_qos
         fi
