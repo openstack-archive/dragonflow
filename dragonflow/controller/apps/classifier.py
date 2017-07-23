@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from oslo_log import log
-from ryu.ofproto import nicira_ext
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
@@ -33,6 +32,11 @@ class ClassifierApp(df_base_app.DFlowApp):
 
     def switch_features_handler(self, ev):
         self._ofport_unique_key_map.clear()
+        self.add_flow_go_to_table(
+            table=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            priority=const.PRIORITY_DEFAULT,
+            goto_table_id=const.EGRESS_PORT_SECURITY_TABLE,
+        )
 
     @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_CREATED)
     @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_UPDATED)
@@ -78,23 +82,17 @@ class ClassifierApp(df_base_app.DFlowApp):
         actions = [
             self.parser.OFPActionSetField(reg6=lport.unique_key),
             self.parser.OFPActionSetField(metadata=network_id),
-            self.parser.NXActionRegLoad(
-                dst='in_port',
-                value=0,
-                ofs_nbits=nicira_ext.ofs_nbits(0, 31),
+            self.parser.NXActionResubmitTable(
+                in_port=0,
+                table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             ),
         ]
-        action_inst = self.parser.OFPInstructionActions(
-                self.ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        goto_inst = self.parser.OFPInstructionGotoTable(
-            const.EGRESS_PORT_SECURITY_TABLE)
-        inst = [action_inst, goto_inst]
         self.mod_flow(
-            inst=inst,
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_MEDIUM,
-            match=match)
+            match=match,
+            actions=actions,
+        )
 
     @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_DELETED)
     def _ovs_port_deleted(self, ovs_port):
