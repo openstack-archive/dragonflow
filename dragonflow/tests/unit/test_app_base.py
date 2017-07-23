@@ -153,7 +153,6 @@ def make_fake_port(id=None,
                    device_owner='compute:None',
                    chassis='fake_host',
                    version=2,
-                   tunnel_key=None,
                    unique_key=2,
                    port_security_enabled=True,
                    binding_vnic_type='normal',
@@ -183,7 +182,6 @@ def make_fake_port(id=None,
     )
     fake_port.is_local = is_local
     fake_port.ofport = ofport
-    fake_port.tunnel_key = tunnel_key
     return fake_port
 
 
@@ -225,7 +223,6 @@ fake_ovs_port1 = ovs.OvsPort(
 fake_local_port2 = make_fake_local_port(
     macs=['fa:16:3e:8c:2e:b4'],
     ips=['10.0.0.7'],
-    tunnel_key=3,
     id='fake_port2',
     ofport=3,
     subnets=['fake_subnet1'])
