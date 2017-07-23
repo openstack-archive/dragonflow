@@ -14,11 +14,11 @@
 
 import uuid
 
-from neutron.callbacks import events
-from neutron.callbacks import registry
 from neutron.services.trunk import constants
 from neutron.services.trunk.drivers import base
 from neutron_lib.api.definitions import portbindings
+from neutron_lib.callbacks import events
+from neutron_lib.callbacks import registry
 
 from dragonflow import conf as cfg
 from dragonflow.db.models import l2
