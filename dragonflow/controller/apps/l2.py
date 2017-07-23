@@ -29,14 +29,6 @@ from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import l2
 
-
-# TODO(gsagie) currently the number set in Ryu for this
-# (OFPP_IN_PORT) is not working, use this until resolved
-# NOTE(yamamoto): Many of Nicira extensions, including
-# NXAST_RESUBMIT_TABLE, take 16-bit (OpenFlow 1.0 style) port number,
-# regardless of the OpenFlow version being used.
-OF_IN_PORT = 0xfff8
-
 LOG = log.getLogger(__name__)
 
 
@@ -241,16 +233,16 @@ class L2App(df_base_app.DFlowApp):
             port_key_in_network = local_ports[port_id_in_network]
 
             egress.append(parser.OFPActionSetField(reg7=port_key_in_network))
-            egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
-                                                       const.EGRESS_TABLE))
+            egress.append(parser.NXActionResubmitTable(
+                table_id=const.EGRESS_TABLE))
 
             ingress.append(parser.OFPActionSetField(reg7=port_key_in_network))
             ingress.append(parser.NXActionResubmitTable(
-                OF_IN_PORT, const.INGRESS_CONNTRACK_TABLE))
+                table_id=const.INGRESS_CONNTRACK_TABLE))
 
         egress.append(parser.OFPActionSetField(reg7=0))
-        egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
-                                                   const.EGRESS_TABLE))
+        egress.append(parser.NXActionResubmitTable(
+            table_id=const.EGRESS_TABLE))
         # Egress broadcast
         match = self._get_multicast_broadcast_match(local_network_id)
         egress_inst = [parser.OFPInstructionActions(
@@ -376,14 +368,13 @@ class L2App(df_base_app.DFlowApp):
         ingress = []
         ingress.append(parser.OFPActionSetField(reg7=port_key))
         ingress.append(parser.NXActionResubmitTable(
-            OF_IN_PORT,
-            const.INGRESS_CONNTRACK_TABLE))
+            table_id=const.INGRESS_CONNTRACK_TABLE))
 
         egress = []
 
         egress.append(parser.OFPActionSetField(reg7=port_key))
-        egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
-                                                   const.EGRESS_TABLE))
+        egress.append(parser.NXActionResubmitTable(
+            table_id=const.EGRESS_TABLE))
 
         for port_id_in_network in local_network.local_ports:
             lean_lport = l2.LogicalPort(id=port_id_in_network, topic=topic)
@@ -393,17 +384,16 @@ class L2App(df_base_app.DFlowApp):
             port_key_in_network = local_network.local_ports[port_id_in_network]
 
             egress.append(parser.OFPActionSetField(reg7=port_key_in_network))
-            egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
-                                                       const.EGRESS_TABLE))
+            egress.append(parser.NXActionResubmitTable(
+                table_id=const.EGRESS_TABLE))
 
             ingress.append(parser.OFPActionSetField(reg7=port_key_in_network))
             ingress.append(parser.NXActionResubmitTable(
-                OF_IN_PORT,
-                const.INGRESS_CONNTRACK_TABLE))
+                table_id=const.INGRESS_CONNTRACK_TABLE))
 
         egress.append(parser.OFPActionSetField(reg7=0))
-        egress.append(parser.NXActionResubmitTable(OF_IN_PORT,
-                                                   const.EGRESS_TABLE))
+        egress.append(parser.NXActionResubmitTable(
+            table_id=const.EGRESS_TABLE))
         # Egress broadcast
         match = self._get_multicast_broadcast_match(network_id)
         egress_inst = [parser.OFPInstructionActions(
