@@ -17,7 +17,6 @@ from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
-from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import mixins
 from dragonflow.tests.common import utils
@@ -82,21 +81,6 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
             expected_chassis,
             skip_send_event=True,
         )
-
-    @mock.patch.object(db_store.DbStore, 'get_one')
-    def test__is_physical_chassis(self, get_one):
-        # real chassis
-        chassis_real = core.Chassis(id='ch1', ip='10.0.0.3')
-        self.assertTrue(self.controller._is_physical_chassis(chassis_real))
-
-        self.db_store = mock.MagicMock()
-        get_one.return_value = core.Chassis(id='ch2', ip='10.0.0.4')
-        chassis_ref = model_proxy.create_reference(core.Chassis, 'ch2')
-        self.assertTrue(self.controller._is_physical_chassis(chassis_ref))
-
-        get_one.return_value = None
-        chassis_bad_ref = model_proxy.create_reference(core.Chassis, 'ch3')
-        self.assertFalse(self.controller._is_physical_chassis(chassis_bad_ref))
 
     @mock.patch.object(db_store.DbStore, 'get_one')
     @mock.patch.object(db_store.DbStore, 'update')

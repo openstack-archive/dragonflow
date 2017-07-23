@@ -383,7 +383,7 @@ class DNATApp(df_base_app.DFlowApp):
         # FIXME(dimak) Floating lports are not in DbStore because local
         # controller ignores them, we should change this some-time
         # FIXME (dimak) cache until above is done
-        return self.nb_api.get(l2.LogicalPort(id=fip.floating_lport.id))
+        return self.db_store.get_one(l2.LogicalPort(id=fip.floating_lport.id))
 
     def _get_external_subnet(self, fip):
         floating_lport = self._get_floating_lport(fip)
