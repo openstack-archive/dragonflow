@@ -22,27 +22,26 @@ from dragonflow.db.models import ovs
 from dragonflow.tests.common import utils
 from dragonflow.tests.unit import test_app_base
 
-
 local_lport1 = l2.LogicalPort(
     id='lport1',
     topic='topic1',
     unique_key=1,
+    binding=test_app_base.local_binding,
 )
-local_lport1.is_local = True
 local_lport2 = l2.LogicalPort(
     id='lport2',
     topic='topic1',
     unique_key=2,
+    binding=test_app_base.local_binding,
 )
-local_lport2.is_local = True
 
 
 remote_lport = l2.LogicalPort(
     id='lport3',
     topic='topic1',
     unique_key=3,
+    binding=test_app_base.remote_binding,
 )
-remote_lport.is_local = False
 
 
 class TestDNATApp(test_app_base.DFAppTestBase):

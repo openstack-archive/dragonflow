@@ -9,6 +9,7 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+import copy
 
 import mock
 
@@ -22,7 +23,7 @@ class TestMigrationApp(test_app_base.DFAppTestBase):
 
     def test_update_migration_flows(self):
         cfg.CONF.set_override('host', 'fake-local-host')
-        lport = test_app_base.fake_local_port1
+        lport = copy.deepcopy(test_app_base.fake_local_port1)
         fake_lswitch = test_app_base.fake_logic_switch1
         migration_obj = migration.Migration(
                 id=lport.id, dest_chassis='fake-local-host', lport=lport,
