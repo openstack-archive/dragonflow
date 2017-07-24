@@ -160,14 +160,14 @@ class DfLocalController(object):
 
         # Notify about remote port update
         for port in self._get_ports_by_chassis(chassis):
-            self._logical_port_process(port)
+            self.update(port)
 
     def delete_chassis(self, chassis):
         LOG.info("Deleting remote ports in remote chassis %s", chassis.id)
         # Chassis is deleted, there is no reason to keep the remote port
         # in it.
         for port in self._get_ports_by_chassis(chassis):
-            self._delete_lport_instance(port)
+            self.delete(port)
         self.db_store.delete(chassis)
 
     def _is_physical_chassis(self, chassis):
@@ -176,22 +176,6 @@ class DfLocalController(object):
         if model_proxy.is_model_proxy(chassis) and not chassis.get_object():
             return False
         return True
-
-    # REVISIT(oanson) The special handling of logical port process should be
-    # removed from DF controller. (bug/1690775)
-    def _logical_port_process(self, lport):
-        lswitch = lport.lswitch
-        if not lswitch:
-            LOG.warning("Could not find lswitch for lport: %s",
-                        lport.id)
-            return
-
-        original_lport = self.db_store.get_one(lport)
-        self.db_store.update(lport)
-        if original_lport is None:
-            lport.emit_created()
-        else:
-            lport.emit_updated(original_lport)
 
     def update_lport(self, lport):
         if (
@@ -202,20 +186,8 @@ class DfLocalController(object):
             LOG.debug(("Port %s has not been bound or it is a vPort"),
                       lport.id)
             return
-        original_lport = self.db_store.get_one(lport)
 
-        if lport.is_newer_than(original_lport):
-            self._logical_port_process(lport)
-
-    def delete_lport(self, lport):
-        lport = self.db_store.get_one(lport)
-        if lport is None:
-            return
-        self._delete_lport_instance(lport)
-
-    def _delete_lport_instance(self, lport):
-        lport.emit_deleted()
-        self.db_store.delete(lport)
+        self.update_model_object(lport)
 
     def register_chassis(self):
         # Get all chassis from nb db to db store.
@@ -291,16 +263,18 @@ class DfLocalController(object):
 
     def update_model_object(self, obj):
         original_obj = self.db_store.get_one(obj)
-        if original_obj is None:
-            if _has_basic_events(obj):
-                obj.emit_created()
-        elif self._is_newer(obj, original_obj):
-            if _has_basic_events(obj):
-                obj.emit_updated(original_obj)
-        else:
+
+        if not self._is_newer(obj, original_obj):
             return
 
         self.db_store.update(obj)
+
+        if original_obj is None:
+            if _has_basic_events(obj):
+                obj.emit_created()
+        else:
+            if _has_basic_events(obj):
+                obj.emit_updated(original_obj)
 
     def delete_model_object(self, obj):
         # Retrieve full object (in case we only got Model(id='id'))

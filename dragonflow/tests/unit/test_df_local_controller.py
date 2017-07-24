@@ -49,11 +49,11 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_notify.assert_called_once()
 
     @mock.patch.object(df_local_controller.DfLocalController,
-                       '_delete_lport_instance')
+                       'delete_model_object')
     @mock.patch.object(db_store.DbStore, 'get_all')
     @mock.patch.object(db_store.DbStore, 'delete')
     def test_delete_chassis(self, mock_db_store_delete,
-                            mock_get_ports, mock_delete_lport):
+                            mock_get_ports, mock_controller_delete):
         lport_id = 'fake_lport_id'
         chassis = core.Chassis(id='fake_chassis_id')
         lport = mock.Mock()
@@ -61,7 +61,7 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
         mock_get_ports.return_value = [lport]
 
         self.controller.delete(chassis)
-        mock_delete_lport.assert_called_once_with(lport)
+        mock_controller_delete.assert_called_once_with(lport)
         mock_db_store_delete.assert_called_once_with(chassis)
 
     @utils.with_nb_objects(test_app_base.fake_chassis1)
