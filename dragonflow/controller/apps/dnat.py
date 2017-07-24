@@ -23,6 +23,7 @@ from ryu.lib.packet import in_proto
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
+from ryu.ofproto import nicira_ext
 
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
@@ -478,13 +479,24 @@ class DNATApp(df_base_app.DFlowApp):
             # if it is the first floating ip on this node, then
             # install the common goto flow rule.
             parser = self.parser
-            match = parser.OFPMatch()
-            match.set_in_port(self.external_ofport)
-            self.add_flow_go_to_table(
-                const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
-                const.PRIORITY_DEFAULT,
-                const.INGRESS_NAT_TABLE,
-                match=match)
+            self.mod_flow(
+                table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                priority=const.PRIORITY_DEFAULT,
+                match=parser.OFPMatch(in_port=self.external_ofport),
+                inst=[
+                    parser.OFPInstructionActions(
+                        self.ofproto.OFPIT_APPLY_ACTIONS,
+                        [
+                            parser.NXActionRegLoad(
+                                dst='in_port',
+                                value=0,
+                                ofs_nbits=nicira_ext.ofs_nbits(0, 31),
+                            ),
+                        ],
+                    ),
+                    parser.OFPInstructionGotoTable(const.INGRESS_NAT_TABLE),
+                ],
+            )
             # Take over reg7 == 0 for the external_ofport
             match = parser.OFPMatch(reg7=0)
             actions = [self.parser.OFPActionOutput(
