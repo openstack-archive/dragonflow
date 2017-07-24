@@ -39,12 +39,14 @@ class ClassifierApp(df_base_app.DFlowApp):
     def _ovs_port_created(self, ovs_port, orig_ovs_port=None):
         ofport = ovs_port.ofport
         lport_id = ovs_port.iface_id
-        if not ofport:
-            return  # Not ready yet
         if not lport_id:
             return  # Not relevant
+        if orig_ovs_port and orig_ovs_port.ofport != ofport:
+            self._ovs_port_deleted(ovs_port)
+        if not ofport or ofport == -1:
+            return  # Not ready yet, or error
         lport = self.nb_api.get(l2.LogicalPort(id=lport_id))
-        self._ofport_unique_key_map[ofport] = lport.unique_key
+        self._ofport_unique_key_map[ovs_port.id] = (ofport, lport.unique_key)
         LOG.info("Add local ovs port %(ovs_port)s, logical port "
                  "%(lport)s for classification",
                  {'ovs_port': ofport, 'lport': lport})
@@ -98,9 +100,8 @@ class ClassifierApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_DELETED)
     def _ovs_port_deleted(self, ovs_port):
-        ofport = ovs_port.ofport
         try:
-            port_key = self._ofport_unique_key_map.pop(ofport)
+            ofport, port_key = self._ofport_unique_key_map.pop(ovs_port.id)
         except KeyError:
             LOG.debug("Unknown classification/dispatch for ofport %s", ofport)
             return
