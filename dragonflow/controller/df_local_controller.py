@@ -36,7 +36,6 @@ from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
-from dragonflow.db.models import trunk
 from dragonflow.db import sync
 from dragonflow.ovsdb import vswitch_impl
 
@@ -189,22 +188,6 @@ class DfLocalController(object):
 
         is_local = lport.binding.is_local
         lport.is_local = is_local
-        if is_local:
-            if not lport.ofport:
-                lport.ofport = self.vswitch_api.get_port_ofport_by_id(lport.id)
-            if not lport.ofport:
-                # Not attached to the switch. Maybe it's a subport?
-                lport.ofport = self._get_trunk_subport_ofport(lport)
-
-        if not lport.ofport and lport.is_local:
-            # The tunnel port online event will update the remote logical
-            # port. Log this warning first.
-            LOG.warning("%(location)s logical port %(port)s"
-                        " was not created yet",
-                        {'location': "Local" if is_local else
-                                     "Tunnel for remote",
-                         'port': lport})
-            return
 
         original_lport = self.db_store.get_one(lport)
         self.db_store.update(lport)
@@ -212,17 +195,6 @@ class DfLocalController(object):
             lport.emit_created()
         else:
             lport.emit_updated(original_lport)
-
-    def _get_trunk_subport_ofport(self, lport):
-        try:
-            cps = self.db_store.get_one(
-                    trunk.ChildPortSegmentation(port=lport.id),
-                    trunk.ChildPortSegmentation.get_index('lport_id'))
-            if cps:
-                return cps.parent.ofport
-        except Exception:
-            # Not found. Do nothing
-            pass
 
     def update_lport(self, lport):
         if (

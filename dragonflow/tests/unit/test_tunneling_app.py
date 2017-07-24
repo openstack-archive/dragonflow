@@ -42,8 +42,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
 
     def test_tunneling_for_local_port(self):
         fake_local_gre_port1 = make_fake_local_port(
-                lswitch='fake_gre_switch1',
-                ofport=11)
+                lswitch='fake_gre_switch1')
         match = self.app.parser.OFPMatch(tunnel_id_nxm=410,
                                          in_port=11)
         actions = [self.app.parser.OFPActionSetField(metadata=21)]
@@ -62,8 +61,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
         fake_local_gre_port2 = make_fake_local_port(
                 lswitch='fake_gre_switch1',
                 macs=['1a:0b:0c:0d:0e:0f'],
-                ips=['10.0.0.12'],
-                ofport=2)
+                ips=['10.0.0.12'])
         self.controller.update(fake_local_gre_port2)
         self.app.mod_flow.assert_not_called()
         self.app.mod_flow.reset_mock()
@@ -74,15 +72,14 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
                 binding=test_app_base.chassis_binding('fake_host2'),
                 name='fake_remote_gre_port1')
         remote_ip = fake_remote_gre_port1.binding.ip
-        ofport = fake_remote_gre_port1.ofport
         match = self.app._make_bum_match(metadata=21)
         actions = [
                 self.app.parser.OFPActionSetField(
                     tun_ipv4_dst=remote_ip),
                 self.app.parser.OFPActionSetField(
                     tunnel_id_nxm=410),
-                self.app.parser.OFPActionOutput(
-                    port=ofport)]
+                self.app.parser.OFPActionOutput(port=7)]
+        self.vswitch_api.get_vtp_ofport.return_value = 7
         self.controller.update(fake_remote_gre_port1)
         self.app.parser.OFPInstructionActions.assert_called_with(
             self.app.ofproto.OFPIT_APPLY_ACTIONS, actions)
