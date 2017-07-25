@@ -2,7 +2,7 @@
 Team and repository tags
 ========================
 
-.. image:: https://governance.openstack.org/badges/dragonflow.svg
+.. image:: http://governance.openstack.org/badges/dragonflow.svg
     :target: https://governance.openstack.org/reference/tags/index.html
 
 .. Change things from this point on
