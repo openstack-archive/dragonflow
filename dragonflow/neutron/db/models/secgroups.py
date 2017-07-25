@@ -22,6 +22,7 @@ def security_group_rule_from_neutron_obj(secrule):
     kwargs.pop('updated_at', None)
     kwargs.pop('created_at', None)
     kwargs.pop('description', None)
+    kwargs.pop('tags', None)
     topic = kwargs.pop('project_id', None)
     if topic is not None:
         kwargs['topic'] = topic
