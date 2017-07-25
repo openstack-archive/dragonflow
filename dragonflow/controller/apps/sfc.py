@@ -101,11 +101,52 @@ class SfcApp(df_base_app.DFlowApp):
                 pp,
             )
 
+    def _install_flow_classifier_flows(self, port_chain, flow_classifier):
+        driver = self._get_port_chain_driver(port_chain)
+        if flow_classifier.is_classification_local:
+            driver.install_encap_flows(port_chain, flow_classifier)
+
+        if flow_classifier.is_dispatch_local:
+            driver.install_decap_flows(port_chain, flow_classifier)
+        else:
+            driver.install_forward_to_dest(port_chain, flow_classifier)
+
+    def _uninstall_flow_classifier_flows(self, port_chain, flow_classifier):
+        driver = self._get_port_chain_driver(port_chain)
+        if flow_classifier.is_classification_local:
+            driver.uninstall_encap_flows(port_chain, flow_classifier)
+
+        if flow_classifier.is_dispatch_local:
+            driver.uninstall_decap_flows(port_chain, flow_classifier)
+        else:
+            driver.uninstall_forward_to_dest(port_chain, flow_classifier)
+
+    def _install_flow_classifier_local_port_flows(self, port_chain,
+                                                  flow_classifier):
+        driver = self._get_port_chain_driver(port_chain)
+
+        if flow_classifier.source_port is not None:
+            driver.install_encap_flows(port_chain, flow_classifier)
+
+        if flow_classifier.dest_port is not None:
+            driver.uninstall_forward_to_dest(port_chain, flow_classifier)
+            driver.install_decap_flows(port_chain, flow_classifier)
+
+    def _uninstall_flow_classifier_local_port_flows(self, port_chain,
+                                                    flow_classifier):
+        driver = self._get_port_chain_driver(port_chain)
+
+        if flow_classifier.source_port is not None:
+            driver.uninstall_encap_flows(port_chain, flow_classifier)
+
+        if flow_classifier.dest_port is not None:
+            driver.install_forward_to_dest(port_chain, flow_classifier)
+            driver.uninstall_decap_flows(port_chain, flow_classifier)
+
     @df_base_app.register_event(sfc.PortChain, model_const.EVENT_CREATED)
     def _port_chain_created(self, port_chain):
-        driver = self._get_port_chain_driver(port_chain)
         for fc in port_chain.flow_classifiers:
-            driver.install_flow_classifier_flows(port_chain, fc)
+            self.install_flow_classifier_flows(port_chain, fc)
 
         for ppg in port_chain.port_pair_groups:
             self._add_port_pair_group(port_chain, ppg)
@@ -146,10 +187,8 @@ class SfcApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(sfc.PortChain, model_const.EVENT_DELETED)
     def _port_chain_deleted(self, port_chain):
-        driver = self._get_port_chain_driver(port_chain)
-
         for fc in port_chain.flow_classifiers:
-            driver.uninstall_flow_classifier_flows(port_chain, fc)
+            self._uninstall_flow_classifier_flows(port_chain, fc)
 
         for ppg in port_chain.port_pair_groups:
             self._remove_port_pair_group(port_chain, ppg)
@@ -161,8 +200,6 @@ class SfcApp(df_base_app.DFlowApp):
         * Install/uninstall changed flow classifiers.
         * Install/uninstall changed port pair groups.
         '''
-        driver = self._get_port_chain_driver(port_chain)
-
         old_fc_ids = set(fc.id for fc in old_port_chain.flow_classifiers)
         new_fc_ids = set(fc.id for fc in port_chain.flow_classifiers)
 
@@ -174,13 +211,13 @@ class SfcApp(df_base_app.DFlowApp):
             if fc.id in removed_fc_ids
         )
         for fc in removed_fcs:
-            driver.uninstall_flow_classifier_flows(old_port_chain, fc)
+            self._uninstall_flow_classifier_flows(old_port_chain, fc)
 
         added_fcs = (
             fc for fc in port_chain.flow_classifiers if fc.id in added_fc_ids
         )
         for fc in added_fcs:
-            driver.install_flow_classifier_flows(port_chain, fc)
+            self._install_flow_classifier_flows(port_chain, fc)
 
         # Port pairs groups are more complex since labels depend on index :(
         for old_ppg, new_ppg in six.moves.zip_longest(
@@ -268,9 +305,7 @@ class SfcApp(df_base_app.DFlowApp):
         for fc in self._flow_classifiers_by_lport(lport):
             port_chain = self._port_chain_by_flow_classifier(fc)
             if port_chain is not None:
-                driver = self._get_port_chain_driver(port_chain)
-                driver.install_flow_classifier_local_port_flows(
-                    port_chain, fc)
+                self._install_flow_classifier_local_port_flows(port_chain, fc)
 
         for pp in self._port_pairs_by_lport(lport):
             port_chain, port_pair_group = \
@@ -304,8 +339,7 @@ class SfcApp(df_base_app.DFlowApp):
         for fc in self._flow_classifiers_by_lport(lport):
             port_chain = self._port_chain_by_flow_classifier(fc)
             if port_chain is not None:
-                driver = self._get_port_chain_driver(port_chain)
-                driver.uninstall_flow_classifier_local_port_flows(
+                self._uninstall_flow_classifier_local_port_flows(
                     port_chain, fc)
 
         for pp in self._port_pairs_by_lport(lport):
