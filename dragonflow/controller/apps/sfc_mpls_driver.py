@@ -93,7 +93,7 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
     def __init__(self, app):
         self.app = app
 
-    def _install_encap_flows(self, port_chain, flow_classifier):
+    def install_encap_flows(self, port_chain, flow_classifier):
         for eth_type in self._ETH_TYPE_TO_TC:
             self.app.mod_flow(
                 table_id=constants.SFC_ENCAP_TABLE,
@@ -126,7 +126,7 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
                 ],
             )
 
-    def _uninstall_encap_flows(self, port_chain, flow_classifier):
+    def uninstall_encap_flows(self, port_chain, flow_classifier):
         for eth_type in self._ETH_TYPE_TO_TC:
             self.app.mod_flow(
                 command=self.app.ofproto.OFPFC_DELETE_STRICT,
@@ -138,7 +138,7 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
                 ),
             )
 
-    def _install_decap_flows(self, port_chain, flow_classifier):
+    def install_decap_flows(self, port_chain, flow_classifier):
         for eth_type in self._ETH_TYPE_TO_TC:
             self.app.mod_flow(
                 table_id=constants.SFC_MPLS_DISPATCH_TABLE,
@@ -167,7 +167,7 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
                 ],
             )
 
-    def _uninstall_decap_flows(self, port_chain, flow_classifier):
+    def uninstall_decap_flows(self, port_chain, flow_classifier):
         for eth_type in self._ETH_TYPE_TO_TC:
             self.app.mod_flow(
                 command=self.app.ofproto.OFPFC_DELETE_STRICT,
@@ -183,7 +183,7 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
                 ),
             )
 
-    def _install_forward_to_dest(self, port_chain, flow_classifier):
+    def install_forward_to_dest(self, port_chain, flow_classifier):
         for eth_type in self._ETH_TYPE_TO_TC:
             self.app.mod_flow(
                 table_id=constants.SFC_MPLS_DISPATCH_TABLE,
@@ -211,7 +211,7 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
                 ],
             )
 
-    def _uninstall_forward_to_dest(self, port_chain, flow_classifier):
+    def uninstall_forward_to_dest(self, port_chain, flow_classifier):
         for eth_type in self._ETH_TYPE_TO_TC:
             self.app.mod_flow(
                 command=self.app.ofproto.OFPFC_DELETE_STRICT,
@@ -226,42 +226,6 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
                     mpls_tc=self._ETH_TYPE_TO_TC[eth_type],
                 ),
             )
-
-    def install_flow_classifier_flows(self, port_chain, flow_classifier):
-        if flow_classifier.is_classification_local:
-            self._install_encap_flows(port_chain, flow_classifier)
-
-        if flow_classifier.is_dispatch_local:
-            self._install_decap_flows(port_chain, flow_classifier)
-        else:
-            self._install_forward_to_dest(port_chain, flow_classifier)
-
-    def uninstall_flow_classifier_flows(self, port_chain, flow_classifier):
-        if flow_classifier.is_classification_local:
-            self._uninstall_encap_flows(port_chain, flow_classifier)
-
-        if flow_classifier.is_dispatch_local:
-            self._uninstall_decap_flows(port_chain, flow_classifier)
-        else:
-            self._uninstall_forward_to_dest(port_chain, flow_classifier)
-
-    def install_flow_classifier_local_port_flows(self, port_chain,
-                                                 flow_classifier):
-        if flow_classifier.source_port is not None:
-            self._install_encap_flows(port_chain, flow_classifier)
-
-        if flow_classifier.dest_port is not None:
-            self._uninstall_forward_to_dest(port_chain, flow_classifier)
-            self._install_decap_flows(port_chain, flow_classifier)
-
-    def uninstall_flow_classifier_local_port_flows(self, port_chain,
-                                                   flow_classifier):
-        if flow_classifier.source_port is not None:
-            self._uninstall_encap_flows(port_chain, flow_classifier)
-
-        if flow_classifier.dest_port is not None:
-            self._install_forward_to_dest(port_chain, flow_classifier)
-            self._uninstall_decap_flows(port_chain, flow_classifier)
 
     def _port_pair_to_bucket(self, port_pair):
         if (

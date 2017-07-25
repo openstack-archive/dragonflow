@@ -26,20 +26,11 @@ class SfcBaseDriver(object):
         pass
 
     @abc.abstractmethod
-    def install_flow_classifier_flows(self, port_chain, flow_classifier):
+    def install_encap_flows(self, port_chain, flow_classifier):
         '''Install flows that will capture packets classified by Flow
         Classifier app. The captured packets arrive at SFC_ENCAP_TABLE with
-        reg6 set to unique key of the flow classifier. Packets will arive to
-        the table only if fc.is_classification_local is true.
-
-        Additionally, install flows s.t. packets that finish the chain arrive
-        to SFC_END_OF_CHAIN_TABLE, for dispatch by FC app. Packets arriving
-        to this table should have unique key of their original flow classifier
-        in reg6, and should only arrive to this table if fc.is_dispatch_local
-        is true, otherwise, should be forwarded by the driver to the chassis
-        of the destination lport.
-
-        This is called for all flow classifiers of the port chain
+        reg6 set to unique key of the flow classifier. The function will be
+        called only for flow classifiers whose is_classification_local is true.
 
         :param port_chain:       Relevant port chain
         :param flow_classifier:  Relevant flow classifier
@@ -47,19 +38,17 @@ class SfcBaseDriver(object):
         pass
 
     @abc.abstractmethod
-    def uninstall_flow_classifier_flows(self, port_chain, flow_classifier):
+    def uninstall_encap_flows(self, port_chain, flow_classifier):
         '''Reverse the installed flows of the above
         '''
         pass
 
     @abc.abstractmethod
-    def install_flow_classifier_local_port_flows(self, port_chain,
-                                                 flow_classifier):
-        '''Install flows for a new local port referenced by a flow classifier.
-
-        This code is called when the port referenced by flow classifier becomes
-        available locally, i.e., flow classifier was installed but the port
-        was not local, and it becomes local now.
+    def install_decap_flows(self, port_chain, flow_classifier):
+        ''' Install flows thats that return packet to SFC_END_OF_CHAIN_TABLE
+        once they are done traversing the service chain. Returning packets
+        should have flow classifier's unique_key in reg6. This is called only
+        for flow classifiers of the port chain
 
         :param port_chain:       Relevant port chain
         :param flow_classifier:  Relevant flow classifier
@@ -67,9 +56,28 @@ class SfcBaseDriver(object):
         pass
 
     @abc.abstractmethod
-    def uninstall_flow_classifier_local_port_flows(self, port_chain,
-                                                   flow_classifier):
-        '''Same as above, but when a local port is removed.
+    def uninstall_decap_flows(self, port_chain, flow_classifier):
+        '''Reverse the installed flows of the above
+        '''
+        pass
+
+    @abc.abstractmethod
+    def install_forward_to_dest(self, port_chain, flow_classifier):
+        '''Install flows that forward packets to the destination node. When a
+        packet finishes a chain, and its flow classifier does not dispatch
+        locally, the packet is forwarded to the destination node before it is
+        decapsulated. This function is responsible to install those flows.
+        This function is called only for flow classifiers that have
+        is_dispatch_local as false.
+
+        :param port_chain:       Relevant port chain
+        :param flow_classifier:  Relevant flow classifier
+        '''
+        pass
+
+    @abc.abstractmethod
+    def uninstall_forward_to_dest(self, port_chain, flow_classifier):
+        '''Reverse the installed flows of the above
         '''
         pass
 

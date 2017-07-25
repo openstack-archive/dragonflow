@@ -186,6 +186,10 @@ class TestSfcApp(test_app_base.DFAppTestBase):
     def setUp(self):
         super(TestSfcApp, self).setUp()
         self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app._install_flow_classifier_flows = mock.Mock()
+        self.app._uninstall_flow_classifier_flows = mock.Mock()
+        self.app._install_flow_classifier_local_port_flows = mock.Mock()
+        self.app._uninstall_flow_classifier_local_port_flows = mock.Mock()
         self.driver = mock.Mock()
 
         def get_driver(pc):
@@ -195,7 +199,7 @@ class TestSfcApp(test_app_base.DFAppTestBase):
     @utils.with_local_objects(fc1, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_port_chain_added(self):
         pc1.emit_created()
-        self.driver.install_flow_classifier_flows.assert_called_once_with(
+        self.app._install_flow_classifier_flows.assert_called_once_with(
             pc1, pc1.flow_classifiers[0])
         self.driver.install_port_pair_group_flows(
             pc1, pc1.port_pair_groups[0])
@@ -219,7 +223,7 @@ class TestSfcApp(test_app_base.DFAppTestBase):
     @utils.with_local_objects(fc1, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_port_chain_deleted(self):
         pc1.emit_deleted()
-        self.driver.uninstall_flow_classifier_flows.assert_called_once_with(
+        self.app._uninstall_flow_classifier_flows.assert_called_once_with(
             pc1, pc1.flow_classifiers[0])
         self.driver.uninstall_port_pair_group_flows(
             pc1, pc1.port_pair_groups[0])
@@ -244,25 +248,25 @@ class TestSfcApp(test_app_base.DFAppTestBase):
     def test_port_chain_updated_add_fc(self):
         pc1_fc_add.emit_updated(pc1)
 
-        self.driver.install_flow_classifier_flows.assert_called_once_with(
+        self.app._install_flow_classifier_flows.assert_called_once_with(
             pc1_fc_add, pc1_fc_add.flow_classifiers[1])
-        self.driver.uninstall_flow_classifier_flows.assert_not_called()
+        self.app._uninstall_flow_classifier_flows.assert_not_called()
 
     @utils.with_local_objects(fc1, fc2, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_port_chain_updated_remove_fc(self):
         pc1_fc_remove.emit_updated(pc1)
 
-        self.driver.install_flow_classifier_flows.assert_not_called()
-        self.driver.uninstall_flow_classifier_flows.assert_called_once_with(
+        self.app._install_flow_classifier_flows.assert_not_called()
+        self.app._uninstall_flow_classifier_flows.assert_called_once_with(
             pc1, pc1.flow_classifiers[0])
 
     @utils.with_local_objects(fc1, fc2, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_port_chain_updated_replace_fc(self):
         pc1_fc_change.emit_updated(pc1)
 
-        self.driver.uninstall_flow_classifier_flows.assert_called_once_with(
+        self.app._uninstall_flow_classifier_flows.assert_called_once_with(
             pc1, pc1.flow_classifiers[0])
-        self.driver.install_flow_classifier_flows.assert_called_once_with(
+        self.app._install_flow_classifier_flows.assert_called_once_with(
             pc1_fc_change, pc1_fc_change.flow_classifiers[0])
 
     @utils.with_local_objects(fc1, pp21, ppg2, pp11, pp12, ppg1, pc1, *l2_objs)
@@ -370,11 +374,11 @@ class TestSfcApp(test_app_base.DFAppTestBase):
     @utils.with_local_objects(fc1, fc2, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_flow_classifier_port_added(self):
         fc1lport.emit_local_created()
-        self.driver.install_flow_classifier_local_port_flows\
+        self.app._install_flow_classifier_local_port_flows\
             .assert_called_once_with(pc1, fc1)
 
     @utils.with_local_objects(fc1, fc2, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_flow_classifier_port_deleted(self):
         fc1lport.emit_local_deleted()
-        self.driver.uninstall_flow_classifier_local_port_flows\
+        self.app._uninstall_flow_classifier_local_port_flows\
             .assert_called_once_with(pc1, fc1)
