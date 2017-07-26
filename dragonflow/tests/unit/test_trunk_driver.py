@@ -15,8 +15,12 @@ from oslo_config import cfg
 
 from neutron.services.trunk import drivers as trunk_drivers
 from neutron.services.trunk import plugin as trunk_plugin
+from neutron_lib import constants
+from neutron_lib.plugins import directory
 
+from dragonflow.neutron.db.models import l2
 from dragonflow.neutron.services.trunk import driver
+from dragonflow.tests.common import utils
 from dragonflow.tests.unit import test_mech_driver
 
 
@@ -36,6 +40,7 @@ class TestDFTrunkDriver(test_mech_driver.DFMechanismDriverTestCase):
         self.trunk_plugin = trunk_plugin.TrunkPlugin()
         self.trunk_plugin.add_segmentation_type('vlan', lambda x: True)
         cfg.CONF.set_override('mechanism_drivers', 'df', group='ml2')
+        directory.add_plugin('trunk', self.trunk_plugin)
         self.df_driver = self.mech_driver.trunk_driver
 
     def test_driver_is_loaded(self):
@@ -87,3 +92,86 @@ class TestDFTrunkDriver(test_mech_driver.DFMechanismDriverTestCase):
             self.trunk_plugin.remove_subports(
                 self.context, trunk['id'], {'sub_ports': [subport]})
             nb_api.delete.assert_called_once()
+
+    def test_subport_status_parent_already_active(self):
+        self.nb_api = self.mech_driver.nb_api
+        with self.port(status=constants.PORT_STATUS_ACTIVE) as parent,\
+                self.port() as subport:
+            df_parent = l2.logical_port_from_neutron_port(parent['port'])
+            df_subport = l2.logical_port_from_neutron_port(subport['port'])
+
+            @utils.with_nb_objects(df_parent, df_subport)
+            def run_test(self):
+                self.driver.update_port_status(self.context,
+                                               parent['port']['id'],
+                                               constants.PORT_STATUS_ACTIVE)
+                self.context.session.expire_all()
+                trunk = self.trunk_plugin.create_trunk(self.context, {
+                    'trunk': {
+                        'port_id': parent['port']['id'],
+                        'tenant_id': 'project1',
+                        'sub_ports': [],
+                    }
+                })
+                subport_obj = {'segmentation_type': 'vlan',
+                               'segmentation_id': 123,
+                               'port_id': subport['port']['id']}
+                self.trunk_plugin.add_subports(
+                    self.context, trunk['id'], {'sub_ports': [subport_obj]})
+                self.addCleanup(self.trunk_plugin.remove_subports,
+                                self.context, trunk['id'],
+                                {'sub_ports': [subport_obj]})
+
+                subport2 = self.driver.get_port(self.context,
+                                                subport['port']['id'])
+                self.assertEqual(constants.PORT_STATUS_ACTIVE,
+                                 subport2['status'])
+                self.driver.update_port_status(self.context,
+                                               parent['port']['id'],
+                                               constants.PORT_STATUS_DOWN)
+                self.context.session.expire_all()
+                subport3 = self.driver.get_port(self.context,
+                                                subport['port']['id'])
+                self.assertEqual(constants.PORT_STATUS_DOWN,
+                                 subport3['status'])
+
+            run_test(self)
+
+    def test_subport_status_parent_becomes_active(self):
+        self.nb_api = self.mech_driver.nb_api
+        with self.port(status=constants.PORT_STATUS_DOWN) as parent,\
+                self.port() as subport:
+            df_parent = l2.logical_port_from_neutron_port(parent['port'])
+            df_subport = l2.logical_port_from_neutron_port(subport['port'])
+
+            @utils.with_nb_objects(df_parent, df_subport)
+            def run_test(self):
+                trunk = self.trunk_plugin.create_trunk(self.context, {
+                    'trunk': {
+                        'port_id': parent['port']['id'],
+                        'tenant_id': 'project1',
+                        'sub_ports': [],
+                    }
+                })
+                subport_obj = {'segmentation_type': 'vlan',
+                               'segmentation_id': 123,
+                               'port_id': subport['port']['id']}
+                self.trunk_plugin.add_subports(
+                    self.context, trunk['id'], {'sub_ports': [subport_obj]})
+                self.addCleanup(self.trunk_plugin.remove_subports,
+                                self.context, trunk['id'],
+                                {'sub_ports': [subport_obj]})
+
+                subport2 = self.driver.get_port(self.context,
+                                                subport['port']['id'])
+                self.assertEqual(constants.PORT_STATUS_DOWN,
+                                 subport2['status'])
+                self.driver.update_port_status(self.context,
+                                               parent['port']['id'],
+                                               constants.PORT_STATUS_ACTIVE)
+                self.context.session.expire_all()
+                subport3 = self.driver.get_port(self.context,
+                                                subport['port']['id'])
+                self.assertEqual(constants.PORT_STATUS_ACTIVE,
+                                 subport3['status'])
+        run_test(self)
