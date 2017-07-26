@@ -156,7 +156,7 @@ are specified in `events=` parameter of construct_nb_db_model decorator:
 For each event, 2 class methods are defined:
 
  * `register_{event_name}(callback)` - adds callback to be invoked each time
-   event is emmited.
+   event is emitted.
  * `unregister_{event_name}(callback)` - removes the callback from being called.
 
 Additionally, an instance method named `emit_{event_name}(*args, **kwargs)` is
