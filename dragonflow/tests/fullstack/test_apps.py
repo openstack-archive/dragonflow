@@ -2577,6 +2577,14 @@ class TestTrunkApp(test_base.DFTestBase):
         self.addCleanup(policy.close)
 
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+
+        # Verify port is up
+        neutron_vlan_port1 = self._get_port(self.vlan_port1.port_id)
+        self.assertEqual(n_const.PORT_STATUS_ACTIVE, neutron_vlan_port1.status)
+        neutron_vlan_port2 = self._get_port(self.vlan_port2.port_id)
+        self.assertEqual(n_const.PORT_STATUS_ACTIVE, neutron_vlan_port2.status)
+
+        # Verify connectivity
         policy.start(self.topology)
         policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(policy.exceptions) > 0:

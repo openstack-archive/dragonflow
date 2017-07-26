@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import uuid
 
 from neutron.services.trunk import constants
@@ -19,6 +20,10 @@ from neutron.services.trunk.drivers import base
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.callbacks import events
 from neutron_lib.callbacks import registry
+from neutron_lib.callbacks import resources
+from neutron_lib import constants as n_constants
+from neutron_lib import context
+from neutron_lib.plugins import directory
 
 from dragonflow import conf as cfg
 from dragonflow.db.models import l2
@@ -36,6 +41,7 @@ class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
         )
         self._nb_api = None
         self._register_init_events()
+        self._subport_ids_by_parent_port_id = collections.defaultdict(set)
 
     @property
     def is_loaded(self):
@@ -64,6 +70,8 @@ class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
                            constants.SUBPORTS, events.AFTER_CREATE)
         registry.subscribe(self._delete_subports_handler,
                            constants.SUBPORTS, events.AFTER_DELETE)
+        registry.subscribe(self._update_port_handler,
+                           resources.PORT, events.AFTER_UPDATE)
 
     def _get_subport_id(self, trunk, subport):
         """
@@ -88,6 +96,14 @@ class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
         df_parent = self.nb_api.get(l2.LogicalPort(id=trunk.port_id))
         for subport in subports:
             self._add_subport(trunk, subport, df_parent)
+        core_plugin = directory.get_plugin()
+        admin_context = context.get_admin_context()
+        parent = core_plugin.get_port(admin_context, trunk.port_id)
+        if parent['status'] == n_constants.PORT_STATUS_ACTIVE:
+            for subport in subports:
+                core_plugin.update_port_status(admin_context,
+                                               subport.port_id,
+                                               n_constants.PORT_STATUS_ACTIVE)
 
     def _add_subport(self, trunk, subport, df_parent):
         """
@@ -103,8 +119,9 @@ class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
             segmentation_id=subport.segmentation_id,
         )
         self.nb_api.create(model)
-        self.nb_api.update(l2.LogicalPort(id=subport.port_id,
-                                          binding=df_parent.binding))
+        self._subport_ids_by_parent_port_id[trunk.port_id].add(subport.port_id)
+        #self.nb_api.update(l2.LogicalPort(id=subport.port_id,
+        #                                  binding=df_parent.binding))
 
     def _delete_subports_handler(self, *args, **kwargs):
         """Handle the event that subports were deleted"""
@@ -133,5 +150,26 @@ class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
             topic=trunk.project_id
         )
         self.nb_api.delete(model)
-        self.nb_api.update(l2.LogicalPort(id=subport.port_id,
-                                          binding=None))
+        #self.nb_api.update(l2.LogicalPort(id=subport.port_id,
+        #                                  binding=None))
+        subports = self._subport_ids_by_parent_port_id[trunk.port_id]
+        subports.remove(subport.port_id)
+        if not subports:
+            del self._subport_ids_by_parent_port_id[trunk.port_id]
+
+    def _update_port_handler(self, *args, **kwargs):
+        """Handle the event that a port changes status to ACTIVE or DOWN"""
+        port = kwargs['port']
+        orig_port = kwargs['original_port']
+        if port['status'] == orig_port['status']:
+            return  # Change not relevant
+        new_status = n_constants.PORT_STATUS_ACTIVE
+        if port['status'] != n_constants.PORT_STATUS_ACTIVE:
+            new_status = n_constants.PORT_STATUS_DOWN
+        core_plugin = directory.get_plugin()
+        for subport_id in self._get_subports_ids(port['id']):
+            core_plugin.update_port_status(context.get_admin_context(),
+                                           subport_id, new_status)
+
+    def _get_subports_ids(self, port_id):
+        return self._subport_ids_by_parent_port_id.get(port_id, ())
