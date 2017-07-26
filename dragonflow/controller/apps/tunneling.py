@@ -31,6 +31,20 @@ class TunnelingApp(df_base_app.DFlowApp):
         self.tunnel_types = cfg.CONF.df.tunnel_types
         self.local_networks = logical_networks.LogicalNetworks()
 
+    def switch_features_handler(self, ev):
+        self._create_tunnels()
+
+    def _create_tunnels(self):
+        tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
+        for tunnel_port in tunnel_ports:
+            if tunnel_port.get_tunnel_type() not in self.tunnel_types:
+                self.vswitch_api.delete_port(tunnel_port)
+
+        for t in self.tunnel_types:
+            # The customized ovs idl will ingore the command if the port
+            # already exists.
+            self.vswitch_api.add_virtual_tunnel_port(t)
+
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
     def _add_local_port(self, lport):
         lswitch = lport.lswitch
