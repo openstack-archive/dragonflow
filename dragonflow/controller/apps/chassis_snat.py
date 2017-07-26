@@ -17,9 +17,9 @@ from ryu.ofproto import ether
 
 from dragonflow._i18n import _
 from dragonflow import conf as cfg
+from dragonflow.controller.apps import snat_mixin
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
-from dragonflow.controller import snat_app_mixin as snat_mixin
 from dragonflow.db.models import constants as model_const
 from dragonflow.db.models import l2
 from dragonflow.db.models import ovs
