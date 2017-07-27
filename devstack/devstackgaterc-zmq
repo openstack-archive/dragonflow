@@ -25,6 +25,8 @@ export DEVSTACK_LOCAL_CONFIG+=$'\n'"ENABLE_ACTIVE_DETECTION=False"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_RUNNING_IN_GATE=True"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"EXTERNAL_HOST_IP=172.24.4.100"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"ENABLE_DF_SFC=True"
+export DEVSTACK_LOCAL_CONFIG+=$'\n'"OVS_INSTALL_FROM_GIT=True"
+export DEVSTACK_LOCAL_CONFIG+=$'\n'"OVS_BRANCH=v2.7.1"
 
 if [ -n "${DEVSTACK_GATE_TEMPEST}" ] && [ ${DEVSTACK_GATE_TEMPEST} -gt 0 ]; then
     # Only include tempest if this is a tempest job
