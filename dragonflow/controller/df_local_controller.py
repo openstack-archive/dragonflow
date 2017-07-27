@@ -115,7 +115,6 @@ class DfLocalController(object):
                 integration_bridge, 'secure')
         self.open_flow_service.start()
         self.open_flow_app.start()
-        self.create_tunnels()
         self._register_models()
         self.register_chassis()
         self.sync()
@@ -213,17 +212,6 @@ class DfLocalController(object):
             self.nb_api.create(chassis, skip_send_event=True)
         elif old_chassis != chassis:
             self.nb_api.update(chassis, skip_send_event=True)
-
-    def create_tunnels(self):
-        tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
-        for tunnel_port in tunnel_ports:
-            if tunnel_port.get_tunnel_type() not in self.tunnel_types:
-                self.vswitch_api.delete_port(tunnel_port)
-
-        for t in self.tunnel_types:
-            # The customized ovs idl will ingore the command if the port
-            # already exists.
-            self.vswitch_api.add_virtual_tunnel_port(t)
 
     def update_publisher(self, publisher):
         self.db_store.update(publisher)
