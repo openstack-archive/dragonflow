@@ -37,7 +37,7 @@ class TunnelingApp(df_base_app.DFlowApp):
     def _create_tunnels(self):
         tunnel_ports = self.vswitch_api.get_virtual_tunnel_ports()
         for tunnel_port in tunnel_ports:
-            if tunnel_port.get_tunnel_type() not in self.tunnel_types:
+            if tunnel_port.tunnel_type not in self.tunnel_types:
                 self.vswitch_api.delete_port(tunnel_port)
 
         for t in self.tunnel_types:
