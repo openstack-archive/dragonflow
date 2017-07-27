@@ -17,13 +17,13 @@
 import signal
 import sys
 import time
-import uuid
 
 import mock
 from neutron.common import config as common_config
 import numpy
 from oslo_log import log
 from oslo_utils import importutils
+from oslo_utils import uuidutils
 
 from dragonflow._i18n import _
 from dragonflow import conf as cfg
@@ -45,8 +45,8 @@ df_db_test_opts = [
 
 
 def run_server(nb_api):
-    topic = str(uuid.uuid4())
-    publisher = str(uuid.uuid4())
+    topic = str(uuidutils.generate_uuid())
+    publisher = str(uuidutils.generate_uuid())
     lswitch_name = 'lswitch0'
     nb_api.create_publisher(
         publisher,
@@ -68,7 +68,7 @@ def run_server(nb_api):
                 str(cfg.CONF.df_db_test.count / (end - start))]
     outfile_name = '{}/test_db_server.{}'.format(
         cfg.CONF.df_db_test.output_folder,
-        uuid.uuid4()
+        uuidutils.generate_uuid()
     )
     outfile = open(outfile_name, 'w')
     outfile.write('total, count, r/sec\n')
@@ -105,7 +105,7 @@ def run_client(nb_api):
         data_str = [str(datum) for datum in generate_status()]
         outfile_name = '{}/test_db_client.{}'.format(
             cfg.CONF.df_db_test.output_folder,
-            uuid.uuid4()
+            uuidutils.generate_uuid()
         )
         outfile = open(outfile_name, 'w')
         outfile.write('min, max, median, average, mean, std, var, sum, '
