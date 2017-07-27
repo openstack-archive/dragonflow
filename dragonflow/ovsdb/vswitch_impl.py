@@ -20,9 +20,9 @@ from oslo_log import log
 from ovs import vlog
 
 from dragonflow.controller.common import constants
+from dragonflow.db.models import ovs
 from dragonflow.db.models import qos
 from dragonflow.ovsdb import impl_idl
-from dragonflow.ovsdb import objects
 
 LOG = log.getLogger(__name__)
 
@@ -93,15 +93,20 @@ class OvsApi(object):
     def get_virtual_tunnel_ports(self):
         ifaces = self.ovsdb.db_find(
             'Interface', ('options', '=', {'remote_ip': 'flow'}),
-            columns=['name', 'type']).execute()
+            columns=['uuid', 'name', 'type']).execute()
         tunnel_ports = []
         for iface in ifaces:
             if (self.integration_bridge !=
                     self._get_bridge_for_iface(iface['name'])):
                 continue
 
-            tunnel_ports.append(objects.OvsdbVirtuaTunnelPort(iface['name'],
-                                                              iface['type']))
+            tunnel_ports.append(
+                ovs.OvsPort(
+                    id=str(iface['uuid']),
+                    name=iface['name'],
+                    tunnel_type=iface['type'],
+                ),
+            )
 
         return tunnel_ports
 
@@ -109,7 +114,7 @@ class OvsApi(object):
         self.ovsdb.add_virtual_tunnel_port(tunnel_type).execute()
 
     def delete_port(self, switch_port):
-        self.ovsdb.del_port(switch_port.get_name(),
+        self.ovsdb.del_port(switch_port.name,
                             self.integration_bridge).execute()
 
     @staticmethod
