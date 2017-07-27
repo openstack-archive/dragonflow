@@ -54,6 +54,16 @@ def get_port_by_mac(neutron, vm_mac):
     return ports[0]
 
 
+def get_port_by_id(neutron, port_id):
+    ports = neutron.list_ports(id=port_id)
+    if not ports:
+        return None
+    ports = ports.get('ports')
+    if not ports:
+        return None
+    return ports[0]
+
+
 class RouterTestObj(object):
 
     def __init__(self, neutron, nb_api):
