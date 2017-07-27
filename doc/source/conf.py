@@ -13,7 +13,6 @@
 
 import os
 import sys
-import openstackdocstheme
 
 sys.path.insert(0, os.path.abspath('../..'))
 # -- General configuration ----------------------------------------------------
@@ -23,9 +22,14 @@ sys.path.insert(0, os.path.abspath('../..'))
 extensions = [
     'sphinx.ext.autodoc',
     #'sphinx.ext.intersphinx',
-    'oslosphinx',
+    'openstackdocstheme',
     'reno.sphinxext'
 ]
+
+# openstackdocstheme options
+repository_name = 'openstack/dragonflow'
+bug_project = 'dragonflow'
+bug_tag = ''
 
 # autodoc generation is a bit aggressive and a nuisance when doing heavy
 # text edit cycles.
@@ -58,11 +62,13 @@ pygments_style = 'sphinx'
 # html_theme_path = ["."]
 # html_theme = '_theme'
 html_theme = 'openstackdocs'
-html_theme_path = [openstackdocstheme.get_html_theme_path()]
+#html_theme_path = []
 # html_static_path = ['static']
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = '%sdoc' % project
+
+html_last_updated_fmt = '%Y-%m-%d %H:%M'
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass
