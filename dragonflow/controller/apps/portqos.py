@@ -61,15 +61,18 @@ class PortQosApp(df_base_app.DFlowApp):
         self._update_local_port_qos(lport.id, policy)
 
     def _update_local_port_qos(self, port_id, policy):
-
+        
         def _is_qos_set():
             return policy.get_max_kbps() and policy.get_max_burst_kbps()
 
-        port_ovs_qos = self.vswitch_api.get_port_qos(port_id)
-        if port_ovs_qos:
+        old_qos = self.vswitch_api.get_port_qos(port_id)
+
+        if old_qos is not None:
             if _is_qos_set():
-                if (port_ovs_qos.get_qos_id() != policy.id
-                        or port_ovs_qos.get_version() < policy.version):
+                if (
+                    old_qos.id != policy.id or
+                    policy.is_newer_than(old_qos)
+                ):
                     # The QoS from north is not the same as ovs db.
                     self.vswitch_api.update_port_qos(port_id, policy)
             else:
