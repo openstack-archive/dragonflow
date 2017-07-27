@@ -20,6 +20,7 @@ from oslo_log import log
 from ovs import vlog
 
 from dragonflow.controller.common import constants
+from dragonflow.db.models import qos
 from dragonflow.ovsdb import impl_idl
 from dragonflow.ovsdb import objects
 
@@ -192,8 +193,10 @@ class OvsApi(object):
             columns=['external_ids', '_uuid']).execute()
         if port_qoses:
             ovsdb_qos = port_qoses[0]
-            return objects.OvsdbQos(ovsdb_qos['external_ids'].get('qos_id'),
-                                    ovsdb_qos['external_ids'].get('version'))
+            return qos.QosPolicy(
+                id=ovsdb_qos['external_ids'].get('qos-id'),
+                topic=ovsdb_qos['external_ids'].get('qos-topic'),
+            )
 
     def set_port_qos(self, port_id, qos):
         port_name = self._get_port_name_by_id(port_id)
