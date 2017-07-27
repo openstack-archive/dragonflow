@@ -15,6 +15,28 @@
 
 from neutron_lib.db import model_base
 import sqlalchemy as sa
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import expression
+from sqlalchemy import types
+
+
+class utc_timestamp(expression.FunctionElement):
+    type = types.DateTime()
+
+
+@compiles(utc_timestamp, 'postgresql')
+def pg_utc_timestamp(element, compiler, **kw):
+    return "TIMEZONE('utc', CURRENT_TIMESTAMP)"
+
+
+@compiles(utc_timestamp, 'mssql')
+def ms_utc_timestamp(element, compiler, **kw):
+    return "GETUTCDATE()"
+
+
+@compiles(utc_timestamp, 'mysql')
+def my_utc_timestamp(element, compiler, **kw):
+    return "UTC_TIMESTAMP()"
 
 
 class DFLockedObjects(model_base.BASEV2):
@@ -23,4 +45,4 @@ class DFLockedObjects(model_base.BASEV2):
     object_uuid = sa.Column(sa.String(36), primary_key=True)
     lock = sa.Column(sa.Boolean, default=False)
     session_id = sa.Column(sa.BigInteger, default=0)
-    created_at = sa.Column(sa.DateTime, onupdate=sa.func.utc_timestamp())
+    created_at = sa.Column(sa.DateTime, onupdate=utc_timestamp())
