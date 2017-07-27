@@ -186,8 +186,8 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         self.assertEqual(len(expected_tunnel_types), len(tunnel_ports))
         tunnel_types = set()
         for t in tunnel_ports:
-            self.assertEqual(t.get_tunnel_type() + "-vtp",
-                             t.get_name())
-            tunnel_types.add(t.get_tunnel_type())
+            self.assertEqual(t.tunnel_type + "-vtp",
+                             t.name))
+            tunnel_types.add(t.tunnel_type)
 
         self.assertEqual(set(expected_tunnel_types), tunnel_types)
