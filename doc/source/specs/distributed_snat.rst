@@ -178,7 +178,7 @@ deployment scenario allows for address collision, e.g. where different
 tenant have same subnet range for a private subnet, which leave us a
 tangible possibility of exactly same 4-tuple (IP1, port1, IP2, port2)
 produced by different tenant VMs. 4-tuple collision makes it impossible
-to pass single zone connection tracking correcly.
+to pass single zone connection tracking correctly.
 
 To avoid this address overlap issue, we will encode the source's identifier
 as the source IP (Similar to the solution used in the metadata service).
