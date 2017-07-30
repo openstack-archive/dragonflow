@@ -31,7 +31,7 @@ class SecurityGroupRule(mf.ModelBase, mixins.BasicEvents, mixins.Topic,
     ethertype = df_fields.EnumField(RULE_ETHERTYPE, required=True)
     port_range_max = fields.IntField()
     port_range_min = fields.IntField()
-    protocol = df_fields.EnumField(RULE_PROTOCOL)
+    protocol = df_fields.IpProto()
     remote_group_id = fields.StringField()
     remote_ip_prefix = df_fields.IpNetworkField()
     security_group_id = fields.StringField()
