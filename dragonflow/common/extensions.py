@@ -13,6 +13,7 @@
 
 # If you update this list, please also update
 # doc/source/features.rst.
+# NOTE (dimak): This used only for tempest's enabled network API extensions
 SUPPORTED_API_EXTENSIONS = [
     'agent',
     'quotas',
@@ -22,7 +23,6 @@ SUPPORTED_API_EXTENSIONS = [
     'security-group',
     'external-net',
     'router',
-    'l3_agent_scheduler',
     'subnet_allocation',
     'port-security',
     'allowed-address-pairs',
