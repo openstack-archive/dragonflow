@@ -304,3 +304,15 @@ class PortRangeField(fields.BaseField):
                 # Raise an error if list in not of 2 values
                 port_min, port_max = value
                 return PortRange(port_min, port_max)
+
+
+class IpProto(fields.IntField):
+
+    def validate(self, value):
+        super(IpProto, self).validate(value)
+        if value is None:
+            return
+        if value < 0 or value > 255:
+            raise errors.ValidationError(
+                _('IP protocol value must to be in the range [0,255] ({val} supplied )').format(
+                    val=value))
