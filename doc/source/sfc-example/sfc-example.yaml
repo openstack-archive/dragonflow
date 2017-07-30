@@ -1,0 +1,220 @@
+heat_template_version: 2015-04-30
+
+description: SFC example
+
+parameters:
+  key_name:
+    type: string
+    label: Keypair name
+    default: stack
+  image_id:
+    type: string
+    label: Image ID
+    default: Fedora-Cloud-Base-25-1.3.x86_64
+  provider_net:
+    type: string
+    label: Provider net to use
+    default: public
+  provider_subnet:
+    type: string
+    label: Provider subnet to use
+    default: public-subnet
+
+
+resources:
+  flavor:
+    type: OS::Nova::Flavor
+    properties:
+      name: sfc-test-flavor
+      disk: 3
+      ram: 1024
+      vcpus: 1
+
+  private_net:
+    type: OS::Neutron::Net
+    properties:
+      name: sfc-test-net
+
+  private_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      name: sfc-test-subnet
+      network_id: { get_resource: private_net }
+      cidr: 20.0.0.0/24
+      gateway_ip: 20.0.0.1
+      enable_dhcp: true
+      allocation_pools:
+        - start: 20.0.0.10
+          end: 20.0.0.100
+
+  router:
+    type: OS::Neutron::Router
+    properties:
+      name: sfc-test-router
+      external_gateway_info:
+        network: { get_param: provider_net }
+
+  router_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_resource: router }
+      subnet_id: { get_resource: private_subnet }
+
+  sec_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      name: sfc-test-sg
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: udp
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: icmp
+
+  source_vm_port:
+    type: OS::Neutron::Port
+    properties:
+      name: sfc-test-src-vm-port
+      network_id: { get_resource: private_net }
+      fixed_ips:
+        - subnet_id: { get_resource: private_subnet }
+      security_groups:
+        - { get_resource: sec_group }
+
+  source_vm:
+    type: OS::Nova::Server
+    properties:
+      name: sfc-test-src-vm
+      admin_pass: test
+      key_name: { get_param: key_name }
+      flavor: { get_resource: flavor }
+      image: { get_param: image_id }
+      networks:
+        - port: { get_resource: source_vm_port }
+
+  source_fip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: provider_net }
+      port_id: { get_resource: source_vm_port }
+
+  dest_vm_port:
+    type: OS::Neutron::Port
+    properties:
+      name: sfc-test-dst-vm-port
+      network_id: { get_resource: private_net }
+      fixed_ips:
+        - subnet_id: { get_resource: private_subnet }
+      security_groups:
+        - { get_resource: sec_group }
+
+  dest_vm:
+    type: OS::Nova::Server
+    properties:
+      name: sfc-test-dst-vm
+      admin_pass: test
+      key_name: { get_param: key_name }
+      flavor: { get_resource: flavor }
+      image: { get_param: image_id }
+      networks:
+        - port: { get_resource: dest_vm_port }
+
+  dest_fip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: provider_net }
+      port_id: { get_resource: dest_vm_port }
+
+  sf_port_ctrl:
+    type: OS::Neutron::Port
+    properties:
+      name: sfc-test-sf-port-ctrl
+      network_id: { get_param: provider_net }
+      fixed_ips:
+        - subnet_id: { get_param: provider_subnet }
+      security_groups:
+        - { get_resource: sec_group }
+
+  sf_port_ingress:
+    type: OS::Neutron::Port
+    properties:
+      name: sfc-test-sf-port-ingress
+      network_id: { get_resource: private_net }
+      fixed_ips:
+        - subnet_id: { get_resource: private_subnet }
+      port_security_enabled: false
+
+  sf_port_egress:
+    type: OS::Neutron::Port
+    properties:
+      name: sfc-test-sf-port-egress
+      network_id: { get_resource: private_net }
+      fixed_ips:
+        - subnet_id: { get_resource: private_subnet }
+      port_security_enabled: false
+
+  sf_vm:
+    type: OS::Nova::Server
+    properties:
+      name: sfc-test-sf
+      admin_pass: test
+      key_name: { get_param: key_name }
+      flavor: { get_resource: flavor }
+      image: { get_param: image_id }
+      networks:
+        - port: { get_resource: sf_port_ctrl }
+        - port: { get_resource: sf_port_ingress }
+        - port: { get_resource: sf_port_egress }
+      user_data_format: RAW
+      user_data: |
+        #cloud-config
+        runcmd:
+          - ip route add default via 172.24.4.1
+          - sudo dnf install -y openvswitch tcpdump
+          - sudo systemctl start openvswitch
+          - sudo ovs-vsctl add-br br-sf
+          - sudo ovs-vsctl add-port br-sf eth1
+          - sudo ovs-vsctl add-port br-sf eth2
+          - sudo ovs-ofctl del-flows br-sf
+          - sudo ip link set dev eth1 up
+          - sudo ip link set dev eth2 up
+          - sudo ovs-ofctl add-flow table=0 in_port=$(sudo ovs-ofctl show br-sf | grep eth1 | cut -f1 -d"("),mpls,actions=output:$(sudo ovs-ofctl show br-sf | grep eth2 | cut -f1 -d"(")
+
+  port_pair:
+    type: OS::Neutron::PortPair
+    properties:
+      name: sfc-test-pp
+      ingress: { get_resource: sf_port_ingress }
+      egress: { get_resource: sf_port_egress }
+      service_function_parameters:
+        correlation: mpls
+    depends_on: sf_vm
+
+  port_pair_group:
+    type: OS::Neutron::PortPairGroup
+    properties:
+      name: sfc-test-ppg
+      port_pairs:
+        - { get_resource: port_pair }
+
+  flow_classifier:
+    type: OS::Neutron::FlowClassifier
+    properties:
+      name: sfc-test-fc
+      logical_source_port: { get_resource: source_vm_port }
+      ethertype: IPv4
+      destination_ip_prefix:
+        str_replace:
+          template: ip/32
+          params:
+            ip: { get_attr: [ dest_vm, first_address ] }
+
+  port_chain:
+    type: OS::Neutron::PortChain
+    properties:
+      name: sfc-test-pc
+      flow_classifiers:
+        - { get_resource: flow_classifier }
+      port_pair_groups:
+        - { get_resource: port_pair_group }
