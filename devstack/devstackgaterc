@@ -29,6 +29,8 @@ if [ -n "${DEVSTACK_GATE_TEMPEST}" ] && [ ${DEVSTACK_GATE_TEMPEST} -gt 0 ]; then
     export OVERRIDE_ENABLED_SERVICES=${OVERRIDE_ENABLED_SERVICES},tempest
     export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=True"
     source /opt/stack/new/dragonflow/devstack/tempest-filter
+    # FIXME
+    export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_SELECTIVE_TOPO_DIST=False"
 else
     export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=False"
 
