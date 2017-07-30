@@ -12,8 +12,19 @@
 
 import copy
 
+from neutron.extensions import securitygroup as sg
+from neutron_lib import constants as n_const
+
 from dragonflow.db.models import secgroups
 from dragonflow.neutron.common import constants as df_const
+
+
+def _get_protocol_number(ip_proto):
+
+    if ip_proto in sg.sg_supported_protocols:
+        return n_const.IP_PROTOCOL_MAP.get(ip_proto)
+
+    return int(ip_proto)
 
 
 def security_group_rule_from_neutron_obj(secrule):
@@ -26,9 +37,15 @@ def security_group_rule_from_neutron_obj(secrule):
     topic = kwargs.pop('project_id', None)
     if topic is not None:
         kwargs['topic'] = topic
+
     version = kwargs.pop('revision_number', None)
     if version is not None:
         kwargs['version'] = version
+
+    ip_proto = kwargs.pop('protocol', None)
+    if ip_proto is not None:
+        kwargs['protocol'] = _get_protocol_number(ip_proto)
+
     return secgroups.SecurityGroupRule(**kwargs)
 
 
