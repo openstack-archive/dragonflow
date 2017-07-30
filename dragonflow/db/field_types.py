@@ -304,3 +304,19 @@ class PortRangeField(fields.BaseField):
                 # Raise an error if list in not of 2 values
                 port_min, port_max = value
                 return PortRange(port_min, port_max)
+
+
+class IpProto(fields.BaseField):
+    types = six.integer_types
+
+    def validate(self, value):
+        if value is None:
+            return
+        if not isinstance(value, six.integer_types):
+            raise errors.ValidationError(
+                _('Ip proto value - {val} is not an Integer').format(
+                    val=value))
+        if value < 0 or value > 255:
+            raise errors.ValidationError(
+                _('Ip proto value -{val} is not between [0,255]').format(
+                    val=value))
