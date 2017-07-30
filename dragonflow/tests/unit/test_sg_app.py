@@ -87,7 +87,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
                     security_group_id="fake_security_group_id2",
                     ethertype=self._get_ether_type(is_ipv6),
                     topic="fake_tenant1",
-                    protocol="tcp",
+                    protocol=n_const.PROTO_NUM_TCP,
                     port_range_max=None,
                     port_range_min=None,
                     remote_group_id=None,
@@ -202,8 +202,8 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.assertEqual(8, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
         expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
-            ethertype=n_const.IPv4, protocol='udp', nw_src='10.0.0.10',
-            nw_dst=None, zone=1)
+            ethertype=n_const.IPv4, protocol=n_const.PROTO_NUM_UDP,
+            nw_src='10.0.0.10', nw_dst=None, zone=1)
         expected_conntrack_cmd2 = self._get_expected_conntrack_cmd(
             ethertype=n_const.IPv4, protocol=None, nw_src=None,
             nw_dst='10.0.0.10', zone=1)
@@ -212,9 +212,8 @@ class TestSGApp(test_app_base.DFAppTestBase):
             nw_dst='10.0.0.6', zone=1)
 
         expected_conntrack_cmd4 = self._get_expected_conntrack_cmd(
-            ethertype=n_const.IPv6, protocol='udp', nw_src='2222:2222::2',
-            nw_dst=None, zone=1)
-
+            ethertype=n_const.IPv6, protocol=n_const.PROTO_NUM_UDP,
+            nw_src='2222:2222::2', nw_dst=None, zone=1)
         expected_conntrack_cmd5 = self._get_expected_conntrack_cmd(
             ethertype=n_const.IPv6, protocol=None, nw_src=None,
             nw_dst='2222:2222::2', zone=1)
@@ -275,14 +274,14 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.assertEqual(16, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
         expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
-            ethertype=n_const.IPv4, protocol='udp', nw_src='10.0.0.6',
-            nw_dst=None, zone=1)
+            ethertype=n_const.IPv4, protocol=n_const.PROTO_NUM_UDP,
+            nw_src='10.0.0.6', nw_dst=None, zone=1)
         expected_conntrack_cmd2 = self._get_expected_conntrack_cmd(
             ethertype=n_const.IPv4, protocol=None, nw_src=None,
             nw_dst='10.0.0.6', zone=1)
         expected_conntrack_cmd3 = self._get_expected_conntrack_cmd(
-            ethertype=n_const.IPv6, protocol='udp', nw_src='2222:2222::3',
-            nw_dst=None, zone=1)
+            ethertype=n_const.IPv6, protocol=n_const.PROTO_NUM_UDP,
+            nw_src='2222:2222::3', nw_dst=None, zone=1)
         expected_conntrack_cmd4 = self._get_expected_conntrack_cmd(
             ethertype=n_const.IPv6, protocol=None, nw_src=None,
             nw_dst='2222:2222::3', zone=1)
@@ -339,8 +338,8 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.assertEqual(12, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
         expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
-            ethertype=n_const.IPv4, protocol='udp', nw_src='10.0.0.10',
-            nw_dst=None, zone=1)
+            ethertype=n_const.IPv4, protocol=n_const.PROTO_NUM_UDP,
+            nw_src='10.0.0.10', nw_dst=None, zone=1)
         expected_conntrack_cmd2 = self._get_expected_conntrack_cmd(
             ethertype=n_const.IPv4, protocol=None, nw_src=None,
             nw_dst='10.0.0.10', zone=1)
@@ -371,8 +370,8 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.reset_mock()
         # Only IPv6 rules were deleted
         expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
-            ethertype=n_const.IPv6, protocol='tcp', nw_src='2222:2222::2',
-            nw_dst=None, zone=1)
+            ethertype=n_const.IPv6, protocol=n_const.PROTO_NUM_TCP,
+            nw_src='2222:2222::2', nw_dst=None, zone=1)
         expected_conntrack_cmd2 = self._get_expected_conntrack_cmd(
             ethertype=n_const.IPv6, protocol=None, nw_src=None,
             nw_dst='2222:2222::2', zone=1)
@@ -409,7 +408,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
             security_group_id="fake_security_group_id2",
             ethertype=n_const.IPv4,
             topic="fake_tenant1",
-            protocol='udp',
+            protocol=n_const.PROTO_NUM_UDP,
             port_range_max=None,
             port_range_min=None,
             remote_group_id=None,
@@ -433,8 +432,8 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.assertEqual(1, self._get_call_count_of_del_flow())
         self.mock_mod_flow.reset_mock()
         expected_conntrack_cmd1 = self._get_expected_conntrack_cmd(
-            ethertype=n_const.IPv4, protocol='udp', nw_src='10.0.0.10',
-            nw_dst=None, zone=1)
+            ethertype=n_const.IPv4, protocol=n_const.PROTO_NUM_UDP,
+            nw_src='10.0.0.10', nw_dst=None, zone=1)
         self.mock_execute.assert_has_calls([expected_conntrack_cmd1],
                                            any_order=True)
         self.mock_execute.reset_mock()
