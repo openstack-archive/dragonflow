@@ -326,6 +326,10 @@ function install_df {
     fi
 
     setup_package $DRAGONFLOW_DIR
+
+    # FIXME
+    echo "tempest ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/tempest
+    sudo iptables -F
 }
 
 # The following returns "0" when service is live.
