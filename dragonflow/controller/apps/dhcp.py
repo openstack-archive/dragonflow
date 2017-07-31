@@ -358,7 +358,7 @@ class DHCPApp(df_base_app.DFlowApp):
             return mtu
         return self.default_interface_mtu
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         if lport.ip.version != n_const.IP_VERSION_4:
             LOG.warning("No support for non IPv4 protocol")
@@ -382,7 +382,7 @@ class DHCPApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
         if lport.ip.version != n_const.IP_VERSION_4:
             LOG.warning("No support for non IPv4 protocol")

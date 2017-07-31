@@ -32,7 +32,7 @@ class PortQosApp(df_base_app.DFlowApp):
         super(PortQosApp, self).__init__(*args, **kwargs)
         self._local_ports = collections.defaultdict(set)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
         self._check_update_local_port_qos(lport)
 
@@ -79,7 +79,7 @@ class PortQosApp(df_base_app.DFlowApp):
             if _is_qos_set():
                 self.vswitch_api.set_port_qos(port_id, policy)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         if lport.qos_policy:
             self._local_ports[lport.qos_policy.id].discard(lport.id)

@@ -61,8 +61,8 @@ class MigrationApp(df_base_app.DFlowApp):
                       'chassis': dest_chassis.id,
                       'self_chassis': chassis_name})
             if original_lport:
-                original_lport.emit_remote_deleted()
-            lport.emit_local_created()
+                original_lport.emit_unbind_local()
+            lport.emit_bind_local()
             return
 
         # Here It could be either source node or other nodes, so
@@ -83,6 +83,6 @@ class MigrationApp(df_base_app.DFlowApp):
 
         # source node and other related nodes
         if original_lport and old_chassis.id != chassis_name:
-            original_lport.emit_remote_deleted()
+            original_lport.emit_unbind_remote()
 
-        lport.emit_remote_created()
+        lport.emit_bind_remote()
