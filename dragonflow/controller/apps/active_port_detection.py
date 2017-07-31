@@ -277,7 +277,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
     def switch_features_handler(self, ev):
         self._periodic_send_arp_request()
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
         ips = self._get_ips_in_allowed_address_pairs(lport)
         for target_ip in ips:
@@ -295,7 +295,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         for target_ip in original_ips_set - ips_set:
             self._remove_target_ip(target_ip, original_lport)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         ips = self._get_ips_in_allowed_address_pairs(lport)
         if not ips:

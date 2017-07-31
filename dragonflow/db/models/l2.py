@@ -117,20 +117,23 @@ class PortBinding(models.Base):
         )
 
 
-# LogicalPort events
-EVENT_LOCAL_CREATED = 'local_created'
-EVENT_REMOTE_CREATED = 'remote_created'
+# Port events
 EVENT_LOCAL_UPDATED = 'local_updated'
 EVENT_REMOTE_UPDATED = 'remote_updated'
-EVENT_LOCAL_DELETED = 'local_deleted'
-EVENT_REMOTE_DELETED = 'remote_deleted'
+EVENT_BIND_LOCAL = 'bind_local'
+EVENT_UNBIND_LOCAL = 'unbind_local'
+EVENT_BIND_REMOTE = 'bind_remote'
+EVENT_UNBIND_REMOTE = 'unbind_remote'
 
 
 @mf.register_model
 @mf.construct_nb_db_model(events={
-    EVENT_LOCAL_CREATED, EVENT_REMOTE_CREATED,
-    EVENT_LOCAL_UPDATED, EVENT_REMOTE_UPDATED,
-    EVENT_LOCAL_DELETED, EVENT_REMOTE_DELETED,
+    EVENT_BIND_LOCAL,
+    EVENT_UNBIND_LOCAL,
+    EVENT_BIND_REMOTE,
+    EVENT_UNBIND_REMOTE,
+    EVENT_LOCAL_UPDATED,
+    EVENT_REMOTE_UPDATED,
 }, indexes={
     'chassis_id': 'binding.chassis.id',
     'lswitch_id': 'lswitch.id',
@@ -201,28 +204,3 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
             elif not cls_definition:  # Display only instnaces, not classes
                 data[name] = getattr(self, name)
         return str(data)
-
-    def emit_created(self):
-        LOG.info("Adding new logical port = %s", self)
-        if self.is_local:
-            self.emit_local_created()
-        elif self.is_remote:
-            self.emit_remote_created()
-
-    def emit_updated(self, original_lport):
-        # REVISIT (dimak) Only local and remote are cached at the moment
-        LOG.info("Updating %(location)s logical port = %(port)s, "
-                 "original port = %(original_port)s",
-                 {'port': self,
-                  'original_port': original_lport,
-                  'location': 'local' if self.is_local else 'remote'})
-        if self.is_local:
-            self.emit_local_updated(original_lport)
-        elif self.is_remote:
-            self.emit_remote_updated(original_lport)
-
-    def emit_deleted(self):
-        if self.is_local:
-            self.emit_local_deleted()
-        elif self.is_remote:
-            self.emit_remote_deleted()
