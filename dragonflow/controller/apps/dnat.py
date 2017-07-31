@@ -593,7 +593,7 @@ class DNATApp(df_base_app.DFlowApp):
         for fip in fips:
             self._associate_floatingip(fip)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         ips_to_disassociate = (
             fip for fip in self.local_floatingips.values()
