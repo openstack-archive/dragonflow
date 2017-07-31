@@ -222,5 +222,5 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
         self.dnat_app.local_floatingips[fip.id] = fip
         with self._mock_assoc_disassoc() as (_, d):
-            local_lport1.emit_local_deleted()
+            local_lport1.emit_unbind_local()
             d.assert_called_once_with(fip)
