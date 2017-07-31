@@ -104,7 +104,8 @@ class ClassifierApp(df_base_app.DFlowApp):
         try:
             ofport, port_key = self._ofport_unique_key_map.pop(ovs_port.id)
         except KeyError:
-            LOG.debug("Unknown classification/dispatch for ofport %s", ofport)
+            # OvsPort not present in lookup, was either not added, or removed
+            # by a previous update. In both cases irrelevant.
             return
         self._del_ingress_dispatch_flow(port_key)
         self._del_ingress_classification_flow(ofport)
