@@ -63,7 +63,7 @@ class FcApp(df_base_app.DFlowApp):
             ),
         )
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _local_lport_added(self, lport):
         for fc in self._flow_classifiers_by_lport(lport):
             # Install classification/dispatch only if it wasn't installed by
@@ -149,7 +149,7 @@ class FcApp(df_base_app.DFlowApp):
             actions=actions,
         )
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         for fc in self._flow_classifiers_by_lport(lport):
             # Remove classification/dispatch only if they're no longer needed

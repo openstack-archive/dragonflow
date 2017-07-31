@@ -105,7 +105,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
             match,
             self.external_host_mac)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         """override remove_local_port method to remove installed flows
 
@@ -120,7 +120,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
             else:
                 LOG.info('SNAT application: not a compute port, skipped')
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
         """override add_local_port method to install sNAT related flows
 

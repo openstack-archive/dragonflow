@@ -249,24 +249,24 @@ class TestFcApp(test_app_base.DFAppTestBase):
 
     @utils.with_local_objects(fc1, fc2, pc1, *l2_objs)
     def test_src_local_port_added(self):
-        lport1.emit_local_created()
+        lport1.emit_bind_local()
         self.app._install_classification_flows.assert_called_once_with(fc1)
         self.app._install_dispatch_flows.assert_not_called()
 
     @utils.with_local_objects(fc1, fc2, pc1, *l2_objs)
     def test_src_local_port_removed(self):
-        lport1.emit_local_deleted()
+        lport1.emit_unbind_local()
         self.app._uninstall_classification_flows.assert_called_once_with(fc1)
         self.app._uninstall_dispatch_flows.assert_not_called()
 
     @utils.with_local_objects(fc1, fc2, pc1, *l2_objs)
     def test_dest_local_port_added(self):
-        lport2.emit_local_created()
+        lport2.emit_bind_local()
         self.app._install_classification_flows.assert_not_called()
         self.app._install_dispatch_flows.assert_called_once_with(fc2)
 
     @utils.with_local_objects(fc1, fc2, pc1, *l2_objs)
     def test_dest_local_port_removed(self):
-        lport2.emit_local_deleted()
+        lport2.emit_unbind_local()
         self.app._uninstall_classification_flows.assert_not_called()
         self.app._uninstall_dispatch_flows.assert_called_once_with(fc2)

@@ -343,7 +343,7 @@ class TestSfcApp(test_app_base.DFAppTestBase):
 
     @utils.with_local_objects(fc1, fc2, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_port_pair_ingress_port_added(self):
-        pp11ingress.emit_local_created()
+        pp11ingress.emit_bind_local()
         self.driver.uninstall_port_pair_group_flows.assert_called_once_with(
             pc1, ppg1)
         self.driver.install_port_pair_group_flows.assert_called_once_with(
@@ -351,7 +351,7 @@ class TestSfcApp(test_app_base.DFAppTestBase):
 
     @utils.with_local_objects(fc1, fc2, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_port_pair_ingress_port_deleted(self):
-        pp11ingress.emit_local_deleted()
+        pp11ingress.emit_unbind_local()
         self.driver.uninstall_port_pair_group_flows.assert_called_once_with(
             pc1, ppg1)
         self.driver.install_port_pair_group_flows.assert_called_once_with(
@@ -359,26 +359,26 @@ class TestSfcApp(test_app_base.DFAppTestBase):
 
     @utils.with_local_objects(fc1, fc2, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_port_pair_egress_port_added(self):
-        pp11egress.emit_local_created()
+        pp11egress.emit_bind_local()
         self.driver.install_port_pair_egress_flows.assert_called_once_with(
             pc1, ppg1, pp11)
         self.driver.uninstall_port_pair_egress_flows.assert_not_called()
 
     @utils.with_local_objects(fc1, fc2, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_port_pair_egress_port_deleted(self):
-        pp11egress.emit_local_deleted()
+        pp11egress.emit_unbind_local()
         self.driver.install_port_pair_egress_flows.assert_not_called()
         self.driver.uninstall_port_pair_egress_flows.assert_called_once_with(
             pc1, ppg1, pp11)
 
     @utils.with_local_objects(fc1, fc2, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_flow_classifier_port_added(self):
-        fc1lport.emit_local_created()
+        fc1lport.emit_bind_local()
         self.app._install_flow_classifier_local_port_flows\
             .assert_called_once_with(pc1, fc1)
 
     @utils.with_local_objects(fc1, fc2, pp11, pp12, ppg1, pc1, *l2_objs)
     def test_flow_classifier_port_deleted(self):
-        fc1lport.emit_local_deleted()
+        fc1lport.emit_unbind_local()
         self.app._uninstall_flow_classifier_local_port_flows\
             .assert_called_once_with(pc1, fc1)

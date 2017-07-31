@@ -44,7 +44,7 @@ class TestMigrationApp(test_app_base.DFAppTestBase):
         self.addCleanup(mock_update_patch.stop)
 
         mock_emit_created_patch = mock.patch.object(
-                lport, 'emit_local_created')
+                lport, 'emit_bind_local')
         mock_emit_created = mock_emit_created_patch.start()
         self.addCleanup(mock_emit_created_patch.stop)
 

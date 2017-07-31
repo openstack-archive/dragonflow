@@ -483,8 +483,8 @@ class L3AppMixin(object):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
     def _add_port_event_handler(self, lport):
         LOG.debug('add %(locality)s port: %(lport)s',
                   {'lport': lport,
@@ -616,8 +616,8 @@ class L3AppMixin(object):
         """Add port which is not a router interface."""
         self._reprocess_to_add_route(lport)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
     def _remove_port_event_handler(self, lport):
         LOG.debug('remove %(locality)s port: %(lport)s',
                   {'lport': lport,
