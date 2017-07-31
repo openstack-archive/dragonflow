@@ -950,7 +950,7 @@ class SGApp(df_base_app.DFlowApp):
 
         return added_secgroups, removed_secgroups, unchanged_secgroups
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         secgroups = lport.security_groups
         if not secgroups:
@@ -962,7 +962,7 @@ class SGApp(df_base_app.DFlowApp):
         for secgroup in secgroups:
             self._remove_local_port_associating(lport, secgroup.id)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
     def _remove_remote_port(self, lport):
         secgroups = lport.security_groups
         if not secgroups:
@@ -1020,7 +1020,7 @@ class SGApp(df_base_app.DFlowApp):
             self._update_port_addresses_process(lport, original_lport,
                                                 secgroup.id)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
         secgroups = lport.security_groups
         if not secgroups:
@@ -1032,7 +1032,7 @@ class SGApp(df_base_app.DFlowApp):
         # install ct table
         self._install_connection_track_flows(lport)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
     def _add_remote_port(self, lport):
         secgroups = lport.security_groups
         if not secgroups:

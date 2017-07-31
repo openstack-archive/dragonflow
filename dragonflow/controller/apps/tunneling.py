@@ -45,7 +45,7 @@ class TunnelingApp(df_base_app.DFlowApp):
             # already exists.
             self.vswitch_api.add_virtual_tunnel_port(t)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
         lswitch = lport.lswitch
         network_type = lswitch.network_type
@@ -68,7 +68,7 @@ class TunnelingApp(df_base_app.DFlowApp):
                                            network_id=network_id,
                                            network_type=network_type)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         lswitch = lport.lswitch
         network_type = lswitch.network_type
@@ -124,7 +124,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         network_type = lport.lswitch.network_type
         return self.vswitch_api.get_vtp_ofport(network_type)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
     def _add_remote_port(self, lport):
         lswitch = lport.lswitch
         network_type = lswitch.network_type
@@ -144,7 +144,7 @@ class TunnelingApp(df_base_app.DFlowApp):
                                      segmentation_id,
                                      self.ofproto.OFPFC_ADD)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
     def remove_remote_port(self, lport):
         lswitch = lport.lswitch
         network_type = lswitch.network_type
