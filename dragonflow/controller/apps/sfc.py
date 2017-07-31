@@ -294,7 +294,7 @@ class SfcApp(df_base_app.DFlowApp):
 
         return None, None
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _local_lport_created(self, lport):
         '''Handler for local port create
 
@@ -329,7 +329,7 @@ class SfcApp(df_base_app.DFlowApp):
                         port_pair_group,
                     )
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _local_lport_deleted(self, lport):
         '''Handler for local port remove
 
