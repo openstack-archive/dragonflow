@@ -23,6 +23,7 @@ from oslo_log import log
 import ryu.lib.packet
 from ryu.lib.packet import dhcp
 from ryu.ofproto import inet
+import testtools
 
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants
@@ -2459,6 +2460,7 @@ class TestDNATApp(test_base.DFTestBase):
 
 
 class TestTrunkApp(test_base.DFTestBase):
+    @testtools.skip("bug/1710335")
     def test_icmp_ping_pong(self):
         # Setup base components - two ports on 1 network
         self.topology = app_testing_objects.Topology(self.neutron, self.nb_api)
