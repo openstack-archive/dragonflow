@@ -32,7 +32,6 @@ from dragonflow.db import api_nb
 from dragonflow.db import db_common
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
-from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
@@ -186,25 +185,6 @@ class DfLocalController(object):
         for port in self._get_ports_by_chassis(chassis):
             self.delete(port)
         self.db_store.delete(chassis)
-
-    def _is_physical_chassis(self, chassis):
-        if not chassis:
-            return False
-        if model_proxy.is_model_proxy(chassis) and not chassis.get_object():
-            return False
-        return True
-
-    def update_lport(self, lport):
-        if (
-            lport.binding is None or
-            (lport.binding.type == l2.BINDING_CHASSIS and
-             not self._is_physical_chassis(lport.binding.chassis))
-        ):
-            LOG.debug(("Port %s has not been bound or it is a vPort"),
-                      lport.id)
-            return
-
-        self.update_model_object(lport)
 
     def register_chassis(self):
         # Get all chassis from nb db to db store.
@@ -375,10 +355,22 @@ class DfLocalController(object):
             lport.emit_bind_remote()
 
     def _port_updated(self, lport, orig_lport):
+        # unbind
+        if orig_lport.is_local and not lport.is_local:
+            lport.emit_unbind_local()
+        elif orig_lport.is_remote and not lport.is_remote:
+            lport.emit_unbind_remote()
+
         if lport.id in self._local_ports:
             lport.emit_local_updated(orig_lport)
         elif lport.id in self._remote_ports:
             lport.emit_remote_updated(orig_lport)
+
+        # bind
+        if lport.is_local and not orig_lport.is_local:
+            lport.emit_bind_local()
+        elif lport.is_remote and not orig_lport.is_remote:
+            lport.emit_bind_remote()
 
     def _port_deleted(self, lport):
         if lport.id in self._local_ports:
