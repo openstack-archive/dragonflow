@@ -74,7 +74,8 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
                               enabled=True,
                               lswitch='lswitch2',
                               topic='fake_tenant1',
-                              unique_key=33)
+                              unique_key=33,
+                              version=2)
 
     def _create_segmentation(self):
         return trunk.ChildPortSegmentation(id='cps1',
