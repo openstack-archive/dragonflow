@@ -18,7 +18,9 @@ from oslo_log import log
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants
 from dragonflow.controller import df_base_app
+from dragonflow.controller import port_locator
 from dragonflow.db.models import constants as model_constants
+from dragonflow.db.models import l2
 from dragonflow.db.models import trunk
 
 LOG = log.getLogger(__name__)
@@ -29,8 +31,31 @@ class TrunkApp(df_base_app.DFlowApp):
     @df_base_app.register_event(trunk.ChildPortSegmentation,
                                 model_constants.EVENT_CREATED)
     def _child_port_segmentation_created(self, child_port_segmentation):
+        parent_port = child_port_segmentation.parent
+        parent_binding = port_locator.get_port_binding(parent_port)
+        if parent_binding is None:
+            return
+
+        if parent_binding.is_local:
+            self._install_local_cps(child_port_segmentation)
+        else:
+            self._install_remote_cps(child_port_segmentation)
+
+    def _install_local_cps(self, child_port_segmentation):
         self._add_classification_rule(child_port_segmentation)
         self._add_dispatch_rule(child_port_segmentation)
+        port_locator.copy_port_binding(
+            child_port_segmentation.port,
+            child_port_segmentation.parent,
+        )
+        child_port_segmentation.port.emit_bind_local()
+
+    def _install_remote_cps(self, child_port_segmentation):
+        port_locator.copy_port_binding(
+            child_port_segmentation.port,
+            child_port_segmentation.parent,
+        )
+        child_port_segmentation.port.emit_bind_remote()
 
     def _get_classification_params_vlan(self, child_port_segmentation):
         vlan_vid = (self.ofproto.OFPVID_PRESENT |
@@ -55,9 +80,7 @@ class TrunkApp(df_base_app.DFlowApp):
 
     def _get_classification_actions(self, child_port_segmentation):
         segmentation_type = child_port_segmentation.segmentation_type
-        lport = child_port_segmentation.port.get_object()
-        if not lport:
-            lport = self.nb_api.get(child_port_segmentation.port)
+        lport = child_port_segmentation.port
         network_id = lport.lswitch.unique_key
         unique_key = lport.unique_key
         # TODO(oanson) This code is very similar to classifier app.
@@ -97,9 +120,7 @@ class TrunkApp(df_base_app.DFlowApp):
         )
 
     def _get_dispatch_match(self, child_port_segmentation):
-        lport = child_port_segmentation.port.get_object()
-        if not lport:
-            lport = self.nb_api.get(child_port_segmentation.port)
+        lport = child_port_segmentation.port
         match = self.parser.OFPMatch(reg7=lport.unique_key)
         return match
 
@@ -132,8 +153,25 @@ class TrunkApp(df_base_app.DFlowApp):
     @df_base_app.register_event(trunk.ChildPortSegmentation,
                                 model_constants.EVENT_DELETED)
     def _child_port_segmentation_deleted(self, child_port_segmentation):
+        parent_port = child_port_segmentation.parent
+        parent_binding = port_locator.get_port_binding(parent_port)
+        if parent_binding is None:
+            return
+
+        if parent_binding.is_local:
+            self._uninstall_local_cps(child_port_segmentation)
+        else:
+            self._uninstall_remote_cps(child_port_segmentation)
+
+    def _uninstall_local_cps(self, child_port_segmentation):
+        child_port_segmentation.port.emit_unbind_local()
+        port_locator.clear_port_binding(child_port_segmentation.port)
         self._delete_classification_rule(child_port_segmentation)
         self._delete_dispatch_rule(child_port_segmentation)
+
+    def _uninstall_remote_cps(self, child_port_segmentation):
+        child_port_segmentation.port.emit_unbind_remote()
+        port_locator.clear_port_binding(child_port_segmentation.port)
 
     def _delete_classification_rule(self, child_port_segmentation):
         match = self._get_classification_match(child_port_segmentation)
@@ -152,3 +190,29 @@ class TrunkApp(df_base_app.DFlowApp):
             match=match,
             command=self.ofproto.OFPFC_DELETE_STRICT,
         )
+
+    def _get_all_cps_by_parent(self, lport):
+        return self.db_store.get_all(
+            trunk.ChildPortSegmentation(parent=lport.id),
+            index=trunk.ChildPortSegmentation.get_index('parent_id'),
+        )
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
+    def _local_port_bound(self, lport):
+        for cps in self._get_all_cps_by_parent(lport):
+            self._install_local_cps(cps)
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
+    def _local_port_unbound(self, lport):
+        for cps in self._get_all_cps_by_parent(lport):
+            self._uninstall_local_cps(cps)
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
+    def _remote_port_bound(self, lport):
+        for cps in self._get_all_cps_by_parent(lport):
+            self._install_remote_cps(cps)
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
+    def _remote_port_unbound(self, lport):
+        for cps in self._get_all_cps_by_parent(lport):
+            self._uninstall_remote_cps(cps)

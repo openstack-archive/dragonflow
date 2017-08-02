@@ -173,7 +173,7 @@ class L3AppTestCaseMixin(object):
                                           pkt.data, pkt=mock.ANY)
 
     def test_add_del_router_route_after_lport(self):
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update(test_app_base.fake_local_port1)
         self.app.mod_flow.reset_mock()
 
         # add route
@@ -202,7 +202,7 @@ class L3AppTestCaseMixin(object):
                    "nexthop": "10.0.0.106"},
                   {"destination": "10.101.0.0/16",
                    "nexthop": "10.0.0.106"}]
-        self.controller.update_lport(test_app_base.fake_local_port1)
+        self.controller.update(test_app_base.fake_local_port1)
         self.app.mod_flow.reset_mock()
         router_with_route = copy.deepcopy(self.router)
         router_with_route.routes = routes
