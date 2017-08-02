@@ -135,7 +135,6 @@ def run_client(nb_api):
         print(", ".join(data_str))
 
     callback_handler = mock.Mock()
-    callback_handler.update_lport = update_lport
     callback_handler.update_publisher = update_publisher
     callback_handler.delete_publisher = delete_publisher
     signal.signal(signal.SIGINT, signal_handler)
