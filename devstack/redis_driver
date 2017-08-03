@@ -12,13 +12,18 @@
 
 REDIS_VERSION=3.0.6
 RUBY_VERSION=2.3
-REDIS_SERVER_LIST=$REMOTE_DB_IP
-REMOTE_PORT_START=$REMOTE_DB_PORT
-NODE_COUNT_END=5
-REMOTE_PORT_END=`expr $REMOTE_PORT_START + $NODE_COUNT_END`
-REDIS_PORT=`seq $REMOTE_PORT_START $REMOTE_PORT_END`
+
+function _redis_env {
+    # REMOTE_DB_* initialized after sourcing
+    export REDIS_SERVER_LIST=$REMOTE_DB_IP
+    export REMOTE_PORT_START=$REMOTE_DB_PORT
+    export NODE_COUNT_END=5
+    export REMOTE_PORT_END=`expr $REMOTE_PORT_START + $NODE_COUNT_END`
+    export REDIS_PORT=`seq $REMOTE_PORT_START $REMOTE_PORT_END`
+}
 
 function _configure_redis {
+    _redis_env
     pushd /opt/redis3/conf
     sudo sh -c "grep -q ulimit /etc/profile ||
                 echo ulimit -SHn 40960 >> /etc/profile"
@@ -103,6 +108,7 @@ function nb_db_driver_install_client {
 }
 
 function nb_db_driver_start_server {
+    _redis_env
     create=
     if is_service_enabled df-redis-server ; then
         if is_ubuntu || is_fedora; then
@@ -140,11 +146,12 @@ function nb_db_driver_start_server {
 }
 
 function nb_db_driver_stop_server {
+    _redis_env
     if is_service_enabled df-redis-server ; then
         if is_ubuntu || is_fedora; then
             for redisserver in $REDIS_SERVER_LIST; do
                 for port in $REDIS_PORT; do
-                    echo "Shutshow Redis: "$redisserver:$port
+                    echo "Shutdown Redis: "$redisserver:$port
                     sudo /opt/redis3/bin/redis-cli -p $port shutdown
                     pushd /opt/redis3/
                     sudo rm -rf nodes*.conf
