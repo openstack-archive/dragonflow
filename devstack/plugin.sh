@@ -17,7 +17,7 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.6}
 EXTERNAL_HOST_IP=${EXTERNAL_HOST_IP:-}
 
 DEFAULT_TUNNEL_TYPES="vxlan,geneve,gre"
-DEFAULT_APPS_LIST="l2,l3_proactive,dhcp,dnat,sg,portsec,portqos,classifier,tunneling,provider"
+DEFAULT_APPS_LIST="l2,dhcp,sg,portsec,portqos,classifier,tunneling,provider"
 
 if [[ $ENABLE_DF_SFC == "True" ]]; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,fc,sfc"
@@ -48,6 +48,10 @@ fi
 ENABLED_AGING_APP=${ENABLE_AGING_APP:-True}
 if [[ "$ENABLE_AGING_APP" == "True" ]]; then
     DEFAULT_APPS_LIST="aging,$DEFAULT_APPS_LIST"
+fi
+
+if ! is_service_enabled q-l3; then
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,dnat,l3_proactive"
 fi
 
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}

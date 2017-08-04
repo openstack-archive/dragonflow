@@ -136,9 +136,7 @@ class L2App(df_base_app.DFlowApp):
         device_owner = lport.device_owner
 
         # Remove destination classifier for port
-        if device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
-            self._delete_dst_classifier_flow_for_port(network_id, mac)
-
+        self._delete_dst_classifier_flow_for_port(network_id, mac)
         self._remove_l2_responders(lport)
 
     def _remove_local_port_pipeline_interface(self, lport):
@@ -302,8 +300,7 @@ class L2App(df_base_app.DFlowApp):
 
         # REVISIT(xiaohhui): This check might be removed when l3-agent is
         # obsoleted.
-        if lport.device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
-            self._add_dst_classifier_flow_for_port(network_id, mac, port_key)
+        self._add_dst_classifier_flow_for_port(network_id, mac, port_key)
         self._add_l2_responders(lport)
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
