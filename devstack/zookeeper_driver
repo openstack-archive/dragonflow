@@ -16,14 +16,17 @@ if is_ubuntu ; then
     UBUNTU_RELEASE_BASE_NUM=`lsb_release -r | awk '{print $2}' | cut -d '.' -f 1`
 fi
 
-ZOOKEEPER_IP=${REMOTE_DB_IP:-${HOST_IP}}
-ZOOKEEPER_PORT=${REMOTE_DB_PORT:-2181}
-ZOOKEEPER_DATA_DIR="/var/lib/zookeeper"
-ZOOKEEPER_LOG_DIR="/var/log/zookeeper"
-ZOOKEEPER_DIR="/etc/zookeeper"
+function _zookeeper_env {
+    export ZOOKEEPER_IP=${REMOTE_DB_IP:-${HOST_IP}}
+    export ZOOKEEPER_PORT=${REMOTE_DB_PORT:-2181}
+    export ZOOKEEPER_DATA_DIR="/var/lib/zookeeper"
+    export ZOOKEEPER_LOG_DIR="/var/log/zookeeper"
+    export ZOOKEEPER_DIR="/etc/zookeeper"
+}
 
 function nb_db_driver_install_server {
     if is_service_enabled df-zookeeper-server ; then
+        _zookeeper_env
         echo "Installing Zookeeper server"
         if is_ubuntu; then
             ZOOKEEPER_CONF_DIR="${ZOOKEEPER_DIR}/conf"
@@ -48,12 +51,8 @@ function nb_db_driver_install_server {
             sudo mkdir -p $ZOOKEEPER_DATA_DIR
             sudo mkdir -p $ZOOKEEPER_LOG_DIR
             sudo mkdir -p $ZOOKEEPER_CONF_DIR
-            install_package zookeeper jline netty jetty
-            sudo cp $DEST/dragonflow/devstack/zookeeper.service.fedora /etc/systemd/system/zookeeper.service
-            sudo systemctl daemon-reload
-            if [ -f $ZOOKEEPER_CONF_SAMPLE_FILE ] ; then
-                sudo cp $ZOOKEEPER_CONF_SAMPLE_FILE $ZOOKEEPER_CONF_FILE
-            fi
+            install_package zookeeper
+            sudo cp $ZOOKEEPER_CONF_SAMPLE_FILE $ZOOKEEPER_CONF_FILE
         else
             die $LINENO "Other distributions are not supported"
         fi
@@ -62,6 +61,7 @@ function nb_db_driver_install_server {
         if [ -f $ZOOKEEPER_CONF_FILE ] ; then
             sudo sed -i "/^dataDir=/c dataDir=${ZOOKEEPER_DATA_DIR}" $ZOOKEEPER_CONF_FILE
             sudo sed -i "/^dataLogDir=/c dataLogDir=${ZOOKEEPER_LOG_DIR}" $ZOOKEEPER_CONF_FILE
+            sudo sed -i "/^clientPort=/c clientPort=${ZOOKEEPER_PORT}" $ZOOKEEPER_CONF_FILE
             local result=`grep "server.1" $ZOOKEEPER_CONF_FILE`
             if [ $result -eq 0 ]; then
                 sudo sed -i "/^[#server.1=|server.1=]/c server.1=${HOSTNAME}:2888:3888" $ZOOKEEPER_CONF_FILE
@@ -91,12 +91,14 @@ function nb_db_driver_install_client {
 
 function nb_db_driver_start_server {
     if is_service_enabled df-zookeeper-server ; then
+        _zookeeper_env
         start_service zookeeper
     fi
 }
 
 function nb_db_driver_stop_server {
     if is_service_enabled df-zookeeper-server ; then
+        _zookeeper_env
         stop_service zookeeper
     fi
 }
