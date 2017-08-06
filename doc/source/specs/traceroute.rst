@@ -130,7 +130,7 @@ Ingress NAT Table
     priority=high,icmp,nw_dst=fip,icmp_type=11 actions=mod_dl_src:gw_mac,mod_dl_dst:vm_mac,dec_ttl,mod_nw_dst:vm_ip,(packet-in controller)
     priority=high,icmp,nw_dst=fip,icmp_type=3 actions=mod_dl_src:gw_mac,mod_dl_dst:vm_mac,dec_ttl,mod_nw_dst:vm_ip,(packet-in controller)
 
-These two flows matche ICMP Time Exceeded message and ICMP Destination
+These two flows matches ICMP Time Exceeded message and ICMP Destination
 Unreachable Message. Do NAT to the ICMP packets and then packet-in the
 packets to controller, where the IP of embedded packets will be reverted.
 
@@ -142,7 +142,7 @@ Egress NAT Table
     priority=high,icmp,metadata=network_uid,nw_src=vm_ip,icmp_type=11 actions=mod_dl_src:fip_mac,mod_dl_dst:br-ex_mac,mod_nw_src:fip,(packet-in controller)
     priority=high,icmp,metadata=network_uid,nw_src=vm_ip,icmp_type=3 actions=mod_dl_src:fip_mac,mod_dl_dst:br-ex_mac,mod_nw_src:fip,(packet-in controller)
 
-These two flows matche ICMP Time Exceeded message and ICMP Destination
+These two flows matches ICMP Time Exceeded message and ICMP Destination
 Unreachable Message. Do NAT to the ICMP packets and then packet-in the
 packets to controller, where the IP of embedded packets will be reverted.
 
@@ -154,7 +154,7 @@ L3 lookup Table
      priority=high,tcp,metadata=network_uid,nw_dst=router_port_ip actions=(packet-in controller)
      priority=high,udp,metadata=network_uid,nw_dst=router_port_ip actions=(packet-in controller)
 
-These two flows matche UDP and TCP packets to router port, and reply with
+These two flows matches UDP and TCP packets to router port, and reply with
 ICMP Destination Unreachable Message.
 
 Implementation
