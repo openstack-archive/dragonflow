@@ -16,71 +16,65 @@ if is_ubuntu ; then
     UBUNTU_RELEASE_BASE_NUM=`lsb_release -r | awk '{print $2}' | cut -d '.' -f 1`
 fi
 
-ZOOKEEPER_IP=${REMOTE_DB_IP:-${HOST_IP}}
-ZOOKEEPER_PORT=${REMOTE_DB_PORT:-2181}
-ZOOKEEPER_DATA_DIR="/var/lib/zookeeper"
-ZOOKEEPER_LOG_DIR="/var/log/zookeeper"
-ZOOKEEPER_DIR="/etc/zookeeper"
+function _zookeeper_env {
+    export ZOOKEEPER_DATA_DIR="/var/lib/zookeeper"
+    export ZOOKEEPER_LOG_DIR="/var/log/zookeeper"
+    export ZOOKEEPER_DIR="/etc/zookeeper"
+}
+
+function update_key_in_file {
+    key=$1; shift
+    value=$1; shift
+    file=$1; shift
+    local result=`grep -c "^ *$key *=" $file 2> /dev/null`
+    if [ $result -gt 0 ]; then
+        sudo sed -i "/^ *$key *=/c $key=$value" $file
+    else
+        sudo sh -c "echo \"$key=$value\" >> $file"
+    fi
+}
 
 function nb_db_driver_install_server {
     if is_service_enabled df-zookeeper-server ; then
+        _zookeeper_env
         echo "Installing Zookeeper server"
+        sudo mkdir -p $ZOOKEEPER_DATA_DIR
+        sudo mkdir -p $ZOOKEEPER_LOG_DIR
         if is_ubuntu; then
             ZOOKEEPER_CONF_DIR="${ZOOKEEPER_DIR}/conf"
-            ZOOKEEPER_CONF_FILE="${ZOOKEEPER_CONF_DIR}/zoo.cfg"
-            ZOOKEEPER_CONF_SAMPLE_DIR="/etc/zookeeper/conf_example"
-            sudo mkdir -p $ZOOKEEPER_DATA_DIR
-            sudo mkdir -p $ZOOKEEPER_LOG_DIR
-            sudo mkdir -p $ZOOKEEPER_CONF_DIR
             install_package zookeeperd
-            stop_service zookeeper
-            if [ $UBUNTU_RELEASE_BASE_NUM -ge 16 ] ; then
-                sudo cp $DEST/dragonflow/devstack/zookeeper.service.ubuntu /etc/systemd/system/zookeeper.service
-                sudo systemctl daemon-reload
-            fi
-            if [ -d $ZOOKEEPER_CONF_SAMPLE_DIR ] ; then
-                sudo cp $ZOOKEEPER_CONF_SAMPLE_DIR/* $ZOOKEEPER_CONF_DIR/ -rf
-            fi
+            ZOOKEEPER_CONF_FILE="${ZOOKEEPER_CONF_DIR}/zoo.cfg"
         elif is_fedora; then
             ZOOKEEPER_CONF_DIR="${ZOOKEEPER_DIR}"
-            ZOOKEEPER_CONF_FILE="${ZOOKEEPER_CONF_DIR}/zoo.cfg"
+            install_package zookeeper
             ZOOKEEPER_CONF_SAMPLE_FILE="${ZOOKEEPER_CONF_DIR}/zoo_sample.cfg"
-            sudo mkdir -p $ZOOKEEPER_DATA_DIR
-            sudo mkdir -p $ZOOKEEPER_LOG_DIR
-            sudo mkdir -p $ZOOKEEPER_CONF_DIR
-            install_package zookeeper jline netty jetty
-            sudo cp $DEST/dragonflow/devstack/zookeeper.service.fedora /etc/systemd/system/zookeeper.service
-            sudo systemctl daemon-reload
-            if [ -f $ZOOKEEPER_CONF_SAMPLE_FILE ] ; then
-                sudo cp $ZOOKEEPER_CONF_SAMPLE_FILE $ZOOKEEPER_CONF_FILE
-            fi
+            ZOOKEEPER_CONF_FILE="${ZOOKEEPER_CONF_DIR}/zoo.cfg"
+            sudo cp $ZOOKEEPER_CONF_SAMPLE_FILE $ZOOKEEPER_CONF_FILE
         else
             die $LINENO "Other distributions are not supported"
         fi
 
         echo "Configuring Zookeeper"
         if [ -f $ZOOKEEPER_CONF_FILE ] ; then
-            sudo sed -i "/^dataDir=/c dataDir=${ZOOKEEPER_DATA_DIR}" $ZOOKEEPER_CONF_FILE
-            sudo sed -i "/^dataLogDir=/c dataLogDir=${ZOOKEEPER_LOG_DIR}" $ZOOKEEPER_CONF_FILE
-            local result=`grep "server.1" $ZOOKEEPER_CONF_FILE`
-            if [ $result -eq 0 ]; then
-                sudo sed -i "/^[#server.1=|server.1=]/c server.1=${HOSTNAME}:2888:3888" $ZOOKEEPER_CONF_FILE
-            else
-                echo "server.1=${HOSTNAME}:2888:3888" | sudo tee -a $ZOOKEEPER_CONF_FILE
-            fi
+            update_key_in_file dataDir "${ZOOKEEPER_DATA_DIR}" $ZOOKEEPER_CONF_FILE
+            update_key_in_file dataLogDir "${ZOOKEEPER_LOG_DIR}" $ZOOKEEPER_CONF_FILE
+            update_key_in_file clientPort "${REMOTE_DB_PORT}" $ZOOKEEPER_CONF_FILE
+            update_key_in_file "server.1" "${HOSTNAME}:2888:3888" $ZOOKEEPER_CONF_FILE
         fi
-        echo "1" | sudo tee $ZOOKEEPER_CONF_DIR/myid
+        sudo systemctl restart zookeeper
+        sudo sh -c "echo 1 >$ZOOKEEPER_CONF_DIR/myid"
     fi
 }
 
 function nb_db_driver_clean {
     if is_ubuntu; then
         uninstall_package -y zookeeperd
+        uninstall_package -y zookeeper
+        uninstall_package -y libzookeeper-java
     elif is_fedora; then
         uninstall_package -y zookeeper
     fi
     if [ -f "/etc/systemd/system/zookeeper.service" ] ; then
-        sudo rm /etc/systemd/system/zookeeper.service
         sudo systemctl daemon-reload
     fi
 }
@@ -91,12 +85,14 @@ function nb_db_driver_install_client {
 
 function nb_db_driver_start_server {
     if is_service_enabled df-zookeeper-server ; then
+        _zookeeper_env
         start_service zookeeper
     fi
 }
 
 function nb_db_driver_stop_server {
     if is_service_enabled df-zookeeper-server ; then
+        _zookeeper_env
         stop_service zookeeper
     fi
 }
