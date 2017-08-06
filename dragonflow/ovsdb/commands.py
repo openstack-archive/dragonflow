@@ -119,6 +119,7 @@ class CreateQos(commands.BaseCommand):
         qos_external_ids = {}
         qos_external_ids['version'] = str(self.qos.version)
         qos_external_ids['qos-id'] = self.qos.id
+        qos_external_ids['qos-topic'] = self.qos.topic
         qos_external_ids['iface-id'] = self.port_id
         qos.external_ids = qos_external_ids
         qos.verify('queues')
