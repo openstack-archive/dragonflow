@@ -193,9 +193,11 @@ class OvsApi(object):
             columns=['external_ids', '_uuid']).execute()
         if port_qoses:
             ovsdb_qos = port_qoses[0]
+            external_ids = ovsdb_qos['external_ids']
             return qos.QosPolicy(
-                id=ovsdb_qos['external_ids'].get('qos-id'),
-                topic=ovsdb_qos['external_ids'].get('qos-topic'),
+                id=external_ids.get('qos-id'),
+                topic=external_ids.get('qos-topic'),
+                version=external_ids.get('version'),
             )
 
     def set_port_qos(self, port_id, qos):
