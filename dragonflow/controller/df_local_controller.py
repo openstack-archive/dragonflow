@@ -36,6 +36,7 @@ from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
+from dragonflow.db.models import ovs
 from dragonflow.db import sync
 from dragonflow.ovsdb import vswitch_impl
 
@@ -126,6 +127,11 @@ class DfLocalController(object):
 
     def _register_models(self):
         for model in model_framework.iter_models_by_dependency_order():
+            # FIXME (dimak) generalize sync to support non-northbound models
+            # Adding OvsPort will cause sync to delete all OVS ports
+            # periodically
+            if model == ovs.OvsPort:
+                continue
             self._sync.add_model(model)
 
     def sync(self):
@@ -222,14 +228,6 @@ class DfLocalController(object):
         LOG.info('Deleting publisher: %s', str(publisher))
         self.nb_api.subscriber.unregister_listen_address(publisher.uri)
         self.db_store.delete(publisher)
-
-    # TODO(dimak) have ovs ports behave like rest of the modes and store
-    #             in db_store.
-    def update_ovs_port(self, ovs_port):
-        ovs_port.emit_updated()
-
-    def delete_ovs_port(self, ovs_port):
-        ovs_port.emit_deleted()
 
     def ovs_sync_finished(self):
         self.open_flow_app.notify_ovs_sync_finished()
