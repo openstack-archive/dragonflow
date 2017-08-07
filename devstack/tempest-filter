@@ -1,0 +1,77 @@
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+#
+# This script is executed in the OpenStack CI job that runs DevStack + tempest.
+# It is also used by the rally job. You can find the CI job configuration here:
+#
+# http://git.openstack.org/cgit/openstack-infra/project-config/tree/jenkins/jobs/dragonflow.yaml
+#
+
+# Begin list of exclusions.
+r="^(?!.*"
+
+# exclude the slow tag (part of the default for 'full')
+r="$r(?:.*\[.*\bslow\b.*\])"
+
+# exclude things that just aren't enabled:
+r="$r|(?:tempest\.api\.network\.admin\.test_quotas\.QuotasTest\.test_lbaas_quotas.*)"
+r="$r|(?:tempest\.api\.network\.test_load_balancer.*)"
+r="$r|(?:tempest\.scenario\.test_load_balancer.*)"
+r="$r|(?:tempest\.api\.network\.admin\.test_load_balancer.*)"
+r="$r|(?:tempest\.api\.network\.admin\.test_lbaas.*)"
+r="$r|(?:tempest\.api\.network\.test_fwaas_extensions.*)"
+r="$r|(?:tempest\.api\.network\.test_vpnaas_extensions.*)"
+r="$r|(?:tempest\.api\.network\.test_metering_extensions.*)"
+r="$r|(?:tempest\.thirdparty\.boto\.test_s3.*)"
+
+# skip tests unrelated to dragonflow
+r="$r|(?:tempest\.api\.identity*)"
+r="$r|(?:tempest\.api\.image*)"
+r="$r|(?:tempest\.api\.volume*)"
+r="$r|(?:tempest\.api\.compute\.images*)"
+r="$r|(?:tempest\.api\.compute\.keypairs*)"
+r="$r|(?:tempest\.api\.compute\.certificates*)"
+r="$r|(?:tempest\.api\.compute\.flavors*)"
+r="$r|(?:tempest\.api\.compute\.test_quotas*)"
+r="$r|(?:tempest\.api\.compute\.test_versions*)"
+r="$r|(?:tempest\.api\.compute\.volumes*)"
+r="$r|(?:tempest\.scenario\.test_volume_boot_pattern.*)"
+
+# Failing tests that needs to be re-visited
+r="$r|(?:tempest\.api\.network.test_allowed_address_pair.*)"
+r="$r|(?:tempest\.api\.network.admin.test_external_network_extension.*)"
+r="$r|(?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_dhcpv6_stateless*)"
+r="$r|(?:tempest\.scenario\.test_network_advanced_server_ops.*)"
+r="$r|(?:tempest\.scenario\.test_minimum_basic.*)"
+r="$r|(?:tempest\.scenario\.test_network_v6.*)"
+
+r="$r|(?:tempest\.scenario\.test_shelve_instance.*)"
+r="$r|(?:tempest\.scenario\.test_snapshot_pattern.*)"
+
+r="$r|(?:tempest\.api\.network\.test_routers_negative.*)"
+
+# These tests are used for the DHCP agent scheduler, which is not used by default in Dragonflow
+r="$r|(?:tempest\.api\.network.admin.test_dhcp_agent_scheduler.DHCPAgentSchedulersTestJSON.test_add_remove_network_from_dhcp_agent)"
+r="$r|(?:tempest\.api\.network.admin.test_dhcp_agent_scheduler.DHCPAgentSchedulersTestJSON.test_list_networks_hosted_by_one_dhcp)"
+
+# Current list of failing tests that need to be triaged, have bugs filed, and
+# fixed as appropriate.
+# (none)
+
+# End list of exclusions.
+r="$r)"
+
+# only run tempest.api/scenario/thirdparty tests (part of the default for 'full')
+r="$r(tempest\.(api|scenario|thirdparty)).*$"
+
+export DEVSTACK_GATE_TEMPEST_REGEX="$r"
