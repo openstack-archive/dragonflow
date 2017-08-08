@@ -41,6 +41,7 @@ Specs
     igmp_application_and_multicast_support
     redis_driver
     keep_db_consistency
+    provider_networks_app
     publish_subscribe_abstraction
     local_controller_reliability
     control_plane_testing
