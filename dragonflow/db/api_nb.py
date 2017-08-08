@@ -251,7 +251,7 @@ class NbApi(object):
 
         if not skip_send_event:
             self._send_db_change_event(model.table_name, obj.id, 'delete',
-                                       obj.id, topic)
+                                       None, topic)
 
     def get(self, lean_obj):
         """Retrieve a model instance from the database. This function uses
