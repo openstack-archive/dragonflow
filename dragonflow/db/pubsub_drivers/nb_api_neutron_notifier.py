@@ -25,7 +25,6 @@ from oslo_log import log
 from oslo_service import loopingcall
 
 from dragonflow.db import db_common
-from dragonflow.db import models
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
@@ -86,8 +85,7 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
         self._send_event(l2.LogicalPort.table_name, port_id, 'update', status)
 
     def notify_fip_status(self, fip, status):
-        self._send_event(models.Floatingip.table_name,
-                         fip.get_id(), 'update', status)
+        self._send_event(l3.FloatingIp.table_name, fip.id, 'update', status)
 
     def _send_event(self, table, key, action, value):
         listeners = self.nb_api.get_all(core.Listener)
