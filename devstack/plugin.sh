@@ -143,7 +143,6 @@ fi
 if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
     DF_PUB_SUB="True"
     DF_PUB_SUB_USE_MULTIPROC="False"
-    PORT_STATUS_NOTIFIER="redis_port_status_notifier_driver"
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
 
@@ -273,7 +272,6 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
     iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
     iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
-    iniset $DRAGONFLOW_CONF df port_status_notifier "$PORT_STATUS_NOTIFIER"
     iniset $DRAGONFLOW_CONF df enable_neutron_notifier "$ENABLE_NEUTRON_NOTIFIER"
     iniset $DRAGONFLOW_CONF df enable_dpdk "$ENABLE_DPDK"
     iniset $DRAGONFLOW_CONF df management_ip "$HOST_IP"
