@@ -73,5 +73,8 @@ r="$r)"
 
 # only run tempest.api/scenario/thirdparty tests (part of the default for 'full')
 r="$r(tempest\.(api|scenario|thirdparty)).*$"
+# Add Dynamic routing (BGP) tests
+r="$r|(^neutron_dynamic_routing\.tests\.tempest\.scenario\.)"
 
 export DEVSTACK_GATE_TEMPEST_REGEX="$r"
+export DEVSTACK_GATE_TEMPEST_ALL_PLUGINS="1"

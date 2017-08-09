@@ -351,6 +351,21 @@ class TestModelFramework(tests_base.BaseTestCase):
             sorted_models.index(ListReffingModel)
         )
 
+    def test_topological_sort_partial(self):
+        sorted_models = mf.iter_models_by_dependency_order(
+            first_class_only=False,
+            models=(ReffingModel, ReffingModel2, ReffedModel)
+        )
+        self.assertLess(
+            sorted_models.index(ReffedModel),
+            sorted_models.index(ReffingModel)
+        )
+        self.assertLess(
+            sorted_models.index(ReffingModel),
+            sorted_models.index(ReffingModel2)
+        )
+        self.assertNotIn(ListReffingModel, sorted_models)
+
     def test_loop_detection(self):
         with clean_registry():
             @mf.register_model

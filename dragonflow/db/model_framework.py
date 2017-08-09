@@ -434,15 +434,17 @@ def iter_tables():
         yield key
 
 
-def iter_models_by_dependency_order(first_class_only=True):
+def iter_models_by_dependency_order(first_class_only=True, models=None):
     '''Iterate over all registered models
 
        The models are returned in an order s.t. a model never preceeds its
        dependencies.
     '''
+    if models is None:
+        models = iter_models(first_class_only=first_class_only)
     unsorted_models = {}
     # Gather all models and their dependencies
-    for model in iter_models(first_class_only=first_class_only):
+    for model in models:
         dependencies = model.dependencies()
         if first_class_only:
             dependencies = {dep
