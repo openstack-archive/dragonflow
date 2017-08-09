@@ -67,4 +67,8 @@ class FloatingIp(mf.ModelBase, mixins.Version, mixins.Topic,
 
     @property
     def is_local(self):
-        return self.lport is not None and self.lport.is_local
+        if self.lport is None:
+            return False
+
+        lport = self.lport.get_object()
+        return lport is not None and lport.is_local

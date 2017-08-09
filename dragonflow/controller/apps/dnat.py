@@ -580,12 +580,8 @@ class DNATApp(df_base_app.DFlowApp):
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_UPDATED)
-    def _update_local_port(self, lport, orig_lport):
-        if orig_lport.is_local:
-            # Associate only when lport becomes local
-            return
-
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    def _create_local_port(self, lport):
         fips = self.db_store.get_all(
             l3.FloatingIp(lport=lport),
             index=l3.FloatingIp.get_index('lport'),
