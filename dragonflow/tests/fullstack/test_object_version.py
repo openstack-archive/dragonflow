@@ -136,7 +136,6 @@ class TestObjectVersion(test_base.DFTestBase):
         secgroup.close()
         self.assertFalse(secgroup.exists())
 
-    @testtools.skip("bug/1683784")
     def test_qospolicy_version(self):
         qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
                                                         self.nb_api))
