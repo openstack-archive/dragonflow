@@ -77,7 +77,8 @@ class BGPService(service.Service):
     def update_model_object(self, obj):
         original_obj = self.db_store.get_one(obj)
         try:
-            update_function = getattr(self, "update_" + obj.table_name)
+            function_name = "update_{}".format(obj.table_name)
+            update_function = getattr(self, function_name)
         except AttributeError:
             LOG.exception("Could not handle model update for: %s",
                           obj.table_name)
@@ -89,7 +90,8 @@ class BGPService(service.Service):
         LOG.info("Delete %(table)s with data %(data)s.",
                  {'table': obj.table_name, 'data': obj})
         try:
-            delete_function = getattr(self, "delete_" + obj.table_name)
+            function_name = "delete_{}".format(obj.table_name)
+            delete_function = getattr(self, function_name)
         except AttributeError:
             LOG.exception("Could not handle model delete for: %s",
                           obj.table_name)
