@@ -105,9 +105,6 @@ class SGApp(df_base_app.DFlowApp):
         result = netaddr.IPNetwork(cidr)
         return (int(result.network), int(result.netmask))
 
-    def _protocol_number_by_name(self, name):
-        return n_const.IP_PROTOCOL_MAP.get(name) or int(name)
-
     def _get_rule_flows_match_except_net_addresses(self, secgroup_rule):
         """
         Create the match object for the security group rule given in
@@ -119,10 +116,10 @@ class SGApp(df_base_app.DFlowApp):
             result_base['eth_type'] = ether.ETH_TYPE_IP
         elif ethertype == n_const.IPv6:
             result_base['eth_type'] = ether.ETH_TYPE_IPV6
-        protocol_name = secgroup_rule.protocol
-        if not protocol_name:
+        protocol = secgroup_rule.protocol
+        if not protocol:
             return [result_base]
-        protocol = self._protocol_number_by_name(protocol_name)
+
         result_base["ip_proto"] = protocol
         port_range_min = secgroup_rule.port_range_min
         port_range_max = secgroup_rule.port_range_max
