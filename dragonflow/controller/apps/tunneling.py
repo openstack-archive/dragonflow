@@ -20,6 +20,7 @@ from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import logical_networks
 from dragonflow.controller import df_base_app
+from dragonflow.controller import port_locator
 from dragonflow.db.models import l2
 
 LOG = log.getLogger(__name__)
@@ -162,7 +163,8 @@ class TunnelingApp(df_base_app.DFlowApp):
                                      self.ofproto.OFPFC_MODIFY)
 
     def _add_egress_dispatch_flow(self, lport, segmentation_id):
-        remote_ip = lport.binding.ip
+        binding = port_locator.get_port_binding(lport)
+        remote_ip = binding.ip
         ofport = self._get_lport_tunnel_ofport(lport)
         LOG.debug("set egress dispatch flow %(seg)s peer %(remote_ip)s",
                   {'seg': segmentation_id,
@@ -241,7 +243,8 @@ class TunnelingApp(df_base_app.DFlowApp):
             lport = self.db_store.get_one(l2.LogicalPort(id=port_id))
             if not lport:
                 continue
-            peer_ip = lport.binding.ip
+            binding = port_locator.get_port_binding(lport)
+            peer_ip = binding.ip
             if peer_ip in peer_ip_list:
                 continue
             peer_ip_list.add(peer_ip)

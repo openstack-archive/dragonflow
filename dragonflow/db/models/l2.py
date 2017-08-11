@@ -18,6 +18,7 @@ from neutron_lib import constants as n_const
 from oslo_config import cfg
 from oslo_log import log
 
+from dragonflow.controller import port_locator
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
 from dragonflow.db.models import core
@@ -173,15 +174,11 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
 
     @property
     def is_local(self):
-        if self.binding is not None:
-            return self.binding.is_local
-        return False
+        return port_locator.is_port_local(self)
 
     @property
     def is_remote(self):
-        if self.binding is not None:
-            return not self.binding.is_local
-        return False
+        return port_locator.is_port_remote(self)
 
     def is_vm_port(self):
         """

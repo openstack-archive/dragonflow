@@ -25,6 +25,7 @@ from ryu import cfg as ryu_cfg
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as ctrl_const
+from dragonflow.controller import port_locator
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import service
 from dragonflow.controller import topology
@@ -364,6 +365,7 @@ class DfLocalController(object):
             LOG.warning('Unfamiliar update: %s', str(update))
 
     def _reset_ports(self):
+        port_locator.reset()
         self._local_ports.clear()
         self._remote_ports.clear()
 
