@@ -34,6 +34,7 @@ LOG = log.getLogger(__name__)
 class Subnet(mf.ModelBase, mixins.Name, mixins.Topic):
     enable_dhcp = fields.BoolField()
     dhcp_ip = df_fields.IpAddressField()
+    dhcp_mac = df_fields.MacAddressField()
     cidr = df_fields.IpNetworkField()
     gateway_ip = df_fields.IpAddressField()
     dns_nameservers = df_fields.ListOfField(df_fields.IpAddressField())

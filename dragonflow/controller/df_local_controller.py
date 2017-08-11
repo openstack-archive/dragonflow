@@ -317,6 +317,7 @@ class DfLocalController(object):
         if action == ctrl_const.CONTROLLER_REINITIALIZE:
             self._reset_ports()
             self.db_store.clear()
+            port_locator.reset()
             self.vswitch_api.initialize(self.nb_api)
             self.sync()
         elif action == ctrl_const.CONTROLLER_SYNC:

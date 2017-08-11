@@ -300,7 +300,6 @@ class DFMechDriver(api.MechanismDriver):
             if cfg.CONF.df.use_centralized_ipv6_DHCP:
                 return subnet['allocation_pools'][0]['start'], None
             else:
-
                 dhcp_port = self._create_dhcp_server_port(context, subnet)
                 dhcp_ip = self._get_ip_from_port(dhcp_port)
                 return dhcp_ip, dhcp_port
@@ -418,6 +417,7 @@ class DFMechDriver(api.MechanismDriver):
         subnet = lswitch.find_subnet(new_subnet['id'])
         subnet.update(neutron_l2.subnet_from_neutron_subnet(new_subnet))
         subnet.dhcp_ip = dhcp_ip
+        subnet.dhcp_mac = dhcp_port['mac_address'] if dhcp_port else None
         self.nb_api.update(lswitch)
 
         LOG.info("DFMechDriver: update subnet %s", new_subnet['id'])
