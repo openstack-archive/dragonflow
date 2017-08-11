@@ -25,6 +25,7 @@ from ryu import cfg as ryu_cfg
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as ctrl_const
+from dragonflow.controller import port_locator
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import service
 from dragonflow.controller import topology
@@ -336,6 +337,7 @@ class DfLocalController(object):
         if action == ctrl_const.CONTROLLER_REINITIALIZE:
             self._reset_ports()
             self.db_store.clear()
+            port_locator.reset()
             self.vswitch_api.initialize(self.nb_api)
             self.sync()
         elif action == ctrl_const.CONTROLLER_SYNC:
