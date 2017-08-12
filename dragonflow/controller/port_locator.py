@@ -21,6 +21,10 @@ def set_port_binding(lport, binding):
     _locations[lport.id] = binding
 
 
+def copy_port_binding(lport, source):
+    set_port_binding(lport, get_port_binding(source))
+
+
 def clear_port_binding(lport):
     _locations.pop(lport.id)
 
