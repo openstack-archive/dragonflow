@@ -268,12 +268,6 @@ class DfLocalController(object):
         method_name = 'delete_{0}'.format(table)
         return getattr(self, method_name, self.delete_model_object)
 
-    def update_child_port_segmentation(self, obj):
-        self.update_model_object(obj)
-        child = obj.port.get_object()
-        if child:
-            self.update(child)
-
     def update(self, obj):
         handler = getattr(
             self,
