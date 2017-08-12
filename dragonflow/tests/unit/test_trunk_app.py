@@ -16,6 +16,7 @@
 import mock
 
 from dragonflow.controller.common import constants
+from dragonflow.controller import port_locator
 from dragonflow.db import db_store
 from dragonflow.db.models import l2
 from dragonflow.db.models import trunk
@@ -117,6 +118,7 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.db_store.update(lport)
         segmentation = self._create_segmentation()
         self.db_store.update(segmentation)
+        port_locator.set_port_binding(lport, object())
 
         self.controller.delete_by_id(type(segmentation), segmentation.id)
 
