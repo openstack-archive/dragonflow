@@ -294,7 +294,6 @@ fake_floatingip1 = l3.FloatingIp(
     name='no_fip_name',
     unique_key=4444,
     version=7,
-    status=n_const.FLOATINGIP_STATUS_DOWN,
     floating_ip_address='172.24.4.2',
     fixed_ip_address='10.0.0.6',
     lport='fake_port1',
