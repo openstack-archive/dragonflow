@@ -35,7 +35,6 @@ from neutron_lib.plugins import directory
 from neutron_lib.services import base as service_base
 from oslo_config import cfg
 from oslo_log import log
-from oslo_utils import excutils
 from oslo_utils import importutils
 
 from dragonflow.common import exceptions as df_exceptions
@@ -87,6 +86,8 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         registry.subscribe(self.router_create_callback,
                            resources.ROUTER,
                            events.PRECOMMIT_CREATE)
+        registry.subscribe(self._update_port_handler,
+                           resources.PORT, events.AFTER_UPDATE)
 
     def router_create_callback(self, resource, event, trigger, context,
                                router, router_db, **kwargs):
@@ -147,57 +148,48 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         return ret_val
 
     def _get_floatingip_port(self, context, floatingip_id):
-        filters = {'device_id': [floatingip_id]}
-        floating_ports = self.core_plugin.get_ports(context, filters=filters)
+        # Note: Here the context is elevated, because the floatingip port
+        # will not have tenant and floatingip subnet might be in other
+        # tenant.
+        floating_ports = self.core_plugin.get_ports(
+            context.elevated(),
+            filters={'device_id': [floatingip_id]}
+        )
         if floating_ports:
             return floating_ports[0]
-        return None
+        raise n_common_exc.DeviceNotFoundError(device_name=floatingip_id)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_floatingip(self, context, floatingip):
-        floatingip_port = None
-        try:
-            floatingip_dict = super(DFL3RouterPlugin, self).create_floatingip(
-                context, floatingip,
-                initial_status=const.FLOATINGIP_STATUS_DOWN)
-            # Note: Here the context is elevated, because the floatingip port
-            # will not have tenant and floatingip subnet might be in other
-            # tenant.
-            admin_context = context.elevated()
-            floatingip_port = self._get_floatingip_port(
-                admin_context, floatingip_dict['id'])
-            if not floatingip_port:
-                raise n_common_exc.DeviceNotFoundError(
-                    device_name=floatingip_dict['id'])
-        except Exception:
-            with excutils.save_and_reraise_exception() as ctxt:
-                ctxt.reraise = True
-                # delete the stale floatingip port
-                try:
-                    if floatingip_port:
-                        self.nb_api.delete(
-                            l2.LogicalPort(id=floatingip_port['id'],
-                                           topic=floatingip_port['tenant_id']))
-                except df_exceptions.DBKeyNotFound:
-                    pass
+        fip = floatingip['floatingip']
+        port_id = fip.get('port_id')
+        if port_id is not None:
+            port = self.core_plugin.get_port(context, port_id)
+            floatingip_status = self._port_status_to_floatingip_status(
+                port['status'])
+        else:
+            floatingip_status = const.FLOATINGIP_STATUS_DOWN
+
+        res = super(DFL3RouterPlugin, self).create_floatingip(
+            context, floatingip, initial_status=floatingip_status)
+        floatingip_port = self._get_floatingip_port(context, res['id'])
 
         self.nb_api.create(
             l3.FloatingIp(
-                id=floatingip_dict['id'],
-                topic=floatingip_dict['tenant_id'],
-                name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
-                version=floatingip_dict['revision_number'],
-                status=floatingip_dict['status'],
-                floating_ip_address=floatingip_dict['floating_ip_address'],
-                fixed_ip_address=floatingip_dict['fixed_ip_address'],
-                lrouter=floatingip_dict['router_id'],
-                lport=floatingip_dict['port_id'],
+                id=res['id'],
+                topic=res['tenant_id'],
+                name=res.get('name', df_const.DF_FIP_DEFAULT_NAME),
+                version=res['revision_number'],
+                status=res['status'],
+                floating_ip_address=res['floating_ip_address'],
+                fixed_ip_address=res['fixed_ip_address'],
+                lrouter=res['router_id'],
+                lport=res['port_id'],
                 floating_lport=floatingip_port['id'],
             ),
-            skip_send_event=('port_id' not in floatingip_dict),
+            skip_send_event=('port_id' not in res),
         )
-
-        return floatingip_dict
+        return res
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
     def update_floatingip(self, context, id, floatingip):
@@ -228,15 +220,16 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         except df_exceptions.DBKeyNotFound:
             LOG.exception("floatingip %s is not found in DF DB", fip_id)
 
-    def update_fip_status(self, context, fip_id, status):
+    def update_floatingip_status(self, context, floatingip_id, status):
+        super(DFL3RouterPlugin, self).update_floatingip_status(
+            context, floatingip_id, status)
         self.nb_api.update(
             l3.FloatingIp(
-                id=fip_id,
+                id=floatingip_id,
                 status=status,
             ),
             skip_send_event=True,
         )
-        self.update_floatingip_status(context, fip_id, status)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def add_router_interface(self, context, router_id, interface_info):
@@ -302,3 +295,29 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 num_agents = max_agents
 
         return num_agents
+
+    def _port_status_to_floatingip_status(self, port_status):
+        if port_status == const.PORT_STATUS_ACTIVE:
+            return const.FLOATINGIP_STATUS_ACTIVE
+        return const.FLOATINGIP_STATUS_DOWN
+
+    def _update_port_handler(self, *args, **kwargs):
+        """Handle the event that a port changes status to ACTIVE or DOWN"""
+        context = kwargs['context']
+        port = kwargs['port']
+        orig_port = kwargs['original_port']
+        if port['status'] == orig_port['status']:
+            return  # Change not relevant
+
+        floatingips = self.get_floatingips(
+            context.elevated(),
+            filters={'port_id': [port['id']]},
+        )
+        new_status = self._port_status_to_floatingip_status(port['status'])
+
+        for floatingip in floatingips:
+            self.update_floatingip_status(
+                context,
+                floatingip['id'],
+                new_status,
+            )

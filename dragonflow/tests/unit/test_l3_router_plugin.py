@@ -17,13 +17,12 @@
 import itertools
 import mock
 from neutron.db.models import l3
-from neutron_lib import constants as n_const
+from neutron.tests.unit.api import test_extensions
+from neutron.tests.unit.extensions import test_l3
+from neutron_lib import constants
 from neutron_lib import context as nctx
 from neutron_lib.plugins import directory
-from oslo_config import cfg
-import testtools
 
-from dragonflow.common import utils as df_utils
 from dragonflow.db.models import l3 as df_l3
 from dragonflow.neutron.db.models import l3 as neutron_l3
 from dragonflow.tests.unit import test_mech_driver
@@ -55,7 +54,8 @@ def nb_api_get_funcs(*instances):
     return nb_api_get, nb_api_create, nb_api_update
 
 
-class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
+class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase,
+                           test_l3.L3NatTestCaseMixin):
 
     l3_plugin = ('dragonflow.neutron.services.l3_router_plugin.'
                  'DFL3RouterPlugin')
@@ -64,12 +64,9 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
         super(TestDFL3RouterPlugin, self).setUp()
         self.l3p = directory.get_plugin('L3_ROUTER_NAT')
         self.nb_api = self.l3p.nb_api
-
-    @mock.patch('neutron.db.l3_db.L3_NAT_db_mixin.create_floatingip')
-    def test_create_floatingip_failed_in_neutron(self, func):
-        func.side_effect = Exception("The exception")
-        with testtools.ExpectedException(Exception):
-            self.l3p.create_floatingip(self.context, mock.ANY)
+        self.ext_api = test_extensions.setup_extensions_middleware(
+            test_l3.L3TestExtensionManager()
+        )
 
     def _test_create_router_revision(self):
         r = {'router': {'name': 'router', 'tenant_id': 'tenant',
@@ -110,7 +107,6 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
             self.assertGreater(router_with_int['revision_number'],
                                old_version)
             lrouter.version = router_with_int['revision_number']
-            self.assertEqual(2, self.nb_api.update.call_count)
             self.nb_api.update.assert_has_calls([mock.call(lrouter)])
             # Second call is with the router lport
             self.nb_api.update.reset_mock()
@@ -176,28 +172,73 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                   one())
         self.assertIsNotNone(record['extra_attributes'])
 
-    def test_notify_update_fip_status(self):
-        cfg.CONF.set_override('neutron_notifier',
-                              'nb_api_neutron_notifier_driver',
-                              group='df')
-        notifier = df_utils.load_driver(
-            cfg.CONF.df.neutron_notifier,
-            df_utils.DF_NEUTRON_NOTIFIER_DRIVER_NAMESPACE)
+    def test_floatingip_create_not_assoc(self):
+        self.nb_api.get().unique_key = 5
+        with self.subnet() as subnet:
+            with self.floatingip_no_assoc(subnet) as fip:
+                self.assertEqual(
+                    constants.FLOATINGIP_STATUS_DOWN,
+                    fip['floatingip']['status'],
+                )
 
-        kwargs = {'arg_list': ('router:external',),
-                  'router:external': True}
-        with self.network(**kwargs) as n:
-            with self.subnet(network=n):
-                floatingip = self.l3p.create_floatingip(
-                    self.context,
-                    {'floatingip': {'floating_network_id': n['network']['id'],
-                                    'tenant_id': n['network']['tenant_id']}})
+    def test_floatingip_create_port_status_down(self):
+        self.nb_api.get().unique_key = 5
+        with self.port() as port:
+            self.l3p.core_plugin.update_port_status(
+                self.context, port['port']['id'], constants.PORT_STATUS_DOWN)
+            with self.floatingip_with_assoc(port_id=port['port']['id']) as fip:
+                self.assertEqual(
+                    constants.FLOATINGIP_STATUS_DOWN,
+                    fip['floatingip']['status'],
+                )
 
-        self.assertEqual(n_const.FLOATINGIP_STATUS_DOWN, floatingip['status'])
-        notifier.notify_neutron_server(df_l3.FloatingIp.table_name,
-                                       floatingip['id'],
-                                       "update",
-                                       n_const.FLOATINGIP_STATUS_ACTIVE)
-        floatingip = self.l3p.get_floatingip(self.context, floatingip['id'])
-        self.assertEqual(n_const.FLOATINGIP_STATUS_ACTIVE,
-                         floatingip['status'])
+    def test_floatingip_create_port_status_active(self):
+        self.nb_api.get().unique_key = 5
+        with self.port() as port:
+            self.l3p.core_plugin.update_port_status(
+                self.context, port['port']['id'], constants.PORT_STATUS_ACTIVE)
+            with self.floatingip_with_assoc(port_id=port['port']['id']) as fip:
+                self.assertEqual(
+                    constants.FLOATINGIP_STATUS_ACTIVE,
+                    fip['floatingip']['status'],
+                )
+
+    def test_floatingip_port_updated_to_active(self):
+        self.nb_api.get().unique_key = 5
+        with self.port() as port:
+            with self.floatingip_with_assoc(port_id=port['port']['id']) as fip:
+                self.assertEqual(
+                    constants.FLOATINGIP_STATUS_DOWN,
+                    fip['floatingip']['status'],
+                )
+                self.l3p.core_plugin.update_port_status(
+                    self.context, port['port']['id'],
+                    constants.PORT_STATUS_ACTIVE)
+                self.assertEqual(
+                    constants.FLOATINGIP_STATUS_ACTIVE,
+                    self.l3p.get_floatingip(
+                        self.context,
+                        fip['floatingip']['id'],
+                    )['status'],
+                )
+
+    def test_floatingip_port_updated_to_down(self):
+        self.nb_api.get().unique_key = 5
+        with self.port() as port:
+            self.l3p.core_plugin.update_port_status(
+                self.context, port['port']['id'], constants.PORT_STATUS_ACTIVE)
+            with self.floatingip_with_assoc(port_id=port['port']['id']) as fip:
+                self.assertEqual(
+                    constants.FLOATINGIP_STATUS_ACTIVE,
+                    fip['floatingip']['status'],
+                )
+                self.l3p.core_plugin.update_port_status(
+                    self.context, port['port']['id'],
+                    constants.PORT_STATUS_DOWN)
+                self.assertEqual(
+                    constants.FLOATINGIP_STATUS_DOWN,
+                    self.l3p.get_floatingip(
+                        self.context,
+                        fip['floatingip']['id'],
+                    )['status'],
+                )

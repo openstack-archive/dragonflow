@@ -47,13 +47,6 @@ EGRESS = 'egress'
 INGRESS = 'ingress'
 
 
-def _fip_status_by_lport(fip):
-    if fip.lport is None:
-        return n_const.FLOATINGIP_STATUS_DOWN
-    else:
-        return n_const.FLOATINGIP_STATUS_ACTIVE
-
-
 class DNATApp(df_base_app.DFlowApp):
 
     def __init__(self, *args, **kwargs):
@@ -225,8 +218,6 @@ class DNATApp(df_base_app.DFlowApp):
 
         for key, floatingip in self.local_floatingips.items():
             self._install_dnat_egress_rules(floatingip, mac)
-            self.update_floatingip_status(
-                floatingip, n_const.FLOATINGIP_STATUS_ACTIVE)
 
         self.external_bridge_mac = mac
 
@@ -536,16 +527,10 @@ class DNATApp(df_base_app.DFlowApp):
         self._remove_dnat_ingress_rules(floatingip)
         self._decrease_external_network_count(network_id)
 
-    def update_floatingip_status(self, floatingip, status):
-        if self.neutron_server_notifier:
-            self.neutron_server_notifier.notify_fip_status(floatingip, status)
-
     @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_CREATED)
     def _create_floatingip(self, fip):
         if fip.is_local:
             self._associate_floatingip(fip)
-            self.update_floatingip_status(
-                fip, n_const.FLOATINGIP_STATUS_ACTIVE)
 
     @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_UPDATED)
     def _update_floatingip(self, fip, original_fip):
@@ -557,14 +542,6 @@ class DNATApp(df_base_app.DFlowApp):
 
         if fip.is_local:
             self._associate_floatingip(fip)
-
-        old_status = _fip_status_by_lport(original_fip)
-        new_status = _fip_status_by_lport(fip)
-
-        # FIXME (dimak): Race here: we should only update on disassociate
-        # or reassociate when FIP is still local
-        if old_status != new_status:
-            self.update_floatingip_status(fip, new_status)
 
     def _associate_floatingip(self, floatingip):
         self.local_floatingips[floatingip.id] = floatingip
@@ -597,8 +574,6 @@ class DNATApp(df_base_app.DFlowApp):
             if fip.lport.id == lport.id)
         for floatingip in ips_to_disassociate:
             self._disassociate_floatingip(floatingip)
-            self.update_floatingip_status(
-                floatingip, n_const.FLOATINGIP_STATUS_DOWN)
 
     @df_base_app.register_event(l3.FloatingIp, model_constants.EVENT_DELETED)
     def _delete_floatingip(self, floatingip):

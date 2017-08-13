@@ -282,7 +282,7 @@ class DFMechDriver(api.MechanismDriver):
 
         If an expected failure occurs, a None port is returned.
         """
-        port = {'port': {'tenant_id': context.tenant_id,
+        port = {'port': {'tenant_id': subnet['tenant_id'],
                          'network_id': subnet['network_id'], 'name': '',
                          'admin_state_up': True, 'device_id': '',
                          'device_owner': n_const.DEVICE_OWNER_DHCP,
