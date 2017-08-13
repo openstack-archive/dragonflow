@@ -22,8 +22,7 @@ from dragonflow import conf as cfg
 from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
-from dragonflow.db import model_framework
-from dragonflow.db.models import bgp  # noqa
+from dragonflow.db.models import bgp
 from dragonflow.db import sync
 
 
@@ -69,21 +68,33 @@ class BGPService(service.Service):
         self.bgp_pulse.stop()
 
     def register_bgp_models(self):
-        for model in model_framework.iter_models_by_dependency_order():
-            self.sync.add_model(model)
+        self.sync.add_model(bgp.BGPPeer)
+        self.sync.add_model(bgp.BGPSpeaker)
 
     def sync_data_from_nb_db(self):
         self.sync.sync()
 
     def update_model_object(self, obj):
         original_obj = self.db_store.get_one(obj)
-        getattr(self, "update_" + obj.table_name)(obj, original_obj)
+        try:
+            update_function = getattr(self, "update_" + obj.table_name)
+        except AttributeError:
+            LOG.exception("Could not handle model update for: %s",
+                          obj.table_name)
+            return
+        update_function(obj, original_obj)
         self.db_store.update(obj)
 
     def delete_model_object(self, obj):
         LOG.info("Delete %(table)s with data %(data)s.",
                  {'table': obj.table_name, 'data': obj})
-        getattr(self, "delete_" + obj.table_name)(obj)
+        try:
+            delete_function = getattr(self, "delete_" + obj.table_name)
+        except AttributeError:
+            LOG.exception("Could not handle model delete for: %s",
+                          obj.table_name)
+            return
+        delete_function(obj)
         self.db_store.delete(obj)
 
     def update_bgp_peer(self, peer, original_peer=None):
