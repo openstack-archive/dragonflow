@@ -17,13 +17,10 @@
 import itertools
 import mock
 from neutron.db.models import l3
-from neutron_lib import constants as n_const
 from neutron_lib import context as nctx
 from neutron_lib.plugins import directory
-from oslo_config import cfg
 import testtools
 
-from dragonflow.common import utils as df_utils
 from dragonflow.db.models import l3 as df_l3
 from dragonflow.neutron.db.models import l3 as neutron_l3
 from dragonflow.tests.unit import test_mech_driver
@@ -69,7 +66,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
     def test_create_floatingip_failed_in_neutron(self, func):
         func.side_effect = Exception("The exception")
         with testtools.ExpectedException(Exception):
-            self.l3p.create_floatingip(self.context, mock.ANY)
+            self.l3p.create_floatingip(self.context, {})
 
     def _test_create_router_revision(self):
         r = {'router': {'name': 'router', 'tenant_id': 'tenant',
@@ -175,29 +172,3 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                   filter_by(id=router['id']).
                   one())
         self.assertIsNotNone(record['extra_attributes'])
-
-    def test_notify_update_fip_status(self):
-        cfg.CONF.set_override('neutron_notifier',
-                              'nb_api_neutron_notifier_driver',
-                              group='df')
-        notifier = df_utils.load_driver(
-            cfg.CONF.df.neutron_notifier,
-            df_utils.DF_NEUTRON_NOTIFIER_DRIVER_NAMESPACE)
-
-        kwargs = {'arg_list': ('router:external',),
-                  'router:external': True}
-        with self.network(**kwargs) as n:
-            with self.subnet(network=n):
-                floatingip = self.l3p.create_floatingip(
-                    self.context,
-                    {'floatingip': {'floating_network_id': n['network']['id'],
-                                    'tenant_id': n['network']['tenant_id']}})
-
-        self.assertEqual(n_const.FLOATINGIP_STATUS_DOWN, floatingip['status'])
-        notifier.notify_neutron_server(df_l3.FloatingIp.table_name,
-                                       floatingip['id'],
-                                       "update",
-                                       n_const.FLOATINGIP_STATUS_ACTIVE)
-        floatingip = self.l3p.get_floatingip(self.context, floatingip['id'])
-        self.assertEqual(n_const.FLOATINGIP_STATUS_ACTIVE,
-                         floatingip['status'])
