@@ -121,7 +121,7 @@ class TestNbApi(tests_base.BaseTestCase):
         self.assertEqual('id1', update.key)
         self.assertEqual('delete', update.action)
         self.assertEqual('topic', update.topic)
-        self.assertEqual('id1', update.value)
+        self.assertIsNone(update.value)
 
         self.api_nb.driver.delete_key.assert_called_once_with(
             'dummy_table', 'id1', 'topic')
