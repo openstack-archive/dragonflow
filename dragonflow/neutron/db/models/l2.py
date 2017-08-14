@@ -26,7 +26,7 @@ from dragonflow.neutron.common import dhcp_opt_map as opt_map
 def logical_switch_from_neutron_network(network):
     return l2.LogicalSwitch(
         id=network['id'],
-        topic=network['tenant_id'],
+        topic=network['project_id'],
         name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
         network_type=network.get('provider:network_type'),
         physical_network=network.get('provider:physical_network'),
@@ -40,7 +40,7 @@ def logical_switch_from_neutron_network(network):
 def subnet_from_neutron_subnet(subnet):
     return l2.Subnet(
         id=subnet['id'],
-        topic=subnet['tenant_id'],
+        topic=subnet['project_id'],
         name=subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
         enable_dhcp=subnet['enable_dhcp'],
         cidr=subnet['cidr'],
@@ -123,7 +123,7 @@ def logical_port_from_neutron_port(port):
     return l2.LogicalPort(
         id=port['id'],
         lswitch=port['network_id'],
-        topic=port['tenant_id'],
+        topic=port['project_id'],
         macs=[port['mac_address']],
         ips=[ip['ip_address'] for ip in port.get('fixed_ips', [])],
         subnets=[ip['subnet_id'] for ip in port.get('fixed_ips', [])],

@@ -189,7 +189,7 @@ class NetworkTestObj(object):
     def create(self, network={'name': 'mynetwork', 'admin_state_up': True}):
         self.network = self.neutron.create_network({'network': network})
         self.network_id = self.network['network']['id']
-        self.topic = self.network['network']['tenant_id']
+        self.topic = self.network['network']['project_id']
         return self.network_id
 
     def close(self):
@@ -678,7 +678,7 @@ class ChildPortSegmentationTestObj(object):
         self.neutron.trunk_remove_subports(
                self.trunk['id'],
                {'sub_ports': [self.subport],
-                'tenant_id': self.trunk['tenant_id']})
+                'project_id': self.trunk['project_id']})
         if not keep_trunk:
             self.neutron.delete_trunk(self.trunk['id'])
 
