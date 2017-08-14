@@ -40,7 +40,12 @@ class DFAppTestBase(tests_base.BaseTestCase):
     apps_list = []
 
     def setUp(self, enable_selective_topo_dist=False):
-        cfg.CONF.set_override('apps_list', self.apps_list, group='df')
+        extra_apps = ['portevents']
+        cfg.CONF.set_override(
+            'apps_list',
+            self.apps_list + extra_apps,
+            group='df',
+        )
         cfg.CONF.set_override('host', fake_chassis1.id)
         super(DFAppTestBase, self).setUp()
         mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
