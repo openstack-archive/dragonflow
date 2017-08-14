@@ -1044,7 +1044,7 @@ class TestL3App(test_base.DFTestBase):
         router_port_id = self.router.router_interfaces[
             self.subnet1.subnet_id]['port_id']
         topic = self.router.router_interfaces[
-            self.subnet1.subnet_id]['tenant_id']
+            self.subnet1.subnet_id]['project_id']
         self.nb_api.delete(l2.LogicalPort(id=router_port_id, topic=topic))
         lrouter = self.nb_api.get(l3.LogicalRouter(
                                       id=self.router.router.router_id,

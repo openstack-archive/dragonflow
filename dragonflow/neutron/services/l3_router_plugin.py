@@ -176,15 +176,16 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 try:
                     if floatingip_port:
                         self.nb_api.delete(
-                            l2.LogicalPort(id=floatingip_port['id'],
-                                           topic=floatingip_port['tenant_id']))
+                            l2.LogicalPort(
+                                id=floatingip_port['id'],
+                                topic=floatingip_port['project_id']))
                 except df_exceptions.DBKeyNotFound:
                     pass
 
         self.nb_api.create(
             l3.FloatingIp(
                 id=floatingip_dict['id'],
-                topic=floatingip_dict['tenant_id'],
+                topic=floatingip_dict['project_id'],
                 name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
                 version=floatingip_dict['revision_number'],
                 status=floatingip_dict['status'],
@@ -207,7 +208,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         self.nb_api.update(
             l3.FloatingIp(
                 id=floatingip_dict['id'],
-                topic=floatingip_dict['tenant_id'],
+                topic=floatingip_dict['project_id'],
                 name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
                 version=floatingip_dict['revision_number'],
                 lrouter=floatingip_dict['router_id'],
@@ -223,7 +224,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         super(DFL3RouterPlugin, self).delete_floatingip(context, fip_id)
         try:
             self.nb_api.delete(
-                l3.FloatingIp(id=fip_id, topic=floatingip['tenant_id']),
+                l3.FloatingIp(id=fip_id, topic=floatingip['project_id']),
             )
         except df_exceptions.DBKeyNotFound:
             LOG.exception("floatingip %s is not found in DF DB", fip_id)
@@ -250,14 +251,14 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
         cidr = netaddr.IPNetwork(subnet['cidr'])
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
-        logical_port = self.nb_api.get(l2.LogicalPort(id=port['id'],
-                                                      topic=port['tenant_id']))
+        logical_port = self.nb_api.get(
+            l2.LogicalPort(id=port['id'], topic=port['project_id']))
 
         logical_router_port = neutron_l3.build_logical_router_port(
             router_port_info, mac=port['mac_address'],
             network=network, unique_key=logical_port.unique_key)
         lrouter = self.nb_api.get(l3.LogicalRouter(id=router_id,
-                                                   topic=router['tenant_id']))
+                                                   topic=router['project_id']))
         lrouter.version = router['revision_number']
         lrouter.add_router_port(logical_router_port)
         self.nb_api.update(lrouter)
@@ -273,7 +274,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
         try:
             lrouter = self.nb_api.get(l3.LogicalRouter(
-                id=router_id, topic=router['tenant_id']))
+                id=router_id, topic=router['project_id']))
             lrouter.remove_router_port(router_port_info['port_id'])
             lrouter.version = router['revision_number']
             self.nb_api.update(lrouter)

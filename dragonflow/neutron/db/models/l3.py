@@ -15,18 +15,26 @@ from dragonflow.neutron.common import constants as df_const
 
 
 def logical_router_from_neutron_router(router):
+    try:
+        topic = router['project_id']
+    except KeyError:
+        topic = router['tenant_id']
     return l3.LogicalRouter(
         id=router['id'],
-        topic=router['tenant_id'],
+        topic=topic,
         name=router.get('name', df_const.DF_ROUTER_DEFAULT_NAME),
         version=router['revision_number'],
         routes=router.get('routes', []))
 
 
 def build_logical_router_port(router_port_info, mac, network, unique_key):
+    try:
+        topic = router_port_info['project_id']
+    except KeyError:
+        topic = router_port_info['tenant_id']
     return l3.LogicalRouterPort(
         id=router_port_info['port_id'],
-        topic=router_port_info['tenant_id'],
+        topic=topic,
         lswitch=router_port_info['network_id'],
         mac=mac,
         network=network,

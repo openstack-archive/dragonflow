@@ -72,7 +72,9 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
             self.l3p.create_floatingip(self.context, mock.ANY)
 
     def _test_create_router_revision(self):
-        r = {'router': {'name': 'router', 'tenant_id': 'tenant',
+        r = {'router': {'name': 'router',
+                        'project_id': 'tenant',
+                        'tenant_id': 'tenant',
                         'admin_state_up': True}}
         router = self.l3p.create_router(self.context, r)
         self.assertEqual(router['revision_number'], 0)
@@ -110,7 +112,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
             self.assertGreater(router_with_int['revision_number'],
                                old_version)
             lrouter.version = router_with_int['revision_number']
-            self.assertEqual(2, self.nb_api.update.call_count)
+            self.assertEqual(3, self.nb_api.update.call_count)
             self.nb_api.update.assert_has_calls([mock.call(lrouter)])
             # Second call is with the router lport
             self.nb_api.update.reset_mock()
@@ -132,12 +134,13 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                 floatingip = self.l3p.create_floatingip(
                     self.context,
                     {'floatingip': {'floating_network_id': n['network']['id'],
-                                    'tenant_id': n['network']['tenant_id']}})
+                                    'tenant_id': n['network']['tenant_id'],
+                                    'project_id': n['network']['project_id']}})
                 self.assertEqual(floatingip['revision_number'], 0)
                 nb_fip = self.nb_api.create.call_args_list[-1][0][0]
                 self.assertIsInstance(nb_fip, df_l3.FloatingIp)
                 self.assertEqual(floatingip['id'], nb_fip.id)
-                self.assertEqual(floatingip['tenant_id'], nb_fip.topic)
+                self.assertEqual(floatingip['project_id'], nb_fip.topic)
                 self.assertEqual(floatingip['revision_number'],
                                  nb_fip.version)
         return floatingip
@@ -145,14 +148,14 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
     def test_create_update_floatingip_revision(self):
         floatingip = self._test_create_floatingip_revision()
         old_version = floatingip['revision_number']
-        floatingip['tenant_id'] = 'another_tenant'
+        floatingip['project_id'] = 'another_tenant'
         new_fip = self.l3p.update_floatingip(
             self.context, floatingip['id'], {'floatingip': floatingip})
         self.assertGreater(new_fip['revision_number'], old_version)
         nb_fip = self.nb_api.update.call_args_list[-1][0][0]
         self.assertIsInstance(nb_fip, df_l3.FloatingIp)
         self.assertEqual(new_fip['id'], nb_fip.id)
-        self.assertEqual(new_fip['tenant_id'], nb_fip.topic)
+        self.assertEqual(new_fip['project_id'], nb_fip.topic)
         self.assertEqual(new_fip['revision_number'], nb_fip.version)
 
     def test_create_floatingip_with_normal_user(self):
@@ -164,11 +167,13 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                 floatingip = self.l3p.create_floatingip(
                     normal_context,
                     {'floatingip': {'floating_network_id': n['network']['id'],
-                                    'tenant_id': n['network']['tenant_id']}})
+                                    'tenant_id': n['network']['tenant_id'],
+                                    'project_id': n['network']['project_id']}})
                 self.assertTrue(floatingip)
 
     def test_create_router_have_extra_attrs(self):
-        r = {'router': {'name': 'router', 'tenant_id': 'tenant',
+        r = {'router': {'name': 'router', 'project_id': 'tenant',
+                        'tenant_id': 'tenant',
                         'admin_state_up': True}}
         router = self.l3p.create_router(self.context, r)
         record = (self.context.session.query(l3.Router).
@@ -191,7 +196,8 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase):
                 floatingip = self.l3p.create_floatingip(
                     self.context,
                     {'floatingip': {'floating_network_id': n['network']['id'],
-                                    'tenant_id': n['network']['tenant_id']}})
+                                    'tenant_id': n['network']['tenant_id'],
+                                    'project_id': n['network']['project_id']}})
 
         self.assertEqual(n_const.FLOATINGIP_STATUS_DOWN, floatingip['status'])
         notifier.notify_neutron_server(df_l3.FloatingIp.table_name,

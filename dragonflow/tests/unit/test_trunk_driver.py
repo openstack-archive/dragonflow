@@ -77,6 +77,7 @@ class TestDFTrunkDriver(test_mech_driver.DFMechanismDriverTestCase):
             trunk = self.trunk_plugin.create_trunk(self.context, {
                 'trunk': {
                     'port_id': parent['port']['id'],
+                    'project_id': 'project1',
                     'tenant_id': 'project1',
                     'sub_ports': [],
                 }
@@ -109,6 +110,7 @@ class TestDFTrunkDriver(test_mech_driver.DFMechanismDriverTestCase):
                 trunk = self.trunk_plugin.create_trunk(self.context, {
                     'trunk': {
                         'port_id': parent['port']['id'],
+                        'project_id': 'project1',
                         'tenant_id': 'project1',
                         'sub_ports': [],
                     }
@@ -149,6 +151,7 @@ class TestDFTrunkDriver(test_mech_driver.DFMechanismDriverTestCase):
                 trunk = self.trunk_plugin.create_trunk(self.context, {
                     'trunk': {
                         'port_id': parent['port']['id'],
+                        'project_id': 'project1',
                         'tenant_id': 'project1',
                         'sub_ports': [],
                     }

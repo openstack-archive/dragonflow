@@ -43,7 +43,7 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
         self.assertTrue(network.exists())
         netobj = network.get_network()
         lswitch = self.nb_api.get(l2.LogicalSwitch(
-            id=netobj['network']['id'], topic=netobj['network']['tenant_id']))
+            id=netobj['network']['id'], topic=netobj['network']['project_id']))
         net_mtu = lswitch.mtu
         self.assertEqual(netobj['network']['mtu'], net_mtu)
         network.close()
