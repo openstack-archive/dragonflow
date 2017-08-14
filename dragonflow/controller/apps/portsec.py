@@ -389,7 +389,7 @@ class PortSecApp(df_base_app.DFlowApp):
         # Default drop
         self._add_flow_drop(const.PRIORITY_VERY_LOW, None)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
         enable = lport.port_security_enabled
         if enable:
@@ -414,7 +414,7 @@ class PortSecApp(df_base_app.DFlowApp):
                 self._install_disable_flow(lport)
                 self._uninstall_port_security_flows(original_lport)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         enable = lport.port_security_enabled
         if enable:

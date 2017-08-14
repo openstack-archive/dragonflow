@@ -121,11 +121,11 @@ class L2App(df_base_app.DFlowApp):
                 nd_advertisers.NeighborAdvertiser(self,
                                                   network_id, ip).remove()
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
     def _remove_remote_port(self, lport):
         self._remove_port(lport)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_DELETED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         self._remove_port(lport)
         self._remove_local_port_pipeline_interface(lport)
@@ -306,7 +306,7 @@ class L2App(df_base_app.DFlowApp):
             self._add_dst_classifier_flow_for_port(network_id, mac, port_key)
         self._add_l2_responders(lport)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
         self._add_port(lport)
         self._add_local_port_dispatch(lport)
@@ -430,7 +430,7 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_CREATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
     def _add_remote_port(self, lport):
         self._add_port(lport)
 
