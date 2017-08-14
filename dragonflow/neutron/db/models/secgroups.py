@@ -29,7 +29,7 @@ def _get_protocol_number(ip_proto):
 
 def security_group_rule_from_neutron_obj(secrule):
     kwargs = copy.copy(secrule)
-    kwargs.pop('tenant_id', None)
+    kwargs.pop('project_id', None)
     kwargs.pop('updated_at', None)
     kwargs.pop('created_at', None)
     kwargs.pop('description', None)
@@ -55,7 +55,7 @@ def security_group_from_neutron_obj(secgroup):
     rules_mdls = [security_group_rule_from_neutron_obj(rule) for rule in rules]
     return secgroups.SecurityGroup(
         id=secgroup['id'],
-        topic=secgroup['tenant_id'],
+        topic=secgroup['project_id'],
         name=sg_name,
         rules=rules_mdls,
         version=secgroup['revision_number'])

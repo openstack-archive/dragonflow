@@ -150,8 +150,8 @@ class DFMechDriver(api.MechanismDriver):
         rules = sg.get('security_group_rules', [])
 
         for rule in rules:
-            rule['topic'] = rule.get('tenant_id')
-            del rule['tenant_id']
+            rule['topic'] = rule.get('project_id')
+            del rule['project_id']
         sg_obj = neutron_secgroups.security_group_from_neutron_obj(sg)
         if event == events.AFTER_CREATE:
             self.nb_api.create(sg_obj)
@@ -165,7 +165,7 @@ class DFMechDriver(api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
     def delete_security_group(self, resource, event, trigger, **kwargs):
         sg = kwargs['security_group']
-        sg_obj = secgroups.SecurityGroup(id=sg['id'], topic=sg['tenant_id'])
+        sg_obj = secgroups.SecurityGroup(id=sg['id'], topic=sg['project_id'])
         self.nb_api.delete(sg_obj)
         LOG.info("DFMechDriver: delete security group %s", sg['id'])
 
@@ -213,11 +213,11 @@ class DFMechDriver(api.MechanismDriver):
     def delete_network_postcommit(self, context):
         network = context.current
         network_id = network['id']
-        tenant_id = network['tenant_id']
+        project_id = network['project_id']
 
         try:
             self.nb_api.delete(l2.LogicalSwitch(id=network_id,
-                                                topic=tenant_id))
+                                                topic=project_id))
         except df_exceptions.DBKeyNotFound:
             LOG.debug("lswitch %s is not found in DF DB, might have "
                       "been deleted concurrently", network_id)
@@ -282,7 +282,7 @@ class DFMechDriver(api.MechanismDriver):
 
         If an expected failure occurs, a None port is returned.
         """
-        port = {'port': {'tenant_id': context.tenant_id,
+        port = {'port': {'project_id': context.project_id,
                          'network_id': subnet['network_id'], 'name': '',
                          'admin_state_up': True, 'device_id': '',
                          'device_owner': n_const.DEVICE_OWNER_DHCP,
@@ -339,8 +339,8 @@ class DFMechDriver(api.MechanismDriver):
                 "Failed to create dhcp port for subnet %s", subnet['id'])
             return None
 
-        lswitch = self.nb_api.get(l2.LogicalSwitch(id=net_id,
-                                                   topic=network['tenant_id']))
+        lswitch = self.nb_api.get(
+            l2.LogicalSwitch(id=net_id, topic=network['project_id']))
         lswitch.version = network['revision_number']
         df_subnet = neutron_l2.subnet_from_neutron_subnet(subnet)
         df_subnet.dhcp_ip = dhcp_ip
@@ -412,8 +412,9 @@ class DFMechDriver(api.MechanismDriver):
                 "Failed to create dhcp port for subnet %s", new_subnet['id'])
             return None
 
-        lswitch = self.nb_api.get(l2.LogicalSwitch(id=new_subnet['network_id'],
-                                                   topic=network['tenant_id']))
+        lswitch = self.nb_api.get(
+            l2.LogicalSwitch(id=new_subnet['network_id'],
+                             topic=network['project_id']))
         lswitch.version = network['revision_number']
         subnet = lswitch.find_subnet(new_subnet['id'])
         subnet.update(neutron_l2.subnet_from_neutron_subnet(new_subnet))
@@ -439,7 +440,7 @@ class DFMechDriver(api.MechanismDriver):
 
         try:
             lswitch = self.nb_api.get(l2.LogicalSwitch(
-                id=net_id, topic=network['tenant_id']))
+                id=net_id, topic=network['project_id']))
             lswitch.remove_subnet(subnet_id)
             lswitch.version = network['revision_number']
             self.nb_api.update(lswitch)
@@ -484,7 +485,7 @@ class DFMechDriver(api.MechanismDriver):
     def update_port_postcommit(self, context):
         updated_port = context.current
         lean_port = l2.LogicalPort(id=updated_port['id'],
-                                   topic=updated_port['tenant_id'])
+                                   topic=updated_port['project_id'])
         if not self.nb_api.get(lean_port):
             # REVISIT(xiaohhui): Should we unify the check before update nb db?
             LOG.debug("The port %s has been deleted from dragonflow NB DB, "
@@ -522,7 +523,7 @@ class DFMechDriver(api.MechanismDriver):
         port = context.current
         port_id = port['id']
         lean_port = l2.LogicalPort(id=port_id,
-                                   topic=port['tenant_id'])
+                                   topic=port['project_id'])
         try:
             self.nb_api.delete(lean_port)
         except df_exceptions.DBKeyNotFound:
