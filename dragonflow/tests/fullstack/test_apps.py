@@ -1041,10 +1041,12 @@ class TestL3App(test_base.DFTestBase):
             # does not actually run which makes this test case work.
             self.skipTest("ZMQ_PUBSUB does not support this test case")
         # Delete the concrete router interface.
-        router_port_id = self.router.router_interfaces[
-            self.subnet1.subnet_id]['port_id']
-        topic = self.router.router_interfaces[
-            self.subnet1.subnet_id]['tenant_id']
+        router_iface = self.router.router_interfaces[self.subnet1.subnet_id]
+        router_port_id = router_iface['port_id']
+        try:
+            topic = router_iface['project_id']
+        except KeyError:
+            topic = router_iface['tenant_id']
         self.nb_api.delete(l2.LogicalPort(id=router_port_id, topic=topic))
         lrouter = self.nb_api.get(l3.LogicalRouter(
                                       id=self.router.router.router_id,

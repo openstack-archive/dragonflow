@@ -80,7 +80,9 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.nb_api = self.mech_driver.nb_api
 
     def _test_create_security_group_revision(self):
-        s = {'security_group': {'tenant_id': 'some_tenant', 'name': '',
+        s = {'security_group': {'project_id': 'some_tenant',
+                                'tenant_id': 'some_tenant',
+                                'name': '',
                                 'description': 'des'}}
         sg = self.driver.create_security_group(self.context, s)
         self.assertGreater(sg['revision_number'], 0)
@@ -104,7 +106,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
     def test_create_delete_sg_rule_revision(self):
         sg = self._test_create_security_group_revision()
-        r = {'security_group_rule': {'tenant_id': 'some_tenant',
+        r = {'security_group_rule': {'project_id': 'some_tenant',
+                                     'tenant_id': 'some_tenant',
                                      'port_range_min': 80, 'protocol': 'tcp',
                                      'port_range_max': 90,
                                      'remote_ip_prefix': '0.0.0.0/0',
@@ -387,7 +390,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         req = self.new_delete_request('networks', network['id'])
         req.get_response(self.api)
         self.nb_api.delete.assert_called_with(l2.LogicalSwitch(
-            id=network['id'], topic=network['tenant_id']))
+            id=network['id'], topic=network['project_id']))
 
     def test_create_update_remote_port(self):
         profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
@@ -427,7 +430,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         lport = self.nb_api.delete.call_args_list[0][0][0]
         self.assertIsInstance(lport, l2.LogicalPort)
         self.assertEqual(port['id'], lport.id)
-        self.assertEqual(port['tenant_id'], lport.topic)
+        self.assertEqual(port['project_id'], lport.topic)
 
     def test_delete_security_group(self):
         sg = self._test_create_security_group_revision()
