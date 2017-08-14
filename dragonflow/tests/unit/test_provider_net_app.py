@@ -39,7 +39,7 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
                 segmentation_id=10,
                 name='private')
         self.controller.update(fake_vlan_switch1)
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['provider']
         self.app.ofproto.OFPVID_PRESENT = 0x1000
 
     def test_provider_vlan_port(self):

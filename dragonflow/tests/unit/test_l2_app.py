@@ -36,7 +36,7 @@ class TestL2App(test_app_base.DFAppTestBase):
                 is_external=False,
                 name='private')
         self.controller.update(fake_local_switch1)
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['l2']
 
     def test_multicast_local_port(self):
         fake_local_port1 = test_app_base.make_fake_local_port(

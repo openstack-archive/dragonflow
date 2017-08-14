@@ -27,7 +27,7 @@ class TestL3App(test_app_base.DFAppTestBase,
 
     def setUp(self):
         super(TestL3App, self).setUp()
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['l3_reactive']
         self.app.mod_flow = mock.Mock()
         self.router = copy.deepcopy(test_app_base.fake_logic_router1)
 

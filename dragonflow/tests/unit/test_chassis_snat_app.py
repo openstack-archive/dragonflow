@@ -29,7 +29,7 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
                               self.external_host_ip,
                               group='df')
         super(TestChassisSNATApp, self).setUp()
-        self.SNAT_app = self.open_flow_app.dispatcher.apps[0]
+        self.SNAT_app = self.open_flow_app.dispatcher.apps['chassis_snat']
         self.SNAT_app.external_ofport = 99
 
     def test_switch_features_handler(self):

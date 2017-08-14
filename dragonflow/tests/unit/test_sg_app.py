@@ -31,7 +31,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestSGApp, self).setUp()
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['sg']
         self.mock_mod_flow = self.app.mod_flow
         self.security_group = test_app_base.fake_security_group
         self.fake_local_lport = test_app_base.fake_local_port1

@@ -43,7 +43,7 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         ])
 
         def dispatcher_load(*args, **kwargs):
-            self.ryu_df_adapter.dispatcher.apps = [self.mock_app]
+            self.ryu_df_adapter.dispatcher.apps = {'mock': self.mock_app}
         self.ryu_df_adapter.dispatcher.load = dispatcher_load
         self.ryu_df_adapter.load()
 

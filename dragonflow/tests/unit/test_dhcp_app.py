@@ -40,7 +40,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestDHCPApp, self).setUp()
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['dhcp']
 
     def test_host_route_include_metadata_route(self):
         cfg.CONF.set_override('df_add_link_local_route', True,

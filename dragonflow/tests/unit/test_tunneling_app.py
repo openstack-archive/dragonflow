@@ -38,7 +38,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
                 network_type='gre',
                 id='fake_gre_switch1')
         self.controller.update(fake_gre_switch1)
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['tunneling']
 
     def test_tunneling_for_local_port(self):
         fake_local_gre_port1 = make_fake_local_port(

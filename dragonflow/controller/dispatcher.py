@@ -22,7 +22,7 @@ class AppDispatcher(object):
 
     def __init__(self, app_list):
         self.apps_list = app_list
-        self.apps = []
+        self.apps = {}
 
     def load(self, *args, **kwargs):
         mgr = stevedore.NamedExtensionManager(
@@ -34,11 +34,11 @@ class AppDispatcher(object):
         )
 
         for ext in mgr:
-            self.apps.append(ext.obj)
+            self.apps[ext.name] = ext.obj
 
     def dispatch(self, method, *args, **kwargs):
         errors = []
-        for app in self.apps:
+        for app in self.apps.values():
             handler = getattr(app, method, None)
             if handler is not None:
                 try:

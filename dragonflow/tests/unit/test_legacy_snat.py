@@ -24,7 +24,7 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestLegacySNatApp, self).setUp()
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['legacy_snat']
         mock.patch.object(self.app, '_add_router_port',
                           side_effect=self.app._add_router_port).start()
         mock.patch.object(self.app, '_delete_router_port',

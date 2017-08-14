@@ -49,7 +49,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestDNATApp, self).setUp(enable_selective_topo_dist=True)
-        self.dnat_app = self.open_flow_app.dispatcher.apps[0]
+        self.dnat_app = self.open_flow_app.dispatcher.apps['dnat']
         self.dnat_app.external_ofport = 99
 
     def test_external_bridge_online(self):

@@ -29,7 +29,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestMetadataServiceApp, self).setUp()
-        self.meta_app = self.open_flow_app.dispatcher.apps[0]
+        self.meta_app = self.open_flow_app.dispatcher.apps['metadata_service']
 
     def test_metadata_interface_online(self):
         with mock.patch.object(self.meta_app,

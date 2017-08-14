@@ -185,7 +185,7 @@ class TestSfcApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestSfcApp, self).setUp()
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['sfc']
         self.app._install_flow_classifier_flows = mock.Mock()
         self.app._uninstall_flow_classifier_flows = mock.Mock()
         self.app._install_flow_classifier_local_port_flows = mock.Mock()

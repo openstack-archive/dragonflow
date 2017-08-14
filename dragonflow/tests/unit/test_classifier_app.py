@@ -47,7 +47,7 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
                 topic='fake_tenant1', unique_key=2,
                 name='private')
         self.controller.update(fake_vlan_switch1)
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['classifier']
 
     def test_classifier_for_vlan_port(self):
         fake_local_vlan_port = make_fake_local_port(

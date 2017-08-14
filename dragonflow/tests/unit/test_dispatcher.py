@@ -35,9 +35,11 @@ class TestAppDispatcher(tests_base.BaseTestCase):
     def test_dispatch_with_exception(self):
         fake_app = mock.MagicMock()
         capture_e = None
-        self.dispatcher.apps = [FakeAppWithException('fake1'),
-                                FakeAppWithException('fake2'),
-                                fake_app]
+        self.dispatcher.apps = {
+            'fake1': FakeAppWithException('fake1'),
+            'fake2': FakeAppWithException('fake2'),
+            'fake3': fake_app,
+        }
         try:
             self.dispatcher.dispatch('fake_handler')
         except exceptions.DFMultipleExceptions as e:

@@ -140,7 +140,7 @@ class TestFcApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestFcApp, self).setUp()
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['fc']
         for attribute in ('_install_flow_classifier',
                           '_uninstall_flow_classifier',
                           '_install_classification_flows',

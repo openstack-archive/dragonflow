@@ -45,7 +45,7 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestTrunkApp, self).setUp()
-        self.app = self.open_flow_app.dispatcher.apps[0]
+        self.app = self.open_flow_app.dispatcher.apps['trunk']
         self.mock_mod_flow = self.app.mod_flow
         self.db_store = db_store.get_instance()
         self.app.ofproto.OFPVID_PRESENT = 0x1000
