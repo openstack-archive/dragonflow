@@ -31,7 +31,9 @@ from ryu.ofproto import ether
 
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.controller.common import arp_responder as arp_r
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import icmp_responder as icmp_r
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import host_route
@@ -58,7 +60,6 @@ class DHCPApp(df_base_app.DFlowApp):
         self.unique_key_to_dhcp_app_port_data = {}
         self.api.register_table_handler(const.DHCP_TABLE,
                                         self.packet_in_handler)
-        self.switch_dhcp_ip_map = collections.defaultdict(dict)
         self.subnet_vm_port_map = collections.defaultdict(set)
 
     def switch_features_handler(self, ev):
@@ -67,7 +68,6 @@ class DHCPApp(df_base_app.DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
         self.unique_key_to_dhcp_app_port_data.clear()
-        self.switch_dhcp_ip_map.clear()
         self.subnet_vm_port_map.clear()
 
     def packet_in_handler(self, event):
@@ -91,8 +91,8 @@ class DHCPApp(df_base_app.DFlowApp):
         port_rate_limiter, lport = port_data
         if port_rate_limiter():
             self._block_port_dhcp_traffic(
-                    unique_key,
-                    self.block_hard_timeout)
+                unique_key,
+                self.block_hard_timeout)
             LOG.warning("pass rate limit for %(port_id)s blocking DHCP "
                         "traffic for %(time)s sec",
                         {'port_id': lport.id,
@@ -112,19 +112,19 @@ class DHCPApp(df_base_app.DFlowApp):
         send_packet = None
         if dhcp_message_type == dhcp.DHCP_DISCOVER:
             send_packet = self._create_dhcp_response(
-                                packet,
-                                dhcp_packet,
-                                dhcp.DHCP_OFFER,
-                                lport)
+                packet,
+                dhcp_packet,
+                dhcp.DHCP_OFFER,
+                lport)
             LOG.info("sending DHCP offer for port IP %(port_ip)s "
                      "port id %(port_id)s",
                      {'port_ip': lport.ip, 'port_id': lport.id})
         elif dhcp_message_type == dhcp.DHCP_REQUEST:
             send_packet = self._create_dhcp_response(
-                                packet,
-                                dhcp_packet,
-                                dhcp.DHCP_ACK,
-                                lport)
+                packet,
+                dhcp_packet,
+                dhcp.DHCP_ACK,
+                lport)
             LOG.info("sending DHCP ACK for port IP %(port_ip)s "
                      "port id %(tunnel_id)s",
                      {'port_ip': lport.ip,
@@ -164,9 +164,9 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_server_address = subnet.dhcp_ip
         dhcp_response = ryu_packet.Packet()
         dhcp_response.add_protocol(ethernet.ethernet(
-                                                ethertype=ether.ETH_TYPE_IP,
-                                                dst=pkt_ethernet.src,
-                                                src=pkt_ethernet.dst))
+            ethertype=ether.ETH_TYPE_IP,
+            dst=pkt_ethernet.src,
+            src=pkt_ethernet.dst))
         dhcp_response.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
                                              src=dhcp_server_address,
                                              proto=pkt_ipv4.proto))
@@ -424,6 +424,47 @@ class DHCPApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
+    def _install_dhcp_ips_flows(self, subnet, network_id):
+        self._install_dhcp_unicast_match_flow(subnet.dhcp_ip, network_id)
+        arp_r.ArpResponder(self, network_id, subnet.dhcp_ip,
+                           interface_mac=subnet.dhcp_mac).add()
+        icmp_r.ICMPResponder(self, subnet.dhcp_ip).add()
+
+    def remove_dhcp_ips_flows(self, old_subnet, network_id):
+        print("was here")
+        self._remove_dhcp_unicast_match_flow(network_id,
+                                             old_subnet.dhcp_ip)
+        arp_r.ArpResponder(self, network_id, old_subnet.dhcp_ip,
+                           interface_mac=old_subnet.dhcp_mac).remove()
+        icmp_r.ICMPResponder(self, old_subnet.dhcp_ip).remove()
+
+    def _dhcp_ip_change(self, subnet, old_subnet, network_id):
+
+        self._install_dhcp_ips_flows(subnet, network_id)
+
+        if old_subnet and old_subnet.dhcp_ip:
+            self.remove_dhcp_ips_flows(old_subnet, network_id)
+        else:
+            # The first time the subnet is found as a dhcp
+            # enabled subnet. The vm's dhcp flow needs to be
+            # downloaded.
+            self._install_dhcp_flow_for_vm_in_subnet(subnet.id)
+
+    def _dhcp_ip_deleted(self, old_subnet, network_id):
+        # The subnet was found as a dhcp enabled subnet, but it
+        # has been changed to dhcp disabled subnet now.
+        self._uninstall_dhcp_flow_for_vm_in_subnet(old_subnet.id)
+        self.remove_dhcp_ips_flows(old_subnet, network_id)
+
+    def _get_old_subnet(self, orig_lswitch, subnet_id):
+
+        if orig_lswitch is None:
+            return None
+
+        for subnet in orig_lswitch.subnets:
+            if subnet.id == subnet_id:
+                return subnet
+
     @df_base_app.register_event(l2.LogicalSwitch,
                                 model_constants.EVENT_CREATED)
     @df_base_app.register_event(l2.LogicalSwitch,
@@ -431,59 +472,38 @@ class DHCPApp(df_base_app.DFlowApp):
     def update_logical_switch(self, lswitch, orig_lswitch=None):
         subnets = lswitch.subnets
         network_id = lswitch.unique_key
-        all_subnets = set()
         for subnet in subnets:
-            if self._is_ipv4(subnet):
-                subnet_id = subnet.id
-                all_subnets.add(subnet_id)
-                old_dhcp_ip = (
-                    (self.switch_dhcp_ip_map[network_id]
-                     and self.switch_dhcp_ip_map[network_id].get(subnet_id))
-                    or None)
-                if subnet.enable_dhcp:
-                    dhcp_ip = subnet.dhcp_ip
-                    if dhcp_ip != old_dhcp_ip:
-                        # In case the subnet alway has dhcp enabled, but change
-                        # its dhcp IP.
-                        self._install_dhcp_unicast_match_flow(dhcp_ip,
-                                                              network_id)
-                        if old_dhcp_ip:
-                            self._remove_dhcp_unicast_match_flow(
-                                network_id, old_dhcp_ip)
-                        else:
-                            # The first time the subnet is found as a dhcp
-                            # enabled subnet. The vm's dhcp flow needs to be
-                            # downloaded.
-                            self._install_dhcp_flow_for_vm_in_subnet(subnet_id)
 
-                        self.switch_dhcp_ip_map[network_id].update(
-                            {subnet_id: dhcp_ip})
-                else:
-                    if old_dhcp_ip:
-                        # The subnet was found as a dhcp enabled subnet, but it
-                        # has been changed to dhcp disabled subnet now.
-                        self._uninstall_dhcp_flow_for_vm_in_subnet(subnet_id)
-                        self._remove_dhcp_unicast_match_flow(
-                            network_id, old_dhcp_ip)
-                        self.switch_dhcp_ip_map[network_id].update(
-                            {subnet_id: None})
+            if not self._is_ipv4(subnet):
+                continue
+
+            subnet_id = subnet.id
+            old_subnet = self._get_old_subnet(orig_lswitch, subnet_id)
+            old_dhcp_ip = old_subnet.dhcp_ip if old_subnet else None
+
+            if subnet.enable_dhcp:
+                if subnet.dhcp_ip != old_dhcp_ip:
+                    self._dhcp_ip_change(subnet, old_subnet, network_id)
+            else:
+                if old_dhcp_ip:
+                    self._dhcp_ip_deleted(old_subnet, network_id)
+
+        if orig_lswitch is None:
+            return
 
         # Clear stale dhcp ips, which belongs to the subnets that are deleted.
-        deleted_subnets = (set(self.switch_dhcp_ip_map[network_id]) -
-                           all_subnets)
-        for subnet_id in deleted_subnets:
-            dhcp_ip = self.switch_dhcp_ip_map[network_id][subnet_id]
+        deleted_subnets = [subnet for subnet in orig_lswitch
+                           if subnet not in lswitch]
+        for subnet in deleted_subnets:
+            dhcp_ip = subnet.dhcp_ip
             if dhcp_ip:
-                self._remove_dhcp_unicast_match_flow(network_id, dhcp_ip)
-
-            del self.switch_dhcp_ip_map[network_id][subnet_id]
+                self.remove_dhcp_ips_flows(network_id, subnet)
 
     @df_base_app.register_event(l2.LogicalSwitch,
                                 model_constants.EVENT_DELETED)
     def remove_logical_switch(self, lswitch):
         network_id = lswitch.unique_key
         self._remove_dhcp_unicast_match_flow(network_id)
-        del self.switch_dhcp_ip_map[network_id]
 
     def _remove_dhcp_unicast_match_flow(self, network_id, ip_addr=None):
         parser = self.parser
