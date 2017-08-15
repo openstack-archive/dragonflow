@@ -206,6 +206,9 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         dhcp_response_pkt = self._send_dhcp_req_to_app(fake_lport,
                                                        option_list)
 
+        pkt_ethernet = dhcp_response_pkt.get_protocol(ethernet.ethernet)
+        self.assertEqual(pkt_ethernet.src, fake_lport.subnets[0].dhcp_mac)
+
         dhcp_res = dhcp_response_pkt.get_protocol(dhcp.dhcp)
         self.assertTrue(dhcp_res.options)
         self.assertTrue(dhcp_res.options.option_list)
