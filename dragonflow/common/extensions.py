@@ -29,4 +29,8 @@ SUPPORTED_API_EXTENSIONS = [
     'net-mtu',
     'default-subnetpools',
     'extraroute',
+    'bgp',
+    'trunk',
+    'flow_classifier',
+    'sfc',
 ]
