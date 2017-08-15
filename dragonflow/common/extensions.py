@@ -29,4 +29,6 @@ SUPPORTED_API_EXTENSIONS = [
     'net-mtu',
     'default-subnetpools',
     'extraroute',
+    'bgp',
+    'trunk',
 ]
