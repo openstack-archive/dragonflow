@@ -11,6 +11,7 @@
 #    under the License.
 
 import functools
+import testscenarios
 import threading
 
 from dragonflow.common import exceptions as df_exceptions
@@ -19,12 +20,16 @@ from dragonflow import conf as cfg
 from dragonflow.tests.fullstack import test_base
 
 
-class TestDbApi(test_base.DFTestBase):
+class TestDbApi(testscenarios.WithScenarios, test_base.DFTestBase):
+    scenarios = [('in-mem-dummy-database',
+                  {'nb_db_class': '_dummy_nb_db_driver'}),
+                 ('configured-database',
+                  {'nb_db_class': None})]
 
     def setUp(self):
         super(TestDbApi, self).setUp()
         self.driver = df_utils.load_driver(
-                cfg.CONF.df.nb_db_class,
+                self.nb_db_class or cfg.CONF.df.nb_db_class,
                 df_utils.DF_NB_DB_DRIVER_NAMESPACE)
         self.driver.initialize(cfg.CONF.df.remote_db_ip,
                                cfg.CONF.df.remote_db_port,
