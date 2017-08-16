@@ -16,6 +16,7 @@
 from neutron_lib.utils import helpers
 from oslo_log import log
 from ryu.lib import mac as mac_api
+from ryu.ofproto import nicira_ext
 
 from dragonflow.common import utils
 from dragonflow import conf as cfg
@@ -138,7 +139,13 @@ class ProviderApp(df_base_app.DFlowApp):
 
     def _match_actions_by_network_type(self, lport, network_id, network_type):
         actions = [
-            self.parser.OFPActionSetField(metadata=network_id)]
+            self.parser.NXActionRegLoad(
+                dst='in_port',
+                value=0,
+                ofs_nbits=nicira_ext.ofs_nbits(0, 31),
+            ),
+            self.parser.OFPActionSetField(metadata=network_id),
+        ]
 
         if network_type == NET_VLAN:
             vlan_vid = self.ofproto.OFPVID_PRESENT
@@ -178,7 +185,6 @@ class ProviderApp(df_base_app.DFlowApp):
     def _egress_flow(self, lport, network_id, network_type):
         LOG.debug('Add egress flow for network %(net_id)s',
                   {'net_id': network_id})
-        match = self.parser.OFPMatch(metadata=network_id)
         inst = [self.parser.OFPInstructionGotoTable(
                 const.EGRESS_EXTERNAL_TABLE)]
         if network_type == NET_VLAN:
@@ -199,10 +205,23 @@ class ProviderApp(df_base_app.DFlowApp):
                     actions)
             inst.insert(0, action_inst)
         self.mod_flow(
-            inst=inst,
             table_id=const.EGRESS_TABLE,
             priority=const.PRIORITY_LOW,
-            match=match)
+            match=self.parser.OFPMatch(metadata=network_id),
+            inst=inst,
+        )
+
+        # Drop all packets that did not originate on current node.
+        # Any packet arriving from provider network won't have reg6 set.
+        self.mod_flow(
+            table_id=const.EGRESS_TABLE,
+            priority=const.PRIORITY_LOW + 1,
+            match=self.parser.OFPMatch(
+                metadata=network_id,
+                reg6=0,
+            ),
+            inst=None,
+        )
 
     def _egress_external_flow(self, lport, network_id):
         LOG.debug('Add egress external flow for network %(net_id)s',
