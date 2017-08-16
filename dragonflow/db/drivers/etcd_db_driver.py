@@ -121,8 +121,10 @@ class EtcdDbDriver(db_api.DbApi):
         pass
 
     def delete_table(self, table):
-        # Not needed in etcd
-        pass
+        try:
+            self.client.delete('/' + table, recursive=True)
+        except etcd.EtcdKeyNotFound:
+            pass  # Ignore
 
     def get_key(self, table, key, topic=None):
         try:
@@ -158,7 +160,7 @@ class EtcdDbDriver(db_api.DbApi):
         try:
             directory = self.client.get("/" + table)
         except etcd.EtcdKeyNotFound:
-            raise df_exceptions.DBKeyNotFound(key=table)
+            return res
         for entry in directory.children:
             table_name_size = len(table) + 2
             res.append(entry.key[table_name_size:])
