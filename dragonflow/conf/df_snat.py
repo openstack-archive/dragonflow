@@ -18,11 +18,6 @@ from oslo_config import cfg
 from dragonflow._i18n import _
 
 df_snat_app_opts = [
-    cfg.BoolOpt('enable_goto_flows',
-                default=True,
-                help=_("Enable install of common goto flows to ingress/egress "
-                       "NAT tables or re-use goto flows installed by "
-                       "other DF application")),
     cfg.StrOpt('external_network_bridge',
                default='br-ex',
                help=_("Name of bridge used for external network traffic")),
