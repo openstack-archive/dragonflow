@@ -11,18 +11,13 @@
 #    under the License.
 
 from dragonflow.common import utils as df_utils
-from dragonflow import conf as cfg
 from dragonflow.tests.database import test_db_api
-from dragonflow.tests.fullstack import test_base
 
 
-class TestDbApi(test_base.DFTestBase, test_db_api.TestDbApi):
-
+class TestDbApi(test_db_api.TestDbApi):
     def setUp(self):
         super(TestDbApi, self).setUp()
         self.driver = df_utils.load_driver(
-                cfg.CONF.df.nb_db_class,
+                '_dummy_nb_db_driver',
                 df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-        self.driver.initialize(cfg.CONF.df.remote_db_ip,
-                               cfg.CONF.df.remote_db_port,
-                               config=cfg.CONF.df)
+        self.driver.initialize(None, None, config=None)
