@@ -132,7 +132,8 @@ class _ModelCache(object):
         for index in self._indexes.values():
             index.delete(obj)
 
-        del self._objs[obj.id]
+        old_obj = self._objs.pop(obj.id)
+        old_obj._is_object_stale = True
 
     def update(self, obj):
         for index in self._indexes.values():
