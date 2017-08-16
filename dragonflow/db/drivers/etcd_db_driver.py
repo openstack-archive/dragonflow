@@ -121,8 +121,10 @@ class EtcdDbDriver(db_api.DbApi):
         pass
 
     def delete_table(self, table):
-        # Not needed in etcd
-        pass
+        try:
+            self.client.delete('/' + table, recursive=True)
+        except etcd.EtcdKeyNotFound:
+            pass  # Ignore
 
     def get_key(self, table, key, topic=None):
         try:
