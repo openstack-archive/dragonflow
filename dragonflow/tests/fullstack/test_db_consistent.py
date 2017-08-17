@@ -83,23 +83,27 @@ class TestDbConsistent(test_base.DFTestBase):
             mtu=1500,
             unique_key=1,
             version=1)
+        df_network_json = df_network.to_json()
+        self.nb_api.driver.create_key(l2.LogicalSwitch.table_name,
+                                      net_id, df_network_json, topic)
+        self.addCleanup(self.nb_api.driver.delete_key, 'lswitch',
+                        net_id, topic)
 
+        subnet_id = '22222222-2222-2222-2222-222222222222'
         df_subnet = l2.Subnet(
-            id='22222222-2222-2222-2222-222222222222',
+            id=subnet_id,
             topic=topic,
             name='df_sn1',
             enable_dhcp=True,
             cidr='10.60.0.0/24',
             dhcp_ip='10.60.0.2',
-            gateway_ip='10.60.0.1')
-
-        df_network.add_subnet(df_subnet)
-        df_network_json = df_network.to_json()
-
-        self.nb_api.driver.create_key(
-                'lswitch', net_id, df_network_json, topic)
-        self.addCleanup(self.nb_api.driver.delete_key, 'lswitch',
-                        net_id, topic)
+            gateway_ip='10.60.0.1',
+            version=1,
+            lswitch=net_id)
+        self.nb_api.driver.create_key(l2.Subnet.table_name,
+                                      subnet_id, df_subnet.to_json(), topic)
+        self.addCleanup(self.nb_api.driver.delete_key, l2.Subnet.table_name,
+                        subnet_id, topic)
 
         port_id = '33333333-2222-2222-2222-222222222222,'
         dhcp_port = l2.LogicalPort(

@@ -146,7 +146,8 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.assertGreater(new_network['revision_number'],
                            network['revision_number'])
         lswitch.version = new_network['revision_number']
-        self.nb_api.update.assert_called_once_with(lswitch)
+        self.nb_api.update.assert_called_once_with(l2.LogicalSwitch(
+            id=lswitch.id, topic=lswitch.topic, version=lswitch.version))
         self.nb_api.update.reset_mock()
 
         data = {'subnet': {'name': 'updated'}}
@@ -156,17 +157,13 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         new_network = self.driver.get_network(self.context, network['id'])
         new_lswitch = neutron_l2.logical_switch_from_neutron_network(
             new_network)
-        updated_subnet = self.driver.get_subnet(self.context,
-                                                subnet_id)
-        new_lswitch.subnets = [neutron_l2.subnet_from_neutron_subnet(
-            updated_subnet)]
         self.assertGreater(new_network['revision_number'],
                            network['revision_number'])
         self.nb_api.update.called_once_with(new_lswitch)
         self.nb_api.update.reset_mock()
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
-        self.assertEqual(new_network['revision_number'],
-                         lswitch.version)
+        self.assertGreater(new_network['revision_number'],
+                           lswitch.version)
 
         network = new_network
         req = self.new_delete_request('subnets', subnet_id)
@@ -182,82 +179,99 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
     def test_create_update_subnet_gateway_ip(self):
         network, lswitch = self._test_create_network_revision()
+        self.nb_api.create.reset_mock()
         self.nb_api.update.reset_mock()
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
         with self.subnet(network={'network': network},
-                         set_context=True) as subnet:
+                         set_context=True) as n_subnet:
+            # Create Subnet, create DHCP port
+            self.assertEqual(2, self.nb_api.create.call_count)
             self.nb_api.update.assert_called_once()
             lswitch = self.nb_api.update.call_args_list[0][0][0]
             self.assertIsInstance(lswitch, l2.LogicalSwitch)
-            self.nb_api.get.side_effect = nb_api_get_func(lswitch)
+            dhcp_lport = self.nb_api.create.call_args_list[0][0][0]
+            self.assertIsInstance(dhcp_lport, l2.LogicalPort)
+            subnet = self.nb_api.create.call_args_list[1][0][0]
+            self.assertIsInstance(subnet, l2.Subnet)
+            self.nb_api.get.side_effect = nb_api_get_func(subnet)
             self.nb_api.update.reset_mock()
 
-            df_subnet = lswitch.find_subnet(subnet['subnet']['id'])
-            self.assertIsNotNone(df_subnet.gateway_ip)
+            self.assertIsNotNone(subnet.gateway_ip)
 
             data = {'subnet': {'gateway_ip': None}}
             req = self.new_update_request('subnets',
-                                          data, subnet['subnet']['id'])
+                                          data, n_subnet['subnet']['id'])
             req.get_response(self.api)
-            self.nb_api.update.assert_called_once()
-            lswitch = self.nb_api.update.call_args_list[0][0][0]
-            self.nb_api.get.side_effect = nb_api_get_func(lswitch)
-            self.nb_api.update.reset_mock()
-            df_subnet = lswitch.find_subnet(subnet['subnet']['id'])
-            self.assertIsNone(df_subnet.gateway_ip)
+            # Update subnet, update lswitch's version
+            self.assertEqual(2, self.nb_api.update.call_count)
+            subnet = self.nb_api.update.call_args_list[0][0][0]
+            self.assertIsInstance(subnet, l2.Subnet)
+            self.assertIsNone(subnet.gateway_ip)
 
     def test_create_update_subnet_dnsnameserver(self):
         network, lswitch = self._test_create_network_revision()
+        self.nb_api.create.reset_mock()
         self.nb_api.update.reset_mock()
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
         with self.subnet(network={'network': network}, set_context=True,
-                         dns_nameservers=['1.1.1.1']) as subnet:
+                         dns_nameservers=['1.1.1.1']) as n_subnet:
+            # Create Subnet, create DHCP port
+            self.assertEqual(2, self.nb_api.create.call_count)
             self.nb_api.update.assert_called_once()
             lswitch = self.nb_api.update.call_args_list[0][0][0]
             self.assertIsInstance(lswitch, l2.LogicalSwitch)
-            self.nb_api.get.side_effect = nb_api_get_func(lswitch)
+            dhcp_lport = self.nb_api.create.call_args_list[0][0][0]
+            self.assertIsInstance(dhcp_lport, l2.LogicalPort)
+            subnet = self.nb_api.create.call_args_list[1][0][0]
+            self.assertIsInstance(subnet, l2.Subnet)
+            self.nb_api.get.side_effect = nb_api_get_func(subnet)
             self.nb_api.update.reset_mock()
 
-            df_subnet = lswitch.find_subnet(subnet['subnet']['id'])
             self.assertEqual([netaddr.IPAddress('1.1.1.1')],
-                             df_subnet.dns_nameservers)
+                             subnet.dns_nameservers)
 
             data = {'subnet': {'dns_nameservers': None}}
             req = self.new_update_request('subnets',
-                                          data, subnet['subnet']['id'])
+                                          data, n_subnet['subnet']['id'])
             req.get_response(self.api)
-            self.nb_api.update.assert_called_once()
-            lswitch = self.nb_api.update.call_args_list[0][0][0]
-            self.nb_api.get.side_effect = nb_api_get_func(lswitch)
-            self.nb_api.update.reset_mock()
-            df_subnet = lswitch.find_subnet(subnet['subnet']['id'])
-            self.assertEqual([], df_subnet.dns_nameservers)
+            # Update subnet, update lswitch's version
+            self.assertEqual(2, self.nb_api.update.call_count)
+            subnet = self.nb_api.update.call_args_list[0][0][0]
+            self.assertIsInstance(subnet, l2.Subnet)
+            self.assertEqual([], subnet.dns_nameservers)
 
     def test_create_update_subnet_hostroute(self):
         host_routes = [{'destination': '135.207.0.0/16', 'nexthop': '1.2.3.4'}]
         network, lswitch = self._test_create_network_revision()
+        self.nb_api.create.reset_mock()
         self.nb_api.update.reset_mock()
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
         with self.subnet(network={'network': network}, host_routes=host_routes,
-                         set_context=True) as subnet:
+                         set_context=True) as n_subnet:
+            # Create Subnet, create DHCP port
+            self.assertEqual(2, self.nb_api.create.call_count)
             self.nb_api.update.assert_called_once()
             lswitch = self.nb_api.update.call_args_list[0][0][0]
             self.assertIsInstance(lswitch, l2.LogicalSwitch)
-            self.nb_api.get.side_effect = nb_api_get_func(lswitch)
+            dhcp_lport = self.nb_api.create.call_args_list[0][0][0]
+            self.assertIsInstance(dhcp_lport, l2.LogicalPort)
+            subnet = self.nb_api.create.call_args_list[1][0][0]
+            self.assertIsInstance(subnet, l2.Subnet)
+            self.nb_api.get.side_effect = nb_api_get_func(subnet)
             self.nb_api.update.reset_mock()
-            df_subnet = lswitch.find_subnet(subnet['subnet']['id'])
             self.assertEqual([host_route.HostRoute(**hr)
                               for hr in host_routes],
-                             df_subnet.host_routes)
+                             subnet.host_routes)
 
             data = {'subnet': {'host_routes': None}}
             req = self.new_update_request('subnets',
-                                          data, subnet['subnet']['id'])
+                                          data, n_subnet['subnet']['id'])
             req.get_response(self.api)
-            self.nb_api.update.assert_called_once()
-            lswitch = self.nb_api.update.call_args_list[0][0][0]
-            df_subnet = lswitch.find_subnet(subnet['subnet']['id'])
-            self.assertEqual([], df_subnet.host_routes)
+            # Update subnet, update lswitch's version
+            self.assertEqual(2, self.nb_api.update.call_count)
+            subnet = self.nb_api.update.call_args_list[0][0][0]
+            self.assertIsInstance(subnet, l2.Subnet)
+            self.assertEqual([], subnet.host_routes)
 
     def test_create_update_port_allowed_address_pairs(self):
         kwargs = {'allowed_address_pairs':
@@ -412,9 +426,11 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
     def test_update_subnet_with_disabled_dhcp(self):
         network, lswitch = self._test_create_network_revision()
+        self.nb_api.create.reset_mock()
         self.nb_api.update.reset_mock()
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
-        with self.subnet(network={'network': network}) as s:
+        with self.subnet(network={'network': network}, enable_dhcp=False) as s:
+            self.nb_api.create.assert_called_once()
             self.nb_api.update.assert_called_once()
             lswitch = self.nb_api.update.call_args_list[0][0][0]
             self.nb_api.get.side_effect = nb_api_get_func(lswitch)
@@ -425,10 +441,11 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             req = self.new_update_request('subnets', data, subnet['id'])
             req.get_response(self.api)
 
-            self.nb_api.update.assert_called_once()
-            lswitch = self.nb_api.update.call_args_list[0][0][0]
-            df_subnet = lswitch.find_subnet(subnet['id'])
-            self.assertIsNone(df_subnet.dhcp_ip)
+            # Update subnet, update lswitch's version
+            self.assertEqual(2, self.nb_api.update.call_count)
+            subnet = self.nb_api.update.call_args_list[0][0][0]
+            self.assertIsInstance(subnet, l2.Subnet)
+            self.assertIsNone(subnet.dhcp_ip)
 
     def _test_create(self, port):
 

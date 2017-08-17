@@ -46,7 +46,9 @@ def subnet_from_neutron_subnet(subnet):
         cidr=subnet['cidr'],
         gateway_ip=subnet['gateway_ip'],
         dns_nameservers=subnet.get('dns_nameservers', []),
-        host_routes=subnet.get('host_routes', []))
+        host_routes=subnet.get('host_routes', []),
+        version=subnet['revision_number'],
+        lswitch=subnet['network_id'])
 
 
 def _validate_ip_prefix_allowed_address_pairs(allowed_address_pairs):

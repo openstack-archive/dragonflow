@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 from dragonflow.controller.common import constants as const
 from dragonflow.db.models import l2
 from dragonflow.tests.unit import test_app_base
@@ -28,7 +30,6 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
     def setUp(self):
         super(TestProviderNetsApp, self).setUp()
         fake_vlan_switch1 = l2.LogicalSwitch(
-                subnets=test_app_base.fake_lswitch_default_subnets,
                 network_type='vlan',
                 id='fake_vlan_switch1',
                 mtu=1454,
@@ -38,7 +39,12 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
                 topic='fake_tenant1',
                 segmentation_id=10,
                 name='private')
+        fake_vlan_subnet = copy.deepcopy(
+            test_app_base.fake_lswitch_default_subnets[0])
+        fake_vlan_subnet.id = 'fake_vlan_subnet1'
+        fake_vlan_subnet.lswitch = 'fake_vlan_switch1'
         self.controller.update(fake_vlan_switch1)
+        self.controller.update(fake_vlan_subnet)
         self.app = self.open_flow_app.dispatcher.apps['provider']
         self.app.ofproto.OFPVID_PRESENT = 0x1000
 
