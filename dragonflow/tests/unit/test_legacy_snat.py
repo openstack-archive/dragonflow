@@ -32,21 +32,21 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
         self.app.mod_flow.reset_mock()
 
     def test_create_router(self):
-        self.subnets = [l2.Subnet(dhcp_ip="10.1.0.2",
-                                  name="private-subnet",
-                                  enable_dhcp=True,
-                                  topic="fake_tenant1",
-                                  gateway_ip="10.1.0.1",
-                                  cidr="10.1.0.0/24",
-                                  id="test_subnet10_1")]
-        self.lswitch = l2.LogicalSwitch(subnets=self.subnets,
-                                        unique_key=3,
+        self.lswitch = l2.LogicalSwitch(unique_key=3,
                                         name='test_lswitch_1',
                                         is_external=False,
                                         segmentation_id=41,
                                         topic='fake_tenant1',
                                         id='test_lswitch_1',
                                         version=5)
+        self.subnet = l2.Subnet(dhcp_ip="10.1.0.2",
+                                name="private-subnet",
+                                enable_dhcp=True,
+                                topic="fake_tenant1",
+                                gateway_ip="10.1.0.1",
+                                cidr="10.1.0.0/24",
+                                id="test_subnet10_1",
+                                lswitch='test_lswitch_1')
         self.router_ports = [l3.LogicalRouterPort(network="10.1.0.1/24",
                                                   lswitch=self.lswitch,
                                                   topic="fake_tenant1",
@@ -60,6 +60,7 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
                                        unique_key=5,
                                        ports=self.router_ports)
         self.controller.update(self.lswitch)
+        self.controller.update(self.subnet)
         self.app.mod_flow.reset_mock()
         self.controller.update(self.router)
         self.app._add_router_port.assert_called_once_with(self.router_ports[0])
@@ -96,21 +97,21 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
 
     def test_update_router(self):
         self.test_create_router()
-        subnets2 = [l2.Subnet(dhcp_ip="10.2.0.2",
-                              name="private-subnet",
-                              enable_dhcp=True,
-                              topic="fake_tenant1",
-                              gateway_ip="10.2.0.1",
-                              cidr="10.2.0.0/24",
-                              id="test_subnet10_2")]
-        lswitch2 = l2.LogicalSwitch(subnets=subnets2,
-                                    unique_key=6,
+        lswitch2 = l2.LogicalSwitch(unique_key=6,
                                     name='test_lswitch_2',
                                     is_external=False,
                                     segmentation_id=42,
                                     topic='fake_tenant1',
                                     id='test_lswitch_2',
                                     version=5)
+        subnet2 = l2.Subnet(dhcp_ip="10.2.0.2",
+                            name="private-subnet",
+                            enable_dhcp=True,
+                            topic="fake_tenant1",
+                            gateway_ip="10.2.0.1",
+                            cidr="10.2.0.0/24",
+                            id="test_subnet10_2",
+                            lswitch='test_lswitch_2')
         router_ports2 = [l3.LogicalRouterPort(network="10.2.0.1/24",
                                               lswitch=lswitch2,
                                               topic="fake_tenant1",
@@ -118,6 +119,7 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
                                               unique_key=7,
                                               id="fake_router_1_port2")]
         self.controller.update(lswitch2)
+        self.controller.update(subnet2)
         router = copy.copy(self.router)
         router.ports = router_ports2
         router.version += 1
