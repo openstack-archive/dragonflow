@@ -58,7 +58,6 @@ class DHCPApp(df_base_app.DFlowApp):
         self.unique_key_to_dhcp_app_port_data = {}
         self.api.register_table_handler(const.DHCP_TABLE,
                                         self.packet_in_handler)
-        self.switch_dhcp_ip_map = collections.defaultdict(dict)
         self.subnet_vm_port_map = collections.defaultdict(set)
 
     def switch_features_handler(self, ev):
@@ -67,7 +66,6 @@ class DHCPApp(df_base_app.DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
         self.unique_key_to_dhcp_app_port_data.clear()
-        self.switch_dhcp_ip_map.clear()
         self.subnet_vm_port_map.clear()
 
     def packet_in_handler(self, event):
@@ -424,66 +422,51 @@ class DHCPApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    @df_base_app.register_event(l2.LogicalSwitch,
-                                model_constants.EVENT_CREATED)
-    @df_base_app.register_event(l2.LogicalSwitch,
-                                model_constants.EVENT_UPDATED)
-    def update_logical_switch(self, lswitch, orig_lswitch=None):
-        subnets = lswitch.subnets
+    @df_base_app.register_event(l2.Subnet, model_constants.EVENT_CREATED)
+    @df_base_app.register_event(l2.Subnet, model_constants.EVENT_UPDATED)
+    def update_subnet(self, subnet, orig_subnet=None):
+        if not self._is_ipv4(subnet):
+            return
+        lswitch = self.db_store.get_one(l2.LogicalSwitch(subnets=[subnet.id]),
+                                        l2.LogicalSwitch.get_index('subnet'))
         network_id = lswitch.unique_key
-        all_subnets = set()
-        for subnet in subnets:
-            if self._is_ipv4(subnet):
-                subnet_id = subnet.id
-                all_subnets.add(subnet_id)
-                old_dhcp_ip = (
-                    (self.switch_dhcp_ip_map[network_id]
-                     and self.switch_dhcp_ip_map[network_id].get(subnet_id))
-                    or None)
-                if subnet.enable_dhcp:
-                    dhcp_ip = subnet.dhcp_ip
-                    if dhcp_ip != old_dhcp_ip:
-                        # In case the subnet alway has dhcp enabled, but change
-                        # its dhcp IP.
-                        self._install_dhcp_unicast_match_flow(dhcp_ip,
-                                                              network_id)
-                        if old_dhcp_ip:
-                            self._remove_dhcp_unicast_match_flow(
-                                network_id, old_dhcp_ip)
-                        else:
-                            # The first time the subnet is found as a dhcp
-                            # enabled subnet. The vm's dhcp flow needs to be
-                            # downloaded.
-                            self._install_dhcp_flow_for_vm_in_subnet(subnet_id)
-
-                        self.switch_dhcp_ip_map[network_id].update(
-                            {subnet_id: dhcp_ip})
+        old_dhcp_ip = orig_subnet.dhcp_ip if orig_subnet else None
+        if subnet.enable_dhcp:
+            dhcp_ip = subnet.dhcp_ip
+            if dhcp_ip != old_dhcp_ip:
+                # In case the subnet alway has dhcp enabled, but change
+                # its dhcp IP.
+                self._install_dhcp_unicast_match_flow(dhcp_ip, network_id)
+                if old_dhcp_ip:
+                    self._remove_dhcp_unicast_match_flow(network_id,
+                                                         old_dhcp_ip)
                 else:
-                    if old_dhcp_ip:
-                        # The subnet was found as a dhcp enabled subnet, but it
-                        # has been changed to dhcp disabled subnet now.
-                        self._uninstall_dhcp_flow_for_vm_in_subnet(subnet_id)
-                        self._remove_dhcp_unicast_match_flow(
-                            network_id, old_dhcp_ip)
-                        self.switch_dhcp_ip_map[network_id].update(
-                            {subnet_id: None})
+                    # The first time the subnet is found as a dhcp
+                    # enabled subnet. The vm's dhcp flow needs to be
+                    # downloaded.
+                    self._install_dhcp_flow_for_vm_in_subnet(subnet.id)
+        else:
+            if old_dhcp_ip:
+                # The subnet was found as a dhcp enabled subnet, but it
+                # has been changed to dhcp disabled subnet now.
+                self._uninstall_dhcp_flow_for_vm_in_subnet(subnet.id)
+                self._remove_dhcp_unicast_match_flow(network_id, old_dhcp_ip)
 
-        # Clear stale dhcp ips, which belongs to the subnets that are deleted.
-        deleted_subnets = (set(self.switch_dhcp_ip_map[network_id]) -
-                           all_subnets)
-        for subnet_id in deleted_subnets:
-            dhcp_ip = self.switch_dhcp_ip_map[network_id][subnet_id]
-            if dhcp_ip:
-                self._remove_dhcp_unicast_match_flow(network_id, dhcp_ip)
-
-            del self.switch_dhcp_ip_map[network_id][subnet_id]
+    @df_base_app.register_event(l2.Subnet, model_constants.EVENT_DELETED)
+    def delete_subnet(self, subnet):
+        dhcp_ip = subnet.dhcp_ip
+        if dhcp_ip:
+            lswitch = self.db_store.get_one(
+                l2.LogicalSwitch(subnets=[subnet.id]),
+                l2.LogicalSwitch.get_index('subnet'))
+            network_id = lswitch.unique_key
+            self._remove_dhcp_unicast_match_flow(network_id, dhcp_ip)
 
     @df_base_app.register_event(l2.LogicalSwitch,
                                 model_constants.EVENT_DELETED)
     def remove_logical_switch(self, lswitch):
         network_id = lswitch.unique_key
         self._remove_dhcp_unicast_match_flow(network_id)
-        del self.switch_dhcp_ip_map[network_id]
 
     def _remove_dhcp_unicast_match_flow(self, network_id, ip_addr=None):
         parser = self.parser

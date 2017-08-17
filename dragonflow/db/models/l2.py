@@ -30,8 +30,13 @@ from dragonflow.db.models import secgroups
 LOG = log.getLogger(__name__)
 
 
+@mf.register_model
 @mf.construct_nb_db_model
-class Subnet(mf.ModelBase, mixins.Name, mixins.Topic):
+class Subnet(mf.ModelBase, mixins.Name, mixins.Topic, mixins.Version,
+             mixins.BasicEvents):
+
+    table_name = "lsubnet"
+
     enable_dhcp = fields.BoolField()
     dhcp_ip = df_fields.IpAddressField()
     cidr = df_fields.IpNetworkField()
@@ -45,6 +50,7 @@ class Subnet(mf.ModelBase, mixins.Name, mixins.Topic):
     indexes={
         'network_type': 'network_type',
         'physical_network': 'physical_network',
+        'subnet': 'subnets.id',
     },
 )
 class LogicalSwitch(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
@@ -54,26 +60,13 @@ class LogicalSwitch(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
 
     is_external = fields.BoolField()
     mtu = fields.IntField()
-    subnets = fields.ListField(Subnet)
+    subnets = df_fields.ReferenceListField(Subnet)
     segmentation_id = fields.IntField()
     # TODO(oanson) Validate network_type
     network_type = fields.StringField()
     # TODO(oanson) Validate physical_network
     physical_network = fields.StringField()
     qos_policy = df_fields.ReferenceField(qos.QosPolicy)
-
-    def find_subnet(self, subnet_id):
-        for subnet in self.subnets:
-            if subnet.id == subnet_id:
-                return subnet
-
-    def add_subnet(self, subnet):
-        self.subnets.append(subnet)
-
-    def remove_subnet(self, subnet_id):
-        for idx, subnet in enumerate(self.subnets):
-            if subnet.id == subnet_id:
-                return self.subnets.pop(idx)
 
 
 class AddressPair(models.Base):

@@ -40,7 +40,8 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
     def setUp(self):
         super(TestClassifierAppForVlan, self).setUp()
         fake_vlan_switch1 = l2.LogicalSwitch(
-                subnets=test_app_base.fake_lswitch_default_subnets,
+                subnets=[subnet.id for subnet in
+                         test_app_base.fake_lswitch_default_subnets],
                 network_type='vlan',
                 id='fake_vlan_switch1', mtu=1500,
                 is_external=False, segmentation_id=41,

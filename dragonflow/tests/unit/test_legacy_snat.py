@@ -39,7 +39,7 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
                                   gateway_ip="10.1.0.1",
                                   cidr="10.1.0.0/24",
                                   id="test_subnet10_1")]
-        self.lswitch = l2.LogicalSwitch(subnets=self.subnets,
+        self.lswitch = l2.LogicalSwitch(subnets=['test_subnet10_1'],
                                         unique_key=3,
                                         name='test_lswitch_1',
                                         is_external=False,
@@ -96,14 +96,14 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
 
     def test_update_router(self):
         self.test_create_router()
-        subnets2 = [l2.Subnet(dhcp_ip="10.2.0.2",
-                              name="private-subnet",
-                              enable_dhcp=True,
-                              topic="fake_tenant1",
-                              gateway_ip="10.2.0.1",
-                              cidr="10.2.0.0/24",
-                              id="test_subnet10_2")]
-        lswitch2 = l2.LogicalSwitch(subnets=subnets2,
+        subnet2 = l2.Subnet(dhcp_ip="10.2.0.2",
+                            name="private-subnet",
+                            enable_dhcp=True,
+                            topic="fake_tenant1",
+                            gateway_ip="10.2.0.1",
+                            cidr="10.2.0.0/24",
+                            id="test_subnet10_2")
+        lswitch2 = l2.LogicalSwitch(subnets=['test_subnet10_2'],
                                     unique_key=6,
                                     name='test_lswitch_2',
                                     is_external=False,
@@ -117,6 +117,7 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
                                               mac="fa:16:3e:50:96:f6",
                                               unique_key=7,
                                               id="fake_router_1_port2")]
+        self.controller.update(subnet2)
         self.controller.update(lswitch2)
         router = copy.copy(self.router)
         router.ports = router_ports2

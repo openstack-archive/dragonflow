@@ -52,12 +52,12 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.db_store.update(test_app_base.fake_local_port2)
 
     def _create_2nd_lswitch(self):
+        subnet = self._create_2nd_subnet()
         lswitch = l2.LogicalSwitch(id='lswitch2',
                                    unique_key=17,
                                    segmentation_id=17,
-                                   topic='fake_tenant1')
-        subnet = self._create_2nd_subnet()
-        lswitch.add_subnet(subnet)
+                                   topic='fake_tenant1',
+                                   subnets=[subnet.id])
         return lswitch
 
     def _create_2nd_subnet(self):

@@ -67,6 +67,19 @@ class TestDbConsistent(test_base.DFTestBase):
             timeout=10, sleep=1,
             exception=Exception('no rule for vm in l2 lookup table')
         )
+        subnet_id = '22222222-2222-2222-2222-222222222222'
+        df_subnet = l2.Subnet(
+            id=subnet_id,
+            topic=topic,
+            name='df_sn1',
+            enable_dhcp=True,
+            cidr='10.60.0.0/24',
+            dhcp_ip='10.60.0.2',
+            gateway_ip='10.60.0.1',
+            version=1)
+        self.nb_api.driver.create_key('lsubnet',
+                                      subnet_id, df_subnet.to_json(), topic)
+
         net_id = '11111111-1111-1111-1111-111111111111'
         df_network = l2.LogicalSwitch(
             id=net_id,
@@ -77,18 +90,9 @@ class TestDbConsistent(test_base.DFTestBase):
             is_external=False,
             mtu=1500,
             unique_key=1,
-            version=1)
+            version=1,
+            subnets=[subnet_id])
 
-        df_subnet = l2.Subnet(
-            id='22222222-2222-2222-2222-222222222222',
-            topic=topic,
-            name='df_sn1',
-            enable_dhcp=True,
-            cidr='10.60.0.0/24',
-            dhcp_ip='10.60.0.2',
-            gateway_ip='10.60.0.1')
-
-        df_network.add_subnet(df_subnet)
         df_network_json = df_network.to_json()
 
         self.nb_api.driver.create_key(
@@ -102,8 +106,11 @@ class TestDbConsistent(test_base.DFTestBase):
             exception=Exception('no goto dhcp rule for lswitch')
         )
 
+        df_subnet.dhcp_ip = '10.60.0.3'
+        df_subnet.version = 2
+        self.nb_api.driver.create_key('lsubnet',
+                                      subnet_id, df_subnet.to_json(), topic)
         df_network.version = 2
-        df_network.subnets[0].dhcp_ip = '10.60.0.3'
         df_network_json = df_network.to_json()
         self.nb_api.driver.set_key('lswitch', net_id, df_network_json, topic)
 
@@ -116,6 +123,7 @@ class TestDbConsistent(test_base.DFTestBase):
         )
 
         self.nb_api.driver.delete_key('lswitch', net_id, topic)
+        self.nb_api.driver.delete_key('lsubnet', subnet_id, topic)
         time.sleep(self.db_sync_time)
         utils.wait_until_true(
             lambda: self._check_no_lswitch_dhcp_rule(

@@ -28,7 +28,8 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
     def setUp(self):
         super(TestTunnelingApp, self).setUp()
         fake_gre_switch1 = l2.LogicalSwitch(
-                subnets=test_app_base.fake_lswitch_default_subnets,
+                subnets=[subnet.id for subnet in
+                         test_app_base.fake_lswitch_default_subnets],
                 mtu=1464,
                 unique_key=6,
                 topic='fake_tenant1',
