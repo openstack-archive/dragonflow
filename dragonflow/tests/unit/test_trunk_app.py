@@ -57,15 +57,14 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
                                    unique_key=17,
                                    segmentation_id=17,
                                    topic='fake_tenant1')
-        subnet = self._create_2nd_subnet()
-        lswitch.add_subnet(subnet)
         return lswitch
 
     def _create_2nd_subnet(self):
         return l2.Subnet(id='subnet2',
                          enable_dhcp=False,
                          cidr='192.168.18.0/24',
-                         topic='fake_tenant1')
+                         topic='fake_tenant1',
+                         lswitch='lswitch2')
 
     def _create_child_port(self):
         return l2.LogicalPort(id='lport2',
@@ -89,6 +88,8 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
     def test_create_child_segmentation(self):
         lswitch2 = self._create_2nd_lswitch()
         self.controller.update(lswitch2)
+        subnet2 = self._create_2nd_subnet()
+        self.controller.update(subnet2)
 
         lport = self._create_child_port()
         self.controller.update(lport)
