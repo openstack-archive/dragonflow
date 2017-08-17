@@ -25,7 +25,6 @@ from ryu import cfg as ryu_cfg
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as ctrl_const
-from dragonflow.controller import port_locator
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import service
 from dragonflow.controller import topology
@@ -85,18 +84,6 @@ class DfLocalController(object):
 
         self.sync_rate_limiter = df_utils.RateLimiter(
                 max_rate=1, time_unit=db_common.DB_SYNC_MINIMUM_INTERVAL)
-
-        l2.LogicalPort.register_created(self._port_created)
-        l2.LogicalPort.register_updated(self._port_updated)
-        l2.LogicalPort.register_deleted(self._port_deleted)
-
-        self._local_ports = set()
-        l2.LogicalPort.register_bind_local(self._port_bound_local)
-        l2.LogicalPort.register_unbind_local(self._port_unbound_local)
-
-        self._remote_ports = set()
-        l2.LogicalPort.register_bind_remote(self._port_bound_remote)
-        l2.LogicalPort.register_unbind_remote(self._port_unbound_remote)
 
     def run(self):
         self.vswitch_api.initialize(self.nb_api)
@@ -315,7 +302,6 @@ class DfLocalController(object):
     def _handle_db_change(self, update):
         action = update.action
         if action == ctrl_const.CONTROLLER_REINITIALIZE:
-            self._reset_ports()
             self.db_store.clear()
             self.vswitch_api.initialize(self.nb_api)
             self.sync()
@@ -343,54 +329,6 @@ class DfLocalController(object):
                     self.update(obj)
         else:
             LOG.warning('Unfamiliar update: %s', str(update))
-
-    def _reset_ports(self):
-        port_locator.reset()
-        self._local_ports.clear()
-        self._remote_ports.clear()
-
-    def _port_created(self, lport):
-        # FIXME (dimak) move to apps
-        if lport.is_local:
-            lport.emit_bind_local()
-        elif lport.is_remote:
-            lport.emit_bind_remote()
-
-    def _port_updated(self, lport, orig_lport):
-        # unbind
-        if orig_lport.is_local and not lport.is_local:
-            lport.emit_unbind_local()
-        elif orig_lport.is_remote and not lport.is_remote:
-            lport.emit_unbind_remote()
-
-        if lport.id in self._local_ports:
-            lport.emit_local_updated(orig_lport)
-        elif lport.id in self._remote_ports:
-            lport.emit_remote_updated(orig_lport)
-
-        # bind
-        if lport.is_local and not orig_lport.is_local:
-            lport.emit_bind_local()
-        elif lport.is_remote and not orig_lport.is_remote:
-            lport.emit_bind_remote()
-
-    def _port_deleted(self, lport):
-        if lport.id in self._local_ports:
-            lport.emit_unbind_local()
-        elif lport.id in self._remote_ports:
-            lport.emit_unbind_remote()
-
-    def _port_bound_local(self, lport):
-        self._local_ports.add(lport.id)
-
-    def _port_unbound_local(self, lport):
-        self._local_ports.remove(lport.id)
-
-    def _port_bound_remote(self, lport):
-        self._remote_ports.add(lport.id)
-
-    def _port_unbound_remote(self, lport):
-        self._remote_ports.remove(lport.id)
 
 
 def _has_basic_events(obj):
