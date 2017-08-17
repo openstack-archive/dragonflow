@@ -78,21 +78,23 @@ class TestDbConsistent(test_base.DFTestBase):
             mtu=1500,
             unique_key=1,
             version=1)
+        df_network_json = df_network.to_json()
+        self.nb_api.driver.create_key(l2.LogicalSwitch.table_name,
+                                      net_id, df_network_json, topic)
 
+        subnet_id = '22222222-2222-2222-2222-222222222222'
         df_subnet = l2.Subnet(
-            id='22222222-2222-2222-2222-222222222222',
+            id=subnet_id,
             topic=topic,
             name='df_sn1',
             enable_dhcp=True,
             cidr='10.60.0.0/24',
             dhcp_ip='10.60.0.2',
-            gateway_ip='10.60.0.1')
-
-        df_network.add_subnet(df_subnet)
-        df_network_json = df_network.to_json()
-
-        self.nb_api.driver.create_key(
-                'lswitch', net_id, df_network_json, topic)
+            gateway_ip='10.60.0.1',
+            version=1,
+            lswitch=net_id)
+        self.nb_api.driver.create_key(l2.Subnet.table_name,
+                                      subnet_id, df_subnet.to_json(), topic)
 
         time.sleep(self.db_sync_time)
         utils.wait_until_true(
@@ -102,8 +104,11 @@ class TestDbConsistent(test_base.DFTestBase):
             exception=Exception('no goto dhcp rule for lswitch')
         )
 
+        df_subnet.dhcp_ip = '10.60.0.3'
+        df_subnet.version = 2
+        self.nb_api.driver.set_key('lsubnet',
+                                   subnet_id, df_subnet.to_json(), topic)
         df_network.version = 2
-        df_network.subnets[0].dhcp_ip = '10.60.0.3'
         df_network_json = df_network.to_json()
         self.nb_api.driver.set_key('lswitch', net_id, df_network_json, topic)
 
@@ -115,6 +120,7 @@ class TestDbConsistent(test_base.DFTestBase):
             exception=Exception('no goto dhcp rule for lswitch')
         )
 
+        self.nb_api.driver.delete_key('lsubnet', subnet_id, topic)
         self.nb_api.driver.delete_key('lswitch', net_id, topic)
         time.sleep(self.db_sync_time)
         utils.wait_until_true(

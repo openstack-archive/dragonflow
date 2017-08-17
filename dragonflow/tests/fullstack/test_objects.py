@@ -402,10 +402,7 @@ class SubnetTestObj(object):
         return subnet['subnet']
 
     def get_subnet(self):
-        network = self.nb_api.get(l2.LogicalSwitch(id=self.network_id))
-        if not network:
-            return None
-        return network.find_subnet(self.subnet_id)
+        return self.nb_api.get(l2.Subnet(id=self.subnet_id))
 
     def exists(self):
         subnet = self.get_subnet()
