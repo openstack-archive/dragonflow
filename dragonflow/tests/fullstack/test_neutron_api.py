@@ -120,11 +120,10 @@ class TestNeutronAPIandDB(test_base.DFTestBase):
             ]
         }
         subnet.create(subnet_data)
-        lswitch = self.nb_api.get(l2.LogicalSwitch(id=network_id))
-        subnet = lswitch.subnets
+        db_subnet = subnet.get_subnet()
         self.assertEqual(subnet_data['host_routes'],
                          [host_route.to_struct()
-                          for host_route in subnet[0].host_routes])
+                          for host_route in db_subnet.host_routes])
 
     def test_create_delete_router(self):
         router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
