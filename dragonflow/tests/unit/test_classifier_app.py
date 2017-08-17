@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import copy
 import mock
 import testscenarios
 
@@ -40,13 +41,16 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
     def setUp(self):
         super(TestClassifierAppForVlan, self).setUp()
         fake_vlan_switch1 = l2.LogicalSwitch(
-                subnets=test_app_base.fake_lswitch_default_subnets,
                 network_type='vlan',
                 id='fake_vlan_switch1', mtu=1500,
                 is_external=False, segmentation_id=41,
                 topic='fake_tenant1', unique_key=2,
                 name='private')
         self.controller.update(fake_vlan_switch1)
+        subnet = copy.deepcopy(test_app_base.fake_lswitch_default_subnets[0])
+        subnet.id = 'fake_vlan_subnet1'
+        subnet.lswitch = 'fake_vlan_switch1'
+        self.controller.update(subnet)
         self.app = self.open_flow_app.dispatcher.apps['classifier']
 
     def test_classifier_for_vlan_port(self):

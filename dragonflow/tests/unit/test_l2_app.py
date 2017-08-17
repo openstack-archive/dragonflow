@@ -26,7 +26,6 @@ class TestL2App(test_app_base.DFAppTestBase):
     def setUp(self):
         super(TestL2App, self).setUp()
         fake_local_switch1 = l2.LogicalSwitch(
-                subnets=test_app_base.fake_lswitch_default_subnets,
                 network_type='local',
                 id='fake_local_switch1',
                 segmentation_id=41,
@@ -36,6 +35,9 @@ class TestL2App(test_app_base.DFAppTestBase):
                 is_external=False,
                 name='private')
         self.controller.update(fake_local_switch1)
+        subnet = test_app_base.fake_lswitch_default_subnets[0]
+        subnet.id = 'fake_local_subnet1'
+        subnet.lswitch = 'fake_local_switch1'
         self.app = self.open_flow_app.dispatcher.apps['l2']
 
     def test_multicast_local_port(self):

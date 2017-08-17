@@ -289,12 +289,11 @@ class DFMechDriver(api.MechanismDriver):
         subnet = context.current
         network = context.network.current
         net_id = subnet['network_id']
-        lswitch = self.nb_api.get(l2.LogicalSwitch(id=net_id,
-                                                   topic=network['tenant_id']))
-        lswitch.version = network['revision_number']
         df_subnet = neutron_l2.subnet_from_neutron_subnet(subnet)
-        lswitch.add_subnet(df_subnet)
-        self.nb_api.update(lswitch)
+        self.nb_api.create(df_subnet)
+        self.nb_api.update(l2.LogicalSwitch(
+            id=net_id, topic=network['tenant_id'],
+            version=network['revision_number']))
 
         LOG.info("DFMechDriver: create subnet %s", subnet['id'])
         return subnet
@@ -302,13 +301,12 @@ class DFMechDriver(api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SUBNET)
     def update_subnet_postcommit(self, context):
         new_subnet = context.current
+        subnet = neutron_l2.subnet_from_neutron_subnet(new_subnet)
+        self.nb_api.update(subnet)
         network = context.network.current
-        lswitch = self.nb_api.get(l2.LogicalSwitch(id=new_subnet['network_id'],
-                                                   topic=network['tenant_id']))
-        lswitch.version = network['revision_number']
-        subnet = lswitch.find_subnet(new_subnet['id'])
-        subnet.update(neutron_l2.subnet_from_neutron_subnet(new_subnet))
-        self.nb_api.update(lswitch)
+        self.nb_api.update(l2.LogicalSwitch(
+            id=network['id'], topic=network['tenant_id'],
+            version=network['revision_number']))
 
         LOG.info("DFMechDriver: update subnet %s", new_subnet['id'])
         return new_subnet
@@ -324,11 +322,10 @@ class DFMechDriver(api.MechanismDriver):
                                                net_id)
 
         try:
-            lswitch = self.nb_api.get(l2.LogicalSwitch(
-                id=net_id, topic=network['tenant_id']))
-            lswitch.remove_subnet(subnet_id)
-            lswitch.version = network['revision_number']
-            self.nb_api.update(lswitch)
+            self.nb_api.delete(l2.Subnet(id=subnet_id))
+            self.nb_api.update(l2.LogicalSwitch(
+                id=net_id, topic=network['tenant_id'],
+                version=network['revision_number']))
         except df_exceptions.DBKeyNotFound:
             LOG.debug("network %s is not found in DB, might have "
                       "been deleted concurrently", net_id)
