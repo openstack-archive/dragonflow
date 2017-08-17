@@ -29,16 +29,6 @@ from dragonflow.db.models import secgroups
 LOG = log.getLogger(__name__)
 
 
-@mf.construct_nb_db_model
-class Subnet(mf.ModelBase, mixins.Name, mixins.Topic):
-    enable_dhcp = fields.BoolField()
-    dhcp_ip = df_fields.IpAddressField()
-    cidr = df_fields.IpNetworkField()
-    gateway_ip = df_fields.IpAddressField()
-    dns_nameservers = df_fields.ListOfField(df_fields.IpAddressField())
-    host_routes = fields.ListField(host_route.HostRoute)
-
-
 @mf.register_model
 @mf.construct_nb_db_model(
     indexes={
@@ -53,7 +43,6 @@ class LogicalSwitch(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
 
     is_external = fields.BoolField()
     mtu = fields.IntField()
-    subnets = fields.ListField(Subnet)
     segmentation_id = fields.IntField()
     # TODO(oanson) Validate network_type
     network_type = fields.StringField()
@@ -61,18 +50,25 @@ class LogicalSwitch(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
     physical_network = fields.StringField()
     qos_policy = df_fields.ReferenceField(qos.QosPolicy)
 
-    def find_subnet(self, subnet_id):
-        for subnet in self.subnets:
-            if subnet.id == subnet_id:
-                return subnet
 
-    def add_subnet(self, subnet):
-        self.subnets.append(subnet)
+@mf.register_model
+@mf.construct_nb_db_model(
+    indexes={
+        'lswitch': 'lswitch.id',
+    },
+)
+class Subnet(mf.ModelBase, mixins.Name, mixins.Topic, mixins.Version,
+             mixins.BasicEvents):
 
-    def remove_subnet(self, subnet_id):
-        for idx, subnet in enumerate(self.subnets):
-            if subnet.id == subnet_id:
-                return self.subnets.pop(idx)
+    table_name = "lsubnet"
+
+    enable_dhcp = fields.BoolField()
+    dhcp_ip = df_fields.IpAddressField()
+    cidr = df_fields.IpNetworkField()
+    gateway_ip = df_fields.IpAddressField()
+    dns_nameservers = df_fields.ListOfField(df_fields.IpAddressField())
+    host_routes = fields.ListField(host_route.HostRoute)
+    lswitch = df_fields.ReferenceField(LogicalSwitch, required=True)
 
 
 class AddressPair(models.Base):
