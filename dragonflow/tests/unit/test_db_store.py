@@ -433,3 +433,10 @@ class TestDbStore(tests_base.BaseTestCase):
         self.db_store.update(o1)
         self.db_store.update(o2)
         self.assertTrue(o1._is_object_stale)
+
+    def test_mark_deleted_object_as_stale(self):
+        o1 = ModelTest(id='id1', topic='topic')
+        self.db_store.update(o1)
+        self.assertFalse(o1._is_object_stale)
+        self.db_store.delete(ModelTest(id='id1'))
+        self.assertTrue(o1._is_object_stale)
