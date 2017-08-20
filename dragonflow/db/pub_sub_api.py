@@ -43,6 +43,7 @@ def pack_message(message):
 
 
 def unpack_message(message):
+    print("trying to unpack message {}".format(message))
     entry = None
     try:
         entry = msgpack.unpackb(message, encoding='utf-8')
