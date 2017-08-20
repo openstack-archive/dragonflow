@@ -55,7 +55,7 @@ class PubSubTestBase(test_base.DFTestBase):
         subscriber.register_topic(db_common.SEND_ALL_TOPIC)
         uri = '%s://%s:%s' % (
             cfg.CONF.df.publisher_transport,
-            '127.0.0.1',
+            cfg.CONF.host,
             cfg.CONF.df.publisher_port
         )
         subscriber.register_listen_address(uri)
