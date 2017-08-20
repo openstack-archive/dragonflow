@@ -143,7 +143,8 @@ class PublisherAgentBase(PublisherApi):
 
         LOG.debug("Sending %s to %s", update, topic)
 
-        data = pack_message(update.to_dict())
+        # data = pack_message(update.to_dict())
+        data = update.to_dict()
         self._send_event(data, topic)
 
 

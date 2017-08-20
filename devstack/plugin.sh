@@ -140,6 +140,12 @@ if is_service_enabled df-zmq-publisher-service ; then
     source $DEST/dragonflow/devstack/zmq_pubsub_driver
 fi
 
+if is_service_enabled df-etcd-pubsub-service ; then
+    DF_PUB_SUB="True"
+    DF_PUB_SUB_USE_MULTIPROC="False"
+    source $DEST/dragonflow/devstack/etcd_pubsub_driver
+fi
+
 if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
     DF_PUB_SUB="True"
     DF_PUB_SUB_USE_MULTIPROC="False"

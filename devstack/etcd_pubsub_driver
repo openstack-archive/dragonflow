@@ -1,0 +1,7 @@
+#!/bin/bash
+
+function configure_pubsub_service_plugin {
+    NEUTRON_CONF=${NEUTRON_CONF:-"/etc/neutron/neutron.conf"}
+    PUB_SUB_DRIVER=${PUB_SUB_DRIVER:-"etcd_pubsub_driver"}
+    iniset $DRAGONFLOW_CONF df pub_sub_driver $PUB_SUB_DRIVER
+}
