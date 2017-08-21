@@ -10,10 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import copy
+import testtools
 
 from jsonmodels import fields
 import mock
 
+from dragonflow.common import exceptions
 from dragonflow.db import db_store
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
@@ -179,3 +181,9 @@ class TestObjectProxy(tests_base.BaseTestCase):
         self.assertEqual(model_test_ref, model_test_ref_deepcopy)
         self.assertNotEqual(id(model_test_ref), id(model_test_ref_copy))
         self.assertNotEqual(id(model_test_ref), id(model_test_ref_deepcopy))
+
+    def test_non_existing_reference(self):
+        reffing_model = RefferingModel(id='2', model_test='1')
+        self.db_store.get_one.return_value = None
+        with testtools.ExpectedException(exceptions.ReferencedObjectNotFound):
+            topic = reffing_model.model_test.topic  # noqa
