@@ -12,8 +12,14 @@
 import copy
 import six
 
+from oslo_log import log
+
 from dragonflow._i18n import _
+from dragonflow.common import exceptions
 from dragonflow.db import db_store
+
+
+LOG = log.getLogger(__name__)
 
 
 class _ModelProxyBase(object):
@@ -75,7 +81,12 @@ class _ModelProxyBase(object):
 
     def __getattr__(self, name):
         if name != '_obj':
-            return getattr(self.get_object(), name)
+            obj = self.get_object()
+            if obj is None:
+                LOG.error('%s with ID %s is not cached',
+                          self.get_proxied_model().__name__, self.id)
+                raise exceptions.ReferencedObjectNotFound(proxy=self)
+            return getattr(obj, name)
 
     def __copy__(self):
         return self.__class__(self._id)
