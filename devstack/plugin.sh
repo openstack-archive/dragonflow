@@ -495,6 +495,30 @@ function stop_df_bgp_service {
 
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
+
+    if is_plugin_enabled octavia; then
+        # Only define this function if dragonflow is used
+        function octavia_create_network_interface_device {
+            INTERFACE=$1
+            MGMT_PORT_ID=$2
+            MGMT_PORT_MAC=$3
+            if [ -z "$INTERFACE" ]; then
+                die "octavia_create_network_interface_device for dragonflow: Interface not given (1st parameter)"
+            fi
+            if [ -z "$MGMT_PORT_ID" ]; then
+                die "octavia_create_network_interface_device for dragonflow: Management port ID not given (2nd parameter)"
+            fi
+            if [ -z "$MGMT_PORT_MAC" ]; then
+                die "octavia_create_network_interface_device for dragonflow: Management port MAC not given (3rd parameter)"
+            fi
+            sudo ovs-vsctl -- --may-exist add-port $INTEGRATION_BRIDGE $INTERFACE -- set Interface $INTERFACE type=internal -- set Interface $INTERFACE external-ids:iface-status=active -- set Interface $INTERFACE external-ids:attached-mac=$MGMT_PORT_MAC -- set Interface $INTERFACE external-ids:iface-id=$MGMT_PORT_ID -- set Interface $INTERFACE external-ids:skip_cleanup=true
+        }
+
+        function octavia_delete_network_interface_device {
+            : # Do nothing
+        }
+    fi
+
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
         if [[ "$OFFLINE" != "True" ]]; then
             if ! is_neutron_enabled ; then
