@@ -136,6 +136,11 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
         return router
 
+    def router_supports_scheduling(self, context, router_id):
+        # FIXME (dimak) Until DF L3 flavor is implemented, all routers are
+        # implemented by Dragonflow, therefore don't need scheduling.
+        return False
+
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def delete_router(self, context, router_id):
         ret_val = super(DFL3RouterPlugin, self).delete_router(context,
