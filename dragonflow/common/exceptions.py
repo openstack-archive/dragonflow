@@ -52,6 +52,10 @@ class DBKeyNotFound(DragonflowException):
     message = _('DB Key not found, key=%(key)s')
 
 
+class ReferencedObjectNotFound(DragonflowException):
+    message = _('Referenced object not found. proxy=%(proxy)s')
+
+
 class CommandError(DragonflowException):
     message = _("Non-existent fields are specified: %(non_existent_fields)s")
 
