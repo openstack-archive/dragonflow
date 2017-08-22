@@ -261,7 +261,7 @@ class DNATApp(df_base_app.DFlowApp):
         # install floatingip arp responder flow rules
         if floatingip.floating_ip_address.version != n_const.IP_VERSION_4:
             return
-        floating_lport = self._get_floating_lport(floatingip)
+        floating_lport = floatingip.floating_lport
         arp_responder.ArpResponder(self,
                                    None,
                                    floatingip.floating_ip_address,
@@ -272,7 +272,7 @@ class DNATApp(df_base_app.DFlowApp):
         # install floatingip arp responder flow rules
         if floatingip.floating_ip_address.version != n_const.IP_VERSION_4:
             return
-        floating_lport = self._get_floating_lport(floatingip)
+        floating_lport = floatingip.floating_lport
         arp_responder.ArpResponder(self,
                                    None,
                                    floatingip.floating_ip_address,
@@ -306,8 +306,7 @@ class DNATApp(df_base_app.DFlowApp):
             self._get_vm_port_info(floatingip)
         vm_gateway_mac = self._get_vm_gateway_info(floatingip)
         if vm_gateway_mac is None:
-            floating_lport = self._get_floating_lport(floatingip)
-            vm_gateway_mac = floating_lport.mac
+            vm_gateway_mac = floatingip.floating_lport.mac
         actions = [
             parser.OFPActionDecNwTtl(),
             parser.OFPActionSetField(eth_src=vm_gateway_mac),
@@ -371,15 +370,8 @@ class DNATApp(df_base_app.DFlowApp):
         match.set_ipv4_src(utils.ipv4_text_to_int(vm_ip))
         return match
 
-    def _get_floating_lport(self, fip):
-        # FIXME(dimak) Floating lports are not in DbStore because local
-        # controller ignores them, we should change this some-time
-        # FIXME (dimak) cache until above is done
-        return self.nb_api.get(l2.LogicalPort(id=fip.floating_lport.id))
-
     def _get_external_subnet(self, fip):
-        floating_lport = self._get_floating_lport(fip)
-        subnets = floating_lport.lswitch.subnets
+        subnets = fip.floating_lport.lswitch.subnets
         for subnet in subnets:
             if fip.floating_ip_address in subnet.cidr:
                 return subnet
@@ -388,7 +380,7 @@ class DNATApp(df_base_app.DFlowApp):
         return self._get_external_subnet(fip).cidr
 
     def _install_dnat_egress_rules(self, floatingip, network_bridge_mac):
-        fip_mac = self._get_floating_lport(floatingip).mac
+        fip_mac = floatingip.floating_lport.mac
         fip_ip = floatingip.floating_ip_address
         parser = self.parser
         ofproto = self.ofproto
@@ -463,8 +455,7 @@ class DNATApp(df_base_app.DFlowApp):
         self._remove_dnat_egress_rules(floatingip)
 
     def _install_ingress_nat_rules(self, floatingip):
-        floating_lport = self._get_floating_lport(floatingip)
-        network_id = floating_lport.lswitch.unique_key
+        network_id = floatingip.floating_lport.lswitch.unique_key
         # TODO(Fei Rao) check the network type
         if self._is_first_external_network(network_id):
             # if it is the first floating ip on this node, then
@@ -502,8 +493,7 @@ class DNATApp(df_base_app.DFlowApp):
         self._increase_external_network_count(network_id)
 
     def _remove_ingress_nat_rules(self, floatingip):
-        floating_lport = self._get_floating_lport(floatingip)
-        network_id = floating_lport.lswitch.unique_key
+        network_id = floatingip.floating_lport.lswitch.unique_key
         if self._is_last_external_network(network_id):
             # if it is the last floating ip on this node, then
             # remove the common goto flow rule.
