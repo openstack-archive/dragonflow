@@ -11,7 +11,6 @@
 #    under the License.
 
 from jsonmodels import fields
-from neutron_lib import constants
 
 import dragonflow.db.field_types as df_fields
 import dragonflow.db.model_framework as mf
@@ -56,9 +55,6 @@ class FloatingIp(mf.ModelBase, mixins.Version, mixins.Topic,
                  mixins.UniqueKey, mixins.Name, mixins.BasicEvents):
     table_name = 'floatingip'
 
-    status = df_fields.EnumField((constants.FLOATINGIP_STATUS_ACTIVE,
-                                  constants.FLOATINGIP_STATUS_DOWN,
-                                  constants.FLOATINGIP_STATUS_ERROR))
     floating_ip_address = df_fields.IpAddressField()
     fixed_ip_address = df_fields.IpAddressField()
     lport = df_fields.ReferenceField(l2.LogicalPort)
