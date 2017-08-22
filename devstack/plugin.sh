@@ -290,12 +290,6 @@ function configure_df_plugin {
         iniset $DRAGONFLOW_CONF df_snat_app external_network_bridge "$PUBLIC_BRIDGE"
     fi
 
-    if [[ "$DF_PUB_SUB" == "True" ]]; then
-        DF_SELECTIVE_TOPO_DIST=${DF_SELECTIVE_TOPO_DIST:-"True"}
-    else
-        DF_SELECTIVE_TOPO_DIST="False"
-    fi
-
     iniset $DRAGONFLOW_CONF df enable_selective_topology_distribution \
                             "$DF_SELECTIVE_TOPO_DIST"
     configure_df_metadata_service
