@@ -169,6 +169,7 @@ else
     source $DEST/dragonflow/devstack/ovs_setup.sh
 fi
 
+source $DEST/dragonflow/devstack/functions.sh
 # Entry Points
 # ------------
 
