@@ -12,6 +12,8 @@
         - dragonflow-dsvm-fullstack-etcd-zmq
         - dragonflow-openstack-ansible-cross-repo:
             voting: false
+        - dragonflow-grenade:
+            voting: false
     gate:
       jobs:
         - dragonflow-dsvm-fullstack-redis
@@ -79,3 +81,17 @@
     vars:
       tox_env: dragonflow
       osa_test_repo: openstack/openstack-ansible-os_neutron
+
+- job:
+    name: dragonflow-grenade
+    parent: legacy-dsvm-base
+    run: zuul/tempest-dsvm-dragonflow/run.yaml
+    post-run: zuul/tempest-dsvm-dragonflow/post.yaml
+    timeout: 10800
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/dragonflow
+      - openstack/neutron
+      - openstack/networking-sfc
+      - openstack/neutron-dynamic-routing
+      - openstack/grenade
