@@ -724,6 +724,14 @@ class TestL3App(test_base.DFTestBase):
                 ]
             ),
             app_testing_objects.PortPolicyRule(
+                # Ignore ARP requests from active port detection app for
+                # ports with allowed_address_pairs
+                app_testing_objects.RyuARPRequestFilter(),
+                actions=[
+                    ignore_action
+                ]
+            ),
+            app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
                 app_testing_objects.RyuIPv6Filter(),
                 actions=[
@@ -797,9 +805,13 @@ class TestL3App(test_base.DFTestBase):
         dst_mac = ether.src
         ether.src = src_mac
         ether.dst = dst_mac
-        self.assertEqual(
+
+        lport2 = self.port2.port.get_logical_port()
+        self.assertIn(
             src_mac,
-            self.port2.port.get_logical_port().mac
+            lport2.macs + [
+                p.mac_address for p in lport2.allowed_address_pairs or ()
+            ]
         )
         router_interface = self.router.router_interfaces[
             self.subnet2.subnet_id
@@ -817,9 +829,11 @@ class TestL3App(test_base.DFTestBase):
         dst_ip = ip.src
         ip.src = src_ip
         ip.dst = dst_ip
-        self.assertEqual(
+        self.assertIn(
             netaddr.IPAddress(src_ip),
-            self.port2.port.get_logical_port().ip
+            lport2.ips + [
+                p.ip_address for p in lport2.allowed_address_pairs or ()
+            ]
         )
         self.assertEqual(
             netaddr.IPAddress(dst_ip),
@@ -859,6 +873,32 @@ class TestL3App(test_base.DFTestBase):
 
     def test_icmp_ping_pong(self):
         self._test_icmp_address(self.port2.port.get_logical_port().ip)
+
+    def test_icmp_ping_pong_allowed_address_pair(self):
+        port3 = objects.PortTestObj(self.neutron, self.nb_api)
+        port3.create(
+            port={
+                'admin_state_up': True,
+                'fixed_ips': [{
+                    'subnet_id': self.subnet2.subnet.subnet_id,
+                }],
+                'network_id': self.subnet2.network.network_id,
+            },
+        )
+
+        try:
+            lport3 = port3.get_logical_port()
+            self.port2.port.update(
+                {
+                    'allowed_address_pairs': [
+                        {'ip_address': lport3.ip, 'mac_address': lport3.mac},
+                    ],
+                },
+            )
+            lport2 = self.port2.port.get_logical_port()
+            self._test_icmp_address(lport2.allowed_address_pairs[0].ip_address)
+        finally:
+            port3.close()
 
     def test_icmp_router_interfaces(self):
         self._test_icmp_address('192.168.12.1')
