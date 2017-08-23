@@ -34,6 +34,7 @@ METADATA_ROUTE_TABLE_ID = '2'
 def environment_setup():
     bridge = cfg.CONF.df.integration_bridge
     interface = cfg.CONF.df_metadata.metadata_interface
+    port = cfg.CONF.df_metadata.port
     if ip_lib.device_exists(interface):
         LOG.info("Device %s already exists", interface)
         # Destroy the environment when the device exists.
@@ -56,6 +57,10 @@ def environment_setup():
     utils.execute(cmd, run_as_root=True)
 
     cmd = ["ip", "rule", "add", "from", ip, "table", METADATA_ROUTE_TABLE_ID]
+    utils.execute(cmd, run_as_root=True)
+
+    cmd = ["iptables", '-I', 'INPUT', '-i', interface, '-p', 'tcp', '--dport',
+           str(port), '-j', 'ACCEPT']
     utils.execute(cmd, run_as_root=True)
 
 
