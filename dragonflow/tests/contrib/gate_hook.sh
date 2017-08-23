@@ -77,14 +77,21 @@ EOF
     fi
 }
 
-if [ "$VENV" == "fullstack" ]; then
-    GATE_DEST=$BASE/new
-    DEVSTACK_PATH=$GATE_DEST/devstack
-elif [ "$VENV" == "tempest" ]; then
+function dragonflow_prepare_tempest_gate {
     sudo apt-get update
     sudo apt-get install -y --reinstall apparmor
     configure_docker_test_env
     check_apparmor_for_docker
+}
+
+if [ "$VENV" == "fullstack" ]; then
+    GATE_DEST=$BASE/new
+    DEVSTACK_PATH=$GATE_DEST/devstack
+elif [ "$VENV" == "tempest" ]; then
+    dragonflow_prepare_tempest_gate
+elif [ "$VENV" == "grenade" ]; then
+    dragonflow_prepare_tempest_gate
+    export GRENADE_PLUGINRC="enable_grenade_plugin dragonflow https://git.openstack.org/openstack/dragonflow"
 else
     echo >&2 "Unknown gate-hook environment: $VENV"
     exit 1
