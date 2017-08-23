@@ -85,6 +85,9 @@ elif [ "$VENV" == "tempest" ]; then
     sudo apt-get install -y --reinstall apparmor
     configure_docker_test_env
     check_apparmor_for_docker
+elif [ "$VENV" == "grenade" ]; then
+    GRENADE_PLUGINRC+="enable_grenade_plugin dragonflow https://git.openstack.org/openstack/dragonflow"
+    export GRENADE_PLUGINRC
 else
     echo >&2 "Unknown gate-hook environment: $VENV"
     exit 1
