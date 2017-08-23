@@ -10,343 +10,316 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import re
-
+import crc16
 from oslo_log import log
+import re
 from redis import client as redis_client
 from redis import exceptions
+import six
 
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
-from dragonflow.db.drivers import redis_mgt
+
 
 LOG = log.getLogger(__name__)
 
+REDIS_NSLOTS = 16384
+BATCH_KEY_AMOUNT = 50
+RETRY_COUNT = 3
+
+
+def key2slot(key):
+    k = six.text_type(key)
+    start = k.find('{')
+    if start > -1:
+        end = k.find('}', start + 1)
+        if end > -1 and end != start + 1:
+            k = k[start + 1:end]
+    return crc16.crc16xmodem(k.encode('UTF-8')) % REDIS_NSLOTS
+
+
+class Node(object):
+    def __init__(self, ip, port, node_id=None):
+        self.ip = ip
+        self.port = port
+        self.node_id = node_id
+        self._client = None
+
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = redis_client.StrictRedis(host=self.ip,
+                                                    port=self.port)
+        return self._client
+
+    @property
+    def key(self):
+        return (self.ip, self.port)
+
+
+class Cluster(object):
+    def __init__(self, nodes):
+        self._is_cluster = True
+        self._configured_nodes = (Node(*node) for node in nodes)
+        self._nodes_by_host = {}
+        self._nodes_by_slot = [None] * REDIS_NSLOTS
+        self._covered = False
+
+    def get_node(self, key):
+        if self._is_cluster:
+            key_node = self._nodes_by_slot[key2slot(key)]
+            return key_node
+        else:
+            return self._nodes_by_host
+
+    def get_node_by_host(self, ip, port):
+        if self._is_cluster:
+            return self._nodes_by_host[(ip, port)]
+        else:
+            return self._nodes_by_host
+
+    def is_cluster_covered(self):
+        try:
+            self._nodes_by_slot.index(None)
+        except ValueError:
+            return True
+        else:
+            return False
+
+    def populate_cluster(self):
+        for node in self._configured_nodes:
+            client = node.client
+            try:
+                slots = client.execute_command('CLUSTER', 'SLOTS')
+            except exceptions.ConnectionError:
+                LOG.exception('Error connecting to cluster node %s:%s',
+                              node.ip, node.port)
+                continue
+            except exceptions.ResponseError as e:
+                if str(e).find('cluster support disabled') != -1:
+                    LOG.info('Using a single non-cluster node %s:%s',
+                             node.ip, node.port)
+                    self._nodes_by_host = node
+                    self._is_cluster = False
+                    return
+                LOG.exception('Response error from node %s:%s')
+            for slot_info in slots:
+                (range_begin, range_end, master_info) = slot_info[0:3]
+                master = Node(*master_info)
+                self._nodes_by_host[master.key] = master
+                for slot in range(int(range_begin), int(range_end) + 1):
+                    self._nodes_by_slot[slot] = master
+            if self.is_cluster_covered():
+                self._covered = True
+                break
+        if not self._covered:
+            LOG.error('Redis cluster not covering slot space')
+        for node in self._nodes_by_host.values():
+            LOG.info('Cluster node: %s:%s', node.ip, node.port)
+
+    @property
+    def nodes(self):
+        return self._nodes_by_host.items()
+
 
 class RedisDbDriver(db_api.DbApi):
-
-    RequestRetryTimes = 5
-
-    def __init__(self):
-        super(RedisDbDriver, self).__init__()
-        self.clients = {}
-        self.remote_server_lists = []
-        self.redis_mgt = None
-        self.is_neutron_server = False
+    def __init__(self, *args, **kwargs):
+        super(RedisDbDriver, self).__init__(*args, **kwargs)
+        self._table_strip_re = re.compile(b'^{.+}(.+)$')
 
     def initialize(self, db_ip, db_port, **args):
-        # get remote ip port list
-        self.redis_mgt = redis_mgt.RedisMgt.get_instance(db_ip, db_port)
-        self._update_server_list()
+        nodes = self._config_to_nodes(args['config'].remote_db_hosts)
+        self._cluster = Cluster(nodes)
+        self._cluster.populate_cluster()
 
-    def _update_server_list(self):
-        if self.redis_mgt is not None:
-            self.remote_server_lists = self.redis_mgt.get_master_list()
-            self.clients = {}
-            for remote in self.remote_server_lists:
-                remote_ip_port = remote['ip_port']
-                ip_port = remote_ip_port.split(':')
-                self.clients[remote_ip_port] = \
-                    redis_client.StrictRedis(host=ip_port[0], port=ip_port[1])
+    @staticmethod
+    def _config_to_nodes(hosts_list):
+        def host_to_node(host):
+            (ip, port) = host.split(':')
+            return (ip, int(port))
 
-    def create_table(self, table):
-        # Not needed in redis
-        pass
+        return map(host_to_node, hosts_list)
 
-    def delete_table(self, table):
-        local_key = self._uuid_to_key(table, '*', '*')
-        for host, client in self.clients.items():
-            local_keys = client.keys(local_key)
-            if len(local_keys) > 0:
-                for tmp_key in local_keys:
-                    try:
-                        self._execute_cmd("DEL", tmp_key)
-                    except Exception:
-                        LOG.exception("exception when delete_table: "
-                                      "%(key)s ", {'key': local_key})
+    @staticmethod
+    def _key_name(table, topic, key):
+        return '{%s.%s}%s' % (table, topic or '', key)
 
-    def _handle_db_conn_error(self, ip_port, local_key=None):
-        self.redis_mgt.remove_node_from_master_list(ip_port)
-        self._update_server_list()
-
-        if local_key is not None:
-            LOG.exception("update server list, key: %(key)s",
-                          {'key': local_key})
-
-    def _sync_master_list(self):
-        if self.is_neutron_server:
-            result = self.redis_mgt.redis_get_master_list_from_syncstring(
-                redis_mgt.RedisMgt.global_sharedlist.raw)
-            if result:
-                self._update_server_list()
-
-    def _gen_args(self, local_key, value):
-        args = []
-        args.append(local_key)
-        if value is not None:
-            args.append(value)
-
-        return args
-
-    def _is_oper_valid(self, oper):
-        if oper == 'SET' or oper == 'GET' or oper == 'DEL':
-            return True
-
-        return False
-
-    def _update_client(self, local_key):
-        self._sync_master_list()
-        ip_port = self.redis_mgt.get_ip_by_key(local_key)
-        client = self._get_client(local_key, ip_port)
-        return client
-
-    def _execute_cmd(self, oper, local_key, value=None):
-        if not self._is_oper_valid(oper):
-            LOG.warning("invalid oper: %(oper)s",
-                        {'oper': oper})
-            return None
-
-        ip_port = self.redis_mgt.get_ip_by_key(local_key)
-        client = self._get_client(local_key, ip_port)
-        if client is None:
-            return None
-
-        arg = self._gen_args(local_key, value)
-
-        ttl = self.RequestRetryTimes
-        asking = False
-        alreadysync = False
-        while ttl > 0:
-            ttl -= 1
+    def _key_command(self, command, key, *args):
+        node = self._cluster.get_node(key)
+        ask = False
+        retry = 0
+        command_pcs = [command, key]
+        command_pcs.extend(args)
+        while retry < RETRY_COUNT:
+            LOG.debug('Executing command "%s" (retry %s)', command_pcs, retry)
+            if node is None:
+                LOG.error('Error finding node for key %s in cluster', key)
+                self._cluster.populate_cluster()
             try:
-                if asking:
-                    client.execute_command('ASKING')
-                    asking = False
-
-                return client.execute_command(oper, *arg)
-            except exceptions.ConnectionError as e:
-                if not alreadysync:
-                    client = self._update_client(local_key)
-                    alreadysync = True
-                    continue
-                self._handle_db_conn_error(ip_port, local_key)
-                LOG.exception("connection error while sending "
-                              "request to db: %(e)s", {'e': e})
-                raise e
+                if ask:
+                    node.client.execute_command('ASKING')
+                    ask = False
+                return node.client.execute_command(command_pcs)
             except exceptions.ResponseError as e:
-                if not alreadysync:
-                    client = self._update_client(local_key)
-                    alreadysync = True
-                    continue
-                resp = str(e).split(' ')
-                if 'ASK' in resp[0]:
-                    # one-time flag to force a node to serve a query about an
-                    # IMPORTING slot
-                    asking = True
-
-                if 'ASK' in resp[0] or 'MOVE' in resp[0]:
-                    # MOVED/ASK XXX X.X.X.X:X
-                    # do redirection
-                    client = self._get_client(host=resp[2])
-                    if client is None:
-                        # maybe there is a fast failover
-                        self._handle_db_conn_error(ip_port, local_key)
-                        LOG.exception("no client available: "
-                                      "%(ip_port)s, %(e)s",
-                                      {'ip_port': resp[2], 'e': e})
-                        raise e
-                else:
-                    LOG.exception("error not handled: %(e)s",
-                                  {'e': e})
-                    raise e
-            except Exception as e:
-                if not alreadysync:
-                    client = self._update_client(local_key)
-                    alreadysync = True
-                    continue
-                self._handle_db_conn_error(ip_port, local_key)
-                LOG.exception("exception while sending request to "
-                              "db: %(e)s", {'e': e})
-                raise e
-
-    def _find_key_without_topic(self, table, key):
-        local_key = self._uuid_to_key(table, key, '*')
-        self._sync_master_list()
-        for client in self.clients.values():
-            local_keys = client.keys(local_key)
-            if len(local_keys) == 1:
-                return local_keys[0]
-
-    def get_key(self, table, key, topic=None):
-        if topic:
-            local_key = self._uuid_to_key(table, key, topic)
-        else:
-            local_key = self._find_key_without_topic(table, key)
-            if local_key is None:
-                raise df_exceptions.DBKeyNotFound(key=key)
-
-        try:
-            res = self._execute_cmd("GET", local_key)
-            if res is not None:
-                return res
-        except Exception:
-            LOG.exception("exception when get_key: %(key)s",
-                          {'key': local_key})
+                (reason, slot, ip_port) = str(e).split(' ')
+                (ip, port) = ip_port.split(':')
+                if reason == 'MOVED':
+                    self._cluster.populate_cluster()
+                    node = self._cluster.get_node(key)
+                if reason == 'ASK':
+                    node = self._cluster.get_node_by_host(ip, port)
+                    ask = True
+            except exceptions.ConnectionError as e:
+                LOG.exception('Connection to node %s:%s failed, refreshing',
+                              node.ip, node.port)
+                self._cluster.populate_cluster()
+                node = self._cluster.get_node(key)
+            retry += 1
 
         raise df_exceptions.DBKeyNotFound(key=key)
 
+    def create_table(self, table):
+        pass
+
+    def delete_table(self, table):
+        self._bulk_operation(table, None, 'DEL')
+
+    def get_key(self, table, key, topic=None):
+        real_key = self._key_name(table, topic, key)
+        value = self._key_command('GET', real_key)
+        if value is None:
+            raise df_exceptions.DBKeyNotFound(key=key)
+        return value
+
     def set_key(self, table, key, value, topic=None):
-        local_key = self._uuid_to_key(table, key, topic)
-
-        try:
-            res = self._execute_cmd("SET", local_key, value)
-            if res is None:
-                res = 0
-
-            return res
-        except Exception:
-            LOG.exception("exception when set_key: %(key)s",
-                          {'key': local_key})
+        real_key = self._key_name(table, topic, key)
+        self._key_command('SET', real_key, value)
 
     def create_key(self, table, key, value, topic=None):
-        return self.set_key(table, key, value, topic)
+        self.set_key(table, key, value, topic)
 
     def delete_key(self, table, key, topic=None):
-        if topic:
-            local_key = self._uuid_to_key(table, key, topic)
-        else:
-            local_key = self._find_key_without_topic(table, key)
-            if local_key is None:
-                raise df_exceptions.DBKeyNotFound(key=key)
+        real_key = self._key_name(table, topic, key)
+        self._key_command('DEL', real_key)
 
-        try:
-            res = self._execute_cmd("DEL", local_key)
-            if res is None:
-                res = 0
+    def _bulk_execute(self, node, keys, command, args=()):
+        pipeline = node.client.pipeline(transaction=False)
+        retry = 0
+        while retry < RETRY_COUNT:
+            for key in keys:
+                command_str = self._args_to_cmd(command, key, args)
+                pipeline.execute(command_str)
+            try:
+                values = pipeline.execute(raise_on_error=False)
+            except exceptions.ConnectionError:
+                retry += 1
+            else:
+                return zip(keys, values)
+        return False
 
-            return res
-        except Exception:
-            LOG.exception("exception when delete_key: %(key)s",
-                          {'key': local_key})
+    def _bulk_operation(self, table, topic, command, args=(), entry_cb=None,
+                        stop_on_fail=False):
+        def is_error(value):
+            return issubclass(value, exceptions.RedisError)
+
+        (pattern, nodes) = self._query_info(table, topic)
+        success = True
+        for node in nodes:
+            node_failed_keys = set()
+            node_keys = self._get_all_keys_from_node(node, pattern)
+            bulk_begin = 0
+            bulk_end = BATCH_KEY_AMOUNT
+            while bulk_begin < len(node_keys):
+                result = self._bulk_execute(
+                    node, node_keys[bulk_begin:bulk_end], command, args)
+                if result is False:
+                    if stop_on_fail:
+                        return False
+                    else:
+                        continue
+                for (k, v) in result:
+                    if is_error(v):
+                        if stop_on_fail:
+                            return False
+                        node_failed_keys.update(k)
+                    elif v is not None and callable(entry_cb):
+                        entry_cb(k, v)
+                bulk_begin += BATCH_KEY_AMOUNT
+                bulk_end += BATCH_KEY_AMOUNT
+
+            for key in node_failed_keys:
+                try:
+                    value = self._key_command(command, key, args)
+                except Exception:
+                    LOG.warning('Failed to process key "%s" from node %s:%s',
+                                key, node.ip, node.port)
+                    if stop_on_fail:
+                        return False
+                    success = False
+                else:
+                    if callable(entry_cb):
+                        entry_cb(key, value)
+        return success
 
     def get_all_entries(self, table, topic=None):
-        res = []
-        ip_port = None
-        self._sync_master_list()
-        if not topic:
-            local_key = self._uuid_to_key(table, '*', '*')
-            try:
-                for host, client in self.clients.items():
-                    local_keys = client.keys(local_key)
-                    if len(local_keys) > 0:
-                        for tmp_key in local_keys:
-                            res.append(self._execute_cmd("GET", tmp_key))
-                return res
-            except Exception:
-                LOG.exception("exception when get_all_entries: %(key)s",
-                              {'key': local_key})
+        def add_to_entries(key, value):
+            entries[key] = value
 
+        entries = {}
+        self._bulk_operation(table, topic, 'GET', entry_cb=add_to_entries)
+        return entries.items()
+
+    def _get_all_keys_from_node(self, node, pattern):
+        keys = set()
+        cursor = 0
+        while True:
+            (cursor, partial_keys) = node.client.scan(cursor, match=pattern)
+            keys.update(partial_keys)
+            if cursor == 0:
+                break
+        return keys
+
+    def _query_info(self, table, topic):
+        if topic is None:
+            # ask all nodes
+            pattern = self._key_name(table, '*', '*')
+            nodes = self._cluster.nodes
         else:
-            local_key = self._uuid_to_key(table, '*', topic)
-            try:
-                ip_port = self.redis_mgt.get_ip_by_key(local_key)
-                client = self._get_client(local_key, ip_port)
-                if client is None:
-                    return res
-
-                local_keys = client.keys(local_key)
-                if len(local_keys) > 0:
-                    res.extend(client.mget(local_keys))
-                return res
-            except Exception as e:
-                self._handle_db_conn_error(ip_port, local_key)
-                LOG.exception("exception when mget: %(key)s, %(e)s",
-                              {'key': local_key, 'e': e})
+            # ask a specific node
+            pattern = self._key_name(table, topic, '*')
+            nodes = (self._cluster.get_node(pattern), )
+        return (pattern, nodes)
 
     def get_all_keys(self, table, topic=None):
-        res = []
-        ip_port = None
-        self._sync_master_list()
-        if not topic:
-            local_key = self._uuid_to_key(table, '*', '*')
+        retry = 0
+        while retry < RETRY_COUNT:
             try:
-                for host, client in self.clients.items():
-                    ip_port = host
-                    res.extend(client.keys(local_key))
-                return [self._strip_table_name_from_key(key) for key in res]
-            except Exception as e:
-                self._handle_db_conn_error(ip_port, local_key)
-                LOG.exception("exception when get_all_keys: %(key)s, %(e)s",
-                              {'key': local_key, 'e': e})
+                return self._get_all_keys(table, topic)
+            except exceptions.ConnectionError:
+                LOG.exception('Connection error')
+                retry += 1
+                self._cluster.populate_cluster()
+        raise df_exceptions.DBKeyNotFound('ALL KEYS')
 
-        else:
-            local_key = self._uuid_to_key(table, '*', topic)
-            try:
-                ip_port = self.redis_mgt.get_ip_by_key(local_key)
-                client = self._get_client(local_key, ip_port)
-                if client is None:
-                    return res
+    def _get_all_keys(self, table, topic):
+        def _strip_table_topic(key):
+            match = self._table_strip_re.match(key)
+            return match.group(1) if match else key
 
-                res = client.keys(local_key)
-                return [self._strip_table_name_from_key(key) for key in res]
+        keys = set()
+        (pattern, nodes) = self._query_info(table, topic)
 
-            except Exception as e:
-                self._handle_db_conn_error(ip_port, local_key)
-                LOG.exception("exception when get_all_keys: %(key)s, %(e)s",
-                              {'key': local_key, 'e': e})
-
-    def _strip_table_name_from_key(self, key):
-        regex = '^{.*}\\.(.*)$'
-        m = re.match(regex, key)
-        return m.group(1)
-
-    def _allocate_unique_key(self, table):
-        local_key = self._uuid_to_key('unique_key', table, None)
-        ip_port = None
-        try:
-            client = self._update_client(local_key)
-            if client is None:
-                return None
-            return client.incr(local_key)
-        except Exception as e:
-            self._handle_db_conn_error(ip_port, local_key)
-            LOG.exception("exception when incr: %(key)s, %(e)s",
-                          {'key': local_key, 'e': e})
+        for node in nodes:
+            node_keys = self._get_all_keys_from_node(node, pattern)
+            keys.update(map(_strip_table_topic, node_keys))
+        return list(keys)
 
     def allocate_unique_key(self, table):
-        try:
-            return self._allocate_unique_key(table)
-        except Exception as e:
-            LOG.error("allocate_unique_key exception: %(e)s",
-                      {'e': e})
-            return
-
-    def _uuid_to_key(self, table, key, topic):
-        if not topic:
-            local_key = ('{' + table + '.' + '}' + '.' + key)
-        else:
-            local_key = ('{' + table + '.' + topic + '}' + '.' + key)
-        return local_key
-
-    def _get_client(self, key=None, host=None):
-        if host is None:
-            ip_port = self.redis_mgt.get_ip_by_key(key)
-            if ip_port is None:
-                return None
-        else:
-            ip_port = host
-
-        client = self.clients.get(ip_port, None)
-        if client is not None:
-            return self.clients[ip_port]
-        else:
-            return None
+        real_key = self._key_name(table, None, 'unique_key')
+        return self._key_command('INCR', real_key)
 
     def process_ha(self):
-        if self.is_neutron_server:
-            self._sync_master_list()
-        else:
-            self._update_server_list()
+        pass
 
     def set_neutron_server(self, is_neutron_server):
-        self.is_neutron_server = is_neutron_server
+        pass
