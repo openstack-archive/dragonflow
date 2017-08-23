@@ -388,9 +388,6 @@ class DHCPApp(df_base_app.DFlowApp):
             LOG.warning("No support for non IPv4 protocol")
             return
 
-        if not lport.is_vm_port():
-            return
-
         subnet_id = lport.subnets[0].id
         self.subnet_vm_port_map[subnet_id].add(lport.id)
 

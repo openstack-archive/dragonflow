@@ -88,21 +88,20 @@ def print_command(full_args, run_as_root=False):
     )))
 
 
-def get_vm_port(nb_api, ip=None, mac=None):
+def find_logical_port(nb_api, ip=None, mac=None):
     ports = nb_api.get_all(l2.LogicalPort)
     for port in ports:
-        if port.is_vm_port():
-            if ip:
-                if not isinstance(ip, netaddr.IPAddress):
-                    ip = netaddr.IPAddress(ip)
-                if port.ip != ip:
-                    continue
-            if mac:
-                if not isinstance(mac, netaddr.EUI):
-                    mac = netaddr.EUI(mac)
-                if port.mac != mac:
-                    continue
-            return port
+        if ip:
+            if not isinstance(ip, netaddr.IPAddress):
+                ip = netaddr.IPAddress(ip)
+            if port.ip != ip:
+                continue
+        if mac:
+            if not isinstance(mac, netaddr.EUI):
+                mac = netaddr.EUI(mac)
+            if port.mac != mac:
+                continue
+        return port
     return None
 
 
