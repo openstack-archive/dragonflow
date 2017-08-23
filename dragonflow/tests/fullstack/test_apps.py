@@ -860,6 +860,21 @@ class TestL3App(test_base.DFTestBase):
     def test_icmp_ping_pong(self):
         self._test_icmp_address(self.port2.port.get_logical_port().ip)
 
+    def test_icmp_ping_pong_allowed_address_pair(self):
+        port3 = self.subnet2.create_port()
+        port3.unbind()
+
+        lport3 = port3.port.get_logical_port()
+        self.port2.port.update(
+            {
+                'allowed_address_pairs': [
+                    {'ip_address': lport3.ip, 'mac_address': lport3.mac},
+                ],
+            },
+        )
+        lport2 = self.port2.port.get_logical_port()
+        self._test_icmp_address(lport2.allowed_address_pairs[0].ip_address)
+
     def test_icmp_router_interfaces(self):
         self._test_icmp_address('192.168.12.1')
 
