@@ -58,10 +58,19 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
         super(L3ProactiveApp, self)._add_port(lport)
         dst_ip = lport.ip
         dst_mac = lport.mac
-        network_id = lport.lswitch.unique_key
-        tunnel_key = lport.unique_key
+        network_key = lport.lswitch.unique_key
+        port_key = lport.unique_key
 
-        self._add_port_process(dst_ip, dst_mac, network_id, tunnel_key)
+        # FIXME (dimak) need to take into account all fixed IPs
+        self._add_port_process(dst_ip, dst_mac, network_key, port_key)
+
+        for address_pair in lport.allowed_address_pairs:
+            self._add_port_process(
+                address_pair.ip_address,
+                address_pair.mac_address,
+                network_key,
+                port_key,
+            )
 
     def _add_port_process(self, dst_ip, dst_mac, network_id, tunnel_key,
                           priority=const.PRIORITY_HIGH):
@@ -95,9 +104,12 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
         """Remove port which is not a router interface."""
         super(L3ProactiveApp, self)._remove_port(lport)
         dst_ip = lport.ip
-        network_id = lport.lswitch.unique_key
+        network_key = lport.lswitch.unique_key
 
-        self._remove_port_process(dst_ip, network_id)
+        self._remove_port_process(dst_ip, network_key)
+
+        for address_pair in lport.allowed_address_pairs:
+            self._remove_port_process(address_pair.ip_address, network_key)
 
     def _remove_port_process(self, dst_ip, network_id,
                              priority=const.PRIORITY_HIGH):
@@ -118,3 +130,12 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_HIGH,
             match=match)
+
+    def _update_port(self, lport, orig_lport):
+        if (
+            lport.ip != orig_lport.ip or
+            lport.mac != orig_lport.mac or
+            lport.allowed_address_pairs != orig_lport.allowed_address_pairs
+        ):
+            self._remote_port(orig_lport)
+            self._add_port(lport)
