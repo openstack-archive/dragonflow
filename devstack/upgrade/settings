@@ -1,0 +1,3 @@
+register_project_for_upgrade dragonflow
+devstack_localrc base "DF_SELECTIVE_TOPO_DIST=False"
+BASE_RUN_SMOKE=False
