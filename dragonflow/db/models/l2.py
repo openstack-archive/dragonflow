@@ -14,7 +14,6 @@ import copy
 from jsonmodels import fields
 from jsonmodels import models
 from neutron_lib.api.definitions import portbindings
-from neutron_lib import constants as n_const
 from oslo_config import cfg
 from oslo_log import log
 
@@ -179,15 +178,6 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
     @property
     def is_remote(self):
         return port_locator.is_port_remote(self)
-
-    def is_vm_port(self):
-        """
-        Return True if the device owner starts with 'compute:' (or is None)
-        """
-        owner = self.device_owner
-        if not owner or owner.startswith(n_const.DEVICE_OWNER_COMPUTE_PREFIX):
-            return True
-        return False
 
     def __str__(self):
         data = {}
