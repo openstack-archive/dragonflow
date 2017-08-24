@@ -121,8 +121,8 @@ class DFOvsdbApi(impl_idl.OvsdbIdl):
     """
     def __init__(self, nb_api, db_connection, timeout):
         idl = df_idl_from_server(nb_api, db_connection, 'Open_vSwitch')
-        self.ovsdb_connection = connection.Connection(idl, timeout)
-        super(DFOvsdbApi, self).__init__(self.ovsdb_connection)
+        ovsdb_connection = connection.Connection(idl, timeout)
+        super(DFOvsdbApi, self).__init__(ovsdb_connection)
 
     def get_bridge_ports(self, bridge):
         return commands.GetBridgePorts(self, bridge)
