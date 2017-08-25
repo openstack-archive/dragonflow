@@ -1,0 +1,8 @@
+Code-Review+2: Dima Kuznetsov <dima.kuznetsov@toganetworks.com>
+Workflow+1: Dima Kuznetsov <dima.kuznetsov@toganetworks.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Fri, 25 Aug 2017 11:02:15 +0000
+Reviewed-on: https://review.openstack.org/497230
+Project: openstack/dragonflow
+Branch: refs/heads/master
