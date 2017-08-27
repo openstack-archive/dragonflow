@@ -76,7 +76,7 @@ class TestSnatFlows(test_base.DFTestBase):
         self.assertIsNotNone(mac)
 
         port = utils.wait_until_is_and_return(
-            lambda: utils.get_vm_port(self.nb_api, ip, mac),
+            lambda: utils.find_logical_port(self.nb_api, ip, mac),
             exception=Exception('No port assigned to VM')
         )
         port_key = port.unique_key
