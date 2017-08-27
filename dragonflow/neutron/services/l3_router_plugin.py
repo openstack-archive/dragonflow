@@ -48,13 +48,13 @@ from dragonflow.neutron.services import mixins
 LOG = log.getLogger(__name__)
 
 
-class DFL3RouterPlugin(service_base.ServicePluginBase,
-                       common_db_mixin.CommonDbMixin,
-                       extraroute_db.ExtraRoute_dbonly_mixin,
-                       l3_gwmode_db.L3_NAT_db_mixin,
-                       l3_attrs_db.ExtraAttributesMixin,
-                       l3_agentschedulers_db.L3AgentSchedulerDbMixin,
-                       mixins.LazyNbApiMixin):
+class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
+                                common_db_mixin.CommonDbMixin,
+                                extraroute_db.ExtraRoute_dbonly_mixin,
+                                l3_gwmode_db.L3_NAT_db_mixin,
+                                l3_attrs_db.ExtraAttributesMixin,
+                                l3_agentschedulers_db.L3AgentSchedulerDbMixin,
+                                mixins.LazyNbApiMixin):
 
     """Implementation of the Dragonflow Neutron L3 Router Service Plugin.
 
@@ -63,8 +63,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     request/response.
     """
 
-    supported_extension_aliases = ["router", "extraroute",
-                                   "l3_agent_scheduler"]
+    supported_extension_aliases = ["router", "extraroute"]
 
     @resource_registry.tracked_resources(
         router=l3_db.Router,
@@ -72,7 +71,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     def __init__(self):
         self.router_scheduler = importutils.import_object(
             cfg.CONF.router_scheduler_driver)
-        super(DFL3RouterPlugin, self).__init__()
+        super(DFL3AgentlessRouterPlugin, self).__init__()
         self._nb_api = None
         self._start_rpc_notifiers()
         self._register_callbacks()
@@ -119,14 +118,15 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
     def create_router(self, context, router):
-        router = super(DFL3RouterPlugin, self).create_router(context, router)
+        router = super(DFL3AgentlessRouterPlugin, self).create_router(
+            context, router)
         lrouter = neutron_l3.logical_router_from_neutron_router(router)
         self.nb_api.create(lrouter)
         return router
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def update_router(self, context, router_id, router):
-        router = super(DFL3RouterPlugin, self).update_router(
+        router = super(DFL3AgentlessRouterPlugin, self).update_router(
                        context, router_id, router)
         lrouter = neutron_l3.logical_router_from_neutron_router(router)
         try:
@@ -138,8 +138,8 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def delete_router(self, context, router_id):
-        ret_val = super(DFL3RouterPlugin, self).delete_router(context,
-                                                              router_id)
+        ret_val = super(DFL3AgentlessRouterPlugin, self).delete_router(
+            context, router_id)
         try:
             self.nb_api.delete(l3.LogicalRouter(id=router_id))
         except df_exceptions.DBKeyNotFound:
@@ -163,8 +163,11 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
             floatingip['floatingip'].get('port_id'),
         )
 
-        floatingip_dict = super(DFL3RouterPlugin, self).create_floatingip(
-            context, floatingip, initial_status=initial_status)
+        floatingip_dict = super(
+            DFL3AgentlessRouterPlugin,
+            self,
+        ).create_floatingip(context, floatingip, initial_status=initial_status)
+
         floatingip_port = self._get_floatingip_port(
             context, floatingip_dict['id'])
 
@@ -186,8 +189,10 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
     def update_floatingip(self, context, id, floatingip):
-        floatingip_dict = super(DFL3RouterPlugin, self).update_floatingip(
-            context, id, floatingip)
+        floatingip_dict = super(
+            DFL3AgentlessRouterPlugin,
+            self,
+        ).update_floatingip(context, id, floatingip)
 
         # Check is status update is required
         new_status = self._port_to_floatingip_status(
@@ -217,7 +222,8 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
     def delete_floatingip(self, context, fip_id):
         floatingip = self.get_floatingip(context, fip_id)
-        super(DFL3RouterPlugin, self).delete_floatingip(context, fip_id)
+        super(DFL3AgentlessRouterPlugin, self).delete_floatingip(
+            context, fip_id)
         try:
             self.nb_api.delete(
                 l3.FloatingIp(id=fip_id, topic=floatingip['tenant_id']),
@@ -227,8 +233,11 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def add_router_interface(self, context, router_id, interface_info):
-        router_port_info = super(DFL3RouterPlugin, self).add_router_interface(
-            context, router_id, interface_info)
+        router_port_info = super(
+            DFL3AgentlessRouterPlugin,
+            self,
+        ).add_router_interface(context, router_id, interface_info)
+
         router = self.get_router(context, router_id)
 
         port = self.core_plugin.get_port(context, router_port_info['port_id'])
@@ -254,7 +263,7 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
     def remove_router_interface(self, context, router_id, interface_info):
         router_port_info = (
-            super(DFL3RouterPlugin, self).remove_router_interface(
+            super(DFL3AgentlessRouterPlugin, self).remove_router_interface(
                 context, router_id, interface_info))
         router = self.get_router(context, router_id)
 
@@ -322,3 +331,11 @@ class DFL3RouterPlugin(service_base.ServicePluginBase,
                 floatingip['id'],
                 new_status,
             )
+
+
+class DFL3RouterPlugin(DFL3AgentlessRouterPlugin):
+    supported_extension_aliases = (
+        DFL3AgentlessRouterPlugin.supported_extension_aliases + [
+            const.L3_AGENT_SCHEDULER_EXT_ALIAS,
+        ]
+    )
