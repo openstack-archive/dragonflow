@@ -91,7 +91,7 @@ Execution workflow:
   {
     "dhcp_params":{
       "opts" : {"67": "testfile.1"},
-      "siaddr" : "192.168.0.100
+      "siaddr" : "192.168.0.100"
     }
   }
 
@@ -106,9 +106,9 @@ Execution workflow:
 
 References
 ==========
-.. [#] https://specs.openstack.org/openstack/neutron-specs/specs/api/extra_dhcp_options__extra-dhcp-opt\_.html
-.. [#] https://tools.ietf.org/html/rfc2131
-.. [#] https://tools.ietf.org/html/rfc2132
-.. [#] https://github.com/openstack/dragonflow/blob/master/doc/source/distributed_dhcp.rst
+.. [1] https://specs.openstack.org/openstack/neutron-specs/specs/api/extra_dhcp_options__extra-dhcp-opt\_.html
+.. [2] https://tools.ietf.org/html/rfc2131
+.. [3] https://tools.ietf.org/html/rfc2132
+.. [4] https://github.com/openstack/dragonflow/blob/master/doc/source/distributed_dhcp.rst
 
 
