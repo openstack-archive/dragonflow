@@ -2461,7 +2461,6 @@ class TestDNATApp(test_base.DFTestBase):
 
 
 class TestTrunkApp(test_base.DFTestBase):
-    @testtools.skip("bug/1710335")
     def test_icmp_ping_pong(self):
         # Setup base components - two ports on 1 network
         self.topology = app_testing_objects.Topology(self.neutron, self.nb_api)

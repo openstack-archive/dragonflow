@@ -28,7 +28,12 @@ UUID_NAMESPACE = uuid.UUID('a11fee2a-d833-4e22-be31-f915b55f1f77')
 
 
 @mf.register_model
-@mf.construct_nb_db_model(indexes={'lport_id': 'port.id'})
+@mf.construct_nb_db_model(
+    indexes={
+        'lport_id': 'port.id',
+        'parent_id': 'parent.id',
+    }
+)
 class ChildPortSegmentation(mf.ModelBase, mixins.Topic, mixins.BasicEvents):
     table_name = 'child_port_segmentation'
 
