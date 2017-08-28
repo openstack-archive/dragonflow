@@ -1,5 +1,5 @@
 ---
-box: "ubuntu/trusty64"
+box: "miguel/ubuntu-16.04"
 devstack_controller:
   host_name: controller.devstack.dev
   ip: "192.168.33.101"
