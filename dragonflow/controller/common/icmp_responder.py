@@ -34,13 +34,14 @@ class ICMPResponder(object):
     @param table_id Where the respondor will be installed.
     """
     def __init__(self, app, interface_ip, router_key=None, dst_mac=None,
-                 table_id=const.L3_LOOKUP_TABLE):
+                 table_id=const.L3_LOOKUP_TABLE, network_id=None):
         self.app = app
         self.datapath = app.datapath
         self.interface_ip = interface_ip
         self.router_key = router_key
         self.dst_mac = dst_mac
         self.table_id = table_id
+        self.network_id = network_id
 
     def _get_match(self):
         parser = self.datapath.ofproto_parser
@@ -52,6 +53,8 @@ class ICMPResponder(object):
             match_fields.update({'eth_dst': self.dst_mac})
         elif self.router_key:
             match_fields.update({'reg5': self.router_key})
+        if self.network_id is not None:
+            match_fields['metadata'] = self.network_id
 
         match = parser.OFPMatch(**match_fields)
         return match

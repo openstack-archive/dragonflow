@@ -31,7 +31,9 @@ from ryu.ofproto import ether
 
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
+from dragonflow.controller.common import icmp_responder
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import host_route
@@ -552,3 +554,46 @@ class DHCPApp(df_base_app.DFlowApp):
              hard_timeout=hard_timeout,
              table_id=const.DHCP_TABLE,
              match=match)
+
+    @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_CREATED)
+    def _lport_created(self, lport):
+        if lport.device_owner == n_const.DEVICE_OWNER_DHCP:
+            self._install_dhcp_port_responders(lport)
+
+    @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_UPDATED)
+    def _lport_updated(self, lport, orig_lport):
+        if lport.device_owner != n_const.DEVICE_OWNER_DHCP:
+            return
+
+        if (lport.ip, lport.mac) != (orig_lport.id, orig_lport.mac):
+            self._uninstall_dhcp_port_responders(orig_lport)
+            self._install_dhcp_port_responders(lport)
+
+    @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_DELETED)
+    def _lport_deleted(self, lport):
+        if lport.device_owner == n_const.DEVICE_OWNER_DHCP:
+            self._uninstall_dhcp_port_responders(lport)
+
+    def _get_dhcp_port_arp_responder(self, lport):
+        return arp_responder.ArpResponder(
+            app=self,
+            network_id=lport.lswitch.unique_key,
+            interface_ip=lport.ip,
+            interface_mac=lport.mac,
+        )
+
+    def _get_dhcp_port_icmp_responder(self, lport):
+        return icmp_responder.ICMPResponder(
+            app=self,
+            network_id=lport.lswitch.unique_key,
+            interface_ip=lport.ip,
+            table_id=const.L2_LOOKUP_TABLE,
+        )
+
+    def _install_dhcp_port_responders(self, lport):
+        self._get_dhcp_port_arp_responder(lport).add()
+        self._get_dhcp_port_icmp_responder(lport).add()
+
+    def _uninstall_dhcp_port_responders(self, lport):
+        self._get_dhcp_port_arp_responder(lport).remove()
+        self._get_dhcp_port_icmp_responder(lport).remove()
