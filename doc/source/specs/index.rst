@@ -74,6 +74,7 @@ Specs
     tunneling_app
     logical_port_locality
     extra_dhcp_opts
+    dhcp_port_per_network
 
 Templates
 ---------
