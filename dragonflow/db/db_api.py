@@ -43,7 +43,9 @@ class DbApi(object):
 
     @abc.abstractmethod
     def delete_table(self, table):
-        """Delete a table
+        """Delete a table. Delete all items in the table.
+        Reading any key from the table without re-creating it should
+        raise an exception.
 
         :param table:      table name
         :type table:       string
@@ -52,13 +54,17 @@ class DbApi(object):
 
     @abc.abstractmethod
     def get_key(self, table, key, topic=None):
-        """Get the value of a specific key in a table
+        """Get the value of a specific key in a table. If the key does not
+        exist, raise a DBKeyNotFound error.
+
+        topic is an optional value which may be used to optimise the search
+        for the key.
 
         :param table:      table name
         :type table:       string
         :param key:        key name
         :type key:         string
-        :param topic:      topic for key
+        :param topic:      optional topic to aid in key lookup
         :type topic:       string
         :returns:          string - the key value
         :raises DragonflowException.DBKeyNotFound: if key not found
@@ -66,7 +72,11 @@ class DbApi(object):
 
     @abc.abstractmethod
     def set_key(self, table, key, value, topic=None):
-        """Set a specific key in a table with value
+        """Set a specific key in a table with value. If the key does not
+        exist, the implementation may either:
+        1. Raise a DBLeyNotFound error
+        2. Create the key as if create_key was called.
+        Exactly one of these two option must be implemented
 
         :param table:      table name
         :type table:       string
@@ -74,10 +84,11 @@ class DbApi(object):
         :type key:         string
         :param value:      value to set for the key
         :type value:       string
-        :param topic:      topic for key
+        :param topic:      optional topic to aid in key lookup
         :type topic:       string
         :returns:          None
-        :raises DragonflowException.DBKeyNotFound: if key not found
+        :raises DragonflowException.DBKeyNotFound: if key not found, and was
+                not created
         """
 
     @abc.abstractmethod
@@ -90,20 +101,21 @@ class DbApi(object):
         :type key:         string
         :param value:      value to set for the created key
         :type value:       string
-        :param topic:      topic for key
+        :param topic:      optional topic to aid in key lookup
         :type topic:       string
         :returns:          None
         """
 
     @abc.abstractmethod
     def delete_key(self, table, key, topic=None):
-        """Delete a specific key from a table
+        """Delete a specific key from a table. If the key does not exist,
+        raise a DBKeyNotFound error.
 
         :param table:      table name
         :type table:       string
         :param key:        key name
         :type key:         string
-        :param topic:      topic for key
+        :param topic:      optional topic to aid in key lookup
         :type topic:       string
         :returns:          None
         :raises DragonflowException.DBKeyNotFound: if key not found
@@ -111,26 +123,26 @@ class DbApi(object):
 
     @abc.abstractmethod
     def get_all_entries(self, table, topic=None):
-        """Returns a list of all table entries values
+        """Returns a list of all table entries values. If the table does
+        not exist, or is empty, return an empty list.
 
         :param table:      table name
         :type table:       string
         :param topic:      get only entries matching this topic
         :type topic:       string
         :returns:          list of values
-        :raises DragonflowException.DBKeyNotFound: if key not found
         """
 
     @abc.abstractmethod
     def get_all_keys(self, table, topic=None):
-        """Returns a list of all table entries keys
+        """Returns a list of all table entries keys. If the table does not
+        exist, or is empty, return an empty list.
 
         :param table:      table name
         :type table:       string
         :param topic:      get all keys matching this topic
         :type topic:       string
         :returns:          list of keys
-        :raises DragonflowException.DBKeyNotFound: if key not found
         """
 
     @abc.abstractmethod
