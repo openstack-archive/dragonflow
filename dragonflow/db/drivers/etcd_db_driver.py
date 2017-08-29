@@ -102,8 +102,7 @@ class EtcdDbDriver(db_api.DbApi):
         pass
 
     def delete_table(self, table):
-        # Not needed in etcd
-        pass
+        self.client.delete_prefix(self._make_key(table))
 
     @staticmethod
     def _make_key(table, obj_id=None):
