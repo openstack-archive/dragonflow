@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+#
+# ``plugin.sh`` calls the following methods in the sourced driver:
+#
+# - nb_db_driver_install_server
+# - nb_db_driver_install_client
+# - nb_db_driver_start_server
+# - nb_db_driver_stop_server
+# - nb_db_driver_clean
+RETHINKDB_IP=${RETHINKDB_IP:-"$HOST_IP"}
+RETHINKDB_PORT=${RETHINKDB_PORT:-'4001'}
+
+function nb_db_driver_install_server {
+    if is_service_enabled df-rethinkdb-server ; then
+       echo "Installing RethinkDB Server"
+       if is_ubuntu || is_fedora; then
+          if is_ubuntu; then
+              source /etc/lsb-release && echo "deb http://download.rethinkdb.com/apt $DISTRIB_CODENAME main" | sudo tee /etc/apt/sources.list.d/rethinkdb.list
+              wget -qO- http://download.rethinkdb.com/apt/pubkey.gpg | sudo apt-key add -
+              sudo apt-get update
+              sudo apt-get install rethinkdb
+          elif is_fedora; then
+              sudo wget https://download.rethinkdb.com/centos/7/$(uname -m)/rethinkdb.repo \
+                  -O /etc/yum.repos.d/rethinkdb.repo
+              sudo dnf install -y rethinkdb
+          fi
+          echo "Configuring Rethingdb server"
+          sudo sh -c "cat > /etc/rethinkdb/instances.d/dragonflow.conf" << EOF
+bind=all
+driver-port=${RETHINKDB_PORT}
+EOF
+          echo "starting rethinkdb"
+          start_service rethinkdb
+          until pids=$(pidof rethinkdb); do
+              echo "sleep 1, waiting for rethinkdb to start"
+              sleep 1
+          done
+          echo "sleep 5, waiting for rethinkdb to start"
+          echo 'Creating dragonflow database'
+          sleep 5
+          python -c "
+import rethinkdb as r
+r.connect('$RETHINKDB_IP', $RETHINKDB_PORT).repl()
+try:
+    r.db_drop('dragonflow').run()
+except r.errors.ReqlOpFailedError:
+    pass  # Database probably doesn't exist
+r.db_create('dragonflow').run()
+          "
+          stop_service rethinkdb
+       else
+          die $LINENO "Warning - RethinkDB is currently supported only for Ubuntu and Fedora. Any other distros are currently not supported."
+       fi
+    fi
+}
+
+function nb_db_driver_install_client {
+    # We can't actually install rethinkdb due to licensing issues
+    python -c 'import rethinkdb' > /dev/null || die "rethinkdb python client not install. Please install manually"
+    echo "WARNING: You have to install python's rethingdb yourself"
+    echo >&2 "WARNING: You have to install python's rethingdb yourself"
+}
+
+function nb_db_driver_start_server {
+    if is_service_enabled df-rethinkdb-server ; then
+        start_service rethinkdb
+        until pids=$(pidof rethinkdb); do
+            sleep 1
+            echo "sleep 1, waiting for rethinkdb to start"
+        done
+    fi
+}
+
+function nb_db_driver_stop_server {
+    if is_service_enabled df-rethinkdb-server ; then
+        stop_service rethinkdb
+    fi
+}
+
+function nb_db_driver_status_server
+{
+   TEMP_PIDS=`ps cax | grep rethinkdb`
+   if [ -z "$TEMP_PIDS" ]; then
+     return 1
+   fi
+   return 0
+}
