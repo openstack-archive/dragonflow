@@ -103,11 +103,19 @@ if is_service_enabled df-zookeeper ; then
     source $DEST/dragonflow/devstack/zookeeper_driver
     NB_DRIVER_CLASS="zookeeper_nb_db_driver"
 fi
+
 if is_service_enabled df-cassandra ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/cassandra_driver
     NB_DRIVER_CLASS="cassandra_nb_db_driver"
 fi
+
+if is_service_enabled df-rethinkdb ; then
+    is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
+    source $DEST/dragonflow/devstack/rethinkdb_driver
+    NB_DRIVER_CLASS="rethinkdb_nb_db_driver"
+fi
+
 if is_service_enabled df-redis ; then
     is_df_db_driver_selected && die $LINENO "More than one database service is set for Dragonflow."
     source $DEST/dragonflow/devstack/redis_driver
