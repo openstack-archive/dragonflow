@@ -262,7 +262,10 @@ class DfLocalController(object):
 
     def notify_port_status(self, ovs_port, status):
         if self.neutron_notifier:
-            self.neutron_notifier.notify_port_status(ovs_port, status)
+            table_name = l2.LogicalPort.table_name
+            iface_id = ovs_port.lport
+            self.neutron_notifier.notify_neutron_server(table_name, iface_id,
+                                                        'update', status)
 
     def _get_delete_handler(self, table):
         method_name = 'delete_{0}'.format(table)
