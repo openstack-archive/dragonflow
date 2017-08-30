@@ -14,6 +14,7 @@ import mock
 from oslo_config import cfg
 
 from dragonflow.common import utils as df_utils
+from dragonflow.db import db_common
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.tests import base as tests_base
@@ -55,13 +56,30 @@ class TestNbApiNeutronNotifier(tests_base.BaseTestCase):
         self.notifier.create_heart_beat_reporter('fake_host')
         self.notifier.nb_api.register_listener_callback.assert_not_called()
 
-    def test_notify_neutron_server(self):
+    def test_notify_core_plugin(self):
         core_plugin = mock.Mock()
         with mock.patch("neutron_lib.plugins.directory.get_plugin",
                         return_value=core_plugin):
-            self.notifier.notify_neutron_server(l2.LogicalPort.table_name,
+            tb_name = l2.LogicalPort.table_name
+            self.notifier._neutron_server_update_core_plugin(tb_name,
+                                                             "fake_port",
+                                                             "update",
+                                                             "up")
+
+            core_plugin.update_port_status.assert_called_once_with(
+                mock.ANY, "fake_port", "up")
+
+    def test_notify_neutron_server(self):
+        listener = core.Listener(id="1")
+        self.notifier.nb_api = mock.MagicMock()
+        self.notifier.nb_api.get_all.return_value = [listener]
+        with mock.patch("dragonflow.db.db_common.DbUpdate"):
+            self.notifier.notify_neutron_server("fake_table",
                                                 "fake_port",
                                                 "update",
                                                 "up")
-            core_plugin.update_port_status.assert_called_once_with(
-                mock.ANY, "fake_port", "up")
+            db_common.DbUpdate.assert_called_once_with("fake_table",
+                                                       "fake_port",
+                                                       "update",
+                                                       "up",
+                                                       topic='listener_1')

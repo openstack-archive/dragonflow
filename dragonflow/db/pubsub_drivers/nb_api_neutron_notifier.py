@@ -72,15 +72,12 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
             id=host,
             ppid=os.getppid(),
         )
-        self.nb_api.register_listener_callback(self.notify_neutron_server,
+        update_neutron_cb = self._neutron_server_update_core_plugin
+        self.nb_api.register_listener_callback(update_neutron_cb,
                                                listener.topic)
         LOG.info("Register listener %s", listener.id)
         self.heart_beat_reporter = HeartBeatReporter(self.nb_api, listener)
         self.heart_beat_reporter.daemonize()
-
-    def notify_port_status(self, ovs_port, status):
-        port = ovs_port.lport
-        self._send_event(l2.LogicalPort.table_name, port.id, 'update', status)
 
     def _send_event(self, table, key, action, value):
         listeners = self.nb_api.get_all(core.Listener)
@@ -107,12 +104,17 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
         LOG.info("Publish to neutron %s", topic)
         self.nb_api.publisher.send_event(update)
 
-    def notify_neutron_server(self, table, key, action, value, topic=None):
+    @staticmethod
+    def _neutron_server_update_core_plugin(table, key, action,
+                                           value, topic=None):
         if l2.LogicalPort.table_name == table and 'update' == action:
             LOG.info("Process port %s status update event", key)
             core_plugin = directory.get_plugin()
             core_plugin.update_port_status(n_context.get_admin_context(),
                                            key, value)
+
+    def notify_neutron_server(self, table, key, action, value, topic=None):
+        self._send_event(table, key, 'update', value)
 
 
 class HeartBeatReporter(object):
