@@ -115,6 +115,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
 
         fake_lport.ips = ['10.0.0.6']
         self.app._uninstall_dhcp_flow_for_vm_port = mock.Mock()
+        self.app._port_rate_limiters[fake_lport.id] = None
         # test case: lport has valid ip
         self.app._remove_local_port(fake_lport)
         self.assertNotIn(fake_lport.id,

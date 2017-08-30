@@ -57,7 +57,7 @@ class DHCPApp(df_base_app.DFlowApp):
         self.block_hard_timeout = self.conf.df_dhcp_block_time_in_sec
         self.default_interface_mtu = self.conf.df_default_network_device_mtu
 
-        self.unique_key_to_dhcp_app_port_data = {}
+        self._port_rate_limiters = {}
         self.api.register_table_handler(const.DHCP_TABLE,
                                         self.packet_in_handler)
         self.switch_dhcp_ip_map = collections.defaultdict(dict)
@@ -68,7 +68,7 @@ class DHCPApp(df_base_app.DFlowApp):
         self.add_flow_go_to_table(const.DHCP_TABLE,
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
-        self.unique_key_to_dhcp_app_port_data.clear()
+        self._port_rate_limiters.clear()
         self.switch_dhcp_ip_map.clear()
         self.subnet_vm_port_map.clear()
 
@@ -83,14 +83,11 @@ class DHCPApp(df_base_app.DFlowApp):
             return
 
         unique_key = msg.match.get('reg6')
-        port_data = self.unique_key_to_dhcp_app_port_data.get(unique_key)
-        if not port_data:
-            LOG.error(
-                "No lport found for unique key %s for dhcp req",
-                unique_key)
-            return
-
-        port_rate_limiter, lport = port_data
+        lport = self.db_store.get_one(
+            l2.LogicalPort(unique_key=unique_key),
+            index=l2.LogicalPort.get_index('unique_key'),
+        )
+        port_rate_limiter = self._port_rate_limiters[lport.id]
         if port_rate_limiter():
             self._block_port_dhcp_traffic(
                     unique_key,
@@ -366,12 +363,11 @@ class DHCPApp(df_base_app.DFlowApp):
             LOG.warning("No support for non IPv4 protocol")
             return
 
-        unique_key = lport.unique_key
-        self.unique_key_to_dhcp_app_port_data.pop(unique_key, None)
-
         subnet_id = lport.subnets[0].id
         self.subnet_vm_port_map[subnet_id].discard(lport.id)
         self._uninstall_dhcp_flow_for_vm_port(lport)
+
+        del self._port_rate_limiters[lport.id]
 
     def _uninstall_dhcp_flow_for_vm_port(self, lport):
         """Uninstall dhcp flow in DHCP_TABLE for a port of vm."""
@@ -401,18 +397,16 @@ class DHCPApp(df_base_app.DFlowApp):
     def _install_dhcp_flow_for_vm_port(self, lport):
         """Install dhcp flow in DHCP_TABLE for a port of vm."""
 
-        unique_key = lport.unique_key
         port_rate_limiter = df_utils.RateLimiter(
                         max_rate=self.conf.df_dhcp_max_rate_per_sec,
                         time_unit=1)
-        self.unique_key_to_dhcp_app_port_data[unique_key] = (port_rate_limiter,
-                                                             lport)
+        self._port_rate_limiters[lport.id] = port_rate_limiter
 
         LOG.info("Register VM as DHCP client::port <%s>", lport.id)
 
         parser = self.parser
         ofproto = self.ofproto
-        match = parser.OFPMatch(reg6=unique_key)
+        match = parser.OFPMatch(reg6=lport.unique_key)
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
