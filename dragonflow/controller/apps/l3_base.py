@@ -630,3 +630,16 @@ class L3AppMixin(object):
     def _remove_port(self, lport):
         """Remove port which is not a router interface."""
         self._reprocess_to_delete_route(lport)
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_UPDATED)
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_UPDATED)
+    def _update_port_event_handler(self, lport, orig_lport):
+        LOG.debug('remove %(locality)s port: %(lport)s',
+                  {'lport': lport,
+                   'locality': 'local' if lport.is_local else 'remote'})
+
+        if lport.device_owner != common_const.DEVICE_OWNER_ROUTER_INTF:
+            self._update_port(lport, orig_lport)
+
+    def _update_port(self, lport, orig_lport):
+        pass
