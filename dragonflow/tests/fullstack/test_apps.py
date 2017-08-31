@@ -39,8 +39,6 @@ from dragonflow.tests.fullstack import test_objects as objects
 
 LOG = log.getLogger(__name__)
 
-_CONTROLLER_RECONNECT_TIMEOUT = 10
-
 
 def _get_port_mac_and_ip(port, force_addr_pairs=False):
     port_lport = port.port.get_logical_port()
@@ -696,8 +694,11 @@ class TestL3App(test_base.DFTestBase):
         raise_action = app_testing_objects.RaiseAction("Unexpected packet")
         key1 = (self.subnet1.subnet_id, self.port1.port_id)
         if connected:
-            actions = [app_testing_objects.DisableRuleAction(),
-                       app_testing_objects.StopSimulationAction()]
+            actions = [
+                app_testing_objects.DisableRuleAction(),
+                app_testing_objects.StopSimulationAction(),
+                LOG.error("SHACHAR - Detected pong. Stopping simulation")
+            ]
         else:
             actions = [raise_action]
 
@@ -728,7 +729,9 @@ class TestL3App(test_base.DFTestBase):
                                                       self.port2.port_id,
                                                       self._create_pong_packet
                                                       ),
-                       app_testing_objects.DisableRuleAction()]
+                       app_testing_objects.DisableRuleAction(),
+                       LOG.error("SHACHAR - Detected ping, sent pong")
+                       ]
         else:
             actions = [raise_action]
 
@@ -869,6 +872,7 @@ class TestL3App(test_base.DFTestBase):
         port_policies = self._create_port_policies()
         initial_packet = self._create_packet(
             dst_ip, ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
+        LOG.error("SHACHAR - Sending packet to: %s", dst_ip)
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
@@ -877,6 +881,7 @@ class TestL3App(test_base.DFTestBase):
                         self.port1.port_id,
                         initial_packet,
                     ),
+                    LOG.error("SHACHAR - Sent packet to: %s", dst_ip)
                 ],
                 port_policies=port_policies,
                 unknown_port_action=app_testing_objects.IgnoreAction()
@@ -925,14 +930,17 @@ class TestL3App(test_base.DFTestBase):
     def test_reconnect_of_controller(self):
         cmd = ["ovs-vsctl", "get-controller", cfg.CONF.df.integration_bridge]
         controller = utils.execute(cmd, run_as_root=True).strip()
+        LOG.error("SHACHAR - got controller: %r", controller)
 
         cmd[1] = "del-controller"
         utils.execute(cmd, run_as_root=True)
+        LOG.error("SHACHAR - deleted controller")
 
         dst_ip = self.port2.port.get_logical_port().ip
         port_policies = self._create_port_policies(connected=False)
         initial_packet = self._create_packet(
             dst_ip, ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
+        LOG.error("SHACHAR - Sending packet to: %s", dst_ip)
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
@@ -941,6 +949,7 @@ class TestL3App(test_base.DFTestBase):
                         self.port1.port_id,
                         initial_packet,
                     ),
+                    LOG.error("SHACHAR - Sent packet to: %s", dst_ip)
                 ],
                 port_policies=port_policies,
                 unknown_port_action=app_testing_objects.IgnoreAction()
@@ -960,7 +969,8 @@ class TestL3App(test_base.DFTestBase):
         cmd[1] = "set-controller"
         cmd.append(controller)
         utils.execute(cmd, run_as_root=True)
-        time.sleep(_CONTROLLER_RECONNECT_TIMEOUT)
+        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+        LOG.error("SHACHAR - Set controller to: %s", controller)
         self._test_icmp_address(dst_ip)
 
     def _create_icmp_test_port_policies(self, icmp_filter):
