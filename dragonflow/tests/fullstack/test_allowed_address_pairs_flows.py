@@ -162,3 +162,4 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
         self.assertFalse(result)
 
         network.close()
+

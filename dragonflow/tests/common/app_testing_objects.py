@@ -1280,3 +1280,4 @@ class CountAction(Action):
         self.cursor += 1
         if self.cursor == self.threshold:
             self.action(policy, rule, port_thread, buf)
+

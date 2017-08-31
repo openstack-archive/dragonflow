@@ -572,3 +572,4 @@ class TestL3App(test_base.DFTestBase):
         )
         apps.start_policy(policy, self.topology,
                           const.DEFAULT_RESOURCE_READY_TIMEOUT)
+
