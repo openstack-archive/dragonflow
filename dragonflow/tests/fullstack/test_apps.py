@@ -39,7 +39,7 @@ from dragonflow.tests.fullstack import test_objects as objects
 
 LOG = log.getLogger(__name__)
 
-_CONTROLLER_RECONNECT_TIMEOUT = 10
+_CONTROLLER_RECONNECT_TIMEOUT = 15
 
 
 def _get_port_mac_and_ip(port, force_addr_pairs=False):
