@@ -44,6 +44,19 @@
         cmd: |
           set -e
           set -x
+          mkdir -p /etc/neutron/rootwrap.d
+          cat << 'EOF' >>"/etc/neutron/rootwrap.d/dragonflow.filters"
+          [Filters]
+          ovs-appctl: CommandFilter, ovs-appctl, root
+          EOF
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
           export PYTHONUNBUFFERED=true
           export DEVSTACK_GATE_TEMPEST=0
           export DEVSTACK_GATE_NEUTRON=1
