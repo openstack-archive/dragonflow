@@ -1121,10 +1121,9 @@ class SimulateAndSendAction(SendAction):
             appctl_output = utils.execute(
                 args,
                 run_as_root=True,
-                process_input=None,
             )
 
-            print(appctl_output)
+            LOG.debug(appctl_output)
 
             dp_actions = re.findall(
                 r'^\s*Datapath actions:\s*(.*)$',
