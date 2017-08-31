@@ -300,8 +300,8 @@ class DfLocalController(object):
         action = update.action
         if action == ctrl_const.CONTROLLER_REINITIALIZE:
             self.db_store.clear()
-            self.vswitch_api.initialize(self.nb_api)
             self.sync()
+            self.vswitch_api.initialize(self.nb_api)
         elif action == ctrl_const.CONTROLLER_SYNC:
             self.sync()
         elif action == ctrl_const.CONTROLLER_DBRESTART:
