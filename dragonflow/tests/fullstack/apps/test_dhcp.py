@@ -343,7 +343,7 @@ class TestDHCPApp(test_base.DFTestBase):
     def _test_enable_dhcp(self):
         # Create policy
         dhcp_packet = self._create_dhcp_discover()
-        send_dhcp_offer = app_testing_objects.SendAction(
+        send_dhcp_offer = app_testing_objects.SimulateAndSendAction(
             self.subnet1.subnet_id,
             self.port1.port_id,
             dhcp_packet,
