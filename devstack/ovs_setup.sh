@@ -183,6 +183,10 @@ function configure_ovs {
     if [ -n "$OVS_MANAGER" ]; then
         sudo ovs-vsctl set-manager $OVS_MANAGER
     fi
+    sudo cat << EOF > /etc/neutron/rootwrap.d/dragonflow.filters
+    [Filters]
+    ovs-appctl: CommandFilter, ovs-appctl, root
+    EOF
 
     cd $_pwd
 }
