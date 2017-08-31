@@ -83,6 +83,7 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
 
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create(network={'name': 'aap_test'})
+        self.addCleanup(network.close)
         subnet_obj = self.store(objects.SubnetTestObj(
             self.neutron,
             self.nb_api,
@@ -96,15 +97,18 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
                   'name': 'aap_test',
                   'enable_dhcp': True}
         subnet_obj.create(subnet)
+        self.addCleanup(subnet_obj.close)
 
         vm = self.store(objects.VMTestObj(self, self.neutron))
         vm_id = vm.create(network=network)
+        self.addCleanup(vm.close)
 
         vm_port_id = self.vswitch_api.get_port_id_by_vm_id(vm_id)
         self.assertIsNotNone(vm_port_id)
 
         vm_port = objects.PortTestObj(self.neutron, self.nb_api, network_id,
                                       vm_port_id)
+        self.addCleanup(vm_port.close)
         of_port = self.vswitch_api.get_port_ofport_by_id(vm_port_id)
         self.assertIsNotNone(of_port)
         vm_lport = vm_port.get_logical_port()
@@ -160,5 +164,3 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
         result = self._check_sending_gratuitous_arp_to_controller_flows(
             vm_lport.unique_key, ip_address2)
         self.assertFalse(result)
-
-        network.close()
