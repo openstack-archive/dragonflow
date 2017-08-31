@@ -722,11 +722,12 @@ class TestL3App(test_base.DFTestBase):
         ]
         key2 = (self.subnet2.subnet_id, self.port2.port_id)
         if connected:
-            actions = [app_testing_objects.SendAction(self.subnet2.subnet_id,
-                                                      self.port2.port_id,
-                                                      self._create_pong_packet
-                                                      ),
-                       app_testing_objects.DisableRuleAction()]
+            actions = [app_testing_objects.SendAction(
+                self.subnet2.subnet_id,
+                self.port2.port_id,
+                self._create_pong_packet
+            ),
+                app_testing_objects.DisableRuleAction()]
         else:
             actions = [raise_action]
 
@@ -959,7 +960,8 @@ class TestL3App(test_base.DFTestBase):
         cmd[1] = "set-controller"
         cmd.append(controller)
         utils.execute(cmd, run_as_root=True)
-        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+        # Give the controller some time to reconnect
+        time.sleep(3 * const.DEFAULT_CMD_TIMEOUT)
         self._test_icmp_address(dst_ip)
 
     def _create_icmp_test_port_policies(self, icmp_filter):
