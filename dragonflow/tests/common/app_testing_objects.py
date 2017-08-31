@@ -1062,6 +1062,7 @@ class SendAction(Action):
             # TODO(oanson) pass more info to the packet generator
             packet = packet(buf)
         self._send(policy, packet)
+        LOG.error("SHACHAR - sent packet")
 
     def _send(self, policy, packet):
         interface_object = self._get_interface_object(policy.topology)
@@ -1191,6 +1192,7 @@ class StopSimulationAction(Action):
     """Action to stop the simulation (i.e. the policy)."""
     def __call__(self, policy, rule, port_thread, buf):
         policy.stop()
+        LOG.error("SHACHAR - Stopping simulation")
 
 
 class IgnoreAction(Action):
