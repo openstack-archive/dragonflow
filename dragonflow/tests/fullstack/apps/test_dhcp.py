@@ -351,7 +351,7 @@ class TestDHCPApp(test_base.DFTestBase):
         port_policies = self._create_port_policies()
         policy = self.store(
             app_testing_objects.Policy(
-                initial_actions=[send_dhcp_offer],
+                initial_actions=[send_dhcp_offer, send_dhcp_offer],
                 port_policies=port_policies,
                 unknown_port_action=app_testing_objects.IgnoreAction()
             )
