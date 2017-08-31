@@ -1121,7 +1121,6 @@ class SimulateAndSendAction(SendAction):
             appctl_output = utils.execute(
                 args,
                 run_as_root=True,
-                process_input=None,
             )
 
             print(appctl_output)

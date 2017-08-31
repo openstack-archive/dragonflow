@@ -722,11 +722,12 @@ class TestL3App(test_base.DFTestBase):
         ]
         key2 = (self.subnet2.subnet_id, self.port2.port_id)
         if connected:
-            actions = [app_testing_objects.SendAction(self.subnet2.subnet_id,
-                                                      self.port2.port_id,
-                                                      self._create_pong_packet
-                                                      ),
-                       app_testing_objects.DisableRuleAction()]
+            actions = [app_testing_objects.SimulateAndSendAction(
+                self.subnet2.subnet_id,
+                self.port2.port_id,
+                self._create_pong_packet
+            ),
+                app_testing_objects.DisableRuleAction()]
         else:
             actions = [raise_action]
 
@@ -870,7 +871,7 @@ class TestL3App(test_base.DFTestBase):
         policy = self.store(
             app_testing_objects.Policy(
                 initial_actions=[
-                    app_testing_objects.SendAction(
+                    app_testing_objects.SimulateAndSendAction(
                         self.subnet1.subnet_id,
                         self.port1.port_id,
                         initial_packet,
