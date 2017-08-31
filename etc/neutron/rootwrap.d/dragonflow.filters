@@ -1,0 +1,2 @@
+[Filters]
+ovs-appctl: CommandFilter, ovs-appctl, root
