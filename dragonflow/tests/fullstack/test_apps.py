@@ -71,7 +71,7 @@ class TestApps(test_base.DFTestBase):
             except Exception:
                 pass  # Ignore
             # Just calling raise may raise an exception from topology.close()
-            raise e, None, traceback
+            raise e.with_traceback(traceback)
         topology.close()
 
 
