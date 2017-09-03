@@ -46,7 +46,6 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
 
         # new application configuration
         self.external_host_ip = cfg.CONF.df.external_host_ip
-        self.enable_goto_flows = cfg.CONF.df_snat_app.enable_goto_flows
 
         # create mac address based on given 'external_host_ip'
         if self.external_host_ip is not None:
@@ -140,9 +139,8 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
 
     def install_strategy_based_flows(self):
 
-        if self.enable_goto_flows is True:
-            self._install_ingress_goto_rules()
-            self._install_egress_goto_rules()
+        self._install_ingress_goto_rules()
+        self._install_egress_goto_rules()
 
         self._install_snat_ingress_conntrack()
 

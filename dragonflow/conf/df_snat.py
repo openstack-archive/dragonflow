@@ -22,7 +22,8 @@ df_snat_app_opts = [
                 default=True,
                 help=_("Enable install of common goto flows to ingress/egress "
                        "NAT tables or re-use goto flows installed by "
-                       "other DF application")),
+                       "other DF application"),
+                deprecated_for_removal=True),
     cfg.StrOpt('external_network_bridge',
                default='br-ex',
                help=_("Name of bridge used for external network traffic")),
