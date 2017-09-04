@@ -64,7 +64,7 @@ class DFMechDriver(api.MechanismDriver):
         self.vif_type = portbindings.VIF_TYPE_OVS
         self._set_base_port_binding()
         self.port_status = n_const.PORT_STATUS_ACTIVE
-        self.trunk_driver = trunk_driver.DragonflowDriver()
+        self.trunk_driver = trunk_driver.DfTrunkDriver()
         self.subscribe_registries()
         df_qos.register()
 

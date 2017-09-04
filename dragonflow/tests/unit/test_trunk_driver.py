@@ -47,21 +47,21 @@ class TestDFTrunkDriver(test_mech_driver.DFMechanismDriverTestCase):
     def test_driver_is_loaded(self):
         cfg.CONF.set_override('mechanism_drivers',
                               'df', group='ml2')
-        rie = mock.patch.object(driver.DragonflowDriver,
+        rie = mock.patch.object(driver.DfTrunkDriver,
                                 '_register_init_events')
         rie.start()
         self.addCleanup(rie.stop)
-        df_driver = driver.DragonflowDriver()
+        df_driver = driver.DfTrunkDriver()
         self.assertTrue(df_driver.is_loaded)
 
     def test_driver_is_not_loaded(self):
         cfg.CONF.set_override('mechanism_drivers',
                               'my_foo_plugin', group='ml2')
-        rie = mock.patch.object(driver.DragonflowDriver,
+        rie = mock.patch.object(driver.DfTrunkDriver,
                                 '_register_init_events')
         rie.start()
         self.addCleanup(rie.stop)
-        df_driver = driver.DragonflowDriver()
+        df_driver = driver.DfTrunkDriver()
         self.assertFalse(df_driver.is_loaded)
 
     def test_driver_create_trunk(self):
