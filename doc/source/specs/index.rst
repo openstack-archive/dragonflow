@@ -74,6 +74,7 @@ Specs
     tunneling_app
     logical_port_locality
     extra_dhcp_opts
+    database_migration_and_upgrade
 
 Templates
 ---------
