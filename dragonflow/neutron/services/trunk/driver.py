@@ -30,9 +30,9 @@ from dragonflow.db.models import trunk as trunk_models
 from dragonflow.neutron.services import mixins
 
 
-class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
+class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
     def __init__(self):
-        super(DragonflowDriver, self).__init__(
+        super(DfTrunkDriver, self).__init__(
             'df',
             (portbindings.VIF_TYPE_OVS, portbindings.VIF_TYPE_VHOST_USER),
             (constants.VLAN,),
@@ -54,7 +54,7 @@ class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
         Register the Dragonflow driver. This means registering to the
         add subport and delete subport events
         """
-        super(DragonflowDriver, self).register(resource, event, trigger,
+        super(DfTrunkDriver, self).register(resource, event, trigger,
                                                **kwargs)
         self._register_subport_events()
 
