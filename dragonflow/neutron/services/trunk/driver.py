@@ -56,12 +56,17 @@ class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
         """
         super(DragonflowDriver, self).register(resource, event, trigger,
                                                **kwargs)
+        self._register_trunk_events()
         self._register_subport_events()
 
     def _register_init_events(self):
         registry.subscribe(self.register,
                            constants.TRUNK_PLUGIN,
                            events.AFTER_INIT)
+
+    def _register_trunk_events(self):
+        registry.subscribe(self._add_trunk_handler,
+                           constants.TRUNK, events.AFTER_CREATE)
 
     def _register_subport_events(self):
         registry.subscribe(self._add_subports_handler,
@@ -78,6 +83,12 @@ class DragonflowDriver(base.DriverBase, mixins.LazyNbApiMixin):
         """
         base = "{}/{}".format(trunk.port_id, subport.port_id)
         return str(uuid.uuid5(trunk_models.UUID_NAMESPACE, base))
+
+    def _add_trunk_handler(self, *args, **kwargs):
+        """Handle the event that trunk was created"""
+        payload = kwargs['payload']
+        trunk = payload.current_trunk
+        trunk.update(status=constants.ACTIVE_STATUS)
 
     def _add_subports_handler(self, *args, **kwargs):
         """Handle the event that subports were created"""
