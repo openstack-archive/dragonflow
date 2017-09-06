@@ -114,8 +114,7 @@ fake_logic_router1 = l3.LogicalRouter(
     ports=fake_logical_router_ports)
 
 
-fake_lswitch_default_subnets = [l2.Subnet(dhcp_ip="10.0.0.2",
-                                          name="private-subnet",
+fake_lswitch_default_subnets = [l2.Subnet(name="private-subnet",
                                           enable_dhcp=True,
                                           topic="fake_tenant1",
                                           gateway_ip="10.0.0.1",
