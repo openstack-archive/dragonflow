@@ -12,6 +12,8 @@
 
 import time
 
+from neutron_lib import constants as n_const
+
 from dragonflow.controller.common import constants as const
 from dragonflow.db.models import l2
 from dragonflow.tests.common import constants
@@ -31,8 +33,8 @@ class TestDbConsistent(test_base.DFTestBase):
                     return True
         return False
 
-    def _check_no_lswitch_dhcp_rule(self, flows, dhcp_ip):
-        if utils.check_dhcp_ip_rule(flows, dhcp_ip):
+    def _check_no_lswitch_dhcp_rule(self, flows, network_key):
+        if utils.check_dhcp_network_rule(flows, network_key):
             return False
         return True
 
@@ -94,32 +96,36 @@ class TestDbConsistent(test_base.DFTestBase):
         self.nb_api.driver.create_key(
                 'lswitch', net_id, df_network_json, topic)
 
+        port_id = '33333333-2222-2222-2222-222222222222,'
+        dhcp_port = l2.LogicalPort(
+            topic=topic,
+            name='df_dhcp1',
+            macs=['aa:bb:cc:dd:ee:ff'],
+            id=port_id,
+            ips=['10.60.0.2'],
+            subnets=[df_subnet.id],
+            device_owner=n_const.DEVICE_OWNER_DHCP,
+            lswitch=df_network.id,
+            unique_key=1
+        ).to_json()
+
+        self.nb_api.driver.create_key(
+            'lport', port_id, dhcp_port, topic)
+
+        df_net_unique_key = df_network.unique_key
         time.sleep(self.db_sync_time)
         utils.wait_until_true(
-            lambda: utils.check_dhcp_ip_rule(
-                    ovs.dump(self.integration_bridge), '10.60.0.2'),
+            lambda: utils.check_dhcp_network_rule(
+                    ovs.dump(self.integration_bridge), df_net_unique_key),
             timeout=self.db_sync_time + constants.DEFAULT_CMD_TIMEOUT, sleep=1,
             exception=Exception('no goto dhcp rule for lswitch')
         )
 
-        df_network.version = 2
-        df_network.subnets[0].dhcp_ip = '10.60.0.3'
-        df_network_json = df_network.to_json()
-        self.nb_api.driver.set_key('lswitch', net_id, df_network_json, topic)
-
-        time.sleep(self.db_sync_time)
-        utils.wait_until_true(
-            lambda: utils.check_dhcp_ip_rule(
-                    ovs.dump(self.integration_bridge), '10.60.0.3'),
-            timeout=self.db_sync_time + constants.DEFAULT_CMD_TIMEOUT, sleep=1,
-            exception=Exception('no goto dhcp rule for lswitch')
-        )
-
-        self.nb_api.driver.delete_key('lswitch', net_id, topic)
+        self.nb_api.driver.delete_key('lport', port_id, topic)
         time.sleep(self.db_sync_time)
         utils.wait_until_true(
             lambda: self._check_no_lswitch_dhcp_rule(
-                    ovs.dump(self.integration_bridge), '10.60.0.3'),
+                    ovs.dump(self.integration_bridge), df_net_unique_key),
             timeout=self.db_sync_time + constants.DEFAULT_CMD_TIMEOUT, sleep=1,
             exception=Exception('could not delete goto dhcp rule for lswitch')
         )
