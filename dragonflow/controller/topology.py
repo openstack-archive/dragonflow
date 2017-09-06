@@ -55,7 +55,7 @@ class Topology(object):
         ovs.OvsPort.register_updated(self.ovs_port_updated)
         ovs.OvsPort.register_deleted(self.ovs_port_deleted)
 
-    def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
+    def ovs_port_updated(self, ovs_port):
         """
         Changes in ovs port status will be monitored by ovsdb monitor thread
         and notified to topology. This method is the entry port to process
