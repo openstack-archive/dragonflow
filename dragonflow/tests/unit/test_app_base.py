@@ -13,9 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 import mock
+
 from neutron_lib import constants as n_const
 from oslo_config import cfg
+from oslo_log import fixture as log_fixture
 
 from dragonflow.common import constants
 from dragonflow.controller import df_local_controller
@@ -48,6 +51,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         )
         cfg.CONF.set_override('host', fake_chassis1.id)
         super(DFAppTestBase, self).setUp()
+        self.useFixture(log_fixture.SetLogLevel([None], logging.DEBUG))
         mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
         mock.patch('dragonflow.db.api_nb.NbApi.get_instance').start()
         mod_flow = mock.patch(
