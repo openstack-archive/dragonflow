@@ -69,14 +69,13 @@ def wait_until_none(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
     wait_until_true(internal_predicate, timeout, sleep, exception)
 
 
-def check_dhcp_ip_rule(flows, dhcp_ip):
-    goto_dhcp = 'goto_table:' + str(df_const.DHCP_TABLE)
-    dhcp_ports = ',tp_src=' + str(df_const.DHCP_CLIENT_PORT) + \
-                 ',tp_dst=' + str(df_const.DHCP_SERVER_PORT)
+def check_dhcp_network_rule(flows, netwrok_key):
+    controller_action = 'CONTROLLER:65535'
+    network_id = 'metadata=' + str(hex(netwrok_key))
     for flow in flows:
-        if (flow['table'] == str(df_const.SERVICES_CLASSIFICATION_TABLE)
-                and flow['actions'] == goto_dhcp):
-            if ('nw_dst=' + dhcp_ip + dhcp_ports in flow['match']):
+        if (flow['table'] == str(df_const.DHCP_TABLE)
+                and flow['actions'] == controller_action):
+            if network_id in flow['match']:
                 return True
     return False
 
