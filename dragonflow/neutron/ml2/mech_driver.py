@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import netaddr
 from neutron.plugins.ml2 import models
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
@@ -33,6 +32,7 @@ from dragonflow.db.models import secgroups
 from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.db.models import l2 as neutron_l2
 from dragonflow.neutron.db.models import secgroups as neutron_secgroups
+from dragonflow.neutron.ml2 import dhcp_module
 from dragonflow.neutron.services.qos.drivers import df_qos
 from dragonflow.neutron.services.trunk import driver as trunk_driver
 
@@ -67,8 +67,9 @@ class DFMechDriver(api.MechanismDriver):
         self.trunk_driver = trunk_driver.DfTrunkDriver()
         self.subscribe_registries()
         df_qos.register()
+        self.dhcp_module = dhcp_module.DFDHCPModule()
 
-    def post_fork_initialize(self, resource, event, trigger, payload=None):
+    def post_fork_initialize(self, resource, event, trigger, **kwargs):
         # NOTE(nick-ma-z): This will initialize all workers (API, RPC,
         # plugin service, etc) and threads with network connections.
         self.nb_api = api_nb.NbApi.get_instance(True)
@@ -235,15 +236,6 @@ class DFMechDriver(api.MechanismDriver):
         LOG.info("DFMechDriver: update network %s", network['id'])
         return network
 
-    def _get_dhcp_port_for_subnet(self, context, subnet_id):
-        filters = {'fixed_ips': {'subnet_id': [subnet_id]},
-                   'device_owner': [n_const.DEVICE_OWNER_DHCP]}
-        ports = self.core_plugin.get_ports(context, filters=filters)
-        if 0 != len(ports):
-            return ports[0]
-        else:
-            return None
-
     def _process_portbindings_create_and_update(self, context, port_data,
                                                 port):
         binding_profile = port.get(portbindings.PROFILE)
@@ -277,35 +269,6 @@ class DFMechDriver(api.MechanismDriver):
         self._update_port_binding(port_res)
         super(DFMechDriver, self).extend_port_dict_binding(port_res, port_db)
 
-    def _create_dhcp_server_port(self, context, subnet):
-        """Create and return dhcp port information.
-
-        If an expected failure occurs, a None port is returned.
-        """
-        port = {'port': {'tenant_id': subnet['tenant_id'],
-                         'network_id': subnet['network_id'], 'name': '',
-                         'admin_state_up': True, 'device_id': '',
-                         'device_owner': n_const.DEVICE_OWNER_DHCP,
-                         'mac_address': n_const.ATTR_NOT_SPECIFIED,
-                         'fixed_ips': [{'subnet_id': subnet['id']}]}}
-        port = self.core_plugin.create_port(context, port)
-        return port
-
-    def _handle_create_subnet_dhcp(self, context, subnet):
-        """Create the dhcp configuration for the subnet if required.
-
-        Returns the dhcp ip and dhcp server port (if created).
-        """
-        if subnet['enable_dhcp']:
-            if cfg.CONF.df.use_centralized_ipv6_DHCP:
-                return subnet['allocation_pools'][0]['start'], None
-            else:
-
-                dhcp_port = self._create_dhcp_server_port(context, subnet)
-                dhcp_ip = self._get_ip_from_port(dhcp_port)
-                return dhcp_ip, dhcp_port
-        return None, None
-
     def _get_ip_from_port(self, port):
         """Get The first Ip address from the port.
 
@@ -326,107 +289,25 @@ class DFMechDriver(api.MechanismDriver):
         subnet = context.current
         network = context.network.current
         net_id = subnet['network_id']
-        plugin_context = context._plugin_context
-        dhcp_ip = None
-        dhcp_port = None
-
-        try:
-            dhcp_ip, dhcp_port = self._handle_create_subnet_dhcp(
-                                                plugin_context,
-                                                subnet)
-        except Exception:
-            LOG.exception(
-                "Failed to create dhcp port for subnet %s", subnet['id'])
-            return None
-
         lswitch = self.nb_api.get(l2.LogicalSwitch(id=net_id,
                                                    topic=network['tenant_id']))
         lswitch.version = network['revision_number']
         df_subnet = neutron_l2.subnet_from_neutron_subnet(subnet)
-        df_subnet.dhcp_ip = dhcp_ip
         lswitch.add_subnet(df_subnet)
         self.nb_api.update(lswitch)
 
         LOG.info("DFMechDriver: create subnet %s", subnet['id'])
         return subnet
 
-    def _update_subnet_dhcp_centralized(self, context, subnet):
-        """Update the dhcp configuration for the subnet.
-
-        Returns the dhcp server ip address if configured
-        """
-        if subnet['enable_dhcp']:
-            port = self._get_dhcp_port_for_subnet(
-                    context,
-                    subnet['id'])
-            return self._get_ip_from_port(port)
-        else:
-            return subnet['allocation_pools'][0]['start']
-
-    def _delete_subnet_dhcp_port(self, context, port):
-        self.core_plugin.delete_port(context, port['id'])
-
-    def _cidr_obj_from_text(self, cidr):
-        return netaddr.IPNetwork(cidr) if cidr else None
-
-    def _handle_update_subnet_dhcp(self, context, old_subnet, new_subnet):
-        """Update the dhcp configuration for.
-
-        Returns the dhcp ip if exists and optionaly value of dhcp server port
-        if this port was created.
-        """
-        dhcp_ip = None
-        if cfg.CONF.df.use_centralized_ipv6_DHCP:
-            dhcp_ip = self._update_subnet_dhcp_centralized(context, new_subnet)
-            return dhcp_ip, None
-
-        if new_subnet['enable_dhcp']:
-            cidr = self._cidr_obj_from_text(new_subnet['cidr'])
-            if cidr is None or cidr.ip.version != n_const.IP_VERSION_4:
-                return None, None
-
-            if not old_subnet['enable_dhcp']:
-                port = self._create_dhcp_server_port(context, new_subnet)
-            else:
-                port = self._get_dhcp_port_for_subnet(context,
-                                                      old_subnet['id'])
-
-            return self._get_ip_from_port(port), port
-        else:
-            if old_subnet['enable_dhcp']:
-                cidr = self._cidr_obj_from_text(old_subnet['cidr'])
-                if cidr and cidr.ip.version == n_const.IP_VERSION_4:
-                    port = self._get_dhcp_port_for_subnet(context,
-                                                          old_subnet['id'])
-                    self._delete_subnet_dhcp_port(context, port)
-
-            return None, None
-
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SUBNET)
     def update_subnet_postcommit(self, context):
         new_subnet = context.current
-        old_subnet = context.original
         network = context.network.current
-        plugin_context = context._plugin_context
-        dhcp_ip = None
-        dhcp_port = None
-
-        try:
-            dhcp_ip, dhcp_port = self._handle_update_subnet_dhcp(
-                                                    plugin_context,
-                                                    old_subnet,
-                                                    new_subnet)
-        except Exception:
-            LOG.exception(
-                "Failed to create dhcp port for subnet %s", new_subnet['id'])
-            return None
-
         lswitch = self.nb_api.get(l2.LogicalSwitch(id=new_subnet['network_id'],
                                                    topic=network['tenant_id']))
         lswitch.version = network['revision_number']
         subnet = lswitch.find_subnet(new_subnet['id'])
         subnet.update(neutron_l2.subnet_from_neutron_subnet(new_subnet))
-        subnet.dhcp_ip = dhcp_ip
         self.nb_api.update(lswitch)
 
         LOG.info("DFMechDriver: update subnet %s", new_subnet['id'])
@@ -434,11 +315,7 @@ class DFMechDriver(api.MechanismDriver):
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SUBNET)
     def delete_subnet_postcommit(self, context):
-        """If the subnet enabled dhcp, the dhcp server port should be deleted.
-        But the operation of delete dhcp port can't do here, because in this
-        case, we can't get dhcp port by subnet id. The dhcp port will be
-        deleted in update_port_postcommit.
-        """
+
         subnet = context.current
         net_id = subnet['network_id']
         subnet_id = subnet['id']
@@ -478,22 +355,6 @@ class DFMechDriver(api.MechanismDriver):
         LOG.info("DFMechDriver: create port %s", port['id'])
         return port
 
-    def _is_dhcp_port_after_subnet_delete(self, port):
-        # If a subnet enabled dhcp, the DFMechDriver will create a dhcp server
-        # port. When delete this subnet, the port should be deleted.
-        # In ml2/plugin.py, when delete subnet, it will call
-        # update_port_postcommit, DFMechDriver should judge the port is dhcp
-        # port or not, if it is, then delete it.
-        subnet_id = None
-
-        for fixed_ip in port['fixed_ips']:
-            subnet_id = fixed_ip.get('subnet_id')
-            if subnet_id:
-                break
-
-        owner = port['device_owner']
-        return owner == n_const.DEVICE_OWNER_DHCP and subnet_id is None
-
     def update_port_precommit(self, context):
         port = context.current
         neutron_l2.validate_extra_dhcp_option(port)
@@ -517,16 +378,6 @@ class DFMechDriver(api.MechanismDriver):
                 context.status != context.original_status and
                 (context.status == n_const.PORT_STATUS_DOWN or
                  context.status == n_const.PORT_STATUS_ACTIVE)):
-            return None
-
-        # If a subnet enabled dhcp, the DFMechDriver will create a dhcp server
-        # port. When delete this subnet, the port should be deleted.
-        # In ml2/plugin.py, when delete subnet, it will call
-        # update_port_postcommit, DFMechDriver should judge the port is dhcp
-        # port or not, if it is, then delete it.
-        if self._is_dhcp_port_after_subnet_delete(updated_port):
-            self._delete_subnet_dhcp_port(context._plugin_context,
-                                          updated_port)
             return None
 
         lport = neutron_l2.logical_port_from_neutron_port(updated_port)
