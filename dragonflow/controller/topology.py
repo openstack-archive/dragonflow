@@ -122,7 +122,7 @@ class Topology(object):
                 LOG.info("%s is None.", handler_name)
         except Exception:
             LOG.exception("Exception occurred when handling "
-                          "ovs port update event")
+                          "ovs port offline event")
         finally:
             del self.ovs_ports[ovs_port.id]
 
