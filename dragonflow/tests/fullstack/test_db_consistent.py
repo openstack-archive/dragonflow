@@ -31,8 +31,8 @@ class TestDbConsistent(test_base.DFTestBase):
                     return True
         return False
 
-    def _check_no_lswitch_dhcp_rule(self, flows, dhcp_ip):
-        if utils.check_dhcp_ip_rule(flows, dhcp_ip):
+    def _check_no_lswitch_dhcp_rule(self, flows, network_key):
+        if utils.check_dhcp_network_rule(flows, network_key):
             return False
         return True
 
@@ -94,10 +94,11 @@ class TestDbConsistent(test_base.DFTestBase):
         self.nb_api.driver.create_key(
                 'lswitch', net_id, df_network_json, topic)
 
+        df_net_unique_key = df_network.unique_key
         time.sleep(self.db_sync_time)
         utils.wait_until_true(
-            lambda: utils.check_dhcp_ip_rule(
-                    ovs.dump(self.integration_bridge), '10.60.0.2'),
+            lambda: utils.check_dhcp_network_rule(
+                    ovs.dump(self.integration_bridge), df_net_unique_key),
             timeout=self.db_sync_time + constants.DEFAULT_CMD_TIMEOUT, sleep=1,
             exception=Exception('no goto dhcp rule for lswitch')
         )
@@ -105,12 +106,12 @@ class TestDbConsistent(test_base.DFTestBase):
         df_network.version = 2
         df_network.subnets[0].dhcp_ip = '10.60.0.3'
         df_network_json = df_network.to_json()
-        self.nb_api.driver.set_key('lswitch', net_id, df_network_json, topic)
 
+        self.nb_api.driver.set_key('lswitch', net_id, df_network_json, topic)
         time.sleep(self.db_sync_time)
         utils.wait_until_true(
-            lambda: utils.check_dhcp_ip_rule(
-                    ovs.dump(self.integration_bridge), '10.60.0.3'),
+            lambda: utils.check_dhcp_network_rule(
+                    ovs.dump(self.integration_bridge), df_net_unique_key),
             timeout=self.db_sync_time + constants.DEFAULT_CMD_TIMEOUT, sleep=1,
             exception=Exception('no goto dhcp rule for lswitch')
         )
@@ -119,7 +120,7 @@ class TestDbConsistent(test_base.DFTestBase):
         time.sleep(self.db_sync_time)
         utils.wait_until_true(
             lambda: self._check_no_lswitch_dhcp_rule(
-                    ovs.dump(self.integration_bridge), '10.60.0.3'),
+                    ovs.dump(self.integration_bridge), df_net_unique_key),
             timeout=self.db_sync_time + constants.DEFAULT_CMD_TIMEOUT, sleep=1,
             exception=Exception('could not delete goto dhcp rule for lswitch')
         )
