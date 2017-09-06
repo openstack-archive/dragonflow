@@ -71,13 +71,21 @@ class DFMechanismDriverTestCase(test_plugin.Ml2PluginV2TestCase):
         mm = self.driver.mechanism_manager
         self.mech_driver = mm.mech_drivers['df'].obj
         self.mech_driver.post_fork_initialize(None, None, None)
+        self.nb_api = self.mech_driver.nb_api
+
+    def _test_create_network_revision(self, name='net1'):
+        with self.network(name=name) as n:
+            network = n['network']
+            self.assertGreater(network['revision_number'], 0)
+            lswitch = neutron_l2.logical_switch_from_neutron_network(network)
+            self.nb_api.create.assert_called_with(lswitch)
+            return network, lswitch
 
 
 class TestDFMechDriver(DFMechanismDriverTestCase):
 
     def setUp(self):
         super(TestDFMechDriver, self).setUp()
-        self.nb_api = self.mech_driver.nb_api
 
     def _test_create_security_group_revision(self):
         s = {'security_group': {'tenant_id': 'some_tenant', 'name': '',
@@ -125,14 +133,6 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.nb_api.update.assert_called_with(
             neutron_secgroups.security_group_from_neutron_obj(newer_sg))
 
-    def _test_create_network_revision(self):
-        with self.network() as n:
-            network = n['network']
-            self.assertGreater(network['revision_number'], 0)
-            lswitch = neutron_l2.logical_switch_from_neutron_network(network)
-            self.nb_api.create.assert_called_with(lswitch)
-            return network, lswitch
-
     def test_create_network_revision(self):
         self._test_create_network_revision()
 
@@ -179,31 +179,6 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self.nb_api.update.called_once_with(new_lswitch)
         self.assertEqual(new_network['revision_number'],
                          new_lswitch.version)
-
-    def test_create_update_subnet_dhcp(self):
-        network, lswitch = self._test_create_network_revision()
-        self.nb_api.update.reset_mock()
-        self.nb_api.get.side_effect = nb_api_get_func(lswitch)
-        with self.subnet(network={'network': network}, enable_dhcp=True,
-                         set_context=True) as subnet:
-            self.nb_api.update.assert_called_once()
-            lswitch = self.nb_api.update.call_args_list[0][0][0]
-            self.assertIsInstance(lswitch, l2.LogicalSwitch)
-            self.nb_api.get.side_effect = nb_api_get_func(lswitch)
-            self.nb_api.update.reset_mock()
-            df_subnet = lswitch.find_subnet(subnet['subnet']['id'])
-            self.assertTrue(df_subnet.enable_dhcp)
-            self.assertIsNotNone(df_subnet.dhcp_ip)
-
-            data = {'subnet': {'enable_dhcp': False}}
-            req = self.new_update_request('subnets',
-                                          data, subnet['subnet']['id'])
-            req.get_response(self.api)
-            self.nb_api.update.assert_called_once()
-            lswitch = self.nb_api.update.call_args_list[0][0][0]
-            df_subnet = lswitch.find_subnet(subnet['subnet']['id'])
-            self.assertFalse(df_subnet.enable_dhcp)
-            self.assertIsNone(df_subnet.dhcp_ip)
 
     def test_create_update_subnet_gateway_ip(self):
         network, lswitch = self._test_create_network_revision()
@@ -289,7 +264,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                   [{"ip_address": "10.1.1.10"},
                    {"ip_address": "20.1.1.20",
                     "mac_address": "aa:bb:cc:dd:ee:ff"}]}
-        with self.subnet(enable_dhcp=False) as subnet:
+        with self.subnet() as subnet:
             self.nb_api.create.reset_mock()
             with self.port(subnet=subnet,
                            arg_list=('allowed_address_pairs',),
@@ -321,7 +296,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
     def _test_create_update_port_security(self, enabled):
         kwargs = {'port_security_enabled': enabled}
-        with self.subnet(enable_dhcp=False) as subnet:
+        with self.subnet() as subnet:
             self.nb_api.create.reset_mock()
             with self.port(subnet=subnet,
                            arg_list=('port_security_enabled',),
@@ -349,7 +324,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         self._test_create_update_port_security(True)
 
     def test_create_port_with_device_option(self):
-        with self.subnet(enable_dhcp=False) as subnet:
+        with self.subnet() as subnet:
             self.nb_api.create.reset_mock()
             with self.port(subnet=subnet, device_owner='fake_owner',
                            device_id='fake_id'):
@@ -360,7 +335,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 self.assertEqual('fake_id', lport.device_id)
 
     def test_create_update_port_revision(self):
-        with self.subnet(enable_dhcp=False) as subnet:
+        with self.subnet() as subnet:
             self.nb_api.create.reset_mock()
             with self.port(subnet=subnet) as p:
                 port = p['port']
@@ -392,7 +367,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
     def test_create_update_remote_port(self):
         profile = {"port_key": "remote_port", "host_ip": "20.0.0.2"}
         profile_arg = {'binding:profile': profile}
-        with self.subnet(enable_dhcp=False) as subnet:
+        with self.subnet() as subnet:
             self.nb_api.create.reset_mock()
             with self.port(subnet=subnet,
                            arg_list=('binding:profile',),
@@ -439,7 +414,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         network, lswitch = self._test_create_network_revision()
         self.nb_api.update.reset_mock()
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
-        with self.subnet(network={'network': network}, enable_dhcp=False) as s:
+        with self.subnet(network={'network': network}) as s:
             self.nb_api.update.assert_called_once()
             lswitch = self.nb_api.update.call_args_list[0][0][0]
             self.nb_api.get.side_effect = nb_api_get_func(lswitch)
@@ -502,7 +477,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         kwargs = {'extra_dhcp_opts':
                   [{'opt_value': "192.168.0.1", 'opt_name': "routers"},
                    {'opt_value': "0.0.0.0/0,192.168.0.1", 'opt_name': "121"}]}
-        with self.subnet(enable_dhcp=False) as subnet:
+        with self.subnet() as subnet:
             self.nb_api.create.reset_mock()
             with self.port(subnet=subnet,
                            arg_list=('extra_dhcp_opts',),
