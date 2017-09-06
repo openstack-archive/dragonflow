@@ -15,6 +15,7 @@
 
 import collections
 import copy
+import functools
 import math
 import struct
 
@@ -56,12 +57,13 @@ class DHCPApp(df_base_app.DFlowApp):
         self.domain_name = cfg.CONF.dns_domain
         self.block_hard_timeout = self.conf.df_dhcp_block_time_in_sec
         self.default_interface_mtu = self.conf.df_default_network_device_mtu
-
-        self._port_rate_limiters = {}
+        self._port_rate_limiters = collections.defaultdict(
+            functools.partial(df_utils.RateLimiter,
+                              max_rate=self.conf.df_dhcp_max_rate_per_sec,
+                              time_unit=1))
         self.api.register_table_handler(const.DHCP_TABLE,
                                         self.packet_in_handler)
-        self.switch_dhcp_ip_map = collections.defaultdict(dict)
-        self.subnet_vm_port_map = collections.defaultdict(set)
+        self._dhcp_ip_by_subnet = {}
 
     def switch_features_handler(self, ev):
         self._install_dhcp_broadcast_match_flow()
@@ -69,8 +71,12 @@ class DHCPApp(df_base_app.DFlowApp):
                                   const.PRIORITY_DEFAULT,
                                   const.L2_LOOKUP_TABLE)
         self._port_rate_limiters.clear()
-        self.switch_dhcp_ip_map.clear()
-        self.subnet_vm_port_map.clear()
+
+    def _check_port_limit(self, lport):
+
+        port_rate_limiter = self._port_rate_limiters[lport.id]
+
+        return port_rate_limiter()
 
     def packet_in_handler(self, event):
         msg = event.msg
@@ -87,16 +93,15 @@ class DHCPApp(df_base_app.DFlowApp):
             l2.LogicalPort(unique_key=unique_key),
             index=l2.LogicalPort.get_index('unique_key'),
         )
-        port_rate_limiter = self._port_rate_limiters[lport.id]
-        if port_rate_limiter():
-            self._block_port_dhcp_traffic(
-                    unique_key,
-                    self.block_hard_timeout)
+
+        if self._check_port_limit(lport):
+            self._block_port_dhcp_traffic(unique_key, lport)
             LOG.warning("pass rate limit for %(port_id)s blocking DHCP "
                         "traffic for %(time)s sec",
                         {'port_id': lport.id,
                          'time': self.block_hard_timeout})
             return
+
         if not self.db_store.get_one(lport):
             LOG.error("Port %s no longer found.", lport.id)
             return
@@ -146,7 +151,7 @@ class DHCPApp(df_base_app.DFlowApp):
             LOG.warning("No subnet found for port %s", lport.id)
             return
 
-        dhcp_server_address = subnet.dhcp_ip
+        dhcp_server_address = self._dhcp_ip_by_subnet.get(subnet.id)
         if not dhcp_server_address:
             LOG.warning("Could not find DHCP server address for subnet %s",
                         subnet.id)
@@ -160,7 +165,6 @@ class DHCPApp(df_base_app.DFlowApp):
 
         options = dhcp.options(option_list=option_list)
 
-        dhcp_server_address = subnet.dhcp_ip
         dhcp_response = ryu_packet.Packet()
         dhcp_response.add_protocol(ethernet.ethernet(
                                                 ethertype=ether.ETH_TYPE_IP,
@@ -341,14 +345,6 @@ class DHCPApp(df_base_app.DFlowApp):
             return gateway_ip
         return lport.dhcp_params.opts.get(dhcp.DHCP_GATEWAY_ADDR_OPT)
 
-    def _is_dhcp_enabled_for_port(self, lport):
-        try:
-            subnet = lport.subnets[0]
-        except IndexError:
-            LOG.warning("No subnet found for port %s", lport.id)
-            return False
-        return subnet.enable_dhcp
-
     def _get_port_mtu(self, lport):
         # get network mtu from lswitch
         lswitch = lport.lswitch
@@ -357,144 +353,27 @@ class DHCPApp(df_base_app.DFlowApp):
             return mtu
         return self.default_interface_mtu
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
-    def _remove_local_port(self, lport):
-        if lport.ip.version != n_const.IP_VERSION_4:
-            LOG.warning("No support for non IPv4 protocol")
-            return
+    def _install_dhcp_classification_flow(self):
+        parser = self.parser
 
-        subnet_id = lport.subnets[0].id
-        self.subnet_vm_port_map[subnet_id].discard(lport.id)
-        self._uninstall_dhcp_flow_for_vm_port(lport)
+        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                ip_proto=n_const.PROTO_NUM_UDP,
+                                udp_src=const.DHCP_CLIENT_PORT,
+                                udp_dst=const.DHCP_SERVER_PORT)
 
-        del self._port_rate_limiters[lport.id]
+        self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
+                                  const.PRIORITY_MEDIUM,
+                                  const.DHCP_TABLE, match=match)
 
-    def _uninstall_dhcp_flow_for_vm_port(self, lport):
-        """Uninstall dhcp flow in DHCP_TABLE for a port of vm."""
-
-        unique_key = lport.unique_key
+    def _block_port_dhcp_traffic(self, unique_key, lport):
         match = self.parser.OFPMatch(reg6=unique_key)
+        drop_inst = None
         self.mod_flow(
-            table_id=const.DHCP_TABLE,
-            command=self.ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
-    def _add_local_port(self, lport):
-        if lport.ip.version != n_const.IP_VERSION_4:
-            LOG.warning("No support for non IPv4 protocol")
-            return
-
-        subnet_id = lport.subnets[0].id
-        self.subnet_vm_port_map[subnet_id].add(lport.id)
-
-        if not self._is_dhcp_enabled_for_port(lport):
-            return
-
-        self._install_dhcp_flow_for_vm_port(lport)
-
-    def _install_dhcp_flow_for_vm_port(self, lport):
-        """Install dhcp flow in DHCP_TABLE for a port of vm."""
-
-        port_rate_limiter = df_utils.RateLimiter(
-                        max_rate=self.conf.df_dhcp_max_rate_per_sec,
-                        time_unit=1)
-        self._port_rate_limiters[lport.id] = port_rate_limiter
-
-        LOG.info("Register VM as DHCP client::port <%s>", lport.id)
-
-        parser = self.parser
-        ofproto = self.ofproto
-        match = parser.OFPMatch(reg6=lport.unique_key)
-        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER)]
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
-        self.mod_flow(
-            inst=inst,
-            table_id=const.DHCP_TABLE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
-
-    @df_base_app.register_event(l2.LogicalSwitch,
-                                model_constants.EVENT_CREATED)
-    @df_base_app.register_event(l2.LogicalSwitch,
-                                model_constants.EVENT_UPDATED)
-    def update_logical_switch(self, lswitch, orig_lswitch=None):
-        subnets = lswitch.subnets
-        network_id = lswitch.unique_key
-        all_subnets = set()
-        for subnet in subnets:
-            if self._is_ipv4(subnet):
-                subnet_id = subnet.id
-                all_subnets.add(subnet_id)
-                old_dhcp_ip = (
-                    (self.switch_dhcp_ip_map[network_id]
-                     and self.switch_dhcp_ip_map[network_id].get(subnet_id))
-                    or None)
-                if subnet.enable_dhcp:
-                    dhcp_ip = subnet.dhcp_ip
-                    if dhcp_ip != old_dhcp_ip:
-                        # In case the subnet alway has dhcp enabled, but change
-                        # its dhcp IP.
-                        self._install_dhcp_unicast_match_flow(dhcp_ip,
-                                                              network_id)
-                        if old_dhcp_ip:
-                            self._remove_dhcp_unicast_match_flow(
-                                network_id, old_dhcp_ip)
-                        else:
-                            # The first time the subnet is found as a dhcp
-                            # enabled subnet. The vm's dhcp flow needs to be
-                            # downloaded.
-                            self._install_dhcp_flow_for_vm_in_subnet(subnet_id)
-
-                        self.switch_dhcp_ip_map[network_id].update(
-                            {subnet_id: dhcp_ip})
-                else:
-                    if old_dhcp_ip:
-                        # The subnet was found as a dhcp enabled subnet, but it
-                        # has been changed to dhcp disabled subnet now.
-                        self._uninstall_dhcp_flow_for_vm_in_subnet(subnet_id)
-                        self._remove_dhcp_unicast_match_flow(
-                            network_id, old_dhcp_ip)
-                        self.switch_dhcp_ip_map[network_id].update(
-                            {subnet_id: None})
-
-        # Clear stale dhcp ips, which belongs to the subnets that are deleted.
-        deleted_subnets = (set(self.switch_dhcp_ip_map[network_id]) -
-                           all_subnets)
-        for subnet_id in deleted_subnets:
-            dhcp_ip = self.switch_dhcp_ip_map[network_id][subnet_id]
-            if dhcp_ip:
-                self._remove_dhcp_unicast_match_flow(network_id, dhcp_ip)
-
-            del self.switch_dhcp_ip_map[network_id][subnet_id]
-
-    @df_base_app.register_event(l2.LogicalSwitch,
-                                model_constants.EVENT_DELETED)
-    def remove_logical_switch(self, lswitch):
-        network_id = lswitch.unique_key
-        self._remove_dhcp_unicast_match_flow(network_id)
-        del self.switch_dhcp_ip_map[network_id]
-
-    def _remove_dhcp_unicast_match_flow(self, network_id, ip_addr=None):
-        parser = self.parser
-        ofproto = self.ofproto
-        if ip_addr:
-            match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                    ipv4_dst=ip_addr,
-                                    ip_proto=n_const.PROTO_NUM_UDP,
-                                    udp_src=const.DHCP_CLIENT_PORT,
-                                    udp_dst=const.DHCP_SERVER_PORT,
-                                    metadata=network_id)
-        else:
-            match = parser.OFPMatch(metadata=network_id)
-        self.mod_flow(
-            table_id=const.SERVICES_CLASSIFICATION_TABLE,
-            command=ofproto.OFPFC_DELETE,
-            priority=const.PRIORITY_MEDIUM,
-            match=match)
+             inst=drop_inst,
+             priority=const.PRIORITY_VERY_HIGH,
+             hard_timeout=self.block_hard_timeout,
+             table_id=const.DHCP_TABLE,
+             match=match)
 
     def _install_dhcp_broadcast_match_flow(self):
         parser = self.parser
@@ -509,85 +388,127 @@ class DHCPApp(df_base_app.DFlowApp):
                                   const.PRIORITY_MEDIUM,
                                   const.DHCP_TABLE, match=match)
 
-    def _install_dhcp_unicast_match_flow(self, ip_addr, network_id):
+    def _install_dhcp_port_flow(self, lswitch):
         parser = self.parser
-        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ipv4_dst=ip_addr,
-                                ip_proto=n_const.PROTO_NUM_UDP,
-                                udp_src=const.DHCP_CLIENT_PORT,
-                                udp_dst=const.DHCP_SERVER_PORT,
-                                metadata=network_id)
-
-        self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
-                                  const.PRIORITY_MEDIUM,
-                                  const.DHCP_TABLE, match=match)
-
-    def _install_dhcp_flow_for_vm_in_subnet(self, subnet_id):
-        local_ports = self.subnet_vm_port_map[subnet_id]
-        for p_id in local_ports:
-            port = self.db_store.get_one(l2.LogicalPort(id=p_id))
-            if port and port.is_local:
-                self._install_dhcp_flow_for_vm_port(port)
-
-    def _uninstall_dhcp_flow_for_vm_in_subnet(self, subnet_id):
-        local_ports = self.subnet_vm_port_map[subnet_id]
-        for p_id in local_ports:
-            port = self.db_store.get_one(l2.LogicalPort(id=p_id))
-            if port and port.is_local:
-                self._uninstall_dhcp_flow_for_vm_port(port)
-
-    def _is_ipv4(self, subnet):
-        return subnet.cidr.version == n_const.IP_VERSION_4
-
-    def _block_port_dhcp_traffic(self, unique_key, hard_timeout):
-        match = self.parser.OFPMatch(reg6=unique_key)
-        drop_inst = None
+        ofproto = self.ofproto
+        match = parser.OFPMatch(metadata=lswitch.unique_key)
+        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                          ofproto.OFPCML_NO_BUFFER)]
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                             actions)]
         self.mod_flow(
-             inst=drop_inst,
-             priority=const.PRIORITY_VERY_HIGH,
-             hard_timeout=hard_timeout,
-             table_id=const.DHCP_TABLE,
-             match=match)
+            inst=inst,
+            table_id=const.DHCP_TABLE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match)
+
+    def _remove_dhcp_network_flow(self, lswitch):
+        parser = self.parser
+        ofproto = self.ofproto
+        match = parser.OFPMatch(metadata=lswitch.unique_key)
+        self.mod_flow(
+            table_id=const.DHCP_TABLE,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM,
+            match=match)
+
+    def _add_dhcp_ips_by_subnet(self, lport):
+        subnet_ids = (subnet.id for subnet in lport.subnets)
+        self._dhcp_ip_by_subnet.update(dict(zip(subnet_ids, lport.ips)))
 
     @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_CREATED)
     def _lport_created(self, lport):
-        if lport.device_owner == n_const.DEVICE_OWNER_DHCP:
-            self._install_dhcp_port_responders(lport)
+        if lport.device_owner != n_const.DEVICE_OWNER_DHCP:
+            return
+
+        self._install_dhcp_port_responders(lport)
+        self._install_dhcp_port_flow(lport.lswitch)
+
+        self._add_dhcp_ips_by_subnet(lport)
+
+    def _update_port_responders(self, lport, orig_lport):
+        self._uninstall_dhcp_port_responders(orig_lport)
+        self._install_dhcp_port_responders(lport)
+
+    def _update_dhcp_ips_by_subnet(self, lport, orig_lport):
+
+        self._add_dhcp_ips_by_subnet(lport)
+
+        orig_subnets = set(subnet.id for subnet in orig_lport.subnets)
+        new_subnets = set(subnet.id for subnet in lport.subnets)
+
+        deleted_subnets = orig_subnets - new_subnets
+        for subnet_id in deleted_subnets:
+            del self._dhcp_ip_by_subnet[subnet_id]
+
+    def _delete_lport_rate_limiter(self, lport):
+        if not lport.is_local:
+            return
+
+        if lport.id in self._port_rate_limiters:
+            del self._port_rate_limiters[lport.id]
 
     @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_UPDATED)
     def _lport_updated(self, lport, orig_lport):
         if lport.device_owner != n_const.DEVICE_OWNER_DHCP:
             return
 
-        if (lport.ip, lport.mac) != (orig_lport.ip, orig_lport.mac):
-            self._uninstall_dhcp_port_responders(orig_lport)
-            self._install_dhcp_port_responders(lport)
+        v4_ips = set(ip for ip in lport.ips if
+                     ip.version == n_const.IP_VERSION_4 )
+        v4_old_ips = set(ip for ip in orig_lport.ips
+                         if ip.version == n_const.IP_VERSION_4)
+
+        if v4_ips != v4_old_ips or lport.mac != orig_lport.mac:
+            self._update_port_responders(lport, orig_lport)
+
+        self._update_dhcp_ips_by_subnet(lport, orig_lport)
+
+    def _delete_dhcp_ips_by_subnet(self, lport):
+        for subnet in lport.subnets:
+            del self._dhcp_ip_by_subnet[subnet.id]
 
     @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_DELETED)
     def _lport_deleted(self, lport):
-        if lport.device_owner == n_const.DEVICE_OWNER_DHCP:
-            self._uninstall_dhcp_port_responders(lport)
+        if lport.device_owner != n_const.DEVICE_OWNER_DHCP:
+            self._delete_lport_rate_limiter(lport)
+            return
 
-    def _get_dhcp_port_arp_responder(self, lport):
-        return arp_responder.ArpResponder(
-            app=self,
-            network_id=lport.lswitch.unique_key,
-            interface_ip=lport.ip,
-            interface_mac=lport.mac,
-        )
-
-    def _get_dhcp_port_icmp_responder(self, lport):
-        return icmp_responder.ICMPResponder(
-            app=self,
-            network_id=lport.lswitch.unique_key,
-            interface_ip=lport.ip,
-            table_id=const.L2_LOOKUP_TABLE,
-        )
+        self._uninstall_dhcp_port_responders(lport)
+        self._remove_dhcp_network_flow(lport.lswitch)
+        self._delete_dhcp_ips_by_subnet(lport)
 
     def _install_dhcp_port_responders(self, lport):
-        self._get_dhcp_port_arp_responder(lport).add()
-        self._get_dhcp_port_icmp_responder(lport).add()
+        ips_v4 = (ip for ip in lport.ips
+                  if ip.version == n_const.IP_VERSION_4)
+        for ip in ips_v4:
+            icmp_responder.ICMPResponder(
+                app=self,
+                network_id=lport.lswitch.unique_key,
+                interface_ip=lport.ip,
+                table_id=const.L2_LOOKUP_TABLE,
+            ).add()
+
+            arp_responder.ArpResponder(
+                app=self,
+                network_id=lport.lswitch.unique_key,
+                interface_ip=ip,
+                interface_mac=lport.mac,
+            ).add()
 
     def _uninstall_dhcp_port_responders(self, lport):
-        self._get_dhcp_port_arp_responder(lport).remove()
-        self._get_dhcp_port_icmp_responder(lport).remove()
+        ips_v4 = (ip for ip in lport.ips
+                  if ip.version == n_const.IP_VERSION_4)
+        for ip in ips_v4:
+            icmp_responder.ICMPResponder(
+                app=self,
+                network_id=lport.lswitch.unique_key,
+                interface_ip=lport.ip,
+                table_id=const.L2_LOOKUP_TABLE,
+            ).remove()
+
+            arp_responder.ArpResponder(
+                app=self,
+                network_id=lport.lswitch.unique_key,
+                interface_ip=ip,
+                interface_mac=lport.mac,
+            ).remove()
