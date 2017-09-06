@@ -559,7 +559,7 @@ class DHCPApp(df_base_app.DFlowApp):
         if lport.device_owner != n_const.DEVICE_OWNER_DHCP:
             return
 
-        if (lport.ip, lport.mac) != (orig_lport.id, orig_lport.mac):
+        if (lport.ip, lport.mac) != (orig_lport.ip, orig_lport.mac):
             self._uninstall_dhcp_port_responders(orig_lport)
             self._install_dhcp_port_responders(lport)
 
