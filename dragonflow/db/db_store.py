@@ -307,6 +307,9 @@ class DbStore(object):
         return self.get_keys(model)
 
     def clear(self):
+        for cache in self._cache.values():
+            for obj in cache.get_all(None, None):
+                cache.delete(obj)
         self._cache = {}
 
 
