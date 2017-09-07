@@ -10,11 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from neutron.common import constants
-from neutron.services.qos.drivers import base
 from neutron.services.qos import qos_consts
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.plugins import constants as service_constants
 from neutron_lib.plugins import directory
+from neutron_lib.services.qos import base
 from oslo_log import log
 
 from dragonflow.db.models import qos
