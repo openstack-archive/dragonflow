@@ -58,7 +58,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         execute = mock.patch('neutron.agent.common.utils.execute').start()
 
         # CLear old objects from cache
-        db_store._instance = None
+        db_store.get_instance().clear()
 
         self.nb_api = api_nb.NbApi.get_instance(False)
         self.controller = df_local_controller.DfLocalController(

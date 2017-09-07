@@ -440,3 +440,20 @@ class TestDbStore(tests_base.BaseTestCase):
         self.assertFalse(o1._is_object_stale)
         self.db_store.delete(ModelTest(id='id1'))
         self.assertTrue(o1._is_object_stale)
+
+    def test_clear(self):
+        orig_db_store = db_store._instance
+        db_store._instance = self.db_store
+
+        def restore_db_store_instance():
+            db_store._instance = orig_db_store
+        self.addCleanup(restore_db_store_instance)
+
+        o1 = ReffedModel(id='id1', name='asdf')
+        o2 = ModelTest(id='id2', topic='topic', ref1='id1')
+        self.db_store.update(o1)
+        self.db_store.update(o2)
+        self.assertEqual(o1, o2.ref1.get_object())
+        self.assertEqual(o1, o2.ref1.get_object())
+        self.db_store.clear()
+        self.assertIsNone(o2.ref1.get_object())
