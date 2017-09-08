@@ -250,3 +250,18 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         dhcp_res = self._create_dhcp_reponse(None, [33])
         val = self.app._get_dhcp_option_by_tag(dhcp_res, 33)
         self.assertIsNone(val)
+
+    def test_dhcp_update_port(self):
+        self.app._uninstall_dhcp_port_responders = mock.Mock()
+        self.app._install_dhcp_port_responders = mock.Mock()
+
+        fake_port1 = test_app_base.make_fake_port(id='1', ips=('1.1.1.1',))
+        fake_port2 = test_app_base.make_fake_port(id='2', ips=('1.1.1.1',))
+        fake_port3 = test_app_base.make_fake_port(id='2', ips=('1.1.1.2',))
+
+        self.app._lport_updated(fake_port1, fake_port2)
+        self.app._uninstall_dhcp_port_responders.assert_not_called()
+
+        self.app._lport_updated(fake_port1, fake_port3)
+        self.app._uninstall_dhcp_port_responders._assert_called_once(
+            fake_port1, fake_port3)
