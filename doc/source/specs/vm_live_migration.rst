@@ -25,7 +25,7 @@ downtime of network as short as possible.
 
 For more information about VM live migration, refer to [#]_.
 
-.. [#] http://docs.openstack.org/admin-guide/compute-live-migration-usage.html
+.. [#] https://docs.openstack.org/nova/latest/admin/live-migration-usage.html
 
 Proposed Change
 ===============
