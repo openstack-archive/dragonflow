@@ -26,7 +26,7 @@ function _neutron_ovs_clone_ovs {
     if [ -d $DEST/ovs ]; then
         pushd $DEST/ovs
         git checkout $OVS_BRANCH
-        git pull
+        git pull || true
         popd
     else
         pushd $DEST
