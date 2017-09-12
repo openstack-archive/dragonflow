@@ -23,7 +23,9 @@ function generate_test_logs {
 function generate_testr_results {
     # Give job user rights to access tox logs
     sudo -H -u "$owner" chmod o+rw .
-    sudo -H -u "$owner" chmod o+rw -R .testrepository
+    if [[ -d ".testrepository" ]] ; then
+        sudo -H -u "$owner" chmod o+rw -R .testrepository
+    fi
     if [[ -f ".testrepository/0" ]] ; then
         ".tox/$venv/bin/subunit-1to2" < .testrepository/0 > ./testrepository.subunit
         $SCRIPTS_DIR/subunit2html ./testrepository.subunit testr_results.html
