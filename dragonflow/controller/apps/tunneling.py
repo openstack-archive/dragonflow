@@ -215,6 +215,8 @@ class TunnelingApp(df_base_app.DFlowApp):
                                 network_type,
                                 segmentation_id,
                                 command):
+        if cfg.df_tunneling.disable_bum:
+            return
         match = self._make_bum_match(metadata=network_id)
         port_count = self.local_networks.get_remote_port_count(
                 network_id=network_id,

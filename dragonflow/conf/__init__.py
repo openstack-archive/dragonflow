@@ -24,6 +24,7 @@ from dragonflow.conf import df_metadata_service
 from dragonflow.conf import df_provider_networks
 from dragonflow.conf import df_ryu
 from dragonflow.conf import df_snat
+from dragonflow.conf import df_tunneling
 
 
 CONF = cfg.CONF
@@ -41,3 +42,4 @@ df_ryu.register_opts()
 df_provider_networks.register_opts()
 df_snat.register_opts()
 df_bgp.register_opts()
+df_tunneling.register_opts()
