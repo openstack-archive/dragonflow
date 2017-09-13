@@ -76,6 +76,7 @@ Specs
     extra_dhcp_opts
     dhcp_port_per_network
     lbaas2
+    datapath_abstraction
 
 Templates
 ---------
