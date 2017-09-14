@@ -31,23 +31,23 @@ class TestL3App(test_app_base.DFAppTestBase,
         self.app.mod_flow = mock.Mock()
         self.router = copy.deepcopy(test_app_base.fake_logic_router1)
 
-    def test_install_l3_flow_set_metadata(self):
+    def test_install_flow_by_ports_and_continue_set_metadata(self):
         dst_router_port = self.router.ports[0]
         dst_port = test_app_base.fake_local_port1
         dst_metadata = dst_port.lswitch.unique_key
         mock_msg = mock.Mock()
-        self.app._install_l3_flow(dst_router_port, dst_port,
-                                  mock_msg, mock.ANY)
+        self.app._install_flow_by_ports_and_continue(dst_router_port, dst_port,
+                                                     mock_msg, mock.ANY)
         self.app.parser.OFPActionSetField.assert_any_call(
             metadata=dst_metadata)
 
-    def test_install_l3_flow_use_buffer(self):
+    def test_install_flow_by_ports_and_continue_use_buffer(self):
         dst_router_port = self.router.ports[0]
         dst_port = test_app_base.fake_local_port1
         mock_msg = mock.Mock()
         mock_msg.buffer_id = mock.sentinel.buffer_id
-        self.app._install_l3_flow(dst_router_port, dst_port,
-                                  mock_msg, mock.ANY)
+        self.app._install_flow_by_ports_and_continue(dst_router_port, dst_port,
+                                                     mock_msg, mock.ANY)
         self.app.mod_flow.assert_called_once_with(
             cookie=dst_router_port.unique_key,
             inst=mock.ANY,
