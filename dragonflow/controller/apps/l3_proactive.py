@@ -24,15 +24,42 @@ LOG = log.getLogger(__name__)
 class L3ProactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
 
     def packet_in_handler(self, event):
+        """Handle packets sent to the controller from OVS """
         msg = event.msg
         self.router_function_packet_in_handler(msg)
 
     def _add_subnet_send_to_route(self, match, local_network_id, router_port):
+        """
+        Add routing flows. i.e. for packets that are routed with this router
+        (identified by parameter match), from the given network
+        (local_network_id) and the router interface (router_port), transmit
+        the packet to the next step in the pipeline. (Update network ID and
+        L2 header).
+        :param match:               The match object for the packet
+        :type match:                OFPMatch
+        :param local_network_id:    The destination network ID
+        :type local_network_id:     Integer
+        :param router_port:         The router's egress router interface
+        :type router_port:          RouterInterface
+        """
         self._add_subnet_send_to_proactive_routing(match, local_network_id,
                                                    router_port.mac)
 
     def _add_subnet_send_to_proactive_routing(self, match, dst_network_id,
                                               dst_router_port_mac):
+        """
+        Add routing flows. i.e. for packets that are routed with this router
+        (identified by parameter match), from the given network
+        (local_network_id) and the router interface (router_port), transmit
+        the packet to the next step in the pipeline. (Update network ID and
+        L2 header).
+        :param match:               The match object for the packet
+        :type match:                OFPMatch
+        :param dst_network_id:      The destination network ID
+        :type dst_network_id:       Integer
+        :param dst_router_port_mac: The router's egress router interface's MAC
+        :type dst_router_port_mac:  IPAddress.EUI (or representation)
+        """
         parser = self.parser
         ofproto = self.ofproto
 
@@ -62,18 +89,33 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
         port_key = lport.unique_key
 
         # FIXME (dimak) need to take into account all fixed IPs
-        self._add_port_process(dst_ip, dst_mac, network_key, port_key)
+        self._add_forward_to_port_flow(dst_ip, dst_mac, network_key, port_key)
 
         for address_pair in lport.allowed_address_pairs:
-            self._add_port_process(
+            self._add_forward_to_port_flow(
                 address_pair.ip_address,
                 address_pair.mac_address,
                 network_key,
                 port_key,
             )
 
-    def _add_port_process(self, dst_ip, dst_mac, network_id, tunnel_key,
-                          priority=const.PRIORITY_HIGH):
+    def _add_forward_to_port_flow(self, dst_ip, dst_mac, network_id, port_key,
+                                  priority=const.PRIORITY_HIGH):
+        """
+        Add flows to update the packets L2 header and metadata (reg7/output
+        register) for the given port, and forward the packet.
+        Match by its IP and network.
+        :param dst_ip:      The IP of the port
+        :type dst_ip:       netaddr.IPAddress (or representation)
+        :param dst_mac:     The MAC of the port
+        :type dst_mac:      netaddr.EUI (or representation)
+        :param network_id:  The unique key of the network
+        :type network_id:   Integer
+        :param port_key:    The unique key of the port
+        :type port_id:      Integer
+        :param priority:    The priority of the flow
+        :type priority:     Integer
+        """
         parser = self.parser
         ofproto = self.ofproto
 
@@ -88,7 +130,7 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
 
         actions = []
         actions.append(parser.OFPActionSetField(eth_dst=dst_mac))
-        actions.append(parser.OFPActionSetField(reg7=tunnel_key))
+        actions.append(parser.OFPActionSetField(reg7=port_key))
         action_inst = parser.OFPInstructionActions(
                 ofproto.OFPIT_APPLY_ACTIONS, actions)
 
@@ -106,13 +148,25 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
         dst_ip = lport.ip
         network_key = lport.lswitch.unique_key
 
-        self._remove_port_process(dst_ip, network_key)
+        self._remove_forward_to_port_flow(dst_ip, network_key)
 
         for address_pair in lport.allowed_address_pairs:
-            self._remove_port_process(address_pair.ip_address, network_key)
+            self._remove_forward_to_port_flow(address_pair.ip_address,
+                                              network_key)
 
-    def _remove_port_process(self, dst_ip, network_id,
-                             priority=const.PRIORITY_HIGH):
+    def _remove_forward_to_port_flow(self, dst_ip, network_id,
+                                     priority=const.PRIORITY_HIGH):
+        """
+        Remove the flows (added in #_add_forward_to_port_flow) which update
+        the packets L2 header and metadata for a given port and forwards the
+        packet.
+        :param dst_ip:      The IP of the port
+        :type dst_ip:       netaddr.IPAddress (or representation)
+        :param network_id:  The unique key of the network
+        :type network_id:   Integer
+        :param priority:    The priority of the flow
+        :type priority:     Integer
+        """
         parser = self.parser
         ofproto = self.ofproto
 
@@ -132,6 +186,7 @@ class L3ProactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
             match=match)
 
     def _update_port(self, lport, orig_lport):
+        """Update port which is not a router interface."""
         if (
             lport.ip != orig_lport.ip or
             lport.mac != orig_lport.mac or
