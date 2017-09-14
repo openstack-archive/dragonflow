@@ -65,6 +65,17 @@ class L3AppMixin(object):
         self.route_cache.clear()
 
     def _handle_ttl_expired(self, msg):
+        """
+        This callback is called when the OVS switch reduced a packet's TTL
+        to 0.
+
+        Create an ICMP error packet, and return it.
+
+        X is the OpenFlow version (e.g. 1_3)
+
+        :param msg: Packet in message
+        :type msg:  ryu.ofproto.ofproto_vX_parser.OFPPacketIn
+        """
         if self.ttl_invalid_handler_rate_limit():
             LOG.warning("Get more than %(rate)s TTL invalid packets per "
                         "second at table %(table)s",
@@ -99,6 +110,16 @@ class L3AppMixin(object):
                         "can't be recognized.", e_pkt.dst)
 
     def _handle_invalid_dest(self, msg):
+        """
+        Handle a packet sent to the router interface (by IP). Since only ping
+        and ARP are supported, everything else is responded to with a
+        Destination Unreachable message.
+
+        X is the OpenFlow version (e.g. 1_3)
+
+        :param msg: Packet in message
+        :type msg:  ryu.ofproto.ofproto_vX_parser.OFPPacketIn
+        """
         # If the destination is router interface, the unique key of router
         # interface will be set to reg7 before sending to local controller.
         # Code will hit here only when the router interface is not
@@ -128,6 +149,11 @@ class L3AppMixin(object):
         TTL invalid and router port response will be handled in this method.
         Return True if the packet is handled, so there is no need for further
         handle.
+
+        X is the OpenFlow version (e.g. 1_3)
+
+        :param msg: Packet in message
+        :type msg:  ryu.ofproto.ofproto_vX_parser.OFPPacketIn
         """
 
         if msg.reason == self.ofproto.OFPR_INVALID_TTL:
@@ -163,6 +189,14 @@ class L3AppMixin(object):
         self.route_cache.pop(router.id, None)
 
     def _update_router_interfaces(self, old_router, new_router):
+        """
+        A router has been updated. Delete old router ports, and create new
+        router ports
+        :param old_router:  The old router instance
+        :type old_router:   LogicalRouter model
+        :param new_router:  The new router instance
+        :type new_router:   LogicalRouter model
+        """
         old_ports = old_router.ports
         new_ports = new_router.ports
         for old_port in old_ports:
@@ -173,6 +207,14 @@ class L3AppMixin(object):
                 self._add_new_router_port(new_router, new_port)
 
     def _update_router_attributes(self, old_router, new_router):
+        """
+        A router has been updated. Update the followin attributes:
+        * extra routes
+        :param old_router:  The old router instance
+        :type old_router:   LogicalRouter model
+        :param new_router:  The new router instance
+        :type new_router:   LogicalRouter model
+        """
         old_routes = old_router.routes
         new_routes = new_router.routes
         for old_route in old_routes:
@@ -183,6 +225,15 @@ class L3AppMixin(object):
                 self._add_router_extra_route(new_router, new_route)
 
     def _get_port_by_lswitch_and_ip(self, ip, lswitch_id):
+        """
+        Return the logical port with the given IP that's attached to the given
+        Logical Switch.
+        :param ip:          The port's IP
+        :type ip:           netaddr.IPAddress (or representation thererof)
+        :param lswitch_id:  The Logical Switch's ID
+        :type lswitch_id:   String
+        :return:            LogicalPort or None
+        """
         ip_lswitch_idx = l2.LogicalPort.get_index('ip,lswitch')
         ports = self.db_store.get_all(l2.LogicalPort(lswitch=lswitch_id,
                                                      ips=[ip]),
@@ -190,6 +241,16 @@ class L3AppMixin(object):
         return next(ports, None)
 
     def _get_gateway_port_by_ip(self, router, ip):
+        """
+        Return the router port that has the given IP. Raise an exception if
+        no such router port exists
+        :param router:  The router
+        :type router:   LogicalRouter
+        :param ip:      The IP to search
+        :type ip:       netaddr.IPAddress (or representation thereof)
+        :return:        LogicalPort or None
+        :raises:        exceptions.DBStoreRecordNotFound
+        """
         for port in router.ports:
             if ip in port.network:
                 return port
@@ -306,6 +367,16 @@ class L3AppMixin(object):
 
     def _generate_extra_route_match(self, router_unique_key, router_if_mac,
                                     destination):
+        """
+        Create an OpenFlow Match object for the extra route on the router
+        :param router_unique_key:   The Unique Key of the router
+        :type router_unique_key:    Integer
+        :param router_if_mac:       The MAC address of the router
+        :type router_if_mac:        netaddr.EUI (or representation thereof)
+        :param destination:         The destination network
+        :type destination:          netaddr.IPNetwork (or string represenation)
+        :return:                    OFPMatch object
+        """
         dst_network = destination.network
         dst_netmask = destination.netmask
         if destination.version == common_const.IP_VERSION_4:
@@ -323,6 +394,22 @@ class L3AppMixin(object):
     # route cache got following structure
     # {router: {ROUTE_ADDED: set(route), ROUTE_TO_ADD: set(route)}
     def _add_to_route_cache(self, key, router_id, route):
+        """
+        Update the route_cache dictionary.
+
+        The route_cache dictionary contains two sets per router:
+        1. Routes that were added
+        2. Routes that are pending (e.g. the relevant port isn't online yet)
+
+        Add the route 'route' to the set 'key' in route_cache for the router
+        given by router_id.
+        :param key:         The type of route (added, pending)
+        :type key:          one of: ROUTE_ADDED, ROUTE_TO_ADD
+        :param router_id:   The ID of the router owning the route
+        :type router_id:    String
+        :param route:       The route
+        :type route:        HostRoute model instance
+        """
         cached_routes = self.route_cache.get(router_id)
         if cached_routes is None:
             cached_routes = {ROUTE_ADDED: set(), ROUTE_TO_ADD: set()}
@@ -331,6 +418,17 @@ class L3AppMixin(object):
         routes.add((str(route.destination), str(route.nexthop)))
 
     def _del_from_route_cache(self, key, router_id, route):
+        """
+        Delete the given route (route) of the given type (key) from the
+        route_cache for the given router (router_id). See method
+        #_add_to_route_cache for more info about route_cache.
+        :param key:         The type of route (added, pending)
+        :type key:          one of: ROUTE_ADDED, ROUTE_TO_ADD
+        :param router_id:   The ID of the router owning the route
+        :type router_id:    String
+        :param route:       The route
+        :type route:        HostRoute model instance
+        """
         cached_routes = self.route_cache.get(router_id)
         if cached_routes is None:
             return
@@ -339,16 +437,31 @@ class L3AppMixin(object):
 
     def _change_route_cache_status(self, router_id, from_part, to_part, route):
         """Change the status of extra route in cache of app.
+        See method #_add_to_route_cache for more info about route_cache.
 
-        @param router_id The cache belongs to which router.
-        @param from_part From which part the extra route will be moved.
-        @param to_part   To which part the extra route will be moved.
-        @param route     The extra route to move.
+        :param router_id:   The ID of the router owning the route
+        :type router_id:    String
+        :param from_part:   The old type of route (added, pending)
+        :type from_part:    one of: ROUTE_ADDED, ROUTE_TO_ADD
+        :param to_part:     The new type of route (added, pending)
+        :type to_part:      one of: ROUTE_ADDED, ROUTE_TO_ADD
+        :param route:       The route
+        :type route:        HostRoute model instance
         """
         self._del_from_route_cache(from_part, router_id, route)
         self._add_to_route_cache(to_part, router_id, route)
 
     def _get_router_interface_match(self, router_unique_key, rif_ip):
+        """
+        Create an OpenFlow Match object for the router interface on the router.
+        Used to either pass the packet to the router (concrete router port)
+        or send to controller (distributed router port)
+        :param router_unique_key:   The Unique Key of the router
+        :type router_unique_key:    Integer
+        :param rif_ip:              The IP of the router interface
+        :type rif_ip:               netaddr.IPAddress (or representation)
+        :return:                    OFPMatch object
+        """
         if netaddr.IPAddress(rif_ip).version == common_const.IP_VERSION_4:
             return self.parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                         reg5=router_unique_key,
@@ -358,8 +471,17 @@ class L3AppMixin(object):
                                     reg5=router_unique_key,
                                     ipv6_dst=rif_ip)
 
-    def _get_router_route_match(self, router_unique_key,
-                                dst_network, dst_netmask):
+    def _get_router_route_match(self, router_unique_key, destination):
+        """
+        Create an OpenFlow Match object for a routing entry on the router
+        :param router_unique_key:   The Unique Key of the router
+        :type router_unique_key:    Integer
+        :param destination:         The destination network
+        :type destination:          netaddr.IPNetwork (or string represenation)
+        :return:                    OFPMatch object
+        """
+        dst_network = destination.network
+        dst_netmask = destination.netmask
         parser = self.parser
 
         if netaddr.IPAddress(dst_network).version == common_const.IP_VERSION_4:
@@ -374,6 +496,17 @@ class L3AppMixin(object):
         return match
 
     def _add_new_router_port(self, router, router_port):
+        """
+        Handle the creation of a new router interface on the router.
+        * Match L2 address and update reg5
+        * Install ARP and ICMP responders
+        * Match packets with router as dst
+        * Add flows for  new route entries
+        :param router:        The router on which the interface is added
+        :type router:         LogicalRouter model object
+        :param router_port:   The router interface being added
+        :type router_port:    RouterInterface model object
+        """
         LOG.info("Adding new logical router interface = %r",
                  router_port)
         local_network_id = router_port.lswitch.unique_key
@@ -433,11 +566,18 @@ class L3AppMixin(object):
 
         # Add rule for routing packets to subnet of this router port
         match = self._get_router_route_match(router_unique_key,
-                                             router_port.network.network,
-                                             router_port.network.netmask)
+                                             router_port.network)
         self._add_subnet_send_to_route(match, local_network_id, router_port)
 
     def _delete_router_port(self, router, router_port):
+        """
+        Handle the removal of a router interface from a router. Undoes the
+        actions in #_add_new_router_port.
+        :param router:        The router on which the interface is removed
+        :type router:         LogicalRouter model object
+        :param router_port:   The router interface being removed
+        :type router_port:    RouterInterface model object
+        """
         LOG.info("Removing logical router interface = %s",
                  router_port)
         local_network_id = router_port.lswitch.unique_key
@@ -475,8 +615,7 @@ class L3AppMixin(object):
 
         # Delete rule for routing packets to subnet of this router port
         match = self._get_router_route_match(router_unique_key,
-                                             router_port.network.network,
-                                             router_port.network.netmask)
+                                             router_port.network)
         self.mod_flow(
             table_id=const.L3_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,
@@ -495,9 +634,19 @@ class L3AppMixin(object):
             self._add_port(lport)
 
     def _add_concrete_router_interface(self, lport, router=None):
-        # The router interace is concrete, direct the packets to the real
-        # port of router interface. The flow here will overwrite
-        # the flow that packet-in the packets to local controller.
+        """
+        The router interace is concrete, direct the packets to the real
+        port of router interface. The flow here will overwrite
+        the flow that packet-in the packets to local controller.
+
+        If the router is not given (or is None), try to get it from the
+        port's owner.
+
+        :param lport:   The router interface's concrete port
+        :type lport:    LogicalPort model object
+        :param router:  The owning router
+        :type lport:    LogicalRouter or None
+        """
         router = router or self.db_store.get_one(
             l3.LogicalRouter(id=lport.device_id))
         if not router:
