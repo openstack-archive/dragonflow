@@ -16,12 +16,12 @@
 import mock
 import netaddr
 
-from neutron.plugins.ml2 import config
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_plugin
 from oslo_serialization import jsonutils
 
+from dragonflow import conf as cfg
 from dragonflow.db.models import host_route
 from dragonflow.db.models import l2
 from dragonflow.db.models import secgroups
@@ -59,9 +59,9 @@ class DFMechanismDriverTestCase(test_plugin.Ml2PluginV2TestCase):
         return p
 
     def setUp(self):
-        config.cfg.CONF.set_override('extension_drivers',
-                                     self._extension_drivers,
-                                     group='ml2')
+        cfg.CONF.set_override('extension_drivers',
+                              self._extension_drivers,
+                              group='ml2')
         mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
                    side_effect=utils.empty_wrapper).start()
         nbapi_instance = mock.patch('dragonflow.db.api_nb.NbApi').start()
@@ -527,9 +527,9 @@ class TestDFMechansimDriverPortSecurity(
     _extension_drivers = ['port_security']
 
     def setUp(self):
-        config.cfg.CONF.set_override('extension_drivers',
-                                     self._extension_drivers,
-                                     group='ml2')
+        cfg.CONF.set_override('extension_drivers',
+                              self._extension_drivers,
+                              group='ml2')
         # NOTE(xiaohhui): Make sure the core plugin is set to ml2, or else
         # the service plugin configured in get_additional_service_plugins
         # won't work.
