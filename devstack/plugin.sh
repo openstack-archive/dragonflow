@@ -290,6 +290,7 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
     iniset $DRAGONFLOW_CONF df enable_df_pub_sub "$DF_PUB_SUB"
     iniset $DRAGONFLOW_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
+    iniset $DRAGONFLOW_CONF df publisher_multiproc_socket "$DF_PUBLISHER_MULTIPROC_SOCKET"
     if [[ ! -z ${EXTERNAL_HOST_IP} ]]; then
         iniset $DRAGONFLOW_CONF df external_host_ip "$EXTERNAL_HOST_IP"
         iniset $DRAGONFLOW_CONF df_snat_app external_network_bridge "$PUBLIC_BRIDGE"
