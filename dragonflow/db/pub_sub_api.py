@@ -187,11 +187,6 @@ class SubscriberApi(object):
         """
 
     @abc.abstractmethod
-    def run(self):
-        """Method that will run in the Subscriber thread
-        """
-
-    @abc.abstractmethod
     def daemonize(self):
         """Start the Subscriber thread
         """
