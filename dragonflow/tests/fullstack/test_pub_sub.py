@@ -299,7 +299,7 @@ class TestMultiprocPubSub(PubSubTestBase):
 
     def setUp(self):
         super(TestMultiprocPubSub, self).setUp()
-        self.do_test = cfg.CONF.df.enable_df_pub_sub
+        self.do_test = cfg.CONF.df.pub_sub_use_multiproc
         self.key = 'key-{}'.format(random.random())
         self.event = db_common.DbUpdate(
             'info',
