@@ -525,13 +525,17 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
                 install_neutron
             fi
             install_df
-            install_ovs
+            if [[ "$DF_USE_DF_OVS" == "True" ]]; then
+                install_ovs
+            fi
         fi
         setup_develop $DRAGONFLOW_DIR
-        init_ovs
-        # We have to start at install time, because Neutron's post-config
-        # phase runs ovs-vsctl.
-        start_ovs
+        if [[ "$DF_USE_DF_OVS" == "True" ]]; then
+            init_ovs
+            # We have to start at install time, because Neutron's post-config
+            # phase runs ovs-vsctl.
+            start_ovs
+        fi
         if function_exists nb_db_driver_start_server; then
             nb_db_driver_start_server
         fi
@@ -577,9 +581,11 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         if function_exists nb_db_driver_clean; then
             nb_db_driver_clean
         fi
-        cleanup_ovs
-        stop_ovs
-        uninstall_ovs
+        if [[ "$DF_USE_DF_OVS" == "True" ]]; then
+            cleanup_ovs
+            stop_ovs
+            uninstall_ovs
+        fi
         if is_service_enabled df-publisher-service; then
             stop_pubsub_service
         fi
