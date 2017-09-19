@@ -67,7 +67,7 @@ class DFMechDriver(api.MechanismDriver):
         self.subscribe_registries()
         df_qos.register()
 
-    def post_fork_initialize(self, resource, event, trigger, **kwargs):
+    def post_fork_initialize(self, resource, event, trigger, payload=None):
         # NOTE(nick-ma-z): This will initialize all workers (API, RPC,
         # plugin service, etc) and threads with network connections.
         self.nb_api = api_nb.NbApi.get_instance(True)

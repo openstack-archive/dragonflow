@@ -49,13 +49,13 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         except cfg.NoSuchOptError:
             return False
 
-    def register(self, resource, event, trigger, **kwargs):
+    def register(self, resource, event, trigger, payload=None):
         """
         Register the Dragonflow driver. This means registering to the
         add subport and delete subport events
         """
         super(DfTrunkDriver, self).register(resource, event, trigger,
-                                            **kwargs)
+                                            payload=payload)
         self._register_trunk_events()
         self._register_subport_events()
 
