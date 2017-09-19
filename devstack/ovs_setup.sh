@@ -162,10 +162,15 @@ function configure_ovs {
         # setup external bridge if necessary
         check_dnat=$(echo $DF_APPS_LIST | grep "dnat")
         if [[ "$check_dnat" != "" ]]; then
-            echo "Setup external bridge for DNAT"
-            sudo ovs-vsctl add-br $PUBLIC_BRIDGE || true
-            sudo ip link set dev $PUBLIC_BRIDGE up || true
-            sudo ip addr add $PUBLIC_NETWORK_GATEWAY/$PUBLIC_NETWORK_PREFIXLEN dev $PUBLIC_BRIDGE || true
+	    if [[ "$DF_USE_DF_OVS" == "True" ]]; then
+                # Create the bridge only if it does not already exist
+                if ! sudo ovs-vsctl br-exists $PUBLIC_BRIDGE; then
+                    echo "Setup external bridge for DNAT"
+                    sudo ovs-vsctl add-br $PUBLIC_BRIDGE || true
+                    sudo ip link set dev $PUBLIC_BRIDGE up || true
+                    sudo ip addr add $PUBLIC_NETWORK_GATEWAY/$PUBLIC_NETWORK_PREFIXLEN dev $PUBLIC_BRIDGE || true
+                fi
+	    fi
         fi
 
         _neutron_ovs_base_setup_bridge $INTEGRATION_BRIDGE
