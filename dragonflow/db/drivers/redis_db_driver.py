@@ -109,6 +109,8 @@ class RedisDbDriver(db_api.DbApi):
         ip_port = self.redis_mgt.get_ip_by_key(local_key)
         client = self._get_client(local_key, ip_port)
         if client is None:
+            LOG.warning("Could not find client for key: %s ip_port: %s",
+                        local_key, ip_port)
             return None
 
         arg = self._gen_args(local_key, value)
