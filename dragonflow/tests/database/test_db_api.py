@@ -61,6 +61,7 @@ class TestDbApi(base.BaseTestCase):
         self.assertEqual('v2', self.driver.get_key('test_table', 'k2'))
 
     def test_get_all_entries(self):
+        self.assertEqual([], self.driver.get_all_entries('test_table'))
         self.driver.create_table('test_table')
         self.addCleanup(self.driver.delete_table, 'test_table')
         self.assertEqual([], self.driver.get_all_entries('test_table'))
@@ -70,6 +71,7 @@ class TestDbApi(base.BaseTestCase):
                               self.driver.get_all_entries('test_table'))
 
     def test_get_all_keys(self):
+        self.assertEqual([], self.driver.get_all_keys('test_table'))
         self.driver.create_table('test_table')
         self.addCleanup(self.driver.delete_table, 'test_table')
         self.assertEqual([], self.driver.get_all_keys('test_table'))
