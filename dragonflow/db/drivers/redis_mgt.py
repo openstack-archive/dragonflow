@@ -175,6 +175,9 @@ class RedisMgt(object):
                 elif "master" in flags:
                     role = "master"
 
+            if ip_port.startswith(':'):
+                ip_port = "127.0.0.1" + ip_port
+
             ret[ip_port] = {
                 'node_id': node_id,
                 'role': role,
