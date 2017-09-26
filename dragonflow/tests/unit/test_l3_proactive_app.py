@@ -57,10 +57,10 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
 
     def _test_add_port(self, lport):
         with mock.patch('dragonflow.controller.apps.l3_proactive.'
-                        'L3ProactiveApp._add_port_process'
-                        ) as fake_add_port_process:
+                        'L3ProactiveApp._add_forward_to_port_flow'
+                        ) as fake_add_forward_to_port_flow:
             self.controller.update(lport)
-            fake_add_port_process.assert_called_once_with(
+            fake_add_forward_to_port_flow.assert_called_once_with(
                 lport.ip,
                 lport.mac,
                 lport.lswitch.unique_key,
@@ -70,10 +70,10 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
     def _test_remove_port(self, lport):
         self.controller.update(lport)
         with mock.patch('dragonflow.controller.apps.l3_proactive.'
-                        'L3ProactiveApp._remove_port_process'
-                        ) as fake_remove_port_process:
+                        'L3ProactiveApp._remove_forward_to_port_flow'
+                        ) as fake_remove_forward_to_port_flow:
             self.controller.delete(lport)
-            fake_remove_port_process.assert_called_once_with(
+            fake_remove_forward_to_port_flow.assert_called_once_with(
                 lport.ip,
                 lport.lswitch.unique_key,
             )

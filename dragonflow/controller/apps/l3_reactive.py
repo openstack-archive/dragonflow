@@ -44,6 +44,12 @@ class L3ReactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
         self.hard_timeout = 0
 
     def packet_in_handler(self, event):
+        """
+        Handle packets sent to the controller from OVS
+
+        Install the L3 routing flow, and have the packet continue along the
+        pipeline.
+        """
         msg = event.msg
 
         handled = self.router_function_packet_in_handler(msg)
@@ -58,12 +64,22 @@ class L3ReactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
             return
         network_id = msg.match.get('metadata')
         try:
-            self._get_route(pkt_ip, network_id, msg)
-        except Exception as e:
-            LOG.error("L3 App PacketIn exception raised")
-            LOG.error(e)
+            self._install_flow_by_packet_and_continue(pkt_ip, network_id, msg)
+        except Exception:
+            LOG.exception("L3 App PacketIn exception raised")
 
-    def _get_route(self, pkt_ip, network_id, msg):
+    def _install_flow_by_packet_and_continue(self, pkt_ip, network_id, msg):
+        """
+        Install the routing flows by the information in the packet, and
+        have the packet continue along the pipelone.
+
+        :param pkt_ip:      IP header on the packet (IPv4 or IPv6)
+        :type pkt_ip:       ryu.packet.ipv4 or ryu.packet.ipv6
+        :param network_id:  The source network from which the packet arrived
+        :type network_id:   Integer
+        :param msg:         Packet in message
+        :type msg:          ryu.ofproto.ofproto_v<version>_parser.OFPPacketIn
+        """
         ip_addr = netaddr.IPAddress(pkt_ip.dst)
         router_unique_key = msg.match.get('reg5')
         router = self.db_store.get_all(
@@ -78,13 +94,27 @@ class L3ReactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
                     index=index)
                 for out_port in dst_ports:
                     if out_port.ip == ip_addr:
-                        self._install_l3_flow(router_port,
-                                              out_port, msg,
-                                              network_id)
+                        self._install_flow_by_ports_and_continue(router_port,
+                                                                 out_port, msg,
+                                                                 network_id)
                         return
 
-    def _install_l3_flow(self, dst_router_port, dst_port, msg,
-                         src_network_id):
+    def _install_flow_by_ports_and_continue(self, dst_router_port, dst_port,
+                                            msg, src_network_id):
+        """
+        Install the routing flows by the given ports, and
+        have the packet continue along the pipelone.
+        :param dst_router_port: Port representing the router's egress port
+
+        :type dst_router_port:  LogicalPort
+        :param dst_port:        Destination port
+        :type dst_port:         LogicalPort
+        :param msg:             Packet in message
+        :type msg:              ryu.ofproto.ofproto_v<version>_parser.\
+                                OFPPacketIn
+        :param src_network_id:  The source network of the packet
+        :type src_network_id:   Integer
+        """
         reg7 = dst_port.unique_key
         dst_ip = dst_port.ip
         src_mac = dst_router_port.mac
@@ -128,9 +158,35 @@ class L3ReactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
             hard_timeout=self.hard_timeout)
 
     def _add_subnet_send_to_route(self, match, local_network_id, router_port):
+        """
+        Add routing flows. i.e. for packets that are routed with this router
+        (identified by parameter match), from the given network
+        (local_network_id) and the router interface (router_port), transmit
+        the packet to the next step in the pipeline.
+
+        In this reactive application, the flow sends the packet to the
+        controller, which then decides what to do with it.
+        :param match:               The match object for the packet
+        :type match:                OFPMatch
+        :param local_network_id:    The destination network ID
+        :type local_network_id:     Integer
+        :param router_port:         The router's egress router interface
+        :type router_port:          RouterInterface
+        """
         self._add_subnet_send_to_controller(match)
 
     def _add_subnet_send_to_controller(self, match):
+        """
+        Add routing flows. i.e. for packets that are routed with this router
+        (identified by parameter match), from the given network
+        (local_network_id) and the router interface (router_port), transmit
+        the packet to the next step in the pipeline.
+
+        In this reactive application, the flow sends the packet to the
+        controller, which then decides what to do with it.
+        :param match:               The match object for the packet
+        :type match:                OFPMatch
+        """
         parser = self.parser
         ofproto = self.ofproto
 
