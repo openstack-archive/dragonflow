@@ -27,7 +27,7 @@ class LogicalRouterPort(mf.ModelBase, mixins.Topic, mixins.UniqueKey):
 
 
 @mf.register_model
-@mf.construct_nb_db_model(indexes={'unique_key': 'unique_key'})
+@mf.construct_nb_db_model
 class LogicalRouter(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
                     mixins.UniqueKey, mixins.BasicEvents):
     """Define the dragonflow db model for logical router.
