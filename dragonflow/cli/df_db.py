@@ -23,10 +23,7 @@ from dragonflow.db import model_framework
 from dragonflow.db import models
 from dragonflow.db.models import all  # noqa
 
-db_tables = (
-    list(model_framework.iter_tables()) +
-    ['unique_key', 'portstats']
-)
+db_tables = list(model_framework.iter_tables()) + ['unique_key']
 
 
 def print_tables():
