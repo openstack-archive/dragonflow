@@ -19,11 +19,13 @@ from dragonflow.cli import utils as cli_utils
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.db import api_nb
+from dragonflow.db import db_common
 from dragonflow.db import model_framework
 from dragonflow.db import models
 from dragonflow.db.models import all  # noqa
 
-db_tables = list(model_framework.iter_tables()) + ['unique_key']
+db_tables = list(model_framework.iter_tables()) + [db_common.UNIQUE_KEY_TABLE]
 
 
 def print_tables():

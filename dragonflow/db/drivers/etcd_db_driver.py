@@ -21,6 +21,7 @@ from urllib3 import exceptions
 
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
+from dragonflow.db import db_common
 
 LOG = log.getLogger(__name__)
 
@@ -148,10 +149,10 @@ class EtcdDbDriver(db_api.DbApi):
         return res
 
     def _allocate_unique_key(self, table):
-        key = '/unique_key/%s' % table
+        key = self._make_key(db_common.UNIQUE_KEY_TABLE, table)
         prev_value = 0
         try:
-            prev_value = int(self.get_key('unique_key', table))
+            prev_value = int(self.get_key(db_common.UNIQUE_KEY_TABLE, table))
         except df_exceptions.DBKeyNotFound:
             if prev_value == 0:
                 # FIXME(lihi): race-condition
