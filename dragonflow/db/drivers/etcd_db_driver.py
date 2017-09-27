@@ -154,10 +154,10 @@ class EtcdDbDriver(db_api.DbApi):
             prev_value = int(self.get_key('unique_key', table))
         except df_exceptions.DBKeyNotFound:
             if prev_value == 0:
-                # FIXME(lihi): race-condition
                 # Create new key
-                self.client.put(key, "1")
-                return 1
+                if self.client.create(key, "1"):
+                    return 1
+            raise RuntimeError()  # Error occured. Restart the allocation
 
         new_unique = prev_value + 1
         if self.client.replace(key, str(prev_value), str(new_unique)):
