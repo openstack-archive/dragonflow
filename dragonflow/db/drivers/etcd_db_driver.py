@@ -114,7 +114,10 @@ class EtcdDbDriver(db_api.DbApi):
         return key
 
     def get_key(self, table, key, topic=None):
-        value = self.client.get(self._make_key(table, key))
+        return self._get_key(self._make_key(table, key), key, topic)
+
+    def _get_key(self, table_key, key, topic=None):
+        value = self.client.get(table_key)
         if len(value) > 0:
             return value.pop()
         raise df_exceptions.DBKeyNotFound(key=key)
@@ -149,19 +152,19 @@ class EtcdDbDriver(db_api.DbApi):
         return res
 
     def _allocate_unique_key(self, table):
-        key = self._make_key(db_common.UNIQUE_KEY_TABLE, table)
+        table_key = self._make_key(db_common.UNIQUE_KEY_TABLE, table)
         prev_value = 0
         try:
-            prev_value = int(self.get_key(db_common.UNIQUE_KEY_TABLE, table))
+            prev_value = int(self._get_key(table_key, table))
         except df_exceptions.DBKeyNotFound:
             if prev_value == 0:
                 # FIXME(lihi): race-condition
                 # Create new key
-                self.client.put(key, "1")
+                self.client.put(table_key, "1")
                 return 1
 
         new_unique = prev_value + 1
-        if self.client.replace(key, str(prev_value), str(new_unique)):
+        if self.client.replace(table_key, str(prev_value), str(new_unique)):
             return new_unique
         raise RuntimeError()  # Error occured. Restart the allocation
 
