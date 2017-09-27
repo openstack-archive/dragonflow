@@ -149,6 +149,10 @@ class DbApi(object):
     def allocate_unique_key(self, table):
         """Allocate a unique id in the controller
 
+        The allocation information should be managed in the 'unique_key'
+        tabl and stored by table name, s.t. the state can be extracted and
+        restored by get_key/set_ket calls.
+
         :table:       The name of resource table
         :returns:     Unique id
         """
