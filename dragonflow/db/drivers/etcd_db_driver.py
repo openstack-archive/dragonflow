@@ -154,9 +154,8 @@ class EtcdDbDriver(db_api.DbApi):
             prev_value = int(self.get_key('unique_key', table))
         except df_exceptions.DBKeyNotFound:
             if prev_value == 0:
-                # FIXME(lihi): race-condition
                 # Create new key
-                self.client.put(key, "1")
+                self.client.create(key, "1")
                 return 1
 
         new_unique = prev_value + 1
