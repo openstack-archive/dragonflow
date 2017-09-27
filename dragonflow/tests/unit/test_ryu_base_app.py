@@ -68,6 +68,7 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         self.mock_app.reset_mock()
         ev = mock.Mock()
         ev.msg.table_id = 10
+        self.mock_app.packet_in_handler.__name__ = 'mock'
         self.ryu_df_adapter.register_table_handler(
                 10, self.mock_app.packet_in_handler)
         self.ryu_df_adapter.OF_packet_in_handler(ev)

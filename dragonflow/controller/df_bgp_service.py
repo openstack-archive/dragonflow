@@ -12,13 +12,13 @@
 
 import sys
 
-from neutron.common import config as common_config
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_service import service
 from oslo_utils import importutils
 
 from dragonflow import conf as cfg
+from dragonflow.controller import df_config
 from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
@@ -164,8 +164,7 @@ class BGPService(service.Service):
 
 
 def main():
-    common_config.init(sys.argv[1:])
-    common_config.setup_logging()
+    df_config.init(sys.argv)
     # BGP dynamic route is not a service that needs real time response.
     # So disable pubsub here and use period task to do BGP job.
     cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
