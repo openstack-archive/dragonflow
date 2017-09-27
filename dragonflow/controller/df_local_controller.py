@@ -15,7 +15,6 @@
 
 import sys
 
-from neutron.common import config as common_config
 from oslo_log import log
 from oslo_service import loopingcall
 from ryu.app.ofctl import service as of_service
@@ -25,6 +24,7 @@ from ryu import cfg as ryu_cfg
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as ctrl_const
+from dragonflow.controller import df_config
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import service
 from dragonflow.controller import topology
@@ -343,8 +343,8 @@ def init_ryu_config():
 # <local ip address> <southbound_db_ip_address>
 def main():
     chassis_name = cfg.CONF.host
-    common_config.init(sys.argv[1:])
-    common_config.setup_logging()
+    df_config.init(sys.argv)
+
     init_ryu_config()
     nb_api = api_nb.NbApi.get_instance(False)
     controller = DfLocalController(chassis_name, nb_api)
