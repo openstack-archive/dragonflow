@@ -170,7 +170,10 @@ df_opts = [
                help=_('The max delay in seconds for Neutron to report heart'
                       'beat to df-db')),
     cfg.StrOpt('external_host_ip',
-               help=_("Compute node external IP"))
+               help=_("Compute node external IP")),
+    cfg.StrOpt('osprofiler_hmac',
+               default='SECRET_KEY',
+               help=_("osprofiler commands HMAC"))
 ]
 
 
