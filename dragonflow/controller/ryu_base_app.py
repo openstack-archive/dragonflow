@@ -25,6 +25,7 @@ from ryu.ofproto import ofproto_parser
 from ryu.ofproto import ofproto_v1_3
 from ryu import utils
 
+from dragonflow.common import profiler as df_profiler
 from dragonflow.controller.common import constants
 from dragonflow.controller import dispatcher
 
@@ -133,7 +134,9 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         table_id = msg.table_id
         if table_id in self.table_handlers:
             handler = self.table_handlers[table_id]
-            handler(event)
+            with df_profiler.profiler_context('packet_in',
+                                              info={"func": handler.__name__}):
+                handler(event)
         else:
             LOG.info("No handler for table id %(table)s with message "
                      "%(msg)", {'table': table_id, 'msg': msg})
