@@ -15,12 +15,12 @@ import sys
 import time
 import traceback
 
-from neutron.common import config as common_config
 from oslo_log import log as logging
 
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.controller import df_config
 from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
 from dragonflow.db import db_common
@@ -146,8 +146,7 @@ class PublisherService(object):
 
 
 def main():
-    common_config.init(sys.argv[1:])
-    common_config.setup_logging()
+    df_config.init(sys.argv)
     cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
     nb_api = api_nb.NbApi.get_instance(False)
     service = PublisherService(nb_api)

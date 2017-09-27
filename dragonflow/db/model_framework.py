@@ -20,6 +20,8 @@ from oslo_serialization import jsonutils
 import six
 
 from dragonflow._i18n import _
+from dragonflow.common import profiler as df_profiler
+
 
 LOG = log.getLogger(__name__)
 
@@ -42,7 +44,7 @@ def _normalize_tuple(v):
 class _CommonBase(models.Base):
     '''Base class for extending jsonmodels' Base
 
-    Here we add common facilites needed to support:
+    Here we add common facilities needed to support:
 
      * Event registration/dispatch
      * CRUD hooks
@@ -105,7 +107,9 @@ class _CommonBase(models.Base):
                        'event': event,
                        'resource': self})
             try:
-                cb(self, *args, **kwargs)
+                with df_profiler.profiler_context("emit",
+                                                  info={"func": cb.__name__}):
+                    cb(self, *args, **kwargs)
             except Exception:
                 LOG.exception(
                     'Error while calling %(func)r(*%(_args)r, **%(kw)r)',
@@ -336,6 +340,10 @@ def construct_nb_db_model(cls_=None, indexes=None, events=frozenset()):
 
         fields = frozenset(n for n, _ in cls_.iterate_over_fields())
         cls_._field_names = fields
+
+        # Make sure profiler is properly initialized
+        if df_profiler.is_profiler_enabled():
+            cls_ = df_profiler.get().trace_cls('model')(cls_)
 
         return cls_
 
