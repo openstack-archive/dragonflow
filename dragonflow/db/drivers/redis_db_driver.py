@@ -18,6 +18,7 @@ from redis import exceptions
 
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
+from dragonflow.db import db_common
 from dragonflow.db.drivers import redis_mgt
 
 LOG = log.getLogger(__name__)
@@ -303,7 +304,7 @@ class RedisDbDriver(db_api.DbApi):
         return m.group(1)
 
     def _allocate_unique_key(self, table):
-        local_key = self._uuid_to_key('unique_key', table, None)
+        local_key = self._uuid_to_key(db_common.UNIQUE_KEY_TABLE, table, None)
         ip_port = None
         try:
             client = self._update_client(local_key)

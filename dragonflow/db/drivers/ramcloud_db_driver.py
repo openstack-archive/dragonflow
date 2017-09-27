@@ -13,6 +13,7 @@
 import ramcloud
 
 from dragonflow.db import db_api
+from dragonflow.db import db_common
 
 
 class RamCloudDbDriver(db_api.DbApi):
@@ -77,7 +78,7 @@ class RamCloudDbDriver(db_api.DbApi):
         return res
 
     def _allocate_unique_key(self, table):
-        table_id = self.client.get_table_id('unique_key')
+        table_id = self.client.get_table_id(db_common.UNIQUE_KEY_TABLE)
         key = table
         while True:
             try:

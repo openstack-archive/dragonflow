@@ -18,12 +18,13 @@ from oslo_log import log
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow import conf as cfg
 from dragonflow.db import db_api
+from dragonflow.db import db_common
 
 LOG = log.getLogger(__name__)
 
 ROOT_KS = 'openstack'
 
-CAS_TABLE = 'unique_key'
+CAS_TABLE = db_common.UNIQUE_KEY_TABLE
 
 # NOTE(nick-ma-z): http://datastax.github.io/python-driver/
 # api/cassandra.html
