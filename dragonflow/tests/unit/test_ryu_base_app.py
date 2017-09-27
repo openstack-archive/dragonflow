@@ -41,6 +41,7 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
                 'port_desc_stats_reply_handler',
                 'packet_in_handler'
         ])
+        self.mock_app.__name__ = 'mock'
 
         def dispatcher_load(*args, **kwargs):
             self.ryu_df_adapter.dispatcher.apps = {'mock': self.mock_app}
