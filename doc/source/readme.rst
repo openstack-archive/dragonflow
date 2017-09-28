@@ -1,10 +1,10 @@
-Installation guide for Dragonflow
+Installation guide for Dragonflow,
 Keep in mind that Dragonflow is still in beta.
 
 Prerequisites
 -------------
 
-1) Open vSwitch 2.5.0
+Require Open vSwitch 2.5.0
 
 Quick Installation
 ------------------
@@ -13,23 +13,23 @@ Quick Installation
 
    ``git clone https://git.openstack.org/openstack-dev/devstack``
 
-2) Copy one of the following as your ``local.conf`` to your devstack folder:
+2) Copy one of the following as your ``local.conf`` to your devstack folder
 
-.. _DevStack Single Node Configuration: https://github.com/openstack/dragonflow/tree/master/doc/source/single-node-conf
+`DevStack Single Node Configuration <https://github.com/openstack/dragonflow/tree/master/doc/source/single-node-conf>`_
 
-.. _DevStack Multi Node Configuration: https://github.com/openstack/dragonflow/tree/master/doc/source/multi-node-conf
+`DevStack Multi Node Configuration <https://github.com/openstack/dragonflow/tree/master/doc/source/multi-node-conf>`_
 
 3) Edit local.conf according to your configuration, See `Detailed Installation`_ for more details, or the Devstack_ configuration manual
 
-.. _Devstack: https://docs.openstack.org/devstack/latest/configuration.html
+`Devstack <https://docs.openstack.org/devstack/latest/configuration.html>`_
 
 
-DHCP configuration (IPv4 Only Environment):
+DHCP configuration (IPv4 Only Environment)
 -------------------------------------------
 
    no configuration needed
 
-DHCP configuration (mixed IPv4/IPv6 or pure IPv6):
+DHCP configuration (mixed IPv4/IPv6 or pure IPv6)
 --------------------------------------------------
 
    enable_service q-dhcp
@@ -57,7 +57,7 @@ used to forward meta data client requests to real meta service.
 By default, it is started by regular q-dhcp service for each tenant.
 As a result 'q-meta' and 'q-dhcp' services must be enabled.
  
-Database configuration:
+Database configuration
 -----------------------
 
 Choose one of the following Database drivers in your local.conf
