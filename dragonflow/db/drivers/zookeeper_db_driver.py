@@ -19,6 +19,7 @@ import six
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils
 from dragonflow.db import db_api
+from dragonflow.db import db_common
 
 ROOT_NS = '/openstack'
 
@@ -163,7 +164,7 @@ class ZookeeperDbDriver(db_api.DbApi):
             raise df_exceptions.DBKeyNotFound(key=table)
 
     def _allocate_unique_key(self, table):
-        path = self._generate_path('unique_key', table)
+        path = self._generate_path(db_common.UNIQUE_KEY_TABLE, table)
 
         prev_value = 0
         while True:

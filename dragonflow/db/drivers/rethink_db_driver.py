@@ -18,6 +18,7 @@ import rethinkdb as rdb
 from dragonflow.common import exceptions
 from dragonflow import conf as cfg
 from dragonflow.db import db_api
+from dragonflow.db import db_common
 
 _DF_DATABASE = 'dragonflow'
 
@@ -116,9 +117,10 @@ class RethinkDbDriver(db_api.DbApi):
             return [entry['id'] for entry in cursor]
 
     def allocate_unique_key(self, table_name):
-        self._ensure_table_exists('unique_key')
+        unique_key_table = db_common.UNIQUE_KEY_TABLE
+        self._ensure_table_exists(unique_key_table)
         with self._get_conn() as conn:
-            res = rdb.table('unique_key').get(table_name).replace(
+            res = rdb.table(unique_key_table).get(table_name).replace(
                 lambda post: {'id': table_name,
                               'key': post['key'].default(0).add(1)},
                 return_changes=True,
