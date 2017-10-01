@@ -110,3 +110,35 @@ class TestPortBindingApp(test_app_base.DFAppTestBase):
         new_port.emit_updated(old_port)
         _M[l2.EVENT_BIND_REMOTE].assert_called_once_with(new_port)
         _M[l2.EVENT_REMOTE_UPDATED].assert_not_called()
+
+    def test_port_admin_state_create(self):
+        port = test_app_base.make_fake_local_port(id='id1', enabled=False)
+        port.emit_created()
+        _M[l2.EVENT_BIND_LOCAL].assert_not_called()
+        port2 = test_app_base.make_fake_local_port(id='id1', enabled=True)
+        port2.emit_created()
+        _M[l2.EVENT_BIND_LOCAL].assert_called_once_with(port2)
+
+    def test_port_admin_state_update(self):
+        old_port = test_app_base.make_fake_local_port(id='id1', enabled=False)
+        old_port.emit_created()
+
+        _M[l2.EVENT_BIND_LOCAL].reset_mock()
+        new_port = test_app_base.make_fake_local_port(id='id1', enabled=True)
+        new_port.emit_updated(old_port)
+        _M[l2.EVENT_BIND_LOCAL].assert_called_once_with(new_port)
+
+        _M[l2.EVENT_BIND_LOCAL].reset_mock()
+        old_port.emit_updated(new_port)
+        _M[l2.EVENT_BIND_LOCAL].assert_not_called()
+
+    def test_port_admin_state_delete(self):
+        port = test_app_base.make_fake_local_port(id='id1', enabled=False)
+        port2 = test_app_base.make_fake_local_port(id='id1', enabled=True)
+        port.emit_created()
+        port2.emit_created()
+
+        port.emit_deleted()
+        _M[l2.EVENT_UNBIND_LOCAL].assert_not_called()
+        port2.emit_deleted()
+        _M[l2.EVENT_UNBIND_LOCAL].assert_called_once_with(port2)
