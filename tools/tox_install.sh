@@ -15,6 +15,8 @@
 set -ex
 
 DIR=$(dirname $0)
+# Install the projects only if running under zuul v2
+# Zuul v3 should get the projects from the required-projects list
 ${DIR}/tox_install_project.sh neutron neutron $*
 ${DIR}/tox_install_project.sh networking-sfc networking_sfc $*
 CONSTRAINTS_FILE=$1
