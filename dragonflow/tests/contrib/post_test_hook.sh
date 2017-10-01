@@ -37,7 +37,8 @@ function generate_testr_results {
     fi
 }
 
-owner=stack
+#owner=stack
+owner=$USER
 sudo_env=
 
 # virtuelenv 14.0.6 gives a strange error which appears solved in version 15.
@@ -47,7 +48,8 @@ sudo pip install --upgrade "virtualenv>=15.0.1"
 
 # Set owner permissions according to job's requirements.
 cd "$DRAGONFLOW_DIR"
-sudo chown -R $owner:stack "$DRAGONFLOW_DIR"
+#sudo chown -R $owner:stack "$DRAGONFLOW_DIR"
+sudo chown -R $owner. "$DRAGONFLOW_DIR"
 
 # Run tests
 echo "Running Dragonflow $venv tests"
