@@ -204,6 +204,7 @@ def make_fake_port(id=None,
         _lport_index += 1
 
     fake_port = l2.LogicalPort(
+        enabled=enabled,
         id=id,
         topic=topic,
         name=name,
