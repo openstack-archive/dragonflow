@@ -20,6 +20,36 @@ from dragonflow.db.models import l2
 LOG = log.getLogger(__name__)
 
 
+def _port_update_unbind(lport, orig_lport):
+    # wasn't bounded any way
+    if orig_lport.enabled is False:
+        return
+
+    # port move between chassis or admin disabled
+    if (orig_lport.is_local != lport.is_local
+            or orig_lport.is_remote != lport.is_remote
+            or lport.enabled is False):
+        if orig_lport.is_local:
+            orig_lport.emit_unbind_local()
+        elif orig_lport.is_remote:
+            orig_lport.emit_unbind_remote()
+
+
+def _port_update_bind(lport, orig_lport):
+    # wasn't bounded any way
+    if lport.enabled is False:
+        return
+
+    # port moved between chassis or admin enabled
+    if (orig_lport.is_local != lport.is_local
+            or orig_lport.is_remote != lport.is_remote
+            or orig_lport.enabled is False):
+        if lport.is_local:
+            lport.emit_bind_local()
+        elif lport.is_remote:
+            lport.emit_bind_remote()
+
+
 class PortBindingApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(PortBindingApp, self).__init__(*args, **kwargs)
@@ -32,6 +62,10 @@ class PortBindingApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_CREATED)
     def _port_created(self, lport):
+
+        if lport.enabled is False:
+            return
+
         if lport.is_local:
             lport.emit_bind_local()
         elif lport.is_remote:
@@ -39,25 +73,22 @@ class PortBindingApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_UPDATED)
     def _port_updated(self, lport, orig_lport):
-        # unbind
-        if orig_lport.is_local and not lport.is_local:
-            orig_lport.emit_unbind_local()
-        elif orig_lport.is_remote and not lport.is_remote:
-            orig_lport.emit_unbind_remote()
+
+        _port_update_unbind(lport, orig_lport)
 
         if lport.id in self._local_ports:
             lport.emit_local_updated(orig_lport)
         elif lport.id in self._remote_ports:
             lport.emit_remote_updated(orig_lport)
 
-        # bind
-        if lport.is_local and not orig_lport.is_local:
-            lport.emit_bind_local()
-        elif lport.is_remote and not orig_lport.is_remote:
-            lport.emit_bind_remote()
+        _port_update_bind(lport, orig_lport)
 
     @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_DELETED)
     def _port_deleted(self, lport):
+
+        if lport.enabled is False:
+            return
+
         if lport.id in self._local_ports:
             lport.emit_unbind_local()
         elif lport.id in self._remote_ports:
