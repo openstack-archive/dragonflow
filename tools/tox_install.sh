@@ -15,8 +15,11 @@
 set -ex
 
 DIR=$(dirname $0)
-${DIR}/tox_install_project.sh neutron neutron $*
-${DIR}/tox_install_project.sh networking-sfc networking_sfc $*
+#Install the projects only if running under zuul v2
+if [ -n "$LOG_PATH" ]; then
+  ${DIR}/tox_install_project.sh neutron neutron $*
+  ${DIR}/tox_install_project.sh networking-sfc networking_sfc $*
+fi
 CONSTRAINTS_FILE=$1
 shift
 
