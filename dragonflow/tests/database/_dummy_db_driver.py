@@ -17,6 +17,7 @@ from oslo_log import log
 
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db import db_api
+from dragonflow.db import db_common
 
 
 LOG = log.getLogger(__name__)
@@ -26,7 +27,6 @@ class _DummyDbDriver(db_api.DbApi):
     def __init__(self):
         super(_DummyDbDriver, self).__init__()
         self._db = collections.defaultdict(dict)
-        self._unique_keys = collections.defaultdict(int)
         self._unique_keys_lock = threading.Lock()
 
     def initialize(self, db_ip, db_port, **args):
@@ -71,8 +71,9 @@ class _DummyDbDriver(db_api.DbApi):
 
     def allocate_unique_key(self, table):
         with self._unique_keys_lock:
-            unique_key = self._unique_keys[table] + 1
-            self._unique_keys[table] = unique_key
+            unique_key_table = self._db[db_common.UNIQUE_KEY_TABLE]
+            unique_key = unique_key_table.get(table, 0) + 1
+            unique_key_table[table] = unique_key
         return unique_key
 
     def process_ha(self):
