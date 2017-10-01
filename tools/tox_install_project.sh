@@ -34,12 +34,26 @@ if [ $CONSTRAINTS_FILE != "unconstrained" ]; then
     install_cmd="$install_cmd -c$CONSTRAINTS_FILE"
 fi
 
+# Check if the project exists in Zuul V3 related locations..
+if [ -d src/git.openstack.org/openstack/${PROJ} ]; then
+  PROJ_INSTALLED_DIR=src/git.openstack.org/openstack/${PROJ}
+elif [ -d /home/zuul/src/git.openstack.org/openstack/${PROJ} ]; then
+  PROJ_INSTALLED_DIR=/home/zuul/src/git.openstack.org/openstack/${PROJ}
+fi
+
 if [ $proj_installed -eq 0 ]; then
     echo "ALREADY INSTALLED" > /tmp/tox_install-${PROJ}.txt
     location=$(python -c "import ${MOD}; print(${MOD}.__file__)")
     echo "ALREADY INSTALLED at $location"
 
     echo "${PROJ} already installed; using existing package"
+elif [ -n "$PROJ_INSTALLED_DIR" ]; then
+    # Do not clone the projects if running under zuul v3
+    # Zuul v3 should get the projects from the required-projects list
+    pushd $PROJ_INSTALLED_DIR
+    # Install the project
+    $install_cmd -e . -t src/git.openstack.org/openstack/${PROJ}
+    popd
 elif [ -x "$ZUUL_CLONER" ]; then
     echo "ZUUL CLONER" > /tmp/tox_install-${PROJ}.txt
     # Make this relative to current working directory so that
