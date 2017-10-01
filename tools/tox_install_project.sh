@@ -40,6 +40,13 @@ if [ $proj_installed -eq 0 ]; then
     echo "ALREADY INSTALLED at $location"
 
     echo "${PROJ} already installed; using existing package"
+elif if [ -z "$LOG_PATH" ]; then
+    # Do not clone the projects if running under zuul v3
+    # Zuul v3 should get the projects from the required-projects list
+    pushd src/git.openstack.org/openstack/${PROJ}
+    # Install the project
+    $install_cmd -e .
+    popd
 elif [ -x "$ZUUL_CLONER" ]; then
     echo "ZUUL CLONER" > /tmp/tox_install-${PROJ}.txt
     # Make this relative to current working directory so that
