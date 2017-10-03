@@ -151,7 +151,7 @@ class DbApi(object):
 
         The allocation information should be managed in the 'unique_key'
         table and stored by table name, s.t. the state can be extracted and
-        restored by get_key/set_ket calls.
+        restored by get_key/set_key calls.
 
         :table:       The name of resource table
         :returns:     Unique id
