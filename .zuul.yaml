@@ -1,0 +1,115 @@
+- project:
+    name: openstack/dragonflow
+    templates:
+      - merge-check
+      - openstack-python-jobs-neutron
+      - check-requirements
+      - publish-openstack-sphinx-docs
+      - openstack-python35-jobs-neutron
+      - publish-to-pypi
+    check:
+      jobs:
+        - build-openstack-sphinx-docs:
+            required-projects:
+              - openstack/networking-sfc
+        - openstack-tox-pep8:
+            required-projects:
+              - openstack/networking-sfc
+        - openstack-tox-py27:
+            required-projects:
+              - openstack/networking-sfc
+        - openstack-tox-py35:
+            required-projects:
+              - openstack/networking-sfc
+        - tempest-dsvm-dragonflow:
+            voting: false
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^setup.cfg$
+        - dragonflow-dsvm-rally:
+            voting: false
+        - dragonflow-dsvm-fullstack
+        - dragonflow-dsvm-fullstack-zmq:
+            voting: false
+        - legacy-install-dsvm-dragonflow-kuryr-kubernetes:
+            voting: false
+        - legacy-openstack-ansible-os_neutron-ansible-dragonflow:
+            voting: false
+            branches: ^(?!stable/newton).*$
+    gate:
+      jobs:
+        - build-openstack-sphinx-docs:
+            required-projects:
+              - openstack/networking-sfc
+        - openstack-tox-pep8:
+            required-projects:
+              - openstack/networking-sfc
+        - openstack-tox-py27:
+            required-projects:
+              - openstack/networking-sfc
+        - openstack-tox-py27:
+            required-projects:
+              - openstack/networking-sfc
+        - openstack-tox-py35:
+            required-projects:
+              - openstack/networking-sfc
+        - dragonflow-dsvm-fullstack
+    post:
+      jobs:
+        - publish-openstack-python-branch-tarball:
+            required-projects:
+              - openstack/networking-sfc
+        - publish-openstack-sphinx-docs:
+            required-projects:
+              - openstack/networking-sfc
+
+- job:
+    name: dragonflow-dsvm-fullstack
+    parent: legacy-dsvm-base
+    run: zuul/dragonflow-dsvm-fullstack/run
+    post-run: zuul/dragonflow-dsvm-fullstack/post
+    timeout: 9900
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/dragonflow
+      - openstack/neutron
+      - openstack/networking-sfc
+      - openstack/neutron-dynamic-routing
+
+- job:
+    name: dragonflow-dsvm-fullstack-zmq
+    parent: legacy-dsvm-base
+    run: zuul/legacy/dragonflow-dsvm-fullstack-zmq/run
+    post-run: zuul/legacy/dragonflow-dsvm-fullstack-zmq/post
+    timeout: 9900
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/dragonflow
+      - openstack/neutron
+      - openstack/networking-sfc
+      - openstack/neutron-dynamic-routing
+
+- job:
+    name: dragonflow-dsvm-rally
+    parent: legacy-dsvm-base
+    run: zuul/legacy/dragonflow-dsvm-rally/run
+    post-run: zuul/legacy/dragonflow-dsvm-rally/post
+    timeout: 7800
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/dragonflow
+      - openstack/rally
+
+- job:
+    name: tempest-dsvm-dragonflow
+    parent: legacy-dsvm-base
+    run: zuul/legacy/tempest-dsvm-dragonflow/run
+    post-run: zuul/legacy/tempest-dsvm-dragonflow/post
+    timeout: 7800
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/dragonflow
+      - openstack/neutron
+      - openstack/networking-sfc
+      - openstack/neutron-dynamic-routing
+      - openstack/tempest
