@@ -1,0 +1,66 @@
+- hosts: all
+  name: Autoconverted job legacy-dragonflow-dsvm-rally from old job gate-dragonflow-dsvm-rally-ubuntu-xenial-nv
+  tasks:
+
+    - name: Ensure legacy workspace directory
+      file:
+        path: '{{ ansible_user_dir }}/workspace'
+        state: directory
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat > clonemap.yaml << EOF
+          clonemap:
+            - name: openstack-infra/devstack-gate
+              dest: devstack-gate
+          EOF
+          /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
+              git://git.openstack.org \
+              openstack-infra/devstack-gate
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat << 'EOF' >>"/tmp/dg-local.conf"
+          [[local|localrc]]
+          enable_plugin dragonflow git://git.openstack.org/openstack/dragonflow
+          Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER=True
+          enable_plugin rally git://git.openstack.org/openstack/rally
+
+          EOF
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          export PYTHONUNBUFFERED=true
+          export DEVSTACK_GATE_NEUTRON=1
+          export RALLY_SCENARIO=dragonflow
+          export BRANCH_OVERRIDE=default
+          if [ "$BRANCH_OVERRIDE" != "default" ] ; then
+              export OVERRIDE_ZUUL_BRANCH=$BRANCH_OVERRIDE
+          fi
+          export PROJECTS="openstack/dragonflow $PROJECTS"
+          export PROJECTS="openstack/rally $PROJECTS"
+
+          export DEVSTACK_GATE_SETTINGS=/opt/stack/new/dragonflow/devstack/devstackgaterc
+
+          function post_test_hook {
+              $BASE/new/rally/tests/ci/rally-gate.sh
+          }
+          export -f post_test_hook
+
+          cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
+          ./safe-devstack-vm-gate-wrap.sh
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
