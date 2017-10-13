@@ -10,8 +10,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log
+
+from dragonflow._i18n import _
 import dragonflow.common.constants as const
 from dragonflow.common import dhcp
+
+
+LOG = log.getLogger(__name__)
 
 dnsmasq_opts = {
     "netmask": 1,
@@ -208,4 +214,11 @@ def dhcp_app_tag_by_user_tag(usr_tag):
 
     if usr_tag == const.DHCP_SIADDR:
         return usr_tag
-    return opt_mapping.get(usr_tag)
+    try:
+        if opt_mapping.get(usr_tag):
+            usr_tag_mapps = opt_mapping.get(usr_tag)
+    except ValueError:
+        msg = _("The value of {0} in dhcpd and dnsmasq tags "
+                "should not be null").format(usr_tag)
+        LOG.exception(msg)
+    return usr_tag_mapps
