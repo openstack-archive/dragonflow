@@ -10,8 +10,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log
+
+from dragonflow._i18n import _
 import dragonflow.common.constants as const
 from dragonflow.common import dhcp
+
+
+LOG = log.getLogger(__name__)
 
 dnsmasq_opts = {
     "netmask": 1,
@@ -204,6 +210,9 @@ def dhcp_app_tag_by_user_tag(usr_tag):
         if dhcp.is_tag_valid(user_tag_int):
             return user_tag_int
     except ValueError:
+        msg = _("{0} has error integer types and "
+                "should be between 0 and 255").format(user_tag_int)
+        LOG.exception(msg)
         pass
 
     if usr_tag == const.DHCP_SIADDR:
