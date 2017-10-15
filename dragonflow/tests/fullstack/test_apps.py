@@ -801,14 +801,11 @@ class TestL3App(test_base.DFTestBase):
         ip = pkt.get_protocol(ryu.lib.packet.ipv4.ipv4)
         icmp = pkt.get_protocol(ryu.lib.packet.icmp.icmp)
 
-        src_mac = ether.dst
-        dst_mac = ether.src
-        ether.src = src_mac
-        ether.dst = dst_mac
+        ether.src, ether.dst = ether.dst, ether.src
 
         lport2 = self.port2.port.get_logical_port()
         self.assertIn(
-            src_mac,
+            ether.src,
             lport2.macs + [
                 p.mac_address for p in lport2.allowed_address_pairs or ()
             ]
@@ -821,22 +818,19 @@ class TestL3App(test_base.DFTestBase):
         )
         router_mac = router_interface_port['port']['mac_address']
         self.assertEqual(
-            dst_mac,
+            ether.dst,
             router_mac,
         )
 
-        src_ip = ip.dst
-        dst_ip = ip.src
-        ip.src = src_ip
-        ip.dst = dst_ip
+        ip.src, ip.dst = ip.dst, ip.src
         self.assertIn(
-            netaddr.IPAddress(src_ip),
+            netaddr.IPAddress(ip.src),
             lport2.ips + [
                 p.ip_address for p in lport2.allowed_address_pairs or ()
             ]
         )
         self.assertEqual(
-            netaddr.IPAddress(dst_ip),
+            netaddr.IPAddress(ip.dst),
             self.port1.port.get_logical_port().ip
         )
 
@@ -1538,29 +1532,23 @@ class TestSGApp(test_base.DFTestBase):
         ip = pkt.get_protocol(self.ip_class)
         icmp = pkt.get_protocol(self.icmp_class)
 
-        src_mac = ether.dst
-        dst_mac = ether.src
-        ether.src = src_mac
-        ether.dst = dst_mac
+        ether.src, ether.dst = ether.dst, ether.src
         self.assertEqual(
-            dst_mac,
+            ether.dst,
             self.port1.port.get_logical_port().mac
         )
         self.assertEqual(
-            src_mac,
+            ether.src,
             self.port3.port.get_logical_port().mac
         )
 
-        src_ip = ip.dst
-        dst_ip = ip.src
-        ip.src = src_ip
-        ip.dst = dst_ip
+        ip.src, ip.dst = ip.dst, ip.src
         self.assertEqual(
-            netaddr.IPAddress(src_ip),
+            netaddr.IPAddress(ip.src),
             self.port3.port.get_logical_port().ip
         )
         self.assertEqual(
-            netaddr.IPAddress(dst_ip),
+            netaddr.IPAddress(ip.dst),
             self.port1.port.get_logical_port().ip
         )
 
@@ -2184,10 +2172,7 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
         ether = pkt.get_protocol(ryu.lib.packet.ethernet.ethernet)
         arp = pkt.get_protocol(ryu.lib.packet.arp.arp)
 
-        src_mac = self.allowed_address_pair_mac_address
-        dst_mac = ether.src
-        ether.src = src_mac
-        ether.dst = dst_mac
+        ether.src, ether.dst = self.allowed_address_pair_mac_address, ether.src
 
         self.assertEqual(
             arp.dst_ip,
@@ -2677,29 +2662,23 @@ class TestTrunkApp(test_base.DFTestBase):
         ip = pkt.get_protocol(ryu.lib.packet.ipv4.ipv4)
         icmp = pkt.get_protocol(ryu.lib.packet.icmp.icmp)
 
-        src_mac = ether.dst
-        dst_mac = ether.src
-        ether.src = src_mac
-        ether.dst = dst_mac
+        ether.src, ether.dst = ether.dst, ether.src
         self.assertEqual(
-            src_mac,
+            ether.src,
             str(self.vlan_port2.get_logical_port().mac)
         )
         self.assertEqual(
-            dst_mac,
+            ether.dst,
             str(self.vlan_port1.get_logical_port().mac)
         )
 
-        src_ip = ip.dst
-        dst_ip = ip.src
-        ip.src = src_ip
-        ip.dst = dst_ip
+        ip.src, ip.dst = ip.dst, ip.src
         self.assertEqual(
-            netaddr.IPAddress(src_ip),
+            netaddr.IPAddress(ip.src),
             self.vlan_port2.get_logical_port().ip
         )
         self.assertEqual(
-            netaddr.IPAddress(dst_ip),
+            netaddr.IPAddress(ip.dst),
             self.vlan_port1.get_logical_port().ip
         )
         self.assertEqual(
