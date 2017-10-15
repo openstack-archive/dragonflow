@@ -76,6 +76,14 @@ class TestApps(test_base.DFTestBase):
         topology.close()
 
 
+def _start_policy(policy, topology, timeout):
+    policy.start(topology)
+    policy.wait(timeout)
+
+    if len(policy.exceptions) > 0:
+        raise policy.exceptions[0]
+
+
 class TestArpResponder(test_base.DFTestBase):
 
     def setUp(self):
@@ -171,10 +179,8 @@ class TestArpResponder(test_base.DFTestBase):
             port2:
                 Do nothing
         """
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
 
 class TestNeighborAdvertiser(test_base.DFTestBase):
@@ -295,10 +301,8 @@ class TestNeighborAdvertiser(test_base.DFTestBase):
             port2:
                 Do nothing
         """
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
 
 class TestDHCPApp(test_base.DFTestBase):
@@ -1592,8 +1596,8 @@ class TestSGApp(test_base.DFTestBase):
 
         self._update_policy()
         self._create_allowed_address_pairs_policy()
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         # switch the associated security group with port3 to a new security
         # group, and rules of this security group only let icmp echo requests
@@ -1601,16 +1605,16 @@ class TestSGApp(test_base.DFTestBase):
         self._switch_to_another_security_group()
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         # switch the associated security group with port3 to the initial
         # security group
         self._switch_to_another_security_group()
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         ovs = test_utils.OvsFlowsParser()
         LOG.info("flows are: %s",
@@ -2023,10 +2027,8 @@ class TestPortSecAppV4(TestPortSecApp):
         super(TestPortSecAppV4, self).setUp()
 
     def test_icmp_ping_using_different_ip_mac(self):
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
 
 class TestPortSecAppV6(TestPortSecApp):
@@ -2083,10 +2085,8 @@ class TestPortSecAppV6(TestPortSecApp):
         return rules
 
     def test_icmp_ping_using_different_ip_mac(self):
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
 
 class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
@@ -2218,10 +2218,7 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
         return False
 
     def test_detected_active_port(self):
-        self.policy.start(self.topology)
-        self.policy.wait(30)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        _start_policy(self.policy, self.topology, 30)
 
         # check if the active port exists in DF DB
         self.assertTrue(self._if_the_expected_active_port_exists())
