@@ -18,6 +18,7 @@ import time
 
 from neutron.agent.common import ip_lib
 from neutron.agent.common import utils
+from neutron.conf.agent import common as n_common
 from neutron_lib import constants as n_const
 from oslo_log import log
 import ryu.lib.packet
@@ -2725,6 +2726,7 @@ class TestSNat(test_base.DFTestBase):
 
     def setUp(self):
         super(TestSNat, self).setUp()
+        n_common.setup_privsep()
         ipwrapper = ip_lib.IPWrapper()
         snat_veth0_device, snat_veth1_device = ipwrapper.add_veth(
                                     self.iface0_name,
