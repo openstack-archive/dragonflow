@@ -247,7 +247,7 @@ class NbApi(object):
             with excutils.save_and_reraise_exception():
                 LOG.warning(
                     'Could not find object %(id)s to delete in %(table)s',
-                    extra={'id': id, 'table': model.table_name})
+                    {'id': obj.id, 'table': model.table_name})
 
         if not skip_send_event:
             self._send_db_change_event(model.table_name, obj.id, 'delete',
@@ -273,7 +273,7 @@ class NbApi(object):
         except df_exceptions.DBKeyNotFound:
             LOG.exception(
                 'Could not get object %(id)s from table %(table)s',
-                extra={'id': id, 'table': model.table_name})
+                {'id': lean_obj.id, 'table': model.table_name})
         else:
             return model.from_json(serialized_obj)
 
