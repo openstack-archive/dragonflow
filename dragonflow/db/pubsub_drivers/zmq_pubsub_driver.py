@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import traceback
+
 import eventlet
 from eventlet.green import zmq
 from oslo_config import cfg
@@ -156,8 +158,11 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
                 eventlet.sleep(0)
                 [topic, data] = self.sub_socket.recv_multipart()
                 self._handle_incoming_event(data)
-            except Exception as e:
-                LOG.warning(e)
+            except Exception:
+                bt_string = traceback.format_exc()
+                LOG.warning('Exception caught.\n%s', (
+                    bt_string
+                ))
                 self.sub_socket.close()
                 self.connect()
                 self.db_changes_callback(None, None, 'sync',
