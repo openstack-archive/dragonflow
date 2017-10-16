@@ -318,12 +318,12 @@ class TestMultiprocPubSub(PubSubTestBase):
         super(TestMultiprocPubSub, self).tearDown()
 
     def _verify_event(self, table, key, action, value, topic):
-        self.assertEqual(self.event.table, table)
-        self.assertEqual(self.event.key, key)
-        self.assertEqual(self.event.action, action)
-        # Value is not tested, since it's currently set to None
-        # self.assertEqual(self.event.value, value)
-        self.assertEqual(self.event.topic, topic)
+        self.event_received_info = db_common.DbUpdate(
+            table,
+            key,
+            action,
+            value,
+            topic=topic)
         self.event_received = True
 
     def test_multiproc_pub_sub(self):
@@ -344,6 +344,14 @@ class TestMultiprocPubSub(PubSubTestBase):
         test_utils.wait_until_true(lambda: self.event_received)
         self.subscriber.close()
         self.subscriber = None
+
+        # Check that we received the same event
+        self.assertEqual(self.event.table, self.event_received_info.table)
+        self.assertEqual(self.event.key, self.event_received_info.key)
+        self.assertEqual(self.event.action, self.event_received_info.action)
+        # Value is not tested, since it's currently set to None
+        # self.assertEqual(self.event.value, self.event_received_info.value)
+        self.assertEqual(self.event.topic, self.event_received_info.topic)
 
 
 class TestDbTableMonitors(PubSubTestBase):
