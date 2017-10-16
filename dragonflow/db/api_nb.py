@@ -15,6 +15,7 @@
 #    under the License.
 
 import time
+import traceback
 
 from eventlet import queue
 from jsonmodels import errors
@@ -245,7 +246,7 @@ class NbApi(object):
             self.driver.delete_key(model.table_name, obj.id, topic)
         except df_exceptions.DBKeyNotFound:
             with excutils.save_and_reraise_exception():
-                LOG.warning(
+                LOG.debug(
                     'Could not find object %(id)s to delete in %(table)s',
                     extra={'id': id, 'table': model.table_name})
 
@@ -271,9 +272,13 @@ class NbApi(object):
                 _get_topic(lean_obj),
             )
         except df_exceptions.DBKeyNotFound:
-            LOG.exception(
+            exception_text = traceback.format_exc()
+            LOG.debug(
                 'Could not get object %(id)s from table %(table)s',
                 extra={'id': id, 'table': model.table_name})
+            LOG.debug(
+                'Traceback (most recent call last):\n%s' % (
+                    exception_text,))
         else:
             return model.from_json(serialized_obj)
 
