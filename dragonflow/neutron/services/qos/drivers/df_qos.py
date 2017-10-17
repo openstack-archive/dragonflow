@@ -9,8 +9,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from neutron.common import constants
 from neutron_lib.api.definitions import portbindings
+from neutron_lib import constants as common_constants
+from neutron_lib.db import constants as db_const
 from neutron_lib.plugins import constants as service_constants
 from neutron_lib.plugins import directory
 from neutron_lib.services.qos import base
@@ -26,17 +27,18 @@ LOG = log.getLogger(__name__)
 SUPPORTED_RULES = {
     qos_consts.RULE_TYPE_BANDWIDTH_LIMIT: {
         qos_consts.MAX_KBPS: {
-            'type:range': [0, constants.DB_INTEGER_MAX_VALUE],
+            'type:range': [0, db_const.DB_INTEGER_MAX_VALUE],
         },
         qos_consts.MAX_BURST: {
-            'type:range': [0, constants.DB_INTEGER_MAX_VALUE],
+            'type:range': [0, db_const.DB_INTEGER_MAX_VALUE],
         },
         qos_consts.DIRECTION: {
-            'type:values': [constants.EGRESS_DIRECTION],
+            'type:values': [common_constants.EGRESS_DIRECTION],
         },
     },
     qos_consts.RULE_TYPE_DSCP_MARKING: {
-        qos_consts.DSCP_MARK: {'type:values': constants.VALID_DSCP_MARKS},
+        qos_consts.DSCP_MARK: {
+            'type:values': common_constants.VALID_DSCP_MARKS},
     }
 }
 VIF_TYPES = [
