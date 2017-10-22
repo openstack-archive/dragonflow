@@ -27,6 +27,7 @@ pip-log.txt
 .tox
 nosetests.xml
 .testrepository
+.stestr
 .venv
 
 # Translations
