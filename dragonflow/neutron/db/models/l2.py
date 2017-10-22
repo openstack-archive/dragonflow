@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.extensions import allowedaddresspairs as addr_pair
+from neutron_lib.api.definitions import allowedaddresspairs as addr_apidef
 from neutron_lib.api.definitions import extra_dhcp_opt
 from neutron_lib.api.definitions import port_security as psec
 from neutron_lib.api.definitions import portbindings
@@ -135,7 +135,7 @@ def logical_port_from_neutron_port(port):
         security_groups=port.get('security_groups', []),
         port_security_enabled=port.get(psec.PORTSECURITY, False),
         allowed_address_pairs=_validate_ip_prefix_allowed_address_pairs(
-            port.get(addr_pair.ADDRESS_PAIRS, [])),
+            port.get(addr_apidef.ADDRESS_PAIRS, [])),
         binding_vnic_type=port.get(portbindings.VNIC_TYPE),
         qos_policy=port.get('qos_policy_id'),
         dhcp_params=_build_dhcp_params(port),
