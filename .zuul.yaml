@@ -14,9 +14,8 @@
             voting: false
         - legacy-install-dsvm-dragonflow-kuryr-kubernetes:
             voting: false
-        - legacy-openstack-ansible-os_neutron-ansible-dragonflow:
+        - openstack-ansible-dragonflow-cross-repo-ubuntu-xenial-nv:
             voting: false
-            branches: ^(?!stable/newton).*$
     gate:
       jobs:
         - dragonflow-dsvm-fullstack
@@ -74,3 +73,13 @@
       - openstack/networking-sfc
       - openstack/neutron-dynamic-routing
       - openstack/tempest
+
+- job:
+    name: openstack-ansible-dragonflow-cross-repo-ubuntu-xenial-nv
+    parent: openstack-ansible-cross-repo-functional
+    required-projects:
+      - openstack/requirements
+      - openstack/openstack-ansible-os_neutron
+    vars:
+      tox_env: dragonflow
+      osa_test_repo: "openstack/openstack-ansible-os_neutron"
