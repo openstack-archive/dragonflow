@@ -28,6 +28,7 @@ Contents:
    contributing
    releasenotes_create
    releasenotes
+   reviewers_guide
 
 Dragonflow Specs
 ================
