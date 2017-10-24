@@ -31,3 +31,15 @@ def build_logical_router_port(router_port_info, mac, network, unique_key):
         mac=mac,
         network=network,
         unique_key=unique_key)
+
+
+def build_floating_ip_from_neutron_floating_ip(floating_ip):
+    return l3.FloatingIp(
+        id=floating_ip['id'],
+        topic=floating_ip['tenant_id'],
+        name=floating_ip.get('name', df_const.DF_FIP_DEFAULT_NAME),
+        version=floating_ip['revision_number'],
+        lrouter=floating_ip['router_id'],
+        lport=floating_ip['port_id'],
+        fixed_ip_address=floating_ip['fixed_ip_address'],
+    )

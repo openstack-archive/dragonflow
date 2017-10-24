@@ -206,14 +206,8 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
             )
 
         self.nb_api.update(
-            l3.FloatingIp(
-                id=floatingip_dict['id'],
-                topic=floatingip_dict['tenant_id'],
-                name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
-                version=floatingip_dict['revision_number'],
-                lrouter=floatingip_dict['router_id'],
-                lport=floatingip_dict['port_id'],
-                fixed_ip_address=floatingip_dict['fixed_ip_address'],
+            neutron_l3.build_floating_ip_from_neutron_floating_ip(
+                floatingip_dict
             ),
         )
         return floatingip_dict
@@ -277,6 +271,29 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
                           "suppressing delete_lrouter_port "
                           "exception", router_id)
         return router_port_info
+
+    def disassociate_floatingips(self, context, port_id, do_notify=True):
+        """Disassociate all floating IPs linked to specific port.
+
+        @param port_id: ID of the port to disassociate floating IPs.
+        @param do_notify: whether we should notify routers right away.
+        @return: set of router-ids that require notification updates
+                 if do_notify is False, otherwise None.
+        """
+        with context.session.begin(subtransactions=True):
+            floating_ips = self._get_floatingips_by_port_id(
+                    context, port_id)
+            router_ids = (
+                super(DFL3AgentlessRouterPlugin, self).disassociate_floatingips(
+                    context, port_id, do_notify))
+
+            for floating_ip in floating_ips:
+                self.nb_api.update(
+                    neutron_l3.build_floating_ip_from_neutron_floating_ip(
+                        floating_ip
+                    ),
+                )
+        return router_ids
 
     def get_number_of_agents_for_scheduling(self, context):
         """Return number of agents on which the router will be scheduled.
