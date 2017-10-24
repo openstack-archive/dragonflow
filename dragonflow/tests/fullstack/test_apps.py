@@ -40,6 +40,21 @@ from dragonflow.tests.fullstack import test_objects as objects
 LOG = log.getLogger(__name__)
 
 
+def _get_port_mac_and_ip(port, force_addr_pairs=False):
+    port_lport = port.port.get_logical_port()
+    allowed_address_pairs = port_lport.allowed_address_pairs
+    if allowed_address_pairs:
+        mac = allowed_address_pairs[0].mac_address
+        ip = allowed_address_pairs[0].ip_address
+    else:
+        if force_addr_pairs:
+            raise AssertionError(
+                'allowed_address_pairs mandatory but empty')
+        mac = port_lport.mac
+        ip = port_lport.ip
+    return mac, ip
+
+
 class TestApps(test_base.DFTestBase):
     def test_infrastructure(self):
         try:
@@ -74,6 +89,14 @@ class TestApps(test_base.DFTestBase):
             # Just calling raise may raise an exception from topology.close()
             raise e, None, traceback
         topology.close()
+
+
+def _start_policy(policy, topology, timeout):
+    policy.start(topology)
+    policy.wait(timeout)
+
+    if len(policy.exceptions) > 0:
+        raise policy.exceptions[0]
 
 
 class TestArpResponder(test_base.DFTestBase):
@@ -171,10 +194,8 @@ class TestArpResponder(test_base.DFTestBase):
             port2:
                 Do nothing
         """
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
 
 class TestNeighborAdvertiser(test_base.DFTestBase):
@@ -295,10 +316,8 @@ class TestNeighborAdvertiser(test_base.DFTestBase):
             port2:
                 Do nothing
         """
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
 
 class TestDHCPApp(test_base.DFTestBase):
@@ -1382,7 +1401,7 @@ class TestSGApp(test_base.DFTestBase):
 
     def _create_port_policies(self):
         raise_action = app_testing_objects.RaiseAction("Unexpected packet")
-        key1 = (self.subnet.subnet_id, self.permit_port_id)
+        key1 = (self.subnet.subnet_id, self.permit_port.port_id)
         rules1 = [
             app_testing_objects.PortPolicyRule(
                 # Detect pong, end simulation
@@ -1394,7 +1413,7 @@ class TestSGApp(test_base.DFTestBase):
                 ]
             ),
         ]
-        key2 = (self.subnet.subnet_id, self.no_permit_port_id)
+        key2 = (self.subnet.subnet_id, self.no_permit_port.port_id)
         rules2 = [
             app_testing_objects.PortPolicyRule(
                 # Detect pong, raise unexpected packet exception
@@ -1495,14 +1514,7 @@ class TestSGApp(test_base.DFTestBase):
         return ip
 
     def _create_ping_packet(self, src_port, dst_port):
-        allowed_address_pairs = \
-            src_port.port.get_logical_port().allowed_address_pairs
-        if allowed_address_pairs:
-            src_mac = allowed_address_pairs[0].mac_address
-            src_ip = allowed_address_pairs[0].ip_address
-        else:
-            src_mac = src_port.port.get_logical_port().mac
-            src_ip = src_port.port.get_logical_port().ip
+        src_mac, src_ip = _get_port_mac_and_ip(src_port)
 
         ethernet = ryu.lib.packet.ethernet.ethernet(
             src=str(src_mac),
@@ -1533,25 +1545,27 @@ class TestSGApp(test_base.DFTestBase):
         ip = pkt.get_protocol(self.ip_class)
         icmp = pkt.get_protocol(self.icmp_class)
 
-        ether.src, ether.dst = ether.dst, ether.src
-        self.assertEqual(
-            ether.dst,
-            self.port1.port.get_logical_port().mac
-        )
+        src_mac, src_ip = _get_port_mac_and_ip(self.permit_port)
+
         self.assertEqual(
             ether.src,
+            src_mac
+        )
+        self.assertEqual(
+            ether.dst,
             self.port3.port.get_logical_port().mac
         )
 
-        ip.src, ip.dst = ip.dst, ip.src
         self.assertEqual(
             netaddr.IPAddress(ip.src),
-            self.port3.port.get_logical_port().ip
+            src_ip
         )
         self.assertEqual(
             netaddr.IPAddress(ip.dst),
-            self.port1.port.get_logical_port().ip
+            self.port3.port.get_logical_port().ip
         )
+        ether.src, ether.dst = ether.dst, ether.src
+        ip.src, ip.dst = ip.dst, ip.src
 
         if self.ethertype == n_const.IPv4:
             icmp.type = self.icmp_echo_reply
@@ -1569,8 +1583,8 @@ class TestSGApp(test_base.DFTestBase):
         try:
             self.active_security_group_id, self.inactive_security_group_id = \
                 self.inactive_security_group_id, self.active_security_group_id
-            self.permit_port_id, self.no_permit_port_id = \
-                self.no_permit_port_id, self.permit_port_id
+            self.permit_port, self.no_permit_port = \
+                self.no_permit_port, self.permit_port
             self.permit_icmp_request, self.no_permit_icmp_request = \
                 self.no_permit_icmp_request, self.permit_icmp_request
 
@@ -1592,8 +1606,8 @@ class TestSGApp(test_base.DFTestBase):
 
         self._update_policy()
         self._create_allowed_address_pairs_policy()
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         # switch the associated security group with port3 to a new security
         # group, and rules of this security group only let icmp echo requests
@@ -1601,16 +1615,16 @@ class TestSGApp(test_base.DFTestBase):
         self._switch_to_another_security_group()
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         # switch the associated security group with port3 to the initial
         # security group
         self._switch_to_another_security_group()
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
         ovs = test_utils.OvsFlowsParser()
         LOG.info("flows are: %s",
@@ -1643,8 +1657,8 @@ class TestSGAppIpv4(TestSGApp):
             self._setup_groups_rules(cidr=cidr_ipv4)
 
             # the rules of the initial security group associated with port3
-            self.permit_port_id = self.port1.port_id
-            self.no_permit_port_id = self.port2.port_id
+            self.permit_port = self.port1
+            self.no_permit_port = self.port2
 
             self.ip_class = ryu.lib.packet.ipv4.ipv4
             self.icmp_class = ryu.lib.packet.icmp.icmp
@@ -1679,8 +1693,8 @@ class TestSGAppIpv6(TestSGApp):
             self._setup_groups_rules(cidr=cidr_ipv6)
 
             # the rules of the initial security group associated with port3
-            self.permit_port_id = self.port1.port_id
-            self.no_permit_port_id = self.port2.port_id
+            self.permit_port = self.port1
+            self.no_permit_port = self.port2
 
             self.ip_class = ryu.lib.packet.ipv6.ipv6
             self.icmp_class = ryu.lib.packet.icmpv6.icmpv6
@@ -1973,9 +1987,7 @@ class TestPortSecApp(test_base.DFTestBase):
         return result.data
 
     def _create_ping_using_allowed_address_pair(self, buf):
-        pairs = self.port1.port.get_logical_port().allowed_address_pairs
-        ip = pairs[0].ip_address
-        mac = pairs[0].mac_address
+        mac, ip = _get_port_mac_and_ip(self.port1, True)
 
         result, icmp = self._create_ping_request(ip, mac, self.port2)
         self._ping_using_allowed_address_pair = icmp
@@ -2023,10 +2035,8 @@ class TestPortSecAppV4(TestPortSecApp):
         super(TestPortSecAppV4, self).setUp()
 
     def test_icmp_ping_using_different_ip_mac(self):
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
 
 class TestPortSecAppV6(TestPortSecApp):
@@ -2083,10 +2093,8 @@ class TestPortSecAppV6(TestPortSecApp):
         return rules
 
     def test_icmp_ping_using_different_ip_mac(self):
-        self.policy.start(self.topology)
-        self.policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        _start_policy(self.policy, self.topology,
+                      const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
 
 class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
@@ -2147,13 +2155,10 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
             port_lport = port.port.get_logical_port()
             self.assertIsNotNone(port_lport)
 
-            allowed_address_pairs = port_lport.allowed_address_pairs
-            self.assertIsNotNone(allowed_address_pairs)
-
-            self.allowed_address_pair_ip_address = \
-                allowed_address_pairs[0].ip_address
-            self.allowed_address_pair_mac_address = \
-                allowed_address_pairs[0].mac_address
+            self.allowed_address_pair_mac_address, \
+                self.allowed_address_pair_ip_address = _get_port_mac_and_ip(
+                    port, True
+                )
 
             # Create policy to reply arp request sent from controller
             self.policy = self.store(
@@ -2218,10 +2223,7 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
         return False
 
     def test_detected_active_port(self):
-        self.policy.start(self.topology)
-        self.policy.wait(30)
-        if len(self.policy.exceptions) > 0:
-            raise self.policy.exceptions[0]
+        _start_policy(self.policy, self.topology, 30)
 
         # check if the active port exists in DF DB
         self.assertTrue(self._if_the_expected_active_port_exists())
