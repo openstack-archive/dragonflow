@@ -40,7 +40,6 @@ from dragonflow.common import exceptions as df_exceptions
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
 from dragonflow.db.neutron import lockedobjects_db as lock_db
-from dragonflow.neutron.common import constants as df_const
 from dragonflow.neutron.db.models import l3 as neutron_l3
 from dragonflow.neutron.services import mixins
 
