@@ -10,9 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron_lib.api.definitions import portbindings
-
 DF_REMOTE_PORT_TYPE = 'remote_port'
 DF_BINDING_PROFILE_PORT_KEY = 'port_key'
 DF_BINDING_PROFILE_HOST_IP = 'host_ip'
-DF_PORT_BINDING_PROFILE = portbindings.PROFILE
