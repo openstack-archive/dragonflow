@@ -171,19 +171,13 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         floatingip_port = self._get_floatingip_port(
             context, floatingip_dict['id'])
 
-        self.nb_api.create(
-            l3.FloatingIp(
-                id=floatingip_dict['id'],
-                topic=floatingip_dict['tenant_id'],
-                name=floatingip_dict.get('name', df_const.DF_FIP_DEFAULT_NAME),
-                version=floatingip_dict['revision_number'],
-                floating_ip_address=floatingip_dict['floating_ip_address'],
-                fixed_ip_address=floatingip_dict['fixed_ip_address'],
-                lrouter=floatingip_dict['router_id'],
-                lport=floatingip_dict['port_id'],
-                floating_lport=floatingip_port['id'],
-            ),
+        nb_fip = neutron_l3.build_floating_ip_from_neutron_floating_ip(
+            floatingip_dict,
         )
+        nb_fip.floating_lport = floatingip_port['id']
+        nb_fip.floating_ip_address = floatingip_dict['floating_ip_address']
+
+        self.nb_api.create(nb_fip)
         return floatingip_dict
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
