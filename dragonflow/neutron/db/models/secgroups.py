@@ -16,7 +16,6 @@ from neutron.extensions import securitygroup as sg
 from neutron_lib import constants as n_const
 
 from dragonflow.db.models import secgroups
-from dragonflow.neutron.common import constants as df_const
 
 
 def _get_protocol_number(ip_proto):
@@ -50,7 +49,7 @@ def security_group_rule_from_neutron_obj(secrule):
 
 
 def security_group_from_neutron_obj(secgroup):
-    sg_name = secgroup.get('name', df_const.DF_SG_DEFAULT_NAME)
+    sg_name = secgroup.get('name')
     rules = secgroup.get('security_group_rules', [])
     rules_mdls = [security_group_rule_from_neutron_obj(rule) for rule in rules]
     return secgroups.SecurityGroup(

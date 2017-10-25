@@ -12,12 +12,6 @@
 
 from neutron_lib.api.definitions import portbindings
 
-DF_SG_DEFAULT_NAME = 'no_sg_name'
-DF_SUBNET_DEFAULT_NAME = 'no_subnet_name'
-DF_NETWORK_DEFAULT_NAME = 'no_network_name'
-DF_PORT_DEFAULT_NAME = 'no_port_name'
-DF_ROUTER_DEFAULT_NAME = 'no_router_name'
-DF_FIP_DEFAULT_NAME = 'no_fip_name'
 DF_REMOTE_PORT_TYPE = 'remote_port'
 DF_BINDING_PROFILE_PORT_KEY = 'port_key'
 DF_BINDING_PROFILE_HOST_IP = 'host_ip'

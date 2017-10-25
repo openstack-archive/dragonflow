@@ -30,7 +30,6 @@ from dragonflow.db import api_nb
 from dragonflow.db.models import l2
 from dragonflow.db.models import secgroups
 from dragonflow.db.neutron import lockedobjects_db as lock_db
-from dragonflow.neutron.common import constants as df_const
 from dragonflow.neutron.db.models import l2 as neutron_l2
 from dragonflow.neutron.db.models import secgroups as neutron_secgroups
 from dragonflow.neutron.services.qos.drivers import df_qos
@@ -146,7 +145,7 @@ class DFMechDriver(api.MechanismDriver):
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
     def update_security_group(self, resource, event, trigger, **kwargs):
         sg = kwargs['security_group']
-        sg_name = sg.get('name', df_const.DF_SG_DEFAULT_NAME)
+        sg_name = sg.get('name')
         rules = sg.get('security_group_rules', [])
 
         for rule in rules:
