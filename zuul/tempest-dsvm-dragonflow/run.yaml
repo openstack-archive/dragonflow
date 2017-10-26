@@ -63,7 +63,7 @@
           # Keep localrc to be able to set some vars in pre_test_hook
           export KEEP_LOCALRC=1
 
-          export DEVSTACK_GATE_SETTINGS=/opt/stack/new/dragonflow/devstack/devstackgaterc
+          export DEVSTACK_GATE_SETTINGS=/opt/stack/new/dragonflow/devstack/devstackgaterc-redis
 
           function gate_hook {
               bash -xe $BASE/new/dragonflow/dragonflow/tests/contrib/gate_hook.sh tempest

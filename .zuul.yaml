@@ -9,8 +9,8 @@
               - ^setup.cfg$
         - dragonflow-dsvm-rally:
             voting: false
-        - dragonflow-dsvm-fullstack
-        - dragonflow-dsvm-fullstack-zmq
+        - dragonflow-dsvm-fullstack-redis
+        - dragonflow-dsvm-fullstack-etcd-zmq
         - legacy-install-dsvm-dragonflow-kuryr-kubernetes:
             voting: false
         - legacy-openstack-ansible-os_neutron-ansible-dragonflow:
@@ -18,13 +18,13 @@
             branches: ^(?!stable/newton).*$
     gate:
       jobs:
-        - dragonflow-dsvm-fullstack
+        - dragonflow-dsvm-fullstack-redis
 
 - job:
-    name: dragonflow-dsvm-fullstack
+    name: dragonflow-dsvm-fullstack-redis
     parent: legacy-dsvm-base
-    run: zuul/dragonflow-dsvm-fullstack/run
-    post-run: zuul/dragonflow-dsvm-fullstack/post
+    run: zuul/dragonflow-dsvm-fullstack-redis/run
+    post-run: zuul/dragonflow-dsvm-fullstack-redis/post
     timeout: 9900
     required-projects:
       - openstack-infra/devstack-gate
@@ -34,10 +34,10 @@
       - openstack/neutron-dynamic-routing
 
 - job:
-    name: dragonflow-dsvm-fullstack-zmq
+    name: dragonflow-dsvm-fullstack-etcd-zmq
     parent: legacy-dsvm-base
-    run: zuul/dragonflow-dsvm-fullstack-zmq/run
-    post-run: zuul/dragonflow-dsvm-fullstack-zmq/post
+    run: zuul/dragonflow-dsvm-fullstack-etcd-zmq/run
+    post-run: zuul/dragonflow-dsvm-fullstack-etcd-zmq/post
     timeout: 9900
     required-projects:
       - openstack-infra/devstack-gate
