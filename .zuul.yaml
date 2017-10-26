@@ -10,8 +10,7 @@
         - dragonflow-dsvm-rally:
             voting: false
         - dragonflow-dsvm-fullstack
-        - dragonflow-dsvm-fullstack-zmq:
-            voting: false
+        - dragonflow-dsvm-fullstack-zmq
         - legacy-install-dsvm-dragonflow-kuryr-kubernetes:
             voting: false
         - legacy-openstack-ansible-os_neutron-ansible-dragonflow:
