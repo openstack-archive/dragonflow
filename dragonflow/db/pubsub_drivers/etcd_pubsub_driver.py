@@ -83,7 +83,7 @@ class WatcherThread(threading.Thread):
 
 class EtcdSubscriberAgent(pub_sub_api.SubscriberApi):
     def __init__(self):
-        self.topic_list = {}
+        self.topic_dict = {}
         self.uri_list = []
         self.running = False
         self.client = None
@@ -107,19 +107,19 @@ class EtcdSubscriberAgent(pub_sub_api.SubscriberApi):
     def daemonize(self):
         # Start watching
         self.running = True
-        for topic in self.topic_list:
-            self.topic_list[topic].start()
+        for topic in self.topic_dict:
+            self.topic_dict[topic].start()
 
     def close(self):
         self.running = False
-        for topic in self.topic_list:
-            self._stop_topic_thread(self.topic_list[topic])
+        for topic, thread in self.topic_dict.items():
+            self._stop_topic_thread(thread)
 
     def register_topic(self, topic):
         LOG.info('Register topic %s', topic)
-        if topic not in self.topic_list:
+        if topic not in self.topic_dict:
             topic_thread = self._create_topic_thread(topic)
-            self.topic_list[topic] = topic_thread
+            self.topic_dict[topic] = topic_thread
             if self.running:
                 topic_thread.start()
             return True
@@ -127,9 +127,9 @@ class EtcdSubscriberAgent(pub_sub_api.SubscriberApi):
 
     def unregister_topic(self, topic):
         LOG.info('Unregister topic %s', topic)
+        topic_thread = self.topic_dict.pop(topic)
         if self.running:
-            self._stop_topic_thread(self.topic_list[topic])
-        del self.topic_list[topic]
+            self._stop_topic_thread(topic_thread)
 
     def _stop_topic_thread(self, topic_thread):
         topic_thread.cancel()
