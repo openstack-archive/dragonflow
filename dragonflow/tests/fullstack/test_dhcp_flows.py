@@ -33,7 +33,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
                         return ip['ip_address']
         return None
 
-    def test_broadcast_dhcp_rule(self):
+    def test_dhcp_packet_rule(self):
         found_dhcp_cast_flow = False
         ovs = utils.OvsFlowsParser()
         flows = ovs.dump(self.integration_bridge)
@@ -43,7 +43,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         for flow in flows:
             if (flow['table'] == str(constants.SERVICES_CLASSIFICATION_TABLE)
                     and flow['actions'] == goto_dhcp):
-                if ('udp,dl_dst=' + constants.BROADCAST_MAC + dhcp_ports
+                if ('udp' + dhcp_ports
                         in flow['match']):
                     found_dhcp_cast_flow = True
                     break

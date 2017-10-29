@@ -179,7 +179,6 @@ class PortSecApp(df_base_app.DFlowApp):
         # DHCP packets with the vm mac pass
         match = parser.OFPMatch(reg6=unique_key,
                                 eth_src=vm_mac,
-                                eth_dst=const.BROADCAST_MAC,
                                 eth_type=ether.ETH_TYPE_IP,
                                 ip_proto=n_const.PROTO_NUM_UDP,
                                 udp_src=const.DHCP_CLIENT_PORT,
