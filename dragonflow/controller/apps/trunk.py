@@ -62,12 +62,31 @@ class TrunkApp(df_base_app.DFlowApp):
                     child_port_segmentation.segmentation_id)
         return {'vlan_vid': vlan_vid}
 
+    def _get_classification_params_macvlan(self, child_port_segmentation):
+        child = child_port_segmentation.port
+        child_ip = child.ip
+        child_ip_version = child_ip.version
+        if child_ip_version == n_const.IP_VERSION_4:
+            ip_field = 'ipv4_src'
+        elif child_ip_version == n_const.IP_VERSION_6:
+            ip_field = 'ipv6_src'
+        else:
+            LOG.warning('Strange IP: %r version: %s', child_ip, child_ip_version)
+            raise exceptions.InvalidIPAddressException(key=child_ip)
+        return {'eth_src': child.mac,
+                ip_field: child_ip}
+
     def _get_classification_match(self, child_port_segmentation):
         params = {'reg6': child_port_segmentation.parent.unique_key}
         segmentation_type = child_port_segmentation.segmentation_type
         if n_const.TYPE_VLAN == segmentation_type:
             params.update(
                 self._get_classification_params_vlan(child_port_segmentation),
+            )
+        if trunk.TYPE_MACVLAN == segmentation_type:
+            params.update(
+                self._get_classification_params_macvlan(
+                    child_port_segmentation),
             )
         else:
             raise exceptions.UnsupportedSegmentationType(
@@ -91,6 +110,8 @@ class TrunkApp(df_base_app.DFlowApp):
         if n_const.TYPE_VLAN == segmentation_type:
             self._add_classification_actions_vlan(actions,
                                                   child_port_segmentation)
+        elif trunk.TYPE_MACVLAN == segmentation_type:
+            pass  # No action needed
         else:
             raise exceptions.UnsupportedSegmentationType(
                 segmentation_type=segmentation_type
@@ -137,6 +158,8 @@ class TrunkApp(df_base_app.DFlowApp):
         segmentation_type = child_port_segmentation.segmentation_type
         if n_const.TYPE_VLAN == segmentation_type:
             self._add_dispatch_actions_vlan(actions, child_port_segmentation)
+        elif trunk.TYPE_MACVLAN == segmentation_type:
+            pass  # No action needed
         else:
             raise exceptions.UnsupportedSegmentationType(
                 segmentation_type=segmentation_type
