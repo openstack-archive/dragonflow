@@ -639,6 +639,9 @@ class PortPolicy(object):
         for rule in self.rules:
             if rule.apply_rule(policy, port_thread, buf):
                 return
+        LOG.info("Rules:")
+        for rule in self.rules:
+            LOG.info(rule.packet_filter.__class__.__name__)
         self.default_action(policy, None, port_thread, buf)
 
 
@@ -807,9 +810,18 @@ class RyuDHCPPacketTypeFilter(object):
         pkt = packet.Packet(buf)
         pkt_dhcp_protocol = pkt.get_protocol(dhcp.dhcp)
         if not pkt_dhcp_protocol:
+            LOG.info("PKT isn't DHCP")
+            LOG.info(str(pkt))
             return False
         dhcp_type = _get_dhcp_message_type_opt(pkt_dhcp_protocol)
-        return dhcp_type == self.get_dhcp_packet_type()
+        #(leyal) for debugging DNM
+        if dhcp_type == self.get_dhcp_packet_type():
+            return True
+        else:
+            LOG.info("DHCP type {} is different than requested".format(
+                str(dhcp_type),
+                str(self.get_dhcp_packet_type())))
+            return False
 
     def get_dhcp_packet_type(self):
         raise Exception('DHCP packet type filter not fully implemented')
