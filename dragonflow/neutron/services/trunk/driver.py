@@ -23,11 +23,15 @@ from neutron_lib.callbacks import resources
 from neutron_lib import constants as n_constants
 from neutron_lib import context
 from neutron_lib.plugins import directory
+from oslo_log import log
 
 from dragonflow import conf as cfg
 from dragonflow.db.models import l2
 from dragonflow.db.models import trunk as trunk_models
 from dragonflow.neutron.services import mixins
+
+
+LOG = log.getLogger(__name__)
 
 
 class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
@@ -123,7 +127,8 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         Dragonflow NB DB
         """
         model = trunk_models.ChildPortSegmentation(
-            id=self._get_subport_id(trunk, subport),
+            id=trunk_models.get_child_port_segmentation_id(trunk.port_id,
+                                                           subport.port_id),
             topic=trunk.project_id,
             parent=trunk.port_id,
             port=subport.port_id,
@@ -153,26 +158,35 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         Remove the subport that were deleted on the Neutron side from the
         Dragonflow NB DB
         """
-        id_ = self._get_subport_id(trunk, subport)
+        id_ = trunk_models.get_child_port_segmentation_id(trunk.port_id,
+                                                          subport.port_id),
         model = trunk_models.ChildPortSegmentation(
             id=id_,
             topic=trunk.project_id
         )
         self.nb_api.delete(model)
 
+    def _get_child_port_status(self, parent_port):
+        new_status = n_constants.PORT_STATUS_ACTIVE
+        if parent_port['status'] != n_constants.PORT_STATUS_ACTIVE:
+            new_status = n_constants.PORT_STATUS_DOWN
+        return new_status
+
     def _update_port_handler(self, *args, **kwargs):
-        """Handle the event that a port changes status to ACTIVE or DOWN"""
+        """
+        Handle the event that a port changes status to ACTIVE or DOWN.
+        Also handle modification of allowed address pairs to detect macvlan
+        """
         port = kwargs['port']
         orig_port = kwargs['original_port']
         if port['status'] == orig_port['status']:
             return  # Change not relevant
-        new_status = n_constants.PORT_STATUS_ACTIVE
-        if port['status'] != n_constants.PORT_STATUS_ACTIVE:
-            new_status = n_constants.PORT_STATUS_DOWN
+        new_status = self._get_child_port_status(port)
         core_plugin = directory.get_plugin()
         for subport_id in self._get_subports_ids(port['id']):
             core_plugin.update_port_status(context.get_admin_context(),
                                            subport_id, new_status)
+        # TODO(oanson) Update MACVLAN port status
 
     def _get_subports_ids(self, port_id):
         trunk_plugin = directory.get_plugin('trunk')
