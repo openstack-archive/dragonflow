@@ -68,6 +68,10 @@ class UnsupportedTransportException(DragonflowException):
     message = _("Transport protocol is not supported: %(transport)s")
 
 
+class UnsupportedSegmentationTypeException(DragonflowException):
+    message = _("Segmentation type is not supported: %(segmentation_type)s")
+
+
 class DBLockFailed(DragonflowException):
     message = _("The DB Lock cannot be acquired for object=%(oid)s in"
                 "the session=%(sid)s.")
