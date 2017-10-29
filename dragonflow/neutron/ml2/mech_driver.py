@@ -35,6 +35,7 @@ from dragonflow.neutron.db.models import secgroups as neutron_secgroups
 from dragonflow.neutron.ml2 import dhcp_module
 from dragonflow.neutron.services.qos.drivers import df_qos
 from dragonflow.neutron.services.trunk import driver as trunk_driver
+from dragonflow.neutron.services.trunk import port_behind_port
 
 LOG = log.getLogger(__name__)
 
@@ -65,6 +66,9 @@ class DFMechDriver(api.MechanismDriver):
         self._set_base_port_binding()
         self.port_status = n_const.PORT_STATUS_ACTIVE
         self.trunk_driver = trunk_driver.DfTrunkDriver()
+        if cfg.CONF.df.auto_detect_port_behind_port:
+            self._port_behind_port_detector = \
+                port_behind_port.DfPortBehindPortDetector()
         self.subscribe_registries()
         df_qos.register()
         self.dhcp_module = dhcp_module.DFDHCPModule()
