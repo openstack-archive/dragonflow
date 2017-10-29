@@ -94,6 +94,12 @@ class DHCPApp(df_base_app.DFlowApp):
             index=l2.LogicalPort.get_index('unique_key'),
         )
 
+        network_id =  msg.match.get('metadata')
+        dhcp_port = self.db_store.get_one(
+            l2.LogicalPort(unique_key=network_id),
+            index=l2.LogicalPort.get_index('unique_key'),
+        )
+
         if self._check_port_limit(lport):
             self._block_port_dhcp_traffic(unique_key, lport)
             LOG.warning("pass rate limit for %(port_id)s blocking DHCP "
@@ -106,11 +112,11 @@ class DHCPApp(df_base_app.DFlowApp):
             LOG.error("Port %s no longer found.", lport.id)
             return
         try:
-            self._handle_dhcp_request(pkt, lport)
+            self._handle_dhcp_request(pkt, lport, dhcp_port)
         except Exception:
             LOG.exception("Unable to handle packet %s", msg)
 
-    def _handle_dhcp_request(self, packet, lport):
+    def _handle_dhcp_request(self, packet, lport, dhcp_port):
         dhcp_packet = packet.get_protocol(dhcp.dhcp)
         dhcp_message_type = self._get_dhcp_message_type_opt(dhcp_packet)
         send_packet = None
@@ -119,7 +125,8 @@ class DHCPApp(df_base_app.DFlowApp):
                                 packet,
                                 dhcp_packet,
                                 dhcp.DHCP_OFFER,
-                                lport)
+                                lport,
+                                dhcp_port)
             LOG.info("sending DHCP offer for port IP %(port_ip)s "
                      "port id %(port_id)s",
                      {'port_ip': lport.ip, 'port_id': lport.id})
@@ -128,7 +135,8 @@ class DHCPApp(df_base_app.DFlowApp):
                                 packet,
                                 dhcp_packet,
                                 dhcp.DHCP_ACK,
-                                lport)
+                                lport,
+                                dhcp_port)
             LOG.info("sending DHCP ACK for port IP %(port_ip)s "
                      "port id %(tunnel_id)s",
                      {'port_ip': lport.ip,
@@ -141,7 +149,7 @@ class DHCPApp(df_base_app.DFlowApp):
             self.dispatch_packet(send_packet, unique_key)
 
     def _create_dhcp_response(self, packet, dhcp_request,
-                              response_type, lport):
+                              response_type, lport, dhcp_port):
         pkt_ipv4 = packet.get_protocol(ipv4.ipv4)
         pkt_ethernet = packet.get_protocol(ethernet.ethernet)
 
@@ -169,7 +177,7 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_response.add_protocol(ethernet.ethernet(
                                                 ethertype=ether.ETH_TYPE_IP,
                                                 dst=pkt_ethernet.src,
-                                                src=pkt_ethernet.dst))
+                                                src=dhcp_port.mac))
         dhcp_response.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
                                              src=dhcp_server_address,
                                              proto=pkt_ipv4.proto))
