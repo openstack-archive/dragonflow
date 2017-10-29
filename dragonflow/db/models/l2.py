@@ -138,6 +138,7 @@ EVENT_UNBIND_REMOTE = 'unbind_remote'
     'chassis_id': 'binding.chassis.id',
     'lswitch_id': 'lswitch.id',
     'ip,lswitch': ('ips', 'lswitch.id'),
+    'switch,owner': ('lswitch.unique_key', 'device_owner')
 })
 class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
                   mixins.UniqueKey, mixins.BasicEvents):
