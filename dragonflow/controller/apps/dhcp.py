@@ -169,7 +169,7 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_response.add_protocol(ethernet.ethernet(
                                                 ethertype=ether.ETH_TYPE_IP,
                                                 dst=pkt_ethernet.src,
-                                                src=pkt_ethernet.dst))
+                                                src=lport.mac))
         dhcp_response.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
                                              src=dhcp_server_address,
                                              proto=pkt_ipv4.proto))
