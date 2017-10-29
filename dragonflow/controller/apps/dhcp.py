@@ -64,6 +64,7 @@ class DHCPApp(df_base_app.DFlowApp):
         self.api.register_table_handler(const.DHCP_TABLE,
                                         self.packet_in_handler)
         self._dhcp_ip_by_subnet = {}
+        self._dhcp_lport_by_network_id = {}
 
     def switch_features_handler(self, ev):
         self._install_dhcp_broadcast_match_flow()
@@ -94,6 +95,12 @@ class DHCPApp(df_base_app.DFlowApp):
             index=l2.LogicalPort.get_index('unique_key'),
         )
 
+        network_id = msg.match.get('metadata')
+        dhcp_lport = self._dhcp_lport_by_network_id.get(network_id)
+        if not dhcp_lport:
+            LOG.error("No DHCP port for network {}".format(str(network_id)))
+            return
+
         if self._check_port_limit(lport):
             self._block_port_dhcp_traffic(unique_key, lport)
             LOG.warning("pass rate limit for %(port_id)s blocking DHCP "
@@ -106,11 +113,11 @@ class DHCPApp(df_base_app.DFlowApp):
             LOG.error("Port %s no longer found.", lport.id)
             return
         try:
-            self._handle_dhcp_request(pkt, lport)
+            self._handle_dhcp_request(pkt, lport, dhcp_lport)
         except Exception:
             LOG.exception("Unable to handle packet %s", msg)
 
-    def _handle_dhcp_request(self, packet, lport):
+    def _handle_dhcp_request(self, packet, lport, dhcp_port):
         dhcp_packet = packet.get_protocol(dhcp.dhcp)
         dhcp_message_type = self._get_dhcp_message_type_opt(dhcp_packet)
         send_packet = None
@@ -119,7 +126,8 @@ class DHCPApp(df_base_app.DFlowApp):
                                 packet,
                                 dhcp_packet,
                                 dhcp.DHCP_OFFER,
-                                lport)
+                                lport,
+                                dhcp_port)
             LOG.info("sending DHCP offer for port IP %(port_ip)s "
                      "port id %(port_id)s",
                      {'port_ip': lport.ip, 'port_id': lport.id})
@@ -128,7 +136,8 @@ class DHCPApp(df_base_app.DFlowApp):
                                 packet,
                                 dhcp_packet,
                                 dhcp.DHCP_ACK,
-                                lport)
+                                lport,
+                                dhcp_port)
             LOG.info("sending DHCP ACK for port IP %(port_ip)s "
                      "port id %(tunnel_id)s",
                      {'port_ip': lport.ip,
@@ -141,7 +150,7 @@ class DHCPApp(df_base_app.DFlowApp):
             self.dispatch_packet(send_packet, unique_key)
 
     def _create_dhcp_response(self, packet, dhcp_request,
-                              response_type, lport):
+                              response_type, lport, dhcp_port):
         pkt_ipv4 = packet.get_protocol(ipv4.ipv4)
         pkt_ethernet = packet.get_protocol(ethernet.ethernet)
 
@@ -169,7 +178,7 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_response.add_protocol(ethernet.ethernet(
                                                 ethertype=ether.ETH_TYPE_IP,
                                                 dst=pkt_ethernet.src,
-                                                src=pkt_ethernet.dst))
+                                                src=dhcp_port.mac))
         dhcp_response.add_protocol(ipv4.ipv4(dst=pkt_ipv4.src,
                                              src=dhcp_server_address,
                                              proto=pkt_ipv4.proto))
@@ -379,7 +388,6 @@ class DHCPApp(df_base_app.DFlowApp):
         parser = self.parser
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                eth_dst=const.BROADCAST_MAC,
                                 ip_proto=n_const.PROTO_NUM_UDP,
                                 udp_src=const.DHCP_CLIENT_PORT,
                                 udp_dst=const.DHCP_SERVER_PORT)
@@ -423,6 +431,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
         self._install_dhcp_port_responders(lport)
         self._install_dhcp_port_flow(lport.lswitch)
+        self._dhcp_lport_by_network_id[lport.lswitch.unique_key] = lport
 
         self._add_dhcp_ips_by_subnet(lport)
 
@@ -472,6 +481,8 @@ class DHCPApp(df_base_app.DFlowApp):
         if lport.device_owner != n_const.DEVICE_OWNER_DHCP:
             self._delete_lport_rate_limiter(lport)
             return
+
+        del self._dhcp_lport_by_network_id[lport.lswitch.unique_key]
 
         self._uninstall_dhcp_port_responders(lport)
         self._remove_dhcp_network_flow(lport.lswitch)

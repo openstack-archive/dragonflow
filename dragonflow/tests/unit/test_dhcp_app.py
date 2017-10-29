@@ -96,14 +96,14 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
             lswitch=test_app_base.fake_logic_switch1,
             subnets=test_app_base.fake_lswitch_default_subnets,
             ips=('10.0.0.2',),
+            macs=("11:22:33:44:55:66",),
             device_owner=n_const.DEVICE_OWNER_DHCP
         )
 
         return fake_dhcp_port
 
-    def _build_dhcp_test_fake_lport(self, dhcp_params=None):
+    def _build_dhcp_test_fake_lport(self, dhcp_port, dhcp_params=None):
 
-        dhcp_port = self._create_dhcp_port()
         self.app._lport_created(dhcp_port)
 
         fake_loprt = test_app_base.make_fake_local_port(
@@ -115,7 +115,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
 
         return fake_loprt
 
-    def _send_dhcp_req_to_app(self, lport, options=None):
+    def _send_dhcp_req_to_app(self, lport, dhcp_port, options=None):
         req = dhcp.dhcp(op=dhcp.DHCP_DISCOVER,
                         chaddr='aa:aa:aa:aa:aa:aa',
                         options=dhcp.options(options))
@@ -123,7 +123,8 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         dhcp_response_pkt = self.app._create_dhcp_response(pkt,
                                                            req,
                                                            dhcp.DHCP_OFFER,
-                                                           lport)
+                                                           lport,
+                                                           dhcp_port)
 
         return dhcp_response_pkt
 
@@ -135,18 +136,20 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         return pkt
 
     def test_dhcp_repsonse(self):
-
-        fake_loprt = self._build_dhcp_test_fake_lport()
-        dhcp_response_pkt = self._send_dhcp_req_to_app(fake_loprt)
+        dhcp_port = self._create_dhcp_port()
+        fake_loprt = self._build_dhcp_test_fake_lport(dhcp_port)
+        dhcp_response_pkt = self._send_dhcp_req_to_app(fake_loprt, dhcp_port)
         self.assertTrue(dhcp_response_pkt)
         dhcp_response = dhcp_response_pkt.get_protocol(dhcp.dhcp)
         self.assertEqual('10.0.0.1', str(dhcp_response.yiaddr))
+        dhcp_eth = dhcp_response_pkt.get_protocol(ethernet.ethernet)
+        self.assertEqual("11:22:33:44:55:66", str(dhcp_eth.src))
 
     def _create_dhcp_reponse(self, dhcp_opts, requested):
-
+        dhcp_port = self._create_dhcp_port()
         dhcp_params = {"opts": {} if not dhcp_opts else dhcp_opts}
 
-        fake_lport = self._build_dhcp_test_fake_lport(dhcp_params)
+        fake_lport = self._build_dhcp_test_fake_lport(dhcp_port, dhcp_params)
         requested_option_connected = ''.join([chr(x) for x in requested])
 
         option_list = [dhcp.option(dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT,
@@ -155,6 +158,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
                        ]
 
         dhcp_response_pkt = self._send_dhcp_req_to_app(fake_lport,
+                                                       dhcp_port,
                                                        option_list)
 
         dhcp_res = dhcp_response_pkt.get_protocol(dhcp.dhcp)
