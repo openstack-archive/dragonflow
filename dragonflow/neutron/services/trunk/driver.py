@@ -14,8 +14,10 @@
 
 import uuid
 
+import netaddr
 from neutron.services.trunk import constants
 from neutron.services.trunk.drivers import base
+from neutron_lib.api.definitions import allowedaddresspairs as aap
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.callbacks import events
 from neutron_lib.callbacks import registry
@@ -123,7 +125,8 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         Dragonflow NB DB
         """
         model = trunk_models.ChildPortSegmentation(
-            id=self._get_subport_id(trunk, subport),
+            id=trunk_models.get_child_port_segmentation_id(trunk.port_id,
+                                                           subport.port_id),
             topic=trunk.project_id,
             parent=trunk.port_id,
             port=subport.port_id,
@@ -153,26 +156,36 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         Remove the subport that were deleted on the Neutron side from the
         Dragonflow NB DB
         """
-        id_ = self._get_subport_id(trunk, subport)
+        id_ = trunk_models.get_child_port_segmentation_id(trunk.port_id,
+                                                          subport.port_id),
         model = trunk_models.ChildPortSegmentation(
             id=id_,
             topic=trunk.project_id
         )
         self.nb_api.delete(model)
 
+    def _get_child_port_status(self, parent_port):
+        new_status = n_constants.PORT_STATUS_ACTIVE
+        if parent_port['status'] != n_constants.PORT_STATUS_ACTIVE:
+            new_status = n_constants.PORT_STATUS_DOWN
+        return new_status
+
     def _update_port_handler(self, *args, **kwargs):
-        """Handle the event that a port changes status to ACTIVE or DOWN"""
+        """
+        Handle the event that a port changes status to ACTIVE or DOWN.
+        Also handle modification of allowed address pairs to detect macvlan
+        """
         port = kwargs['port']
         orig_port = kwargs['original_port']
+        self._detect_macvlan(kwargs['context'], port, orig_port)
         if port['status'] == orig_port['status']:
             return  # Change not relevant
-        new_status = n_constants.PORT_STATUS_ACTIVE
-        if port['status'] != n_constants.PORT_STATUS_ACTIVE:
-            new_status = n_constants.PORT_STATUS_DOWN
+        new_status = self._get_child_port_status(port)
         core_plugin = directory.get_plugin()
         for subport_id in self._get_subports_ids(port['id']):
             core_plugin.update_port_status(context.get_admin_context(),
                                            subport_id, new_status)
+        # TODO(oanson) Update MACVLAN port status
 
     def _get_subports_ids(self, port_id):
         trunk_plugin = directory.get_plugin('trunk')
@@ -183,3 +196,68 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
             return ()
         trunk = trunks[0]
         return (subport['port_id'] for subport in trunk['sub_ports'])
+
+    def _detect_macvlan(self, context, updated_port, orig_port):
+        """
+        A heuristic to detect MACVLAN ports (i.e. ports behind ports).
+        For each allowed-address-pair modification, scan to see if there are
+        ports with those IPs/MACs. If so, these are MACVLAN ports, and create
+        the relevant NB objects
+        """
+        # TODO(oanson) We assume that the AAP is removed before the port
+        updated_port_aaps = set(updated_port.get(aap.ADDRESS_PAIRS, []))
+        orig_port_aaps = set(orig_port.get(aap.ADDRESS_PAIRS, []))
+        new_aaps = updated_port_aaps - orig_port_aaps
+        removed_aaps = orig_port_aaps - updated_port_aaps
+        core_plugin = directory.get_plugin()
+        new_status = self._get_child_port_status(updated_port)
+
+        for pair in new_aaps:
+            try:
+                pair_ip = netaddr.IPAddress(pair["ip_address"])
+            except ValueError:
+                continue  # Skip. This is a network, not a host
+            pair_mac = netaddr.EUI(pair["mac_address"])
+            macvlan_port = self._find_macvlan_port(context, pair_ip, pair_mac)
+            if not macvlan_port:
+                continue
+            cps_id = trunk_models.get_child_port_segmentation_id(
+                    updated_port['id'], macvlan_port.port_id)
+            model = trunk_models.ChildPortSegmentation(
+                id=cps_id,
+                topic=updated_port['project_id'],
+                parent=updated_port['id'],
+                port=macvlan_port.port_id,
+                segmentation_type=trunk_models.TYPE_MACVLAN,
+            )
+            self.nb_api.create(model)
+            core_plugin.update_port_status(context.get_admin_context(),
+                                           macvlan_port.port_id, new_status)
+
+        for pair in removed_aaps:
+            try:
+                pair_ip = netaddr.IPAddress(pair["ip_address"])
+            except ValueError:
+                continue  # Skip. This is a network, not a host
+            pair_mac = netaddr.EUI(pair["mac_address"])
+            macvlan_port = self._find_macvlan_port(pair_ip, pair_mac)
+            if not macvlan_port:
+                continue
+            cps_id = trunk_models.get_child_port_segmentation_id(
+                    updated_port['id'], macvlan_port.port_id)
+            model = trunk_models.ChildPortSegmentation(
+                id=cps_id,
+                topic=updated_port['project_id'],
+            )
+            self.nb_api.delete(model)
+            core_plugin.update_port_status(context.get_admin_context(),
+                                           macvlan_port.port_id,
+                                           n_constants.PORT_STATUS_DOWN)
+
+    def _find_macvlan_port(self, context, ip, mac_address):
+        filters = {'mac_address': [mac_address],
+                   'fixed_ip': [{"ip_address": ip}]}
+        ports = self.core_plugin.get_ports(context, filters=filters)
+        if ports:
+            return ports[0]
+        return None

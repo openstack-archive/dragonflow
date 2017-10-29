@@ -14,6 +14,7 @@
 
 import uuid
 
+from jsonmodels import errors
 from jsonmodels import fields
 from neutron_lib import constants as n_const
 
@@ -23,8 +24,18 @@ from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
 
 
-SUPPORTED_SEGMENTATION_TYPES = (n_const.TYPE_VLAN, )
+TYPE_MACVLAN = 'macvlan'
+SUPPORTED_SEGMENTATION_TYPES = (n_const.TYPE_VLAN, TYPE_MACVLAN)
 UUID_NAMESPACE = uuid.UUID('a11fee2a-d833-4e22-be31-f915b55f1f77')
+
+
+def get_child_port_segmentation_id(self, parent_id, child_id):
+    """
+    Generate a repeatable uuid, so we can identify the Dragonflow
+    ChildPortSegmentation object
+    """
+    base = "{}/{}".format(parent_id, child_id)
+    return str(uuid.uuid5(UUID_NAMESPACE, base))
 
 
 @mf.register_model
@@ -41,4 +52,16 @@ class ChildPortSegmentation(mf.ModelBase, mixins.Topic, mixins.BasicEvents):
     port = df_fields.ReferenceField(l2.LogicalPort, required=True)
     segmentation_type = df_fields.EnumField(SUPPORTED_SEGMENTATION_TYPES,
                                             required=True)
-    segmentation_id = fields.IntField(required=True)
+    segmentation_id = fields.IntField()
+
+    def validate(self):
+        """
+        Verify that the correct fields are filled for the correct type.
+        e.g. for VLAN, segmentation_id is not None.
+        """
+        super(ChildPortSegmentation, self).validate()
+        if self.segmentation_type == n_const.TYPE_VLAN:
+            if self.segmentation_id is None:
+                raise errors.ValidationError("segmentation_id required if "
+                                             "segmentation_type is " +
+                                             n_const.TYPE_VLAN)
