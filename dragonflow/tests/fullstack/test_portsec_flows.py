@@ -71,10 +71,9 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
         # priority: High, match: reg6=unique_key, dl_src=$vm_mac,
         # dl_dst=ff:ff:ff:ff:ff:ff, udp, tp_src=68, tp_dst=67,
         # actions: goto const.EGRESS_CONNTRACK_TABLE
-        dl_dst_match = "dl_dst=" + const.BROADCAST_MAC
         expected_flow_list.append({
             "priority": str(const.PRIORITY_HIGH),
-            "match_list": [unique_key_match, dl_src_match, dl_dst_match,
+            "match_list": [unique_key_match, dl_src_match,
                            "udp", "tp_src=" + str(const.DHCP_CLIENT_PORT),
                            "tp_dst=" + str(const.DHCP_SERVER_PORT)],
             "actions": goto_conntrack_table_action
