@@ -33,17 +33,17 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
                         return ip['ip_address']
         return None
 
-    def test_broadcast_dhcp_rule(self):
+    def test_dhcp_packet_rule(self):
         found_dhcp_cast_flow = False
         ovs = utils.OvsFlowsParser()
         flows = ovs.dump(self.integration_bridge)
         goto_dhcp = 'goto_table:' + str(constants.DHCP_TABLE)
-        dhcp_ports = ',tp_src=' + str(constants.DHCP_CLIENT_PORT) + \
+        dhcp_ports = 'tp_src=' + str(constants.DHCP_CLIENT_PORT) + \
                      ',tp_dst=' + str(constants.DHCP_SERVER_PORT)
         for flow in flows:
             if (flow['table'] == str(constants.SERVICES_CLASSIFICATION_TABLE)
                     and flow['actions'] == goto_dhcp):
-                if ('udp,dl_dst=' + constants.BROADCAST_MAC + dhcp_ports
+                if ('udp,dl_dst=' + dhcp_ports
                         in flow['match']):
                     found_dhcp_cast_flow = True
                     break
