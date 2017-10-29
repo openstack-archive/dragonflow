@@ -110,6 +110,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
             lswitch=test_app_base.fake_logic_switch1,
             subnets=test_app_base.fake_lswitch_default_subnets,
             ips=('10.0.0.1',),
+            macs=("11:22:33:44:55:66",),
             dhcp_params=dhcp_params
         )
 
@@ -141,6 +142,8 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.assertTrue(dhcp_response_pkt)
         dhcp_response = dhcp_response_pkt.get_protocol(dhcp.dhcp)
         self.assertEqual('10.0.0.1', str(dhcp_response.yiaddr))
+        dhcp_eth = dhcp_response_pkt.get_protocol(ethernet.ethernet)
+        self.assertEqual("11:22:33:44:55:66", str(dhcp_eth.src))
 
     def _create_dhcp_reponse(self, dhcp_opts, requested):
 
