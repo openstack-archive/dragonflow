@@ -27,7 +27,7 @@ def logical_switch_from_neutron_network(network):
     return l2.LogicalSwitch(
         id=network['id'],
         topic=network['tenant_id'],
-        name=network.get('name', df_const.DF_NETWORK_DEFAULT_NAME),
+        name=network.get('name'),
         network_type=network.get('provider:network_type'),
         physical_network=network.get('provider:physical_network'),
         segmentation_id=network.get('provider:segmentation_id'),
@@ -41,7 +41,7 @@ def subnet_from_neutron_subnet(subnet):
     return l2.Subnet(
         id=subnet['id'],
         topic=subnet['tenant_id'],
-        name=subnet.get('name', df_const.DF_SUBNET_DEFAULT_NAME),
+        name=subnet.get('name'),
         enable_dhcp=subnet['enable_dhcp'],
         cidr=subnet['cidr'],
         gateway_ip=subnet['gateway_ip'],
@@ -127,7 +127,7 @@ def logical_port_from_neutron_port(port):
         macs=[port['mac_address']],
         ips=[ip['ip_address'] for ip in port.get('fixed_ips', [])],
         subnets=[ip['subnet_id'] for ip in port.get('fixed_ips', [])],
-        name=port.get('name', df_const.DF_PORT_DEFAULT_NAME),
+        name=port.get('name'),
         enabled=port.get('admin_state_up', False),
         version=port['revision_number'],
         device_owner=port.get('device_owner'),
