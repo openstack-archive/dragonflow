@@ -451,6 +451,15 @@ def iter_tables():
         yield key
 
 
+def get_table_class(table_name):
+    '''Returns the class of the objects stored in a table
+    :param table_name: The name of the table to look
+    :type table_name: string
+    :returns: Class of objects in the table, None if table name is unknown
+    '''
+    return _lookup_by_table_name.get(table_name, None)
+
+
 def iter_models_by_dependency_order(first_class_only=True):
     '''Iterate over all registered models
 
