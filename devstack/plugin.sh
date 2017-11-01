@@ -1,3 +1,4 @@
+#@IgnoreInspection BashAddShebang
 # dragonflow.sh - Devstack extras script to install Dragonflow
 
 # Enable DPDK for Open vSwitch user space datapath
@@ -48,6 +49,11 @@ fi
 ENABLED_AGING_APP=${ENABLE_AGING_APP:-True}
 if [[ "$ENABLE_AGING_APP" == "True" ]]; then
     DEFAULT_APPS_LIST="aging,$DEFAULT_APPS_LIST"
+fi
+
+if [[ "$ENABLE_DF_SKYDIVE" == "True" ]]; then
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,skydive_agent"
+    SKYDIVE_ENDPOINT=${SKYDIVE_ENDPOINT:-$SERVICE_HOST:8082}
 fi
 
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
@@ -222,6 +228,19 @@ function init_neutron_sample_config {
     fi
 }
 
+function configure_df_skydive {
+    iniset $DRAGONFLOW_CONF df_skydive analyzer_endpoint "$SKYDIVE_ENDPOINT"
+    if [[ -n "$DF_SKYDIVE_ADMIN" ]]; then
+        iniset $DRAGONFLOW_CONF df_skydive user "$DF_SKYDIVE_ADMIN"
+    fi
+    local DF_SKYDIVE_PASSWORD=${DF_SKYDIVE_PASSWORD:-$ADMIN_PASSWORD}
+    iniset $DRAGONFLOW_CONF df_skydive password "$DF_SKYDIVE_PASSWORD"
+    if [[ -n "$DF_SKYDIVE_UPDATE_INTERVAL" ]]; then
+        iniset $DRAGONFLOW_CONF df_skydive update_interval "$DF_SKYDIVE_UPDATE_INTERVAL"
+    fi
+}
+
+
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
@@ -307,6 +326,10 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df enable_selective_topology_distribution \
                             "$DF_SELECTIVE_TOPO_DIST"
     configure_df_metadata_service
+
+    if [[ "$ENABLE_DF_SKYDIVE" == "True" ]]; then
+        configure_df_skydive
+    fi
 }
 
 function install_zeromq {
