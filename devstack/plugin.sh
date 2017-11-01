@@ -50,6 +50,19 @@ if [[ "$ENABLE_AGING_APP" == "True" ]]; then
     DEFAULT_APPS_LIST="aging,$DEFAULT_APPS_LIST"
 fi
 
+ENABLE_DF_SKYDIVE=${ENABLE_DF_SKYDIVE:-False}
+if [[ "$ENABLE_DF_SKYDIVE" == "True" ]]; then
+    if ! is_plugin_enabled skydive; then
+        die $LINENO "ENABLE_DF_SKYDIVE is set but skydive plugin is not enabled"
+    fi
+    if ! is_service_enabled skydive-analyzer; then
+        die $LINENO "ENABLE_DF_SKYDIVE is set but skydive-analyzer is not enabled"
+    fi
+    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,skydive_agent"
+#    # This must match the code from SKYDIVE
+#    SKYDIVE_ANALYZER_LISTEN=${SKYDIVE_ANALYZER_LISTEN:-$SERVICE_HOST:8082}
+fi
+
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
 TUNNEL_TYPES=${TUNNEL_TYPE:-$DEFAULT_TUNNEL_TYPES}
 
@@ -222,6 +235,18 @@ function init_neutron_sample_config {
     fi
 }
 
+function configure_df_skydive {
+    # This must match the code from SKYDIVE
+    local SKYDIVE_ANALYZER_LISTEN=${SKYDIVE_ANALYZER_LISTEN:-$SERVICE_HOST:8082}
+    iniset $DRAGONFLOW_CONF skydive analyzer_endpoint "$SKYDIVE_ANALYZER_LISTEN"
+    if [[ -n "$DF_SKYDIVE_ADMIN" ]]; then
+        iniset $DRAGONFLOW_CONF df_skydive user "$DF_SKYDIVE_ADMIN"
+    fi
+    local DF_SKYDIVE_PASSWORD=${DF_SKYDIVE_PASSWORD:-$ADMIN_PASSWORD}
+    iniset $DRAGONFLOW_CONF df_skydive password "$DF_SKYDIVE_PASSWORD"
+}
+
+
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
@@ -306,7 +331,10 @@ function configure_df_plugin {
 
     iniset $DRAGONFLOW_CONF df enable_selective_topology_distribution \
                             "$DF_SELECTIVE_TOPO_DIST"
-    configure_df_metadata_service
+
+    if [[ "$ENABLE_DF_SKYDIVE" == "True" ]]; then
+        configure_df_skydive
+    fi
 }
 
 function install_zeromq {
