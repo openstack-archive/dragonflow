@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
 from neutron.plugins.ml2 import models
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.api import validators
@@ -365,6 +366,9 @@ class DFMechDriver(api.MechanismDriver):
     def _delete_subnet_dhcp_port(self, context, port):
         self.core_plugin.delete_port(context, port['id'])
 
+    def _cidr_obj_from_text(self, cidr):
+        return netaddr.IPNetwork(cidr) if cidr else None
+
     def _handle_update_subnet_dhcp(self, context, old_subnet, new_subnet):
         """Update the dhcp configuration for.
 
@@ -377,6 +381,10 @@ class DFMechDriver(api.MechanismDriver):
             return dhcp_ip, None
 
         if new_subnet['enable_dhcp']:
+            cidr = self._cidr_obj_from_text(new_subnet['cidr'])
+            if cidr is None or cidr.ip.version != n_const.IP_VERSION_4:
+                return None, None
+
             if not old_subnet['enable_dhcp']:
                 port = self._create_dhcp_server_port(context, new_subnet)
             else:
@@ -386,9 +394,13 @@ class DFMechDriver(api.MechanismDriver):
             return self._get_ip_from_port(port), port
         else:
             if old_subnet['enable_dhcp']:
-                port = self._get_dhcp_port_for_subnet(context,
-                                                      old_subnet['id'])
-                self._delete_subnet_dhcp_port(context, port)
+                cidr = self._cidr_obj_from_text(old_subnet['cidr'])
+                if cidr and cidr.ip.version == n_const.IP_VERSION_4:
+                    port = self._get_dhcp_port_for_subnet(context,
+                                                          old_subnet['id'])
+                    self._delete_subnet_dhcp_port(context, port)
+                else:
+                    LOG.error("SHACHAR2")
 
             return None, None
 
