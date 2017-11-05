@@ -63,6 +63,7 @@ class DNATApp(df_base_app.DFlowApp):
                                         self.ingress_packet_in_handler)
         self.api.register_table_handler(const.EGRESS_DNAT_TABLE,
                                         self.egress_packet_in_handler)
+        self.fips_in_process = set()
 
     def _handle_ingress_invalid_ttl(self, event):
         LOG.debug("Get an invalid TTL packet at table %s",
@@ -492,14 +493,25 @@ class DNATApp(df_base_app.DFlowApp):
         )
         floatingip.floating_lport.emit_bind_local()
 
+    def _uninstall_floatingip_common(self, floatingip, emit_unbind):
+        # We MUST raise the port_update event for other processes to handle
+        # but we want to ignore it (so it will not call us back.
+        # So, we keep a set of fips in process to ignore.
+        self.fips_in_process.add(floatingip.floating_lport.id)
+        port_locator.clear_port_binding(floatingip.floating_lport)
+        if emit_unbind:
+            if floatingip.lport.is_local:
+                floatingip.floating_lport.emit_unbind_local()
+            elif floatingip.lport.is_remote:
+                floatingip.floating_lport.emit_unbind_remote()
+        else:
+            self.fips_in_process.remove(floatingip.floating_lport.id)
+
     def _uninstall_local_floatingip(self, floatingip, emit_unbind=True):
         if self._get_external_cidr(floatingip).version != n_const.IP_VERSION_4:
             return
 
-        port_locator.clear_port_binding(floatingip.floating_lport)
-        if emit_unbind:
-            floatingip.floating_lport.emit_unbind_local()
-
+        self._uninstall_floatingip_common(floatingip, emit_unbind)
         self._remove_ingress_nat_rules(floatingip)
         self._remove_egress_nat_rules(floatingip)
 
@@ -510,9 +522,7 @@ class DNATApp(df_base_app.DFlowApp):
         floatingip.floating_lport.emit_bind_remote()
 
     def _uninstall_remote_floatingip(self, floatingip, emit_unbind=True):
-        port_locator.clear_port_binding(floatingip.floating_lport)
-        if emit_unbind:
-            floatingip.floating_lport.emit_unbind_remote()
+        self._uninstall_floatingip_common(floatingip, emit_unbind)
 
     def _get_floatingips_by_lport(self, lport):
         return self.db_store.get_all(
@@ -533,6 +543,11 @@ class DNATApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _local_port_unbound(self, lport):
+        # In case the port is already in process, just ignore
+        if lport.id in self.fips_in_process:
+            self.fips_in_process.remove(lport.id)
+            return
+
         for floatingip in self._get_floatingips_by_lport(lport):
             self._uninstall_local_floatingip(floatingip)
 
@@ -546,6 +561,10 @@ class DNATApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
     def _remote_port_unbound(self, lport):
+        # In case the port is already in process, just ignore
+        if lport.id in self.fips_in_process:
+            self.fips_in_process.remove(lport.id)
+            return
         for floatingip in self._get_floatingips_by_lport(lport):
             self._uninstall_remote_floatingip(floatingip)
 
