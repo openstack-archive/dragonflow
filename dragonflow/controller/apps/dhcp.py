@@ -382,7 +382,8 @@ class DHCPApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
-        if lport.ip.version != n_const.IP_VERSION_4:
+        # FIXME the port may have multiple IP addresses, check all
+        if lport.ip is None or lport.ip.version != n_const.IP_VERSION_4:
             LOG.warning("No support for non IPv4 protocol")
             return
 
