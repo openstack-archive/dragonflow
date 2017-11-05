@@ -228,12 +228,12 @@ class Topology(object):
         lport_ref = ovs_port.lport
         lport = lport_ref.get_object()
         if lport is None:
-            lport = self.ovs_to_lport_mapping.get(ovs_port_id)
-            if lport is None:
+            lport_mapping = self.ovs_to_lport_mapping.get(ovs_port_id)
+            if lport_mapping is None:
                 return
-            topic = lport.topic
+            topic = lport_mapping.topic
             del self.ovs_to_lport_mapping[ovs_port_id]
-            self._del_from_topic_subscribed(topic, lport.id)
+            self._del_from_topic_subscribed(topic, lport_mapping.lport_id)
             return
 
         topic = lport.topic

@@ -110,6 +110,7 @@ class DHCPApp(df_base_app.DFlowApp):
         dhcp_message_type = self._get_dhcp_message_type_opt(dhcp_packet)
         send_packet = None
         if dhcp_message_type == dhcp.DHCP_DISCOVER:
+            # FIXME the port may have multiple IP addresses, check all
             send_packet = self._create_dhcp_response(
                                 packet,
                                 dhcp_packet,
@@ -119,6 +120,7 @@ class DHCPApp(df_base_app.DFlowApp):
                      "port id %(port_id)s",
                      {'port_ip': lport.ip, 'port_id': lport.id})
         elif dhcp_message_type == dhcp.DHCP_REQUEST:
+            # FIXME the port may have multiple IP addresses, check all
             send_packet = self._create_dhcp_response(
                                 packet,
                                 dhcp_packet,
@@ -174,6 +176,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
         siaddr = lport.dhcp_params.siaddr or dhcp_server_address
 
+        # FIXME the port may have multiple IP addresses, check all
         dhcp_response.add_protocol(dhcp.dhcp(op=dhcp.DHCP_BOOT_REPLY,
                                              chaddr=pkt_ethernet.src,
                                              siaddr=siaddr,
@@ -280,6 +283,7 @@ class DHCPApp(df_base_app.DFlowApp):
         host_routes = copy.copy(subnet.host_routes)
         if self.conf.df_add_link_local_route:
             # Add route for metadata request.
+            # FIXME the port may have multiple IP addresses, check all
             host_routes.append(host_route.HostRoute(
                 destination='%s/32' % const.METADATA_SERVICE_IP,
                 nexthop=lport.ip))
@@ -359,8 +363,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
-        if lport.ip.version != n_const.IP_VERSION_4:
-            LOG.warning("No support for non IPv4 protocol")
+        if not self._is_port_valid_for_dhcp(lport):
             return
 
         subnet_id = lport.subnets[0].id
@@ -380,10 +383,16 @@ class DHCPApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
+    def _is_port_valid_for_dhcp(self, lport):
+        # FIXME the port may have multiple IP addresses, check all
+        if lport.ip is None or lport.ip.version != n_const.IP_VERSION_4:
+            LOG.warning("No support for non IPv4 protocol")
+            return False
+        return True
+
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
-        if lport.ip.version != n_const.IP_VERSION_4:
-            LOG.warning("No support for non IPv4 protocol")
+        if not self._is_port_valid_for_dhcp(lport):
             return
 
         subnet_id = lport.subnets[0].id
@@ -559,6 +568,7 @@ class DHCPApp(df_base_app.DFlowApp):
         if lport.device_owner != n_const.DEVICE_OWNER_DHCP:
             return
 
+        # FIXME the port may have multiple IP addresses, check all
         if (lport.ip, lport.mac) != (orig_lport.ip, orig_lport.mac):
             self._uninstall_dhcp_port_responders(orig_lport)
             self._install_dhcp_port_responders(lport)
@@ -569,6 +579,7 @@ class DHCPApp(df_base_app.DFlowApp):
             self._uninstall_dhcp_port_responders(lport)
 
     def _get_dhcp_port_arp_responder(self, lport):
+        # FIXME the port may have multiple IP addresses, check all
         return arp_responder.ArpResponder(
             app=self,
             network_id=lport.lswitch.unique_key,
@@ -577,6 +588,7 @@ class DHCPApp(df_base_app.DFlowApp):
         )
 
     def _get_dhcp_port_icmp_responder(self, lport):
+        # FIXME the port may have multiple IP addresses, check all
         return icmp_responder.ICMPResponder(
             app=self,
             network_id=lport.lswitch.unique_key,
@@ -585,9 +597,13 @@ class DHCPApp(df_base_app.DFlowApp):
         )
 
     def _install_dhcp_port_responders(self, lport):
+        if not self._is_port_valid_for_dhcp(lport):
+            return
         self._get_dhcp_port_arp_responder(lport).add()
         self._get_dhcp_port_icmp_responder(lport).add()
 
     def _uninstall_dhcp_port_responders(self, lport):
+        if not self._is_port_valid_for_dhcp(lport):
+            return
         self._get_dhcp_port_arp_responder(lport).remove()
         self._get_dhcp_port_icmp_responder(lport).remove()
