@@ -377,6 +377,10 @@ class DFMechDriver(api.MechanismDriver):
             return dhcp_ip, None
 
         if new_subnet['enable_dhcp']:
+            cidr = new_subnet.cidr
+            if cidr is None or cidr.ip.version != n_const.IP_VERSION_4:
+                return None, None
+
             if not old_subnet['enable_dhcp']:
                 port = self._create_dhcp_server_port(context, new_subnet)
             else:
@@ -386,9 +390,11 @@ class DFMechDriver(api.MechanismDriver):
             return self._get_ip_from_port(port), port
         else:
             if old_subnet['enable_dhcp']:
-                port = self._get_dhcp_port_for_subnet(context,
-                                                      old_subnet['id'])
-                self._delete_subnet_dhcp_port(context, port)
+                cidr = old_subnet.cidr
+                if cidr and cidr.ip.version == n_const.IP_VERSION_4:
+                    port = self._get_dhcp_port_for_subnet(context,
+                                                          old_subnet['id'])
+                    self._delete_subnet_dhcp_port(context, port)
 
             return None, None
 
