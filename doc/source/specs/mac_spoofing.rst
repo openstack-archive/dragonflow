@@ -2,7 +2,7 @@
  This work is licensed under a Creative Commons Attribution 3.0 Unported
  License.
 
- http://creativecommons.org/licenses/by/3.0/legalcode
+ https://creativecommons.org/licenses/by/3.0/legalcode
 
 ==============================
 Port Security and MAC Spoofing
@@ -40,7 +40,7 @@ Additional drop rules:
 1. Packets with SRC MAC broadcast/multicast bit set.
    (This option might be needed in some environments, we can leave this as a configurable
    option in case it is -
-   http://www.cisco.com/c/en/us/support/docs/switches/catalyst-6500-series-switches/107995-config-catalyst-00.html#mm)
+   https://www.cisco.com/c/en/us/support/docs/switches/catalyst-6500-series-switches/107995-config-catalyst-00.html#mm)
 
 2. VLAN tagged frames where the TCI "Drop eligible indicator" (TEI) bit is set (congestion)
 
