@@ -2,7 +2,7 @@
  This work is licensed under a Creative Commons Attribution 3.0 Unported
  License.
 
- http://creativecommons.org/licenses/by/3.0/legalcode
+ https://creativecommons.org/licenses/by/3.0/legalcode
 
 =====================
 Cassandra Driver Spec
@@ -23,7 +23,7 @@ The Weather Channel, etc.
 The performance is amazing and generally dominates others according
 to universities' research reports [#]_.
 
-.. [#] http://www.planetcassandra.org/nosql-performance-benchmarks/
+.. [#] https://www.planetcassandra.org/nosql-performance-benchmarks/
 
 Besides performance, it also has many noticeable advantages such as
 
@@ -89,7 +89,7 @@ Neutron's. Most of the operations on data store in Neutron are *high concurrent 
 Here is another link [#]_ that provides hints on how to optimize JVM in Cassandra for
 read heavy workloads.
 
-.. [#] http://www.planetcassandra.org/blog/cassandra-tuning-the-jvm-for-read-heavy-workloads/
+.. [#] https://www.planetcassandra.org/blog/cassandra-tuning-the-jvm-for-read-heavy-workloads/
 
 Proposed Change
 ===============
