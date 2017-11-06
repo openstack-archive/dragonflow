@@ -2,7 +2,7 @@
  This work is licensed under a Creative Commons Attribution 3.0 Unported
  License.
 
- http://creativecommons.org/licenses/by/3.0/legalcode
+ https://creativecommons.org/licenses/by/3.0/legalcode
 
 =============================
 Dragonflow control plane test
@@ -215,8 +215,9 @@ scheduled on a new host, a 30s delay is watched when all data plane setup is fin
 References
 ==========
 
-[1] http://docs-draft.openstack.org/04/270204/4/check/gate-performance-docs-docs/9264b70/doc/build/html/test_plans/db/plan.html
+[1] https://docs.openstack.org/developer/performance-docs/test_plans/db/plan.html
 
-[2] http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Appendix_Limits.html
+[2] https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Appendix_Limits.html
 
 [3] https://aws.amazon.com/vpc/faqs/
+

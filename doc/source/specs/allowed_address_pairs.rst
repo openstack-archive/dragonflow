@@ -2,7 +2,7 @@
  This work is licensed under a Creative Commons Attribution 3.0 Unported
  License.
 
- http://creativecommons.org/licenses/by/3.0/legalcode
+ https://creativecommons.org/licenses/by/3.0/legalcode
 
 =====================
 Allowed address pairs
@@ -92,4 +92,4 @@ VMs mentioned above was detected.
 References
 ==========
 [1] https://specs.openstack.org/openstack/neutron-specs/specs/api/allowed_address_pairs.html
-[2] http://www.ietf.org/rfc/rfc3768.txt
+[2] https://www.ietf.org/rfc/rfc3768.txt
