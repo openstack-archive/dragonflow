@@ -262,7 +262,7 @@ resources:
                 path: /tmp/controller.py
               - content: |
                   #!/bin/bash
-                  dnf install -y openvswitch python3-ryu
+                  dnf install openvswitch python3-ryu
                   systemctl start openvswitch
                   ovs-vsctl add-br br-sf
                   ovs-vsctl set-controller br-sf tcp:127.0.0.1:6653
