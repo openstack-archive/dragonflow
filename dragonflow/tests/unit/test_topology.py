@@ -164,6 +164,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.assertEqual(4, self.controller.update.call_count)
         self.nb_api.subscriber.register_topic.assert_called_once()
 
+    @utils.with_local_objects(test_app_base.fake_ovs_port1)
     def test_check_topology_info(self):
         topic = 'fake_tenant1'
         lport_id2 = '2'
@@ -180,9 +181,6 @@ class TestTopology(test_app_base.DFAppTestBase):
                 lport_id=lport_id3,
                 topic=topic
             )
-        }
-        self.topology.ovs_ports = {
-            'fake_ovs_port1': test_app_base.fake_ovs_port1
         }
         self.topology.topic_subscribed = {
             topic: {lport_id2, lport_id3}
