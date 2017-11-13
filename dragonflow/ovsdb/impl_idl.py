@@ -77,10 +77,21 @@ class DFIdl(idl.Idl):
     def _is_handle_interface_update(self, interface):
         if interface.name == cfg.CONF.df_metadata.metadata_interface:
             return True
+
         if interface.type not in self.interface_type:
             return False
+
         if interface.name.startswith('qg'):
             return False
+
+        ofport = interface.ofport
+        if (ofport is None) or (ofport < 0):
+            return False
+
+        if (interface.type == constants.OVS_VM_INTERFACE and
+                interface.lport is None):
+            return False
+
         return True
 
     def notify(self, event, row, updates=None):
