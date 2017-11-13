@@ -70,7 +70,7 @@ class DFIdl(idl.Idl):
     def __init__(self, nb_api, remote, schema):
         super(DFIdl, self).__init__(remote, schema)
         self.nb_api = nb_api
-        self.interface_type = (constants.OVS_VM_INTERFACE,
+        self.interface_type = (constants.OVS_COMPUTE_INTERFACE,
                                constants.OVS_TUNNEL_INTERFACE,
                                constants.OVS_BRIDGE_INTERFACE)
 
@@ -88,7 +88,7 @@ class DFIdl(idl.Idl):
         if (ofport is None) or (ofport < 0):
             return False
 
-        if (interface.type == constants.OVS_VM_INTERFACE and
+        if (interface.type == constants.OVS_COMPUTE_INTERFACE and
                 interface.lport is None):
             return False
 

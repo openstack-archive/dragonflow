@@ -30,7 +30,7 @@ LOG = log.getLogger(__name__)
 OvsLportMapping = collections.namedtuple('OvsLportMapping',
                                          ('lport_id', 'topic'))
 
-_OVS_PORT_TYPES = (constants.OVS_VM_INTERFACE,
+_OVS_PORT_TYPES = (constants.OVS_COMPUTE_INTERFACE,
                    constants.OVS_TUNNEL_INTERFACE)
 
 
@@ -79,8 +79,8 @@ class Topology(object):
 
     def _handle_ovs_port_added(self, ovs_port):
         port_type = ovs_port.type
-        if port_type == constants.OVS_VM_INTERFACE:
-            self._vm_port_added(ovs_port)
+        if port_type == constants.OVS_COMPUTE_INTERFACE:
+            self._compute_port_added(ovs_port)
         elif port_type == constants.OVS_TUNNEL_INTERFACE:
             self._tunnel_port_added(ovs_port)
         else:
@@ -88,8 +88,8 @@ class Topology(object):
 
     def _handle_ovs_port_updated(self, ovs_port):
         port_type = ovs_port.type
-        if port_type == constants.OVS_VM_INTERFACE:
-            self._vm_port_updated(ovs_port)
+        if port_type == constants.OVS_COMPUTE_INTERFACE:
+            self._compute_port_updated(ovs_port)
         elif port_type == constants.OVS_TUNNEL_INTERFACE:
             self._tunnel_port_updated(ovs_port)
         else:
@@ -116,8 +116,8 @@ class Topology(object):
 
     def _handle_ovs_port_deleted(self, ovs_port):
         port_type = ovs_port.type
-        if port_type == constants.OVS_VM_INTERFACE:
-            self._vm_port_deleted(ovs_port)
+        if port_type == constants.OVS_COMPUTE_INTERFACE:
+            self._compute_port_deleted(ovs_port)
         elif port_type == constants.OVS_TUNNEL_INTERFACE:
             self._tunnel_port_deleted(ovs_port)
         else:
@@ -160,12 +160,12 @@ class Topology(object):
     def _tunnel_port_deleted(self, ovs_port):
         self._process_ovs_tunnel_port(ovs_port, "delete")
 
-    def _vm_port_added(self, ovs_port):
-        self._vm_port_updated(ovs_port)
+    def _compute_port_added(self, ovs_port):
+        self._compute_port_updated(ovs_port)
         self.controller.notify_port_status(
             ovs_port, n_const.PORT_STATUS_ACTIVE)
 
-    def _vm_port_updated(self, ovs_port):
+    def _compute_port_updated(self, ovs_port):
         lport = self._get_lport(ovs_port)
         if lport is None:
             LOG.warning("No logical port found for ovs port: %s",
@@ -202,7 +202,7 @@ class Topology(object):
                 LOG.exception('Failed to process logical port online '
                               'event: %s', lport)
 
-    def _vm_port_deleted(self, ovs_port):
+    def _compute_port_deleted(self, ovs_port):
         ovs_port_id = ovs_port.id
         lport_ref = ovs_port.lport
         lport = lport_ref.get_object()
@@ -290,7 +290,7 @@ class Topology(object):
         delete_ovs_to_lport_mapping = self.ovs_to_lport_mapping
         for ovs_port in self.db_store.get_all(ovs.OvsPort):
             key = ovs_port.id
-            if ovs_port.type == constants.OVS_VM_INTERFACE:
+            if ovs_port.type == constants.OVS_COMPUTE_INTERFACE:
                 lport = self._get_lport(ovs_port)
                 if lport is None:
                     LOG.warning("No logical port found for ovs port: %s",
