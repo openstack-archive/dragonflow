@@ -63,25 +63,37 @@ class Topology(object):
         @return : None
         """
         LOG.info("Ovs port updated: %s", ovs_port)
-        if orig_ovs_port is None:
-            action = "added"
-        else:
-            action = 'updated'
 
-        port_type = ovs_port.type
-        if port_type not in _OVS_PORT_TYPES:
+        if ovs_port.type not in _OVS_PORT_TYPES:
             LOG.info("Unmanaged port online: %s", ovs_port)
             return
 
-        handler_name = '_' + port_type + '_port_' + action
-
         try:
-            handler = getattr(self, handler_name, None)
-            if handler is not None:
-                handler(ovs_port)
+            if orig_ovs_port is None:
+                self._handle_ovs_port_added(ovs_port)
+            else:
+                self._handle_ovs_port_updated(ovs_port)
         except Exception:
             LOG.exception(
                 "Exception occurred when handling port online event")
+
+    def _handle_ovs_port_added(self, ovs_port):
+        port_type = ovs_port.type
+        if port_type == constants.OVS_VM_INTERFACE:
+            self._vm_port_added(ovs_port)
+        elif port_type == constants.OVS_TUNNEL_INTERFACE:
+            self._tunnel_port_added(ovs_port)
+        else:
+            LOG.warning('Invalid port type on %r', ovs_port)
+
+    def _handle_ovs_port_updated(self, ovs_port):
+        port_type = ovs_port.type
+        if port_type == constants.OVS_VM_INTERFACE:
+            self._vm_port_updated(ovs_port)
+        elif port_type == constants.OVS_TUNNEL_INTERFACE:
+            self._tunnel_port_updated(ovs_port)
+        else:
+            LOG.warning('Invalid port type on %r', ovs_port)
 
     def ovs_port_deleted(self, ovs_port):
         """
@@ -92,22 +104,24 @@ class Topology(object):
         @param ovs_port:
         @return : None
         """
-        port_type = ovs_port.type
-        if port_type not in _OVS_PORT_TYPES:
+        if ovs_port.type not in _OVS_PORT_TYPES:
             LOG.info("Unmanaged port offline: %s", ovs_port)
             return
 
-        handler_name = '_' + port_type + '_port_deleted'
-
         try:
-            handler = getattr(self, handler_name, None)
-            if handler is not None:
-                handler(ovs_port)
-            else:
-                LOG.info("%s is None.", handler_name)
+            self._handle_ovs_port_deleted(ovs_port)
         except Exception:
             LOG.exception("Exception occurred when handling "
                           "ovs port offline event")
+
+    def _handle_ovs_port_deleted(self, ovs_port):
+        port_type = ovs_port.type
+        if port_type == constants.OVS_VM_INTERFACE:
+            self._vm_port_deleted(ovs_port)
+        elif port_type == constants.OVS_TUNNEL_INTERFACE:
+            self._tunnel_port_deleted(ovs_port)
+        else:
+            LOG.warning('Invalid port type on %r', ovs_port)
 
     def _tunnel_port_added(self, ovs_port):
         self._tunnel_port_updated(ovs_port)
