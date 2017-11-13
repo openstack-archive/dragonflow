@@ -30,14 +30,14 @@ LOG = log.getLogger(__name__)
 OvsLportMapping = collections.namedtuple('OvsLportMapping',
                                          ('lport_id', 'topic'))
 
+_OVS_PORT_TYPES = (constants.OVS_VM_INTERFACE,
+                   constants.OVS_TUNNEL_INTERFACE,
+                   constants.OVS_PATCH_INTERFACE)
+
 
 class Topology(object):
 
     def __init__(self, controller, enable_selective_topology_distribution):
-        self.ovs_port_type = (constants.OVS_VM_INTERFACE,
-                              constants.OVS_TUNNEL_INTERFACE,
-                              constants.OVS_PATCH_INTERFACE)
-
         # Stores topics(tenants) subscribed by lports in the current local
         # controller. I,e, {tenant1:{lport1, lport2}, tenant2:{lport3}}
         self.topic_subscribed = {}
@@ -80,7 +80,7 @@ class Topology(object):
 
         self.ovs_ports[port_id] = ovs_port
         port_type = ovs_port.type
-        if port_type not in self.ovs_port_type:
+        if port_type not in _OVS_PORT_TYPES:
             LOG.info("Unmanaged port online: %s", ovs_port)
             return
 
@@ -108,7 +108,7 @@ class Topology(object):
             return
 
         port_type = ovs_port.type
-        if port_type not in self.ovs_port_type:
+        if port_type not in _OVS_PORT_TYPES:
             LOG.info("Unmanaged port offline: %s", ovs_port)
             return
 
