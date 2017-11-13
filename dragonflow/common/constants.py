@@ -12,7 +12,7 @@
 # limitations under the License.
 from neutron_lib import constants as n_const
 
-OVS_VM_INTERFACE = "vm"
+OVS_COMPUTE_INTERFACE = "compute"
 OVS_BRIDGE_INTERFACE = "bridge"
 OVS_PATCH_INTERFACE = "patch"
 OVS_TUNNEL_INTERFACE = "tunnel"

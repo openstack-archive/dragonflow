@@ -253,7 +253,7 @@ fake_ovs_port1 = ovs.OvsPort(
     ofport=2,
     name='tap-fake_port1',
     admin_state='up',
-    type=constants.OVS_VM_INTERFACE,
+    type=constants.OVS_COMPUTE_INTERFACE,
     lport='fake_port1',
     attached_mac='fa:16:3e:8c:2e:b3',
 )
@@ -271,7 +271,7 @@ fake_ovs_port2 = ovs.OvsPort(
     ofport=3,
     name='tap-fake_port2',
     admin_state='up',
-    type=constants.OVS_VM_INTERFACE,
+    type=constants.OVS_COMPUTE_INTERFACE,
     lport='fake_port2',
     attached_mac='fa:16:3e:8c:2e:b4',
 )

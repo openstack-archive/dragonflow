@@ -29,7 +29,7 @@ def _get_interface_type(row):
         return constants.OVS_PATCH_INTERFACE
 
     if 'iface-id' in row.external_ids:
-        return constants.OVS_VM_INTERFACE
+        return constants.OVS_COMPUTE_INTERFACE
 
     options = row.options
     if 'remote_ip' in options:
@@ -50,7 +50,7 @@ class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
         (
             constants.OVS_BRIDGE_INTERFACE,
             constants.OVS_PATCH_INTERFACE,
-            constants.OVS_VM_INTERFACE,
+            constants.OVS_COMPUTE_INTERFACE,
             constants.OVS_TUNNEL_INTERFACE,
             constants.OVS_UNKNOWN_INTERFACE,
         ),
