@@ -24,7 +24,7 @@
     parent: legacy-dsvm-base
     run: zuul/dragonflow-dsvm-fullstack-redis/run
     post-run: zuul/dragonflow-dsvm-fullstack-redis/post
-    timeout: 9900
+    timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/dragonflow
@@ -37,7 +37,7 @@
     parent: legacy-dsvm-base
     run: zuul/dragonflow-dsvm-fullstack-etcd-zmq/run
     post-run: zuul/dragonflow-dsvm-fullstack-etcd-zmq/post
-    timeout: 9900
+    timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/dragonflow
@@ -50,7 +50,7 @@
     parent: legacy-dsvm-base
     run: zuul/dragonflow-dsvm-rally/run
     post-run: zuul/dragonflow-dsvm-rally/post
-    timeout: 7800
+    timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/dragonflow
@@ -64,7 +64,7 @@
     parent: legacy-dsvm-base
     run: zuul/tempest-dsvm-dragonflow/run
     post-run: zuul/tempest-dsvm-dragonflow/post
-    timeout: 7800
+    timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/dragonflow
