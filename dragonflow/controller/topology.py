@@ -64,9 +64,6 @@ class Topology(object):
         @return : None
         """
         LOG.info("Ovs port updated: %s", ovs_port)
-        # ignore port that misses some parameters
-        if not self._check_ovs_port_integrity(ovs_port):
-            return
         port_id = ovs_port.id
         old_port = self.ovs_ports.get(port_id)
         if old_port is None:
@@ -121,24 +118,6 @@ class Topology(object):
                           "ovs port offline event")
         finally:
             del self.ovs_ports[ovs_port.id]
-
-    def _check_ovs_port_integrity(self, ovs_port):
-        """
-        There are some cases that some para of ovs port is missing
-        then the event will be discarded
-        """
-
-        ofport = ovs_port.ofport
-        port_type = ovs_port.type
-
-        if (ofport is None) or (ofport < 0) or (port_type is None):
-            return False
-
-        if (port_type == constants.OVS_VM_INTERFACE and
-                ovs_port.lport is None):
-            return False
-
-        return True
 
     def _tunnel_port_added(self, ovs_port):
         self._tunnel_port_updated(ovs_port)
