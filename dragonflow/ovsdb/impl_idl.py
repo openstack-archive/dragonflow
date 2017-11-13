@@ -66,7 +66,7 @@ ovsdb_monitor_table_filter_default = {
 }
 
 _HANDLED_INTERFACE_TYPES = (
-    constants.OVS_VM_INTERFACE,
+    constants.OVS_COMPUTE_INTERFACE,
     constants.OVS_TUNNEL_INTERFACE,
     constants.OVS_BRIDGE_INTERFACE,
 )
@@ -86,7 +86,7 @@ def _is_ovsport_update_valid(ovsport):
     if (ofport is None) or (ofport < 0):
         return False
 
-    if (ovsport.type == constants.OVS_VM_INTERFACE and
+    if (ovsport.type == constants.OVS_COMPUTE_INTERFACE and
             ovsport.lport is None):
         return False
 
