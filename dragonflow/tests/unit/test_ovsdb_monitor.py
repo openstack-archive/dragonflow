@@ -69,7 +69,7 @@ class TestDFIdl(tests_base.BaseTestCase):
                 'set',
                 ovs.OvsPort(
                     ofport=1,
-                    type=constants.OVS_VM_INTERFACE,
+                    type=constants.OVS_COMPUTE_INTERFACE,
                     name='tap-uuid',
                 ),
             ),
