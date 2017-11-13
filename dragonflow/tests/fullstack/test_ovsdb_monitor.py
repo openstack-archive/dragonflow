@@ -35,7 +35,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         _interface = ovs.OvsPort.from_json(update.value)
         if str(_interface.attached_mac) != mac:
             return False
-        elif _interface.type != constants.OVS_VM_INTERFACE:
+        elif _interface.type != constants.OVS_COMPUTE_INTERFACE:
             return False
         elif _interface.lport is None:
             return False
@@ -56,7 +56,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return False
         elif str(_interface.attached_mac) != mac:
             return False
-        elif _interface.type != constants.OVS_VM_INTERFACE:
+        elif _interface.type != constants.OVS_COMPUTE_INTERFACE:
             return False
         elif _interface.lport is None:
             return False
