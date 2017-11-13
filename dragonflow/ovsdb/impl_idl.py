@@ -82,6 +82,14 @@ def _is_ovsport_update_valid(ovsport):
     if ovsport.name.startswith('qg'):
         return False
 
+    ofport = ovsport.ofport
+    if (ofport is None) or (ofport < 0):
+        return False
+
+    if (ovsport.type == constants.OVS_VM_INTERFACE and
+            ovsport.lport is None):
+        return False
+
     return True
 
 

@@ -106,11 +106,6 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.nb_api.subscriber.unregister_topic.assert_called_once_with(
             test_app_base.fake_local_port1.topic)
 
-        self.fake_invalid_ovs_port.ofport = -1
-        self.controller.update.reset_mock()
-        self.topology.ovs_port_updated(self.fake_invalid_ovs_port)
-        self.controller.update.assert_not_called()
-
     def test_vm_online_after_topology_pulled(self):
         self.nb_api.get_all.side_effect = nb_api_get_all_func(
             test_app_base.fake_logic_switch1,
