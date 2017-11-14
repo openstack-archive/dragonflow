@@ -130,6 +130,7 @@ class TestDbConsistent(test_base.DFTestBase):
             exception=Exception('could not delete goto dhcp rule for lswitch')
         )
 
+        self.nb_api.driver.delete_key('lswitch', net_id, topic)
         vm.close()
         subnet.close()
         network.close()
