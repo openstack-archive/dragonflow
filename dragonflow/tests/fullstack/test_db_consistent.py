@@ -42,6 +42,7 @@ class TestDbConsistent(test_base.DFTestBase):
         self.db_sync_time = self.conf.db_sync_time
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
+        self.addCleanup(objects.close_test_obj, network)
         topic = network.get_topic()
         subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
                                                   network_id))
@@ -52,12 +53,14 @@ class TestDbConsistent(test_base.DFTestBase):
                        'name': 'private',
                        'enable_dhcp': True}
         subnet.create(subnet=subnet_body)
+        self.addCleanup(objects.close_test_obj, subnet)
         time.sleep(constants.DEFAULT_RESOURCE_READY_TIMEOUT)
         self.assertTrue(network.exists())
         self.assertTrue(subnet.exists())
 
         vm = self.store(objects.VMTestObj(self, self.neutron))
         vm.create(network=network)
+        self.addCleanup(objects.close_test_obj, vm)
         self.assertIsNotNone(vm.server.addresses['mynetwork'])
         mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac)
@@ -95,6 +98,8 @@ class TestDbConsistent(test_base.DFTestBase):
 
         self.nb_api.driver.create_key(
                 'lswitch', net_id, df_network_json, topic)
+        self.addCleanup(self.nb_api.driver.delete_key, 'lswitch',
+                        net_id, topic)
 
         port_id = '33333333-2222-2222-2222-222222222222,'
         dhcp_port = l2.LogicalPort(
@@ -129,7 +134,3 @@ class TestDbConsistent(test_base.DFTestBase):
             timeout=self.db_sync_time + constants.DEFAULT_CMD_TIMEOUT, sleep=1,
             exception=Exception('could not delete goto dhcp rule for lswitch')
         )
-
-        vm.close()
-        subnet.close()
-        network.close()
