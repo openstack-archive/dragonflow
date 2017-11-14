@@ -2,7 +2,7 @@
  This work is licensed under a Creative Commons Attribution 3.0 Unported
  License.
 
- http://creativecommons.org/licenses/by/3.0/legalcode
+ https://creativecommons.org/licenses/by/3.0/legalcode
 
 =================
 Redis Driver Spec
@@ -223,8 +223,8 @@ References
 
 [1] https://github.com/andymccurdy/redis-py
 
-[2] http://redis.io/commands
+[2] https://redis.io/commands
 
 [3] https://github.com/Grokzen/redis-py-cluster
 
-[4] http://redis.io/topics/cluster-tutorial
+[4] https://redis.io/topics/cluster-tutorial

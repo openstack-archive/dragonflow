@@ -2,7 +2,7 @@
  This work is licensed under a Creative Commons Attribution 3.0 Unported
  License.
 
- http://creativecommons.org/licenses/by/3.0/legalcode
+ https://creativecommons.org/licenses/by/3.0/legalcode
 
 ===============
 Security Groups
@@ -250,6 +250,6 @@ References
 ==========
 [1] http://openvswitch.org/support/ovscon2014/17/1030-conntrack_nat.pdf
 
-[2] http://openvswitch.org/pipermail/dev/2014-May/040567.html
+[2] https://mail.openvswitch.org/pipermail/ovs-dev/2014-May/040567.html
 
 [3] http://openvswitch.org/support/dist-docs/ovs-ofctl.8.pdf

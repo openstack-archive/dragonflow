@@ -2,7 +2,7 @@
  This work is licensed under a Creative Commons Attribution 3.0 Unported
  License.
 
- http://creativecommons.org/licenses/by/3.0/legalcode
+ https://creativecommons.org/licenses/by/3.0/legalcode
 
 =======================
 Support extra-dhcp-opts
@@ -106,7 +106,7 @@ Execution workflow:
 
 References
 ==========
-.. [1] https://specs.openstack.org/openstack/neutron-specs/specs/api/extra_dhcp_options__extra-dhcp-opt\_.html
+.. [1] https://specs.openstack.org/openstack/neutron-specs/specs/api/extra_dhcp_options__extra-dhcp-opt_.html
 .. [2] https://tools.ietf.org/html/rfc2131
 .. [3] https://tools.ietf.org/html/rfc2132
 .. [4] https://github.com/openstack/dragonflow/blob/master/doc/source/distributed_dhcp.rst

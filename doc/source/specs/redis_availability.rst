@@ -2,7 +2,7 @@
  This work is licensed under a Creative Commons Attribution 3.0 Unsuported
  License.
 
- http://creativecommons.org/licenses/by/3.0/legalcode
+ https://creativecommons.org/licenses/by/3.0/legalcode
 
 ==================
 Redis Availability
@@ -110,6 +110,6 @@ The following diagram shows the procedure of Dragonflow:
 
 References
 ==========
-[1] http://redis.io/topics/cluster-tutorial
+[1] https://redis.io/topics/cluster-tutorial
 
-[2] http://redis.io/topics/cluster-spec
+[2] https://redis.io/topics/cluster-spec
