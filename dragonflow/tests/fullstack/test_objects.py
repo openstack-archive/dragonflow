@@ -32,6 +32,10 @@ from dragonflow.tests.common import utils
 LOG = log.getLogger(__name__)
 
 
+def close_test_obj(resouce):
+    resouce.close()
+
+
 def find_first_network(nclient, params):
     networks = nclient.list_networks(**params)['networks']
     networks_count = len(networks)
