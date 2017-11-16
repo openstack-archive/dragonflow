@@ -63,9 +63,6 @@ class Topology(object):
         @param ovs_port:
         @return : None
         """
-        if ovs_port is None:
-            LOG.error("ovs_port is None")
-            return
         LOG.info("Ovs port updated: %s", ovs_port)
         # ignore port that misses some parameters
         if not self._check_ovs_port_integrity(ovs_port):
