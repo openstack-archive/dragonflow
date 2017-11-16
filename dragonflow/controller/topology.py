@@ -31,8 +31,7 @@ OvsLportMapping = collections.namedtuple('OvsLportMapping',
                                          ('lport_id', 'topic'))
 
 _OVS_PORT_TYPES = (constants.OVS_VM_INTERFACE,
-                   constants.OVS_TUNNEL_INTERFACE,
-                   constants.OVS_PATCH_INTERFACE)
+                   constants.OVS_TUNNEL_INTERFACE)
 
 
 class Topology(object):
