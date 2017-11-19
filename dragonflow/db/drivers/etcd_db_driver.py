@@ -145,8 +145,8 @@ class EtcdDbDriver(db_api.DbApi):
     def get_all_keys(self, table, topic=None):
         res = []
         directory = self.client.get_prefix(self._make_key(table))
+        table_name_size = len(table) + 2
         for entry in directory:
-            table_name_size = len(table) + 2
             key = entry[1]["key"]
             res.append(key[table_name_size:])
         return res
