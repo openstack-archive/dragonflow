@@ -1,0 +1,10 @@
+Code-Review+2: Dima Kuznetsov <dima.kuznetsov@toganetworks.com>
+Code-Review+1: Shachar Snapiri <shachar.snapiri@huawei.com>
+Code-Review+2: Omer Anson <omer.anson@toganetworks.com>
+Workflow+1: Omer Anson <omer.anson@toganetworks.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Mon, 20 Nov 2017 00:01:15 +0000
+Reviewed-on: https://review.openstack.org/519598
+Project: openstack/dragonflow
+Branch: refs/heads/master
