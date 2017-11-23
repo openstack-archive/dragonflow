@@ -49,6 +49,12 @@ class ModelPrinter(object):
     def __init__(self, fh):
         self._output = fh
 
+    def output_start(self):
+        pass
+
+    def output_end(self):
+        pass
+
     @abc.abstractmethod
     def output_model(self, model_):
         pass
@@ -70,6 +76,36 @@ class PlaintextPrinter(ModelPrinter):
                                          "Many" if field.to_many else "One"),
                   file=self._output)
         print('', file=self._output)
+
+
+class UMLPrinter(ModelPrinter):
+    def __init__(self, fh):
+        super(UMLPrinter, self).__init__(fh)
+        self._processed = set()
+        self._dependencies = set()
+
+    def output_start(self):
+        print('@startuml', file=self._output)
+
+    def output_end(self):
+        for (dst, src, name, to_many) in self._dependencies:
+            if src in self._processed:
+                many_str = '+ ' if to_many else ''
+                print('{} --{} {} : < {}'.format(dst, many_str, src, name),
+                      file=self._output)
+                print('@enduml', file=self._output)
+
+    def output_model(self, model_):
+        print('Object {}'.format(model_.name), file=self._output)
+        for field in model_.fields:
+            restriction_str = \
+                ' {}'.format(field.restrictions) if field.restrictions else ''
+            print('{} : {}{} {}'.format(model_.name, field.name,
+                                        field.type, restriction_str),
+                  file=self._output)
+            self._dependencies.add((model_.name, field.type,
+                                    field.name, field.to_many))
+        self._processed.add(model_.name)
 
 
 class DfModelParser(object):
@@ -118,8 +154,10 @@ class DfModelParser(object):
         return current_model
 
     def parse_models(self, printer):
+        printer.output_start()
         for model in model_framework.iter_models_by_dependency_order(False):
             printer.output_model(self._process_model(model))
+        printer.output_end()
 
 
 @contextlib.contextmanager
@@ -141,12 +179,17 @@ def main():
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--plaintext', help='Plaintext output (default)',
                        action='store_true')
+    group.add_argument('--uml', help='PlantUML format output',
+                       action='store_true')
     parser.add_argument('-o', '--outfile',
                         help='Output to file (instead of stdout)')
     args = parser.parse_args()
     parser = DfModelParser()
     with smart_open(args.outfile) as fh:
-        printer = PlaintextPrinter(fh)
+        if args.uml:
+            printer = UMLPrinter(fh)
+        else:
+            printer = PlaintextPrinter(fh)
         parser.parse_models(printer)
 
 
