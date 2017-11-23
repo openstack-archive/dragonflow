@@ -1,0 +1,9 @@
+Code-Review+2: Berezovsky Irena <irenab.dev@gmail.com>
+Code-Review+2: Dima Kuznetsov <dima.kuznetsov@toganetworks.com>
+Workflow+1: Dima Kuznetsov <dima.kuznetsov@toganetworks.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Thu, 23 Nov 2017 16:05:22 +0000
+Reviewed-on: https://review.openstack.org/522267
+Project: openstack/dragonflow
+Branch: refs/heads/master
