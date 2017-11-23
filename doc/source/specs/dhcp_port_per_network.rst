@@ -66,7 +66,7 @@ the system, this spec suggests moving all the dhpc-logic from the
 mech_driver code to a separate code module.
 
 This module will be invoked by the ml2-driver, and will function
-independently. It's will use neutron registry _[1] for subscribing
+independently. It's will use neutron registry [1]_ for subscribing
 to sunbet and lswitch CUD event's, and will be responsible to maintain
 the dhcp-port according to the logic that described above.
 
