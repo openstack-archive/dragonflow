@@ -46,7 +46,7 @@ class ModelPrinter(object):
         pass
 
 
-class StdoutPrinter(ModelPrinter):
+class PlaintextPrinter(ModelPrinter):
     def output_model(self, model_):
         print('\n-------------\n{}\n-------------'.format(model_.name))
         for field in model_.fields:
@@ -60,7 +60,7 @@ class StdoutPrinter(ModelPrinter):
 
 class DfModelParser(object):
     def _stringify_field_type(self, field):
-        if field is six.string_types:
+        if field in six.string_types:
             return 'String', None
         elif isinstance(field, field_types.EnumField):
             field_type = type(field).__name__
@@ -108,6 +108,6 @@ class DfModelParser(object):
 
 
 if __name__ == "__main__":
-    printer = StdoutPrinter()
+    printer = PlaintextPrinter()
     parser = DfModelParser()
     parser.parse_models(printer)
