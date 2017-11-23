@@ -10,9 +10,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import print_function
+
 import abc
+import argparse
+import contextlib
 import re
 import six
+import sys
 
 from jsonmodels import fields
 
@@ -41,21 +46,30 @@ class ModelClass(object):
 
 @six.add_metaclass(abc.ABCMeta)
 class ModelPrinter(object):
+    def __init__(self, fh):
+        self._output = fh
+
     @abc.abstractmethod
     def output_model(self, model_):
         pass
 
 
 class PlaintextPrinter(ModelPrinter):
+    def __init__(self, fh):
+        super(PlaintextPrinter, self).__init__(fh)
+
     def output_model(self, model_):
-        print('\n-------------\n{}\n-------------'.format(model_.name))
+        print('-------------', file=self._output)
+        print('{}'.format(model_.name), file=self._output)
+        print('-------------', file=self._output)
         for field in model_.fields:
-            if field.restrictions:
-                print('{} - {} {}, {}'.format(
-                    field.name, field.type, field.restrictions, field.to_many))
-            else:
-                print('{} - {}, {}'.format(field.name, field.type,
-                                           field.to_many))
+            restriction_str = \
+                ' {}'.format(field.restrictions) if field.restrictions else ''
+            print('{} : {}{}, {}'.format(field.name, field.type,
+                                         restriction_str,
+                                         "Many" if field.to_many else "One"),
+                  file=self._output)
+        print('', file=self._output)
 
 
 class DfModelParser(object):
@@ -64,8 +78,7 @@ class DfModelParser(object):
             return 'String', None
         elif isinstance(field, field_types.EnumField):
             field_type = type(field).__name__
-            restrictions = []
-            restrictions.extend(field._valid_values)
+            restrictions = list(field._valid_values)
             return field_type, restrictions
         elif isinstance(field, field_types.ReferenceField):
             model = field._model
@@ -93,6 +106,8 @@ class DfModelParser(object):
                 for field_type in types:
                     field_type, restrictions = \
                         self._stringify_field_type(field_type)
+                if isinstance(field, field_types.EnumListField):
+                    restrictions = list(field._valid_values)
             else:
                 to_many = False
                 field_type, restrictions = self._stringify_field_type(field)
@@ -107,7 +122,33 @@ class DfModelParser(object):
             printer.output_model(self._process_model(model))
 
 
-if __name__ == "__main__":
-    printer = PlaintextPrinter()
+@contextlib.contextmanager
+def smart_open(filename=None):
+    if filename and filename != '-':
+        fh = open(filename, 'w')
+    else:
+        fh = sys.stdout
+
+    try:
+        yield fh
+    finally:
+        if fh is not sys.stdout:
+            fh.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Print Dragonflow schema")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--plaintext', help='Plaintext output (default)',
+                       action='store_true')
+    parser.add_argument('-o', '--outfile',
+                        help='Output to file (instead of stdout)')
+    args = parser.parse_args()
     parser = DfModelParser()
-    parser.parse_models(printer)
+    with smart_open(args.outfile) as fh:
+        printer = PlaintextPrinter(fh)
+        parser.parse_models(printer)
+
+
+if __name__ == "__main__":
+    main()
