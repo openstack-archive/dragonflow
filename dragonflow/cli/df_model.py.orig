@@ -77,6 +77,8 @@ class PlaintextPrinter(ModelPrinter):
                 to_many="Many" if field.to_many else "One"),
                 file=self._output)
         print('', file=self._output)
+<<<<<<< HEAD
+=======
 
 
 class UMLPrinter(ModelPrinter):
@@ -94,7 +96,7 @@ class UMLPrinter(ModelPrinter):
                 many_str = '+ ' if to_many else ''
                 print('{} --{} {} : < {}'.format(dst, many_str, src, name),
                       file=self._output)
-        print('@enduml', file=self._output)
+                print('@enduml', file=self._output)
 
     def output_model(self, model_):
         print('Object {}'.format(model_.name), file=self._output)
@@ -108,6 +110,7 @@ class UMLPrinter(ModelPrinter):
             self._dependencies.add((model_.name, field.type,
                                     field.name, field.to_many))
         self._processed.add(model_.name)
+>>>>>>> 6090830... Add printer for PlantUML syntax
 
 
 class DfModelParser(object):
