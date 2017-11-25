@@ -72,20 +72,23 @@ _HANDLED_INTERFACE_TYPES = (
 )
 
 
+def _is_ovsport_update_valid(ovsport):
+    if ovsport.name == cfg.CONF.df_metadata.metadata_interface:
+        return True
+
+    if ovsport.type not in _HANDLED_INTERFACE_TYPES:
+        return False
+
+    if ovsport.name.startswith('qg'):
+        return False
+
+    return True
+
+
 class DFIdl(idl.Idl):
     def __init__(self, nb_api, remote, schema):
         super(DFIdl, self).__init__(remote, schema)
         self.nb_api = nb_api
-
-    def _is_handle_interface_update(self, interface):
-        if interface.name == cfg.CONF.df_metadata.metadata_interface:
-            return True
-
-        if interface.type not in _HANDLED_INTERFACE_TYPES:
-            return False
-        if interface.name.startswith('qg'):
-            return False
-        return True
 
     def notify(self, event, row, updates=None):
         if not row or not hasattr(row, '_table'):
@@ -95,7 +98,7 @@ class DFIdl(idl.Idl):
 
         local_interface = ovs.OvsPort.from_idl_row(row)
         action = event if event != 'update' else 'set'
-        if self._is_handle_interface_update(local_interface):
+        if _is_ovsport_update_valid(local_interface):
             self.nb_api.db_change_callback(
                 local_interface.table_name,
                 local_interface.id,
