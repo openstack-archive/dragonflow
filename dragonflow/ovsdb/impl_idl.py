@@ -65,19 +65,23 @@ ovsdb_monitor_table_filter_default = {
     ]
 }
 
+_HANDLED_INTERFACE_TYPES = (
+    constants.OVS_VM_INTERFACE,
+    constants.OVS_TUNNEL_INTERFACE,
+    constants.OVS_BRIDGE_INTERFACE,
+)
+
 
 class DFIdl(idl.Idl):
     def __init__(self, nb_api, remote, schema):
         super(DFIdl, self).__init__(remote, schema)
         self.nb_api = nb_api
-        self.interface_type = (constants.OVS_VM_INTERFACE,
-                               constants.OVS_TUNNEL_INTERFACE,
-                               constants.OVS_BRIDGE_INTERFACE)
 
     def _is_handle_interface_update(self, interface):
         if interface.name == cfg.CONF.df_metadata.metadata_interface:
             return True
-        if interface.type not in self.interface_type:
+
+        if interface.type not in _HANDLED_INTERFACE_TYPES:
             return False
         if interface.name.startswith('qg'):
             return False
