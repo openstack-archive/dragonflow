@@ -194,11 +194,12 @@ class UMLPrinter(ModelsPrinter):
         self._processed.add(model_name)
         self._model = ''
 
-    def handle_field(self, field_name, field_type, is_single=True,
-                     restrictions=None):
+    def handle_field(self, field_name, field_type, is_required,
+                     is_single=True, restrictions=None):
         restriction_str = ' {}'.format(restrictions) if restrictions else ''
+        name = '<b>{}</b>'.format(field_name) if is_required else field_name
         print('  +{name} : {type} {restriction}'.format(
-              name=field_name, type=field_type, restriction=restriction_str),
+              name=name, type=field_type, restriction=restriction_str),
               file=self._output)
         self._dependencies.add((self._model, field_type,
                                 field_name, is_single))
@@ -259,7 +260,8 @@ class DfModelParser(object):
             field_type, restrictions = self._stringify_field_type(field)
 
         field_type = re.sub('Field$', '', field_type)
-        self._printer.handle_field(key, field_type, is_single, restrictions)
+        self._printer.handle_field(key, field_type, field.required,
+                                   is_single, restrictions)
 
     def _process_fields(self, df_model):
         self._printer.fields_start()
@@ -333,5 +335,5 @@ def main():
         parser.parse_models()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
