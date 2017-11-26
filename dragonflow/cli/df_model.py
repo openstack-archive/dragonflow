@@ -89,9 +89,10 @@ class UMLPrinter(ModelsPrinter):
 
     def model_start(self, model_name):
         self._model = model_name
-        print('Object {}'.format(model_name), file=self._output)
+        print('class {} {{'.format(model_name), file=self._output)
 
     def model_end(self, model_name):
+        print('}', file=self._output)
         self._processed.add(model_name)
         self._model = ''
 
@@ -99,8 +100,7 @@ class UMLPrinter(ModelsPrinter):
         restriction_str = \
             ' {}'.format(restrictions) if restrictions else ''
 
-        print('{} : {}{} {}'.format(self._model, name_,
-                                    type_, restriction_str),
+        print('  +{} {} {}'.format(name_, type_, restriction_str),
               file=self._output)
         self._dependencies.add((self._model, type_, name_, is_single))
 
@@ -111,14 +111,22 @@ class DfModelParser(object):
 
     def _stringify_field_type(self, field):
         if field in six.string_types:
-            return 'String', None
+            return 'string', None
         elif isinstance(field, field_types.EnumField):
-            field_type = type(field).__name__
+            field_type = 'enum'
             restrictions = list(field._valid_values)
             return field_type, restrictions
         elif isinstance(field, field_types.ReferenceField):
             model = field._model
             return model.__name__, None
+        elif isinstance(field, fields.StringField):
+            return 'string', None
+        elif isinstance(field, fields.IntField):
+            return 'number', None
+        elif isinstance(field, fields.FloatField):
+            return 'float', None
+        elif isinstance(field, fields.BoolField):
+            return 'boolean', None
         elif isinstance(field, fields.BaseField):
             return type(field).__name__, None
         else:
