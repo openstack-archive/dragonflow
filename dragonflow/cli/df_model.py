@@ -136,14 +136,15 @@ class PlaintextPrinter(ModelsPrinter):
         print('Fields', file=self._output)
         print('------', file=self._output)
 
-    def handle_field(self, field_name, field_type,
+    def handle_field(self, field_name, field_type, is_required,
                      is_single=True, restrictions=None):
         restriction_str = \
             ' {}'.format(restrictions) if restrictions else ''
-        print('{name} : {type}{restriction}, {to_many}'.format(
+        print('{name} : {type}{restriction}{required}{to_many}'.format(
             name=field_name, type=field_type,
             restriction=restriction_str,
-            to_many='One' if is_single else 'Many'),
+            required=', Required' if is_required else '',
+            to_many=', One' if is_single else ', Many'),
             file=self._output)
 
     def indexes_start(self):
@@ -175,7 +176,7 @@ class UMLPrinter(ModelsPrinter):
     def _output_relations(self):
         for (dst, src, name, is_single) in self._dependencies:
             if src in self._processed:
-                connector_str = ' o-- ' if is_single else ' o-- "*"'
+                connector_str = ' *-- ' if is_single else '"1" *-- "*"'
                 print('{dest} {connector} {src} : {field_name}'.format(
                     dest=dst, connector=connector_str, src=src,
                     field_name=name),
@@ -195,17 +196,12 @@ class UMLPrinter(ModelsPrinter):
         self._processed.add(model_name)
         self._model = ''
 
-<<<<<<< HEAD
-    def handle_field(self, name_, type_, is_single=True, restrictions=None):
+    def handle_field(self, field_name, field_type, is_required,
+                     is_single=True, restrictions=None):
         restriction_str = ' {}'.format(restrictions) if restrictions else ''
-=======
-    def handle_field(self, field_name, field_type, is_single=True,
-                     restrictions=None):
-        restriction_str = \
-            ' {}'.format(restrictions) if restrictions else ''
->>>>>>> 80730842... Add indexes and events to dragonflow model printer
+        name = '<b>{}</b>'.format(field_name) if is_required else field_name
         print('  +{name} : {type} {restriction}'.format(
-              name=field_name, type=field_type, restriction=restriction_str),
+              name=name, type=field_type, restriction=restriction_str),
               file=self._output)
         self._dependencies.add((self._model, field_type,
                                 field_name, is_single))
@@ -266,7 +262,8 @@ class DfModelParser(object):
             field_type, restrictions = self._stringify_field_type(field)
 
         field_type = re.sub('Field$', '', field_type)
-        self._printer.handle_field(key, field_type, is_single, restrictions)
+        self._printer.handle_field(key, field_type, field.required,
+                                   is_single, restrictions)
 
     def _process_fields(self, df_model):
         self._printer.fields_start()
@@ -340,5 +337,5 @@ def main():
         parser.parse_models()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
