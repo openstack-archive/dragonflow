@@ -26,59 +26,58 @@ from dragonflow.db import model_framework
 from dragonflow.db.models import all  # noqa
 
 
-class ModelField(object):
-    def __init__(self, name, field_type,
-                 to_many=False, restrictions=None):
-        self.name = name
-        self.type = field_type
-        self.to_many = to_many
-        self.restrictions = restrictions
-
-
-class ModelClass(object):
-    def __init__(self, name):
-        self.name = name
-        self.fields = []
-
-    def add_field(self, field):
-        self.fields.append(field)
-
-
 @six.add_metaclass(abc.ABCMeta)
-class ModelPrinter(object):
+class ModelsPrinter(object):
     def __init__(self, fh):
         self._output = fh
 
+    def output_start(self):
+        pass
+
+    def output_end(self):
+        pass
+
+    def model_start(self, model_name):
+        pass
+
+    def model_end(self, model_name):
+        pass
+
     @abc.abstractmethod
-    def output_model(self, model_):
+    def handle_field(self, name_, type_, is_single=True, restrictions=None):
         pass
 
 
-class PlaintextPrinter(ModelPrinter):
+class PlaintextPrinter(ModelsPrinter):
     def __init__(self, fh):
         super(PlaintextPrinter, self).__init__(fh)
 
-    def output_model(self, model_):
+    def model_start(self, model_name):
         print('-------------', file=self._output)
-        print('{}'.format(model_.name), file=self._output)
+        print('{}'.format(model_name), file=self._output)
         print('-------------', file=self._output)
-        for field in model_.fields:
-            restriction_str = \
-                ' {}'.format(field.restrictions) if field.restrictions else ''
-            print('{name} : {type}{restriction}, {to_many}'.format(
-                name=field.name, type=field.type,
-                restriction=restriction_str,
-                to_many="Many" if field.to_many else "One"),
-                file=self._output)
+
+    def model_end(self, model_name):
         print('', file=self._output)
+
+    def handle_field(self, name_, type_, is_single=True, restrictions=None):
+        restriction_str = \
+            ' {}'.format(restrictions) if restrictions else ''
+        print('{name} : {type}{restriction}, {to_many}'.format(
+            name=name_, type=type_, restriction=restriction_str,
+            to_many="One" if is_single else "Many"),
+            file=self._output)
 
 
 class DfModelParser(object):
+    def __init__(self, printer):
+        self._printer = printer
+
     def _stringify_field_type(self, field):
-        if field is six.string_types:
+        if field in six.string_types:
             return 'String', None
         elif isinstance(field, field_types.EnumField):
-            field_type = type(field).__name__
+            field_type = 'enum'
             restrictions = list(field._valid_values)
             return field_type, restrictions
         elif isinstance(field, field_types.ReferenceField):
@@ -87,37 +86,41 @@ class DfModelParser(object):
         elif isinstance(field, fields.BaseField):
             return type(field).__name__, None
         else:
-            try:
-                return field.__name__, None
-            except AttributeError:
-                return type(field).__name__, None
+            return field.__name__, None
 
     def _process_model(self, df_model):
-        current_model = ModelClass(df_model.__name__)
+        model_name = df_model.__name__
+        self._printer.model_start(model_name)
 
         for key, field in df_model.iterate_over_fields():
             if isinstance(field, field_types.ListOfField):
-                to_many = True
+                is_single = False
                 field_type, restrictions = \
                     self._stringify_field_type(field.field)
             elif isinstance(field, fields.ListField):
-                to_many = True
+                is_single = False
                 field_type, restrictions = \
                     self._stringify_field_type(field.items_types[0])
                 if isinstance(field, field_types.EnumListField):
                     restrictions = list(field._valid_values)
+            elif isinstance(field, fields.EmbeddedField):
+                is_single = True
+                field_type, restrictions = \
+                    self._stringify_field_type(field.types[0])
             else:
-                to_many = False
+                is_single = True
                 field_type, restrictions = self._stringify_field_type(field)
 
             field_type = re.sub('Field$', '', field_type)
-            current_model.add_field(ModelField(key, field_type,
-                                               to_many, restrictions))
-        return current_model
+            self._printer.handle_field(key, field_type,
+                                       is_single, restrictions)
+        self._printer.model_end(model_name)
 
-    def parse_models(self, printer):
+    def parse_models(self):
+        self._printer.output_start()
         for model in model_framework.iter_models_by_dependency_order(False):
-            printer.output_model(self._process_model(model))
+            self._process_model(model)
+        self._printer.output_end()
 
 
 @contextlib.contextmanager
@@ -142,10 +145,10 @@ def main():
     parser.add_argument('-o', '--outfile',
                         help='Output to file (instead of stdout)')
     args = parser.parse_args()
-    parser = DfModelParser()
     with smart_open(args.outfile) as fh:
         printer = PlaintextPrinter(fh)
-        parser.parse_models(printer)
+        parser = DfModelParser(printer)
+        parser.parse_models()
 
 
 if __name__ == "__main__":
