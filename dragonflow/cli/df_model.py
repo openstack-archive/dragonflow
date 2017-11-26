@@ -32,19 +32,91 @@ class ModelsPrinter(object):
         self._output = fh
 
     def output_start(self):
+        """
+        Called once on the beginning of the processing.
+        Should be used for initializations of any kind
+        """
         pass
 
     def output_end(self):
+        """
+        Called once on the end of the processing.
+        Should be used for cleanup and leftover printing of any kind
+        """
         pass
 
     def model_start(self, model_name):
+        """
+        Called once for every model, before any field.
+        """
         pass
 
     def model_end(self, model_name):
+        """
+        Called once for every model, after all model processing is done.
+        """
+        pass
+
+    def fields_start(self):
+        """
+        Called once for every model, before all fields.
+        """
+        pass
+
+    def fields_end(self):
+        """
+        Called once for every model, after all fields.
+        """
         pass
 
     @abc.abstractmethod
-    def handle_field(self, name_, type_, is_single=True, restrictions=None):
+    def handle_field(self, field_name, field_type, is_single=True,
+                     restrictions=None):
+        """
+        Called once for every field in a model.
+        """
+        pass
+
+    def indexes_start(self):
+        """
+        Called once for every model, before all indexes.
+        Not called if no indexes exist
+        """
+        pass
+
+    def indexes_end(self):
+        """
+        Called once for every model, after all indexes.
+        Not called if no indexes exist
+        """
+        pass
+
+    @abc.abstractmethod
+    def handle_index(self, index_name):
+        """
+        Called once for every index in a model.
+        """
+        pass
+
+    def events_start(self):
+        """
+        Called once for every model, before all events.
+        Not called if no events exist
+        """
+        pass
+
+    def events_end(self):
+        """
+        Called once for every model, after all events.
+        Not called if no events exist
+        """
+        pass
+
+    @abc.abstractmethod
+    def handle_event(self, event_name):
+        """
+        Called once for every event in a model.
+        """
         pass
 
 
@@ -60,13 +132,32 @@ class PlaintextPrinter(ModelsPrinter):
     def model_end(self, model_name):
         print('', file=self._output)
 
-    def handle_field(self, name_, type_, is_single=True, restrictions=None):
+    def fields_start(self):
+        print('Fields', file=self._output)
+        print('------', file=self._output)
+
+    def handle_field(self, field_name, field_type,
+                     is_single=True, restrictions=None):
         restriction_str = \
             ' {}'.format(restrictions) if restrictions else ''
-        print('{} : {}{}, {}'.format(name_, type_,
+        print('{} : {}{}, {}'.format(field_name, field_type,
                                      restriction_str,
                                      "One" if is_single else "Many"),
               file=self._output)
+
+    def indexes_start(self):
+        print('Indexes', file=self._output)
+        print('-------', file=self._output)
+
+    def handle_index(self, index_name):
+        print('{}'.format(index_name), file=self._output)
+
+    def events_start(self):
+        print('Events', file=self._output)
+        print('------', file=self._output)
+
+    def handle_event(self, event_name):
+        print('{}'.format(event_name), file=self._output)
 
 
 class UMLPrinter(ModelsPrinter):
@@ -78,6 +169,7 @@ class UMLPrinter(ModelsPrinter):
 
     def output_start(self):
         print('@startuml', file=self._output)
+        print('hide circle', file=self._output)
 
     def output_end(self):
         for (dst, src, name, is_single) in self._dependencies:
@@ -90,19 +182,33 @@ class UMLPrinter(ModelsPrinter):
     def model_start(self, model_name):
         self._model = model_name
         print('class {} {{'.format(model_name), file=self._output)
+        self._fields = set()
 
     def model_end(self, model_name):
         print('}', file=self._output)
         self._processed.add(model_name)
         self._model = ''
 
-    def handle_field(self, name_, type_, is_single=True, restrictions=None):
+    def handle_field(self, field_name, field_type, is_single=True,
+                     restrictions=None):
         restriction_str = \
             ' {}'.format(restrictions) if restrictions else ''
-
-        print('  +{} {} {}'.format(name_, type_, restriction_str),
+        print('  +{} {} {}'.format(field_name, field_type, restriction_str),
               file=self._output)
-        self._dependencies.add((self._model, type_, name_, is_single))
+        self._dependencies.add((self._model, field_type,
+                                field_name, is_single))
+
+    def indexes_start(self):
+        print('  .. Indexes ..', file=self._output)
+
+    def handle_index(self, index_name):
+        print('  {}'.format(index_name), file=self._output)
+
+    def events_start(self):
+        print('  == Events ==', file=self._output)
+
+    def handle_event(self, event_name):
+        print('  {}'.format(event_name), file=self._output)
 
 
 class DfModelParser(object):
@@ -135,31 +241,57 @@ class DfModelParser(object):
             except AttributeError:
                 return type(field).__name__, None
 
+    def _process_field(self, key, field):
+        if isinstance(field, field_types.ListOfField):
+            is_single = False
+            field_type, restrictions = \
+                self._stringify_field_type(field.field)
+        elif isinstance(field, fields.ListField):
+            is_single = False
+            types = field.items_types
+            # We will only get the last type
+            for field_type in types:
+                field_type, restrictions = \
+                    self._stringify_field_type(field_type)
+            if isinstance(field, field_types.EnumListField):
+                restrictions = list(field._valid_values)
+        else:
+            is_single = True
+            field_type, restrictions = self._stringify_field_type(field)
+
+        field_type = re.sub('Field$', '', field_type)
+        self._printer.handle_field(key, field_type, is_single, restrictions)
+
+    def _process_fields(self, df_model):
+        self._printer.fields_start()
+        for key, field in df_model.iterate_over_fields():
+            self._process_field(key, field)
+        self._printer.fields_end()
+
+    def _process_indexes(self, df_model):
+        model_indexes = df_model.get_indexes()
+        if len(model_indexes) > 0:
+            self._printer.indexes_start()
+            for key in model_indexes:
+                self._printer.handle_index(key)
+            self._printer.indexes_end()
+
+    def _process_events(self, df_model):
+        model_events = df_model.get_events()
+        if len(model_events) > 0:
+            self._printer.events_start()
+            for event in model_events:
+                self._printer.handle_event(event)
+            self._printer.events_end()
+
     def _process_model(self, df_model):
         model_name = df_model.__name__
         self._printer.model_start(model_name)
 
-        for key, field in df_model.iterate_over_fields():
-            if isinstance(field, field_types.ListOfField):
-                is_single = False
-                field_type, restrictions = \
-                    self._stringify_field_type(field.field)
-            elif isinstance(field, fields.ListField):
-                is_single = False
-                types = field.items_types
-                # We will only get the last type
-                for field_type in types:
-                    field_type, restrictions = \
-                        self._stringify_field_type(field_type)
-                if isinstance(field, field_types.EnumListField):
-                    restrictions = list(field._valid_values)
-            else:
-                is_single = True
-                field_type, restrictions = self._stringify_field_type(field)
+        self._process_fields(df_model)
+        self._process_indexes(df_model)
+        self._process_events(df_model)
 
-            field_type = re.sub('Field$', '', field_type)
-            self._printer.handle_field(key, field_type,
-                                       is_single, restrictions)
         self._printer.model_end(model_name)
 
     def parse_models(self):
