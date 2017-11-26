@@ -70,7 +70,8 @@ class ModelsPrinter(object):
         pass
 
     @abc.abstractmethod
-    def handle_field(self, name_, type_, is_embedded, is_single, restrictions):
+    def handle_field(self, field_name, field_type, is_required, is_embedded,
+                     is_single, restrictions):
         """
         Called once for every field in a model.
         """
@@ -135,10 +136,13 @@ class PlaintextPrinter(ModelsPrinter):
         print('Fields', file=self._output)
         print('------', file=self._output)
 
-    def handle_field(self, name_, type_, is_embedded, is_single, restrictions):
+    def handle_field(self, field_name, field_type, is_required, is_embedded,
+                     is_single, restrictions):
         restriction_str = ' {}'.format(restrictions) if restrictions else ''
-        print('{name} : {type}{restriction}{to_many}{embedded}'.format(
-            name=name_, type=type_, restriction=restriction_str,
+        print('{name} : {type}{restriction}{required}{to_many}'.format(
+            name=field_name, type=field_type,
+            restriction=restriction_str,
+            required=', Required' if is_required else '',
             to_many=', One' if is_single else ', Many',
             embedded=', Embedded' if is_embedded else ''),
             file=self._output)
@@ -194,13 +198,15 @@ class UMLPrinter(ModelsPrinter):
         self._processed.add(model_name)
         self._model = ''
 
-    def handle_field(self, name_, type_, is_embedded, is_single, restrictions):
+    def handle_field(self, field_name, field_type, is_required, is_embedded,
+                     is_single, restrictions):
         restriction_str = ' {}'.format(restrictions) if restrictions else ''
+        name = '<b>{}</b>'.format(field_name) if is_required else field_name
         print('  +{name} : {type} {restriction}'.format(
-              name=name_, type=type_, restriction=restriction_str),
+              name=name, type=field_type, restriction=restriction_str),
               file=self._output)
-        self._dependencies.add((self._model, type_, name_, is_single,
-                                is_embedded))
+        self._dependencies.add((self._model, field_type, field_name,
+                                is_single, is_embedded))
 
     def indexes_start(self):
         print('Indexes', file=self._output)
@@ -268,8 +274,8 @@ class DfModelParser(object):
             field_type, restrictions = self._stringify_field_type(field)
 
         field_type = re.sub('Field$', '', field_type)
-        self._printer.handle_field(key, field_type, is_embedded,
-                                   is_single, restrictions)
+        self._printer.handle_field(key, field_type, field.required,
+                                   is_embedded, is_single, restrictions)
 
     def _process_fields(self, df_model):
         self._printer.fields_start()
@@ -343,5 +349,5 @@ def main():
         parser.parse_models()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
