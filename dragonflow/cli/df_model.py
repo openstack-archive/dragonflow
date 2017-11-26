@@ -90,9 +90,10 @@ class UMLPrinter(ModelsPrinter):
 
     def model_start(self, model_name):
         self._model = model_name
-        print('Object {}'.format(model_name), file=self._output)
+        print('class {} {{'.format(model_name), file=self._output)
 
     def model_end(self, model_name):
+        print('}', file=self._output)
         self._processed.add(model_name)
         self._model = ''
 
@@ -100,10 +101,9 @@ class UMLPrinter(ModelsPrinter):
         restriction_str = \
             ' {}'.format(restrictions) if restrictions else ''
 
-        print('{model} : {name}{type} {restriction}'.format(
-            model=self._model, name=name_, type=type_,
-            restriction=restriction_str),
-            file=self._output)
+        print('  +{name} {type} {restriction}'.format(
+              name=name_, type=type_, restriction=restriction_str),
+              file=self._output)
         self._dependencies.add((self._model, type_, name_, is_single))
 
 
@@ -112,15 +112,23 @@ class DfModelParser(object):
         self._printer = printer
 
     def _stringify_field_type(self, field):
-        if field is six.string_types:
-            return 'String', None
+        if field in six.string_types:
+            return 'string', None
         elif isinstance(field, field_types.EnumField):
-            field_type = type(field).__name__
+            field_type = 'enum'
             restrictions = list(field._valid_values)
             return field_type, restrictions
         elif isinstance(field, field_types.ReferenceField):
             model = field._model
             return model.__name__, None
+        elif isinstance(field, fields.StringField):
+            return 'string', None
+        elif isinstance(field, fields.IntField):
+            return 'number', None
+        elif isinstance(field, fields.FloatField):
+            return 'float', None
+        elif isinstance(field, fields.BoolField):
+            return 'boolean', None
         elif isinstance(field, fields.BaseField):
             return type(field).__name__, None
         else:
@@ -140,7 +148,9 @@ class DfModelParser(object):
                     self._stringify_field_type(field.field)
             elif isinstance(field, fields.ListField):
                 is_single = False
-                if isinstance(field, field_types.EnumListField):
+                field_type, restrictions = \
+                    self._stringify_field_type(field.items_types[0])
+                 if isinstance(field, field_types.EnumListField):
                     restrictions = list(field._valid_values)
             else:
                 is_single = True
