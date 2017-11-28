@@ -172,12 +172,15 @@ class UMLPrinter(ModelsPrinter):
         print('@startuml', file=self._output)
         print('hide circle', file=self._output)
 
-    def output_end(self):
+    def _output_relations(self):
         for (dst, src, name, is_single) in self._dependencies:
             if src in self._processed:
-                multi_str = '* ' if is_single else '+ '
-                print('{} --{} {} : < {}'.format(dst, multi_str, src, name),
+                connector_str = ' *-- ' if is_single else '"1" *-- "*"'
+                print('{} {} {} : {}'.format(dst, connector_str, src, name),
                       file=self._output)
+
+    def output_end(self):
+        self._output_relations()
         print('@enduml', file=self._output)
 
     def model_start(self, model_name):
