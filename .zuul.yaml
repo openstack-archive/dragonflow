@@ -22,8 +22,8 @@
 - job:
     name: dragonflow-dsvm-fullstack-redis
     parent: legacy-dsvm-base
-    run: zuul/dragonflow-dsvm-fullstack-redis/run
-    post-run: zuul/dragonflow-dsvm-fullstack-redis/post
+    run: zuul/dragonflow-dsvm-fullstack-redis/run.yaml
+    post-run: zuul/dragonflow-dsvm-fullstack-redis/post.yaml
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
@@ -35,8 +35,8 @@
 - job:
     name: dragonflow-dsvm-fullstack-etcd-zmq
     parent: legacy-dsvm-base
-    run: zuul/dragonflow-dsvm-fullstack-etcd-zmq/run
-    post-run: zuul/dragonflow-dsvm-fullstack-etcd-zmq/post
+    run: zuul/dragonflow-dsvm-fullstack-etcd-zmq/run.yaml
+    post-run: zuul/dragonflow-dsvm-fullstack-etcd-zmq/post.yaml
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
@@ -48,8 +48,8 @@
 - job:
     name: dragonflow-dsvm-rally
     parent: legacy-dsvm-base
-    run: zuul/dragonflow-dsvm-rally/run
-    post-run: zuul/dragonflow-dsvm-rally/post
+    run: zuul/dragonflow-dsvm-rally/run.yaml
+    post-run: zuul/dragonflow-dsvm-rally/post.yaml
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
@@ -62,8 +62,8 @@
 - job:
     name: tempest-dsvm-dragonflow
     parent: legacy-dsvm-base
-    run: zuul/tempest-dsvm-dragonflow/run
-    post-run: zuul/tempest-dsvm-dragonflow/post
+    run: zuul/tempest-dsvm-dragonflow/run.yaml
+    post-run: zuul/tempest-dsvm-dragonflow/post.yaml
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
@@ -81,4 +81,4 @@
       - openstack/openstack-ansible-os_neutron
     vars:
       tox_env: dragonflow
-      osa_test_repo: "openstack/openstack-ansible-os_neutron"
+      osa_test_repo: openstack/openstack-ansible-os_neutron
