@@ -24,7 +24,18 @@ from jsonmodels import fields
 from dragonflow.db import field_types
 from dragonflow.db import model_framework
 from dragonflow.db.models import all  # noqa
+from oslo_serialization import jsonutils
 
+
+# TODO(snapiri) We still have to handle the following:
+# Classes: HostRoute, AddressPair, DhcpParams, PortBinding
+# Fields:  MacAddress, IpAddress, IpNetwork, PortRange
+# Temporary solution:
+#  Fields: we currently print them as strings.
+#  Classes: added the mf.construct_nb_db_model annotation - we should probably
+#   remove them and find a better solution (maybe turn into fields?)
+
+MODEL_SCHEMA_VERSION="0.0.1"
 
 @six.add_metaclass(abc.ABCMeta)
 class ModelsPrinter(object):
@@ -142,11 +153,10 @@ class PlaintextPrinter(ModelsPrinter):
     def handle_field(self, field_name, field_type, is_required,
                      is_single=True, restrictions=None):
         restriction_str = ' {}'.format(restrictions) if restrictions else ''
-        self._print('{name} : {type}{restriction}{required}{to_many}'.format(
-            name=field_name, type=field_type,
-            restriction=restriction_str,
+        self._print('{name} : {type}{restriction}{required}{multi}'.format(
+            name=field_name, type=field_type, restriction=restriction_str,
             required=', Required' if is_required else '',
-            to_many=', Multi' if not is_single else ''))
+            multi=', Multi' if not is_single else ''))
 
     def indexes_start(self):
         self._print('Indexes')
@@ -201,7 +211,7 @@ class UMLPrinter(ModelsPrinter):
         restriction_str = ' {}'.format(restrictions) if restrictions else ''
         name = '<b>{}</b>'.format(field_name) if is_required else field_name
         self._print('  +{name} : {type} {restriction}'.format(
-              name=name, type=field_type, restriction=restriction_str))
+            name=name, type=field_type, restriction=restriction_str))
         self._dependencies.add((self._model, field_type,
                                 field_name, is_single))
 
@@ -216,6 +226,84 @@ class UMLPrinter(ModelsPrinter):
 
     def handle_event(self, event_name):
         self._print('  {}'.format(event_name))
+
+
+class OASPrinter(ModelsPrinter):
+    """OpenApiSchema format printer"""
+    def __init__(self, fh):
+        super(OASPrinter, self).__init__(fh)
+        self._ref_base = '#/components/schemas'
+        self._openapi_version = '3.0.0'
+        self._required = list()
+        self._base_types = ['string', 'number', 'float', 'boolean']
+        self._models_obj = dict()
+        self._model = dict()
+
+    def output_start(self):
+        info = dict()
+        license = dict()
+        paths = dict()
+        schemas = dict()
+        components = dict()
+        self._models_obj['openapi'] = self._openapi_version
+        self._models_obj['info'] = info
+        info['title'] = 'DragonFlow Schema'
+        info['description'] = 'jsonschma representation of the ' \
+                              'DragonFlow model'
+        info['license'] = license
+        license['name'] = 'Apache 2.0'
+        license['url'] = 'http://www.apache.org/licenses/LICENSE-2.0.html'
+        info['version'] = MODEL_SCHEMA_VERSION
+        self._models_obj['paths'] = paths
+        self._models_obj['components'] = components
+        components['schemas'] = schemas
+
+    def output_end(self):
+        jsonutils.dump(self._models_obj, self._output, indent=2)
+
+    def model_start(self, model_name):
+        self._required = list()
+        self._model = dict()
+        self._models_obj['components']['schemas'][model_name] = self._model
+        self._model['type'] = 'object'
+
+    def model_end(self, model_name):
+        if len(self._required) > 0:
+            self._model['required'] = self._required
+
+    def fields_start(self):
+        self._model['properties'] = dict()
+
+    def fields_end(self):
+        pass
+
+    def _simple_field(self, field_type, restrictions):
+        if field_type in self._base_types:
+            return {'type': field_type}
+        elif field_type == 'enum':
+            return {field_type: list(restrictions)}
+        else:
+            return {'$ref': '{}/{}'.format(self._ref_base, field_type)}
+
+    def _array_field(self, field_type, restrictions):
+        return {'items': self._simple_field(field_type, restrictions),
+                'type': 'array'}
+
+    def handle_field(self, field_name, field_type, is_required,
+                     is_single=True, restrictions=None):
+        flds = self._model['properties']
+        if is_single:
+            flds[field_name] = self._simple_field(field_type, restrictions)
+        else:
+            flds[field_name] = self._array_field(field_type, restrictions)
+        if is_required:
+            self._required.append(field_name)
+
+    def handle_index(self, index_name):
+        pass
+
+    def handle_event(self, event_name):
+        pass
 
 
 class DfModelParser(object):
@@ -241,8 +329,11 @@ class DfModelParser(object):
         elif isinstance(field, fields.BoolField):
             return 'boolean', None
         elif isinstance(field, fields.BaseField):
-            return type(field).__name__, None
+            # TODO(snapiri) problematic fields flow get here
+            # return type(field).__name__, None
+            return 'string', None
         else:
+            # TODO(snapiri) problematic classes flow get here
             return field.__name__, None
 
     def _process_field(self, key, field):
@@ -256,6 +347,10 @@ class DfModelParser(object):
                 self._stringify_field_type(field.items_types[0])
             if isinstance(field, field_types.EnumListField):
                 restrictions = list(field._valid_values)
+        elif isinstance(field, fields.EmbeddedField):
+            is_single = True
+            field_type, restrictions = \
+                self._stringify_field_type(field.types[0])
         else:
             is_single = True
             field_type, restrictions = self._stringify_field_type(field)
@@ -324,12 +419,16 @@ def main():
                        action='store_true')
     group.add_argument('--uml', help='PlantUML format output',
                        action='store_true')
+    group.add_argument('--json', help='OpenApiSchema JSON format output',
+                       action='store_true')
     parser.add_argument('-o', '--outfile',
                         help='Output to file (instead of stdout)')
     args = parser.parse_args()
     with smart_open(args.outfile) as fh:
         if args.uml:
             printer = UMLPrinter(fh)
+        elif args.json:
+            printer = OASPrinter(fh)
         else:
             printer = PlaintextPrinter(fh)
         parser = DfModelParser(printer)
