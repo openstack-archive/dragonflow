@@ -12,7 +12,6 @@
 import copy
 
 from jsonmodels import fields
-from jsonmodels import models
 from neutron_lib.api.definitions import portbindings
 from oslo_config import cfg
 from oslo_log import log
@@ -75,12 +74,16 @@ class LogicalSwitch(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
                 return self.subnets.pop(idx)
 
 
-class AddressPair(models.Base):
+@mf.construct_nb_db_model
+class AddressPair(mf.ModelBase):
+    id = None
     ip_address = df_fields.IpAddressField(required=True)
     mac_address = df_fields.MacAddressField(required=True)
 
 
-class DhcpParams(models.Base):
+@mf.construct_nb_db_model
+class DhcpParams(mf.ModelBase):
+    id = None
     opts = df_fields.DhcpOptsDictField()
     siaddr = df_fields.IpAddressField()
 
@@ -89,7 +92,9 @@ BINDING_CHASSIS = 'chassis'
 BINDING_VTEP = 'vtep'
 
 
-class PortBinding(models.Base):
+@mf.construct_nb_db_model
+class PortBinding(mf.ModelBase):
+    id = None
     type = df_fields.EnumField((BINDING_CHASSIS, BINDING_VTEP), required=True)
     chassis = df_fields.ReferenceField(core.Chassis)
     vtep_address = df_fields.IpAddressField()
