@@ -15,15 +15,18 @@ from __future__ import print_function
 import abc
 import argparse
 import contextlib
-import re
 import six
 import sys
 
 from jsonmodels import fields
+from oslo_serialization import jsonutils
 
 from dragonflow.db import field_types
 from dragonflow.db import model_framework
 from dragonflow.db.models import all  # noqa
+
+
+MODEL_SCHEMA_VERSION = "0.0.1"
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -142,11 +145,10 @@ class PlaintextPrinter(ModelsPrinter):
     def handle_field(self, field_name, field_type, is_required, is_embedded,
                      is_single, restrictions):
         restriction_str = ' {}'.format(restrictions) if restrictions else ''
-        print('{name} : {type}{restriction}{required}{to_many}'.format(
-            name=field_name, type=field_type,
-            restriction=restriction_str,
+        self._print('{name} : {type}{restriction}{required}{multi}'.format(
+            name=field_name, type=field_type, restriction=restriction_str,
             required=', Required' if is_required else '',
-            to_many=', Multi' if not is_single else '',
+            multi=', Multi' if not is_single else '',
             embedded=', Embedded' if is_embedded else ''))
 
     def indexes_start(self):
@@ -205,7 +207,7 @@ class UMLPrinter(ModelsPrinter):
         restriction_str = ' {}'.format(restrictions) if restrictions else ''
         name = '<b>{}</b>'.format(field_name) if is_required else field_name
         self._print('  +{name} : {type} {restriction}'.format(
-              name=name, type=field_type, restriction=restriction_str))
+            name=name, type=field_type, restriction=restriction_str))
         self._dependencies.add((self._model, field_type, field_name,
                                 is_single, is_embedded))
 
@@ -222,9 +224,91 @@ class UMLPrinter(ModelsPrinter):
         self._print('  {}'.format(event_name))
 
 
+class OASPrinter(ModelsPrinter):
+    """OpenApiSchema format printer"""
+    def __init__(self, fh):
+        super(OASPrinter, self).__init__(fh)
+        self._ref_base = '#/components/schemas'
+        self._openapi_version = '3.0.0'
+        self._required = list()
+        self._base_types = ['string', 'number', 'float', 'boolean']
+        self._models_obj = dict()
+        self._model = dict()
+
+    def output_start(self):
+        info = dict()
+        license = dict()
+        paths = dict()
+        schemas = dict()
+        components = dict()
+        self._models_obj['openapi'] = self._openapi_version
+        self._models_obj['info'] = info
+        info['title'] = 'DragonFlow Schema'
+        info['description'] = 'jsonschma representation of the ' \
+                              'DragonFlow model'
+        info['license'] = license
+        license['name'] = 'Apache 2.0'
+        license['url'] = 'http://www.apache.org/licenses/LICENSE-2.0.html'
+        info['version'] = MODEL_SCHEMA_VERSION
+        self._models_obj['paths'] = paths
+        self._models_obj['components'] = components
+        components['schemas'] = schemas
+
+    def output_end(self):
+        jsonutils.dump(self._models_obj, self._output, indent=2)
+
+    def model_start(self, model_name):
+        self._required = list()
+        self._model = dict()
+        self._models_obj['components']['schemas'][model_name] = self._model
+        self._model['type'] = 'object'
+
+    def model_end(self, model_name):
+        if len(self._required) > 0:
+            self._model['required'] = self._required
+
+    def fields_start(self):
+        self._model['properties'] = dict()
+
+    def fields_end(self):
+        pass
+
+    def _simple_field(self, field_type, restrictions):
+        if field_type in self._base_types:
+            return {'type': field_type}
+        elif field_type == 'enum':
+            return {field_type: list(restrictions)}
+        else:
+            return {'$ref': '{}/{}'.format(self._ref_base, field_type)}
+
+    def _array_field(self, field_type, restrictions):
+        return {'items': self._simple_field(field_type, restrictions),
+                'type': 'array'}
+
+    def handle_field(self, field_name, field_type, is_required, is_embedded,
+                     is_single, restrictions):
+        # TODO(snapiri) handle embedded field
+        flds = self._model['properties']
+        if is_single:
+            flds[field_name] = self._simple_field(field_type, restrictions)
+        else:
+            flds[field_name] = self._array_field(field_type, restrictions)
+        if is_required:
+            self._required.append(field_name)
+
+    def handle_index(self, index_name):
+        pass
+
+    def handle_event(self, event_name):
+        pass
+
+
 class DfModelParser(object):
     def __init__(self, printer):
         self._printer = printer
+        self._basic_types = ('string', 'number', 'float', 'boolean', 'enum')
+        self._processed_models = set()
+        self._all_models = set()
 
     def _stringify_field_type(self, field):
         if field in six.string_types:
@@ -245,7 +329,7 @@ class DfModelParser(object):
         elif isinstance(field, fields.BoolField):
             return 'boolean', None
         elif isinstance(field, fields.BaseField):
-            return type(field).__name__, None
+            return 'string', None
         else:
             return field.__name__, None
 
@@ -254,25 +338,33 @@ class DfModelParser(object):
             is_single = False
             is_embedded = not isinstance(field,
                                          field_types.ReferenceListField)
-            field_type, restrictions = self._stringify_field_type(field.field)
+            field_model = field.field
         elif isinstance(field, fields.ListField):
             is_single = False
             is_embedded = False
-            field_type, restrictions = self._stringify_field_type(
-                field.items_types[0])
+            field_model = field.items_types[0]
             if isinstance(field, field_types.EnumListField):
                 restrictions = list(field._valid_values)
         elif isinstance(field, fields.EmbeddedField):
             is_single = True
             is_embedded = True
-            field_type, restrictions = self._stringify_field_type(
-                field.types[0])
+            field_model = field.types[0]
         else:
             is_single = True
             is_embedded = False
-            field_type, restrictions = self._stringify_field_type(field)
+            field_model = field
+        field_type, restrictions = self._stringify_field_type(field_model)
 
-        field_type = re.sub('Field$', '', field_type)
+        if field_type not in self._basic_types:
+            if isinstance(field_model, field_types.ReferenceField):
+                model = field_model._model
+            else:
+                model = field_model
+            self._all_models.add(model)
+            # As we iterate over the models by their dependencies, if we did
+            # not encounter this model, it is an embedded model (type)
+            if model not in self._processed_models:
+                is_embedded = True
         self._printer.handle_field(key, field_type, field.required,
                                    is_embedded, is_single, restrictions)
 
@@ -301,17 +393,26 @@ class DfModelParser(object):
     def _process_model(self, df_model):
         model_name = df_model.__name__
         self._printer.model_start(model_name)
-
         self._process_fields(df_model)
         self._process_indexes(df_model)
         self._process_events(df_model)
+        self._printer.model_end(model_name)
+        self._processed_models.add(df_model)
 
+    def _process_unvisited_model(self, model):
+        model_name = model.__name__
+        self._printer.model_start(model_name)
+        self._process_fields(model)
         self._printer.model_end(model_name)
 
     def parse_models(self):
         self._printer.output_start()
         for model in model_framework.iter_models_by_dependency_order(False):
             self._process_model(model)
+        # Handle unvisited models
+        remaining_models = self._all_models - self._processed_models
+        for model in remaining_models:
+            self._process_unvisited_model(model)
         self._printer.output_end()
 
 
@@ -336,12 +437,16 @@ def main():
                        action='store_true')
     group.add_argument('--uml', help='PlantUML format output',
                        action='store_true')
+    group.add_argument('--json', help='OpenApiSchema JSON format output',
+                       action='store_true')
     parser.add_argument('-o', '--outfile',
                         help='Output to file (instead of stdout)')
     args = parser.parse_args()
     with smart_open(args.outfile) as fh:
         if args.uml:
             printer = UMLPrinter(fh)
+        elif args.json:
+            printer = OASPrinter(fh)
         else:
             printer = PlaintextPrinter(fh)
         parser = DfModelParser(printer)
