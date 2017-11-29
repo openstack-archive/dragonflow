@@ -197,7 +197,7 @@ class _CommonBase(models.Base):
         return "{}({})".format(self.__class__.__name__, ", ".join(fields))
 
     @classmethod
-    def dependencies(cls):
+    def dependencies(cls, first_class_only=True):
         deps = set()
         for key, field in cls.iterate_over_fields():
             if isinstance(field, fields.ListField):
@@ -210,11 +210,14 @@ class _CommonBase(models.Base):
                     deps.add(field_type.get_proxied_model())
                 except AttributeError:
                     if issubclass(field_type, ModelBase):
-                        # If the field is not a reference, and it is a df
-                        # model(derived from ModelBase), it is considered as
-                        # non-first class model. And its dependency
-                        # will be treated as current model's dependency.
-                        deps |= field_type.dependencies()
+                        if first_class_only:
+                            # If the field is not a reference, and it is a df
+                            # model(derived from ModelBase), it is considered as
+                            # non-first class model. And its dependency
+                            # will be treated as current model's dependency.
+                            deps |= field_type.dependencies()
+                        else:
+                            deps.add(field_type)
 
         return deps
 
@@ -443,7 +446,7 @@ def iter_models_by_dependency_order(first_class_only=True):
     unsorted_models = {}
     # Gather all models and their dependencies
     for model in iter_models(first_class_only=first_class_only):
-        dependencies = model.dependencies()
+        dependencies = model.dependencies(first_class_only)
         if first_class_only:
             dependencies = {dep
                             for dep in dependencies if dep.is_first_class()}
