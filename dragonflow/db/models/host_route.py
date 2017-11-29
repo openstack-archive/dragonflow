@@ -10,11 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from jsonmodels import models
-
 import dragonflow.db.field_types as df_fields
+import dragonflow.db.model_framework as mf
 
 
-class HostRoute(models.Base):
+@mf.construct_nb_db_model
+class HostRoute(mf.ModelBase):
+    id = None
     destination = df_fields.IpNetworkField(required=True)
     nexthop = df_fields.IpAddressField(required=True)
