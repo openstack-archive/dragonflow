@@ -372,10 +372,7 @@ class DfModelParser(object):
         elif isinstance(field, fields.BaseField):
             return type(field).__name__, None
         else:
-            try:
-                return field.__name__, None
-            except AttributeError:
-                return type(field).__name__, None
+            return field.__name__, None
 
     def _process_field(self, key, field):
         if isinstance(field, field_types.ListOfField):
@@ -391,6 +388,13 @@ class DfModelParser(object):
                     self._stringify_field_type(field_type)
             if isinstance(field, field_types.EnumListField):
                 restrictions = list(field._valid_values)
+        elif isinstance(field, fields.EmbeddedField):
+            is_single = True
+            types = field.types
+            # We will only get the last type
+            for field_type in types:
+                field_type, restrictions = \
+                    self._stringify_field_type(field_type)
         else:
             is_single = True
             field_type, restrictions = self._stringify_field_type(field)
