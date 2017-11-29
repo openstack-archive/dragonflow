@@ -221,6 +221,132 @@ class UMLPrinter(ModelsPrinter):
         self._print('  {}'.format(event_name))
 
 
+# TODO(snapiri) Objects we are still missing:
+# IpAddress, MacAddress, PortRange,
+# IpNetwork, HostRoute,
+class OASPrinter(ModelsPrinter):
+    """OpenApiSchema format printer"""
+    def __init__(self, fh):
+        super(OASPrinter, self).__init__(fh)
+        self._indent = 0
+        self._ref_base = '#/components/schemas'
+        self._openapi_version = '3.0.0'
+        self._version = '0.0.1'
+        self._required = set()
+        self._base_types = ['string', 'number', 'float', 'boolean']
+        self._buffer_line = None
+
+    def _get_indent(self):
+        return '  ' * self._indent
+
+    def _print_line(self, line_text):
+        self._print('{}{}'.format(self._get_indent(), line_text))
+
+    def output_start(self):
+        self._print_line('{')
+        self._indent += 1
+        self._print_line('"openapi": "{}",'.format(self._openapi_version))
+        self._print_line('"Info": {')
+        self._indent += 1
+        self._print_line('"title": "DragonFlow Schema",')
+        self._print_line('"description": "jsonschma representation of the '
+                         'DragonFlow model",')
+        self._print_line('"license": {')
+        self._indent += 1
+        self._print_line('"name": "Apache 2.0",')
+        self._print_line('"url": "http://www.apache.org/licenses/'
+                         'LICENSE-2.0.html"')
+        self._indent -= 1
+        self._print_line('},')
+        self._print_line('"version": "0.0.1"')
+        self._indent -= 1
+        self._print_line('},')
+        self._print_line('"components": {')
+        self._indent += 1
+        self._print_line('"schemas": {')
+        self._indent += 1
+
+    def output_end(self):
+        if self._buffer_line:
+            self._print_line('{}'.format(self._buffer_line))
+        self._indent -= 1
+        self._print_line('}')
+        self._indent -= 1
+        self._print_line('}')
+        self._indent -= 1
+        self._print_line('}')
+
+    def model_start(self, model_name):
+        if self._buffer_line:
+            self._print_line('{},'.format(self._buffer_line))
+        self._required.clear()
+        self._print_line('"{}": {{'.format(model_name))
+        self._indent += 1
+        self._print_line('"type": "object",')
+
+    def _get_required(self):
+        return ', '.join(item for item in self._required)
+
+    def model_end(self, model_name):
+        if len(self._required) > 0:
+            self._print_line('"required": [{}]'.format(self._get_required()))
+        self._indent -= 1
+        self._buffer_line = '}'
+
+    def fields_start(self):
+        self._buffer_line = None
+        self._print_line('"properties": {')
+        self._indent += 1
+
+    def fields_end(self):
+        if self._buffer_line:
+            self._print_line(self._buffer_line)
+        self._indent -= 1
+        self._print_line('},')
+
+    def _print_simple_field(self, field_name, field_type, restrictions):
+        if field_type in self._base_types:
+            self._buffer_line = '"{}": {{ "type": "{}" }}'.format(
+                field_name, field_type)
+        elif field_type == 'enum':
+            self._print_line('"{}": {{'.format(field_name))
+            self._indent += 1
+            valid_values = ', '.join(
+                '"{}"'.format(item) for item in restrictions)
+            self._print_line('"{}": [ {} ]'.format(field_type, valid_values))
+            self._indent -= 1
+            self._buffer_line = '}'
+        else:
+            self._buffer_line = '"{}": {{ "$ref": "{}/{}" }}'.format(
+                field_name, self._ref_base, field_type)
+
+    def _print_array_field(self, field_name, field_type, restrictions):
+        self._print_line('"{}": {{'.format(field_name))
+        self._indent += 1
+        self._print_simple_field("items", field_type, restrictions)
+        self._print_line('{},'.format(self._buffer_line))
+        self._print_line('"type": "array"')
+        self._indent -= 1
+        self._buffer_line = '}'
+
+    def handle_field(self, field_name, field_type, is_required,
+                     is_single=True, restrictions=None):
+        if self._buffer_line:
+            self._print_line('{},'.format(self._buffer_line))
+        if is_single:
+            self._print_simple_field(field_name, field_type, restrictions)
+        else:
+            self._print_array_field(field_name, field_type, restrictions)
+        if is_required:
+            self._required.add('"{}"'.format(field_name))
+
+    def handle_index(self, index_name):
+        pass
+
+    def handle_event(self, event_name):
+        pass
+
+
 class DfModelParser(object):
     def __init__(self, printer):
         self._printer = printer
@@ -333,12 +459,16 @@ def main():
                        action='store_true')
     group.add_argument('--uml', help='PlantUML format output',
                        action='store_true')
+    group.add_argument('--json', help='OpenApiSchema JSON format output',
+                       action='store_true')
     parser.add_argument('-o', '--outfile',
                         help='Output to file (instead of stdout)')
     args = parser.parse_args()
     with smart_open(args.outfile) as fh:
         if args.uml:
             printer = UMLPrinter(fh)
+        elif args.json:
+            printer = OASPrinter(fh)
         else:
             printer = PlaintextPrinter(fh)
         parser = DfModelParser(printer)
