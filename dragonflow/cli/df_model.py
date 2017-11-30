@@ -26,6 +26,14 @@ from dragonflow.db import model_framework
 from dragonflow.db.models import all  # noqa
 
 
+# TODO(snapiri) We still have to handle the following:
+# Classes: HostRoute, AddressPair, DhcpParams, PortBinding
+# Fields:  MacAddress, IpAddress, IpNetwork, PortRange
+# Temporary solution:
+#  Fields: we currently print them as strings.
+#  Classes: added the mf.construct_nb_db_model annotation - we should probably
+#   remove them and find a better solution (maybe turn into fields?)
+
 @six.add_metaclass(abc.ABCMeta)
 class ModelsPrinter(object):
     def __init__(self, fh):
@@ -143,11 +151,10 @@ class PlaintextPrinter(ModelsPrinter):
                      is_single=True, restrictions=None):
         restriction_str = \
             ' {}'.format(restrictions) if restrictions else ''
-        self._print('{name} : {type}{restriction}{required}{to_many}'.format(
-            name=field_name, type=field_type,
-            restriction=restriction_str,
+        self._print('{name} : {type}{restriction}{required}{multi}'.format(
+            name=field_name, type=field_type, restriction=restriction_str,
             required=', Required' if is_required else '',
-            to_many=', Multi' if not is_single else ''))
+            multi=', Multi' if not is_single else ''))
 
     def indexes_start(self):
         self._print('Indexes')
@@ -169,6 +176,7 @@ class UMLPrinter(ModelsPrinter):
     def __init__(self, fh):
         super(UMLPrinter, self).__init__(fh)
         self._model = ''
+        self._fields = set()
         self._processed = set()
         self._dependencies = set()
 
@@ -191,7 +199,7 @@ class UMLPrinter(ModelsPrinter):
     def model_start(self, model_name):
         self._model = model_name
         self._print('class {} {{'.format(model_name))
-        self._fields = set()
+        self._fields.clear()
 
     def model_end(self, model_name):
         self._print('}')
@@ -204,7 +212,7 @@ class UMLPrinter(ModelsPrinter):
             ' {}'.format(restrictions) if restrictions else ''
         name = '<b>{}</b>'.format(field_name) if is_required else field_name
         self._print('  +{name} {type} {restriction}'.format(
-              name=name, type=field_type, restriction=restriction_str))
+            name=name, type=field_type, restriction=restriction_str))
         self._dependencies.add((self._model, field_type,
                                 field_name, is_single))
 
@@ -221,9 +229,6 @@ class UMLPrinter(ModelsPrinter):
         self._print('  {}'.format(event_name))
 
 
-# TODO(snapiri) Objects we are still missing:
-# IpAddress, MacAddress, PortRange,
-# IpNetwork, HostRoute,
 class OASPrinter(ModelsPrinter):
     """OpenApiSchema format printer"""
     def __init__(self, fh):
@@ -246,7 +251,7 @@ class OASPrinter(ModelsPrinter):
         self._print_line('{')
         self._indent += 1
         self._print_line('"openapi": "{}",'.format(self._openapi_version))
-        self._print_line('"Info": {')
+        self._print_line('"info": {')
         self._indent += 1
         self._print_line('"title": "DragonFlow Schema",')
         self._print_line('"description": "jsonschma representation of the '
@@ -261,6 +266,7 @@ class OASPrinter(ModelsPrinter):
         self._print_line('"version": "0.0.1"')
         self._indent -= 1
         self._print_line('},')
+        self._print_line('"paths": { },')
         self._print_line('"components": {')
         self._indent += 1
         self._print_line('"schemas": {')
@@ -289,7 +295,8 @@ class OASPrinter(ModelsPrinter):
 
     def model_end(self, model_name):
         if len(self._required) > 0:
-            self._print_line('"required": [{}]'.format(self._get_required()))
+            self._print_line(
+                '"required": [ {} ]'.format(self._get_required()))
         self._indent -= 1
         self._buffer_line = '}'
 
@@ -370,8 +377,11 @@ class DfModelParser(object):
         elif isinstance(field, fields.BoolField):
             return 'boolean', None
         elif isinstance(field, fields.BaseField):
-            return type(field).__name__, None
+            # TODO(snapiri) problematic fields flow get here
+            # return type(field).__name__, None
+            return 'string', None
         else:
+            # TODO(snapiri) problematic classes flow get here
             return field.__name__, None
 
     def _process_field(self, key, field):
@@ -387,11 +397,8 @@ class DfModelParser(object):
                 restrictions = list(field._valid_values)
         elif isinstance(field, fields.EmbeddedField):
             is_single = True
-            types = field.types
-            # We will only get the last type
-            for field_type in types:
-                field_type, restrictions = \
-                    self._stringify_field_type(field_type)
+            field_type, restrictions = \
+                self._stringify_field_type(field.types[0])
         else:
             is_single = True
             field_type, restrictions = self._stringify_field_type(field)
