@@ -73,4 +73,15 @@ dump db content, list db tables, list db table keys and print value of the
 specific key in the table. Use *df-db --help* to list and get details on
 supported sub-commands.
 
+::
+
+   > df-model
+
+
+This utility will allow to print a representation of the DragonFlow model in
+different formats. Currently supported formats are: text, PlantUML and
+JsonSchema (OpenApiSchema 3.0). The output may be sent to the stdout or to a
+file.
+Use the *df-model --help* command to get a detailed usage instructions.
+
 ..  [#] https://gist.github.com/omeranson/5c731955edcf0517bfb0ce0ce511cc9b
