@@ -20,6 +20,7 @@ import sys
 
 from jsonmodels import fields
 from oslo_serialization import jsonutils
+import prettytable
 
 from dragonflow.db import field_types
 from dragonflow.db import model_framework
@@ -391,6 +392,81 @@ class OASPrinter(ModelsPrinter):
         pass
 
 
+class RSTPrinter(ModelsPrinter):
+    """ModelPrinter that prints to reStructuredText format.
+
+    This printer prints output that can be reused and included in rst files
+    for documentation purposes.
+    """
+    def __init__(self, fh):
+        super(RSTPrinter, self).__init__(fh)
+        self._model_fields_table = prettytable.PrettyTable(
+            ['Field', 'Type', 'Restrictions', 'Required', 'Embedded', 'List'])
+        # The empty column was added as a patch, as rst does not accept
+        # single column tables
+        self._model_indexes_table = prettytable.PrettyTable(['Index', ''])
+        self._model_events_table = prettytable.PrettyTable(['Event', ''])
+        self._set_rst_tables_style()
+        self._model_printed = False
+
+    def _set_rst_tables_style(self):
+        for table in (self._model_fields_table,
+                      self._model_indexes_table,
+                      self._model_events_table):
+            table.horizontal_char = '='
+            table.vertical_char = ' '
+            table.junction_char = ' '
+            table.header_style = 'cap'
+            table.align = 'l'
+
+    def model_start(self, model_name):
+        # Print separator, anchor and title
+        if self._model_printed:
+            self._print('\n----\n')
+        _title = '{}'.format(model_name)
+        _surround_line = '-' * len(_title)
+        self._print('.. _{}:\n'.format(model_name))
+        self._print(_surround_line)
+        self._print(_title)
+        self._print(_surround_line)
+
+    def model_end(self, model_name):
+        self._model_printed = True
+
+    def fields_end(self):
+        self._print(self._model_fields_table)
+        self._model_fields_table.clear_rows()
+
+    def handle_field(self, field_name, field_type, is_required, is_embedded,
+                     is_single, restrictions):
+        restriction_str = '{}'.format(restrictions) if restrictions else ''
+        if field_type in BASIC_TYPES:
+            type_str = field_type
+        else:
+            type_str = '`{}`_'.format(field_type, field_type)
+        self._model_fields_table.add_row([field_name, type_str,
+                                          restriction_str, is_required,
+                                          is_embedded, not is_single])
+
+    def indexes_end(self):
+        self._print('\n|\n')
+        self._print(self._model_indexes_table)
+        self._model_indexes_table.clear_rows()
+
+    def handle_index(self, index_name):
+        self._model_indexes_table.add_row([index_name, ''])
+
+    def events_end(self):
+        self._print('')
+        self._print('|')
+        self._print('')
+        self._print(self._model_events_table)
+        self._model_events_table.clear_rows()
+
+    def handle_event(self, event_name):
+        self._model_events_table.add_row([event_name, ''])
+
+
 class DfModelsParser(object):
     """Parser for the Dragonflow models schema
 
@@ -540,7 +616,8 @@ def smart_open(filename=None):
 def main():
     parser = argparse.ArgumentParser(description='Print Dragonflow schema')
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--plaintext', help='Plaintext output (default)',
+    group.add_argument('--plaintext',
+                       help='Plaintext output (default)',
                        action='store_true')
     group.add_argument('--uml', help='PlantUML format output',
                        action='store_true')
@@ -548,12 +625,17 @@ def main():
                        action='store_true')
     parser.add_argument('-o', '--outfile',
                         help='Output to file (instead of stdout)')
+    group.add_argument('--rst',
+                       help='reStructuredText output',
+                       action='store_true')
     args = parser.parse_args()
     with smart_open(args.outfile) as fh:
         if args.uml:
             printer = UMLPrinter(fh)
         elif args.json:
             printer = OASPrinter(fh)
+        elif args.rst:
+            printer = RSTPrinter(fh)
         else:
             printer = PlaintextPrinter(fh)
         parser = DfModelsParser(printer)
