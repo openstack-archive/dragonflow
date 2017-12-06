@@ -170,7 +170,11 @@ df_opts = [
                help=_('The max delay in seconds for Neutron to report heart'
                       'beat to df-db')),
     cfg.StrOpt('external_host_ip',
-               help=_("Compute node external IP"))
+               help=_("Compute node external IP")),
+    cfg.BoolOpt('auto_detect_port_behind_port',
+                default=False,
+                help=_("Automatically detect port-behind-port scenarios, "
+                       "e.g., amphora, or macvlan")),
 ]
 
 
