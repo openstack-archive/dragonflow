@@ -615,14 +615,16 @@ def smart_open(filename=None):
 def main():
     parser = argparse.ArgumentParser(description='Print Dragonflow schema')
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--plaintext',
+    group.add_argument('-p', '--plaintext',
                        help='Plaintext output (default)',
                        action='store_true')
-    group.add_argument('--uml', help='PlantUML format output',
+    group.add_argument('-u', '--uml',
+                       help='PlantUML format output',
                        action='store_true')
-    group.add_argument('--json', help='OpenApiSchema JSON format output',
+    group.add_argument('-j', '--jsonschema',
+                       help='OpenApiSchema JSON format output',
                        action='store_true')
-    group.add_argument('--rst',
+    group.add_argument('-r', '--rst',
                        help='reStructuredText output',
                        action='store_true')
     parser.add_argument('-o', '--outfile',
