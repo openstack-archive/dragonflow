@@ -14,6 +14,7 @@
 
 from neutron_lib import constants as n_const
 from oslo_log import log
+from ryu.ofproto import ether
 
 from dragonflow.common import exceptions
 from dragonflow.controller.common import constants
@@ -62,6 +63,36 @@ class TrunkApp(df_base_app.DFlowApp):
                     child_port_segmentation.segmentation_id)
         return {'vlan_vid': vlan_vid}
 
+    def _get_classification_params_ip(self, child_port_segmentation):
+        child = child_port_segmentation.port
+        child_ip = child.ip
+        child_ip_version = child_ip.version
+        if child_ip_version == n_const.IP_VERSION_4:
+            ip_field = 'ipv4_src'
+            eth_type = ether.ETH_TYPE_IP
+        elif child_ip_version == n_const.IP_VERSION_6:
+            ip_field = 'ipv6_src'
+            eth_type = ether.ETH_TYPE_IPV6
+        else:
+            LOG.warning('Unknown version %s for IP %r',
+                        child_ip_version, child_ip)
+            raise exceptions.InvalidIPAddressException(key=child_ip)
+        return ip_field, eth_type, child_ip
+
+    def _get_classification_params_ipvlan(self, child_port_segmentation):
+        ip_field, eth_type, child_ip = self._get_classification_params_ip(
+            child_port_segmentation)
+        return {'eth_src': child_port_segmentation.parent.mac,
+                'eth_type': eth_type,
+                ip_field: child_ip}
+
+    def _get_classification_params_macvlan(self, child_port_segmentation):
+        ip_field, eth_type, child_ip = self._get_classification_params_ip(
+            child_port_segmentation)
+        return {'eth_src': child_port_segmentation.port.mac,
+                'eth_type': eth_type,
+                ip_field: child_ip}
+
     def _get_classification_match(self, child_port_segmentation):
         params = {'reg6': child_port_segmentation.parent.unique_key}
         segmentation_type = child_port_segmentation.segmentation_type
@@ -69,14 +100,33 @@ class TrunkApp(df_base_app.DFlowApp):
             params.update(
                 self._get_classification_params_vlan(child_port_segmentation),
             )
+        elif trunk.TYPE_MACVLAN == segmentation_type:
+            params.update(
+                self._get_classification_params_macvlan(
+                    child_port_segmentation),
+            )
+        elif trunk.TYPE_IPVLAN == segmentation_type:
+            params.update(
+                self._get_classification_params_ipvlan(
+                    child_port_segmentation),
+            )
         else:
-            raise exceptions.UnsupportedSegmentationType(
+            raise exceptions.UnsupportedSegmentationTypeException(
                     segmentation_type=segmentation_type)
         return self.parser.OFPMatch(**params)
 
-    def _add_classification_actions_vlan(self,
-                                         actions, child_port_segmentation):
+    def _add_classification_actions_vlan(self, actions,
+                                         child_port_segmentation):
         actions.append(self.parser.OFPActionPopVlan())
+
+    def _add_classification_actions_ipvlan(self, actions,
+                                           child_port_segmentation):
+        """
+        Replace packet MAC from parent to child
+        (Parent doesn't know child MAC)
+        """
+        actions.append(self.parser.OFPActionSetField(
+            eth_src=child_port_segmentation.port.mac))
 
     def _get_classification_actions(self, child_port_segmentation):
         segmentation_type = child_port_segmentation.segmentation_type
@@ -91,8 +141,13 @@ class TrunkApp(df_base_app.DFlowApp):
         if n_const.TYPE_VLAN == segmentation_type:
             self._add_classification_actions_vlan(actions,
                                                   child_port_segmentation)
+        elif trunk.TYPE_MACVLAN == segmentation_type:
+            pass  # No action needed
+        elif trunk.TYPE_IPVLAN == segmentation_type:
+            self._add_classification_actions_ipvlan(actions,
+                                                    child_port_segmentation)
         else:
-            raise exceptions.UnsupportedSegmentationType(
+            raise exceptions.UnsupportedSegmentationTypeException(
                 segmentation_type=segmentation_type
             )
 
@@ -132,13 +187,27 @@ class TrunkApp(df_base_app.DFlowApp):
         LOG.info("trunk_app:_add_dispatch_actions_vlan: Setting vlan_id: %s",
                  hex(vlan_tag))
 
+    def _add_dispatch_actions_ipvlan(self, actions, child_port_segmentation):
+        """
+        Replace packet MAC from child to parent
+        (Parent doesn't know child MAC)
+        """
+        # TODO(oanson) Maybe add MAC to child_port_segmentation model
+        # so we won't have to guess which MAC?
+        actions.append(self.parser.OFPActionSetField(
+            eth_dst=child_port_segmentation.parent.mac))
+
     def _get_dispatch_actions(self, child_port_segmentation):
         actions = []
         segmentation_type = child_port_segmentation.segmentation_type
         if n_const.TYPE_VLAN == segmentation_type:
             self._add_dispatch_actions_vlan(actions, child_port_segmentation)
+        elif trunk.TYPE_MACVLAN == segmentation_type:
+            pass  # No action needed
+        elif trunk.TYPE_IPVLAN == segmentation_type:
+            self._add_dispatch_actions_ipvlan(actions, child_port_segmentation)
         else:
-            raise exceptions.UnsupportedSegmentationType(
+            raise exceptions.UnsupportedSegmentationTypeException(
                 segmentation_type=segmentation_type
             )
 
