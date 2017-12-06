@@ -474,3 +474,16 @@ class TestModelFramework(tests_base.BaseTestCase):
             sorted_models.index(ReffingModel3)
         )
         self.assertIn(ReffedModel, ReffingModel3.dependencies())
+
+    def test_hierarchical_dependency_not_first_class(self):
+        sorted_models = mf.iter_models_by_dependency_order(
+            first_class_only=False)
+        self.assertLess(
+            sorted_models.index(ReffedModel),
+            sorted_models.index(ReffingNonFirstClassModel)
+        )
+        self.assertLess(
+            sorted_models.index(ReffingNonFirstClassModel),
+            sorted_models.index(ReffingModel3)
+        )
+        self.assertIn(ReffedModel, ReffingModel3.dependencies())
