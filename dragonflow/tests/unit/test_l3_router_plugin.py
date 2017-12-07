@@ -22,6 +22,7 @@ from neutron.tests.unit.extensions import test_l3
 from neutron_lib import constants
 from neutron_lib import context as nctx
 from neutron_lib.plugins import directory
+import testtools
 
 from dragonflow.db.models import l3 as df_l3
 from dragonflow.neutron.db.models import l3 as neutron_l3
@@ -153,6 +154,7 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase,
         self.assertEqual(new_fip['tenant_id'], nb_fip.topic)
         self.assertEqual(new_fip['revision_number'], nb_fip.version)
 
+    @testtools.skip("bug/1736952")
     def test_create_floatingip_with_normal_user(self):
         normal_context = nctx.Context(is_admin=False, overwrite=False)
         kwargs = {'arg_list': ('router:external',),
