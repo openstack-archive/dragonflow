@@ -262,6 +262,7 @@ function configure_df_plugin {
         iniset $NEUTRON_CONF DEFAULT service_plugins "$Q_SERVICE_PLUGIN_CLASSES"
 
         iniset $DRAGONFLOW_CONF df auto_detect_port_behind_port "$DF_AUTO_DETECT_PORT_BEHIND_PORT"
+        iniset $DRAGONFLOW_CONF df_loadbalancer auto_enable_vip_ports "$DF_LBAAS_AUTO_ENABLE_VIP_PORTS"
 
         if is_service_enabled q-dhcp ; then
             iniset $DRAGONFLOW_CONF df use_centralized_ipv6_DHCP "True"
