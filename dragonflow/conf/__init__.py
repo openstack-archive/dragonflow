@@ -20,6 +20,7 @@ from dragonflow.conf import df_dhcp
 from dragonflow.conf import df_dnat
 from dragonflow.conf import df_l2
 from dragonflow.conf import df_l3
+from dragonflow.conf import df_loadbalancer
 from dragonflow.conf import df_metadata_service
 from dragonflow.conf import df_provider_networks
 from dragonflow.conf import df_ryu
@@ -32,6 +33,7 @@ CONF = cfg.CONF
 df_cassandra.register_opts()
 df_common_params.register_opts()
 df_dhcp.register_opts()
+df_loadbalancer.register_opts()
 df_metadata_service.register_opts()
 df_active_port_detection.register_opts()
 df_l2.register_opts()
