@@ -33,6 +33,7 @@ from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.neutron.db.models import l2 as neutron_l2
 from dragonflow.neutron.db.models import secgroups as neutron_secgroups
 from dragonflow.neutron.ml2 import dhcp_module
+from dragonflow.neutron.services.lbaas import vip_port_enabler
 from dragonflow.neutron.services.qos.drivers import df_qos
 from dragonflow.neutron.services.trunk import driver as trunk_driver
 from dragonflow.neutron.services.trunk import port_behind_port
@@ -69,6 +70,8 @@ class DFMechDriver(api.MechanismDriver):
         if cfg.CONF.df.auto_detect_port_behind_port:
             self._port_behind_port_detector = (
                 port_behind_port.DfPortBehindPortDetector())
+        if cfg.CONF.df_loadbalancer.auto_enable_vip_ports:
+            self._vip_port_enabler = vip_port_enabler.DfLBaaSVIPPortEnabler()
         self.subscribe_registries()
         df_qos.register()
         self.dhcp_module = dhcp_module.DFDHCPModule()
