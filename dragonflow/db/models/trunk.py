@@ -27,6 +27,15 @@ SUPPORTED_SEGMENTATION_TYPES = (n_const.TYPE_VLAN, )
 UUID_NAMESPACE = uuid.UUID('a11fee2a-d833-4e22-be31-f915b55f1f77')
 
 
+def get_child_port_segmentation_id(parent_id, child_id):
+    """
+    Generate a repeatable uuid, so we can identify the Dragonflow
+    ChildPortSegmentation object
+    """
+    base = "{}/{}".format(parent_id, child_id)
+    return str(uuid.uuid5(UUID_NAMESPACE, base))
+
+
 @mf.register_model
 @mf.construct_nb_db_model(
     indexes={

@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import uuid
-
 from neutron.services.trunk import constants
 from neutron.services.trunk.drivers import base
 from neutron_lib.api.definitions import portbindings
@@ -28,6 +26,13 @@ from dragonflow import conf as cfg
 from dragonflow.db.models import l2
 from dragonflow.db.models import trunk as trunk_models
 from dragonflow.neutron.services import mixins
+
+
+def get_child_port_status(parent_port):
+    new_status = n_constants.PORT_STATUS_ACTIVE
+    if parent_port['status'] != n_constants.PORT_STATUS_ACTIVE:
+        new_status = n_constants.PORT_STATUS_DOWN
+    return new_status
 
 
 class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
@@ -76,14 +81,6 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         registry.subscribe(self._update_port_handler,
                            resources.PORT, events.AFTER_UPDATE)
 
-    def _get_subport_id(self, trunk, subport):
-        """
-        Generate a repeatable uuid, so we can identify the Dragonflow
-        ChildPortSegmentation object
-        """
-        base = "{}/{}".format(trunk.port_id, subport.port_id)
-        return str(uuid.uuid5(trunk_models.UUID_NAMESPACE, base))
-
     def _add_trunk_handler(self, *args, **kwargs):
         """Handle the event that trunk was created"""
         payload = kwargs['payload']
@@ -123,7 +120,8 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         Dragonflow NB DB
         """
         model = trunk_models.ChildPortSegmentation(
-            id=self._get_subport_id(trunk, subport),
+            id=trunk_models.get_child_port_segmentation_id(trunk.port_id,
+                                                           subport.port_id),
             topic=trunk.project_id,
             parent=trunk.port_id,
             port=subport.port_id,
@@ -153,7 +151,8 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         Remove the subport that were deleted on the Neutron side from the
         Dragonflow NB DB
         """
-        id_ = self._get_subport_id(trunk, subport)
+        id_ = trunk_models.get_child_port_segmentation_id(trunk.port_id,
+                                                          subport.port_id)
         model = trunk_models.ChildPortSegmentation(
             id=id_,
             topic=trunk.project_id
@@ -166,9 +165,7 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         orig_port = kwargs['original_port']
         if port['status'] == orig_port['status']:
             return  # Change not relevant
-        new_status = n_constants.PORT_STATUS_ACTIVE
-        if port['status'] != n_constants.PORT_STATUS_ACTIVE:
-            new_status = n_constants.PORT_STATUS_DOWN
+        new_status = get_child_port_status(port)
         core_plugin = directory.get_plugin()
         for subport_id in self._get_subports_ids(port['id']):
             core_plugin.update_port_status(context.get_admin_context(),
