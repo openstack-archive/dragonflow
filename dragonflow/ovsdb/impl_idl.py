@@ -72,7 +72,7 @@ _HANDLED_INTERFACE_TYPES = (
 )
 
 
-def _is_ovsport_update_valid(ovsport):
+def _is_ovsport_update_valid(action, ovsport):
     if ovsport.name == cfg.CONF.df_metadata.metadata_interface:
         return True
 
@@ -81,6 +81,16 @@ def _is_ovsport_update_valid(ovsport):
 
     if ovsport.name.startswith('qg'):
         return False
+
+    if (ovsport.type == constants.OVS_VM_INTERFACE and
+            ovsport.lport is None):
+        return False
+
+    if action == 'set':
+        # No need for 'updated' event if the ofport is being deleted
+        ofport = ovsport.ofport
+        if (ofport is None) or (ofport < 0):
+            return False
 
     return True
 
@@ -98,7 +108,7 @@ class DFIdl(idl.Idl):
 
         local_interface = ovs.OvsPort.from_idl_row(row)
         action = event if event != 'update' else 'set'
-        if _is_ovsport_update_valid(local_interface):
+        if _is_ovsport_update_valid(action, local_interface):
             self.nb_api.db_change_callback(
                 local_interface.table_name,
                 local_interface.id,
