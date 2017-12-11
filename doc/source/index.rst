@@ -27,7 +27,6 @@ Contents:
    manual_deployment
    contributing
    releasenotes_create
-   releasenotes
    reviewers_guide
 
 Dragonflow Specs
