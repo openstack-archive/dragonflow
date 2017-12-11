@@ -92,7 +92,7 @@
              port: 811
       sla:
         max_avg_duration_per_atomic:
-          neutron.list_ports: 15  # reduce as perf is fixed
+          neutron.list_ports: 30  # reduce as perf is fixed
         failure_rate:
           max: 0
 
