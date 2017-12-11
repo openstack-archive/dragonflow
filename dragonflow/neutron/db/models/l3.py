@@ -10,13 +10,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from dragonflow.common import utils
 from dragonflow.db.models import l3
 
 
 def logical_router_from_neutron_router(router):
     return l3.LogicalRouter(
         id=router['id'],
-        topic=router['tenant_id'],
+        topic=utils.get_obj_topic(router),
         name=router.get('name'),
         version=router['revision_number'],
         routes=router.get('routes', []))
@@ -25,7 +26,7 @@ def logical_router_from_neutron_router(router):
 def build_logical_router_port(router_port_info, mac, network, unique_key):
     return l3.LogicalRouterPort(
         id=router_port_info['port_id'],
-        topic=router_port_info['tenant_id'],
+        topic=utils.get_obj_topic(router_port_info),
         lswitch=router_port_info['network_id'],
         mac=mac,
         network=network,
@@ -35,7 +36,7 @@ def build_logical_router_port(router_port_info, mac, network, unique_key):
 def build_floating_ip_from_neutron_floating_ip(floating_ip):
     return l3.FloatingIp(
         id=floating_ip['id'],
-        topic=floating_ip['tenant_id'],
+        topic=utils.get_obj_topic(floating_ip),
         name=floating_ip.get('name'),
         version=floating_ip['revision_number'],
         lrouter=floating_ip.get('router_id', None),

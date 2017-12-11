@@ -20,6 +20,7 @@ from neutron_lib import context as n_context
 from neutron_lib.services import base as service_base
 from oslo_log import log as logging
 
+from dragonflow.common import utils as df_utils
 from dragonflow.db.models import bgp
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
@@ -30,9 +31,18 @@ from dragonflow.neutron.services import mixins
 LOG = logging.getLogger(__name__)
 
 
+def _get_project_id_from_context(context):
+    try:
+        project_id = context.project_id
+    except AttributeError:
+        project_id = context.tenant_id
+    return project_id
+
+
 def bgp_peer_from_neutron_bgp_peer(peer):
+    topic = df_utils.get_obj_topic(peer)
     return bgp.BGPPeer(id=peer.get('id'),
-                       topic=peer.get('tenant_id'),
+                       topic=topic,
                        name=peer.get('name'),
                        peer_ip=peer.get('peer_ip'),
                        remote_as=int(peer.get('remote_as')),
@@ -41,8 +51,9 @@ def bgp_peer_from_neutron_bgp_peer(peer):
 
 
 def bgp_speaker_from_neutron_bgp_speaker(speaker):
+    topic = df_utils.get_obj_topic(speaker)
     return bgp.BGPSpeaker(id=speaker.get('id'),
-                          topic=speaker.get('tenant_id'),
+                          topic=topic,
                           name=speaker.get('name'),
                           local_as=int(speaker.get('local_as')),
                           peers=speaker.get('peers', []),
@@ -96,8 +107,9 @@ class DFBgpPlugin(service_base.ServicePluginBase,
 
         if port_id:
             # Associate floatingip
+            project_id = _get_project_id_from_context(context)
             external_ip = self._get_external_ip_of_lport(port_id,
-                                                         context.tenant_id)
+                                                         project_id)
             if not external_ip:
                 return
 
@@ -254,17 +266,19 @@ class DFBgpPlugin(service_base.ServicePluginBase,
                            skip_send_event=True)
 
         for s in speakers:
+            topic = df_utils.get_obj_topic(s)
             self._remove_bgp_peer_from_bgp_speaker(context, s['id'],
-                                                   bgp_peer_id, s['tenant_id'])
+                                                   bgp_peer_id, topic)
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
     def add_bgp_peer(self, context, bgp_speaker_id, bgp_peer_info):
         ret_value = super(DFBgpPlugin, self).add_bgp_peer(context,
                                                           bgp_speaker_id,
                                                           bgp_peer_info)
-        tenant_id = context.tenant_id
+
+        project_id = _get_project_id_from_context(context)
         bgp_speaker = self.nb_api.get(bgp.BGPSpeaker(id=bgp_speaker_id,
-                                                     topic=tenant_id))
+                                                     topic=project_id))
         bgp_speaker.peers.append(ret_value['bgp_peer_id'])
         self.nb_api.update(bgp_speaker, skip_send_event=True)
         return ret_value
@@ -273,31 +287,32 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         ret_value = super(DFBgpPlugin, self).remove_bgp_peer(context,
                                                              bgp_speaker_id,
                                                              bgp_peer_info)
-        tenant_id = context.tenant_id
+
+        project_id = _get_project_id_from_context(context)
         self._remove_bgp_peer_from_bgp_speaker(context,
                                                bgp_speaker_id,
                                                ret_value['bgp_peer_id'],
-                                               tenant_id)
+                                               project_id)
         return ret_value
 
     def add_gateway_network(self, context, bgp_speaker_id, network_info):
         ret_value = super(DFBgpPlugin, self).add_gateway_network(
             context, bgp_speaker_id, network_info)
 
-        tenant_id = context.tenant_id
+        project_id = _get_project_id_from_context(context)
         self._update_bgp_speaker_routes(context,
                                         bgp_speaker_id,
-                                        tenant_id)
+                                        project_id)
         return ret_value
 
     def remove_gateway_network(self, context, bgp_speaker_id, network_info):
         ret_value = super(DFBgpPlugin, self).remove_gateway_network(
             context, bgp_speaker_id, network_info)
 
-        tenant_id = context.tenant_id
+        project_id = _get_project_id_from_context(context)
         self._update_bgp_speaker_routes(context,
                                         bgp_speaker_id,
-                                        tenant_id)
+                                        project_id)
         return ret_value
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
@@ -333,7 +348,8 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         with context.session.begin(subtransactions=True):
             query = context.session.query(bgp_db.BgpSpeaker)
             query = query.filter(*filters)
-            return [{'id': x['id'], 'tenant_id': x['tenant_id']}
+
+            return [{'id': x['id'], 'project_id': df_utils.get_obj_topic(x)}
                     for x in query.all()]
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
@@ -345,9 +361,10 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         self.nb_api.update(bgp_speaker, skip_send_event=True)
 
     def get_advertised_routes(self, context, bgp_speaker_id):
-        tenant_id = context.tenant_id
+
+        project_id = _get_project_id_from_context(context)
         bgp_speaker = self.nb_api.get(bgp.BGPSpeaker(id=bgp_speaker_id,
-                                                     topic=tenant_id))
+                                                     topic=project_id))
         bgp_routes = bgp_speaker.host_routes + bgp_speaker.prefix_routes
         # Translate to the format that neutron will acccept.
         return {'advertised_routes': [{'destination': r.destination,

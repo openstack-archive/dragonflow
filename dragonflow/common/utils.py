@@ -40,6 +40,13 @@ LOG = logging.getLogger(__name__)
 ETCDIR = '/etc/neutron'
 
 
+def get_obj_topic(obj):
+    topic = obj.get('project_id')
+    if topic is None:
+        topic = obj['tenant_id']
+    return topic
+
+
 def etcdir(*p):
     return os.path.join(ETCDIR, *p)
 
