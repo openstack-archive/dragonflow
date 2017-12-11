@@ -15,6 +15,7 @@ import copy
 from neutron.extensions import securitygroup as sg
 from neutron_lib import constants as n_const
 
+from dragonflow.common import utils as df_utils
 from dragonflow.db.models import secgroups
 
 
@@ -52,9 +53,10 @@ def security_group_from_neutron_obj(secgroup):
     sg_name = secgroup.get('name')
     rules = secgroup.get('security_group_rules', [])
     rules_mdls = [security_group_rule_from_neutron_obj(rule) for rule in rules]
+    topic = df_utils.get_obj_topic(secgroup)
     return secgroups.SecurityGroup(
         id=secgroup['id'],
-        topic=secgroup['tenant_id'],
+        topic=topic,
         name=sg_name,
         rules=rules_mdls,
         version=secgroup['revision_number'])

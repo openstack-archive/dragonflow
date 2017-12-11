@@ -37,6 +37,7 @@ from oslo_log import log
 from oslo_utils import importutils
 
 from dragonflow.common import exceptions as df_exceptions
+from dragonflow.common import utils as df_utils
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
 from dragonflow.db.neutron import lockedobjects_db as lock_db
@@ -211,8 +212,9 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         super(DFL3AgentlessRouterPlugin, self).delete_floatingip(
             context, fip_id)
         try:
+            topic = df_utils.get_obj_topic(floatingip)
             self.nb_api.delete(
-                l3.FloatingIp(id=fip_id, topic=floatingip['tenant_id']),
+                l3.FloatingIp(id=fip_id, topic=topic),
             )
         except df_exceptions.DBKeyNotFound:
             LOG.exception("floatingip %s is not found in DF DB", fip_id)
@@ -232,14 +234,16 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         cidr = netaddr.IPNetwork(subnet['cidr'])
         network = "%s/%s" % (port['fixed_ips'][0]['ip_address'],
                              str(cidr.prefixlen))
+        port_topic = df_utils.get_obj_topic(port)
         logical_port = self.nb_api.get(l2.LogicalPort(id=port['id'],
-                                                      topic=port['tenant_id']))
+                                                      topic=port_topic))
 
+        router_topic = df_utils.get_obj_topic(router)
         logical_router_port = neutron_l3.build_logical_router_port(
             router_port_info, mac=port['mac_address'],
             network=network, unique_key=logical_port.unique_key)
         lrouter = self.nb_api.get(l3.LogicalRouter(id=router_id,
-                                                   topic=router['tenant_id']))
+                                                   topic=router_topic))
         lrouter.version = router['revision_number']
         lrouter.add_router_port(logical_router_port)
         self.nb_api.update(lrouter)
@@ -254,8 +258,9 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         router = self.get_router(context, router_id)
 
         try:
+            topic = df_utils.get_obj_topic(router)
             lrouter = self.nb_api.get(l3.LogicalRouter(
-                id=router_id, topic=router['tenant_id']))
+                id=router_id, topic=topic))
             lrouter.remove_router_port(router_port_info['port_id'])
             lrouter.version = router['revision_number']
             self.nb_api.update(lrouter)

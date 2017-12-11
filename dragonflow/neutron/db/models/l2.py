@@ -18,6 +18,7 @@ from neutron_lib.api import validators
 from neutron_lib import exceptions as n_exc
 
 from dragonflow.common import constants as const
+from dragonflow.common import utils
 from dragonflow.db.models import l2
 from dragonflow.neutron.common import constants as df_const
 from dragonflow.neutron.common import dhcp_opt_map as opt_map
@@ -26,7 +27,7 @@ from dragonflow.neutron.common import dhcp_opt_map as opt_map
 def logical_switch_from_neutron_network(network):
     return l2.LogicalSwitch(
         id=network['id'],
-        topic=network['tenant_id'],
+        topic=utils.get_obj_topic(network),
         name=network.get('name'),
         network_type=network.get('provider:network_type'),
         physical_network=network.get('provider:physical_network'),
@@ -40,7 +41,7 @@ def logical_switch_from_neutron_network(network):
 def subnet_from_neutron_subnet(subnet):
     return l2.Subnet(
         id=subnet['id'],
-        topic=subnet['tenant_id'],
+        topic=utils.get_obj_topic(subnet),
         name=subnet.get('name'),
         enable_dhcp=subnet['enable_dhcp'],
         cidr=subnet['cidr'],
@@ -123,7 +124,7 @@ def logical_port_from_neutron_port(port):
     return l2.LogicalPort(
         id=port['id'],
         lswitch=port['network_id'],
-        topic=port['tenant_id'],
+        topic=utils.get_obj_topic(port),
         macs=[port['mac_address']],
         ips=[ip['ip_address'] for ip in port.get('fixed_ips', [])],
         subnets=[ip['subnet_id'] for ip in port.get('fixed_ips', [])],
