@@ -20,6 +20,8 @@ from neutron_lib import constants as n_const
 from neutron_lib.plugins import directory
 from oslo_log import log
 
+from dragonflow.common import utils as df_utils
+
 LOG = log.getLogger(__name__)
 
 
@@ -74,7 +76,9 @@ class DFDHCPModule(object):
             return None
 
     def _create_dhcp_port(self, context, subnet):
-        port = {'port': {'tenant_id': subnet['tenant_id'],
+        subnet_project = df_utils.get_obj_topic(subnet)
+        port = {'port': {'project_id': subnet_project,
+                         'tenant_id': subnet_project,
                          'network_id': subnet['network_id'], 'name': '',
                          'admin_state_up': True, 'device_id': '',
                          'device_owner': n_const.DEVICE_OWNER_DHCP,
