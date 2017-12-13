@@ -50,8 +50,7 @@ class TestDbConsistent(test_base.DFTestBase):
                        'cidr': '10.50.0.0/24',
                        'gateway_ip': '10.50.0.1',
                        'ip_version': 4,
-                       'name': 'private',
-                       'enable_dhcp': True}
+                       'name': 'private'}
         subnet.create(subnet=subnet_body)
         self.addCleanup(subnet.close)
         time.sleep(constants.DEFAULT_RESOURCE_READY_TIMEOUT)
@@ -88,9 +87,7 @@ class TestDbConsistent(test_base.DFTestBase):
             id='22222222-2222-2222-2222-222222222222',
             topic=topic,
             name='df_sn1',
-            enable_dhcp=True,
             cidr='10.60.0.0/24',
-            dhcp_ip='10.60.0.2',
             gateway_ip='10.60.0.1')
 
         df_network.add_subnet(df_subnet)

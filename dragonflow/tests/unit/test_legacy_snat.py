@@ -32,9 +32,7 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
         self.app.mod_flow.reset_mock()
 
     def test_create_router(self):
-        self.subnets = [l2.Subnet(dhcp_ip="10.1.0.2",
-                                  name="private-subnet",
-                                  enable_dhcp=True,
+        self.subnets = [l2.Subnet(name="private-subnet",
                                   topic="fake_tenant1",
                                   gateway_ip="10.1.0.1",
                                   cidr="10.1.0.0/24",
@@ -96,9 +94,7 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
 
     def test_update_router(self):
         self.test_create_router()
-        subnets2 = [l2.Subnet(dhcp_ip="10.2.0.2",
-                              name="private-subnet",
-                              enable_dhcp=True,
+        subnets2 = [l2.Subnet(name="private-subnet",
                               topic="fake_tenant1",
                               gateway_ip="10.2.0.1",
                               cidr="10.2.0.0/24",

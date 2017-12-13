@@ -43,7 +43,6 @@ def subnet_from_neutron_subnet(subnet):
         id=subnet['id'],
         topic=utils.get_obj_topic(subnet),
         name=subnet.get('name'),
-        enable_dhcp=subnet['enable_dhcp'],
         cidr=subnet['cidr'],
         gateway_ip=subnet['gateway_ip'],
         dns_nameservers=subnet.get('dns_nameservers', []),

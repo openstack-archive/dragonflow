@@ -63,7 +63,6 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
 
     def _create_2nd_subnet(self):
         return l2.Subnet(id='subnet2',
-                         enable_dhcp=False,
                          cidr='192.168.18.0/24',
                          topic='fake_tenant1')
 

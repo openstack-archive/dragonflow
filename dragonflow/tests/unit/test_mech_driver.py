@@ -19,6 +19,7 @@ import netaddr
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_plugin
+from neutron_lib import constants as n_const
 from oslo_serialization import jsonutils
 
 from dragonflow import conf as cfg
@@ -414,7 +415,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
         network, lswitch = self._test_create_network_revision()
         self.nb_api.update.reset_mock()
         self.nb_api.get.side_effect = nb_api_get_func(lswitch)
-        with self.subnet(network={'network': network}) as s:
+        with self.subnet(network={'network': network}, enable_dhcp=False) as s:
             self.nb_api.update.assert_called_once()
             lswitch = self.nb_api.update.call_args_list[0][0][0]
             self.nb_api.get.side_effect = nb_api_get_func(lswitch)
@@ -427,8 +428,14 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
 
             self.nb_api.update.assert_called_once()
             lswitch = self.nb_api.update.call_args_list[0][0][0]
-            df_subnet = lswitch.find_subnet(subnet['id'])
-            self.assertIsNone(df_subnet.dhcp_ip)
+            filters = {'device_owner': [n_const.DEVICE_OWNER_DHCP],
+                       'network_id': [network['id']]}
+            ports = self.driver.get_ports(self.context, filters)
+            if ports:
+                port = ports[0]
+                subnets_ids = [fixed_ip['subnet_id']
+                               for fixed_ip in port['fixed_ips']]
+                self.assertNotIn(subnet['id'], subnets_ids)
 
     def _test_create(self, port):
 
