@@ -26,6 +26,7 @@ from dragonflow.db import model_framework
 
 LOG = log.getLogger(__name__)
 PIKE = 'pike'
+QUEENS = 'queens'
 DRAGONFLOW_MIGRATIONS_NAMESPACE = 'dragonflow.db.migrations'
 
 

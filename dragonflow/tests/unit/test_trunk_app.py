@@ -58,7 +58,6 @@ def _create_2nd_lswitch():
 
 def _create_2nd_subnet():
     return l2.Subnet(id='subnet2',
-                     enable_dhcp=False,
                      cidr='192.168.18.0/24',
                      topic='fake_tenant1')
 
