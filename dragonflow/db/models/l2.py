@@ -62,8 +62,6 @@ class Subnet(mf.ModelBase, mixins.Name, mixins.Topic, mixins.Version,
 
     table_name = "lsubnet"
 
-    enable_dhcp = fields.BoolField()
-    dhcp_ip = df_fields.IpAddressField()
     cidr = df_fields.IpNetworkField()
     gateway_ip = df_fields.IpAddressField()
     dns_nameservers = df_fields.ListOfField(df_fields.IpAddressField())
