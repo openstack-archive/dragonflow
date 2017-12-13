@@ -920,6 +920,7 @@ class TestL3App(test_base.DFTestBase):
     def test_icmp_other_router_interface(self):
         self._test_icmp_address('192.168.13.1')
 
+    @testtools.skip("bug/1737889")
     def test_reconnect_of_controller(self):
         cmd = ["ovs-vsctl", "get-controller", cfg.CONF.df.integration_bridge]
         controller = utils.execute(cmd, run_as_root=True).strip()
