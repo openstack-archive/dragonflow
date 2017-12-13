@@ -39,9 +39,7 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
                                         topic='fake_tenant1',
                                         id='test_lswitch_1',
                                         version=5)
-        self.subnet = l2.Subnet(dhcp_ip="10.1.0.2",
-                                name="private-subnet",
-                                enable_dhcp=True,
+        self.subnet = l2.Subnet(name="private-subnet",
                                 topic="fake_tenant1",
                                 gateway_ip="10.1.0.1",
                                 cidr="10.1.0.0/24",
@@ -104,9 +102,7 @@ class TestLegacySNatApp(test_app_base.DFAppTestBase):
                                     topic='fake_tenant1',
                                     id='test_lswitch_2',
                                     version=5)
-        subnet2 = l2.Subnet(dhcp_ip="10.2.0.2",
-                            name="private-subnet",
-                            enable_dhcp=True,
+        subnet2 = l2.Subnet(name="private-subnet",
                             topic="fake_tenant1",
                             gateway_ip="10.2.0.1",
                             cidr="10.2.0.0/24",

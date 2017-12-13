@@ -19,6 +19,7 @@ import netaddr
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_plugin
+from neutron_lib import constants as n_const
 from oslo_serialization import jsonutils
 
 from dragonflow import conf as cfg
@@ -445,7 +446,15 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
             self.assertEqual(2, self.nb_api.update.call_count)
             subnet = self.nb_api.update.call_args_list[0][0][0]
             self.assertIsInstance(subnet, l2.Subnet)
-            self.assertIsNone(subnet.dhcp_ip)
+            lswitch = self.nb_api.update.call_args_list[1][0][0]
+            filters = {'device_owner': [n_const.DEVICE_OWNER_DHCP],
+                       'network_id': [network['id']]}
+            ports = self.driver.get_ports(self.context, filters)
+            if ports:
+                port = ports[0]
+                subnets_ids = [fixed_ip['subnet_id']
+                               for fixed_ip in port['fixed_ips']]
+                self.assertNotIn(subnet['id'], subnets_ids)
 
     def _test_create(self, port):
 
