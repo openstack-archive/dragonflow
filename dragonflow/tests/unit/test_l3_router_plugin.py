@@ -131,6 +131,8 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase,
                 floatingip = self.l3p.create_floatingip(
                     self.context,
                     {'floatingip': {'floating_network_id': n['network']['id'],
+                                    'subnet_id': None,
+                                    'floating_ip_address': None,
                                     'tenant_id': n['network']['tenant_id']}})
                 self.assertEqual(floatingip['revision_number'], 0)
                 nb_fip = self.nb_api.create.call_args_list[-1][0][0]
