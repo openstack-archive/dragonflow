@@ -39,6 +39,8 @@ from dragonflow.tests.fullstack import test_objects as objects
 
 LOG = log.getLogger(__name__)
 
+_CONTROLLER_RECONNECT_TIMEOUT = 10
+
 
 def _get_port_mac_and_ip(port, force_addr_pairs=False):
     port_lport = port.port.get_logical_port()
@@ -920,7 +922,6 @@ class TestL3App(test_base.DFTestBase):
     def test_icmp_other_router_interface(self):
         self._test_icmp_address('192.168.13.1')
 
-    @testtools.skip("bug/1737889")
     def test_reconnect_of_controller(self):
         cmd = ["ovs-vsctl", "get-controller", cfg.CONF.df.integration_bridge]
         controller = utils.execute(cmd, run_as_root=True).strip()
@@ -959,7 +960,7 @@ class TestL3App(test_base.DFTestBase):
         cmd[1] = "set-controller"
         cmd.append(controller)
         utils.execute(cmd, run_as_root=True)
-        time.sleep(const.DEFAULT_CMD_TIMEOUT)
+        time.sleep(_CONTROLLER_RECONNECT_TIMEOUT)
         self._test_icmp_address(dst_ip)
 
     def _create_icmp_test_port_policies(self, icmp_filter):
