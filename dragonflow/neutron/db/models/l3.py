@@ -33,11 +33,21 @@ def build_logical_router_port(router_port_info, mac, network, unique_key):
         unique_key=unique_key)
 
 
+def build_floating_ip_from_ovo_floating_ip(floating_ip):
+    return l3.FloatingIp(
+        id=floating_ip['id'],
+        topic=utils.get_obj_topic(floating_ip),
+        version=floating_ip['revision_number'],
+        lrouter=floating_ip.get('router_id', None),
+        lport=floating_ip.get('fixed_port_id', None),
+        fixed_ip_address=floating_ip.get('fixed_ip_address', None),
+    )
+
+
 def build_floating_ip_from_neutron_floating_ip(floating_ip):
     return l3.FloatingIp(
         id=floating_ip['id'],
         topic=utils.get_obj_topic(floating_ip),
-        name=floating_ip.get('name'),
         version=floating_ip['revision_number'],
         lrouter=floating_ip.get('router_id', None),
         lport=floating_ip.get('port_id', None),

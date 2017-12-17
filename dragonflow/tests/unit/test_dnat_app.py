@@ -54,7 +54,6 @@ remote_lport = l2.LogicalPort(
 floatingip1 = l3.FloatingIp(
     id='floatingip1',
     topic='tenant1',
-    name='no_fip_name',
     version=7,
     floating_ip_address='172.24.4.2',
     floating_lport='floating_lport1',

@@ -295,7 +295,6 @@ fake_remote_port1 = make_fake_remote_port(
 fake_floatingip1 = l3.FloatingIp(
     id='fake_floatingip_id1',
     topic='fake_tenant1',
-    name='no_fip_name',
     version=7,
     floating_ip_address='172.24.4.2',
     fixed_ip_address='10.0.0.6',
