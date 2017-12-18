@@ -13,7 +13,6 @@
 from neutron_lib import constants
 
 from dragonflow import conf as cfg
-from dragonflow.db.models import trunk as trunk_models
 from dragonflow.tests.unit import test_mech_driver
 
 
