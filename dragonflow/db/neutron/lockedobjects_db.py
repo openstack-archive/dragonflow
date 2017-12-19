@@ -65,7 +65,7 @@ class wrap_db_lock(object):
         def wrap_db_lock(*args, **kwargs):
             session_id = 0
             result = None
-            lock_id = _get_lock_id_by_resource_type(self.type, args, kwargs)
+            lock_id = _get_lock_id_by_resource_type(self.type, *args, **kwargs)
 
             # magic to prevent from nested lock
             within_wrapper = False
@@ -97,31 +97,31 @@ class wrap_db_lock(object):
 
 def _get_lock_id_by_resource_type(resource_type, *args, **kwargs):
     if RESOURCE_DF_PLUGIN == resource_type:
-        lock_id = args[0][1].project_id
+        lock_id = args[1].project_id
     elif RESOURCE_ML2_NETWORK_OR_PORT == resource_type:
-        lock_id = args[0][1].current['id']
+        lock_id = args[1].current['id']
     elif RESOURCE_ML2_SUBNET == resource_type:
-        lock_id = args[0][1].current['network_id']
+        lock_id = args[1].current['network_id']
     elif RESOURCE_FIP_UPDATE_OR_DELETE == resource_type:
-        lock_id = args[0][2]
+        lock_id = args[2]
     elif RESOURCE_ROUTER_UPDATE_OR_DELETE == resource_type:
-        lock_id = args[0][2]
+        lock_id = args[2]
     elif RESOURCE_ML2_SECURITY_GROUP == resource_type:
-        lock_id = args[1]['security_group']['id']
+        lock_id = kwargs['security_group']['id']
     elif RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE == resource_type:
-        lock_id = args[1]['security_group_rule']['security_group_id']
+        lock_id = kwargs['security_group_rule']['security_group_id']
     elif RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE == resource_type:
-        lock_id = args[1]['security_group_id']
+        lock_id = kwargs['security_group_id']
     elif RESOURCE_QOS == resource_type:
-        lock_id = args[0][2]['id']
+        lock_id = kwargs['id']
     elif RESOURCE_NEUTRON_LISTENER == resource_type:
         # The db model of lock is uuid of 36 chars, but the neutron listener
         # uses hostname as lock-id, so we need to truncate it.
-        lock_id = args[0][1][:35]
+        lock_id = args[1][:35]
     elif RESOURCE_BGP_SPEAKER == resource_type:
-        lock_id = args[0][2]
+        lock_id = args[2]
     elif RESOURCE_BGP_PEER == resource_type:
-        lock_id = args[0][2]
+        lock_id = args[2]
     else:
         raise df_exc.UnknownResourceException(resource_type=resource_type)
 
