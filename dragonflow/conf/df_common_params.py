@@ -175,6 +175,9 @@ df_opts = [
                 default=False,
                 help=_("Automatically detect port-behind-port scenarios, "
                        "e.g., amphora, or macvlan")),
+    cfg.StrOpt('datapath_layout_path',
+               help=_("Path to datapath layout configuration"),
+               default="/etc/neutron/dragonflow_datapath_layout.yaml"),
 ]
 
 
