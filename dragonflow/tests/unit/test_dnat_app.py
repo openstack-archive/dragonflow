@@ -163,9 +163,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
     @utils.add_objs_to_db_store(local_lport1, local_lport2)
     def test_reassociate_on_lport_change(self):
-        old_fip = l3.FloatingIp(id='fake_id',
-                                lport=local_lport2,
-                                floating_lport=floating_lport)
+        old_fip = l3.FloatingIp(id='fake_id', lport=local_lport2)
         fip = l3.FloatingIp(id='fake_id', lport=local_lport1)
 
         fip.emit_updated(old_fip)
@@ -175,9 +173,7 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
     @utils.add_objs_to_db_store(local_lport1, remote_lport, floating_lport)
     def test_reassociate_on_lport_change_non_local(self):
-        old_fip = l3.FloatingIp(id='fake_id',
-                                lport=local_lport1,
-                                floating_lport=floating_lport)
+        old_fip = l3.FloatingIp(id='fake_id', lport=local_lport1)
         fip = l3.FloatingIp(id='fake_id', lport=remote_lport)
 
         fip.emit_updated(old_fip)
@@ -208,7 +204,6 @@ class TestDNATApp(test_app_base.DFAppTestBase):
             topic='topic',
             version=4,
             lport=local_lport1,
-            floating_lport=floating_lport
         )
         fip = l3.FloatingIp(id='fake_id')
         fip.emit_updated(old_fip)
