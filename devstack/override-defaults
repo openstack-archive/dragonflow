@@ -28,6 +28,7 @@ if is_service_enabled df-metadata ; then
 fi
 
 DRAGONFLOW_CONF=/etc/neutron/dragonflow.ini
+DRAGONFLOW_DATAPATH=/etc/neutron/dragonflow_datapath_layout.yaml
 Q_PLUGIN_EXTRA_CONF_PATH=/etc/neutron
 Q_PLUGIN_EXTRA_CONF_FILES=(dragonflow.ini)
 

@@ -231,6 +231,7 @@ function configure_df_plugin {
     popd
     mkdir -p $Q_PLUGIN_EXTRA_CONF_PATH
     cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
+    cp $DRAGONFLOW_DIR/etc/dragonflow_datapath_layout.yaml $DRAGONFLOW_DATAPATH
 
     if is_service_enabled q-svc ; then
         if is_service_enabled q-qos ; then
