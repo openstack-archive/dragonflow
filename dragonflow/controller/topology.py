@@ -42,6 +42,7 @@ class Topology(object):
         self.topic_subscribed = {}
         self.enable_selective_topo_dist = \
             enable_selective_topology_distribution
+        self.ovs_ports = {}
         self.ovs_to_lport_mapping = {}
 
         self.controller = controller
@@ -63,13 +64,21 @@ class Topology(object):
         @return : None
         """
         LOG.info("Ovs port updated: %s", ovs_port)
+        port_id = ovs_port.id
+        old_port = self.ovs_ports.get(port_id)
+        if old_port is None:
+            action = "added"
+        else:
+            action = 'updated'
 
-        if ovs_port.type not in _OVS_PORT_TYPES:
+        self.ovs_ports[port_id] = ovs_port
+        port_type = ovs_port.type
+        if port_type not in _OVS_PORT_TYPES:
             LOG.info("Unmanaged port online: %s", ovs_port)
             return
 
         try:
-            if orig_ovs_port is None:
+            if action == "added":
                 self._handle_ovs_port_added(ovs_port)
             else:
                 self._handle_ovs_port_updated(ovs_port)
@@ -104,7 +113,12 @@ class Topology(object):
         @param ovs_port:
         @return : None
         """
-        if ovs_port.type not in _OVS_PORT_TYPES:
+        ovs_port = self.ovs_ports.get(ovs_port.id)
+        if ovs_port is None:
+            return
+
+        port_type = ovs_port.type
+        if port_type not in _OVS_PORT_TYPES:
             LOG.info("Unmanaged port offline: %s", ovs_port)
             return
 
@@ -113,6 +127,8 @@ class Topology(object):
         except Exception:
             LOG.exception("Exception occurred when handling "
                           "ovs port offline event")
+        finally:
+            del self.ovs_ports[ovs_port.id]
 
     def _handle_ovs_port_deleted(self, ovs_port):
         port_type = ovs_port.type
@@ -288,8 +304,7 @@ class Topology(object):
         new_ovs_to_lport_mapping = {}
         add_ovs_to_lport_mapping = {}
         delete_ovs_to_lport_mapping = self.ovs_to_lport_mapping
-        for ovs_port in self.db_store.get_all(ovs.OvsPort):
-            key = ovs_port.id
+        for key, ovs_port in self.ovs_ports.items():
             if ovs_port.type == constants.OVS_COMPUTE_INTERFACE:
                 lport = self._get_lport(ovs_port)
                 if lport is None:
