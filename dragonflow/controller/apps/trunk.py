@@ -17,8 +17,8 @@ from oslo_log import log
 from ryu.ofproto import ether
 
 from dragonflow.common import exceptions
+from dragonflow.controller import app_base
 from dragonflow.controller.common import constants
-from dragonflow.controller import df_base_app
 from dragonflow.controller import port_locator
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import l2
@@ -27,10 +27,64 @@ from dragonflow.db.models import trunk
 LOG = log.getLogger(__name__)
 
 
-class TrunkApp(df_base_app.DFlowApp):
+@app_base.define_contract(
+    states=('classification', 'dispatch'),
+    public_mapping=app_base.VariableMapping(
+        source_port_key='reg6',
+        destination_port_key='reg7',
+        network_key='metadata',
+    ),
+    entrypoints=(
+        app_base.Entrypoint(
+            name='classification_input',
+            target='classification',
+            consumes=(
+                'source_port_key',
+                'network_key',
+            ),
+        ),
+        app_base.Entrypoint(
+            name='dispatch_input',
+            target='dispatch',
+            consumes=(
+                'destination_port_key',
+                'network_key',
+            ),
+        ),
+    ),
+    exitpoints=(
+        app_base.Exitpoint(
+            name='classification_output',
+            provides=(
+                'source_port_key',
+                'network_key',
+            ),
+        ),
+        app_base.Exitpoint(
+            name='dispatch_output',
+            provides=(
+                'destination_port_key',
+                'network_key',
+            ),
+        ),
+    )
+)
+class TrunkApp(app_base.Base):
+    def initialize(self):
+        self.add_flow_go_to_table(
+            self.states.classification,
+            constants.PRIORITY_DEFAULT,
+            self.exitpoints.classification_output,
+        )
 
-    @df_base_app.register_event(trunk.ChildPortSegmentation,
-                                model_constants.EVENT_CREATED)
+        self.add_flow_go_to_table(
+            self.states.dispatch,
+            constants.PRIORITY_DEFAULT,
+            self.exitpoints.dispatch_output,
+        )
+
+    @app_base.register_event(trunk.ChildPortSegmentation,
+                             model_constants.EVENT_CREATED)
     def _child_port_segmentation_created(self, child_port_segmentation):
         parent_port = child_port_segmentation.parent
         parent_binding = port_locator.get_port_binding(parent_port)
@@ -158,7 +212,7 @@ class TrunkApp(df_base_app.DFlowApp):
         match = self._get_classification_match(child_port_segmentation)
         actions = self._get_classification_actions(child_port_segmentation)
         self.mod_flow(
-            table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.states.classification,
             priority=constants.PRIORITY_HIGH,
             match=match,
             actions=actions,
@@ -168,7 +222,7 @@ class TrunkApp(df_base_app.DFlowApp):
         match = self._get_dispatch_match(child_port_segmentation)
         actions = self._get_dispatch_actions(child_port_segmentation)
         self.mod_flow(
-            table_id=constants.INGRESS_DISPATCH_TABLE,
+            table_id=self.states.dispatch,
             priority=constants.PRIORITY_HIGH,
             match=match,
             actions=actions,
@@ -219,8 +273,8 @@ class TrunkApp(df_base_app.DFlowApp):
         ]
         return actions
 
-    @df_base_app.register_event(trunk.ChildPortSegmentation,
-                                model_constants.EVENT_DELETED)
+    @app_base.register_event(trunk.ChildPortSegmentation,
+                             model_constants.EVENT_DELETED)
     def _child_port_segmentation_deleted(self, child_port_segmentation):
         parent_port = child_port_segmentation.parent
         parent_binding = port_locator.get_port_binding(parent_port)
@@ -245,7 +299,7 @@ class TrunkApp(df_base_app.DFlowApp):
     def _delete_classification_rule(self, child_port_segmentation):
         match = self._get_classification_match(child_port_segmentation)
         self.mod_flow(
-            table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.states.classification,
             priority=constants.PRIORITY_HIGH,
             match=match,
             command=self.ofproto.OFPFC_DELETE_STRICT,
@@ -254,7 +308,7 @@ class TrunkApp(df_base_app.DFlowApp):
     def _delete_dispatch_rule(self, child_port_segmentation):
         match = self._get_dispatch_match(child_port_segmentation)
         self.mod_flow(
-            table_id=constants.INGRESS_DISPATCH_TABLE,
+            table_id=self.states.dispatch,
             priority=constants.PRIORITY_MEDIUM,
             match=match,
             command=self.ofproto.OFPFC_DELETE_STRICT,
@@ -266,22 +320,22 @@ class TrunkApp(df_base_app.DFlowApp):
             index=trunk.ChildPortSegmentation.get_index('parent_id'),
         )
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
+    @app_base.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _local_port_bound(self, lport):
         for cps in self._get_all_cps_by_parent(lport):
             self._install_local_cps(cps)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
+    @app_base.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _local_port_unbound(self, lport):
         for cps in self._get_all_cps_by_parent(lport):
             self._uninstall_local_cps(cps)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
+    @app_base.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
     def _remote_port_bound(self, lport):
         for cps in self._get_all_cps_by_parent(lport):
             self._install_remote_cps(cps)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
+    @app_base.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
     def _remote_port_unbound(self, lport):
         for cps in self._get_all_cps_by_parent(lport):
             self._uninstall_remote_cps(cps)
