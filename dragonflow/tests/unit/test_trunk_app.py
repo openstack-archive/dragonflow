@@ -14,6 +14,8 @@
 #    under the License.
 
 import mock
+import netaddr
+import ryu.lib.packet
 
 from dragonflow.controller.common import constants
 from dragonflow.controller import port_locator
@@ -35,11 +37,53 @@ class SettingMock(object):
                 self._dict[attrname[4:]] = x
             return setter
 
+    def __repr__(self):
+        return 'SettingMock(%r)' % self._dict
+
     def __eq__(self, other):
         if isinstance(other, SettingMock):
             return self._dict == other._dict
+        if isinstance(other, dict):
+            return self._dict == other
         return super(SettingMock, self) == other
 
+
+def _create_2nd_lswitch():
+    lswitch = l2.LogicalSwitch(id='lswitch2',
+                               unique_key=17,
+                               segmentation_id=17,
+                               topic='fake_tenant1')
+    subnet = _create_2nd_subnet()
+    lswitch.add_subnet(subnet)
+    return lswitch
+
+
+def _create_2nd_subnet():
+    return l2.Subnet(id='subnet2',
+                     enable_dhcp=False,
+                     cidr='192.168.18.0/24',
+                     topic='fake_tenant1')
+
+
+def _create_child_port():
+    return l2.LogicalPort(id='lport2',
+                          ips=['192.168.18.3'],
+                          subnets=['subnet2'],
+                          macs=['fa:16:3e:00:00:01'],
+                          enabled=True,
+                          lswitch='lswitch2',
+                          topic='fake_tenant1',
+                          unique_key=33,
+                          version=2)
+
+
+def _create_segmentation():
+    return trunk.ChildPortSegmentation(id='cps1',
+                                       topic='fake_tenant1',
+                                       parent='fake_port2',
+                                       port='lport2',
+                                       segmentation_type='vlan',
+                                       segmentation_id=7)
 
 class TestTrunkApp(test_app_base.DFAppTestBase):
     apps_list = ["trunk"]
@@ -52,48 +96,14 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.app.ofproto.OFPVID_PRESENT = 0x1000
         self.db_store.update(test_app_base.fake_local_port2)
 
-    def _create_2nd_lswitch(self):
-        lswitch = l2.LogicalSwitch(id='lswitch2',
-                                   unique_key=17,
-                                   segmentation_id=17,
-                                   topic='fake_tenant1')
-        subnet = self._create_2nd_subnet()
-        lswitch.add_subnet(subnet)
-        return lswitch
-
-    def _create_2nd_subnet(self):
-        return l2.Subnet(id='subnet2',
-                         enable_dhcp=False,
-                         cidr='192.168.18.0/24',
-                         topic='fake_tenant1')
-
-    def _create_child_port(self):
-        return l2.LogicalPort(id='lport2',
-                              ips=['192.168.18.3'],
-                              subnets=['subnet2'],
-                              macs=['fa:16:3e:00:00:01'],
-                              enabled=True,
-                              lswitch='lswitch2',
-                              topic='fake_tenant1',
-                              unique_key=33,
-                              version=2)
-
-    def _create_segmentation(self):
-        return trunk.ChildPortSegmentation(id='cps1',
-                                           topic='fake_tenant1',
-                                           parent='fake_port2',
-                                           port='lport2',
-                                           segmentation_type='vlan',
-                                           segmentation_id=7)
-
     def test_create_child_segmentation(self):
-        lswitch2 = self._create_2nd_lswitch()
+        lswitch2 = _create_2nd_lswitch()
         self.controller.update(lswitch2)
 
-        lport = self._create_child_port()
+        lport = _create_child_port()
         self.controller.update(lport)
 
-        segmentation = self._create_segmentation()
+        segmentation = _create_segmentation()
         self.controller.update(segmentation)
 
         classification_flow = mock.call(
@@ -112,11 +122,11 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
                                              dispatch_flow))
 
     def test_delete_child_segmentation(self):
-        lswitch2 = self._create_2nd_lswitch()
+        lswitch2 = _create_2nd_lswitch()
         self.db_store.update(lswitch2)
-        lport = self._create_child_port()
+        lport = _create_child_port()
         self.db_store.update(lport)
-        segmentation = self._create_segmentation()
+        segmentation = _create_segmentation()
         self.db_store.update(segmentation)
         port_locator.set_port_binding(lport, object())
 
@@ -137,60 +147,170 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.mock_mod_flow.assert_has_calls((classification_flow,
                                              dispatch_flow))
 
-    def test__get_classification_match(self):
-        lswitch2 = self._create_2nd_lswitch()
+
+class _TestTrunkSegmentationTypes(object):
+    apps_list = ["trunk"]
+
+    def setUp(self):
+        super(_TestTrunkSegmentationTypes, self).setUp()
+        self.app = self.open_flow_app.dispatcher.apps['trunk']
+        self.mock_mod_flow = self.app.mod_flow
+        self.db_store = db_store.get_instance()
+        self.app.ofproto.OFPVID_PRESENT = 0x1000
+        self.db_store.update(test_app_base.fake_local_port2)
+
+    def test_installed_flows(self):
+        lswitch2 = _create_2nd_lswitch()
         self.db_store.update(lswitch2)
-        lport = self._create_child_port()
+        lport = _create_child_port()
         self.db_store.update(lport)
-        segmentation = self._create_segmentation()
+        segmentation = self.create_segmentation()
         self.db_store.update(segmentation)
+
+        self.app.mod_flow.reset_mock()
         self.app.parser.OFPMatch.side_effect = SettingMock
-
-        match = self.app._get_classification_match(segmentation)
-        match_dict = match._dict
-        self.assertEqual({'reg6': test_app_base.fake_local_port2.unique_key,
-                          'vlan_vid': 0x1007},
-                         match_dict)
-
-    def test__get_classification_actions(self):
-        lswitch2 = self._create_2nd_lswitch()
-        self.db_store.update(lswitch2)
-        lport = self._create_child_port()
-        self.db_store.update(lport)
-        segmentation = self._create_segmentation()
-        self.db_store.update(segmentation)
         self.app.parser.OFPActionSetField.side_effect = SettingMock
-        actions = self.app._get_classification_actions(segmentation)
-        self.assertEqual(4, len(actions))
-        self.assertEqual({'reg6': 33}, actions[0]._dict)
-        self.assertEqual({'metadata': 17}, actions[1]._dict)
-        self.assertEqual(self.app.parser.OFPActionPopVlan(), actions[2])
-        self.assertEqual(self.app.parser.NXActionResubmit(), actions[3])
+        self.app._install_local_cps(segmentation)
+        expected_matches = self.get_expected_matches()
+        expected_actions = self.get_expected_actions()
+        calls = self.app.mod_flow.call_args_list
+        for expected_match, expected_action, call in zip(expected_matches,
+                                                         expected_actions,
+                                                         calls):
+            args, kwargs = call
+            match = kwargs['match']
+            match_dict = match._dict
+            self.assertEqual(expected_match, match_dict)
+            action = kwargs['actions']
+            self.assertEqual(expected_action, action)
+        self.assertEqual(len(expected_matches), len(calls))
+        self.assertEqual(len(expected_actions), len(calls))
 
-    def test__get_dispatch_match(self):
-        lswitch2 = self._create_2nd_lswitch()
-        self.db_store.update(lswitch2)
-        lport = self._create_child_port()
-        self.db_store.update(lport)
-        segmentation = self._create_segmentation()
-        self.db_store.update(segmentation)
-        self.app.parser.OFPMatch.side_effect = SettingMock
-        match = self.app._get_dispatch_match(segmentation)
-        match_dict = match._dict
-        self.assertEqual({'reg7': 33}, match_dict)
 
-    def test__get_dispatch_actions(self):
-        lswitch2 = self._create_2nd_lswitch()
-        self.db_store.update(lswitch2)
-        lport = self._create_child_port()
-        self.db_store.update(lport)
-        segmentation = self._create_segmentation()
-        self.db_store.update(segmentation)
-        self.app.parser.OFPActionSetField.side_effect = SettingMock
-        self.app.parser.OFPActionOutput.side_effect = SettingMock
-        actions = self.app._get_dispatch_actions(segmentation)
-        self.assertEqual(self.app.parser.OFPActionPushVlan(), actions[0])
-        self.assertEqual({'vlan_vid': 0x1007}, actions[1]._dict)
-        self.assertEqual({'reg7': test_app_base.fake_local_port2.unique_key},
-                         actions[2]._dict)
-        self.assertEqual(self.app.parser.NXActionResubmit(), actions[3])
+class TestTrunkSegmentationTypesVLAN(_TestTrunkSegmentationTypes, test_app_base.DFAppTestBase):
+    def create_segmentation(self):
+        return _create_segmentation()
+
+    def get_expected_matches(self):
+        return [
+            {'reg6': test_app_base.fake_local_port2.unique_key,
+             'vlan_vid': 0x1007},
+            {'reg7': 33}
+        ]
+
+    def get_expected_actions(self):
+        return [
+            [
+                SettingMock(reg6=33),
+                SettingMock(metadata=17),
+                self.app.parser.OFPActionPopVlan(),
+                self.app.parser.NXActionResubmit(),
+            ],[
+                self.app.parser.OFPActionPushVlan(),
+                SettingMock(vlan_vid=0x1007),
+                SettingMock(reg7=test_app_base.fake_local_port2.unique_key),
+                self.app.parser.NXActionResubmit(),
+            ]
+        ]
+
+
+class TestTrunkSegmentationTypesMACVLAN(_TestTrunkSegmentationTypes, test_app_base.DFAppTestBase):
+    def create_segmentation(self):
+        segmentation = _create_segmentation()
+        segmentation.segmentation_type = trunk.TYPE_MACVLAN
+        return segmentation
+
+    def get_expected_matches(self):
+        return [
+            {
+                'reg6': test_app_base.fake_local_port2.unique_key,
+                'eth_src': netaddr.EUI('fa:16:3e:00:00:01'),
+                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_IP,
+                'ipv4_src': netaddr.IPAddress('192.168.18.3'),
+            },{
+                'reg7': 33,
+                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_IP,
+            },{
+                'reg6': test_app_base.fake_local_port2.unique_key,
+                'eth_src': netaddr.EUI('fa:16:3e:00:00:01'),
+                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_ARP,
+                'arp_sha': netaddr.EUI('fa:16:3e:00:00:01'),
+                'arp_spa': netaddr.IPAddress('192.168.18.3'),
+            },{
+                'reg7': 33,
+                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_ARP,
+            }
+        ]
+
+    def get_expected_actions(self):
+        return [
+            [
+                SettingMock(reg6=33),
+                SettingMock(metadata=17),
+                self.app.parser.NXActionResubmit(),
+            ],[
+                SettingMock(reg7=test_app_base.fake_local_port2.unique_key),
+                self.app.parser.NXActionResubmit(),
+            ],[
+                SettingMock(reg6=33),
+                SettingMock(metadata=17),
+                self.app.parser.NXActionResubmit(),
+            ],[
+                SettingMock(reg7=test_app_base.fake_local_port2.unique_key),
+                self.app.parser.NXActionResubmit(),
+            ]
+        ]
+
+
+class TestTrunkSegmentationTypesIPVLAN(_TestTrunkSegmentationTypes, test_app_base.DFAppTestBase):
+    def create_segmentation(self):
+        segmentation = _create_segmentation()
+        segmentation.segmentation_type = trunk.TYPE_IPVLAN
+        return segmentation
+
+    def get_expected_matches(self):
+        return [
+            {
+                'reg6': test_app_base.fake_local_port2.unique_key,
+                'eth_src': test_app_base.fake_local_port2.mac,
+                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_IP,
+                'ipv4_src': netaddr.IPAddress('192.168.18.3'),
+            },{
+                'reg7': 33,
+                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_IP,
+            },{
+                'reg6': test_app_base.fake_local_port2.unique_key,
+                'eth_src': test_app_base.fake_local_port2.mac,
+                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_ARP,
+                'arp_sha': test_app_base.fake_local_port2.mac,
+                'arp_spa': netaddr.IPAddress('192.168.18.3'),
+            },{
+                'reg7': 33,
+                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_ARP,
+            }
+        ]
+
+    def get_expected_actions(self):
+        return [
+            [
+                SettingMock(reg6=33),
+                SettingMock(metadata=17),
+                SettingMock(eth_src=netaddr.EUI('fa:16:3e:00:00:01')),
+                self.app.parser.NXActionResubmit(),
+            ],[
+                SettingMock(eth_dst=test_app_base.fake_local_port2.mac),
+                SettingMock(reg7=test_app_base.fake_local_port2.unique_key),
+                self.app.parser.NXActionResubmit(),
+            ], [
+                SettingMock(reg6=33),
+                SettingMock(metadata=17),
+                SettingMock(eth_src=netaddr.EUI('fa:16:3e:00:00:01')),
+                SettingMock(arp_sha=netaddr.EUI('fa:16:3e:00:00:01')),
+                self.app.parser.NXActionResubmit(),
+            ],[
+                SettingMock(eth_dst=test_app_base.fake_local_port2.mac),
+                SettingMock(arp_tha=test_app_base.fake_local_port2.mac),
+                SettingMock(reg7=test_app_base.fake_local_port2.unique_key),
+                self.app.parser.NXActionResubmit(),
+            ]
+        ]
