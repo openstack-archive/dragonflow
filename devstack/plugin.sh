@@ -494,6 +494,14 @@ function start_df_bgp_service {
     fi
 }
 
+function setup_rootwrap_filters {
+    if [[ "$DF_INSTALL_DEBUG_ROOTWRAP_CONF" == "True" ]]; then
+        echo "Adding rootwrap filters"
+        sudo mkdir -p -m 755 $NEUTRON_CONF_DIR/etc/rootwrap.d
+        sudo cp -p $DRAGONFLOW_DIR/etc/rootwrap.d/* $NEUTRON_CONF_DIR/etc/rootwrap.d
+    fi
+}
+
 function stop_df_bgp_service {
     if is_service_enabled df-bgp ; then
        echo "Stopping Dragonflow BGP dynamic routing service"
@@ -580,6 +588,7 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         start_df
         start_df_metadata_agent
         start_df_bgp_service
+        setup_rootwrap_filters
     fi
 
     if [[ "$1" == "unstack" ]]; then
