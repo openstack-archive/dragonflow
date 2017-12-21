@@ -22,9 +22,9 @@ necessary modification is done, e.g. replacing L2 addresses in L3 routing.
 
 To run the tests:
 
-::
+.. code-block:: shell
 
-    > tox -e fullstack
+    tox -e fullstack
 
 It is possible to have the fullstack tests take authentication information
 from the environment variable, using e.g. an openrc file, such as provided
@@ -32,9 +32,9 @@ by devstack or openstack-ansible.
 
 To do so, set the environment variable `DF_FULLSTACK_USE_ENV`
 
-::
+.. code-block:: shell
 
-    > export DF_FULLSTACK_USE_ENV=1
+    export DF_FULLSTACK_USE_ENV=1
 
 
 Debugging
@@ -43,9 +43,9 @@ Debugging
 There are a few tools that exist to debug Dragonflow. Most of them are geared
 towards verifying the pipeline was installed correctly.
 
-::
+.. code-block:: shell
 
-    > sudo ovs-ofctl dump-flows br-int -O OpenFlow13
+    sudo ovs-ofctl dump-flows br-int -O OpenFlow13
 
 This command will display the pipeline that has been installed in OVS. See the
 manual page for ovs-ofctl for more info.
@@ -53,9 +53,9 @@ manual page for ovs-ofctl for more info.
 It is worthwhile to note that each flow contains statistics such as how many
 packets matched this flow, and what is the cumulative size.
 
-::
+.. code-block:: shell
 
-    > sudo ovs-appctl ofproto/trace br-int <flow>
+    sudo ovs-appctl ofproto/trace br-int <flow>
 
 
 This command will simulate a packet matching the given flow through
@@ -63,9 +63,9 @@ the pipeline.  The perl script in [#]_ can be used to facilitate the use
 of this tool. The script also recirculates the packet when necessary,
 e.g. for connection tracking.
 
-::
+.. code-block:: shell
 
-   > df-db
+    df-db
 
 
 This utility will allow to inspect Dragonflow northbound database. You can
@@ -73,9 +73,9 @@ dump db content, list db tables, list db table keys and print value of the
 specific key in the table. Use *df-db --help* to list and get details on
 supported sub-commands.
 
-::
+.. code-block:: shell
 
-   > df-model
+    df-model
 
 
 This utility will allow to print a representation of the DragonFlow model in
@@ -87,6 +87,25 @@ to a file.
 
 * PlantUML output may be visualized using the PlantUML Server [#]_
 * rst output may be visualized using Online reStructuredText editor [#]_
+
+::
+
+    SimulateAndSendAction class
+
+In the tests, you can have the above mentioned script run automatically for
+a packet you are about to send before actually sending it.
+This should be done by changing the SendAction for the packet to
+SimulateAndSendAction.
+Note that in order to use this functionality, you would have to add some
+rootwrap configuration so that the dragonflow controller will be able to
+launch the ovs-appctl command.
+To have this configured automatically, add the following line to the local
+.conf before running the stack.sh script (for devstack only)
+
+.. code-block:: cfg
+
+    DF_INSTALL_DEBUG_ROOTWRAP_CONF=True
+
 
 
 |
