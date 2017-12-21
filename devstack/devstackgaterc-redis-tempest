@@ -20,5 +20,4 @@
 source /opt/stack/new/dragonflow/devstack/devstackgaterc-common
 export OVERRIDE_ENABLED_SERVICES+=,df-redis,df-redis-server
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_REDIS_PUBSUB=True"
-export DEVSTACK_LOCAL_CONFIG+=$'\n'"ENABLE_DF_SFC=True"
-export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=False"
+source /opt/stack/new/dragonflow/devstack/tempest-filter
