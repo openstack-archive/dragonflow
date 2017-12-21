@@ -57,7 +57,7 @@
           export PROJECTS="openstack/dragonflow $PROJECTS"
           export PROJECTS="openstack/neutron-dynamic-routing $PROJECTS"
           export PROJECTS="openstack/networking-sfc $PROJECTS"
-          export DEVSTACK_GATE_SETTINGS=/opt/stack/new/dragonflow/devstack/devstackgaterc-etcd-zmq
+          export DEVSTACK_GATE_SETTINGS=/opt/stack/new/dragonflow/devstack/devstackgaterc-fullstack-etcd-zmq
 
           function gate_hook {
               bash -xe $BASE/new/dragonflow/dragonflow/tests/contrib/gate_hook.sh fullstack

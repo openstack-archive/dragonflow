@@ -17,5 +17,6 @@
 # https://git.openstack.org/cgit/openstack-infra/project-config/tree/jenkins/jobs/dragonflow.yaml
 #
 
-export OVERRIDE_ENABLED_SERVICES+=,df-redis,df-redis-server
-export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_REDIS_PUBSUB=True"
+source /opt/stack/new/dragonflow/devstack/devstackgaterc-common
+source /opt/stack/new/dragonflow/devstack/devstackgaterc-redis
+export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=False"
