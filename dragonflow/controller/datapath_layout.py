@@ -15,6 +15,8 @@ import yaml
 
 from dragonflow import conf as cfg
 
+LEGACY_APP = 'dragonflow-legacy'
+
 
 Vertex = collections.namedtuple(
     'Vertex',
