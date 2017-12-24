@@ -26,6 +26,8 @@ from ryu.ofproto import ofproto_v1_3
 from ryu import utils
 
 from dragonflow.controller.common import constants
+from dragonflow.controller import datapath as new_dp
+from dragonflow.controller import datapath_layout as new_dp_layout
 from dragonflow.controller import dispatcher
 
 
@@ -46,6 +48,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         self._datapath = None
         self.table_handlers = {}
         self.first_connect = True
+        self._new_dp = new_dp.Datapath(new_dp_layout.get_datapath_layout())
 
     @property
     def datapath(self):
@@ -115,6 +118,8 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
                                            None)
         self.first_connect = False
         self.vswitch_api.initialize(self.nb_api)
+        self._new_dp.set_up(
+            self, self.vswitch_api, self.nb_api, self.neutron_server_notifier)
 
     def _send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
