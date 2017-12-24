@@ -11,6 +11,8 @@
 #    under the License.
 import collections
 
+LEGACY_APP = 'dragonflow-legacy'
+
 
 Vertex = collections.namedtuple(
     'Vertex',
@@ -43,6 +45,12 @@ DatapathLayout = collections.namedtuple(
 
 def get_datapath_layout():
     return DatapathLayout(
-        vertices=(),
+        vertices=(
+            Vertex(
+                name=LEGACY_APP,
+                type=LEGACY_APP,
+                params={},
+            ),
+        ),
         edges=(),
     )
