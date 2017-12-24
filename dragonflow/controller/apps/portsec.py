@@ -21,6 +21,7 @@ from ryu.lib.packet import arp
 from ryu.lib.packet import in_proto
 from ryu.ofproto import ether
 
+from dragonflow.controller import app_base
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
 from dragonflow.controller import df_base_app
@@ -32,13 +33,42 @@ IPV4_SRC_MATCH_ITEM = 'ipv4_src'
 IPV6_SRC_MATCH_ITEM = 'ipv6_src'
 
 
-class PortSecApp(df_base_app.DFlowApp):
+@app_base.define_specification(
+    states=('main',),
+    public_mapping=app_base.VariableMapping(
+        source_port_key='reg6',
+    ),
+    entrypoints=(
+        app_base.Entrypoint(
+            name='default',
+            target='main',
+            consumes=(
+                'source_port_key',
+            ),
+        ),
+    ),
+    exitpoints=(
+        app_base.Exitpoint(
+            name='default',
+            provides=(
+                'source_port_key',
+            ),
+        ),
+        app_base.Exitpoint(
+            name='services',
+            provides=(
+                'source_port_key',
+            ),
+        ),
+    ),
+)
+class PortSecApp(app_base.Base):
 
     def _add_flow_drop(self, priority, match):
         drop_inst = None
         self.mod_flow(
              inst=drop_inst,
-             table_id=const.EGRESS_PORT_SECURITY_TABLE,
+             table_id=self.states.main,
              priority=priority,
              match=match)
 
@@ -125,9 +155,9 @@ class PortSecApp(df_base_app.DFlowApp):
 
     def _install_flows_check_valid_ip_and_mac(self, unique_key, ip, mac):
         match = self._get_ip_match_obj(unique_key, mac, ip)
-        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+        self.add_flow_go_to_table(self.states.main,
                                   const.PRIORITY_HIGH,
-                                  const.EGRESS_CONNTRACK_TABLE,
+                                  self.exitpoints.default,
                                   match=match)
 
         ip_version = netaddr.IPAddress(ip).version
@@ -136,9 +166,9 @@ class PortSecApp(df_base_app.DFlowApp):
             match = self._get_arp_match_obj(unique_key, mac, ip)
         else:
             match = self._get_nd_match_object(unique_key, mac, ip)
-        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+        self.add_flow_go_to_table(self.states.main,
                                   const.PRIORITY_HIGH,
-                                  const.SERVICES_CLASSIFICATION_TABLE,
+                                  self.exitpoints.services,
                                   match=match)
 
     def _uninstall_flows_check_valid_ip_and_mac(self, unique_key, ip, mac):
@@ -160,9 +190,9 @@ class PortSecApp(df_base_app.DFlowApp):
         # Other packets with valid source mac pass
         match = parser.OFPMatch(reg6=unique_key,
                                 eth_src=mac)
-        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+        self.add_flow_go_to_table(self.states.main,
                                   const.PRIORITY_LOW,
-                                  const.SERVICES_CLASSIFICATION_TABLE,
+                                  self.exitpoints.services,
                                   match=match)
 
     def _uninstall_flows_check_valid_mac(self, unique_key, mac):
@@ -184,9 +214,9 @@ class PortSecApp(df_base_app.DFlowApp):
                                 udp_src=const.DHCP_CLIENT_PORT,
                                 udp_dst=const.DHCP_SERVER_PORT)
 
-        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+        self.add_flow_go_to_table(self.states.main,
                                   const.PRIORITY_HIGH,
-                                  const.EGRESS_CONNTRACK_TABLE,
+                                  self.exitpoints.default,
                                   match=match)
 
         # DHCPv6 packets with the vm mac pass
@@ -198,24 +228,24 @@ class PortSecApp(df_base_app.DFlowApp):
                                 udp_src=const.DHCPV6_CLIENT_PORT,
                                 udp_dst=const.DHCPV6_SERVER_PORT)
 
-        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+        self.add_flow_go_to_table(self.states.main,
                                   const.PRIORITY_HIGH,
-                                  const.EGRESS_CONNTRACK_TABLE,
+                                  self.exitpoints.default,
                                   match=match)
 
         # Arp probe packets with the vm mac pass
         match = self._get_arp_match_obj(unique_key=unique_key,
                                         mac=vm_mac,
                                         arp_op=arp.ARP_REQUEST)
-        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+        self.add_flow_go_to_table(self.states.main,
                                   const.PRIORITY_HIGH,
-                                  const.SERVICES_CLASSIFICATION_TABLE,
+                                  self.exitpoints.services,
                                   match=match)
 
         match = self._get_nd_match_object(unique_key, vm_mac)
-        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+        self.add_flow_go_to_table(self.states.main,
                                   const.PRIORITY_HIGH,
-                                  const.SERVICES_CLASSIFICATION_TABLE,
+                                  self.exitpoints.services,
                                   match=match)
 
     def _uninstall_flows_check_only_vm_mac(self, unique_key, vm_mac):
@@ -302,7 +332,7 @@ class PortSecApp(df_base_app.DFlowApp):
 
     def _remove_one_port_security_flow(self, priority, match):
         ofproto = self.ofproto
-        self.mod_flow(table_id=const.EGRESS_PORT_SECURITY_TABLE,
+        self.mod_flow(table_id=self.states.main,
                       priority=priority,
                       match=match,
                       command=ofproto.OFPFC_DELETE_STRICT)
@@ -335,9 +365,9 @@ class PortSecApp(df_base_app.DFlowApp):
 
         # Send packets to next table directly
         match = parser.OFPMatch(reg6=unique_key)
-        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
+        self.add_flow_go_to_table(self.states.main,
                                   const.PRIORITY_HIGH,
-                                  const.EGRESS_CONNTRACK_TABLE,
+                                  self.exitpoints.default,
                                   match=match)
 
     def _uninstall_disable_flow(self, lport):
@@ -370,7 +400,8 @@ class PortSecApp(df_base_app.DFlowApp):
             self._subtract_lists(new_valid_macs, old_valid_macs)
         return added_valid_macs, removed_valid_macs
 
-    def switch_features_handler(self, ev):
+    def initialize(self):
+        super(PortSecApp, self).initialize()
         parser = self.parser
 
         # Ip default drop
