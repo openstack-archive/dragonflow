@@ -203,15 +203,17 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             ip_proto=ipv4.inet.IPPROTO_TCP,
             tcp_dst=const.METADATA_HTTP_PORT,
         )
-        inst = [parser.OFPInstructionGotoTable(
-            const.SERVICES_CLASSIFICATION_TABLE)]
+        actions = [
+            parser.NXActionResubmitTable(
+                table_id=self.dfdp.apps['portsec'].exitpoints.services),
+        ]
         # Bypass the security group check for metadata request.
         self.mod_flow(
-            table_id=const.EGRESS_PORT_SECURITY_TABLE,
+            table_id=self.dfdp.apps['portsec'].states.main,
             command=ofproto.OFPFC_ADD,
             priority=const.PRIORITY_VERY_HIGH,
             match=match,
-            inst=inst)
+            actions=actions)
 
         inst = self._get_incoming_flow_instructions(ofproto, parser)
         self.mod_flow(
