@@ -19,7 +19,7 @@
 
 # First table in the pipeline. All packets are landed here.
 # In case packet is originated from local port, it is forwarded
-# to EGRESS_PORT_SECURITY_TABLE.
+# to the port sec application.
 # In case packet is coming from outside with a fip, it is
 # forwarded to table INGRESS_NAT_TABLE for translation.
 # In case the packet is coming with a tunnel id, it is
@@ -28,9 +28,6 @@
 INGRESS_CLASSIFICATION_DISPATCH_TABLE = 0
 # Detect reg6 (provider network and dNAT)
 EXTERNAL_INGRESS_DETECT_SOURCE_TABLE = 2
-# All packets from unknown ovs ports are dropped here. Other packets
-# are forwarded to table EGRESS_CONNTRACK_TABLE.
-EGRESS_PORT_SECURITY_TABLE = 5
 # Next 2 tables are related to connection tracking and packet filtering.
 # Used for SG.
 EGRESS_CONNTRACK_TABLE = 10
