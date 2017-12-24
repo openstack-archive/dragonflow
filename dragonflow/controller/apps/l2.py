@@ -73,11 +73,6 @@ class L2App(df_base_app.DFlowApp):
                                   const.PRIORITY_MEDIUM,
                                   const.IPV6_ND_TABLE, match=match)
 
-        # Default: traffic => send to connection track table
-        self.add_flow_go_to_table(const.EGRESS_PORT_SECURITY_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.EGRESS_CONNTRACK_TABLE)
-
         # Default: traffic => send to service classification table
         self.add_flow_go_to_table(const.EGRESS_CONNTRACK_TABLE,
                                   const.PRIORITY_DEFAULT,

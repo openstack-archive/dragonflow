@@ -11,11 +11,13 @@
 #    under the License.
 
 import netaddr
+import six
 import time
 
 from neutron_lib import constants as n_const
 
 from dragonflow.controller.common import constants as const
+from dragonflow.controller import datapath
 from dragonflow.tests.common import constants as test_const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
@@ -24,8 +26,13 @@ from dragonflow.tests.fullstack import test_objects as objects
 
 class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
 
+    def setUp(self):
+        super(TestOVSFlowsForPortSecurity, self).setUp()
+        self.dfdp = datapath.load_datapath()
+
     def _is_expected_flow(self, flow, expected_list):
-        if flow['table'] != str(const.EGRESS_PORT_SECURITY_TABLE):
+        table_id_u = six.text_type(self.dfdp.apps['portsec'].states.main)
+        if flow['table'] != table_id_u:
             return False
 
         priority = expected_list['priority']
@@ -63,10 +70,10 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
 
         unique_key_match = "reg6=" + hex(unique_key)
         dl_src_match = "dl_src=" + mac
-        goto_conntrack_table_action = \
-            "goto_table:" + str(const.EGRESS_CONNTRACK_TABLE)
-        goto_classification_table_action = \
-            "goto_table:" + str(const.SERVICES_CLASSIFICATION_TABLE)
+        exitpoints = self.dfdp.apps['portsec'].exitpoints
+        goto_conntrack_table_action = "goto_table:" + str(exitpoints.default)
+        goto_classification_table_action = ("goto_table:" +
+                                            str(exitpoints.services))
 
         # priority: High, match: reg6=unique_key, dl_src=$vm_mac,
         # dl_dst=ff:ff:ff:ff:ff:ff, udp, tp_src=68, tp_dst=67,
@@ -203,13 +210,6 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
             "priority": str(const.PRIORITY_VERY_LOW),
             "match_list": [],
             "actions": "drop"
-        })
-
-        # priority: default, goto const.EGRESS_CONNTRACK_TABLE
-        expected_flow_list.append({
-            "priority": str(const.PRIORITY_DEFAULT),
-            "match_list": [],
-            "actions": "goto_table:" + str(const.EGRESS_CONNTRACK_TABLE)
         })
 
         self._check_all_flows_existed(expected_flow_list)
