@@ -48,6 +48,11 @@ class DFAppTestBase(tests_base.BaseTestCase):
             self.apps_list + extra_apps,
             group='df',
         )
+        cfg.CONF.set_override(
+            'datapath_layout_path',
+            'etc/dragonflow_datapath_layout.yaml',
+            group='df',
+        )
         cfg.CONF.set_override('host', fake_chassis1.id)
         super(DFAppTestBase, self).setUp()
         self.useFixture(log_fixture.SetLogLevel([None], logging.DEBUG))
