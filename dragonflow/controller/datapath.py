@@ -14,6 +14,7 @@ import stevedore
 from dragonflow._i18n import _
 from dragonflow import conf as cfg
 from dragonflow.controller import app_base
+from dragonflow.controller import datapath_layout as dp_layout
 
 REGS = (
     'reg0',
@@ -39,6 +40,22 @@ class Datapath(object):
         self._layout = layout
         self._dp_allocs = {}
         self._public_variables = set()
+        # FIXME remove when done porting
+        self._dp_allocs[dp_layout.LEGACY_APP] = self._create_legacy_dp_alloc()
+
+    def _create_legacy_dp_alloc(self):
+        # Create all possible exits and entries
+        return app_base.DpAlloc(
+            states=(),
+            entrypoints={str(x): x for x in range(200)},
+            exitpoints={str(x): x for x in range(200)},
+            full_mapping={
+                'source_port_key': 'reg6',
+                'destination_port_key': 'reg7',
+                'router_key': 'reg5',
+                'network_key': 'metadata',
+            }
+        )
 
     def set_up(self, ryu_base, vswitch_api, nb_api, notifier):
         self._dp = ryu_base.datapath
