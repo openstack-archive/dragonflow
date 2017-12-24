@@ -15,6 +15,9 @@ import yaml
 
 from dragonflow import conf as cfg
 
+# FIXME(oanson) remove when done porting
+LEGACY_APP = 'dragonflow-legacy'
+
 
 Vertex = collections.namedtuple(
     'Vertex',
