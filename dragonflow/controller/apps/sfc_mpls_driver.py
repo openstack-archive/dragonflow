@@ -419,7 +419,7 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
                                              port_pair):
         for flow_classifier in port_chain.flow_classifiers:
             self.app.mod_flow(
-                table_id=constants.EGRESS_PORT_SECURITY_TABLE,
+                table_id=self.app.dfdp.apps['portsec'].states.main,
                 priority=constants.PRIORITY_VERY_HIGH,
                 match=self.app.parser.OFPMatch(
                     reg6=port_pair.egress_port.unique_key,
@@ -430,22 +430,16 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
                         port_pair_group,
                     ),
                 ),
-                inst=[
-                    self.app.parser.OFPInstructionActions(
-                        self.app.ofproto.OFPIT_APPLY_ACTIONS,
-                        [
-                            self.app.parser.OFPActionSetField(
-                                mpls_label=self._get_egress_label(
-                                    port_chain,
-                                    flow_classifier,
-                                    port_pair_group
-                                ),
-                            ),
-                        ],
+                actions=[
+                    self.app.parser.OFPActionSetField(
+                        mpls_label=self._get_egress_label(
+                            port_chain,
+                            flow_classifier,
+                            port_pair_group
+                        ),
                     ),
-                    self.app.parser.OFPInstructionGotoTable(
-                        constants.SFC_MPLS_DISPATCH_TABLE,
-                    ),
+                    self.app.parser.NXActionResubmitTable(
+                        table_id=constants.SFC_MPLS_DISPATCH_TABLE),
                 ],
             )
 
@@ -460,7 +454,7 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
 
             for eth_type in self._ETH_TYPE_TO_TC:
                 self.app.mod_flow(
-                    table_id=constants.EGRESS_PORT_SECURITY_TABLE,
+                    table_id=self.app.dfdp.apps['portsec'].states.main,
                     priority=constants.PRIORITY_VERY_HIGH,
                     match=self.app.parser.OFPMatch(
                         reg6=port_pair.egress_port.unique_key,
@@ -501,7 +495,7 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
         for flow_classifier in port_chain.flow_classifiers:
             self.app.mod_flow(
                 command=self.app.ofproto.OFPFC_DELETE_STRICT,
-                table_id=constants.EGRESS_PORT_SECURITY_TABLE,
+                table_id=self.app.dfdp.apps['portsec'].states.main,
                 priority=constants.PRIORITY_VERY_HIGH,
                 match=self.app.parser.OFPMatch(
                     reg6=port_pair.egress_port.unique_key,
@@ -519,7 +513,7 @@ class MplsDriver(_SimpleMplsLabelAllocator, sfc_driver_base.SfcBaseDriver):
             self.app.mod_flow(
                 command=self.app.ofproto.OFPFC_DELETE_STRICT,
                 priority=constants.PRIORITY_VERY_HIGH,
-                table_id=constants.EGRESS_PORT_SECURITY_TABLE,
+                table_id=self.app.dfdp.apps['portsec'].states.main,
                 match=self.app.parser.OFPMatch(
                     reg6=port_pair.egress_port.unique_key,
                     eth_type=eth_type,
