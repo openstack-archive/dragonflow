@@ -21,6 +21,8 @@ from oslo_config import cfg
 from oslo_log import fixture as log_fixture
 
 from dragonflow.common import constants
+from dragonflow.controller import datapath
+from dragonflow.controller import datapath_layout
 from dragonflow.controller import df_local_controller
 from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
@@ -46,6 +48,11 @@ class DFAppTestBase(tests_base.BaseTestCase):
         cfg.CONF.set_override(
             'apps_list',
             self.apps_list + extra_apps,
+            group='df',
+        )
+        cfg.CONF.set_override(
+            'datapath_layout_path',
+            'etc/dragonflow_datapath_layout.yaml',
             group='df',
         )
         cfg.CONF.set_override('host', fake_chassis1.id)
@@ -87,6 +94,12 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.open_flow_app.load(self.controller.open_flow_app, **kwargs)
         self.topology = self.controller.topology = topology.Topology(
             self.controller, enable_selective_topo_dist)
+        self.open_flow_app._new_dp = datapath.Datapath(
+            self.get_layout())
+        self.open_flow_app._new_dp.set_up(
+            self, self.vswitch_api, self.nb_api, mock.sentinel)
+        self.open_flow_app._new_dp.set_up = mock.Mock()
+        self.dfdp = self.open_flow_app._new_dp
 
         # Add basic network topology
         self.controller.update(fake_logic_switch1)
@@ -99,6 +112,9 @@ class DFAppTestBase(tests_base.BaseTestCase):
         mod_flow_mock.reset_mock()
         add_flow_go_to_table_mock.reset_mock()
         execute_mock.reset_mock()
+
+    def get_layout(self):
+        return datapath_layout.Layout((), ())
 
     def tearDown(self):
         for model in model_framework.iter_models(False):

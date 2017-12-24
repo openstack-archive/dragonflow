@@ -74,6 +74,10 @@ class DFlowApp(object):
         return self.api.datapath
 
     @property
+    def dfdp(self):
+        return self.api._new_dp
+
+    @property
     def parser(self):
         return self.datapath.ofproto_parser
 
