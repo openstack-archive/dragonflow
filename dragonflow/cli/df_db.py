@@ -271,7 +271,7 @@ def main():
         cfg.CONF.df.nb_db_class,
         df_utils.DF_NB_DB_DRIVER_NAMESPACE)
     db_driver.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                         db_port=cfg.CONF.df.remote_db_port,
+                    ls lswitch     db_port=cfg.CONF.df.remote_db_port,
                          config=cfg.CONF.df)
 
     args.handle(db_driver, args)
