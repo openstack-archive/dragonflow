@@ -35,7 +35,7 @@ class ClassifierApp(df_base_app.DFlowApp):
         self.add_flow_go_to_table(
             table=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             priority=const.PRIORITY_DEFAULT,
-            goto_table_id=const.EGRESS_PORT_SECURITY_TABLE,
+            goto_table_id=self.dfdp.apps['portsec'].entrypoints.default,
         )
 
     @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_CREATED)
