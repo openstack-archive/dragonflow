@@ -1,2 +1,8 @@
-vertices: {}
-edges: {}
+vertices:
+  portsec:
+    type: portsec
+
+edges:
+  dragonflow-legacy.out.5: portsec.in.default
+  portsec.out.default: dragonflow-legacy.in.10
+  portsec.out.services: dragonflow-legacy.in.20
