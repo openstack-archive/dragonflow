@@ -51,6 +51,24 @@ def get_datapath_layout():
                 type=LEGACY_APP,
                 params={},
             ),
+            Vertex(
+                name='portsec',
+                type='portsec',
+                params={},
+            ),
         ),
-        edges=(),
+        edges=(
+            Edge(
+                exitpoint=Connector.from_string('dragonflow-legacy:out:5'),
+                entrypoint=Connector.from_string('portsec:in:default'),
+            ),
+            Edge(
+                exitpoint=Connector.from_string('portsec:out:default'),
+                entrypoint=Connector.from_string('dragonflow-legacy:out:10'),
+            ),
+            Edge(
+                exitpoint=Connector.from_string('portsec:out:services'),
+                entrypoint=Connector.from_string('dragonflow-legacy:out:20'),
+            ),
+        ),
     )
