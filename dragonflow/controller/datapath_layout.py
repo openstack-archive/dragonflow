@@ -56,6 +56,11 @@ def get_datapath_layout():
                 type='portsec',
                 params={},
             ),
+            Vertex(
+                name='sg',
+                type='sg',
+                params={},
+            ),
         ),
         edges=(
             Edge(
@@ -64,11 +69,23 @@ def get_datapath_layout():
             ),
             Edge(
                 exitpoint=Connector.from_string('portsec:out:default'),
-                entrypoint=Connector.from_string('dragonflow-legacy:out:10'),
+                entrypoint=Connector.from_string('sg:in:egress'),
             ),
             Edge(
                 exitpoint=Connector.from_string('portsec:out:services'),
                 entrypoint=Connector.from_string('dragonflow-legacy:out:20'),
+            ),
+            Edge(
+                exitpoint=Connector.from_string('sg:out:egress'),
+                entrypoint=Connector.from_string('dragonflow-legacy:out:20'),
+            ),
+            Edge(
+                exitpoint=Connector.from_string('dragonflow-legacy:out:105'),
+                entrypoint=Connector.from_string('sg:in:ingress'),
+            ),
+            Edge(
+                exitpoint=Connector.from_string('sg:out:ingress'),
+                entrypoint=Connector.from_string('dragonflow-legacy:in:115'),
             ),
         ),
     )
