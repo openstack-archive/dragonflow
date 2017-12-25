@@ -45,7 +45,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
     def test_host_route_include_metadata_route(self):
         cfg.CONF.set_override('df_add_link_local_route', True,
                               group='df_dhcp_app')
-        subnet = test_app_base.fake_logic_switch1.subnets[0]
+        subnet = test_app_base.fake_lswitch_default_subnets[0]
         host_route_bin = self.app._get_host_routes_list_bin(
             subnet, test_app_base.fake_local_port1)
         self.assertIn(addrconv.ipv4.text_to_bin(const.METADATA_SERVICE_IP),
@@ -66,13 +66,13 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         self.assertIsNone(opt_value2)
 
     def test_host_route_include_port_dhcp_opt_121(self):
-        subnet = test_app_base.fake_logic_switch1.subnets[0]
+        subnet = test_app_base.fake_lswitch_default_subnets[0]
         host_route_bin = self.app._get_host_routes_list_bin(
             subnet, test_app_base.fake_local_port1)
         self.assertIn(addrconv.ipv4.text_to_bin('10.0.0.1'), host_route_bin)
 
     def test_gateway_include_port_dhcp_opt_3(self):
-        subnet = copy.copy(test_app_base.fake_logic_switch1.subnets[0])
+        subnet = copy.copy(test_app_base.fake_lswitch_default_subnets[0])
         subnet.gateway_ip = None
         gateway_ip = self.app._get_port_gateway_address(
             subnet, test_app_base.fake_local_port1)

@@ -27,7 +27,6 @@ from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
 from dragonflow.db import model_framework
-from dragonflow.db import model_proxy
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
@@ -81,6 +80,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
 
         # Add basic network topology
         self.controller.update(fake_logic_switch1)
+        self.controller.update(fake_lswitch_default_subnets[0])
         self.controller.update(fake_external_switch1)
         self.controller.update(fake_logic_router1)
         self.controller.db_store.update(fake_chassis1)
@@ -114,16 +114,7 @@ fake_logic_router1 = l3.LogicalRouter(
     ports=fake_logical_router_ports)
 
 
-fake_lswitch_default_subnets = [l2.Subnet(name="private-subnet",
-                                          enable_dhcp=True,
-                                          topic="fake_tenant1",
-                                          gateway_ip="10.0.0.1",
-                                          cidr="10.0.0.0/24",
-                                          id="fake_subnet1")]
-
-
 fake_logic_switch1 = l2.LogicalSwitch(
-        subnets=fake_lswitch_default_subnets,
         unique_key=1,
         name='private',
         is_external=False,
@@ -134,16 +125,17 @@ fake_logic_switch1 = l2.LogicalSwitch(
         version=5)
 
 
-external_switch1_subnets = [l2.Subnet(name="public-subnet",
-                                      enable_dhcp=False,
-                                      topic="fake_tenant1",
-                                      gateway_ip="172.24.4.1",
-                                      cidr="172.24.4.0/24",
-                                      id="fake_external_subnet1")]
+fake_lswitch_default_subnets = [l2.Subnet(name="private-subnet",
+                                          enable_dhcp=True,
+                                          topic="fake_tenant1",
+                                          gateway_ip="10.0.0.1",
+                                          cidr="10.0.0.0/24",
+                                          id="fake_subnet1",
+                                          version=1,
+                                          lswitch='fake_switch1')]
 
 
 fake_external_switch1 = l2.LogicalSwitch(
-        subnets=external_switch1_subnets,
         unique_key=2,
         name='public',
         is_external=True,
@@ -151,6 +143,16 @@ fake_external_switch1 = l2.LogicalSwitch(
         mtu=1450,
         topic='fake_tenant1',
         id='fake_external_switch1')
+
+
+external_switch1_subnets = [l2.Subnet(name="public-subnet",
+                                      enable_dhcp=False,
+                                      topic="fake_tenant1",
+                                      gateway_ip="172.24.4.1",
+                                      cidr="172.24.4.0/24",
+                                      id="fake_external_subnet1",
+                                      version=1,
+                                      lswitch='fake_external_switch1')]
 
 
 fake_chassis1 = core.Chassis(
@@ -243,7 +245,7 @@ fake_dhcp_params = {
 fake_local_port1 = make_fake_local_port(
     macs=['fa:16:3e:8c:2e:b3'],
     ips=['10.0.0.6', '2222:2222::3'],
-    subnets=[model_proxy.create_reference(l2.Subnet, 'fake_subnet1')],
+    subnets=['fake_subnet1'],
     id='fake_port1',
     dhcp_params=fake_dhcp_params)
 

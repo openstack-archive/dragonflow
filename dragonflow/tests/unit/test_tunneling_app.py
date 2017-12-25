@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 from dragonflow.controller.common import constants as const
 from dragonflow.db.models import l2
 from dragonflow.tests.unit import test_app_base
@@ -28,7 +30,6 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
     def setUp(self):
         super(TestTunnelingApp, self).setUp()
         fake_gre_switch1 = l2.LogicalSwitch(
-                subnets=test_app_base.fake_lswitch_default_subnets,
                 mtu=1464,
                 unique_key=6,
                 topic='fake_tenant1',
@@ -38,6 +39,10 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
                 network_type='gre',
                 id='fake_gre_switch1')
         self.controller.update(fake_gre_switch1)
+        subnet = copy.deepcopy(test_app_base.fake_lswitch_default_subnets[0])
+        subnet.id = 'fake_gre_subnet1'
+        subnet.lswitch = 'fake_gre_switch1'
+        self.controller.update(subnet)
         self.app = self.open_flow_app.dispatcher.apps['tunneling']
 
     def test_tunneling_for_local_port(self):
