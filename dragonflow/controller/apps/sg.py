@@ -21,9 +21,9 @@ from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
 
+from dragonflow.controller import app_base
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
-from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import l2
 from dragonflow.db.models import secgroups as sg_model
@@ -44,7 +44,41 @@ DEST_FIELD_NAME_BY_PROTOCOL_NUMBER = {
 }
 
 
-class SGApp(df_base_app.DFlowApp):
+@app_base.define_specification(
+    states=(
+        'egress_conntrack',
+        'egress_sg',
+        'ingress_conntrack',
+        'ingress_sg',
+    ),
+    public_mapping={
+        'source_port_key': 'reg6',
+        'destination_port_key': 'reg7',
+    },
+    entrypoints=(
+        app_base.Entrypoint(
+            name='egress',
+            target='egress_conntrack',
+            consumes=('source_port_key',),
+        ),
+        app_base.Entrypoint(
+            name='ingress',
+            target='ingress_conntrack',
+            consumes=('destination_port_key',),
+        ),
+    ),
+    exitpoints=(
+        app_base.Exitpoint(
+            name='egress',
+            provides=('source_port_key',),
+        ),
+        app_base.Exitpoint(
+            name='ingress',
+            provides=('destination_port_key',),
+        ),
+    ),
+)
+class SGApp(app_base.Base):
 
     def __init__(self, *args, **kwargs):
         super(SGApp, self).__init__(*args, **kwargs)
@@ -341,11 +375,11 @@ class SGApp(df_base_app.DFlowApp):
             return
 
         if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            recirc_table = const.INGRESS_DISPATCH_TABLE
+            table_id = self.states.ingress_sg
+            recirc_table = self.exitpoints.ingress
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            recirc_table = const.SERVICES_CLASSIFICATION_TABLE
+            table_id = self.states.egress_sg
+            recirc_table = self.exitpoints.egress
 
         parser = self.parser
         ofproto = self.ofproto
@@ -386,9 +420,9 @@ class SGApp(df_base_app.DFlowApp):
             return
 
         if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.ingress_sg
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.egress_sg
 
         ofproto = self.ofproto
 
@@ -421,10 +455,10 @@ class SGApp(df_base_app.DFlowApp):
         unique_key = lport.unique_key
 
         if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.ingress_sg
             lport_classify_match = {"reg7": unique_key}
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.egress_sg
             lport_classify_match = {"reg6": unique_key}
 
         conj_id, priority = \
@@ -457,10 +491,10 @@ class SGApp(df_base_app.DFlowApp):
         unique_key = lport.unique_key
 
         if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.ingress_sg
             lport_classify_match = {"reg7": unique_key}
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.egress_sg
             lport_classify_match = {"reg6": unique_key}
 
         conj_id, priority = \
@@ -499,12 +533,12 @@ class SGApp(df_base_app.DFlowApp):
         unique_key = lport.unique_key
 
         if direction == DIRECTION_INGRESS:
-            pre_table_id = const.INGRESS_CONNTRACK_TABLE
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
+            pre_table_id = self.states.ingress_conntrack
+            table_id = self.states.ingress_sg
             lport_classify_match = {"reg7": unique_key}
         else:
-            pre_table_id = const.EGRESS_CONNTRACK_TABLE
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
+            pre_table_id = self.states.egress_conntrack
+            table_id = self.states.egress_sg
             lport_classify_match = {"reg6": unique_key}
 
         actions = [parser.NXActionCT(actions=[],
@@ -528,11 +562,11 @@ class SGApp(df_base_app.DFlowApp):
         unique_key = lport.unique_key
 
         if direction == DIRECTION_INGRESS:
-            pre_table_id = const.INGRESS_CONNTRACK_TABLE
+            pre_table_id = self.states.ingress_conntrack
             unique_key = lport.unique_key
             lport_classify_match = {"reg7": unique_key}
         else:
-            pre_table_id = const.EGRESS_CONNTRACK_TABLE
+            pre_table_id = self.states.egress_conntrack
             lport_classify_match = {"reg6": unique_key}
 
         self._install_ipv4_ipv6_rules(table_id=pre_table_id,
@@ -571,9 +605,9 @@ class SGApp(df_base_app.DFlowApp):
             self._get_rule_flows_match_except_net_addresses(secgroup_rule)
 
         if secgroup_rule.direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.ingress_sg
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.egress_sg
         ip_match_item = self._get_security_rule_by_addresses_match_item(
                                 ethertype,
                                 secgroup_rule.direction)
@@ -621,9 +655,9 @@ class SGApp(df_base_app.DFlowApp):
         ethertype = secgroup_rule.ethertype
 
         if secgroup_rule.direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.ingress_sg
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.egress_sg
 
         ip_match_item = self._get_security_rule_by_addresses_match_item(
                                 ethertype,
@@ -675,9 +709,9 @@ class SGApp(df_base_app.DFlowApp):
 
         direction = secgroup_rule.direction
         if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.ingress_sg
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
+            table_id = self.states.egress_sg
 
         rule_id = self._get_security_rule_mapping(secgroup_rule.id)
         if rule_id is None:
@@ -694,11 +728,11 @@ class SGApp(df_base_app.DFlowApp):
 
     def _install_env_init_flow_by_direction(self, direction):
         if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            goto_table_id = const.INGRESS_DISPATCH_TABLE
+            table_id = self.states.ingress_sg
+            goto_table_id = self.exitpoints.ingress
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            goto_table_id = const.SERVICES_CLASSIFICATION_TABLE
+            table_id = self.states.egress_sg
+            goto_table_id = self.exitpoints.egress
 
         parser = self.parser
         ofproto = self.ofproto
@@ -947,7 +981,7 @@ class SGApp(df_base_app.DFlowApp):
 
         return added_secgroups, removed_secgroups, unchanged_secgroups
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
+    @app_base.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         secgroups = lport.security_groups
         if not secgroups:
@@ -959,7 +993,7 @@ class SGApp(df_base_app.DFlowApp):
         for secgroup in secgroups:
             self._remove_local_port_associating(lport, secgroup.id)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
+    @app_base.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
     def _remove_remote_port(self, lport):
         secgroups = lport.security_groups
         if not secgroups:
@@ -968,7 +1002,7 @@ class SGApp(df_base_app.DFlowApp):
         for secgroup in secgroups:
             self._remove_remote_port_associating(lport, secgroup.id)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_UPDATED)
+    @app_base.register_event(l2.LogicalPort, l2.EVENT_LOCAL_UPDATED)
     def update_local_port(self, lport, original_lport):
         secgroups = lport.security_groups
         original_secgroups = original_lport.security_groups
@@ -998,7 +1032,7 @@ class SGApp(df_base_app.DFlowApp):
             # install ct table
             self._install_connection_track_flows(lport)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_UPDATED)
+    @app_base.register_event(l2.LogicalPort, l2.EVENT_REMOTE_UPDATED)
     def _update_remote_port(self, lport, original_lport):
         secgroups = lport.security_groups
         original_secgroups = original_lport.security_groups
@@ -1017,7 +1051,7 @@ class SGApp(df_base_app.DFlowApp):
             self._update_port_addresses_process(lport, original_lport,
                                                 secgroup.id)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
+    @app_base.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
         secgroups = lport.security_groups
         if not secgroups:
@@ -1029,7 +1063,7 @@ class SGApp(df_base_app.DFlowApp):
         # install ct table
         self._install_connection_track_flows(lport)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
+    @app_base.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
     def _add_remote_port(self, lport):
         secgroups = lport.security_groups
         if not secgroups:
@@ -1041,14 +1075,14 @@ class SGApp(df_base_app.DFlowApp):
     def _is_sg_not_associated_with_local_port(self, secgroup_id):
         return self.secgroup_associate_local_ports.get(secgroup_id) is None
 
-    @df_base_app.register_event(sg_model.SecurityGroup,
-                                model_constants.EVENT_CREATED)
+    @app_base.register_event(sg_model.SecurityGroup,
+                             model_constants.EVENT_CREATED)
     def add_security_group(self, secgroup):
         for new_rule in secgroup.rules:
             self.add_security_group_rule(secgroup, new_rule)
 
-    @df_base_app.register_event(sg_model.SecurityGroup,
-                                model_constants.EVENT_UPDATED)
+    @app_base.register_event(sg_model.SecurityGroup,
+                             model_constants.EVENT_UPDATED)
     def update_security_group(self, new_secgroup, old_secgroup):
         new_secgroup_rules = copy.copy(new_secgroup.rules)
         old_secgroup_rules = copy.copy(old_secgroup.rules)
@@ -1061,8 +1095,8 @@ class SGApp(df_base_app.DFlowApp):
         for old_rule in old_secgroup_rules:
             self.remove_security_group_rule(old_secgroup, old_rule)
 
-    @df_base_app.register_event(sg_model.SecurityGroupRule,
-                                model_constants.EVENT_CREATED)
+    @app_base.register_event(sg_model.SecurityGroupRule,
+                             model_constants.EVENT_CREATED)
     def add_security_group_rule(self, secgroup, secgroup_rule):
         secgroup_id = secgroup.id
         if self._is_sg_not_associated_with_local_port(secgroup_id):
@@ -1086,8 +1120,8 @@ class SGApp(df_base_app.DFlowApp):
 
         self._install_security_group_rule_flows(secgroup_id, secgroup_rule)
 
-    @df_base_app.register_event(sg_model.SecurityGroupRule,
-                                model_constants.EVENT_DELETED)
+    @app_base.register_event(sg_model.SecurityGroupRule,
+                             model_constants.EVENT_DELETED)
     def remove_security_group_rule(self, secgroup, secgroup_rule):
         secgroup_id = secgroup.id
         if self._is_sg_not_associated_with_local_port(secgroup_id):
