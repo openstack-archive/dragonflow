@@ -18,6 +18,7 @@ import netaddr
 from neutron.agent.common import utils
 from neutron_lib import constants as n_const
 
+from dragonflow.controller import datapath_layout
 from dragonflow.db.models import l2
 from dragonflow.db.models import secgroups
 from dragonflow.tests.unit import test_app_base
@@ -31,7 +32,7 @@ class TestSGApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestSGApp, self).setUp()
-        self.app = self.open_flow_app.dispatcher.apps['sg']
+        self.app = self.open_flow_app._new_dp.apps['sg']
         self.mock_mod_flow = self.app.mod_flow
         self.security_group = test_app_base.fake_security_group
         self.fake_local_lport = test_app_base.fake_local_port1
@@ -42,6 +43,17 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.datapath.ofproto.OFPFC_MODIFY = COMMAND_ADD
         self.datapath.ofproto.OFPFC_DELETE_STRICT = COMMAND_DELETE
         self.datapath.ofproto.OFPFC_DELETE = COMMAND_DELETE
+
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='sg',
+                type='sg',
+                params=None,
+            ),
+        )
+        return datapath_layout.Layout(vertices, edges)
 
     def _get_ip_prefix(self, is_ipv6):
         if is_ipv6:
