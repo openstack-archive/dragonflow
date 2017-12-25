@@ -30,7 +30,10 @@ class TestPortBehindPort(test_mech_driver.DFMechanismDriverTestCase):
         super(TestPortBehindPort, self).setUp()
 
     def test_detect_nested_port(self):
-        with self.port() as p1, self.port() as p2:
+        with self.network() as n,\
+             self.subnet(network=n) as s,\
+             self.port(subnet=s) as p1,\
+             self.port(subnet=s) as p2:
             p1 = p1['port']
             p2 = p2['port']
             p2_ip = p2['fixed_ips'][0]['ip_address']
