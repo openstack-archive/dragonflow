@@ -16,6 +16,7 @@
 import mock
 
 from neutron.plugins.ml2.plugin import Ml2Plugin
+from neutron_lib import constants as n_const
 
 from dragonflow.neutron.ml2.dhcp_module import DFDHCPModule
 from dragonflow.tests.unit import test_mech_driver as test_md
@@ -92,3 +93,13 @@ class TestDfDHCPModule(test_md.DFMechanismDriverTestCase):
                                           data, subnet2['subnet']['id'])
             req.get_response(self.api)
             delete_mock.assert_called_once()
+
+    def test_dhcp_port_status(self):
+        network, _ = self._test_create_network_revision()
+        with self.subnet(network={'network': network}, enable_dhcp=True,
+                         set_context=True):
+            filters = {'device_owner': [n_const.DEVICE_OWNER_DHCP],
+                       'network': [network]}
+            ports = self.driver.get_ports(self.context, filters=filters)
+            port = ports[0]
+            self.assertEqual(n_const.PORT_STATUS_ACTIVE, port['status'])
