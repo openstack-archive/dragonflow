@@ -248,6 +248,9 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         lrouter.add_router_port(logical_router_port)
         self.nb_api.update(lrouter)
 
+        self.core_plugin.update_port_status(context,
+                                            port['id'],
+                                            const.PORT_STATUS_ACTIVE)
         return router_port_info
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)

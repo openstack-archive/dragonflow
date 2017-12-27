@@ -123,6 +123,18 @@ class TestDFL3RouterPlugin(test_mech_driver.DFMechanismDriverTestCase,
             lrouter.version = router_without_int['revision_number']
             self.nb_api.update.assert_called_once_with(lrouter)
 
+    def test_router_interface_status(self):
+        router, lrouter = self._test_create_router_revision()
+
+        with self.subnet() as s:
+            data = {'subnet_id': s['subnet']['id']}
+            router_port_info = self.l3p.add_router_interface(self.context,
+                                                             router['id'],
+                                                             data)
+            port_id = router_port_info['port_id']
+            port = self.driver.get_port(self.context, port_id)
+            self.assertEqual(constants.PORT_STATUS_ACTIVE, port['status'])
+
     def _test_create_floatingip_revision(self):
         kwargs = {'arg_list': ('router:external',),
                   'router:external': True}
