@@ -83,7 +83,8 @@ class DFDHCPModule(object):
                          'admin_state_up': True, 'device_id': '',
                          'device_owner': n_const.DEVICE_OWNER_DHCP,
                          'mac_address': n_const.ATTR_NOT_SPECIFIED,
-                         'fixed_ips': [{'subnet_id': subnet['id']}]}}
+                         'fixed_ips': [{'subnet_id': subnet['id']}],
+                         'status': n_const.PORT_STATUS_ACTIVE}}
         self.core_plugin.create_port(context, port)
 
     def _update_dhcp_port(self, context, port, subnet):
