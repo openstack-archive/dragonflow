@@ -139,7 +139,7 @@ def _acquire_lock(oid):
 
     # NOTE(nick-ma-z): we disallow subtransactions because the
     # retry logic will bust any parent transactions
-    session = db_api.get_session()
+    session = db_api.get_writer_session()
     with session.begin():
         LOG.debug("Try to get lock for object %(oid)s in "
                   "session %(sid)s.", {'oid': oid, 'sid': sid})
@@ -157,7 +157,7 @@ def _acquire_lock(oid):
 def _release_lock(oid, sid):
     # NOTE(nick-ma-z): we disallow subtransactions because the
     # retry logic will bust any parent transactions
-    session = db_api.get_session()
+    session = db_api.get_writer_session()
     with session.begin():
         LOG.debug("Try to release lock for object %(oid)s in "
                   "session %(sid)s.", {'oid': oid, 'sid': sid})
@@ -177,7 +177,7 @@ def _generate_session_id():
                            retry_on_deadlock=True)
 def _test_and_create_object(uuid):
     try:
-        session = db_api.get_session()
+        session = db_api.get_writer_session()
         with session.begin():
             row = session.query(models.DFLockedObjects).filter_by(
                 object_uuid=uuid).one()
@@ -191,7 +191,7 @@ def _test_and_create_object(uuid):
                                   session_id=row.session_id)
     except orm_exc.NoResultFound:
         try:
-            session = db_api.get_session()
+            session = db_api.get_writer_session()
             with session.begin():
                 _create_db_row(session, oid=uuid)
         except db_exc.DBDuplicateEntry:
