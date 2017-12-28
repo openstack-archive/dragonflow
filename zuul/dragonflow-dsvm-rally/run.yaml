@@ -54,7 +54,7 @@
           export PROJECTS="openstack/neutron-dynamic-routing $PROJECTS"
           export PROJECTS="openstack/rally $PROJECTS"
 
-          export DEVSTACK_GATE_SETTINGS=/opt/stack/new/dragonflow/devstack/devstackgaterc-redis
+          export DEVSTACK_GATE_SETTINGS=/opt/stack/new/dragonflow/devstack/devstackgaterc-rally-redis
 
           function post_test_hook {
               $BASE/new/rally/tests/ci/rally-gate.sh
