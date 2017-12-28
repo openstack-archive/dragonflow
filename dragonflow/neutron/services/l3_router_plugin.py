@@ -291,7 +291,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
 
             for floating_ip in floating_ips:
                 self.nb_api.update(
-                    neutron_l3.build_floating_ip_from_neutron_floating_ip(
+                    neutron_l3.build_floating_ip_from_ovo_floating_ip(
                         floating_ip
                     ),
                 )
