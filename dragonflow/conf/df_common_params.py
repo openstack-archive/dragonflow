@@ -177,6 +177,9 @@ df_opts = [
                 default=False,
                 help=_("Automatically detect port-behind-port scenarios, "
                        "e.g., amphora, or macvlan")),
+    cfg.PortOpt('tatu_port',
+                default=18322,
+                help=_("TCP port for Tatu's REST API")),
 ]
 
 
