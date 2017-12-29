@@ -318,3 +318,16 @@ class IpProto(fields.IntField):
                   ' range [0,255] ({val} supplied )'
                   ).format(
                     val=value))
+
+class L4PortField(fields.IntField):
+
+    def validate(self, value):
+        super(L4PortField, self).validate(value)
+        if value is None:
+            return
+        if value < 0 or value > 0xffff:
+            raise errors.ValidationError(
+                _('L4 port value must be in the'
+                  ' range [0,65535] ({val} supplied )'
+                  ).format(
+                    val=value))

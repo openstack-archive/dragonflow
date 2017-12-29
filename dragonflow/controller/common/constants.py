@@ -64,6 +64,10 @@ EGRESS_TABLE = 75
 INGRESS_DNAT_TABLE = 76
 # Table to handle VM-to-FIP DNAT traffic
 EGRESS_DNAT_TABLE = 77
+# Table to handle PAT forward traffic
+INGRESS_PAT_TABLE = 78
+# Table to handle PAT return traffic
+EGRESS_PAT_TABLE = 79
 # Push packet to local ovs port.
 EGRESS_EXTERNAL_TABLE = 80
 # All packets that come from remote host will go through this table

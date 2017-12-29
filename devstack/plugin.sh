@@ -17,7 +17,7 @@ OVS_BRANCH=${OVS_BRANCH:-branch-2.6}
 EXTERNAL_HOST_IP=${EXTERNAL_HOST_IP:-}
 
 DEFAULT_TUNNEL_TYPES="vxlan,geneve,gre"
-DEFAULT_APPS_LIST="portbinding,l2,l3_proactive,dhcp,dnat,sg,portsec,portqos,classifier,tunneling,provider"
+DEFAULT_APPS_LIST="portbinding,l2,l3_proactive,dhcp,dnat,pat,sg,portsec,portqos,classifier,tunneling,provider"
 
 if [[ $ENABLE_DF_SFC == "True" ]]; then
     DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,fc,sfc"

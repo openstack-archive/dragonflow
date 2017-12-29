@@ -509,7 +509,8 @@ class DFMetadataProxyHandler(BaseMetadataProxyHandler):
     def get_host(self, req):
         return '{}:{}'.format(
             self.conf.nova_metadata_host,
-            self.conf.nova_metadata_port,
+            cfg.CONF.df.tatu_port if req.path.startswith(
+                '/noauth') else self.conf.nova_metadata_port,
         )
 
     def get_scheme(self, req):

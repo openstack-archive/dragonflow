@@ -53,8 +53,12 @@ class OvsApi(object):
             vlog.Vlog.init(cfg.CONF.log_dir + '/' + OVS_LOG_FILE_NAME)
         else:
             vlog.Vlog.init()
+        self._initialized = False
 
     def initialize(self, nb_api):
+        if self._initialized:
+            return
+        self._initialized = True
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
 
         nb_api.db_change_callback(None, None,
