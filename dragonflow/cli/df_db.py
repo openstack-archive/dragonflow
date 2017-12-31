@@ -19,6 +19,7 @@ from dragonflow.cli import utils as cli_utils
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.db import api_nb
 from dragonflow.db import db_common
 from dragonflow.db import model_framework
 from dragonflow.db import models
@@ -270,9 +271,8 @@ def main():
     db_driver = df_utils.load_driver(
         cfg.CONF.df.nb_db_class,
         df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-    db_driver.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                         db_port=cfg.CONF.df.remote_db_port,
-                         config=cfg.CONF.df)
+    ip, port = api_nb.get_db_ip_port()
+    db_driver.initialize(db_ip=ip, db_port=port, config=cfg.CONF.df)
 
     args.handle(db_driver, args)
 
