@@ -18,8 +18,8 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import redis
 
-from dragonflow import conf as cfg
 from dragonflow.controller.common import constants
+from dragonflow.db import api_nb
 from dragonflow.db.drivers import redis_mgt
 from dragonflow.db import pub_sub_api
 
@@ -54,9 +54,8 @@ class RedisPublisherAgent(pub_sub_api.PublisherAgentBase):
     def initialize(self):
         # find a publisher server node
         super(RedisPublisherAgent, self).initialize()
-        self.redis_mgt = redis_mgt.RedisMgt.get_instance(
-            cfg.CONF.df.remote_db_ip,
-            cfg.CONF.df.remote_db_port)
+        ip, port = api_nb.get_db_ip_port()
+        self.redis_mgt = redis_mgt.RedisMgt.get_instance(ip, port)
         self._update_client()
 
     def close(self):
@@ -136,9 +135,8 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
     def initialize(self, callback):
         # find a subscriber server node and run daemon
         super(RedisSubscriberAgent, self).initialize(callback)
-        self.redis_mgt = redis_mgt.RedisMgt.get_instance(
-            cfg.CONF.df.remote_db_ip,
-            cfg.CONF.df.remote_db_port)
+        ip, port = api_nb.get_db_ip_port()
+        self.redis_mgt = redis_mgt.RedisMgt.get_instance(ip, port)
         self._update_client()
         self.is_closed = False
 

@@ -12,6 +12,7 @@
 
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.db import api_nb
 from dragonflow.tests.database import test_db_api
 from dragonflow.tests.fullstack import test_base
 
@@ -23,6 +24,5 @@ class TestDbApi(test_base.DFTestBase, test_db_api.TestDbApi):
         self.driver = df_utils.load_driver(
                 cfg.CONF.df.nb_db_class,
                 df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-        self.driver.initialize(cfg.CONF.df.remote_db_ip,
-                               cfg.CONF.df.remote_db_port,
-                               config=cfg.CONF.df)
+        ip, port = api_nb.get_db_ip_port()
+        self.driver.initialize(ip, port, config=cfg.CONF.df)
