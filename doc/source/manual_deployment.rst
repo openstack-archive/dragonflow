@@ -125,8 +125,7 @@ Next you need to change the configuration, for example, etcd:
 
     [df]
     nb_db_class = etcd_nb_db_driver
-    remote_db_port = {etcd_port}
-    remote_db_ip = {etcd_ip}
+    remote_db_hosts = [{etcd_port}:{etcd_ip}]
 
 Pub/Sub Driver
 --------------

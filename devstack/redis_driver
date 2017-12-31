@@ -15,8 +15,8 @@ RUBY_VERSION=2.3
 
 function _redis_env {
     # REMOTE_DB_* initialized after sourcing
-    export REDIS_SERVER_LIST=$REMOTE_DB_IP
-    export REMOTE_PORT_START=$REMOTE_DB_PORT
+    export REDIS_SERVER_LIST=$(echo $REMOTE_DB_HOSTS | sed 's/,/ /g')
+    export REMOTE_PORT_START=$(echo $REDIS_SERVER_LIST | awk '{print $1}' | cut -d: -f2)
     export NODE_COUNT_END=5
     export REMOTE_PORT_END=`expr $REMOTE_PORT_START + $NODE_COUNT_END`
     export REDIS_PORT=`seq $REMOTE_PORT_START $REMOTE_PORT_END`
@@ -33,7 +33,8 @@ function _configure_redis {
     sudo sh -c "grep -q vm.overcommit_memory /etc/sysctl.conf ||
                 echo vm.overcommit_memory = 1 >> /etc/sysctl.conf"
     sudo sh -c "sysctl -p"
-    for redisserver in $REDIS_SERVER_LIST; do
+    for redisserverport in $REDIS_SERVER_LIST; do
+        redisserver=$(echo $redisserverport | cut -f1 -d:)
         for port in $REDIS_PORT; do
             echo "shutdown redis: "$redisserver:$port
             cp redis.conf /opt/redis3/conf/redis-$port.conf
@@ -119,7 +120,8 @@ function nb_db_driver_start_server {
                 done
             done
              # start redis
-             for redisserver in $REDIS_SERVER_LIST; do
+             for redisserverport in $REDIS_SERVER_LIST; do
+                redisserver=$(echo $redisserverport | cut -f1 -d:)
                  for port in $REDIS_PORT; do
                      echo $redisserver:$port
                      pushd /opt/redis3/
@@ -149,7 +151,8 @@ function nb_db_driver_stop_server {
     _redis_env
     if is_service_enabled df-redis-server ; then
         if is_ubuntu || is_fedora; then
-            for redisserver in $REDIS_SERVER_LIST; do
+            for redisserverport in $REDIS_SERVER_LIST; do
+                redisserver=$(echo $redisserverport | cut -f1 -d:)
                 for port in $REDIS_PORT; do
                     echo "Shutdown Redis: "$redisserver:$port
                     sudo /opt/redis3/bin/redis-cli -p $port shutdown
