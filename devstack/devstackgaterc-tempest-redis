@@ -20,5 +20,5 @@
 source /opt/stack/new/dragonflow/devstack/devstackgaterc-common
 source /opt/stack/new/dragonflow/devstack/devstackgaterc-redis
 source /opt/stack/new/dragonflow/devstack/tempest-filter
-export OVERRIDE_ENABLED_SERVICES=${OVERRIDE_ENABLED_SERVICES},tempest
+export OVERRIDE_ENABLED_SERVICES=${OVERRIDE_ENABLED_SERVICES},df-bgp,tempest
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=True"
