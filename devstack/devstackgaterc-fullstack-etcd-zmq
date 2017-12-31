@@ -20,3 +20,4 @@
 source /opt/stack/new/dragonflow/devstack/devstackgaterc-common
 source /opt/stack/new/dragonflow/devstack/devstackgaterc-fullstack-common
 source /opt/stack/new/dragonflow/devstack/devstackgaterc-etcd-zmq
+export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_PUB_SUB=True"
