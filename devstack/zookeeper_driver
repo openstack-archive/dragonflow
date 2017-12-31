@@ -16,8 +16,6 @@ if is_ubuntu ; then
     UBUNTU_RELEASE_BASE_NUM=`lsb_release -r | awk '{print $2}' | cut -d '.' -f 1`
 fi
 
-ZOOKEEPER_IP=${REMOTE_DB_IP:-${HOST_IP}}
-ZOOKEEPER_PORT=${REMOTE_DB_PORT:-2181}
 ZOOKEEPER_DATA_DIR="/var/lib/zookeeper"
 ZOOKEEPER_LOG_DIR="/var/log/zookeeper"
 ZOOKEEPER_DIR="/etc/zookeeper"

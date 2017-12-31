@@ -126,9 +126,8 @@ else
 fi
 
 # How to connect to the database storing the virtual topology.
-REMOTE_DB_IP=${REMOTE_DB_IP:-$HOST_IP}
 REMOTE_DB_PORT=${REMOTE_DB_PORT:-4001}
-REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$REMOTE_DB_IP:$REMOTE_DB_PORT"}
+REMOTE_DB_HOSTS=${REMOTE_DB_HOSTS:-"$HOST_IP:$REMOTE_DB_PORT"}
 
 # As the function returns actual value only on pre-install, ignore it on later stages
 if [[ "$ACTION" == "stack" && "$STAGE" == "pre-install" ]]; then
@@ -284,8 +283,6 @@ function configure_df_plugin {
         neutron_server_config_add_new $DRAGONFLOW_CONF
     fi
 
-    iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
-    iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
     iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
     iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
     iniset $DRAGONFLOW_CONF df enable_neutron_notifier "$ENABLE_NEUTRON_NOTIFIER"

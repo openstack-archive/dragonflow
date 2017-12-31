@@ -15,8 +15,8 @@ RUBY_VERSION=2.3
 
 function _redis_env {
     # REMOTE_DB_* initialized after sourcing
-    export REDIS_SERVER_LIST=$REMOTE_DB_IP
-    export REMOTE_PORT_START=$REMOTE_DB_PORT
+    export REDIS_SERVER_LIST=$(echo $REMOTE_DB_HOSTS | sed 's/,/ /g')
+    export REMOTE_PORT_START=$(echo $REDIS_SERVER_LIST | awk '{print $1}' | cut -d: -f2)
     export NODE_COUNT_END=5
     export REMOTE_PORT_END=`expr $REMOTE_PORT_START + $NODE_COUNT_END`
     export REDIS_PORT=`seq $REMOTE_PORT_START $REMOTE_PORT_END`

@@ -18,9 +18,11 @@ from dragonflow._i18n import _
 df_opts = [
     cfg.IPOpt('remote_db_ip',
               default='127.0.0.1',
+              deprecated_for_removal=True,
               help=_('The remote db server ip address')),
     cfg.PortOpt('remote_db_port',
                 default=4001,
+                deprecated_for_removal=True,
                 help=_('The remote db server port')),
     cfg.ListOpt('remote_db_hosts',
                 default=['$remote_db_ip:$remote_db_port'],
