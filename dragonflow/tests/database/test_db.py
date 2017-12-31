@@ -151,22 +151,13 @@ def main():
     common_config.init(sys.argv[2:])
     # To enable logging, uncomment the following line:
     # common_config.setup_logging()
-    nb_driver_class = importutils.import_class(cfg.CONF.df.nb_db_class)
     is_server = False
     if sys.argv[1] == 'server':
         is_server = True
     elif sys.argv[1] != 'client':
         raise Exception('Bad parameter #1: Expected \'server\' or \'client\','
                         ' found: %s' % sys.argv[1])
-    nb_api = api_nb.NbApi(
-        nb_driver_class(),
-        use_pubsub=cfg.CONF.df.enable_df_pub_sub,
-        is_neutron_server=is_server,
-    )
-    nb_api.initialize(
-        db_ip=cfg.CONF.df.remote_db_ip,
-        db_port=cfg.CONF.df.remote_db_port,
-    )
+    nb_api = api_nb.get_instance(is_server)
     if is_server:
         run_server(nb_api)
     else:
