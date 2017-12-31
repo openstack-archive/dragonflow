@@ -12,19 +12,27 @@
 
 import argparse
 import socket
-
-from oslo_serialization import jsonutils
+import sys
 
 from dragonflow.cli import utils as cli_utils
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
-from dragonflow import conf as cfg
+from dragonflow.db import api_nb
 from dragonflow.db import db_common
 from dragonflow.db import model_framework
 from dragonflow.db import models
 from dragonflow.db.models import all  # noqa
 
 db_tables = list(model_framework.iter_tables()) + [db_common.UNIQUE_KEY_TABLE]
+nb_api = None
+
+
+def _x_get_model(table):
+    try:
+        return model_framework.get_model(table)
+    except KeyError:
+        print('Table not found: ' + table)
+        sys.exit(1)
 
 
 def print_tables():
@@ -37,18 +45,15 @@ def print_tables():
                          field_labels=labels)
 
 
-def print_table(db_driver, table):
-    try:
-        keys = db_driver.get_all_keys(table)
-    except df_exceptions.DBKeyNotFound:
-        keys = []
+def print_table(table):
+    model = _x_get_model(table)
+    values = nb_api.get_all(model)
 
-    if not keys:
+    if not values:
         print('Table is empty: ' + table)
         return
 
-    for count, key in enumerate(keys):
-        keys[count] = {'key': key}
+    keys = [{'key': value.id} for value in values]
 
     labels, formatters = \
         cli_utils.get_list_table_columns_and_formatters(['key'], keys)
@@ -57,91 +62,84 @@ def print_table(db_driver, table):
                          field_labels=labels)
 
 
-def print_whole_table(db_driver, table):
-    try:
-        keys = db_driver.get_all_keys(table)
-    except df_exceptions.DBKeyNotFound:
-        print('Table not found: ' + table)
-        return
-
-    if not keys:
-        print('Table is empty: ' + table)
-        return
-
-    raw_values = [db_driver.get_key(table, key) for key in keys]
-    values = [jsonutils.loads(value) for value in raw_values if value]
-    if isinstance(values[0], dict):
-        columns = values[0].keys()
-        labels, formatters = \
-            cli_utils.get_list_table_columns_and_formatters(columns, values)
-        cli_utils.print_list(values, columns, formatters=formatters,
-                             field_labels=labels)
-    elif isinstance(values[0], int):
-        for l, value in enumerate(values):
-            values[l] = {table: value}
-
-        columns = [table]
+def print_whole_table(table):
+    if table == db_common.UNIQUE_KEY_TABLE:
+        keys = nb_api.driver.get_all_keys(table)
+        values = [{'id': key, table: int(nb_api.driver.get_key(table, key))}
+                  for key in keys]
+        columns = ['id', table]
         labels, formatters = \
             cli_utils.get_list_table_columns_and_formatters(columns, values)
         cli_utils.print_list(values, columns, formatters=formatters,
                              field_labels=columns)
+        return
+
+    model = _x_get_model(table)
+    value_models = nb_api.get_all(model)
+    values = [value.to_struct() for value in value_models]
+
+    if not values:
+        print('Table is empty: ' + table)
+        return
+
+    columns = values[0].keys()
+    labels, formatters = \
+        cli_utils.get_list_table_columns_and_formatters(columns, values)
+    cli_utils.print_list(values, columns, formatters=formatters,
+                         field_labels=labels)
 
 
-def print_key(db_driver, table, key):
+def print_key(table, key):
+    model = _x_get_model(table)
     try:
-        value = db_driver.get_key(table, key)
+        value = nb_api.get(model(id=key))
     except df_exceptions.DBKeyNotFound:
         print('Key not found: ' + table)
         return
 
-    value = jsonutils.loads(value)
     # It will be too difficult to print all type of data in table
     # therefore using print dict for dictionary type otherwise
     # using old approach for print.
-    if isinstance(value, dict):
-        cli_utils.print_dict(value)
+    if isinstance(value, model_framework.ModelBase):
+        cli_utils.print_dict(value.to_struct())
     else:
         print(value)
 
 
-def bind_port_to_localhost(db_driver, port_id):
-    lport_str = db_driver.get_key(models.LogicalPort.table_name, port_id)
-    lport = jsonutils.loads(lport_str)
+def bind_port_to_localhost(port_id):
+    lport = nb_api.get(models.LogicalPort(id=port_id))
     chassis_name = socket.gethostname()
-    lport['chassis'] = chassis_name
-    lport_json = jsonutils.dumps(lport)
-    db_driver.set_key(models.LogicalPort.table_name, port_id, lport_json)
+    lport.chassis = chassis_name
+    nb_api.update(lport)
 
 
-def clean_whole_table(db_driver, table):
-    try:
-        keys = db_driver.get_all_keys(table)
-    except df_exceptions.DBKeyNotFound:
-        print('Table not found: ' + table)
-        return
+def clean_whole_table(table):
+    model = _x_get_model(table)
+    values = nb_api.get_all(model)
 
-    for key in keys:
+    for value in values:
         try:
-            db_driver.delete_key(table, key)
+            nb_api.delete(value)
         except df_exceptions.DBKeyNotFound:
-            print('Key not found: ' + key)
+            print('Instance not found: ' + value)
 
 
-def drop_table(db_driver, table):
+def drop_table(table):
     try:
-        db_driver.delete_table(table)
+        nb_api.driver.delete_table(table)
     except df_exceptions.DBKeyNotFound:
         print('Table not found: ' + table)
 
 
-def create_table(db_driver, table):
-    db_driver.create_table(table)
+def create_table(table):
+    nb_api.driver.create_table(table)
     print('Table %s is created.' % table)
 
 
-def remove_record(db_driver, table, key):
+def remove_record(table, key):
+    model = _x_get_model(table)
     try:
-        db_driver.delete_key(table, key)
+        nb_api.delete(model(id=key))
     except df_exceptions.DBKeyNotFound:
         print('Key %s is not found in table %s.' % (key, table))
 
@@ -154,7 +152,7 @@ def _check_valid_table(parser, table_name):
 
 
 def add_table_command(subparsers):
-    def handle(db_driver, args):
+    def handle(args):
         print_tables()
 
     sub_parser = subparsers.add_parser('tables', help="Print all the db "
@@ -163,10 +161,10 @@ def add_table_command(subparsers):
 
 
 def add_ls_command(subparsers):
-    def handle(db_driver, args):
+    def handle(args):
         table = args.table
         _check_valid_table(sub_parser, table)
-        print_table(db_driver, table)
+        print_table(table)
 
     sub_parser = subparsers.add_parser('ls', help="Print all the keys for "
                                                   "specific table.")
@@ -175,11 +173,11 @@ def add_ls_command(subparsers):
 
 
 def add_get_command(subparsers):
-    def handle(db_driver, args):
+    def handle(args):
         table = args.table
         key = args.key
         _check_valid_table(sub_parser, table)
-        print_key(db_driver, table, key)
+        print_key(table, key)
 
     sub_parser = subparsers.add_parser('get', help="Print value for specific "
                                                    "key.")
@@ -189,9 +187,9 @@ def add_get_command(subparsers):
 
 
 def add_dump_command(subparsers):
-    def handle(db_driver, args):
+    def handle(args):
         for table in db_tables:
-            print_whole_table(db_driver, table)
+            print_whole_table(table)
 
     sub_parser = subparsers.add_parser('dump', help="Dump content of all "
                                                     "tables.")
@@ -199,9 +197,9 @@ def add_dump_command(subparsers):
 
 
 def add_bind_command(subparsers):
-    def handle(db_driver, args):
+    def handle(args):
         port_id = args.port_id
-        bind_port_to_localhost(db_driver, port_id)
+        bind_port_to_localhost(port_id)
 
     sub_parser = subparsers.add_parser('bind', help="Bind a port to "
                                                     "localhost.")
@@ -210,20 +208,20 @@ def add_bind_command(subparsers):
 
 
 def add_clean_command(subparsers):
-    def handle(db_driver, args):
+    def handle(args):
         for table in db_tables:
-            clean_whole_table(db_driver, table)
+            clean_whole_table(table)
 
     sub_parser = subparsers.add_parser('clean', help="Clean up all keys.")
     sub_parser.set_defaults(handle=handle)
 
 
 def add_rm_command(subparsers):
-    def handle(db_driver, args):
+    def handle(args):
         table = args.table
         key = args.key
         _check_valid_table(sub_parser, table)
-        remove_record(db_driver, table, key)
+        remove_record(table, key)
 
     sub_parser = subparsers.add_parser('rm', help="Remove the specified DB "
                                                   "record.")
@@ -233,18 +231,18 @@ def add_rm_command(subparsers):
 
 
 def add_init_command(subparsers):
-    def handle(db_driver, args):
+    def handle(args):
         for table in db_tables:
-            create_table(db_driver, table)
+            create_table(table)
 
     sub_parser = subparsers.add_parser('init', help="Initialize all tables.")
     sub_parser.set_defaults(handle=handle)
 
 
 def add_dropall_command(subparsers):
-    def handle(db_driver, args):
+    def handle(args):
         for table in db_tables:
-            drop_table(db_driver, table)
+            drop_table(table)
 
     sub_parser = subparsers.add_parser('dropall', help="Drop all tables.")
     sub_parser.set_defaults(handle=handle)
@@ -267,14 +265,11 @@ def main():
     args = parser.parse_args()
 
     df_utils.config_parse()
-    db_driver = df_utils.load_driver(
-        cfg.CONF.df.nb_db_class,
-        df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-    db_driver.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                         db_port=cfg.CONF.df.remote_db_port,
-                         config=cfg.CONF.df)
 
-    args.handle(db_driver, args)
+    global nb_api
+    nb_api = api_nb.NbApi.get_instance(False)
+
+    args.handle(args)
 
 
 if __name__ == "__main__":
