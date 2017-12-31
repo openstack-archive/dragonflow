@@ -79,6 +79,7 @@ class TestPubSub(PubSubTestBase):
         local_event_num = 0
 
         if not self.do_test:
+            self.skipTest('pub/sub is not enabled')
             return
 
         def _db_change_callback(table, key, action, value, topic):
@@ -122,6 +123,7 @@ class TestPubSub(PubSubTestBase):
         local_event_num = 0
 
         if not self.do_test:
+            self.skipTest('pub/sub is not enabled')
             return
 
         def _db_change_callback(table, key, action, value, topic):
@@ -169,6 +171,7 @@ class TestPubSub(PubSubTestBase):
 
     def test_pub_sub_event_number_different_port(self):
         if not self.do_test:
+            self.skipTest('pub/sub is not enabled')
             return
 
         ns = Namespace()
@@ -205,6 +208,7 @@ class TestPubSub(PubSubTestBase):
 
     def test_pub_sub_add_topic(self):
         if not self.do_test:
+            self.skipTest('pub/sub is not enabled')
             return
 
         self.events_num_t = 0
@@ -251,6 +255,7 @@ class TestPubSub(PubSubTestBase):
 
     def test_pub_sub_register_addr(self):
         if not self.do_test:
+            self.skipTest('pub/sub is not enabled')
             return
         ns = Namespace()
         ns.events_num = 0
@@ -328,6 +333,7 @@ class TestMultiprocPubSub(PubSubTestBase):
 
     def test_multiproc_pub_sub(self):
         if not self.do_test:
+            self.skipTest('pub/sub is not enabled')
             return
         self.event_received = False
         cfg.CONF.set_override('publisher_multiproc_socket',
@@ -398,6 +404,7 @@ class TestDbTableMonitors(PubSubTestBase):
 
     def test_operations(self):
         if not self.do_test:
+            self.skipTest('pub/sub is not enabled')
             return
 
         test_chassis = {
