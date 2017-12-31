@@ -25,7 +25,7 @@ from networking_sfc.tests.unit.db import test_flowclassifier_db
 from networking_sfc.tests.unit.db import test_sfc_db
 
 from dragonflow.db.models import sfc
-from dragonflow.neutron.services.sfc import driver
+from dragonflow.tests.common import utils
 
 
 class TestDfSfcDriver(
@@ -76,7 +76,15 @@ class TestDfSfcDriver(
         app = config.load_paste_app('extensions_test_app')
         self.ext_api = api_ext.ExtensionMiddleware(app, ext_mgr=ext_mgr)
         self.ctx = context.get_admin_context()
-        self.driver = driver.DfSfcDriver()
+
+        self.fake_lockedobjects = mock.patch(
+            'dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
+            side_effect=utils.empty_wrapper)
+        self.fake_lockedobjects.start()
+        self.addCleanup(self.fake_lockedobjects.stop)
+        # Import must be done after mock.patch for wrap_db_lock
+        self.driver = importutils.import_object(
+            'dragonflow.neutron.services.sfc.driver.DfSfcDriver')
         self.driver.initialize()
         self.driver._nb_api = mock.Mock()
 

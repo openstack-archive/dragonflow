@@ -50,6 +50,9 @@ RESOURCE_QOS = 9
 RESOURCE_NEUTRON_LISTENER = 10
 RESOURCE_BGP_SPEAKER = 11
 RESOURCE_BGP_PEER = 12
+RESOURCE_SFC_PORT_CHAIN = 13
+RESOURCE_SFC_PORT_PAIR_GROUP = 14
+RESOURCE_SFC_PORT_PAIR = 15
 
 LOG = log.getLogger(__name__)
 
@@ -122,6 +125,12 @@ def _get_lock_id_by_resource_type(resource_type, *args, **kwargs):
         lock_id = args[2]
     elif RESOURCE_BGP_PEER == resource_type:
         lock_id = args[2]
+    elif RESOURCE_SFC_PORT_CHAIN == resource_type:
+        lock_id = args[1].current['id']
+    elif RESOURCE_SFC_PORT_PAIR == resource_type:
+        lock_id = args[1].current['id']
+    elif RESOURCE_SFC_PORT_PAIR_GROUP == resource_type:
+        lock_id = args[1].current['id']
     else:
         raise df_exc.UnknownResourceException(resource_type=resource_type)
 
