@@ -58,8 +58,6 @@ class BGPService(service.Service):
 
     def start(self):
         super(BGPService, self).start()
-        self.nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                               db_port=cfg.CONF.df.remote_db_port)
         self.register_bgp_models()
         self.bgp_pulse.start(cfg.CONF.df_bgp.pulse_interval)
 
