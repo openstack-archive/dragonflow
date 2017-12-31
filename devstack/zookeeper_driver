@@ -20,6 +20,8 @@ function _zookeeper_env {
     export ZOOKEEPER_DATA_DIR="/var/lib/zookeeper"
     export ZOOKEEPER_LOG_DIR="/var/log/zookeeper"
     export ZOOKEEPER_DIR="/etc/zookeeper"
+    local SERVER_LIST=$(echo $REMOTE_DB_HOSTS | sed 's/,/ /g')
+    export ZOOKEEPER_SERVER_PORT=$(echo $SERVER_LIST | awk -F: 'BEGIN {RS=" "} { print $2 }' | sort | uniq | tail -1)
 }
 
 function update_key_in_file {
@@ -58,7 +60,7 @@ function nb_db_driver_install_server {
         if [ -f $ZOOKEEPER_CONF_FILE ] ; then
             update_key_in_file dataDir "${ZOOKEEPER_DATA_DIR}" $ZOOKEEPER_CONF_FILE
             update_key_in_file dataLogDir "${ZOOKEEPER_LOG_DIR}" $ZOOKEEPER_CONF_FILE
-            update_key_in_file clientPort "${REMOTE_DB_PORT}" $ZOOKEEPER_CONF_FILE
+            update_key_in_file clientPort "${ZOOKEEPER_SERVER_PORT}" $ZOOKEEPER_CONF_FILE
             update_key_in_file "server.1" "${HOSTNAME}:2888:3888" $ZOOKEEPER_CONF_FILE
         fi
         sudo systemctl restart zookeeper

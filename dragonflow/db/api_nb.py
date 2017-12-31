@@ -34,6 +34,19 @@ LOG = log.getLogger(__name__)
 _nb_api = None
 
 
+def get_db_ip_port():
+    hosts = cfg.CONF.df.remote_db_hosts
+    if not hosts:
+        LOG.warning("Deprecated: remote_db_ip and remote_db_port are "
+                    "deprecated for removal. Use remote_db_hosts instead")
+        ip = cfg.CONF.df.remote_db_ip
+        port = cfg.CONF.df.remote_db_port
+        return ip, port
+    host = hosts[0]
+    ip, port = host.split(':')
+    return ip, port
+
+
 def _get_topic(obj):
     try:
         return getattr(obj, 'topic', None)
@@ -70,8 +83,8 @@ class NbApi(object):
                 nb_driver,
                 use_pubsub=cfg.CONF.df.enable_df_pub_sub,
                 is_neutron_server=is_neutron_server)
-            nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
-                              db_port=cfg.CONF.df.remote_db_port)
+            ip, port = get_db_ip_port()
+            nb_api.initialize(db_ip=ip, db_port=port)
             _nb_api = nb_api
         return _nb_api
 

@@ -15,9 +15,9 @@
 import etcd3gw
 import threading
 
-from oslo_config import cfg
 from oslo_log import log as logging
 
+from dragonflow.db import api_nb
 from dragonflow.db import pub_sub_api
 
 
@@ -51,8 +51,8 @@ class EtcdPublisherAgent(pub_sub_api.PublisherAgentBase):
 
     def initialize(self):
         super(EtcdPublisherAgent, self).__init__()
-        self.client = etcd3gw.client(host=cfg.CONF.df.remote_db_ip,
-                                     port=cfg.CONF.df.remote_db_port)
+        ip, port = api_nb.get_db_ip_port()
+        self.client = etcd3gw.client(host=ip, port=port)
 
     def _send_event(self, data, topic):
         topic_prefix = _get_topic_watch_prefix(topic)
@@ -94,8 +94,8 @@ class EtcdSubscriberAgent(pub_sub_api.SubscriberApi):
     def initialize(self, callback):
         self.db_changes_callback = callback
         self.stop_event = threading.Event()
-        self.client = etcd3gw.client(host=cfg.CONF.df.remote_db_ip,
-                                     port=cfg.CONF.df.remote_db_port)
+        ip, port = api_nb.get_db_ip_port()
+        self.client = etcd3gw.client(host=ip, port=port)
 
     def _create_topic_thread(self, topic):
         topic_thread = WatcherThread(
