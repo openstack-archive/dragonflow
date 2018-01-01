@@ -34,7 +34,7 @@ function _configure_redis {
                 echo vm.overcommit_memory = 1 >> /etc/sysctl.conf"
     sudo sh -c "sysctl -p"
     for redisserverport in $REDIS_SERVER_LIST; do
-        redisserver = $(echo $redisserverport | cut -f1 -d:)
+        redisserver=$(echo $redisserverport | cut -f1 -d:)
         for port in $REDIS_PORT; do
             echo "shutdown redis: "$redisserver:$port
             cp redis.conf /opt/redis3/conf/redis-$port.conf
@@ -121,7 +121,7 @@ function nb_db_driver_start_server {
             done
              # start redis
              for redisserverport in $REDIS_SERVER_LIST; do
-                redisserver = $(echo $redisserverport | cut -f1 -d:)
+                redisserver=$(echo $redisserverport | cut -f1 -d:)
                  for port in $REDIS_PORT; do
                      echo $redisserver:$port
                      pushd /opt/redis3/
@@ -152,7 +152,7 @@ function nb_db_driver_stop_server {
     if is_service_enabled df-redis-server ; then
         if is_ubuntu || is_fedora; then
             for redisserverport in $REDIS_SERVER_LIST; do
-                redisserver = $(echo $redisserverport | cut -f1 -d:)
+                redisserver=$(echo $redisserverport | cut -f1 -d:)
                 for port in $REDIS_PORT; do
                     echo "Shutdown Redis: "$redisserver:$port
                     sudo /opt/redis3/bin/redis-cli -p $port shutdown

@@ -25,6 +25,7 @@ import six
 from dragonflow.controller.common import constants
 from dragonflow.db import db_common
 from dragonflow.db.drivers import redis_calckey
+from dragonflow.db import pub_sub_api
 
 LOG = log.getLogger(__name__)
 
@@ -368,10 +369,13 @@ class RedisMgt(object):
         if len(nodes) > 0:
             if self.publisher is not None:
                 nodes_json = jsonutils.dumps(nodes)
+                topic = 'redis'
                 update = db_common.DbUpdate('ha', 'nodes',
                                             'set', nodes_json,
-                                            topic='redis')
-                self.publisher.send_event(update)
+                                            topic=topic)
+                topic = topic.encode('utf8')
+                data = pub_sub_api.pack_message(update.to_dict())
+                self.publisher._send_event(data, topic)
 
             # process new nodes got
             self.redis_failover_callback(nodes)
