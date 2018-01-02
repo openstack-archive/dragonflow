@@ -43,6 +43,8 @@ Debugging
 There are a few tools that exist to debug Dragonflow. Most of them are geared
 towards verifying the pipeline was installed correctly.
 
+**ovs-ofctl dump-flows**
+
 .. code-block:: shell
 
     sudo ovs-ofctl dump-flows br-int -O OpenFlow13
@@ -52,26 +54,40 @@ manual page for ovs-ofctl for more info.
 
 It is worthwhile to note that each flow contains statistics such as how many
 packets matched this flow, and what is the cumulative size.
+The output shows the table IDs that the packets go through.
+In order to make the output more readable and add the table names, one can
+use the following script (relative path from the dragonflow project root):
+``tools/add_table_names``
+
+The usage is very straight forward:
+
+.. code-block:: bash
+
+    sudo ovs-ofctl dump-flows br-int -O OpenFlow13 | /opt/stack/dragonflow/tools/add_table_names
+
+**ovs-appctl ofproto/trace**
 
 .. code-block:: shell
 
     sudo ovs-appctl ofproto/trace br-int <flow>
-
 
 This command will simulate a packet matching the given flow through
 the pipeline.  The perl script in [#]_ can be used to facilitate the use
 of this tool. The script also recirculates the packet when necessary,
 e.g. for connection tracking.
 
+**df-db**
+
 .. code-block:: shell
 
     df-db
-
 
 This utility will allow to inspect Dragonflow northbound database. You can
 dump db content, list db tables, list db table keys and print value of the
 specific key in the table. Use *df-db --help* to list and get details on
 supported sub-commands.
+
+**df-model**
 
 .. code-block:: shell
 
@@ -88,9 +104,7 @@ to a file.
 * PlantUML output may be visualized using the PlantUML Server [#]_
 * rst output may be visualized using Online reStructuredText editor [#]_
 
-::
-
-    SimulateAndSendAction class
+**SimulateAndSendAction class**
 
 In the tests, you can have the above mentioned script run automatically for
 a packet you are about to send before actually sending it.
