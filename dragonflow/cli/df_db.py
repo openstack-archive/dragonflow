@@ -11,7 +11,9 @@
 #    under the License.
 
 import argparse
+from jsonmodels import errors
 import socket
+import sys
 
 from oslo_serialization import jsonutils
 
@@ -19,6 +21,7 @@ from dragonflow.cli import utils as cli_utils
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.db import api_nb
 from dragonflow.db import db_common
 from dragonflow.db import model_framework
 from dragonflow.db import models
@@ -146,6 +149,53 @@ def remove_record(db_driver, table, key):
         print('Key %s is not found in table %s.' % (key, table))
 
 
+def add_object_from_json(json_str, table):
+    """add a new object that described by json
+     string to dragonflow db.
+
+    :param json_str: json string that describe the object to be added
+    :param table: table name
+    :return: None
+    """
+    nb_api = api_nb.NbApi.get_instance(False)
+    try:
+        model = model_framework.get_model(table)
+    except KeyError:
+        print("Model {} not found in models list".format(table))
+        return
+
+    try:
+        obj = model.from_json(json_str)
+    except ValueError:
+        print("Json {} is not valid".format(json_str))
+        return
+    except TypeError:
+        print("Json {} is not applicable to {}".format(json_str, table))
+        return
+
+    try:
+        nb_api.create(obj)
+    except errors.ValidationError:
+        print("Json {} is not applicable to {}".format(json_str, table))
+
+
+def add_object_from_file(file_path, table):
+    """add a new object that described by json
+    file to dragonflow db.
+
+    :param file_path: path to the file
+    :param table: table name
+    :return:
+    """
+
+    try:
+        with open(file_path, 'rb') as f:
+            json_str = f.read()
+            add_object_from_json(json_str, table)
+    except IOError:
+        print("Can't read data from file " + file_path)
+
+
 def _check_valid_table(parser, table_name):
     if table_name not in db_tables:
         parser.exit(
@@ -250,9 +300,39 @@ def add_dropall_command(subparsers):
     sub_parser.set_defaults(handle=handle)
 
 
+def add_create_command(subparsers):
+
+    def handle(db_driver, args):
+        table = args.table
+
+        if args.file:
+            file_path = args.file
+            add_object_from_file(file_path, table)
+        elif args.json:
+            json_str = args.json
+            add_object_from_json(json_str, table)
+        else:
+            print("json or file argument must be supplied "
+                  "(use '-h' for details)")
+
+    sub_parser = subparsers.add_parser(
+        'add', help="Add new record to table",
+        description="Adds a new record to a table in the db"
+                    " (from JSON string or file). The record MUST "
+                    "match the table data-model as defined by dragonflow"
+    )
+    sub_parser.add_argument('table', help='The name of the table.')
+
+    group = sub_parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        '-j', '--json', help="object represented by json string")
+    group.add_argument(
+        '-f', '--file', help="path to file with object json representation")
+    sub_parser.set_defaults(handle=handle)
+
+
 def main():
-    parser = argparse.ArgumentParser(usage="missing command name "
-                                           "(use --help for help)")
+    parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(title='subcommands',
                                        description='valid subcommands')
     add_table_command(subparsers)
@@ -264,6 +344,12 @@ def main():
     add_rm_command(subparsers)
     add_init_command(subparsers)
     add_dropall_command(subparsers)
+    add_create_command(subparsers)
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
     args = parser.parse_args()
 
     df_utils.config_parse()
