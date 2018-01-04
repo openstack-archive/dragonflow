@@ -12,6 +12,7 @@
 
 import argparse
 import socket
+import sys
 
 from oslo_serialization import jsonutils
 
@@ -19,6 +20,7 @@ from dragonflow.cli import utils as cli_utils
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.db import api_nb
 from dragonflow.db import db_common
 from dragonflow.db import model_framework
 from dragonflow.db import models
@@ -146,6 +148,35 @@ def remove_record(db_driver, table, key):
         print('Key %s is not found in table %s.' % (key, table))
 
 
+def add_object_from_json(json_str, table):
+    nb_api = api_nb.NbApi.get_instance(False)
+    try:
+        model = model_framework.get_model(table)
+    except KeyError:
+        print("Model {} not found in models list".format(table))
+        return
+
+    try:
+        obj = model.from_json(json_str)
+    except ValueError:
+        print("Json {} is not valid".format(json_str))
+        return
+    except TypeError:
+        print("Json {} is not applicable to {}".format(json_str, table))
+        return
+
+    nb_api.create(obj)
+
+
+def add_object_from_file(file_path, table):
+    try:
+        with open(file_path, 'rb') as f:
+            json_str = f.read()
+            add_object_from_json(json_str, table)
+    except IOError:
+        print("Can't read data from file " + file_path)
+
+
 def _check_valid_table(parser, table_name):
     if table_name not in db_tables:
         parser.exit(
@@ -250,9 +281,39 @@ def add_dropall_command(subparsers):
     sub_parser.set_defaults(handle=handle)
 
 
+def add_create_command(subparsers):
+
+    def handle(db_driver, args):
+        table = args.table
+
+        file_path = args.file
+        if file_path:
+            add_object_from_file(file_path, table)
+            return
+
+        json_str = args.json
+        if json_str:
+            add_object_from_json(json_str, table)
+            return
+
+        print("json or file argument must be supplied "
+              "(use '-h' for details)")
+
+    sub_parser = subparsers.add_parser(
+        'add', help="Create new object in table",
+        description="object should be json (string/file) that"
+                    "desribe object according to the definetions "
+                    "that set by table modles ")
+    sub_parser.add_argument('table', help='The name of the table.')
+    sub_parser.add_argument(
+        '-j', '--json', help="object represented by json string")
+    sub_parser.add_argument(
+        '-f', '--file', help="path to file with object json representation")
+    sub_parser.set_defaults(handle=handle)
+
+
 def main():
-    parser = argparse.ArgumentParser(usage="missing command name "
-                                           "(use --help for help)")
+    parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(title='subcommands',
                                        description='valid subcommands')
     add_table_command(subparsers)
@@ -264,6 +325,12 @@ def main():
     add_rm_command(subparsers)
     add_init_command(subparsers)
     add_dropall_command(subparsers)
+    add_create_command(subparsers)
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
     args = parser.parse_args()
 
     df_utils.config_parse()
