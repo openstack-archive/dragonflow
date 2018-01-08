@@ -188,3 +188,11 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
             elif not cls_definition:  # Display only instnaces, not classes
                 data[name] = getattr(self, name)
         return str(data)
+
+
+@mf.register_model
+@mf.construct_nb_db_model
+class IPAM(mf.ModelBase):
+    table_name = "ipam"
+    free_addrs = df_fields.ListOfField(df_fields.IpNetworkField())
+    cidr = df_fields.IpNetworkField()
