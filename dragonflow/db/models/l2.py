@@ -188,3 +188,4 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
             elif not cls_definition:  # Display only instnaces, not classes
                 data[name] = getattr(self, name)
         return str(data)
+
