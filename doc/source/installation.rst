@@ -44,7 +44,7 @@ Quick Start
     vagrant plugin install vagrant-cachier
     vagrant plugin install vagrant-vbguest
 
-3. Adjust the settings in `vagrant/provisioning/virtualbox.conf.yml` if needed (5GB RAM is the
+3. Adjust the settings in `vagrant/provisioning/dragonflow.conf.yml` if needed (5GB RAM is the
    minimum to get 1 VM running on the controller node)
 
 4. Launch the VM's: `vagrant up`
