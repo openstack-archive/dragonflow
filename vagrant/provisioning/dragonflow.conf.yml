@@ -15,3 +15,8 @@ devstack_compute2:
   ip: "192.168.33.103"
   memory: 1024
   cpus: 1
+devstack_aio:
+  host_name: allinone.devstack.dev
+  ip: "192.168.33.201"
+  memory: 8192
+  cpus: 2
