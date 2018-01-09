@@ -78,4 +78,25 @@ Vagrant.configure(2) do |config|
     end
   end
 
+  # Define the Devstack All-In-One node on Hypervisor
+  config.vm.define "devstack_aio", autostart: false do |devstack_aio|
+    devstack_aio.vm.host_name = vagrant_config['devstack_aio']['host_name']
+    devstack_aio.vm.network "private_network", ip:vagrant_config['devstack_aio']['ip']
+    devstack_aio.vm.provision "shell", path: "provisioning/setup-base.sh", privileged: false
+    devstack_aio.vm.provision "shell", path: "provisioning/setup-aio.sh", privileged: false
+
+    config.vm.provider "virtualbox" do |vb|
+       vb.memory = vagrant_config['devstack_aio']['memory']
+       vb.cpus = vagrant_config['devstack_aio']['cpus']
+    end
+    config.vm.provider 'parallels' do |vb|
+       vb.memory = vagrant_config['devstack_aio']['memory']
+       vb.cpus = vagrant_config['devstack_aio']['cpus']
+    end
+    config.vm.provider 'libvirt' do |vb|
+       vb.memory = vagrant_config['devstack_aio']['memory']
+       vb.cpus = vagrant_config['devstack_aio']['cpus']
+    end
+  end
+
 end
