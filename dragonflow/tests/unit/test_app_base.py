@@ -51,14 +51,24 @@ class DFAppTestBase(tests_base.BaseTestCase):
         cfg.CONF.set_override('host', fake_chassis1.id)
         super(DFAppTestBase, self).setUp()
         self.useFixture(log_fixture.SetLogLevel([None], logging.DEBUG))
-        mock.patch('ryu.base.app_manager.AppManager.get_instance').start()
-        mock.patch('dragonflow.db.api_nb.NbApi.get_instance').start()
+        mock_app = mock.patch('ryu.base.app_manager.AppManager.get_instance'
+                              ).start()
+        self.addCleanup(mock_app.stop)
+        mock_nb = mock.patch('dragonflow.db.api_nb.NbApi.get_instance')
+        mock_nb.start()
+        self.addCleanup(mock_nb.stop)
         mod_flow = mock.patch(
-            'dragonflow.controller.df_base_app.DFlowApp.mod_flow').start()
+            'dragonflow.controller.df_base_app.DFlowApp.mod_flow')
+        mod_flow_mock = mod_flow.start()
+        self.addCleanup(mod_flow.stop)
         add_flow_go_to_table_mock_patch = mock.patch(
             'dragonflow.controller.df_base_app.DFlowApp.add_flow_go_to_table')
-        add_flow_go_to_table = add_flow_go_to_table_mock_patch.start()
-        execute = mock.patch('neutron.agent.common.utils.execute').start()
+        add_flow_go_to_table = add_flow_go_to_table_mock_patch
+        add_flow_go_to_table_mock = add_flow_go_to_table.start()
+        self.addCleanup(add_flow_go_to_table_mock_patch.stop)
+        execute = mock.patch('neutron.agent.common.utils.execute')
+        execute_mock = execute.start()
+        self.addCleanup(execute.stop)
 
         # CLear old objects from cache
         db_store.get_instance().clear()
@@ -86,9 +96,9 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.controller.db_store.update(fake_chassis1)
         self.controller.db_store.update(fake_chassis2)
 
-        mod_flow.reset_mock()
-        add_flow_go_to_table.reset_mock()
-        execute.reset_mock()
+        mod_flow_mock.reset_mock()
+        add_flow_go_to_table_mock.reset_mock()
+        execute_mock.reset_mock()
 
     def tearDown(self):
         for model in model_framework.iter_models(False):
