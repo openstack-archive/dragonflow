@@ -62,9 +62,12 @@ class DFMechanismDriverTestCase(test_plugin.Ml2PluginV2TestCase):
         cfg.CONF.set_override('extension_drivers',
                               self._extension_drivers,
                               group='ml2')
-        mock.patch('dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
-                   side_effect=utils.empty_wrapper).start()
+        db_lock_mock = mock.patch(
+            'dragonflow.db.neutron.lockedobjects_db.wrap_db_lock',
+            side_effect=utils.empty_wrapper).start()
+        self.addCleanup(db_lock_mock.stop)
         nbapi_instance = mock.patch('dragonflow.db.api_nb.NbApi').start()
+        self.addCleanup(nbapi_instance.stop)
         nbapi_instance.get_instance.return_value = mock.MagicMock()
         super(DFMechanismDriverTestCase, self).setUp()
 
