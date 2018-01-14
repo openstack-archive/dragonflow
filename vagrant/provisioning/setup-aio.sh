@@ -4,8 +4,6 @@ cp /dragonflow/doc/source/single-node-conf/etcd_local_controller.conf ~/devstack
 # Get the IP address
 ipaddress=$(ifconfig eth1 2>/dev/null|awk '/inet addr:/ {split($2,a,":"); print a[2]}')
 
-SED_SCRIPT="s/df-zmq-publisher-service/df-etcd-pubsub-service/g"
-
 sed -i -e "$SED_SCRIPT" devstack/local.conf
 
 # Adjust some things in local.conf

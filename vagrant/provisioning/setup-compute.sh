@@ -7,7 +7,6 @@ ipaddress=$(ifconfig eth1 2>/dev/null|awk '/inet addr:/ {split($2,a,":"); print 
 SED_SCRIPT="s/^\(HOST_IP\)=.*/\1=$ipaddress/g"
 SED_SCRIPT="$SED_SCRIPT;/TUNNEL_ENDPOINT_IP/d"
 SED_SCRIPT="$SED_SCRIPT;s/^\(SERVICE_HOST\)=.*/\1=$1/g"
-SED_SCRIPT="$SED_SCRIPT;s/zmq_pubsub_driver/etcd_pubsub_driver/g"
 
 sed -i -e "$SED_SCRIPT" devstack/local.conf
 
