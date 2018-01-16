@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Added support for the OSProfiler.
+    OSProfiler provides a tiny but powerful library that is used by
+    most (soon to be all) OpenStack projects and their python clients. It
+    provides functionality to be able to generate one trace per request, that
+    goes through all involved services. This trace can then be extracted and
+    used to build a tree of calls which can be quite handy for a variety of
+    reasons (for example in isolating cross-project performance issues).
+    The OSProfiler is off by default, extra configuration is required to
+    enable it. Please refer to the documentation for further details.
