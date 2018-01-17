@@ -314,8 +314,45 @@ class DNATApp(df_base_app.DFlowApp):
                 match=self._get_ingress_icmp_flow_match(floatingip, icmp_type),
             )
 
+    def _get_source_port_detector_match(self, floatingip):
+        match = self.parser.OFPMatch(
+            eth_type=ether.ETH_TYPE_IP,
+            ipv4_src=floatingip.floating_ip_address,
+            reg6=0,
+        )
+        return match
+
+    def _install_source_port_detector(self, floatingip):
+        parser = self.parser
+        match = self._get_source_port_detector_match(floatingip)
+        actions = [
+            parser.OFPActionSetField(reg6=floatingip.lport.unique_key),
+        ]
+
+        inst_type = self.datapath.ofproto.OFPIT_APPLY_ACTIONS
+        inst = [
+            parser.OFPInstructionActions(inst_type, actions),
+            parser.OFPInstructionGotoTable(const.EGRESS_DNAT_TABLE),
+        ]
+        self.mod_flow(
+            table_id=const.EXTERNAL_INGRESS_DETECT_SOURCE_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=match,
+            inst=inst,
+        )
+
+    def _uninstall_source_port_detector(self, floatingip):
+        match = self._get_source_port_detector_match(floatingip)
+        self.mod_flow(
+            command=self.ofproto.OFPFC_DELETE_STRICT,
+            table_id=const.EXTERNAL_INGRESS_DETECT_SOURCE_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=match,
+        )
+
     def _install_ingress_nat_flows(self, floatingip):
         self._get_arp_responder(floatingip).add()
+        self._install_source_port_detector(floatingip)
         self._install_ingress_capture_flow(floatingip)
         self._install_ingress_translate_flow(floatingip)
         self._install_ingress_icmp_flows(floatingip)
@@ -325,6 +362,7 @@ class DNATApp(df_base_app.DFlowApp):
         self._uninstall_ingress_capture_flow(floatingip)
         self._uninstall_ingress_translate_flow(floatingip)
         self._uninstall_ingress_icmp_flows(floatingip)
+        self._uninstall_source_port_detector(floatingip)
 
     def _get_dnat_egress_match(self, floatingip, **kwargs):
         return self.parser.OFPMatch(

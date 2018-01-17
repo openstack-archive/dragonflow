@@ -112,6 +112,11 @@ class ProviderApp(df_base_app.DFlowApp):
 
     def switch_features_handler(self, ev):
         self._setup_physical_bridges(self.bridge_mappings)
+        self.add_flow_go_to_table(
+            const.EXTERNAL_INGRESS_DETECT_SOURCE_TABLE,
+            const.PRIORITY_DEFAULT,
+            const.L2_LOOKUP_TABLE
+        )
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
@@ -286,7 +291,8 @@ class ProviderApp(df_base_app.DFlowApp):
         action_inst = self.parser.OFPInstructionActions(
             self.ofproto.OFPIT_APPLY_ACTIONS, actions)
 
-        goto_inst = self.parser.OFPInstructionGotoTable(const.L2_LOOKUP_TABLE)
+        goto_inst = self.parser.OFPInstructionGotoTable(
+            const.EXTERNAL_INGRESS_DETECT_SOURCE_TABLE)
 
         inst = [action_inst, goto_inst]
         self.mod_flow(
