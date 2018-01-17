@@ -26,6 +26,8 @@
 # translated to network id and the packet is forwarded to
 # INGRESS_DESTINATION_PORT_LOOKUP_TABLE.
 INGRESS_CLASSIFICATION_DISPATCH_TABLE = 0
+# Detect reg6 (provider network and dNAT)
+EXTERNAL_INGRESS_DETECT_SOURCE_TABLE = 2
 # All packets from unknown ovs ports are dropped here. Other packets
 # are forwarded to table EGRESS_CONNTRACK_TABLE.
 EGRESS_PORT_SECURITY_TABLE = 5
