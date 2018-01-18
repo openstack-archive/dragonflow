@@ -53,7 +53,7 @@ DevRef should cover how the proposed feature is supported. It is a low-level
 design document explaining how the feature is implemented. It should cover
 design decisions too low level to be included in the spec. It should also
 cover the southbound implementation, including the rationale. The general
-guideline should be - if a new contributer reads this document, they should
+guideline should be - if a new contributor reads this document, they should
 be able to understand the code of the application.
 
 The difference between a spec and a devref is difficult to formalize. In essence,
