@@ -2,7 +2,7 @@
     name: openstack/dragonflow
     check:
       jobs:
-        - tempest-dsvm-dragonflow:
+        - dragonflow-tempest:
             voting: false
             irrelevant-files:
               - ^(test-|)requirements.txt$
@@ -11,8 +11,6 @@
             voting: false
         - dragonflow-dsvm-fullstack-redis
         - dragonflow-dsvm-fullstack-etcd-zmq
-        - legacy-install-dsvm-dragonflow-kuryr-kubernetes:
-            voting: false
         - openstack-ansible-dragonflow-cross-repo-ubuntu-xenial-nv:
             voting: false
     gate:
@@ -60,7 +58,7 @@
       - openstack/rally
 
 - job:
-    name: tempest-dsvm-dragonflow
+    name: dragon-flow-tempest
     parent: legacy-dsvm-base
     run: zuul/tempest-dsvm-dragonflow/run.yaml
     post-run: zuul/tempest-dsvm-dragonflow/post.yaml
