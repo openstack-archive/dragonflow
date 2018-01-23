@@ -514,6 +514,91 @@ function stop_df_bgp_service {
     fi
 }
 
+function handle_df_stack_install {
+    if [[ "$OFFLINE" != "True" ]]; then
+        if ! is_neutron_enabled ; then
+            install_neutron
+        fi
+        install_df
+        if [[ "$DF_REINSTALL_OVS" == "True" ]]; then
+            install_ovs
+        fi
+    fi
+    setup_develop $DRAGONFLOW_DIR
+    if [[ "$DF_REINSTALL_OVS" == "True" ]]; then
+        init_ovs
+        # We have to start at install time, because Neutron's post-config
+        # phase runs ovs-vsctl.
+        start_ovs
+    fi
+    if function_exists nb_db_driver_start_server; then
+    nb_db_driver_start_server
+    fi
+    disable_libvirt_apparmor
+}
+
+function handle_df_stack_post_install {
+    init_neutron_sample_config
+    configure_ovs
+    configure_df_plugin
+    # configure nb db driver
+    if function_exists nb_db_driver_configure; then
+        nb_db_driver_configure
+    fi
+    # initialize the nb db
+    init_nb_db
+
+    if [[ "$DF_PUB_SUB" == "True" ]]; then
+        # Implemented by the pub/sub plugin
+        configure_pubsub_service_plugin
+        # Defaults, in case no Pub/Sub service was selected
+        if [ -z $PUB_SUB_DRIVER ]; then
+            die $LINENO "pub-sub enabled, but no pub-sub driver selected"
+        fi
+        PUB_SUB_MULTIPROC_DRIVER=${PUB_SUB_MULTIPROC_DRIVER:-$PUB_SUB_DRIVER}
+    fi
+
+    if is_service_enabled nova; then
+        configure_neutron_nova
+    fi
+
+    if is_service_enabled df-publisher-service; then
+        start_pubsub_service
+    fi
+
+    start_df
+    start_df_metadata_agent
+    start_df_bgp_service
+    setup_rootwrap_filters
+    create_tables_script
+}
+
+function handle_df_stack {
+    if [[ "$STAGE" == "install" ]]; then
+        handle_df_stack_install
+    elif [[ "$STAGE" == "post-config" ]]; then
+        handle_df_stack_post_install
+    fi
+}
+
+function handle_df_unstack {
+    stop_df_bgp_service
+    stop_df_metadata_agent
+    stop_df
+    if function_exists nb_db_driver_clean; then
+        nb_db_driver_clean
+    fi
+    if [[ "$DF_REINSTALL_OVS" == "True" ]]; then
+        cleanup_ovs
+        stop_ovs
+        uninstall_ovs
+    fi
+    if is_service_enabled df-publisher-service; then
+        stop_pubsub_service
+    fi
+}
+
+
 # main loop
 if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
 
@@ -540,77 +625,9 @@ if [[ "$Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER" == "True" ]]; then
         }
     fi
 
-    if [[ "$1" == "stack" && "$2" == "install" ]]; then
-        if [[ "$OFFLINE" != "True" ]]; then
-            if ! is_neutron_enabled ; then
-                install_neutron
-            fi
-            install_df
-            if [[ "$DF_REINSTALL_OVS" == "True" ]]; then
-                install_ovs
-            fi
-        fi
-        setup_develop $DRAGONFLOW_DIR
-        if [[ "$DF_REINSTALL_OVS" == "True" ]]; then
-            init_ovs
-            # We have to start at install time, because Neutron's post-config
-            # phase runs ovs-vsctl.
-            start_ovs
-        fi
-        if function_exists nb_db_driver_start_server; then
-            nb_db_driver_start_server
-        fi
-        disable_libvirt_apparmor
-    elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
-        init_neutron_sample_config
-        configure_ovs
-        configure_df_plugin
-        # configure nb db driver
-        if function_exists nb_db_driver_configure; then
-            nb_db_driver_configure
-        fi
-        # initialize the nb db
-        init_nb_db
-
-        if [[ "$DF_PUB_SUB" == "True" ]]; then
-            # Implemented by the pub/sub plugin
-            configure_pubsub_service_plugin
-            # Defaults, in case no Pub/Sub service was selected
-            if [ -z $PUB_SUB_DRIVER ]; then
-                die $LINENO "pub-sub enabled, but no pub-sub driver selected"
-            fi
-            PUB_SUB_MULTIPROC_DRIVER=${PUB_SUB_MULTIPROC_DRIVER:-$PUB_SUB_DRIVER}
-        fi
-
-        if is_service_enabled nova; then
-            configure_neutron_nova
-        fi
-
-        if is_service_enabled df-publisher-service; then
-            start_pubsub_service
-        fi
-
-        start_df
-        start_df_metadata_agent
-        start_df_bgp_service
-        setup_rootwrap_filters
-        create_tables_script
-    fi
-
-    if [[ "$1" == "unstack" ]]; then
-        stop_df_bgp_service
-        stop_df_metadata_agent
-        stop_df
-        if function_exists nb_db_driver_clean; then
-            nb_db_driver_clean
-        fi
-        if [[ "$DF_REINSTALL_OVS" == "True" ]]; then
-            cleanup_ovs
-            stop_ovs
-            uninstall_ovs
-        fi
-        if is_service_enabled df-publisher-service; then
-            stop_pubsub_service
-        fi
+    if [[ "$ACTION" == "stack" ]]; then
+        handle_df_stack
+    elif [[ "$ACTION" == "unstack" ]]; then
+        handle_df_unstack
     fi
 fi
