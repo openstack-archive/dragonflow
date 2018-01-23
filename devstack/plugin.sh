@@ -284,8 +284,6 @@ function configure_df_plugin {
         neutron_server_config_add_new $DRAGONFLOW_CONF
     fi
 
-    iniset $DRAGONFLOW_CONF df remote_db_ip "$REMOTE_DB_IP"
-    iniset $DRAGONFLOW_CONF df remote_db_port $REMOTE_DB_PORT
     iniset $DRAGONFLOW_CONF df remote_db_hosts "$REMOTE_DB_HOSTS"
     iniset $DRAGONFLOW_CONF df nb_db_class "$NB_DRIVER_CLASS"
     iniset $DRAGONFLOW_CONF df enable_neutron_notifier "$ENABLE_NEUTRON_NOTIFIER"
