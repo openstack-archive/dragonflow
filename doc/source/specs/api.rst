@@ -155,7 +155,7 @@ Work Items
 ==========
 1. Define Dragonflow programming model.
 2. Add support for auto-generation of the OpenAPI spec from the model.
-3. Add RESTful API (preferably auto-generated) from the model’s spec.
+3. Add RESTful API (preferably auto-generated) from the model's spec.
 4. Add Authorization service.
 5. Add Python library (binding)
 6. Add Command Line Tool (CLI) which interact with the API server.
