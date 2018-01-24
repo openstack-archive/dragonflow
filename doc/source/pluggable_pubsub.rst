@@ -69,7 +69,7 @@ Configuration
 The following parameters allows configuration of the publish-subscribe
 mechanism. Only parameters which need to be handled by the publish-subscribe
 drivers are listed here. For a full list, refer to
-``dragonflow/common/common_params.py`` (`Link`__).
+``dragonflow/conf/df_common_params.py`` (`Link`__).
 
 __ _COMMON_PARAMS
 
@@ -149,6 +149,6 @@ References
 
 [pub_sub_api.py] https://github.com/openstack/dragonflow/tree/master/dragonflow/db/pub_sub_api.py
 
-[common_params.py] https://github.com/openstack/dragonflow/tree/master/dragonflow/common/common_params.py
+[df_common_params.py] https://github.com/openstack/dragonflow/blob/master/dragonflow/conf/df_common_params.py
 
 [zmq_pubsub_driver.py] https://github.com/openstack/dragonflow/tree/master/dragonflow/db/pubsub_drivers/zmq_pubsub_driver.py
