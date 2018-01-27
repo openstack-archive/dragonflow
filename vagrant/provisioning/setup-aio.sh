@@ -22,8 +22,4 @@ SERVICE_HOST_NAME=\${HOSTNAME}
 SERVICE_HOST=$ipaddress
 DEVSTACKEOF
 
-# Patch to enable IPv6
-sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
-sudo echo "net.ipv6.conf.all.disable_ipv6 = 0" >> /etc/sysctl.conf
-
 ~/devstack/stack.sh
