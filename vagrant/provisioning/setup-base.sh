@@ -16,3 +16,7 @@ fi
 if [ ! -d "dragonflow" ]; then
     git clone https://git.openstack.org/openstack/dragonflow.git
 fi
+
+# Patch to enable IPv6
+sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
+sudo sh -c 'echo "net.ipv6.conf.all.disable_ipv6 = 0" >> /etc/sysctl.conf'
