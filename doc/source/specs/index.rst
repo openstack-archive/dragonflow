@@ -78,6 +78,7 @@ Specs
     dhcp_port_per_network
     lbaas2
     application_decoupling
+    dnsaas
 
 Templates
 ---------
