@@ -176,6 +176,12 @@ class LogicalPort(mf.ModelBase, mixins.Name, mixins.Version, mixins.Topic,
     def is_remote(self):
         return port_locator.is_port_remote(self)
 
+    @property
+    def all_ips(self):
+        ips = set(self.ips)
+        ips.update(pair.ip_address for pair in self.allowed_address_pairs)
+        return ips
+
     def __str__(self):
         data = {}
         for name in dir(self):
