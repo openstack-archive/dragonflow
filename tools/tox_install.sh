@@ -17,6 +17,7 @@ set -ex
 DIR=$(dirname $0)
 ${DIR}/tox_install_project.sh neutron neutron $*
 ${DIR}/tox_install_project.sh networking-sfc networking_sfc $*
+${DIR}/tox_install_project.sh neutron-dynamic-routing neutron_dynamic_routing $*
 CONSTRAINTS_FILE=$1
 shift
 
