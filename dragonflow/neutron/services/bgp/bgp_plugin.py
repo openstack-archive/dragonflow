@@ -17,6 +17,7 @@ from neutron_lib.callbacks import registry
 from neutron_lib.callbacks import resources
 from neutron_lib import constants as n_const
 from neutron_lib import context as n_context
+from neutron_lib.plugins import directory
 from neutron_lib.services import base as service_base
 from oslo_log import log as logging
 
@@ -25,6 +26,7 @@ from dragonflow.db.models import bgp
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.neutron import lockedobjects_db as lock_db
+from dragonflow.neutron.db.models import l2 as neutron_l2
 from dragonflow.neutron.services import mixins
 
 
@@ -108,8 +110,7 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         if port_id:
             # Associate floatingip
             project_id = _get_project_id_from_context(context)
-            external_ip = self._get_external_ip_of_lport(port_id,
-                                                         project_id)
+            external_ip = self._get_external_ip_of_lport(context, port_id)
             if not external_ip:
                 return
 
@@ -128,14 +129,13 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         for speaker in bgp_speakers:
             fip_handler(context, speaker.id, speaker.project_id, fip_data)
 
-    def _get_external_ip_of_lport(self, lport_id, topic):
-        """Get the accessible external ip of chassis where lport resides in"""
-
-        lport = self.nb_api.get(l2.LogicalPort(id=lport_id, topic=topic))
-        binding = lport.binding
+    def _get_external_ip_of_lport(self, context, port_id):
+        """Get the accessible external ip of the chassis where lport resides"""
+        port = directory.get_plugin().get_port(context, port_id)
+        binding = neutron_l2.build_port_binding(port)
         if not binding:
             LOG.warning(
-                'Logical port %s has not been bound to any host yet', lport_id)
+                'Logical port %s has not been bound to any host yet', port_id)
             return
 
         if binding.type == l2.BINDING_VTEP:
