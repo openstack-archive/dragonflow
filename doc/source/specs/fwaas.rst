@@ -16,7 +16,7 @@ a barrier between a trusted internal network and another external network.
 
 Currently, Dragonflow supports security groups, which can supply filtering
 based on whitelists. A firewall can provide more functionalities and more
-granular for users, just as the OpenStack Neutron spec described：
+granular for users, just as the OpenStack Neutron spec described:
 
 https://specs.openstack.org/openstack/neutron-specs/specs/mitaka/fwaas-api-2.0.html
 
