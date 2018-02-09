@@ -322,7 +322,7 @@ dictionaries, the values will be iterated.
 The implementation detail of the indexing DB Store will be hidden from the
 client developer, to allow us to replace it with a better implementation, if
 and when possible. Therefore, additional API tests will be written to verify
-the behaviour stays the same accross implementations.
+the behaviour stays the same across implementations.
 
 An in-memory sqlite implementation was considered. However, sqlite stores
 information as strings rather than python objects. Whilst serialisation and

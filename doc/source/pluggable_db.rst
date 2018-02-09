@@ -85,7 +85,7 @@ If it does, the local controller will register a callback method to the driver t
 receive any DB notifications and instead of polling the DB for changes, wait for the
 driver to send them.
 
-If the driver doesnt support publish-subscribe, the controller will keep polling the
+If the driver doesn't support publish-subscribe, the controller will keep polling the
 DB framework looking for changes.
 
 

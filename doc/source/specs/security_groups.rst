@@ -242,7 +242,7 @@ CIDR addresses should be necessary.
 
 Missing Parts
 -------------
-1) OVS connection tracking integration doesnt yet support IP fragmentation.
+1) OVS connection tracking integration doesn't yet support IP fragmentation.
    IP defragmentation must be applied before sending the packets to the
    connection tracking module.
 
