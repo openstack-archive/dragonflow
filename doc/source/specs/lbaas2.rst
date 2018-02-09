@@ -609,7 +609,7 @@ will be treated as a response packet.
 Alternatively, the `pkt_mark` header
 can be used to mark the packet as a non-lbaas packet.
 
-This is the prefered option.
+This is the preferred option.
 
 Health Monitor
 ~~~~~~~~~~~~~~

@@ -190,7 +190,7 @@ class RedisSubscriberAgent(pub_sub_api.SubscriberAgentBase):
                         elif 'unsubscribe' == data['type']:
                             continue
                         elif 'message' == data['type']:
-                            # Redis managment module publishes node list
+                            # Redis management module publishes node list
                             # on topic 'redis'.
                             # All other topics are for the user.
                             if data['channel'] == 'redis':
