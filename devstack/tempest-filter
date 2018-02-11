@@ -68,8 +68,7 @@ r="$r|(?:tempest\.api\.network.admin.test_dhcp_agent_scheduler.DHCPAgentSchedule
 
 # Current list of failing tests that need to be triaged, have bugs filed, and
 # fixed as appropriate.
-# Disable cross tenant traffic + security groups - bug #1740739
-r="$r|(?:tempest\.scenario\.test_security_groups_basic_ops\.TestSecurityGroupsBasicOps\.test_cross_tenant_traffic)"
+# (none)
 
 # End list of exclusions.
 r="$r)"

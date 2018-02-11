@@ -15,11 +15,13 @@
 
 import collections
 import copy
+import itertools
 
 import netaddr
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.ofproto import ether
+from ryu.ofproto import nicira_ext
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils
@@ -27,6 +29,7 @@ from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import l2
 from dragonflow.db.models import secgroups as sg_model
+from dragonflow.utils import conntrack
 
 
 LOG = log.getLogger(__name__)
@@ -43,6 +46,14 @@ DEST_FIELD_NAME_BY_PROTOCOL_NUMBER = {
     n_const.PROTO_NUM_UDP: 'udp_dst',
 }
 
+CONNTRACK_PREPARE_TABLE = const.CONNTRACK_PREPARE_TABLE
+CONNTRACK_TABLE = const.CONNTRACK_TABLE
+CONNTRACK_RESULT_TABLE = const.CONNTRACK_RESULT_TABLE
+CONNTRACK_CLEANUP_TABLE = const.CONNTRACK_CLEANUP_TABLE
+EGRESS_SECURITY_GROUP_TABLE = const.EGRESS_SECURITY_GROUP_TABLE
+INGRESS_SECURITY_GROUP_TABLE = const.INGRESS_SECURITY_GROUP_TABLE
+SECURITY_GROUP_EXIT_TABLE = const.INGRESS_DISPATCH_TABLE
+
 
 class SGApp(df_base_app.DFlowApp):
 
@@ -50,87 +61,37 @@ class SGApp(df_base_app.DFlowApp):
         super(SGApp, self).__init__(*args, **kwargs)
         self.secgroup_rule_mappings = {}
         self.next_secgroup_rule_id = 0
-        self.remote_secgroup_ref = {}
+        self.remote_secgroup_ref = collections.defaultdict(dict)
         self.secgroup_associate_local_ports = {}
-        self.secgroup_aggregate_addresses = collections.defaultdict(
-            netaddr.IPSet
-        )
-        self.secgroup_ip_refs = collections.defaultdict(set)
         self.register_local_cookie_bits(COOKIE_NAME, 32)
 
-    @staticmethod
-    def _get_cidr_difference(cidr_set, new_cidr_set):
-        new_cidr_list = new_cidr_set.iter_cidrs()
-        old_cidr_list = cidr_set.iter_cidrs()
+    def _get_rule_l2_match(self, secgroup_rule):
+        if secgroup_rule.ethertype == n_const.IPv4:
+            eth_type = ether.ETH_TYPE_IP
+        elif secgroup_rule.ethertype == n_const.IPv6:
+            eth_type = ether.ETH_TYPE_IPV6
+        return {'eth_type': eth_type}
 
-        added_cidr = set(new_cidr_list) - set(old_cidr_list)
-        removed_cidr = set(old_cidr_list) - set(new_cidr_list)
-        return added_cidr, removed_cidr
-
-    @staticmethod
-    def _get_cidr_changes_after_removing_addresses(cidr_set, address_list):
-        """cidr_set - IPSet
-           address_list - IPAddress or string list
-        """
-        new_cidr_set = cidr_set - netaddr.IPSet(address_list)
-        added_cidr, removed_cidr = SGApp._get_cidr_difference(cidr_set,
-                                                              new_cidr_set)
-        return new_cidr_set, added_cidr, removed_cidr
-
-    @staticmethod
-    def _get_cidr_changes_after_adding_addresses(cidr_set, address_list):
-        """cidr_set - IPSet
-           address_list - IPAddress or string list
-        """
-        new_cidr_set = cidr_set | netaddr.IPSet(address_list)
-        added_cidr, removed_cidr = SGApp._get_cidr_difference(cidr_set,
-                                                              new_cidr_set)
-        return new_cidr_set, added_cidr, removed_cidr
-
-    @staticmethod
-    def _get_cidr_changes_after_updating_addresses(cidr_set, addresses_to_add,
-                                                   addresses_to_remove):
-        """cidr_set - IPSet
-           addresses_to_add - IPAddress or string list
-           addresses_to_remove - IPAddress or string list
-        """
-        new_cidr_set = ((cidr_set | netaddr.IPSet(addresses_to_add)) -
-                        (netaddr.IPSet(addresses_to_remove)))
-        added_cidr, removed_cidr = SGApp._get_cidr_difference(cidr_set,
-                                                              new_cidr_set)
-        return new_cidr_set, added_cidr, removed_cidr
-
-    @staticmethod
-    def _get_network_and_mask(cidr):
-        result = netaddr.IPNetwork(cidr)
-        return (int(result.network), int(result.netmask))
-
-    def _get_rule_flows_match_except_net_addresses(self, secgroup_rule):
+    def _get_rule_l4_matches(self, secgroup_rule):
         """
         Create the match object for the security group rule given in
         secgroup_rule (type SecurityGroupRule).
         """
-        result_base = {}
-        ethertype = secgroup_rule.ethertype
-        if ethertype == n_const.IPv4:
-            result_base['eth_type'] = ether.ETH_TYPE_IP
-        elif ethertype == n_const.IPv6:
-            result_base['eth_type'] = ether.ETH_TYPE_IPV6
         protocol = secgroup_rule.protocol
         if not protocol:
-            return [result_base]
+            return []
 
-        result_base["ip_proto"] = protocol
+        result_base = {"ip_proto": protocol}
         port_range_min = secgroup_rule.port_range_min
         port_range_max = secgroup_rule.port_range_max
         if protocol == n_const.PROTO_NUM_ICMP:
             if port_range_min:
-                if ethertype == n_const.IPv4:
+                if secgroup_rule.ethertype == n_const.IPv4:
                     result_base['icmpv4_type'] = int(port_range_min)
                 else:
                     result_base['icmpv6_type'] = int(port_range_min)
             if port_range_max:
-                if ethertype == n_const.IPv4:
+                if secgroup_rule.ethertype == n_const.IPv4:
                     result_base['icmpv4_code'] = int(port_range_max)
                 else:
                     result_base['icmpv6_code'] = int(port_range_max)
@@ -151,104 +112,18 @@ class SGApp(df_base_app.DFlowApp):
         return results
 
     def _get_rule_cookie(self, rule_id):
-        return self.get_local_cookie(COOKIE_NAME, rule_id)
-
-    def _inc_ip_reference_and_check(self, secgroup_id, ip, lport_id):
-        """
-        Increasing the reference count of a IP address in a security group and
-        return true if it is the first lport with this IP address associated
-        with the security group.
-        """
-        is_first = False
-        key = (secgroup_id, ip)
-        ip_ref = self.secgroup_ip_refs[key]
-        if not ip_ref:
-            # It is the first lport with this IP address associated with the
-            # security group
-            is_first = True
-        ip_ref.add(lport_id)
-
-        return is_first
-
-    def _dec_ip_reference_and_check(self, secgroup_id, ip, lport_id):
-        """
-        Decreasing the reference count of a IP address in a security group and
-        return true if it is the last lport with this IP address associated
-        with the security group.
-        """
-        key = (secgroup_id, ip)
-        lport_id_set = self.secgroup_ip_refs.get(key)
-        if (lport_id_set is not None) and (lport_id in lport_id_set):
-            lport_id_set.remove(lport_id)
-            if len(lport_id_set) == 0:
-                self.secgroup_ip_refs.pop(key, None)
-                return True
-
-        return False
-
-    def _get_lport_added_ips_for_secgroup(self, secgroup_id, lport):
-        """
-        Get added lport IP addresses to the security group after a check for
-        filtering duplicated IP addresses with other proceeded lports.
-        """
-        added_ips = []
-        ips = lport.all_ips
-        for ip in ips:
-            if self._inc_ip_reference_and_check(secgroup_id, ip, lport.id):
-                added_ips.append(ip)
-
-        return added_ips
-
-    def _get_lport_removed_ips_for_secgroup(self, secgroup_id, lport):
-        """
-        Get removed lport IP addresses from the security group after a check
-        for filtering the IP addresses also bound with other lports in the
-        security group.
-        """
-        removed_ips = []
-        ips = lport.all_ips
-        for ip in ips:
-            if self._dec_ip_reference_and_check(secgroup_id, ip,
-                                                lport.id):
-                removed_ips.append(ip)
-
-        return removed_ips
-
-    def _get_lport_updated_ips_for_secgroup(self, secgroup_id, lport,
-                                            original_lport):
-        """
-        Get added and removed lport IP addresses in the security group after
-        the check for filtering the IP addresses which could conflicting with
-        other lports.
-        """
-        added_ips = []
-        removed_ips = []
-
-        ips = lport.all_ips
-        original_ips = original_lport.all_ips
-
-        for ip in ips:
-            if (ip not in original_ips) and self._inc_ip_reference_and_check(
-                    secgroup_id, ip, lport.id):
-                added_ips.append(ip)
-
-        for ip in original_ips:
-            if (ip not in ips) and self._dec_ip_reference_and_check(
-                    secgroup_id, ip, lport.id):
-                removed_ips.append(ip)
-
-        return added_ips, removed_ips
+        local_rule_id = self._get_security_rule_mapping(rule_id)
+        return self.get_local_cookie(COOKIE_NAME, local_rule_id)
 
     @classmethod
-    def _get_security_rule_by_addresses_match_item(self,
-                                                   ethertype,
-                                                   flow_direction):
+    def _get_l3_match_item(cls, ethertype, flow_direction):
         """
         Returns the match_item that should be matched in the flow
 
         :param ethertype: The ethernet type relevant to the flow {IPv4 | IPv6}
         :param flow_direction: The fidirection of the flow {ingress | egress}
         """
+        # XXX Should be constants ('ingress', 'egress')
         match_items = {
             (n_const.IPv4, 'ingress'): 'ipv4_src',
             (n_const.IPv4, 'egress'): 'ipv4_dst',
@@ -258,7 +133,7 @@ class SGApp(df_base_app.DFlowApp):
         return match_items.get((ethertype, flow_direction))
 
     def _install_ipv4_ipv6_rules(self, table_id, match_items, priority=0xff,
-                                 command=None, inst=None):
+                                 command=None, inst=None, actions=None):
         """
         Install identical flows for both IPv4 and IPv6.
 
@@ -277,388 +152,276 @@ class SGApp(df_base_app.DFlowApp):
         for ip_version in (ether.ETH_TYPE_IP, ether.ETH_TYPE_IPV6):
             self.mod_flow(
                 inst=inst,
+                actions=actions,
                 table_id=table_id,
                 priority=priority,
                 match=parser.OFPMatch(eth_type=ip_version, **match_items),
                 command=command)
 
-    def _install_flows_from_address_list(self, addresses_list, ethertype,
-                                         table_id, match_list, rule_id,
-                                         ip_match_item, priority=0xff,
-                                         inst=None, command=None):
-        """
-        Installs rule's flows for each relevant IP address
-
-        :param address_list: a list of IPs which should be filtered by the rule
-        :param ethertype:    the rule's ethertype {IPv4 | IPv6}
-        :param table_id:     the table in which the flows will be installed
-        :param match_list:   a list of fields names and values,
-                             to be matched in the flows
-        :param rule_id:      rule's id
-        :param ip_match_item:the field that the flow should be filtered by it
-        :param priority:     priority level of the flows entries
-        :param inst:         an OFPInstructionActions object, with the
-                             requested actions.
-        :param command:      the flow's command {OFPFC_ADD | OFPFC_MODIFY
-                                                |OFPFC_MODIFY_STRICT
-                                                |OFPFC_DELETE
-                                                |OFPFC_DELETE_STRICT}
-        """
-        parser = self.parser
-        for cidr_item in addresses_list:
-            if (not cidr_item or netaddr.IPNetwork(cidr_item).version ==
-                    utils.ethertype_to_ip_version(ethertype)):
-                for match_item in match_list:
-                    parameters_merge = match_item.copy()
-                    if cidr_item:
-                        parameters_merge[ip_match_item] = \
-                            SGApp._get_network_and_mask(cidr_item)
-                    match = parser.OFPMatch(**parameters_merge)
-                    cookie, cookie_mask = self._get_rule_cookie(rule_id)
-
-                    self.mod_flow(
-                        cookie=cookie,
-                        cookie_mask=cookie_mask,
-                        inst=inst,
-                        table_id=table_id,
-                        priority=priority,
-                        match=match,
-                        command=command)
-
-    def _install_security_group_permit_flow_by_direction(self,
-                                                         security_group_id,
-                                                         direction):
-        if self._is_sg_not_associated_with_local_port(security_group_id):
+    def _install_security_group_permit_flow(self, security_group,
+                                            table_id, next_table_id):
+        if self._is_sg_not_associated_with_local_port(security_group):
             return
 
-        if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            recirc_table = const.INGRESS_DISPATCH_TABLE
-        else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            recirc_table = const.SERVICES_CLASSIFICATION_TABLE
+        conj_id, priority = (
+            self._get_secgroup_conj_id_and_priority(security_group))
 
-        parser = self.parser
+        self.add_flow_go_to_table(table_id,
+                                  const.PRIORITY_CT_STATE,
+                                  next_table_id,
+                                  match=self.parser.OFPMatch(conj_id=conj_id))
+
+    def _install_security_group_flows(self, security_group):
+        self._install_security_group_permit_flow(
+            security_group,
+            EGRESS_SECURITY_GROUP_TABLE,
+            INGRESS_SECURITY_GROUP_TABLE)
+        self._install_security_group_permit_flow(
+            security_group,
+            INGRESS_SECURITY_GROUP_TABLE,
+            SECURITY_GROUP_EXIT_TABLE)
+
+        for rule in security_group.rules:
+            self.add_security_group_rule(security_group, rule)
+
+    def _uninstall_security_group_permit_flow(self, security_group, table_id):
+        if self._is_sg_not_associated_with_local_port(security_group):
+            return
         ofproto = self.ofproto
 
-        conj_id, priority = \
-            self._get_secgroup_conj_id_and_priority(security_group_id)
+        conj_id, priority = (
+            self._get_secgroup_conj_id_and_priority(security_group))
 
-        actions = [parser.NXActionCT(actions=[],
-                                     alg=0,
-                                     flags=const.CT_FLAG_COMMIT,
-                                     recirc_table=recirc_table,
-                                     zone_ofs_nbits=15,
-                                     zone_src=const.CT_ZONE_REG)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [action_inst]
-        self._install_ipv4_ipv6_rules(table_id=table_id,
-                                      match_items={'conj_id': conj_id},
-                                      priority=priority,
-                                      inst=inst)
+        self.mod_flow(table_id=table_id,
+                      match=self.parser.OFPMatch(conj_id=conj_id),
+                      command=ofproto.OFPFC_DELETE,
+                      )
 
-    def _install_security_group_flows(self, security_group_id):
-        self._install_security_group_permit_flow_by_direction(
-            security_group_id, DIRECTION_INGRESS)
-        self._install_security_group_permit_flow_by_direction(
-            security_group_id, DIRECTION_EGRESS)
+    def _uninstall_security_group_flow(self, security_group):
+        self._uninstall_security_group_permit_flow(
+            security_group, EGRESS_SECURITY_GROUP_TABLE)
+        self._uninstall_security_group_permit_flow(
+            security_group, INGRESS_SECURITY_GROUP_TABLE)
 
-        sg_obj = sg_model.SecurityGroup(id=security_group_id)
-        secgroup = self.db_store.get_one(sg_obj)
-        if secgroup is not None:
-            for rule in secgroup.rules:
-                self.add_security_group_rule(secgroup, rule)
+        for rule in security_group.rules:
+            self.remove_security_group_rule(security_group, rule)
 
-    def _uninstall_security_group_permit_flow_by_direction(self,
-                                                           security_group_id,
-                                                           direction):
-        if self._is_sg_not_associated_with_local_port(security_group_id):
+    def _get_rule_l2_l4_matches(self, rule):
+        l2_match = self._get_rule_l2_match(rule)
+        l4_matches = self._get_rule_l4_matches(rule)
+        if not l4_matches:
+            matches = [l2_match]
+        else:
+            for match in l4_matches:
+                match.update(l2_match)
+            matches = l4_matches
+        return matches
+
+    def _install_associating_flow(self, security_group,
+                                  lport, register, table_id):
+        if self._is_sg_not_associated_with_local_port(security_group):
             return
 
-        if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
-        else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
+        lport_classify_match = {register: lport.unique_key}
 
-        ofproto = self.ofproto
+        conj_id, priority = (
+            self._get_secgroup_conj_id_and_priority(security_group))
 
-        conj_id, priority = \
-            self._get_secgroup_conj_id_and_priority(security_group_id)
-
-        self._install_ipv4_ipv6_rules(table_id=table_id,
-                                      match_items={'conj_id': conj_id},
-                                      command=ofproto.OFPFC_DELETE)
-
-    def _uninstall_security_group_flow(self, security_group_id):
-        self._uninstall_security_group_permit_flow_by_direction(
-            security_group_id, DIRECTION_INGRESS)
-        self._uninstall_security_group_permit_flow_by_direction(
-            security_group_id, DIRECTION_EGRESS)
-
-        sg_obj = sg_model.SecurityGroup(id=security_group_id)
-        secgroup = self.db_store.get_one(sg_obj)
-        if secgroup is not None:
-            for rule in secgroup.rules:
-                self.remove_security_group_rule(secgroup, rule)
-
-    def _install_associating_flow_by_direction(self, security_group_id,
-                                               lport, direction):
-        if self._is_sg_not_associated_with_local_port(security_group_id):
-            return
-
-        parser = self.parser
-        ofproto = self.ofproto
-        unique_key = lport.unique_key
-
-        if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            lport_classify_match = {"reg7": unique_key}
-        else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            lport_classify_match = {"reg6": unique_key}
-
-        conj_id, priority = \
-            self._get_secgroup_conj_id_and_priority(security_group_id)
-
-        match = parser.OFPMatch(ct_state=(const.CT_STATE_TRK |
-                                          const.CT_STATE_NEW,
-                                          SG_CT_STATE_MASK),
-                                **lport_classify_match)
-        actions = [parser.NXActionConjunction(clause=0,
-                                              n_clauses=2,
-                                              id_=conj_id)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        inst = [action_inst]
+        match = self.parser.OFPMatch(**lport_classify_match)
+        actions = [self.parser.NXActionConjunction(clause=0,
+                                                   n_clauses=2,
+                                                   id_=conj_id)]
         self.mod_flow(
-            inst=inst,
+            actions=actions,
             table_id=table_id,
             priority=priority,
             match=match)
 
-    def _uninstall_associating_flow_by_direction(self, security_group_id,
-                                                 lport, direction):
-        if self._is_sg_not_associated_with_local_port(security_group_id):
+    def _uninstall_associating_flow(self, security_group,
+                                    lport, register, table_id):
+        if self._is_sg_not_associated_with_local_port(security_group):
             return
 
-        parser = self.parser
-        ofproto = self.ofproto
-        unique_key = lport.unique_key
-
-        if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            lport_classify_match = {"reg7": unique_key}
-        else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            lport_classify_match = {"reg6": unique_key}
+        lport_classify_match = {register: lport.unique_key}
 
         conj_id, priority = \
-            self._get_secgroup_conj_id_and_priority(security_group_id)
+            self._get_secgroup_conj_id_and_priority(security_group)
 
-        match = parser.OFPMatch(ct_state=(const.CT_STATE_TRK |
-                                          const.CT_STATE_NEW,
-                                          SG_CT_STATE_MASK),
-                                **lport_classify_match)
-
+        match = self.parser.OFPMatch(**lport_classify_match)
         self.mod_flow(
             table_id=table_id,
             priority=priority,
             match=match,
-            command=ofproto.OFPFC_DELETE_STRICT)
+            command=self.ofproto.OFPFC_DELETE_STRICT)
 
-    def _install_associating_flows(self, security_group_id, lport):
-        self._install_associating_flow_by_direction(security_group_id,
-                                                    lport,
-                                                    DIRECTION_INGRESS)
-        self._install_associating_flow_by_direction(security_group_id,
-                                                    lport,
-                                                    DIRECTION_EGRESS)
+    def _install_associating_flows(self, security_group, lport):
+        self._install_associating_flow(security_group, lport,
+                                       'reg6', EGRESS_SECURITY_GROUP_TABLE)
+        self._install_associating_flow(security_group, lport,
+                                       'reg7', INGRESS_SECURITY_GROUP_TABLE)
 
-    def _uninstall_associating_flows(self, security_group_id, lport):
-        self._uninstall_associating_flow_by_direction(security_group_id,
-                                                      lport,
-                                                      DIRECTION_INGRESS)
-        self._uninstall_associating_flow_by_direction(security_group_id,
-                                                      lport,
-                                                      DIRECTION_EGRESS)
+    def _uninstall_associating_flows(self, security_group, lport):
+        self._uninstall_associating_flow(security_group, lport,
+                                         'reg6', EGRESS_SECURITY_GROUP_TABLE)
+        self._uninstall_associating_flow(security_group, lport,
+                                         'reg7', INGRESS_SECURITY_GROUP_TABLE)
 
-    def _install_connection_track_flow_by_direction(self, lport, direction):
-        parser = self.parser
+    def _install_connection_track_flow(self, lport, register, priority_offset):
+        actions = [self.parser.NXActionCT(
+            actions=[],
+            alg=0,
+            flags=0,
+            recirc_table=CONNTRACK_RESULT_TABLE,
+            zone_ofs_nbits=const.SG_TRACKING_ZONE,
+            zone_src='',
+        ), ]
+
+        match = {register: lport.unique_key}
+        self._install_ipv4_ipv6_rules(
+            table_id=CONNTRACK_TABLE,
+            match_items=match,
+            priority=const.PRIORITY_MEDIUM + priority_offset,
+            actions=actions
+        )
+
+    def _uninstall_connection_track_flow(self, lport, register,
+                                         priority_offset=0):
         ofproto = self.ofproto
         unique_key = lport.unique_key
+        match = {register: unique_key}
 
-        if direction == DIRECTION_INGRESS:
-            pre_table_id = const.INGRESS_CONNTRACK_TABLE
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            lport_classify_match = {"reg7": unique_key}
-        else:
-            pre_table_id = const.EGRESS_CONNTRACK_TABLE
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            lport_classify_match = {"reg6": unique_key}
-
-        actions = [parser.NXActionCT(actions=[],
-                                     alg=0,
-                                     flags=0,
-                                     recirc_table=table_id,
-                                     zone_ofs_nbits=15,
-                                     zone_src=const.METADATA_REG)]
-
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [action_inst]
-
-        self._install_ipv4_ipv6_rules(table_id=pre_table_id,
-                                      match_items=lport_classify_match,
-                                      priority=const.PRIORITY_MEDIUM,
-                                      inst=inst)
-
-    def _uninstall_connection_track_flow_by_direction(self, lport, direction):
-        ofproto = self.ofproto
-        unique_key = lport.unique_key
-
-        if direction == DIRECTION_INGRESS:
-            pre_table_id = const.INGRESS_CONNTRACK_TABLE
-            unique_key = lport.unique_key
-            lport_classify_match = {"reg7": unique_key}
-        else:
-            pre_table_id = const.EGRESS_CONNTRACK_TABLE
-            lport_classify_match = {"reg6": unique_key}
-
-        self._install_ipv4_ipv6_rules(table_id=pre_table_id,
-                                      match_items=lport_classify_match,
-                                      command=ofproto.OFPFC_DELETE)
+        self._install_ipv4_ipv6_rules(
+            table_id=CONNTRACK_TABLE,
+            match_items=match,
+            command=ofproto.OFPFC_DELETE,
+            priority=const.PRIORITY_MEDIUM + priority_offset
+        )
 
     def _install_connection_track_flows(self, lport):
-        self._install_connection_track_flow_by_direction(lport,
-                                                         DIRECTION_INGRESS)
-        self._install_connection_track_flow_by_direction(lport,
-                                                         DIRECTION_EGRESS)
+        self._install_connection_track_flow(lport, 'reg6', 1)
+        self._install_connection_track_flow(lport, 'reg7', 0)
 
     def _uninstall_connection_track_flows(self, lport):
-        self._uninstall_connection_track_flow_by_direction(lport,
-                                                           DIRECTION_INGRESS)
-        self._uninstall_connection_track_flow_by_direction(lport,
-                                                           DIRECTION_EGRESS)
+        self._uninstall_connection_track_flow(lport, 'reg6', 1)
+        self._uninstall_connection_track_flow(lport, 'reg7', 0)
 
-    def _update_security_group_rule_flows_by_addresses(self,
-                                                       secgroup_id,
-                                                       secgroup_rule,
-                                                       added_cidr,
-                                                       removed_cidr):
-        if self._is_sg_not_associated_with_local_port(secgroup_id):
-            return
-
-        conj_id, priority = self._get_secgroup_conj_id_and_priority(
-            secgroup_id)
-
-        parser = self.parser
-        ofproto = self.ofproto
-        rule_id = self._get_security_rule_mapping(secgroup_rule.id)
-        ethertype = secgroup_rule.ethertype
-
-        match_list = \
-            self._get_rule_flows_match_except_net_addresses(secgroup_rule)
-
-        if secgroup_rule.direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
+    def _disassociate_remote_secgroup_lport(self, rule, lport):
+        if rule.direction == DIRECTION_INGRESS:
+            table_id = INGRESS_SECURITY_GROUP_TABLE
+            register = 'reg6'
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
-        ip_match_item = self._get_security_rule_by_addresses_match_item(
-                                ethertype,
-                                secgroup_rule.direction)
-        if not ip_match_item:
-            LOG.error("wrong ethernet type")
-            return
+            table_id = EGRESS_SECURITY_GROUP_TABLE
+            register = 'reg7'
+        match = {register: lport.unique_key}
+        cookie, cookie_mask = self._get_rule_cookie(rule.id)
+        # Match by cookie, so priority is not needed
+        self.mod_flow(
+            cookie=cookie,
+            cookie_mask=cookie_mask,
+            table_id=table_id,
+            match=self.parser.OFPMatch(match),
+            command=self.ofproto.OFPFC_DELETE_STRICT
+        )
 
+    def _associate_secgroup_rule_lport(self, rule, lport):
+        secgroup = self.db_store.get_one(
+            sg_model.SecurityGroup(id=rule.security_group_id))
+        if self._is_sg_not_associated_with_local_port(secgroup):
+            return
+        matches = self._get_rule_l2_l4_matches(rule)
+        parser = self.parser
+        cookie, cookie_mask = self._get_rule_cookie(rule.id)
+        conj_id, priority = self._get_secgroup_conj_id_and_priority(secgroup)
+
+        # Add new flow
         actions = [parser.NXActionConjunction(clause=1,
                                               n_clauses=2,
                                               id_=conj_id)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [action_inst]
-
-        self._install_flows_from_address_list(
-                addresses_list=added_cidr,
-                ethertype=ethertype,
-                inst=inst,
+        # XXX Code duplication. Get table_id by method
+        if rule.direction == DIRECTION_INGRESS:
+            table_id = INGRESS_SECURITY_GROUP_TABLE
+            register = 'reg6'
+        else:
+            table_id = EGRESS_SECURITY_GROUP_TABLE
+            register = 'reg7'
+        for match in matches:
+            match[register] = lport.unique_key
+            ofpmatch = parser.OFPMatch(**match)
+            self.mod_flow(
+                cookie=cookie,
+                cookie_mask=cookie_mask,
+                actions=actions,
                 table_id=table_id,
                 priority=priority,
-                rule_id=rule_id,
-                ip_match_item=ip_match_item,
-                match_list=match_list,
-                command=ofproto.OFPFC_ADD)
+                match=ofpmatch)
 
-        self._install_flows_from_address_list(
-                addresses_list=removed_cidr,
-                ethertype=ethertype,
-                table_id=table_id,
-                priority=priority,
-                rule_id=rule_id,
-                ip_match_item=ip_match_item,
-                match_list=match_list,
-                command=ofproto.OFPFC_DELETE_STRICT)
+    def _get_remote_ports(self, remote_group_id):
+        remote_port_ids = self.secgroup_associate_local_ports.get(
+            remote_group_id)
+        if not remote_port_ids:
+            return []
+        remote_ports = [self.db_store.get_one(l2.LogicalPort(id=lport_id))
+                        for lport_id in remote_port_ids]
+        return remote_ports
 
-    def _install_security_group_rule_flows(self, secgroup_id, secgroup_rule):
-        conj_id, priority = self._get_secgroup_conj_id_and_priority(
-            secgroup_id)
+    def _install_security_group_rule_flows(self, secgroup, secgroup_rule):
+        conj_id, priority = self._get_secgroup_conj_id_and_priority(secgroup)
 
-        parser = self.parser
-        ofproto = self.ofproto
-        rule_id = self._get_security_rule_mapping(secgroup_rule.id)
+        # Conj 2/2 : l2, l3, l4, source/destination
+        matches = self._get_rule_l2_l4_matches(secgroup_rule)
         remote_group_id = secgroup_rule.remote_group_id
         remote_ip_prefix = secgroup_rule.remote_ip_prefix
         ethertype = secgroup_rule.ethertype
+        if remote_group_id:
+            remote_ports = self._get_remote_ports(remote_group_id)
+            if not remote_ports:
+                return
+            # XXX Code duplication. Get table_id and register by method
+            if secgroup_rule.direction == DIRECTION_INGRESS:
+                register = 'reg6'
+            else:
+                register = 'reg7'
+            new_matches = []
+            for remote_port, match in itertools.product(remote_ports, matches):
+                new_match = copy.copy(match)
+                new_match[register] = remote_port.unique_key
+                new_matches.append(new_match)
+            matches = new_matches
+        elif remote_ip_prefix:
+            ip_match_item = self._get_l3_match_item(
+                ethertype, secgroup_rule.direction)
+            if not ip_match_item:
+                LOG.error("wrong ethernet type")
+                return
+
+            if (remote_ip_prefix.version !=
+                    utils.ethertype_to_ip_version(ethertype)):
+                LOG.error("mismatch ethernet type and rule ip prefix")
+                return
+
+            for match in matches:
+                match[ip_match_item] = remote_ip_prefix
+
+        parser = self.parser
 
         if secgroup_rule.direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
+            table_id = INGRESS_SECURITY_GROUP_TABLE
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
-
-        ip_match_item = self._get_security_rule_by_addresses_match_item(
-                                ethertype,
-                                secgroup_rule.direction)
-
-        if not ip_match_item:
-            LOG.error("wrong ethernet type")
-            return
-
-        match_list = \
-            self._get_rule_flows_match_except_net_addresses(secgroup_rule)
+            table_id = EGRESS_SECURITY_GROUP_TABLE
 
         actions = [parser.NXActionConjunction(clause=1,
                                               n_clauses=2,
                                               id_=conj_id)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [action_inst]
-
-        addresses_list = [""]
-        if remote_group_id is not None:
-            addresses_list = []
-            aggregate_addresses_range = \
-                self.secgroup_aggregate_addresses.get(remote_group_id)
-            if aggregate_addresses_range is not None:
-                cidr_list = aggregate_addresses_range.iter_cidrs()
-                for aggregate_address in cidr_list:
-                    if netaddr.IPNetwork(aggregate_address).version == \
-                            utils.ethertype_to_ip_version(ethertype):
-                        addresses_list.append(aggregate_address)
-        elif remote_ip_prefix is not None:
-            if netaddr.IPNetwork(remote_ip_prefix).version == \
-                    utils.ethertype_to_ip_version(ethertype):
-                addresses_list = [remote_ip_prefix]
-
-        self._install_flows_from_address_list(addresses_list=addresses_list,
-                                              ethertype=ethertype,
-                                              inst=inst,
-                                              table_id=table_id,
-                                              priority=priority,
-                                              rule_id=rule_id,
-                                              ip_match_item=ip_match_item,
-                                              match_list=match_list,
-                                              command=ofproto.OFPFC_ADD)
+        cookie, cookie_mask = self._get_rule_cookie(secgroup_rule.id)
+        for match in matches:
+            ofpmatch = parser.OFPMatch(**match)
+            self.mod_flow(
+                cookie=cookie,
+                cookie_mask=cookie_mask,
+                actions=actions,
+                table_id=table_id,
+                priority=priority,
+                match=ofpmatch)
 
     def _uninstall_security_group_rule_flows(self, secgroup_rule):
         # uninstall rule flows by its cookie
@@ -666,104 +429,210 @@ class SGApp(df_base_app.DFlowApp):
 
         direction = secgroup_rule.direction
         if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
+            table_id = INGRESS_SECURITY_GROUP_TABLE
         else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
+            table_id = EGRESS_SECURITY_GROUP_TABLE
 
-        rule_id = self._get_security_rule_mapping(secgroup_rule.id)
-        if rule_id is None:
-            LOG.error("the rule_id of the security group rule %s is none",
-                      rule_id)
-            return
-
-        cookie, cookie_mask = self._get_rule_cookie(rule_id)
+        cookie, cookie_mask = self._get_rule_cookie(secgroup_rule.id)
         self.mod_flow(
             cookie=cookie,
             cookie_mask=cookie_mask,
             table_id=table_id,
             command=ofproto.OFPFC_DELETE)
 
-    def _install_env_init_flow_by_direction(self, direction):
-        if direction == DIRECTION_INGRESS:
-            table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            goto_table_id = const.INGRESS_DISPATCH_TABLE
-        else:
-            table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            goto_table_id = const.SERVICES_CLASSIFICATION_TABLE
-
-        parser = self.parser
-        ofproto = self.ofproto
-
-        # defaults of sg-table to drop packet
-        drop_inst = None
+    def _install_conntrack_prepare(self):
+        """
+        Prepare the packet for connection tracking. Push IPs to stack, and
+        replace with unique keys.
+        """
+        # IPv4
+        match = {'eth_type': ether.ETH_TYPE_IP}
+        actions = [
+            self.parser.NXActionStackPush(field='ipv4_src', start=0, end=32),
+            self.parser.NXActionStackPush(field='ipv4_dst', start=0, end=32),
+            self.parser.NXActionRegMove(
+                src_field='reg6',
+                dst_field='ipv4_src',
+                n_bits=32,
+            ),
+            self.parser.NXActionRegLoad(
+                ofs_nbits=nicira_ext.ofs_nbits(31, 31),
+                dst="ipv4_src",
+                value=1,
+            ),
+            self.parser.NXActionRegMove(
+                src_field='reg7',
+                dst_field='ipv4_dst',
+                n_bits=32,
+            ),
+            self.parser.NXActionRegLoad(
+                ofs_nbits=nicira_ext.ofs_nbits(31, 31),
+                dst="ipv4_dst",
+                value=1,
+            ),
+        ]
+        inst = [
+            self.parser.OFPInstructionActions(
+                self.ofproto.OFPIT_APPLY_ACTIONS, actions),
+            self.parser.OFPInstructionGotoTable(CONNTRACK_TABLE),
+        ]
         self.mod_flow(
-             inst=drop_inst,
-             table_id=table_id,
-             priority=const.PRIORITY_DEFAULT)
+            table_id=CONNTRACK_PREPARE_TABLE,
+            match=self.parser.OFPMatch(**match),
+            inst=inst
+        )
 
-        # est state, pass
-        match = parser.OFPMatch(ct_state=(const.CT_STATE_TRK |
-                                          const.CT_STATE_EST,
-                                          SG_CT_STATE_MASK))
-
-        goto_inst = [parser.OFPInstructionGotoTable(goto_table_id)]
+        # IPv6
+        match = {'eth_type': ether.ETH_TYPE_IPV6}
+        actions = [
+            self.parser.NXActionStackPush(field='ipv6_src', start=0, end=128),
+            self.parser.NXActionStackPush(field='ipv6_dst', start=0, end=128),
+            self.parser.NXActionRegMove(
+                src_field='reg6',
+                dst_field='ipv6_src',
+                n_bits=32,
+            ),
+            self.parser.NXActionRegLoad(
+                ofs_nbits=nicira_ext.ofs_nbits(127, 127),
+                dst="ipv6_src",
+                value=1,
+            ),
+            self.parser.NXActionRegMove(
+                src_field='reg7',
+                dst_field='ipv6_dst',
+                n_bits=32,
+            ),
+            self.parser.NXActionRegLoad(
+                ofs_nbits=nicira_ext.ofs_nbits(127, 127),
+                dst="ipv6_dst",
+                value=1,
+            ),
+        ]
+        inst = [
+            self.parser.OFPInstructionActions(
+                self.ofproto.OFPIT_APPLY_ACTIONS, actions),
+            self.parser.OFPInstructionGotoTable(CONNTRACK_TABLE),
+        ]
         self.mod_flow(
-             inst=goto_inst,
-             table_id=table_id,
-             priority=const.PRIORITY_CT_STATE,
-             match=match)
+            table_id=CONNTRACK_PREPARE_TABLE,
+            match=self.parser.OFPMatch(**match),
+            inst=inst
+        )
 
-        # rel state, pass
-        ct_related_not_new_flag = const.CT_STATE_TRK | const.CT_STATE_REL
-        ct_related_mask = const.CT_STATE_TRK | const.CT_STATE_REL | \
-            const.CT_STATE_NEW | const.CT_STATE_INV
-        match = parser.OFPMatch(ct_state=(ct_related_not_new_flag,
-                                          ct_related_mask))
-        self.mod_flow(
-             inst=goto_inst,
-             table_id=table_id,
-             priority=const.PRIORITY_CT_STATE,
-             match=match)
-
-        ct_related_new_flag = const.CT_STATE_TRK | const.CT_STATE_REL | \
-            const.CT_STATE_NEW
-        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ct_state=(ct_related_new_flag,
-                                          ct_related_mask))
-        actions = [parser.NXActionCT(actions=[],
-                                     alg=0,
-                                     flags=const.CT_FLAG_COMMIT,
-                                     recirc_table=goto_table_id,
-                                     zone_ofs_nbits=15,
-                                     zone_src=const.CT_ZONE_REG)]
-        action_inst = parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)
-        inst = [action_inst]
-
-        self._install_ipv4_ipv6_rules(table_id=table_id,
-                                      inst=inst,
-                                      match_items={'ct_state':
-                                                   (ct_related_new_flag,
-                                                    ct_related_mask)},
-                                      priority=const.PRIORITY_CT_STATE)
-
+    def _install_conntrack_result(self):
+        """
+        Handle immediate conntrack result. Basically, commit new packets, and
+        discard invalid ones
+        """
         # inv state, drop
         invalid_ct_state_flag = const.CT_STATE_TRK | const.CT_STATE_INV
-        match = parser.OFPMatch(ct_state=(invalid_ct_state_flag,
-                                          invalid_ct_state_flag))
+        match = self.parser.OFPMatch(ct_state=(invalid_ct_state_flag,
+                                               invalid_ct_state_flag))
         self.mod_flow(
-             inst=drop_inst,
-             table_id=table_id,
+             table_id=CONNTRACK_RESULT_TABLE,
              priority=const.PRIORITY_CT_STATE,
              match=match)
 
+        # commit new packets
+        new_state_flag = const.CT_STATE_NEW
+        new_valid_flag_mask = const.CT_STATE_NEW | const.CT_STATE_INV
+        match_items = {'ct_state': (new_state_flag, new_valid_flag_mask)}
+        actions = [
+            self.parser.NXActionCT(actions=[],
+                                   alg=0,
+                                   flags=const.CT_FLAG_COMMIT,
+                                   recirc_table=CONNTRACK_CLEANUP_TABLE,
+                                   zone_ofs_nbits=const.SG_TRACKING_ZONE,
+                                   zone_src='',
+                                   ),
+        ]
+
+        self._install_ipv4_ipv6_rules(table_id=CONNTRACK_RESULT_TABLE,
+                                      actions=actions,
+                                      match_items=match_items,
+                                      priority=const.PRIORITY_CT_STATE)
+
+        # Default: fall through
+        self.add_flow_go_to_table(CONNTRACK_RESULT_TABLE,
+                                  const.PRIORITY_DEFAULT,
+                                  CONNTRACK_CLEANUP_TABLE)
+
+    def _install_conntrack_preparation_cleanup_ipv46(self, match,
+                                                     next_table, priority):
+
+        ipv4_match = {'eth_type': ether.ETH_TYPE_IP}
+        ipv4_actions = [
+            self.parser.NXActionStackPop(field='ipv4_dst', start=0, end=32),
+            self.parser.NXActionStackPop(field='ipv4_src', start=0, end=32),
+        ]
+        ipv6_match = {'eth_type': ether.ETH_TYPE_IPV6}
+        ipv6_actions = [
+            self.parser.NXActionStackPop(field='ipv6_dst', start=0, end=128),
+            self.parser.NXActionStackPop(field='ipv6_src', start=0, end=128),
+        ]
+        # IPv4:
+        ipv4_match.update(match)
+        inst = [
+            self.parser.OFPInstructionActions(
+                self.ofproto.OFPIT_APPLY_ACTIONS, ipv4_actions),
+            self.parser.OFPInstructionGotoTable(next_table),
+        ]
+        self.mod_flow(table_id=CONNTRACK_CLEANUP_TABLE,
+                      match=self.parser.OFPMatch(**ipv4_match),
+                      inst=inst,
+                      priority=priority,
+                      )
+        # IPv6:
+        ipv6_match.update(match)
+        inst = [
+            self.parser.OFPInstructionActions(
+                self.ofproto.OFPIT_APPLY_ACTIONS, ipv6_actions),
+            self.parser.OFPInstructionGotoTable(next_table),
+        ]
+        self.mod_flow(table_id=CONNTRACK_CLEANUP_TABLE,
+                      match=self.parser.OFPMatch(**ipv6_match),
+                      inst=inst,
+                      priority=priority,
+                      )
+
+    def _install_conntrack_preparation_cleanup(self):
+        """
+        Clean up conntrack preparation (restore L3), and send packet on its
+        way: Through security group rules for new packets, and accept path
+        for established and related packets.
+        """
+        # new - go to next table for sec group processing
+        match_new_conn = {'ct_state': (const.CT_STATE_NEW, const.CT_STATE_NEW)}
+        self._install_conntrack_preparation_cleanup_ipv46(
+            match_new_conn, EGRESS_SECURITY_GROUP_TABLE, const.PRIORITY_MEDIUM)
+
+        # related, established - skip sec group (no need)
+        match_rel_conn = {'ct_state': (const.CT_STATE_REL, const.CT_STATE_REL)}
+        self._install_conntrack_preparation_cleanup_ipv46(
+            match_rel_conn, SECURITY_GROUP_EXIT_TABLE, const.PRIORITY_HIGH)
+
+        match_est_conn = {'ct_state': (const.CT_STATE_EST, const.CT_STATE_EST)}
+        self._install_conntrack_preparation_cleanup_ipv46(
+            match_est_conn, SECURITY_GROUP_EXIT_TABLE, const.PRIORITY_HIGH + 1)
+
+    def _install_env_init_flow(self):
+        self._install_conntrack_prepare()
+        self._install_conntrack_preparation_cleanup()
+        self._install_conntrack_result()
+
+        # defaults of sg-table to drop packet
+        self.mod_flow(
+             table_id=EGRESS_SECURITY_GROUP_TABLE,
+             priority=const.PRIORITY_DEFAULT)
+
+        self.mod_flow(
+             table_id=INGRESS_SECURITY_GROUP_TABLE,
+             priority=const.PRIORITY_DEFAULT)
+
     def switch_features_handler(self, ev):
-        self._install_env_init_flow_by_direction(DIRECTION_INGRESS)
-        self._install_env_init_flow_by_direction(DIRECTION_EGRESS)
+        self._install_env_init_flow()
         self.secgroup_associate_local_ports.clear()
         self.remote_secgroup_ref.clear()
-        self.secgroup_aggregate_addresses.clear()
-        self.secgroup_ip_refs.clear()
 
     def _get_security_rule_mapping(self, lrule_id):
         rule_id = self.secgroup_rule_mappings.get(lrule_id)
@@ -775,190 +644,106 @@ class SGApp(df_base_app.DFlowApp):
             self.secgroup_rule_mappings[lrule_id] = self.next_secgroup_rule_id
             return self.next_secgroup_rule_id
 
-    def _get_secgroup_conj_id_and_priority(self, secgroup_id):
-        sg = self.db_store.get_one(sg_model.SecurityGroup(id=secgroup_id))
-        sg_unique_key = sg.unique_key
+    def _get_secgroup_conj_id_and_priority(self, secgroup):
+        sg_unique_key = secgroup.unique_key
         return sg_unique_key, (SG_PRIORITY_OFFSET + sg_unique_key)
 
-    def _associate_secgroup_lport_addresses(self, secgroup_id, lport):
-        # update the record of aggregate addresses of ports associated
-        # with this security group.
-        addresses = self.secgroup_aggregate_addresses[secgroup_id]
-        added_ips = self._get_lport_added_ips_for_secgroup(secgroup_id, lport)
-        new_cidr_set, added_cidr, removed_cidr = \
-            SGApp._get_cidr_changes_after_adding_addresses(
-                addresses,
-                added_ips,
-            )
-        self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_set
-
+    def _associate_secgroup_lport(self, secgroup, lport):
         # update the flows representing those rules each of which specifies
         #  this security group as its parameter
         # of remote group.
-        secrules = self.remote_secgroup_ref.get(secgroup_id)
-        if secrules:
-            for rule_info in secrules.values():
-                self._update_security_group_rule_flows_by_addresses(
-                    rule_info.security_group_id,
-                    rule_info,
-                    added_cidr,
-                    removed_cidr)
+        secrules = self.remote_secgroup_ref[secgroup.id]
+        for rule in secrules.values():
+            self._associate_secgroup_rule_lport(rule, lport)
 
-    def _disassociate_secgroup_lport_addresses(self, secgroup_id, lport):
+    def _disassociate_secgroup_lport(self, secgroup, lport):
         # update the record of aggregate addresses of ports associated
         # with this security group.
-        aggregate_addresses_range = \
-            self.secgroup_aggregate_addresses[secgroup_id]
-        if aggregate_addresses_range:
-            removed_ips = self._get_lport_removed_ips_for_secgroup(
-                secgroup_id, lport)
-            new_cidr_set, added_cidr, removed_cidr = \
-                SGApp._get_cidr_changes_after_removing_addresses(
-                    aggregate_addresses_range,
-                    removed_ips,
-                )
-            if not new_cidr_set:
-                del self.secgroup_aggregate_addresses[secgroup_id]
-            else:
-                self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_set
+        secrules = self.remote_secgroup_ref[secgroup.id]
+        for rule in secrules.values():
+            self._disassociate_remote_secgroup_lport(rule, lport)
 
-            # update the flows representing those rules each of which
-            # specifies this security group as its
-            # parameter of remote group.
-            secrules = self.remote_secgroup_ref.get(secgroup_id)
-            if secrules:
-                for rule_info in secrules.values():
-                    self._update_security_group_rule_flows_by_addresses(
-                        rule_info.security_group_id,
-                        rule_info,
-                        added_cidr,
-                        removed_cidr
-                    )
-                    # delete conntrack entities by rule and remote address
-                    self._delete_conntrack_entries_by_remote_address(
-                        removed_ips, rule_info)
-
-    def _add_local_port_associating(self, lport, secgroup_id):
-        self._associate_secgroup_lport_addresses(secgroup_id, lport)
-
+    def _add_local_port_associating(self, lport, secgroup):
+        LOG.debug('_add_local_port_associating: Enter: lport: %s', lport)
+        LOG.debug('_add_local_port_associating: Enter: secgroup: %s', secgroup)
         # update the record of ports associated with this security group.
-        associate_ports = \
-            self.secgroup_associate_local_ports.get(secgroup_id)
+        associate_ports = self.secgroup_associate_local_ports.get(secgroup.id)
         if associate_ports is None:
-            self.secgroup_associate_local_ports[secgroup_id] = [lport.id]
-            self._install_security_group_flows(secgroup_id)
+            self.secgroup_associate_local_ports[secgroup.id] = [lport.id]
+            self._install_security_group_flows(secgroup)
         elif lport.id not in associate_ports:
             associate_ports.append(lport.id)
 
+        self._associate_secgroup_lport(secgroup, lport)
+
         # install associating flow
-        self._install_associating_flows(secgroup_id, lport)
+        self._install_associating_flows(secgroup, lport)
 
-    def _remove_local_port_associating(self, lport, secgroup_id):
+    def _remove_local_port_associating(self, lport, secgroup):
         # uninstall associating flow
-        self._uninstall_associating_flows(secgroup_id, lport)
+        self._uninstall_associating_flows(secgroup, lport)
 
-        self._disassociate_secgroup_lport_addresses(secgroup_id, lport)
+        self._disassociate_secgroup_lport(secgroup, lport)
 
         # update the record of ports associated with this security group.
+        # XXX Revisit
         associate_ports = \
-            self.secgroup_associate_local_ports.get(secgroup_id)
+            self.secgroup_associate_local_ports.get(secgroup.id)
         if associate_ports is not None:
             if lport.id in associate_ports:
                 associate_ports.remove(lport.id)
-                # delete conntrack entities by port
-                self._delete_conntrack_entries_by_local_port_info(
-                    lport, None, secgroup_id)
                 if len(associate_ports) == 0:
-                    self._uninstall_security_group_flow(secgroup_id)
-                    del self.secgroup_associate_local_ports[secgroup_id]
-
-    def _add_remote_port_associating(self, lport, secgroup_id):
-        self._associate_secgroup_lport_addresses(secgroup_id, lport)
-
-    def _remove_remote_port_associating(self, lport, secgroup_id):
-        self._disassociate_secgroup_lport_addresses(secgroup_id, lport)
-
-    def _update_port_addresses_process(self, lport, original_lport,
-                                       secgroup_id):
-        """
-        Update flows of the security group rules which used this security group
-        as remote group because the IP addresses of lport might change.
-        """
-        # update the record of aggregate addresses of ports associated
-        # with this security group.
-        aggregate_addresses_range = \
-            self.secgroup_aggregate_addresses[secgroup_id]
-
-        added_ips, removed_ips = self._get_lport_updated_ips_for_secgroup(
-            secgroup_id, lport, original_lport
-        )
-        new_cidr_array, added_cidr, removed_cidr = \
-            self._get_cidr_changes_after_updating_addresses(
-                aggregate_addresses_range,
-                added_ips,
-                removed_ips
-            )
-        if len(new_cidr_array) == 0:
-            self.secgroup_aggregate_addresses.pop(secgroup_id, None)
-        else:
-            self.secgroup_aggregate_addresses[secgroup_id] = new_cidr_array
-
-        # update the flows representing those rules each of which
-        # specifies this security group as its
-        # parameter of remote group.
-        secrules = self.remote_secgroup_ref.get(secgroup_id)
-        if secrules is not None:
-            for rule_info in secrules.values():
-                self._update_security_group_rule_flows_by_addresses(
-                    rule_info.security_group_id,
-                    rule_info,
-                    added_cidr,
-                    removed_cidr
-                )
-                # delete conntrack entities by rule and remote address
-                self._delete_conntrack_entries_by_remote_address(
-                    removed_ips, rule_info)
+                    self._uninstall_security_group_flow(secgroup)
+                    del self.secgroup_associate_local_ports[secgroup.id]
 
     def _get_added_and_removed_and_unchanged_secgroups(self, secgroups,
                                                        original_secgroups):
         added_secgroups = []
         unchanged_secgroups = []
-        if original_secgroups is not None:
-            removed_secgroups = list(original_secgroups)
-        else:
-            removed_secgroups = []
+        removed_secgroups = list(original_secgroups)
 
-        if secgroups:
-            for item in secgroups:
-                if item in removed_secgroups:
-                    removed_secgroups.remove(item)
-                    unchanged_secgroups.append(item)
-                else:
-                    added_secgroups.append(item)
+        for item in secgroups:
+            if item in removed_secgroups:
+                removed_secgroups.remove(item)
+                unchanged_secgroups.append(item)
+            else:
+                added_secgroups.append(item)
 
         return added_secgroups, removed_secgroups, unchanged_secgroups
 
+    def _install_skip_ingress_rule(self, lport):
+        self.add_flow_go_to_table(
+            INGRESS_SECURITY_GROUP_TABLE,
+            const.PRIORITY_DEFAULT + 1,
+            SECURITY_GROUP_EXIT_TABLE,
+            match=self.parser.OFPMatch(reg7=lport.unique_key),
+        )
+
+    def _uninstall_skip_ingress_rule(self, lport):
+        self.mod_flow(
+            table_id=INGRESS_SECURITY_GROUP_TABLE,
+            priority=const.PRIORITY_DEFAULT + 1,
+            match=self.parser.OFPMatch(reg7=lport.unique_key),
+            command=self.ofproto.OFPFC_DELETE_STRICT,
+        )
+
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_LOCAL)
     def _remove_local_port(self, lport):
         secgroups = lport.security_groups
         if not secgroups:
+            self._uninstall_skip_ingress_rule(lport)
             return
 
         # uninstall ct table
         self._uninstall_connection_track_flows(lport)
 
         for secgroup in secgroups:
-            self._remove_local_port_associating(lport, secgroup.id)
+            self._remove_local_port_associating(lport, secgroup)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_UNBIND_REMOTE)
-    def _remove_remote_port(self, lport):
-        secgroups = lport.security_groups
-        if not secgroups:
-            return
+        self._delete_conntrack_for_lport(lport)
 
-        for secgroup in secgroups:
-            self._remove_remote_port_associating(lport, secgroup.id)
-
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_UPDATED)
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_LOCAL_UPDATED)
     def update_local_port(self, lport, original_lport):
         secgroups = lport.security_groups
@@ -971,66 +756,35 @@ class SGApp(df_base_app.DFlowApp):
         if not secgroups and original_secgroups:
             # uninstall ct table
             self._uninstall_connection_track_flows(lport)
+            self._install_skip_ingress_rule(lport)
 
         for secgroup in added_secgroups:
-            self._add_local_port_associating(lport, secgroup.id)
+            self._add_local_port_associating(lport, secgroup)
 
         for secgroup in removed_secgroups:
-            self._remove_local_port_associating(original_lport, secgroup.id)
-
-        for secgroup in unchanged_secgroups:
-            self._update_port_addresses_process(lport, original_lport,
-                                                secgroup.id)
-            # delete conntrack entities by port addresses changed
-            self._delete_conntrack_entries_by_local_port_info(
-                lport, original_lport, secgroup.id)
+            self._remove_local_port_associating(original_lport, secgroup)
 
         if secgroups and not original_secgroups:
             # install ct table
             self._install_connection_track_flows(lport)
+            self._uninstall_skip_ingress_rule(lport)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_REMOTE_UPDATED)
-    def _update_remote_port(self, lport, original_lport):
-        secgroups = lport.security_groups
-        original_secgroups = original_lport.security_groups
-
-        added_secgroups, removed_secgroups, unchanged_secgroups = \
-            self._get_added_and_removed_and_unchanged_secgroups(
-                secgroups, original_secgroups)
-
-        for secgroup in added_secgroups:
-            self._add_remote_port_associating(lport, secgroup.id)
-
-        for secgroup in removed_secgroups:
-            self._remove_remote_port_associating(lport, secgroup.id)
-
-        for secgroup in unchanged_secgroups:
-            self._update_port_addresses_process(lport, original_lport,
-                                                secgroup.id)
-
+    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
         secgroups = lport.security_groups
         if not secgroups:
+            self._install_skip_ingress_rule(lport)
             return
 
         for secgroup in secgroups:
-            self._add_local_port_associating(lport, secgroup.id)
+            self._add_local_port_associating(lport, secgroup)
 
         # install ct table
         self._install_connection_track_flows(lport)
 
-    @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
-    def _add_remote_port(self, lport):
-        secgroups = lport.security_groups
-        if not secgroups:
-            return
-
-        for secgroup in secgroups:
-            self._add_remote_port_associating(lport, secgroup.id)
-
-    def _is_sg_not_associated_with_local_port(self, secgroup_id):
-        return self.secgroup_associate_local_ports.get(secgroup_id) is None
+    def _is_sg_not_associated_with_local_port(self, secgroup):
+        return self.secgroup_associate_local_ports.get(secgroup.id) is None
 
     @df_base_app.register_event(sg_model.SecurityGroup,
                                 model_constants.EVENT_CREATED)
@@ -1041,7 +795,7 @@ class SGApp(df_base_app.DFlowApp):
     @df_base_app.register_event(sg_model.SecurityGroup,
                                 model_constants.EVENT_UPDATED)
     def update_security_group(self, new_secgroup, old_secgroup):
-        new_secgroup_rules = copy.copy(new_secgroup.rules)
+        new_secgroup_rules = new_secgroup.rules
         old_secgroup_rules = copy.copy(old_secgroup.rules)
         for new_rule in new_secgroup_rules:
             if new_rule not in old_secgroup_rules:
@@ -1052,155 +806,71 @@ class SGApp(df_base_app.DFlowApp):
         for old_rule in old_secgroup_rules:
             self.remove_security_group_rule(old_secgroup, old_rule)
 
+    @df_base_app.register_event(sg_model.SecurityGroup,
+                                model_constants.EVENT_DELETED)
+    def delete_security_group(self, secgroup):
+        for rule in secgroup.rules:
+            self.remove_security_group_rule(secgroup, rule)
+        self.remote_secgroup_ref.pop(secgroup.id, None)
+
     @df_base_app.register_event(sg_model.SecurityGroupRule,
                                 model_constants.EVENT_CREATED)
     def add_security_group_rule(self, secgroup, secgroup_rule):
-        secgroup_id = secgroup.id
-        if self._is_sg_not_associated_with_local_port(secgroup_id):
+        if self._is_sg_not_associated_with_local_port(secgroup):
             LOG.debug("Security group %s wasn't associated with a local port",
-                      secgroup_id)
+                      secgroup)
             return
 
         LOG.info("Add a rule %(rule)s to security group %(secgroup)s",
-                 {'rule': secgroup_rule, 'secgroup': secgroup_id})
+                 {'rule': secgroup_rule, 'secgroup': secgroup.id})
 
         # update the record of rules each of which specifies a same security
         #  group as its parameter of remote group.
         remote_group_id = secgroup_rule.remote_group_id
         if remote_group_id is not None:
-            associate_rules = self.remote_secgroup_ref.get(remote_group_id)
-            if associate_rules is None:
-                self.remote_secgroup_ref[remote_group_id] = \
-                    {secgroup_rule.id: secgroup_rule}
-            else:
-                associate_rules[secgroup_rule.id] = secgroup_rule
-
-        self._install_security_group_rule_flows(secgroup_id, secgroup_rule)
+            associate_rules = self.remote_secgroup_ref[remote_group_id]
+            associate_rules[secgroup_rule.id] = secgroup_rule
+        self._install_security_group_rule_flows(secgroup, secgroup_rule)
 
     @df_base_app.register_event(sg_model.SecurityGroupRule,
                                 model_constants.EVENT_DELETED)
     def remove_security_group_rule(self, secgroup, secgroup_rule):
-        secgroup_id = secgroup.id
-        if self._is_sg_not_associated_with_local_port(secgroup_id):
+        if self._is_sg_not_associated_with_local_port(secgroup):
             LOG.debug("Security group %s wasn't associated with a local port",
-                      secgroup_id)
+                      secgroup.id)
             return
 
         LOG.info("Remove a rule %(rule)s to security group %(secgroup)s",
                  {'rule': secgroup_rule, 'secgroup': secgroup.id})
 
-        conj_id, priority = \
-            self._get_secgroup_conj_id_and_priority(secgroup.id)
+        conj_id, priority = self._get_secgroup_conj_id_and_priority(secgroup)
 
         # update the record of rules each of which specifies a same security
         # group as its parameter of remote group.
         remote_group_id = secgroup_rule.remote_group_id
         if remote_group_id is not None:
-            associate_rules = self.remote_secgroup_ref.get(remote_group_id)
-            if associate_rules is not None:
-                del associate_rules[secgroup_rule.id]
-                if len(associate_rules) == 0:
-                    del self.remote_secgroup_ref[remote_group_id]
+            associate_rules = self.remote_secgroup_ref[remote_group_id]
+            associate_rules.pop(secgroup_rule.id)
 
         self._uninstall_security_group_rule_flows(secgroup_rule)
 
-        # delete conntrack entities by rule
-        self._delete_conntrack_entries_by_rule(secgroup_rule)
-
-    def _delete_conntrack_entries_process(self, port_info, rule,
-                                          remote_address_list=None):
-        ethertype = rule.ethertype
-        if DIRECTION_INGRESS == rule.direction:
-            nw_match_mark = 'nw_dst'
-            remote_match_mark = 'nw_src'
-        else:
-            nw_match_mark = 'nw_src'
-            remote_match_mark = 'nw_dst'
-        for port_ip in port_info['removed_ips']:
-            if port_ip.version == utils.ethertype_to_ip_version(ethertype):
-                entries_filter = {
-                    'ethertype': ethertype,
-                    nw_match_mark: port_ip,
-                    'zone': port_info['zone_id']
-                }
-                protocol = rule.protocol
-                if protocol:
-                    entries_filter['protocol'] = protocol
-                if remote_address_list:
-                    for remote_address in remote_address_list:
-                        entries_filter_tmp = entries_filter.copy()
-                        entries_filter_tmp[remote_match_mark] = remote_address
-                        utils.delete_conntrack_entries_by_filter(
-                            **entries_filter_tmp)
-                else:
-                    utils.delete_conntrack_entries_by_filter(**entries_filter)
-
-    def _delete_conntrack_entries_by_rule(self, rule, filter_port_info=None,
-                                          filter_remote_addresses=None):
-        """Delete connection track entries filtered by a security group rule
-        and other filtering parameters.
-
-        :param rule:    a security group rule
-        :type rule:     security group rule object
-        :param filter_port_info:    local port information
-        :type filter_port_info:     a tuple of 'removed_ips' and 'zone_id'
-        :param filter_remote_addresses: IP addresses in a lport associated
-                                         with the remote group of the rule
-        :type filter_remote_addresses:  a list of IP addresses
-        """
-        if filter_remote_addresses:
-            remote_address_list = filter_remote_addresses
-        else:
-            remote_address_list = None
-            # Conntrack command only support to delete entries by specifying a
-            # net address than a cidr, but the number of addresses transformed
-            # from a remote group or a remote ip prefix could be quite huge,
-            # DF won't delete conntrack entries filtered by remote group or
-            # remote ip prefix.
-
-        if filter_port_info:
-            associating_ports_info = [filter_port_info]
-        else:
-            associating_ports_info = []
-            associating_port_ids = self.secgroup_associate_local_ports.get(
-                rule.security_group_id)
-            for port_id in associating_port_ids:
-                lport = self.db_store.get_one(l2.LogicalPort(id=port_id))
-                removed_ips = lport.all_ips
-                zone_id = lport.lswitch.unique_key
-                associating_ports_info.append({'removed_ips': removed_ips,
-                                               'zone_id': zone_id})
-
-        for port_info in associating_ports_info:
-            self._delete_conntrack_entries_process(
-                port_info, rule, remote_address_list)
-
-    def _delete_conntrack_entries_by_local_port_info(
-            self, lport, original_lport, secgroup_id):
-        """Delete connection track entries filtered by the local lport and the
-        associated security group of the lport.
-        """
-        ips = lport.all_ips
-        if original_lport:
-            original_ips = original_lport.all_ips
-            removed_ips = original_ips - ips
-        else:
-            removed_ips = ips
-        zone_id = lport.lswitch.unique_key
-
-        local_port_info = {'removed_ips': removed_ips, 'zone_id': zone_id}
-        sg_obj = sg_model.SecurityGroup(id=secgroup_id)
-        secgroup = self.db_store.get_one(sg_obj)
-        if secgroup is not None:
-            for rule in secgroup.rules:
-                self._delete_conntrack_entries_by_rule(
-                    rule, filter_port_info=local_port_info)
-
-    def _delete_conntrack_entries_by_remote_address(self, remote_addresses,
-                                                    rule):
-        """Delete connection track entries filtered by the security group rule
-        and the IP addresses in a lport associated with the remote group of the
-        rule.
-        """
-        self._delete_conntrack_entries_by_rule(
-            rule, filter_remote_addresses=remote_addresses)
+    def _delete_conntrack_for_lport(self, lport):
+        has_ipv4 = False
+        has_ipv6 = False
+        for ip in lport.all_ips:
+            has_ipv4 = has_ipv4 or (ip.version == n_const.IP_VERSION_4)
+            has_ipv6 = has_ipv6 or (ip.version == n_const.IP_VERSION_6)
+        if has_ipv4:
+            ip = (netaddr.IPAddress(lport.unique_key) |
+                  netaddr.IPAddress('128.0.0.0'))
+            conntrack.delete_conntrack_entries_by_filter(
+                nw_src=ip, zone=const.SG_TRACKING_ZONE)
+            conntrack.delete_conntrack_entries_by_filter(
+                nw_dst=ip, zone=const.SG_TRACKING_ZONE)
+        if has_ipv6:
+            ip = (netaddr.IPAddress(lport.unique_key, version=6) |
+                  netaddr.IPAddress('1::'))
+            conntrack.delete_conntrack_entries_by_filter(
+                ethertype='IPv6', nw_src=ip, zone=const.SG_TRACKING_ZONE)
+            conntrack.delete_conntrack_entries_by_filter(
+                ethertype='IPv6', nw_dst=ip, zone=const.SG_TRACKING_ZONE)
