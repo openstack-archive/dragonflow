@@ -125,6 +125,23 @@ class Cluster(object):
             return (self._nodes_by_host, )
 
 
+def _config_to_nodes(hosts_list):
+    def host_to_node(host):
+        (ip, port) = host.split(':')
+        return (ip, int(port))
+
+    return map(host_to_node, hosts_list)
+
+
+def get_cluster(config=None):
+    if not config:
+        config = cfg.CONF.df
+    nodes = _config_to_nodes(config.remote_db_hosts)
+    cluster = Cluster(nodes)
+    cluster.populate_cluster()
+    return cluster
+
+
 class RedisDbDriver(db_api.DbApi):
     def __init__(self, *args, **kwargs):
         super(RedisDbDriver, self).__init__(*args, **kwargs)
@@ -134,17 +151,7 @@ class RedisDbDriver(db_api.DbApi):
         self.RETRY_COUNT = self.config.retries
 
     def initialize(self, db_ip, db_port, **args):
-        nodes = self._config_to_nodes(args['config'].remote_db_hosts)
-        self._cluster = Cluster(nodes)
-        self._cluster.populate_cluster()
-
-    @staticmethod
-    def _config_to_nodes(hosts_list):
-        def host_to_node(host):
-            (ip, port) = host.split(':')
-            return (ip, int(port))
-
-        return map(host_to_node, hosts_list)
+        self._cluster = get_cluster()
 
     @staticmethod
     def _key_name(table, topic, key):
