@@ -14,7 +14,6 @@
 import struct
 
 import netaddr
-from neutron.agent.common import utils
 from neutron_lib import constants as n_const
 from oslo_log import log
 from ryu.lib import addrconv
@@ -37,27 +36,6 @@ def ipv6_text_to_short(ip_text):
         return list(struct.unpack('!8H', addrconv.ipv6.text_to_bin(ip_text)))
     except Exception:
         raise exceptions.InvalidIPAddressException(key=ip_text)
-
-
-def delete_conntrack_entries_by_filter(ethertype='IPv4', protocol=None,
-                                       nw_src=None, nw_dst=None, zone=None):
-    cmd = ['conntrack', '-D']
-    if protocol:
-        cmd.extend(['-p', str(protocol)])
-    cmd.extend(['-f', ethertype.lower()])
-    if nw_src:
-        cmd.extend(['-s', str(nw_src)])
-    if nw_dst:
-        cmd.extend(['-d', str(nw_dst)])
-    if zone:
-        cmd.extend(['-w', str(zone)])
-
-    try:
-        utils.execute(cmd, run_as_root=True, check_exit_code=True,
-                      extra_ok_codes=[1])
-        LOG.debug("Successfully executed conntrack command %s", cmd)
-    except RuntimeError:
-        LOG.exception("Failed execute conntrack command %s", cmd)
 
 
 def ethertype_to_ip_version(ethertype):
