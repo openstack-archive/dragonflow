@@ -371,6 +371,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
                 self.nb_api.update.assert_called_once()
                 lport = self.nb_api.update.call_args_list[0][0][0]
                 self.assertIsInstance(lport, l2.LogicalPort)
+                self.assertEqual(port['revision_number'], lport.version)
 
     def test_delete_network(self):
         network, _lswitch = self._test_create_network_revision()
