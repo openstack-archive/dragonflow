@@ -13,12 +13,14 @@
 """Unit testing for dragonflow mechanism driver."""
 
 
+import logging
 import mock
 import netaddr
 
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_plugin
+from oslo_log import fixture as log_fixture
 from oslo_serialization import jsonutils
 
 from dragonflow import conf as cfg
@@ -55,6 +57,7 @@ class DFMechanismDriverTestCase(test_plugin.Ml2PluginV2TestCase):
     def get_additional_service_plugins(self):
         p = super(DFMechanismDriverTestCase,
                   self).get_additional_service_plugins()
+        self.useFixture(log_fixture.SetLogLevel([None], logging.DEBUG))
         p.update({'revision_plugin_name': 'revisions'})
         return p
 
