@@ -63,7 +63,7 @@ munch==2.2.0
 netaddr==0.7.18
 netifaces==0.10.6
 neutron-lib==1.18.0
-neutron==13.0.0.0b1
+neutron==13.0.0.0b2
 openstackdocstheme==1.18.1
 openstacksdk==0.13.0
 os-client-config==1.29.0
