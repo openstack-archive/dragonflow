@@ -186,22 +186,13 @@ class SGApp(df_base_app.DFlowApp):
 
         return False
 
-    def _get_ips_in_logical_port(self, lport):
-        """
-        Get all IP addresses which were bound with this lport as fixed IP
-        address or a IP address in allowed address pairs.
-        """
-        ips = set(lport.ips)
-        ips.update(pair.ip_address for pair in lport.allowed_address_pairs)
-        return ips
-
     def _get_lport_added_ips_for_secgroup(self, secgroup_id, lport):
         """
         Get added lport IP addresses to the security group after a check for
         filtering duplicated IP addresses with other proceeded lports.
         """
         added_ips = []
-        ips = self._get_ips_in_logical_port(lport)
+        ips = lport.all_ips
         for ip in ips:
             if self._inc_ip_reference_and_check(secgroup_id, ip, lport.id):
                 added_ips.append(ip)
@@ -215,7 +206,7 @@ class SGApp(df_base_app.DFlowApp):
         security group.
         """
         removed_ips = []
-        ips = self._get_ips_in_logical_port(lport)
+        ips = lport.all_ips
         for ip in ips:
             if self._dec_ip_reference_and_check(secgroup_id, ip,
                                                 lport.id):
@@ -233,8 +224,8 @@ class SGApp(df_base_app.DFlowApp):
         added_ips = []
         removed_ips = []
 
-        ips = self._get_ips_in_logical_port(lport)
-        original_ips = self._get_ips_in_logical_port(original_lport)
+        ips = lport.all_ips
+        original_ips = original_lport.all_ips
 
         for ip in ips:
             if (ip not in original_ips) and self._inc_ip_reference_and_check(
@@ -1175,7 +1166,7 @@ class SGApp(df_base_app.DFlowApp):
                 rule.security_group_id)
             for port_id in associating_port_ids:
                 lport = self.db_store.get_one(l2.LogicalPort(id=port_id))
-                removed_ips = self._get_ips_in_logical_port(lport)
+                removed_ips = lport.all_ips
                 zone_id = lport.lswitch.unique_key
                 associating_ports_info.append({'removed_ips': removed_ips,
                                                'zone_id': zone_id})
@@ -1189,9 +1180,9 @@ class SGApp(df_base_app.DFlowApp):
         """Delete connection track entries filtered by the local lport and the
         associated security group of the lport.
         """
-        ips = self._get_ips_in_logical_port(lport)
+        ips = lport.all_ips
         if original_lport:
-            original_ips = self._get_ips_in_logical_port(original_lport)
+            original_ips = original_lport.all_ips
             removed_ips = original_ips - ips
         else:
             removed_ips = ips
