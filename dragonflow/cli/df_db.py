@@ -179,7 +179,7 @@ def add_object_from_json(json_str, table):
     :param table: table name where object should be added
     :return: None
     """
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance(False, True)
     try:
         model = model_framework.get_model(table)
     except KeyError:

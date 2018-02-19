@@ -147,8 +147,7 @@ class PublisherService(object):
 
 def main():
     df_config.init(sys.argv)
-    cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance(False, True)
     service = PublisherService(nb_api)
     df_service.register_service('df-publisher-service', nb_api, service)
     service.initialize()

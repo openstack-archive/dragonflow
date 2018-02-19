@@ -81,8 +81,7 @@ def main():
     config.init(sys.argv[1:])
     config.setup_logging()
     environment_setup()
-    cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance(False, True)
     service_instance = metadata_service.DFMetadataProxyHandler(
             cfg.CONF, nb_api)
     df_service.register_service(

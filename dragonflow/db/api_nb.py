@@ -60,15 +60,20 @@ class NbApi(object):
             self.pub_sub_use_multiproc = cfg.CONF.df.pub_sub_use_multiproc
 
     @staticmethod
-    def get_instance(is_neutron_server):
+    def get_instance(is_neutron_server, is_external_app=False):
         global _nb_api
         if _nb_api is None:
             nb_driver = df_utils.load_driver(
                 cfg.CONF.df.nb_db_class,
                 df_utils.DF_NB_DB_DRIVER_NAMESPACE)
+            # Do not use pubsub for external apps - this causes issues with
+            # threads and other issues.
+            use_pubsub = cfg.CONF.df.enable_df_pub_sub
+            if is_external_app:
+                use_pubsub = False
             nb_api = NbApi(
                 nb_driver,
-                use_pubsub=cfg.CONF.df.enable_df_pub_sub,
+                use_pubsub=use_pubsub,
                 is_neutron_server=is_neutron_server)
             nb_api.initialize(db_ip=cfg.CONF.df.remote_db_ip,
                               db_port=cfg.CONF.df.remote_db_port)
