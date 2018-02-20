@@ -79,6 +79,7 @@ Specs
     lbaas2
     application_decoupling
     dnsaas
+    skydive_integration
 
 Templates
 ---------
