@@ -165,10 +165,7 @@ class BGPService(service.Service):
 
 def main():
     df_config.init(sys.argv)
-    # BGP dynamic route is not a service that needs real time response.
-    # So disable pubsub here and use period task to do BGP job.
-    cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance(False, True)
     server = BGPService(nb_api)
     df_service.register_service('df-bgp-service', nb_api, server)
     service.launch(cfg.CONF, server).wait()
