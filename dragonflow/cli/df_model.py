@@ -159,12 +159,14 @@ class ModelsPrinter(object):
         pass
 
     @abc.abstractmethod
-    def handle_index(self, index_name):
+    def handle_index(self, index_name, index_fields):
         """Handler called once per index in a model.
 
         This should be used to print the specific index.
         :param index_name: the name of the index field
         :type index_name: string
+        :param index_fields: the fields this index uses
+        :type index_fields: string touple
         """
         pass
 
@@ -229,13 +231,15 @@ class PlaintextPrinter(ModelsPrinter):
             embedded=', Embedded' if is_embedded else ''))
 
     def indexes_start(self):
+        self._print('')
         self._print('Indexes')
         self._print('-------')
 
-    def handle_index(self, index_name):
-        self._print('{}'.format(index_name))
+    def handle_index(self, index_name, index_fields):
+        self._print('{}: {}'.format(index_name, ', '.join(index_fields)))
 
     def events_start(self):
+        self._print('')
         self._print('Events')
         self._print('------')
 
@@ -294,8 +298,8 @@ class UMLPrinter(ModelsPrinter):
     def indexes_start(self):
         self._print('  .. Indexes ..')
 
-    def handle_index(self, index_name):
-        self._print('  {}'.format(index_name))
+    def handle_index(self, index_name, index_fields):
+        self._print('  {} : {}'.format(index_name, ', '.join(index_fields)))
 
     def events_start(self):
         self._print('  == Events ==')
@@ -385,7 +389,7 @@ class OASPrinter(ModelsPrinter):
         if is_required:
             self._required.append(field_name)
 
-    def handle_index(self, index_name):
+    def handle_index(self, index_name, index_fields):
         pass
 
     def handle_event(self, event_name):
@@ -404,7 +408,8 @@ class RstPrinter(ModelsPrinter):
             ['Field', 'Type', 'Restrictions', 'Required', 'Embedded', 'List'])
         # The empty column was added as a patch, as rst does not accept
         # single column tables
-        self._model_indexes_table = prettytable.PrettyTable(['Index', ''])
+        self._model_indexes_table = prettytable.PrettyTable(['Index',
+                                                             'Fields'])
         self._model_events_table = prettytable.PrettyTable(['Event', ''])
         self._set_rst_tables_style()
         self._model_printed = False
@@ -452,8 +457,9 @@ class RstPrinter(ModelsPrinter):
         self._print(self._model_indexes_table)
         self._model_indexes_table.clear_rows()
 
-    def handle_index(self, index_name):
-        self._model_indexes_table.add_row([index_name, ''])
+    def handle_index(self, index_name, index_fields):
+        self._model_indexes_table.add_row([index_name,
+                                           ', '.join(index_fields)])
 
     def events_end(self):
         self._print('')
@@ -555,8 +561,8 @@ class DfModelsParser(object):
         model_indexes = df_model.get_indexes()
         if len(model_indexes) > 0:
             self._printer.indexes_start()
-            for key in model_indexes:
-                self._printer.handle_index(key)
+            for idx_key, idx_fields in six.iteritems(model_indexes):
+                self._printer.handle_index(idx_key, idx_fields)
             self._printer.indexes_end()
 
     def _process_events(self, df_model):
@@ -633,7 +639,7 @@ def main():
     with smart_open(args.outfile) as fh:
         if args.uml:
             printer = UMLPrinter(fh)
-        elif args.json:
+        elif args.jsonschema:
             printer = OASPrinter(fh)
         elif args.rst:
             printer = RstPrinter(fh)
