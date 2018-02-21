@@ -15,10 +15,10 @@
 
 import mock
 
-from neutron.plugins.ml2.plugin import Ml2Plugin
+from neutron.plugins.ml2 import plugin
 from neutron_lib import constants as n_const
 
-from dragonflow.neutron.ml2.dhcp_module import DFDHCPModule
+from dragonflow.neutron.ml2 import dhcp_module
 from dragonflow.tests.unit import test_mech_driver as test_md
 
 
@@ -27,14 +27,14 @@ class TestDfDHCPModule(test_md.DFMechanismDriverTestCase):
     def setUp(self):
         super(TestDfDHCPModule, self).setUp()
 
-    @mock.patch.object(DFDHCPModule, '_create_dhcp_port')
+    @mock.patch.object(dhcp_module.DFDHCPModule, '_create_dhcp_port')
     def test_create_subnet_with_dhcp(self, create_mock):
         network, _ = self._test_create_network_revision()
         with self.subnet(network={'network': network}, enable_dhcp=True,
                          set_context=True):
             create_mock.assert_called_once()
 
-    @mock.patch.object(DFDHCPModule, '_create_dhcp_port')
+    @mock.patch.object(dhcp_module.DFDHCPModule, '_create_dhcp_port')
     def test_ipv6_not_supported(self, create_mock):
         network, _ = self._test_create_network_revision()
         with self.subnet(network={'network': network},
@@ -44,7 +44,7 @@ class TestDfDHCPModule(test_md.DFMechanismDriverTestCase):
                          ip_version=6):
             create_mock.assert_not_called()
 
-    @mock.patch.object(DFDHCPModule, '_update_dhcp_port')
+    @mock.patch.object(dhcp_module.DFDHCPModule, '_update_dhcp_port')
     def test_subnets_on_same_network(self, update_mock):
         network, _ = self._test_create_network_revision()
         with self.subnet(network={'network': network},
@@ -57,7 +57,7 @@ class TestDfDHCPModule(test_md.DFMechanismDriverTestCase):
         ):
             update_mock.assert_called_once()
 
-    @mock.patch.object(DFDHCPModule, '_update_dhcp_port')
+    @mock.patch.object(dhcp_module.DFDHCPModule, '_update_dhcp_port')
     def test_subnets_on_diffrent_switch(self, update_mock):
         network, _ = self._test_create_network_revision()
         network2, _ = self._test_create_network_revision(name='net2')
@@ -71,7 +71,7 @@ class TestDfDHCPModule(test_md.DFMechanismDriverTestCase):
         ):
             update_mock.assert_not_called()
 
-    @mock.patch.object(Ml2Plugin, 'delete_port')
+    @mock.patch.object(plugin.Ml2Plugin, 'delete_port')
     def test_subnets_update_when_its_need(self, delete_mock):
         network, _ = self._test_create_network_revision()
         with self.subnet(network={'network': network},
