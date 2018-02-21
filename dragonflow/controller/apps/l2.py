@@ -20,6 +20,7 @@ from oslo_log import log
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import in_proto
 from ryu.ofproto import ether
+from ryu.ofproto import ofproto_v1_0
 
 from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder
@@ -337,6 +338,13 @@ class L2App(df_base_app.DFlowApp):
             priority=const.PRIORITY_HIGH,
             match=match)
 
+        # Detect and drop self-destined broadcast packets
+        match = self._get_multicast_broadcast_match(reg6=port_key, reg7=port_key)
+        self.mod_flow(
+            table_id=const.EGRESS_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=match)
+
         # Egress classifier for port
         match = parser.OFPMatch(reg7=port_key)
         inst = [parser.OFPInstructionGotoTable(const.INGRESS_CONNTRACK_TABLE)]
@@ -434,9 +442,9 @@ class L2App(df_base_app.DFlowApp):
     def _add_remote_port(self, lport):
         self._add_port(lport)
 
-    def _get_multicast_broadcast_match(self, network_id):
-        match = self.parser.OFPMatch(eth_dst='01:00:00:00:00:00')
-        addint = haddr_to_bin('01:00:00:00:00:00')
-        match.set_dl_dst_masked(addint, addint)
-        match.set_metadata(network_id)
+    def _get_multicast_broadcast_match(self, network_id=None, **kwargs):
+        if network_id:
+            kwargs['metadata'] = network_id
+        kwargs['eth_dst'] = ('01:00:00:00:00:00', '01:00:00:00:00:00')
+        match = self.parser.OFPMatch(**kwargs)
         return match
