@@ -210,8 +210,8 @@ def make_fake_port(id=None,
                    device_id='fake_device_id',
                    dhcp_params=None):
     if id is None:
-        id = 'lport_{0}'.format(_lport_index)
         global _lport_index
+        id = 'lport_{0}'.format(_lport_index)
         _lport_index += 1
 
     fake_port = l2.LogicalPort(
