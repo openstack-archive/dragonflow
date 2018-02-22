@@ -38,7 +38,7 @@ we should pay attention to.
 
 2 VIF unplugged in source node.
 
-3 Nova calls Neuron API(update_port) to update port host ID information.
+3 Nova calls Neutron API(update_port) to update port host ID information.
 
 In order to make sure the downtime of network as short as possible, we
 should update flows when the VM is really down at source node. As the above
