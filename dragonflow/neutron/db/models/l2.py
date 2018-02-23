@@ -98,7 +98,7 @@ def _build_dhcp_params(port):
     return ret
 
 
-def _build_port_binding(port):
+def build_port_binding(port):
     profile = port.get(portbindings.PROFILE)
     if profile:
         port_key = profile.get(df_const.DF_BINDING_PROFILE_PORT_KEY)
@@ -142,5 +142,5 @@ def logical_port_from_neutron_port(port):
         binding_vnic_type=port.get(portbindings.VNIC_TYPE),
         qos_policy=port.get('qos_policy_id'),
         dhcp_params=_build_dhcp_params(port),
-        binding=_build_port_binding(port),
+        binding=build_port_binding(port),
     )
