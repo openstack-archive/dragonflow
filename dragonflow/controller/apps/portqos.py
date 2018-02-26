@@ -50,7 +50,7 @@ class PortQosApp(df_base_app.DFlowApp):
     def _check_update_local_port_qos(self, lport):
         policy = lport.qos_policy
         if not policy:
-            # If the there is no qos associated with lport in nb db,
+            # If there is no qos associated with lport in nb db,
             # the qos in ovs db should also be checked and cleared.
             # This is because the ovs db might not be consistent with
             # nb db.
