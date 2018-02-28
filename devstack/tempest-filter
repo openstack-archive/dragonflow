@@ -80,6 +80,8 @@ r="$r("
 r="$r((tempest\.(api|scenario|thirdparty)).*$)"
 # Add Dynamic routing (BGP) tests
 r="$r|(^neutron_dynamic_routing\.tests\.tempest\.scenario\.)"
+# Add netwokring-SFC tests
+r="$r|(^networking_sfc\.tests\.tempest_plugin\.tests\.scenario\.)"
 # End of include list
 r="$r)"
 

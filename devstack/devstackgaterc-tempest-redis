@@ -22,3 +22,4 @@ source /opt/stack/new/dragonflow/devstack/devstackgaterc-redis
 source /opt/stack/new/dragonflow/devstack/tempest-filter
 export OVERRIDE_ENABLED_SERVICES+=,tempest,df-bgp
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"NEUTRON_CREATE_INITIAL_NETWORKS=True"
+export DEVSTACK_LOCAL_CONFIG+=$'\n'"ENABLE_DF_SFC=True"
