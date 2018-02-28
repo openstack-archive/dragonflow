@@ -111,14 +111,13 @@ class FcApp(df_base_app.DFlowApp):
     def _install_dispatch_flows(self, flow_classifier):
         lport = self._get_flow_classifier_lport(flow_classifier)
         # End-of-chain
-        # 1) Restore network ID in metadata and zero reg6 + reg2
+        # 1) Restore network ID in metadata and zero reg2
         # 2) Restore port ID in reg7 in dest port
         # 3) Resubmit to the next table
         lswitch = lport.lswitch
 
         actions = [
             self.parser.OFPActionSetField(metadata=lswitch.unique_key),
-            self.parser.OFPActionSetField(reg6=0),
             self.parser.OFPActionSetField(reg2=0),
         ]
 
