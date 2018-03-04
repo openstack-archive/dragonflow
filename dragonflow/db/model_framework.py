@@ -12,6 +12,7 @@
 import collections
 import copy
 import functools
+import inspect
 
 from jsonmodels import fields
 from jsonmodels import models
@@ -420,7 +421,7 @@ def get_model(arg):
        * By table name (old+new models)
     '''
 
-    if type(arg) == type:
+    if inspect.isclass(arg):
         return arg
 
     for lookup in (

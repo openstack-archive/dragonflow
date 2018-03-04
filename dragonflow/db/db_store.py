@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import collections
+import inspect
 import itertools
 import threading
 
@@ -215,7 +216,7 @@ class DbStore(object):
                                  index=Lport.get_index('topic'))
             (Lport(...), Lport(...), ...)
         """
-        if type(obj) == type:
+        if inspect.isclass(obj):
             model = obj
             obj = model()
         else:
@@ -231,7 +232,7 @@ class DbStore(object):
                                  index=Lport.get_index('topic'))
            ('id1', 'id2', 'id3', ...)
         '''
-        if type(obj) == type:
+        if inspect.isclass(obj):
             model = obj
             obj = model()
         else:
