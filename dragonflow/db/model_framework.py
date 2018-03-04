@@ -420,7 +420,7 @@ def get_model(arg):
        * By table name (old+new models)
     '''
 
-    if type(arg) == type:
+    if isinstance(arg, ModelBase):
         return arg
 
     for lookup in (
