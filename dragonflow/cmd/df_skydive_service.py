@@ -14,10 +14,12 @@ import uuid
 
 from jsonmodels import fields
 from oslo_log import log
+from oslo_service import service
 from skydive.rest.client import RESTClient
 from skydive.websocket import client as skydive_client
 
 from dragonflow import conf as cfg
+from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
 from dragonflow.db import model_framework as mf
 from dragonflow.db import model_proxy
@@ -29,7 +31,7 @@ DRAGONFLOW_HOST_ID = 'dragonflow-skydive'
 DF_SKYDIVE_NAMESPACE_UUID = uuid.UUID('8a527b24-f0f5-4c1f-8f3d-6de400aa0145')
 
 
-class SkydiveClient(object):
+class SkydiveClient(service.Service):
     """Main class that manages all the skydive operation."""
     def __init__(self, nb_api):
         protocol = WSClientDragonflowProtocol(nb_api)
@@ -85,6 +87,7 @@ class SkydiveClient(object):
         This starts the operaiton of periodically querying the nb_api and
         sending all the objects to the SkyDive analyzer.
         """
+        super(SkydiveClient, self).start()
         self.websocket_client.start()
 
     def schedule_stop(self, wait_time):
@@ -95,9 +98,13 @@ class SkydiveClient(object):
         loop = self.websocket_client.loop
         loop.call_later(wait_time, self.stop)
 
-    def stop(self):
+    def stop(self, graceful=False):
         """Stop the process of sending the updates to the SkyDive analyzer"""
-        self.websocket_client.stop()
+        super(SkydiveClient, self).stop(graceful)
+        if graceful:
+            self.websocket_client.protocol.stop_when_complete()
+        else:
+            self.websocket_client.stop()
 
 
 class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
@@ -280,6 +287,14 @@ def main():
     client.clear_dragonflow_items()
     client.start()
     LOG.info('Update complete')
+
+
+def service_main():
+    nb_api = api_nb.NbApi.get_instance(False, True)
+    server = SkydiveClient.create()
+    df_service.register_service('df-skydive-service', nb_api, server)
+    server.clear_dragonflow_items()
+    service.launch(cfg.CONF, server).wait()
 
 
 if __name__ == '__main__':
