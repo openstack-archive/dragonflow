@@ -14,6 +14,7 @@ import signal
 import sys
 import uuid
 
+import cotyledon
 from jsonmodels import fields
 from oslo_log import log
 from skydive.rest.client import RESTClient
@@ -22,6 +23,7 @@ from skydive.websocket import client as skydive_client
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller import df_config
+from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
 from dragonflow.db import model_framework as mf
 from dragonflow.db import model_proxy
@@ -35,9 +37,10 @@ DF_SKYDIVE_NAMESPACE_UUID = uuid.UUID('8a527b24-f0f5-4c1f-8f3d-6de400aa0145')
 global_skydive_client = None
 
 
-class SkydiveClient(object):
+class SkydiveClient(cotyledon.Service):
     """Main class that manages all the skydive operation."""
-    def __init__(self, nb_api):
+    def __init__(self, worker_id, nb_api):
+        super(SkydiveClient, self).__init__(worker_id)
         protocol = WSClientDragonflowProtocol(nb_api)
         self.websocket_client = skydive_client.WSClient(
             host_id=DRAGONFLOW_HOST_ID,
@@ -57,28 +60,32 @@ class SkydiveClient(object):
         self.websocket_client.connect()
 
     @staticmethod
-    def create():
+    def create(worker_id):
         """Create a new SkydiveClient
+        :param worker_id: the identifier of this service instance
+        :type worker_id: int
         :return a newly allocated SkydiveClient
         :rtype SkydiveClient
         """
         df_utils.config_parse()
         nb_api = api_nb.NbApi.get_instance(False, True)
-        return SkydiveClient(nb_api)
+        return SkydiveClient(worker_id, nb_api)
 
     def clear_dragonflow_items(self):
         """Delete all the items created by DragonFlow"""
+        # TODO(snapiri) re-add code when RESTClient auth issue is resolved
+        return
         restclient = RESTClient(cfg.CONF.df_skydive.analyzer_endpoint)
-        edges = restclient.lookup_edges("G.E().Has('source': 'dragonflow')")
-        for edge in edges:
+        items = restclient.lookup_edges("G.E().Has('source': 'dragonflow')")
+        for edge in items:
             edge_del_msg = skydive_client.WSMessage(
                 "Graph",
                 skydive_client.EdgeDeletedMsgType,
                 edge
             )
             self.sendWSMessage(edge_del_msg)
-        nodes = restclient.lookup_nodes("G.V().Has('source': 'dragonflow')")
-        for node in nodes:
+        items = restclient.lookup_nodes("G.V().Has('source': 'dragonflow')")
+        for node in items:
             node_del_msg = skydive_client.WSMessage(
                 "Graph",
                 skydive_client.NodeDeletedMsgType,
@@ -92,6 +99,10 @@ class SkydiveClient(object):
         This starts the operaiton of periodically querying the nb_api and
         sending all the objects to the SkyDive analyzer.
         """
+        super(SkydiveClient, self).start()
+        # First clear all existing items
+        self.clear_dragonflow_items()
+        # Now start the loop
         self.websocket_client.start()
 
     def schedule_stop(self, wait_time):
@@ -102,9 +113,16 @@ class SkydiveClient(object):
         loop = self.websocket_client.loop
         loop.call_later(wait_time, self.stop)
 
-    def stop(self):
+    def stop(self, graceful=False):
         """Stop the process of sending the updates to the SkyDive analyzer"""
-        self.websocket_client.stop()
+        super(SkydiveClient, self).stop(graceful)
+        if graceful:
+            self.websocket_client.protocol.stop_when_complete()
+        else:
+            self.websocket_client.stop()
+
+    def terminate(self):
+        self.stop()
 
 
 class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
@@ -299,12 +317,25 @@ def main():
                         help='Total runtime (default 0 = infinite)')
     args = parser.parse_args()
     global global_skydive_client
-    global_skydive_client = SkydiveClient.create()
+    global_skydive_client = SkydiveClient.create(1)
     if args.runtime:
         global_skydive_client.schedule_stop(args.runtime)
-        global_skydive_client.clear_dragonflow_items()
     set_signal_handler()
     global_skydive_client.start()
+
+
+def service_main():
+    df_config.init(sys.argv)
+    nb_api = api_nb.NbApi.get_instance(False, True)
+    service_manager = cotyledon.ServiceManager()
+    service_manager.add(SkydiveClient.create, 1)
+    df_service.register_service('df-skydive-service', nb_api,
+                                global_skydive_client)
+    # TODO(snapiri) this runs the service in a separate thread.
+    # The thread does not have an event_loop by default
+    # so we get the following error:
+    # RuntimeError: There is no current event loop in thread 'Thread-1'.
+    service_manager.run()
 
 
 if __name__ == '__main__':
