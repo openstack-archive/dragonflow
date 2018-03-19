@@ -16,11 +16,13 @@ import uuid
 
 from jsonmodels import fields
 from oslo_log import log
+from oslo_service import service
 from skydive.rest.client import RESTClient
 from skydive.websocket import client as skydive_client
 
 from dragonflow import conf as cfg
 from dragonflow.controller import df_config
+from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
 from dragonflow.db import model_framework as mf
 from dragonflow.db import model_proxy
@@ -34,9 +36,10 @@ DF_SKYDIVE_NAMESPACE_UUID = uuid.UUID('8a527b24-f0f5-4c1f-8f3d-6de400aa0145')
 global_skydive_client = None
 
 
-class SkydiveClient(object):
+class SkydiveClient(service.Service):
     """Main class that manages all the skydive operation."""
     def __init__(self, nb_api):
+        super(SkydiveClient, self).__init__()
         protocol = WSClientDragonflowProtocol(nb_api)
         self.websocket_client = skydive_client.WSClient(
             host_id=DRAGONFLOW_HOST_ID,
@@ -68,17 +71,19 @@ class SkydiveClient(object):
 
     def clear_dragonflow_items(self):
         """Delete all the items created by DragonFlow"""
+        # TODO(snapiri) re-add code when RESTClient auth issue is resolved
+        return
         restclient = RESTClient(cfg.CONF.df_skydive.analyzer_endpoint)
-        edges = restclient.lookup_edges("G.E().Has('source': 'dragonflow')")
-        for edge in edges:
+        items = restclient.lookup_edges("G.E().Has('source': 'dragonflow')")
+        for edge in items:
             edge_del_msg = skydive_client.WSMessage(
                 "Graph",
                 skydive_client.EdgeDeletedMsgType,
                 edge
             )
             self.sendWSMessage(edge_del_msg)
-        nodes = restclient.lookup_nodes("G.V().Has('source': 'dragonflow')")
-        for node in nodes:
+        items = restclient.lookup_nodes("G.V().Has('source': 'dragonflow')")
+        for node in items:
             node_del_msg = skydive_client.WSMessage(
                 "Graph",
                 skydive_client.NodeDeletedMsgType,
@@ -92,6 +97,7 @@ class SkydiveClient(object):
         This starts the operaiton of periodically querying the nb_api and
         sending all the objects to the SkyDive analyzer.
         """
+        super(SkydiveClient, self).start()
         self.websocket_client.start()
 
     def schedule_stop(self, wait_time):
@@ -102,9 +108,13 @@ class SkydiveClient(object):
         loop = self.websocket_client.loop
         loop.call_later(wait_time, self.stop)
 
-    def stop(self):
+    def stop(self, graceful=False):
         """Stop the process of sending the updates to the SkyDive analyzer"""
-        self.websocket_client.stop()
+        super(SkydiveClient, self).stop(graceful)
+        if graceful:
+            self.websocket_client.protocol.stop_when_complete()
+        else:
+            self.websocket_client.stop()
 
 
 class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
@@ -298,9 +308,20 @@ def main():
     global_skydive_client = SkydiveClient.create()
     if args.runtime:
         global_skydive_client.schedule_stop(args.runtime)
-        global_skydive_client.clear_dragonflow_items()
+    global_skydive_client.clear_dragonflow_items()
     set_signal_handler()
     global_skydive_client.start()
+
+
+def service_main():
+    df_config.init(sys.argv)
+    nb_api = api_nb.NbApi.get_instance(False, True)
+    global_skydive_client = SkydiveClient.create()
+    df_service.register_service('df-skydive-service', nb_api,
+                                global_skydive_client)
+    global_skydive_client.clear_dragonflow_items()
+    set_signal_handler()
+    service.launch(cfg.CONF, global_skydive_client).wait()
 
 
 if __name__ == '__main__':
