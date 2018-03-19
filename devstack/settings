@@ -28,6 +28,10 @@ DF_BGP_SERVICE=${DF_BGP_SERVICE:-"$NEUTRON_BIN_DIR/df-bgp-service"}
 # This can be overridden in the localrc file, set df-bgp to enable
 DR_MODE=${DR_MODE:-no-bgp}
 
+# df-skydive
+DF_SKYDIVE_SERVICE=${DF_SKYDIVE_SERVICE:-"$NEUTRON_BIN_DIR/df-skydive-service"}
+
+
 DF_L2_RESPONDER=${DF_L2_RESPONDER:-'True'}
 
 DF_MONITOR_TABLE_POLL_TIME=${DF_MONITOR_TABLE_POLL_TIME:-30}

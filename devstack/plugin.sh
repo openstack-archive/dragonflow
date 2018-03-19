@@ -51,8 +51,7 @@ if [[ "$ENABLE_AGING_APP" == "True" ]]; then
     DEFAULT_APPS_LIST="aging,$DEFAULT_APPS_LIST"
 fi
 
-if [[ "$ENABLE_DF_SKYDIVE" == "True" ]]; then
-    DEFAULT_APPS_LIST="$DEFAULT_APPS_LIST,skydive_agent"
+if is_service_enabled df-skydive ; then
     SKYDIVE_ENDPOINT=${SKYDIVE_ENDPOINT:-$SERVICE_HOST:8082}
 fi
 
@@ -325,7 +324,7 @@ function configure_df_plugin {
                             "$DF_SELECTIVE_TOPO_DIST"
     configure_df_metadata_service
 
-    if [[ "$ENABLE_DF_SKYDIVE" == "True" ]]; then
+    if is_service_enabled df-skydive ; then
         configure_df_skydive
     fi
 }
@@ -512,6 +511,20 @@ function start_df_bgp_service {
     if is_service_enabled df-bgp ; then
         echo "Starting Dragonflow BGP dynamic routing service"
         run_process df-bgp "$DF_BGP_SERVICE --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
+    fi
+}
+
+function start_df_skydive {
+    if is_service_enabled df-skydive ; then
+        echo "Starting Dragonflow skydive service"
+        run_process df-skydive-service "$DF_SKYDIVE_SERVICE --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
+    fi
+}
+
+function stop_df_skydive {
+    if is_service_enabled df-skydive ; then
+        echo "Stopping Dragonflow skydive service"
+        stop_process df-skydive-service
     fi
 }
 
