@@ -1,3 +1,4 @@
+#@IgnoreInspection BashAddShebang
 # dragonflow.sh - Devstack extras script to install Dragonflow
 
 # Enable DPDK for Open vSwitch user space datapath
@@ -48,6 +49,10 @@ fi
 ENABLED_AGING_APP=${ENABLE_AGING_APP:-True}
 if [[ "$ENABLE_AGING_APP" == "True" ]]; then
     DEFAULT_APPS_LIST="aging,$DEFAULT_APPS_LIST"
+fi
+
+if is_service_enabled df-skydive ; then
+    SKYDIVE_ENDPOINT=${SKYDIVE_ENDPOINT:-$SERVICE_HOST:8082}
 fi
 
 DF_APPS_LIST=${DF_APPS_LIST:-$DEFAULT_APPS_LIST}
@@ -222,6 +227,19 @@ function init_neutron_sample_config {
     fi
 }
 
+function configure_df_skydive {
+    iniset $DRAGONFLOW_CONF df_skydive analyzer_endpoint "$SKYDIVE_ENDPOINT"
+    if [[ -n "$DF_SKYDIVE_ADMIN" ]]; then
+        iniset $DRAGONFLOW_CONF df_skydive user "$DF_SKYDIVE_ADMIN"
+    fi
+    local DF_SKYDIVE_PASSWORD=${DF_SKYDIVE_PASSWORD:-$ADMIN_PASSWORD}
+    iniset $DRAGONFLOW_CONF df_skydive password "$DF_SKYDIVE_PASSWORD"
+    if [[ -n "$DF_SKYDIVE_UPDATE_INTERVAL" ]]; then
+        iniset $DRAGONFLOW_CONF df_skydive update_interval "$DF_SKYDIVE_UPDATE_INTERVAL"
+    fi
+}
+
+
 function configure_df_plugin {
     echo "Configuring Neutron for Dragonflow"
 
@@ -305,6 +323,10 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df enable_selective_topology_distribution \
                             "$DF_SELECTIVE_TOPO_DIST"
     configure_df_metadata_service
+
+    if is_service_enabled df-skydive ; then
+        configure_df_skydive
+    fi
 }
 
 function install_zeromq {
@@ -492,6 +514,20 @@ function start_df_bgp_service {
     fi
 }
 
+function start_df_skydive {
+    if is_service_enabled df-skydive ; then
+        echo "Starting Dragonflow skydive service"
+        run_process df-skydive-service "$DF_SKYDIVE_SERVICE --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
+    fi
+}
+
+function stop_df_skydive {
+    if is_service_enabled df-skydive ; then
+        echo "Stopping Dragonflow skydive service"
+        stop_process df-skydive-service
+    fi
+}
+
 function setup_rootwrap_filters {
     if [[ "$DF_INSTALL_DEBUG_ROOTWRAP_CONF" == "True" ]]; then
         echo "Adding rootwrap filters"
@@ -569,6 +605,7 @@ function handle_df_stack_post_install {
     start_df_bgp_service
     setup_rootwrap_filters
     create_tables_script
+    start_df_skydive
 }
 
 function handle_df_stack {
@@ -580,6 +617,7 @@ function handle_df_stack {
 }
 
 function handle_df_unstack {
+    stop_df_skydive
     stop_df_bgp_service
     stop_df_metadata_agent
     stop_df
