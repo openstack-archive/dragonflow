@@ -14,6 +14,7 @@ import signal
 import sys
 import uuid
 
+import cotyledon
 from jsonmodels import fields
 from oslo_log import log
 from skydive.rest.client import RESTClient
@@ -22,6 +23,7 @@ from skydive.websocket import client as skydive_client
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller import df_config
+from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
 from dragonflow.db import model_framework as mf
 from dragonflow.db import model_proxy
@@ -35,63 +37,59 @@ DF_SKYDIVE_NAMESPACE_UUID = uuid.UUID('8a527b24-f0f5-4c1f-8f3d-6de400aa0145')
 global_skydive_client = None
 
 
-class SkydiveClient(object):
+class SkydiveClient(cotyledon.Service):
     """Main class that manages all the skydive operation."""
-    def __init__(self, nb_api):
+    def __init__(self, nb_api, worker_id=None):
+        if worker_id is not None:
+            super(SkydiveClient, self).__init__(worker_id)
         protocol = WSClientDragonflowProtocol(nb_api)
         self.websocket_client = skydive_client.WSClient(
             host_id=DRAGONFLOW_HOST_ID,
             endpoint='ws://{0}/ws/publisher'.format(
                 cfg.CONF.df_skydive.analyzer_endpoint),
-            protocol=lambda: protocol
+            protocol=lambda: protocol,
+            username=cfg.CONF.df_skydive.user,
+            password=cfg.CONF.df_skydive.password
         )
-        logged_in = self.websocket_client.login(
-            cfg.CONF.df_skydive.analyzer_endpoint,
-            cfg.CONF.df_skydive.user,
-            cfg.CONF.df_skydive.password)
-        if not logged_in:
-            # TODO(snapiri) raise an exception
-            LOG.error('Failed authenticating with SkyDive analyzer at %s',
+        try:
+            self.websocket_client.connect()
+        except RuntimeError:
+            LOG.error('Failed connecting with SkyDive analyzer at %s',
                       cfg.CONF.df_skydive.analyzer_endpoint)
-            return
-        self.websocket_client.connect()
-
-    @staticmethod
-    def create():
-        """Create a new SkydiveClient
-        :return a newly allocated SkydiveClient
-        :rtype SkydiveClient
-        """
-        df_utils.config_parse()
-        nb_api = api_nb.NbApi.get_instance(False, True)
-        return SkydiveClient(nb_api)
+            raise
 
     def clear_dragonflow_items(self):
         """Delete all the items created by DragonFlow"""
-        restclient = RESTClient(cfg.CONF.df_skydive.analyzer_endpoint)
-        edges = restclient.lookup_edges("G.E().Has('source': 'dragonflow')")
-        for edge in edges:
+        restclient = RESTClient(cfg.CONF.df_skydive.analyzer_endpoint,
+                                username=cfg.CONF.df_skydive.user,
+                                password=cfg.CONF.df_skydive.password)
+        items = restclient.lookup_edges("G.E().Has('source': 'dragonflow')")
+        for edge in items:
             edge_del_msg = skydive_client.WSMessage(
                 "Graph",
                 skydive_client.EdgeDeletedMsgType,
                 edge
             )
-            self.sendWSMessage(edge_del_msg)
-        nodes = restclient.lookup_nodes("G.V().Has('source': 'dragonflow')")
-        for node in nodes:
+            self.websocket_client.sendWSMessage(edge_del_msg)
+        items = restclient.lookup_nodes("G.V().Has('source': 'dragonflow')")
+        for node in items:
             node_del_msg = skydive_client.WSMessage(
                 "Graph",
                 skydive_client.NodeDeletedMsgType,
                 node
             )
-            self.sendWSMessage(node_del_msg)
+            self.websocket_client.sendWSMessage(node_del_msg)
 
-    def start(self):
+    def run(self):
         """Start communication with the SkyDive analyzer
 
         This starts the operaiton of periodically querying the nb_api and
         sending all the objects to the SkyDive analyzer.
         """
+        super(SkydiveClient, self).run()
+        # First clear all existing items
+        self.clear_dragonflow_items()
+        # Now start the loop
         self.websocket_client.start()
 
     def schedule_stop(self, wait_time):
@@ -100,10 +98,11 @@ class SkydiveClient(object):
         :type wait_time: int
         """
         loop = self.websocket_client.loop
-        loop.call_later(wait_time, self.stop)
+        loop.call_later(wait_time, self.terminate)
 
-    def stop(self):
+    def terminate(self):
         """Stop the process of sending the updates to the SkyDive analyzer"""
+        super(SkydiveClient, self).terminate()
         self.websocket_client.stop()
 
 
@@ -283,7 +282,7 @@ class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
 def signal_handler(signal, frame):
     if global_skydive_client:
         LOG.info('Stopping SkyDive service')
-        global_skydive_client.stop()
+        global_skydive_client.terminate()
 
 
 def set_signal_handler():
@@ -291,20 +290,35 @@ def set_signal_handler():
     signal.signal(signal.SIGHUP, signal_handler)
 
 
+def initialize():
+    """Initialize and return nb_api instance"""
+    df_config.init(sys.argv)
+    df_utils.config_parse()
+    return api_nb.NbApi.get_instance(False, True)
+
+
 def main():
     """main method"""
-    df_config.init(sys.argv)
+    nb_api = initialize()
     parser = argparse.ArgumentParser(description='SkyDive integration service')
     parser.add_argument('-t', '--runtime', type=int,
                         help='Total runtime (default 0 = infinite)')
     args = parser.parse_args()
     global global_skydive_client
-    global_skydive_client = SkydiveClient.create()
+    global_skydive_client = SkydiveClient(nb_api)
     if args.runtime:
         global_skydive_client.schedule_stop(args.runtime)
-        global_skydive_client.clear_dragonflow_items()
     set_signal_handler()
-    global_skydive_client.start()
+    global_skydive_client.run()
+
+
+def service_main():
+    nb_api = initialize()
+    service_manager = cotyledon.ServiceManager()
+    service_manager.add(SkydiveClient, workers=1, args=(nb_api,))
+    df_service.register_service('df-skydive-service', nb_api,
+                                global_skydive_client)
+    service_manager.run()
 
 
 if __name__ == '__main__':
