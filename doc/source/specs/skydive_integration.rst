@@ -101,12 +101,14 @@ Open issues / feature discussion:
 - How do we get the topology change notifications? As we are an external
   application we disable the pubsub feature, so we should have a different
   way of getting these notifications.
-  One solution may be using the pubsub mechanism, but it will require
+
+- One solution may be using the pubsub mechanism, but it will require
   rewriting (at least) the etcd pub/sub subscriber driver to use (e.g.)
   etcd3gw or etcd3 library (for patched code or not) so we can support
   both cases for different use-cases.
 
 I believe that a separate spec would have to cover these:
+
 - What views / filters do we want to supply - need to investigate how to
   define them.
 - If possible, we would like to support the option to emulate a passing
