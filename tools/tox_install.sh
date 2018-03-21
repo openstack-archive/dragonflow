@@ -25,5 +25,5 @@ if [ $CONSTRAINTS_FILE != "unconstrained" ]; then
     install_cmd="$install_cmd -c$CONSTRAINTS_FILE"
 fi
 
-$install_cmd -U $*
+$install_cmd $*
 exit $?

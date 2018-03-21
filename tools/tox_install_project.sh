@@ -72,5 +72,5 @@ elif [ -x "$ZUUL_CLONER" ]; then
     popd
 else
     echo "PIP HARDCODE" > /tmp/tox_install-${PROJ}.txt
-    $install_cmd -U -egit+https://git.openstack.org/openstack/${PROJ}@${BRANCH_NAME}#egg=${PROJ}
+    $install_cmd -egit+https://git.openstack.org/openstack/${PROJ}@${BRANCH_NAME}#egg=${PROJ}
 fi
