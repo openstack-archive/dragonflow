@@ -12,10 +12,12 @@
         - dragonflow-dsvm-fullstack-etcd-zmq
         - dragonflow-openstack-ansible-cross-repo:
             voting: false
+        - openstack-tox-lower-constraints
     gate:
       jobs:
         - dragonflow-dsvm-fullstack-redis
 
+        - openstack-tox-lower-constraints
 - job:
     name: dragonflow-dsvm-fullstack-redis
     parent: legacy-dsvm-base
