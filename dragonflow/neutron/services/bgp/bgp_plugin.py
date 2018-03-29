@@ -72,9 +72,6 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         super(DFBgpPlugin, self).__init__()
         self._register_callbacks()
 
-    def get_plugin_name(self):
-        return bgp_ext.BGP_EXT_ALIAS + '_svc_plugin'
-
     def get_plugin_type(self):
         return bgp_ext.BGP_EXT_ALIAS
 
