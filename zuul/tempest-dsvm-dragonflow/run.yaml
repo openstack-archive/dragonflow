@@ -59,6 +59,7 @@
           export PROJECTS="openstack/dragonflow $PROJECTS"
           export PROJECTS="openstack/neutron-dynamic-routing $PROJECTS"
           export PROJECTS="openstack/networking-sfc $PROJECTS"
+          export PROJECTS="openstack/neutron-tempest-plugin $PROJECTS"
 
           # Keep localrc to be able to set some vars in pre_test_hook
           export KEEP_LOCALRC=1
