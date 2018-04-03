@@ -36,6 +36,8 @@
           DR_MODE=df-bgp
           # Add networking-sfc
           enable_plugin networking-sfc git://git.openstack.org/openstack/networking-sfc
+          enable_plugin neutron-tempest-plugin git://git.openstack.org/openstack/neutron-tempest-plugin
+          TEMPEST_PLUGIN='/opt/stack/new/neutron-tempest-plugin
 
           EOF
         executable: /bin/bash
@@ -59,6 +61,7 @@
           export PROJECTS="openstack/dragonflow $PROJECTS"
           export PROJECTS="openstack/neutron-dynamic-routing $PROJECTS"
           export PROJECTS="openstack/networking-sfc $PROJECTS"
+          export PROJECTS="openstack/neutron-tempest-plugin $PROJECTS"
 
           # Keep localrc to be able to set some vars in pre_test_hook
           export KEEP_LOCALRC=1
