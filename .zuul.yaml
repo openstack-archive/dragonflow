@@ -69,6 +69,7 @@
       - openstack/networking-sfc
       - openstack/neutron-dynamic-routing
       - openstack/tempest
+      - openstack/neutron-tempest-plugin
 
 - job:
     name: dragonflow-openstack-ansible-cross-repo
