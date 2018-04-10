@@ -30,6 +30,7 @@ from neutron_lib.callbacks import events
 from neutron_lib.callbacks import registry
 from neutron_lib.callbacks import resources
 from neutron_lib import constants as const
+from neutron_lib.plugins import constants as plugin_const
 from neutron_lib.plugins import directory
 from neutron_lib.services import base as service_base
 from oslo_config import cfg
@@ -109,7 +110,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         return self.conn.consume_in_threads()
 
     def get_plugin_type(self):
-        return const.L3
+        return plugin_const.L3
 
     def get_plugin_description(self):
         """Returns string description of the plugin."""
