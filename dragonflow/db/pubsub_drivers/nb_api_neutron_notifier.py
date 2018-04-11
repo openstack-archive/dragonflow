@@ -50,7 +50,7 @@ class NbApiNeutronNotifier(neutron_notifier_api.NeutronNotifierDriver):
                 return
             self.nb_api.publisher.initialize()
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_NEUTRON_LISTENER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_host_argument)
     def create_heart_beat_reporter(self, host):
         listener = self.nb_api.get(core.Listener(id=host))
         if listener is None:

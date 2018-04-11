@@ -11,12 +11,9 @@
 #    under the License.
 
 import mock
-import testtools
 
-from dragonflow.common import exceptions as df_exc
 from dragonflow.common import utils
 from dragonflow.controller.common import utils as controller_utils
-from dragonflow.db.neutron import lockedobjects_db as lock_db
 from dragonflow.tests import base as tests_base
 
 
@@ -78,13 +75,6 @@ class TestRetryFunc(tests_base.BaseTestCase):
 
         self.assertRaises(AttributeError, some_method)
         self.assertFalse(mock_log.called)
-
-
-class TestLockedobjectsDB(tests_base.BaseTestCase):
-
-    def test__get_lock_id_by_resource_type(self):
-        with testtools.ExpectedException(df_exc.UnknownResourceException):
-            lock_db._get_lock_id_by_resource_type("nobody")
 
 
 class TestControllerCommonUtils(tests_base.BaseTestCase):

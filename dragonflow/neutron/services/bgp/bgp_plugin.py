@@ -152,7 +152,7 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         # that they are routable to each other.
         return chassis.external_host_ip or chassis.ip
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def _add_bgp_speaker_fip_route(self, context,
                                    bgp_speaker_id, topic, route):
         """Add host route to bgp speaker in nb db"""
@@ -173,7 +173,7 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         bgp_speaker.host_routes = current_routes.values()
         self.nb_api.update(bgp_speaker, skip_send_event=True)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def _del_bgp_speaker_fip_route(self, context, bgp_speaker_id, topic, cidr):
         """Delete host route from bgp speaker in nd db"""
 
@@ -202,7 +202,7 @@ class DFBgpPlugin(service_base.ServicePluginBase,
                                                            speaker.id,
                                                            speaker.project_id)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def _update_bgp_speaker_tenant_network_routes(self, context,
                                                   bgp_speaker_id, topic):
         """Update the prefix routes while keep the host(fip) routes"""
@@ -218,7 +218,7 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         bgp_speaker.prefix_routes = routes
         self.nb_api.update(bgp_speaker, skip_send_event=True)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_project_id)
     def create_bgp_speaker(self, context, bgp_speaker):
         bgp_speaker = super(DFBgpPlugin, self).create_bgp_speaker(context,
                                                                   bgp_speaker)
@@ -226,7 +226,7 @@ class DFBgpPlugin(service_base.ServicePluginBase,
                            skip_send_event=True)
         return bgp_speaker
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def update_bgp_speaker(self, context, bgp_speaker_id, bgp_speaker):
         bgp_speaker = super(DFBgpPlugin, self).update_bgp_speaker(
             context, bgp_speaker_id, bgp_speaker)
@@ -234,20 +234,20 @@ class DFBgpPlugin(service_base.ServicePluginBase,
                            skip_send_event=True)
         return bgp_speaker
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def delete_bgp_speaker(self, context, bgp_speaker_id):
         super(DFBgpPlugin, self).delete_bgp_speaker(context, bgp_speaker_id)
         self.nb_api.delete(bgp.BGPSpeaker(id=bgp_speaker_id),
                            skip_send_event=True)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_project_id)
     def create_bgp_peer(self, context, bgp_peer):
         bgp_peer = super(DFBgpPlugin, self).create_bgp_peer(context, bgp_peer)
         self.nb_api.create(bgp_peer_from_neutron_bgp_peer(bgp_peer),
                            skip_send_event=True)
         return bgp_peer
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_PEER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def update_bgp_peer(self, context, bgp_peer_id, bgp_peer):
         bgp_peer = super(DFBgpPlugin, self).update_bgp_peer(context,
                                                             bgp_peer_id,
@@ -256,7 +256,7 @@ class DFBgpPlugin(service_base.ServicePluginBase,
                            skip_send_event=True)
         return bgp_peer
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_PEER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def delete_bgp_peer(self, context, bgp_peer_id):
         speakers = self._get_bgp_speakers_by_bgp_peer(context, bgp_peer_id)
         super(DFBgpPlugin, self).delete_bgp_peer(context, bgp_peer_id)
@@ -268,7 +268,7 @@ class DFBgpPlugin(service_base.ServicePluginBase,
             self._remove_bgp_peer_from_bgp_speaker(context, s['id'],
                                                    bgp_peer_id, topic)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def add_bgp_peer(self, context, bgp_speaker_id, bgp_peer_info):
         ret_value = super(DFBgpPlugin, self).add_bgp_peer(context,
                                                           bgp_speaker_id,
@@ -313,7 +313,7 @@ class DFBgpPlugin(service_base.ServicePluginBase,
                                         project_id)
         return ret_value
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def _update_bgp_speaker_routes(self, context, bgp_speaker_id, topic):
         """Update the all routes of bgp speaker"""
 
@@ -350,7 +350,7 @@ class DFBgpPlugin(service_base.ServicePluginBase,
             return [{'id': x['id'], 'project_id': df_utils.get_obj_topic(x)}
                     for x in query.all()]
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_BGP_SPEAKER)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def _remove_bgp_peer_from_bgp_speaker(self, context,
                                           bgp_speaker_id, peer_id, topic):
         bgp_speaker = self.nb_api.get(bgp.BGPSpeaker(id=bgp_speaker_id,
