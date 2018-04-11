@@ -117,7 +117,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         return ("L3 Router Service Plugin for basic L3 forwarding "
                 "using Dragonflow.")
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_project_id)
     def create_router(self, context, router):
         router = super(DFL3AgentlessRouterPlugin, self).create_router(
             context, router)
@@ -125,7 +125,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         self.nb_api.create(lrouter)
         return router
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def update_router(self, context, router_id, router):
         router = super(DFL3AgentlessRouterPlugin, self).update_router(
                        context, router_id, router)
@@ -137,7 +137,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
 
         return router
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def delete_router(self, context, router_id):
         ret_val = super(DFL3AgentlessRouterPlugin, self).delete_router(
             context, router_id)
@@ -157,7 +157,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         )
         return floating_ports[0]
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_DF_PLUGIN)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def create_floatingip(self, context, floatingip):
         initial_status = self._port_to_floatingip_status(
             context,
@@ -181,7 +181,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         self.nb_api.create(nb_fip)
         return floatingip_dict
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def update_floatingip(self, context, id, floatingip):
         floatingip_dict = super(
             DFL3AgentlessRouterPlugin,
@@ -207,7 +207,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         )
         return floatingip_dict
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def delete_floatingip(self, context, fip_id):
         floatingip = self.get_floatingip(context, fip_id)
         super(DFL3AgentlessRouterPlugin, self).delete_floatingip(
@@ -220,7 +220,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
         except df_exceptions.DBKeyNotFound:
             LOG.exception("floatingip %s is not found in DF DB", fip_id)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def add_router_interface(self, context, router_id, interface_info):
         router_port_info = super(
             DFL3AgentlessRouterPlugin,
@@ -254,7 +254,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
                                             const.PORT_STATUS_ACTIVE)
         return router_port_info
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ROUTER_UPDATE_OR_DELETE)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def remove_router_interface(self, context, router_id, interface_info):
         router_port_info = (
             super(DFL3AgentlessRouterPlugin, self).remove_router_interface(
@@ -274,7 +274,7 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
                           "exception", router_id)
         return router_port_info
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_FIP_UPDATE_OR_DELETE)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_2nd_argument)
     def disassociate_floatingips(self, context, port_id, do_notify=True):
         """Disassociate all floating IPs linked to specific port.
 
