@@ -63,6 +63,13 @@ class wrap_db_lock(object):
         super(wrap_db_lock, self).__init__()
         self.type = type
 
+    def is_within_wrapper(self):
+            # magic to prevent from nested lock
+            for frame in inspect.stack()[1:]:
+                if frame[3] == 'wrap_db_lock':
+                    return True
+            return False
+
     def __call__(self, f):
         @six.wraps(f)
         def wrap_db_lock(*args, **kwargs):
@@ -70,12 +77,7 @@ class wrap_db_lock(object):
             result = None
             lock_id = _get_lock_id_by_resource_type(self.type, *args, **kwargs)
 
-            # magic to prevent from nested lock
-            within_wrapper = False
-            for frame in inspect.stack()[1:]:
-                if frame[3] == 'wrap_db_lock':
-                    within_wrapper = True
-                    break
+            within_wrapper = self.is_within_wrapper()
 
             if not within_wrapper:
                 # test and create the lock if necessary
