@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
 import inspect
 import random
 
@@ -21,7 +22,6 @@ from oslo_config import cfg
 from oslo_db import api as oslo_db_api
 from oslo_db import exception as db_exc
 from oslo_log import log
-from oslo_utils import excutils
 from oslo_utils import timeutils
 import six
 from sqlalchemy.orm import exc as orm_exc
@@ -70,33 +70,31 @@ class wrap_db_lock(object):
                     return True
             return False
 
+    @contextlib.contextmanager
+    def lock(self, lock_id):
+        within_wrapper = self.is_within_wrapper()
+        if not within_wrapper:
+            # test and create the lock if necessary
+            _test_and_create_object(lock_id)
+            session_id = _acquire_lock(lock_id)
+
+        try:
+            # Code in context may throw exception,
+            # but we still need cleanup
+            yield
+        finally:
+            if not within_wrapper:
+                try:
+                    _release_lock(lock_id, session_id)
+                except Exception as e:
+                    LOG.exception(e)
+
     def __call__(self, f):
         @six.wraps(f)
         def wrap_db_lock(*args, **kwargs):
-            session_id = 0
-            result = None
             lock_id = _get_lock_id_by_resource_type(self.type, *args, **kwargs)
-
-            within_wrapper = self.is_within_wrapper()
-
-            if not within_wrapper:
-                # test and create the lock if necessary
-                _test_and_create_object(lock_id)
-                session_id = _acquire_lock(lock_id)
-
-            try:
-                result = f(*args, **kwargs)
-            except Exception as e:
-                with excutils.save_and_reraise_exception() as ctxt:
-                    ctxt.reraise = True
-            finally:
-                if not within_wrapper:
-                    try:
-                        _release_lock(lock_id, session_id)
-                    except Exception as e:
-                        LOG.exception(e)
-
-            return result
+            with self.lock(lock_id):
+                return f(*args, **kwargs)
         return wrap_db_lock
 
 
