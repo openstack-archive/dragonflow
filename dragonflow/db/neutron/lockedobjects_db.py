@@ -14,6 +14,7 @@
 #    under the License.
 
 import contextlib
+import functools
 import inspect
 import random
 
@@ -37,31 +38,53 @@ LOCK_MAX_RETRIES = 500
 LOCK_INIT_RETRY_INTERVAL = 0.1
 LOCK_MAX_RETRY_INTERVAL = 1
 
-# The resource need to be protected by lock
-RESOURCE_DF_PLUGIN = 1
-RESOURCE_ML2_NETWORK_OR_PORT = 2
-RESOURCE_ML2_SUBNET = 3
-RESOURCE_ML2_SECURITY_GROUP = 4
-RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE = 5
-RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE = 6
-RESOURCE_FIP_UPDATE_OR_DELETE = 7
-RESOURCE_ROUTER_UPDATE_OR_DELETE = 8
-RESOURCE_QOS = 9
-RESOURCE_NEUTRON_LISTENER = 10
-RESOURCE_BGP_SPEAKER = 11
-RESOURCE_BGP_PEER = 12
-RESOURCE_SFC_PORT_CHAIN = 13
-RESOURCE_SFC_PORT_PAIR_GROUP = 14
-RESOURCE_SFC_PORT_PAIR = 15
-
 LOG = log.getLogger(__name__)
 
 
-class wrap_db_lock(object):
+def get_lock_id_from_context_project_id(self, context, *args, **kwargs):
+    return context.project_id
 
-    def __init__(self, type):
+
+def get_lock_id_from_context_current_id(self, context, *args, **kwargs):
+    return context.current['id']
+
+
+def get_lock_id_from_context_current_network_id(self,
+                                                context, *args, **kwargs):
+    return context.current['network_id']
+
+
+def get_lock_id_from_argument(index, self, *args, **kwargs):
+    return args[index]
+
+
+get_lock_id_from_2nd_argument = functools.partial(get_lock_id_from_argument, 2)
+
+
+def get_lock_id_from_security_group_id(self, *args, **kwargs):
+    return kwargs['security_group_id']
+
+
+def get_lock_id_from_security_group_object(self, *args, **kwargs):
+    return kwargs['security_group']['id']
+
+
+def get_lock_id_from_security_group_rule_parent(self, *args, **kwargs):
+    return kwargs['security_group_rule']['security_group_id']
+
+
+def get_lock_id_for_qos_policy(self, context, policy, *args, **kwargs):
+    return policy['id']
+
+
+def get_lock_id_from_host_argument(self, host, *args, **kwargs):
+    return host[:35]
+
+
+class wrap_db_lock(object):
+    def __init__(self, getter):
         super(wrap_db_lock, self).__init__()
-        self.type = type
+        self.getter = getter
 
     def is_within_wrapper(self):
             # magic to prevent from nested lock
@@ -92,49 +115,10 @@ class wrap_db_lock(object):
     def __call__(self, f):
         @six.wraps(f)
         def wrap_db_lock(*args, **kwargs):
-            lock_id = _get_lock_id_by_resource_type(self.type, *args, **kwargs)
+            lock_id = self.getter(*args, **kwargs)
             with self.lock(lock_id):
                 return f(*args, **kwargs)
         return wrap_db_lock
-
-
-def _get_lock_id_by_resource_type(resource_type, *args, **kwargs):
-    if RESOURCE_DF_PLUGIN == resource_type:
-        lock_id = args[1].project_id
-    elif RESOURCE_ML2_NETWORK_OR_PORT == resource_type:
-        lock_id = args[1].current['id']
-    elif RESOURCE_ML2_SUBNET == resource_type:
-        lock_id = args[1].current['network_id']
-    elif RESOURCE_FIP_UPDATE_OR_DELETE == resource_type:
-        lock_id = args[2]
-    elif RESOURCE_ROUTER_UPDATE_OR_DELETE == resource_type:
-        lock_id = args[2]
-    elif RESOURCE_ML2_SECURITY_GROUP == resource_type:
-        lock_id = kwargs['security_group']['id']
-    elif RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE == resource_type:
-        lock_id = kwargs['security_group_rule']['security_group_id']
-    elif RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE == resource_type:
-        lock_id = kwargs['security_group_id']
-    elif RESOURCE_QOS == resource_type:
-        lock_id = args[2]['id']
-    elif RESOURCE_NEUTRON_LISTENER == resource_type:
-        # The db model of lock is uuid of 36 chars, but the neutron listener
-        # uses hostname as lock-id, so we need to truncate it.
-        lock_id = args[1][:35]
-    elif RESOURCE_BGP_SPEAKER == resource_type:
-        lock_id = args[2]
-    elif RESOURCE_BGP_PEER == resource_type:
-        lock_id = args[2]
-    elif RESOURCE_SFC_PORT_CHAIN == resource_type:
-        lock_id = args[1].current['id']
-    elif RESOURCE_SFC_PORT_PAIR == resource_type:
-        lock_id = args[1].current['id']
-    elif RESOURCE_SFC_PORT_PAIR_GROUP == resource_type:
-        lock_id = args[1].current['id']
-    else:
-        raise df_exc.UnknownResourceException(resource_type=resource_type)
-
-    return lock_id
 
 
 @oslo_db_api.wrap_db_retry(max_retries=LOCK_MAX_RETRIES,

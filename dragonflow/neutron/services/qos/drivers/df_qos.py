@@ -52,11 +52,11 @@ class DfQosDriver(base.DriverBase):
     def initialize(self, nb_api):
         self.nb_api = nb_api
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_for_qos_policy)
     def create_policy(self, context, policy):
         self.nb_api.create(n_qos.qos_policy_from_neutron_qos_policy(policy))
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_for_qos_policy)
     def update_policy(self, context, policy):
         policy_id = policy['id']
         # NOTE: Neutron will not pass policy with latest revision_number
@@ -67,7 +67,7 @@ class DfQosDriver(base.DriverBase):
         self.nb_api.update(
             n_qos.qos_policy_from_neutron_qos_policy(policy_neutron))
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_QOS)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_for_qos_policy)
     def delete_policy(self, context, policy):
         policy_id = policy['id']
         self.nb_api.delete(qos.QosPolicy(id=policy_id))

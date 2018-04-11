@@ -38,7 +38,7 @@ class DfSfcDriver(base.SfcDriverBase, mixins.LazyNbApiMixin):
     def initialize(self):
         pass
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_SFC_PORT_CHAIN)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def create_port_chain_postcommit(self, context):
         port_chain = context.current
         pc_params = port_chain.get('chain_parameters')
@@ -55,7 +55,7 @@ class DfSfcDriver(base.SfcDriverBase, mixins.LazyNbApiMixin):
             ),
         )
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_SFC_PORT_CHAIN)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def update_port_chain_postcommit(self, context):
         port_chain = context.current
         extra_args = _get_optional_params(
@@ -73,7 +73,7 @@ class DfSfcDriver(base.SfcDriverBase, mixins.LazyNbApiMixin):
             ),
         )
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_SFC_PORT_CHAIN)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def delete_port_chain_postcommit(self, context):
         port_chain = context.current
 
@@ -84,7 +84,7 @@ class DfSfcDriver(base.SfcDriverBase, mixins.LazyNbApiMixin):
             ),
         )
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_SFC_PORT_PAIR_GROUP)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def create_port_pair_group_postcommit(self, context):
         port_pair_group = context.current
 
@@ -98,7 +98,7 @@ class DfSfcDriver(base.SfcDriverBase, mixins.LazyNbApiMixin):
             ),
         )
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_SFC_PORT_PAIR_GROUP)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def update_port_pair_group_postcommit(self, context):
         port_pair_group = context.current
         extra_args = _get_optional_params(port_pair_group, 'port_pairs')
@@ -112,7 +112,7 @@ class DfSfcDriver(base.SfcDriverBase, mixins.LazyNbApiMixin):
             ),
         )
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_SFC_PORT_PAIR_GROUP)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def delete_port_pair_group_postcommit(self, context):
         port_pair_group = context.current
         self.nb_api.delete(
@@ -122,7 +122,7 @@ class DfSfcDriver(base.SfcDriverBase, mixins.LazyNbApiMixin):
             ),
         )
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_SFC_PORT_PAIR)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def create_port_pair_postcommit(self, context):
         port_pair = context.current
         sf_params = port_pair.get('service_function_parameters', {})
@@ -141,7 +141,7 @@ class DfSfcDriver(base.SfcDriverBase, mixins.LazyNbApiMixin):
             ),
         )
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_SFC_PORT_PAIR)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def update_port_pair_postcommit(self, context):
         port_pair = context.current
 
@@ -153,7 +153,7 @@ class DfSfcDriver(base.SfcDriverBase, mixins.LazyNbApiMixin):
             ),
         )
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_SFC_PORT_PAIR)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def delete_port_pair_postcommit(self, context):
         port_pair = context.current
 

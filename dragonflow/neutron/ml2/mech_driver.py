@@ -151,7 +151,7 @@ class DFMechDriver(api.MechanismDriver):
                 )
             })
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_security_group_object)
     def update_security_group(self, resource, event, trigger, **kwargs):
         sg = kwargs['security_group']
         sg_name = sg.get('name')
@@ -172,7 +172,7 @@ class DFMechDriver(api.MechanismDriver):
 
         return sg_obj
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_security_group_id)
     def delete_security_group(self, resource, event, trigger, **kwargs):
         sg = kwargs['security_group']
         topic = df_utils.get_obj_topic(sg)
@@ -180,7 +180,7 @@ class DFMechDriver(api.MechanismDriver):
         self.nb_api.delete(sg_obj)
         LOG.info("DFMechDriver: delete security group %s", sg['id'])
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_security_group_rule_parent)
     def create_security_group_rule(self, resource, event, trigger, **kwargs):
         sg_rule = kwargs['security_group_rule']
         sg_id = sg_rule['security_group_id']
@@ -192,7 +192,7 @@ class DFMechDriver(api.MechanismDriver):
         LOG.info("DFMechDriver: create security group rule in group %s", sg_id)
         return sg_rule
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_security_group_id)
     def delete_security_group_rule(self, resource, event, trigger, **kwargs):
         context = kwargs['context']
         sgr_id = kwargs['security_group_rule_id']
@@ -210,7 +210,7 @@ class DFMechDriver(api.MechanismDriver):
             msg = _('Multi-provider networks are not supported')
             raise n_exc.InvalidInput(error_message=msg)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def create_network_postcommit(self, context):
         network = context.current
 
@@ -220,7 +220,7 @@ class DFMechDriver(api.MechanismDriver):
         LOG.info("DFMechDriver: create network %s", network['id'])
         return network
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def delete_network_postcommit(self, context):
         network = context.current
         network_id = network['id']
@@ -236,7 +236,7 @@ class DFMechDriver(api.MechanismDriver):
 
         LOG.info("DFMechDriver: delete network %s", network_id)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def update_network_postcommit(self, context):
         network = context.current
 
@@ -294,7 +294,7 @@ class DFMechDriver(api.MechanismDriver):
 
         return None
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SUBNET)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_network_id)
     def create_subnet_postcommit(self, context):
         subnet = context.current
         network = context.network.current
@@ -309,7 +309,7 @@ class DFMechDriver(api.MechanismDriver):
         LOG.info("DFMechDriver: create subnet %s", subnet['id'])
         return subnet
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SUBNET)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_network_id)
     def update_subnet_postcommit(self, context):
         new_subnet = context.current
         subnet = neutron_l2.subnet_from_neutron_subnet(new_subnet)
@@ -323,7 +323,7 @@ class DFMechDriver(api.MechanismDriver):
         LOG.info("DFMechDriver: update subnet %s", new_subnet['id'])
         return new_subnet
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SUBNET)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_network_id)
     def delete_subnet_postcommit(self, context):
 
         subnet = context.current
@@ -350,7 +350,7 @@ class DFMechDriver(api.MechanismDriver):
         lswitch = self.nb_api.get(l2.LogicalSwitch(id=port['network_id']))
         return lswitch.topic
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def create_port_postcommit(self, context):
         port = context.current
 
@@ -369,7 +369,7 @@ class DFMechDriver(api.MechanismDriver):
         port = context.current
         neutron_l2.validate_extra_dhcp_option(port)
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def update_port_postcommit(self, context):
         updated_port = context.current
         topic = df_utils.get_obj_topic(updated_port)
@@ -400,7 +400,7 @@ class DFMechDriver(api.MechanismDriver):
         LOG.info("DFMechDriver: update port %s", updated_port['id'])
         return updated_port
 
-    @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_NETWORK_OR_PORT)
+    @lock_db.wrap_db_lock(lock_db.get_lock_id_from_context_current_id)
     def delete_port_postcommit(self, context):
         port = context.current
         port_id = port['id']
