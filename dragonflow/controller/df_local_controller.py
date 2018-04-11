@@ -348,5 +348,5 @@ def main():
     init_ryu_config()
     nb_api = api_nb.NbApi.get_instance(False)
     controller = DfLocalController(chassis_name, nb_api)
-    service.register_service('df-local-controller', nb_api, controller)
+    service.register_service('df-local-controller', nb_api)
     controller.run()

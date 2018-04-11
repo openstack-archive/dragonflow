@@ -22,9 +22,6 @@ from dragonflow.db.models import service
 LOG = log.getLogger(__name__)
 
 
-service_names = {}
-
-
 def run_status_reporter(callback):
     def report_status():
         try:
@@ -37,9 +34,7 @@ def run_status_reporter(callback):
     timer.start(interval=cfg.CONF.df.report_interval)
 
 
-def register_service(service_name, nb_api, instance=None):
-    if instance:
-        service_names[id(instance)] = service_name
+def register_service(service_name, nb_api):
     chassis_id = cfg.CONF.host
     nb_api.create(service.Service(chassis=chassis_id, binary=service_name),
                   skip_send_event=True)

@@ -84,8 +84,7 @@ def main():
     nb_api = api_nb.NbApi.get_instance(False, True)
     service_instance = metadata_service.DFMetadataProxyHandler(
             cfg.CONF, nb_api)
-    df_service.register_service(
-            'df-metadata-service', nb_api, service_instance)
+    df_service.register_service('df-metadata-service', nb_api)
     service = wsgi.Server('dragonflow-metadata-service', disable_ssl=True)
     service.start(
         service_instance,
