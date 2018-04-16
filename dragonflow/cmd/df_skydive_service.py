@@ -20,6 +20,7 @@ from skydive.websocket import client as skydive_client
 
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.controller.common import constants as ctrl_const
 from dragonflow.controller import df_config
 from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
@@ -46,6 +47,13 @@ class SkydiveClient(cotyledon.Service):
             username=cfg.CONF.df_skydive.user,
             password=cfg.CONF.df_skydive.password
         )
+        self._nb_api = nb_api
+
+        self._update_handlers = {
+            'create': self._object_create_handler,
+            'set': self._object_update_handler,
+            'delete': self._object_delete_handler
+        }
 
         try:
             self.websocket_client.connect()
@@ -61,20 +69,42 @@ class SkydiveClient(cotyledon.Service):
                                 password=cfg.CONF.df_skydive.password)
         items = restclient.lookup_edges("G.E().Has('source', 'dragonflow')")
         for edge in items:
-            edge_del_msg = skydive_client.WSMessage(
-                "Graph",
-                skydive_client.EdgeDeletedMsgType,
-                edge
-            )
-            self.protocol.sendWSMessage(edge_del_msg)
+            self.protocol.del_edge(edge)
         items = restclient.lookup_nodes("G.V().Has('source', 'dragonflow')")
         for node in items:
-            node_del_msg = skydive_client.WSMessage(
-                "Graph",
-                skydive_client.NodeDeletedMsgType,
-                node
-            )
-            self.protocol.sendWSMessage(node_del_msg)
+            self.protocol.del_node(node)
+
+    def _object_create_handler(self):
+        pass
+
+    def _object_update_handler(self):
+        pass
+
+    def _object_delete_handler(self):
+        pass
+
+    def _notification_handler(self, update):
+        action = update.action
+        if action == ctrl_const.CONTROLLER_REINITIALIZE:
+            # TODO(snapiri): Consider deleting all dragonflow objects and
+            # re-initializing
+            return
+        if action in self._update_handlers:
+            try:
+                model_class = mf.get_model(update.table)
+            except KeyError:
+                # Model class not found, possibly update was not about
+                # a model
+                LOG.warning('Unknown table %s', update.table)
+                return
+            obj = model_class.from_json(update.value)
+            self._update_handlers[action](obj)
+
+    def notification_handler(self, update):
+        try:
+            self._notification_handler(update)
+        except Exception as e:
+            LOG.exception(e)
 
     def run(self):
         """Start communication with the SkyDive analyzer
@@ -85,6 +115,7 @@ class SkydiveClient(cotyledon.Service):
         super(SkydiveClient, self).run()
         # First clear all existing items
         self.clear_dragonflow_items()
+        self._nb_api.register_notification_callback(self.notification_handler)
         # Now start the loop
         self.websocket_client.start()
 
@@ -99,6 +130,7 @@ class SkydiveClient(cotyledon.Service):
     def terminate(self):
         """Stop the process of sending the updates to the SkyDive analyzer"""
         super(SkydiveClient, self).terminate()
+        self._nb_api.close()
         self.websocket_client.stop()
 
 
@@ -117,6 +149,33 @@ class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
         wait_time = cfg.CONF.df_skydive.update_interval
         loop.call_later(wait_time, self.send_df_updates)
 
+    def _item_action(self, item, action):
+        item_add_msg = skydive_client.WSMessage(
+            "Graph",
+            action,
+            item
+        )
+
+        self.sendWSMessage(item_add_msg)
+
+    def add_node(self, node):
+        self._item_action(node, skydive_client.NodeAddedMsgType)
+
+    def add_edge(self, edge):
+        self._item_action(edge, skydive_client.EdgeAddedMsgType)
+
+    def del_node(self, node):
+        self._item_action(node, skydive_client.NodeDeletedMsgType)
+
+    def del_edge(self, edge):
+        self._item_action(edge, skydive_client.EdgeDeletedMsgType)
+
+    def update_node(self, node):
+        self._item_action(node, skydive_client.NodeUpdatedMsgType)
+
+    def update_edge(self, edge):
+        self._item_action(edge, skydive_client.EdgeUpdatedMsgType)
+
     def send_df_updates(self):
         """Callback that is called when the client connects to the analyzer
 
@@ -127,20 +186,10 @@ class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
         df_objects = self._get_df_objects()
         LOG.debug('Sending to skydive: %s', df_objects)
         for node in df_objects["Nodes"]:
-            node_add_msg = skydive_client.WSMessage(
-                "Graph",
-                skydive_client.NodeAddedMsgType,
-                node
-            )
-            self.sendWSMessage(node_add_msg)
+            self.add_node(node)
 
         for edge in df_objects["Edges"]:
-            edge_add_msg = skydive_client.WSMessage(
-                "Graph",
-                skydive_client.EdgeAddedMsgType,
-                edge
-            )
-            self.sendWSMessage(edge_add_msg)
+            self.add_edge(edge)
 
         self.reschedule_send()
 
