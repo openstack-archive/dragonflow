@@ -248,6 +248,8 @@ function configure_df_plugin {
     tools/generate_config_file_samples.sh
     popd
     mkdir -p $Q_PLUGIN_EXTRA_CONF_PATH
+    sudo mkdir -p /var/run/dragonflow
+    sudo chown $STACK_USER /var/run/dragonflow
     cp $DRAGONFLOW_DIR/etc/dragonflow.ini.sample $DRAGONFLOW_CONF
     cp $DRAGONFLOW_DIR/etc/dragonflow_datapath_layout.yaml $DRAGONFLOW_DATAPATH
 
