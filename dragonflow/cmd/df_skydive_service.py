@@ -20,6 +20,7 @@ from skydive.websocket import client as skydive_client
 
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.controller.common import constants as ctrl_const
 from dragonflow.controller import df_config
 from dragonflow.controller import service as df_service
 from dragonflow.db import api_nb
@@ -46,6 +47,13 @@ class SkydiveClient(cotyledon.Service):
             username=cfg.CONF.df_skydive.user,
             password=cfg.CONF.df_skydive.password
         )
+        self._nb_api = nb_api
+
+        self._update_handlers = {
+            'create': self._object_create_handler,
+            'set': self._object_update_handler,
+            'delete': self._object_delete_handler
+        }
 
         try:
             self.websocket_client.connect()
@@ -61,20 +69,60 @@ class SkydiveClient(cotyledon.Service):
                                 password=cfg.CONF.df_skydive.password)
         items = restclient.lookup_edges("G.E().Has('source', 'dragonflow')")
         for edge in items:
-            edge_del_msg = skydive_client.WSMessage(
-                "Graph",
-                skydive_client.EdgeDeletedMsgType,
-                edge
-            )
-            self.protocol.sendWSMessage(edge_del_msg)
+            self.protocol.del_edge(edge)
         items = restclient.lookup_nodes("G.V().Has('source', 'dragonflow')")
         for node in items:
-            node_del_msg = skydive_client.WSMessage(
-                "Graph",
-                skydive_client.NodeDeletedMsgType,
-                node
-            )
-            self.protocol.sendWSMessage(node_del_msg)
+            self.protocol.del_node(node)
+
+    def _object_create_handler(self, instance):
+        nodes = []
+        edges = []
+        self.protocol.output_table_node(nodes, edges, instance)
+        for node in nodes:
+            self.protocol.add_node(node)
+        for edge in edges:
+            self.protocol.add_edge(edge)
+
+    def _object_update_handler(self, instance):
+        # TODO(snapiri) We should first get the old object because we should
+        # first delete the old edges and only then update the new ones
+        pass
+
+    def _object_delete_handler(self, instance):
+        nodes = []
+        edges = []
+        self.protocol.output_table_node(nodes, edges, instance)
+        for edge in edges:
+            self.protocol.del_edge(edge)
+        for node in nodes:
+            self.protocol.del_node(node)
+
+    def _notification_handler(self, update):
+        action = update.action
+        if action == ctrl_const.CONTROLLER_REINITIALIZE:
+            # TODO(snapiri): Consider deleting all dragonflow objects and
+            # re-initializing
+            return
+        try:
+            handler = self._update_handlers[action]
+        except KeyError:
+            LOG.warning('Unexpected action on notification: %s', action)
+            return
+        try:
+            model_class = mf.get_model(update.table)
+        except KeyError:
+            # Model class not found, possibly update was not about
+            # a model
+            LOG.warning('Unknown table %s', update.table)
+            return
+        obj = model_class.from_json(update.value)
+        handler(obj)
+
+    def notification_handler(self, update):
+        try:
+            self._notification_handler(update)
+        except Exception:
+            LOG.exception('Error encountered while handling notification')
 
     def run(self):
         """Start communication with the SkyDive analyzer
@@ -85,6 +133,7 @@ class SkydiveClient(cotyledon.Service):
         super(SkydiveClient, self).run()
         # First clear all existing items
         self.clear_dragonflow_items()
+        self._nb_api.register_notification_callback(self.notification_handler)
         # Now start the loop
         self.websocket_client.start()
 
@@ -99,6 +148,7 @@ class SkydiveClient(cotyledon.Service):
     def terminate(self):
         """Stop the process of sending the updates to the SkyDive analyzer"""
         super(SkydiveClient, self).terminate()
+        self._nb_api.close()
         self.websocket_client.stop()
 
 
@@ -117,6 +167,33 @@ class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
         wait_time = cfg.CONF.df_skydive.update_interval
         loop.call_later(wait_time, self.send_df_updates)
 
+    def _item_action(self, item, action):
+        item_add_msg = skydive_client.WSMessage(
+            "Graph",
+            action,
+            item
+        )
+
+        self.sendWSMessage(item_add_msg)
+
+    def add_node(self, node):
+        self._item_action(node, skydive_client.NodeAddedMsgType)
+
+    def add_edge(self, edge):
+        self._item_action(edge, skydive_client.EdgeAddedMsgType)
+
+    def del_node(self, node):
+        self._item_action(node, skydive_client.NodeDeletedMsgType)
+
+    def del_edge(self, edge):
+        self._item_action(edge, skydive_client.EdgeDeletedMsgType)
+
+    def update_node(self, node):
+        self._item_action(node, skydive_client.NodeUpdatedMsgType)
+
+    def update_edge(self, edge):
+        self._item_action(edge, skydive_client.EdgeUpdatedMsgType)
+
     def send_df_updates(self):
         """Callback that is called when the client connects to the analyzer
 
@@ -127,20 +204,10 @@ class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
         df_objects = self._get_df_objects()
         LOG.debug('Sending to skydive: %s', df_objects)
         for node in df_objects["Nodes"]:
-            node_add_msg = skydive_client.WSMessage(
-                "Graph",
-                skydive_client.NodeAddedMsgType,
-                node
-            )
-            self.sendWSMessage(node_add_msg)
+            self.add_node(node)
 
         for edge in df_objects["Edges"]:
-            edge_add_msg = skydive_client.WSMessage(
-                "Graph",
-                skydive_client.EdgeAddedMsgType,
-                edge
-            )
-            self.sendWSMessage(edge_add_msg)
+            self.add_edge(edge)
 
         self.reschedule_send()
 
@@ -158,6 +225,20 @@ class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
             'Host': 'dragonflow',
             'Metadata': metadata,
         }
+        return result
+
+    def _build_node_message(self, instance):
+        metadata = {
+            'ID': "DF-{}".format(instance.id),
+            'Type': WSClientDragonflowProtocol._get_instance_type(instance),
+            'source': 'dragonflow',
+            'data': instance.to_struct(),
+            'Name': getattr(instance, 'name', None) or instance.id
+        }
+        result = {
+            'Metadata': metadata,
+            'ID': "DF-{}".format(instance.id),
+            'Host': 'dragonflow'}
         return result
 
     def _add_edge_message(self, edges, instance, field):
@@ -198,19 +279,9 @@ class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
     def _get_instance_type(instance):
         return type(instance).__name__
 
-    def _output_table_node(self, nodes, edges, instance):
-        metadata = {
-            'ID': "DF-{}".format(instance.id),
-            'Type': WSClientDragonflowProtocol._get_instance_type(instance),
-            'source': 'dragonflow',
-            'data': instance.to_struct(),
-            'Name': getattr(instance, 'name', None) or instance.id
-        }
-        result = {
-            'Metadata': metadata,
-            'ID': "DF-{}".format(instance.id),
-            'Host': 'dragonflow'}
-        nodes.append(result)
+    def output_table_node(self, nodes, edges, instance):
+        node = self._build_node_message(instance)
+        nodes.append(node)
         self._output_table_node_edges(edges, instance)
         # If we have an owner, add the edge from it to this instance
         if WSClientDragonflowProtocol._has_owner(instance):
@@ -229,7 +300,7 @@ class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
         model = mf.get_model(table_name)
         instances = self.nb_api.get_all(model)
         for instance in instances:
-            self._output_table_node(nodes, edges, instance)
+            self.output_table_node(nodes, edges, instance)
 
     def _get_df_objects(self):
         nodes = []
