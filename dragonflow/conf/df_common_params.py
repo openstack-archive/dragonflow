@@ -180,6 +180,15 @@ df_opts = [
     cfg.StrOpt('datapath_layout_path',
                help=_("Path to datapath layout configuration"),
                default="/etc/neutron/dragonflow_datapath_layout.yaml"),
+    cfg.StrOpt('write_datapath_allocation',
+               help=_("Write the datapath allocation data to file?"),
+               default=True),
+    cfg.StrOpt('datapath_allocation_output_path',
+               help=_("Path to output the datapath allocation data"),
+               default="/var/run/dragonflow_datapath_allocation.yaml"),
+    cfg.BoolOpt('overwrite_datapath_allocation_output_path',
+                help=_("Overwrite datapath allocation data?"),
+                default=False),
     # FIXME (dimak) rename to something simpler once all tables are
     #               auto-allocated.
     cfg.IntOpt('datapath_autoalloc_table_offset',
