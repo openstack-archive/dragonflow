@@ -95,6 +95,11 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.open_flow_app.load(self.controller.open_flow_app, **kwargs)
         self.topology = self.controller.topology = topology.Topology(
             self.controller, enable_selective_topo_dist)
+        cfg.CONF.set_override(
+            'write_datapath_allocation',
+            False,
+            group='df',
+        )
         self.open_flow_app._new_dp = datapath.Datapath(
             self.get_layout())
         self.open_flow_app._new_dp.set_up(
