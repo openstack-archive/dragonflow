@@ -122,6 +122,12 @@ class NbApi(object):
                     self.db_change_callback)
                 self.subscriber.register_hamsg_for_db()
 
+    def close(self):
+        if self.publisher:
+            self.publisher.close()
+        if self.subscriber:
+            self.subscriber.close()
+
     def db_recover_callback(self):
         # only db with HA func can go in here
         self.driver.process_ha()
