@@ -12,6 +12,8 @@
         - dragonflow-dsvm-fullstack-etcd-zmq
         - dragonflow-openstack-ansible-cross-repo:
             voting: false
+        - kuryr-kubernetes-tempest-dragonflow
+            voting: false
     gate:
       jobs:
         - dragonflow-dsvm-fullstack-redis
