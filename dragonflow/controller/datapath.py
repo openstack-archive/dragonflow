@@ -9,7 +9,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from os import path
 from oslo_log import log
+from oslo_serialization import jsonutils
 import stevedore
 
 from dragonflow._i18n import _
@@ -88,6 +90,8 @@ class Datapath(object):
                             **(vertex.params or {})
                             )
             self.apps[vertex.name] = app
+
+        self.write_datapath_allocation()
 
         for app in self.apps.values():
             app.initialize()
@@ -263,3 +267,34 @@ class Datapath(object):
         LOG.debug("\tMapping:")
         for var, reg in dp_alloc.full_mapping.items():
             LOG.debug("\t\t%s: %s", var, reg)
+
+    def write_datapath_allocation(self):
+        if not cfg.CONF.df.write_datapath_allocation:
+            return
+        dppath = cfg.CONF.df.datapath_allocation_output_path
+        if (path.isfile(dppath) and
+                not cfg.CONF.df.overwrite_datapath_allocation_output_path):
+            LOG.warning("File %s exists, but cannot overwrite", dppath)
+            return
+        try:
+            f = open(dppath, 'w')
+        except IOError:
+            LOG.exception("Cannot open file %s", dppath)
+            return
+        try:
+            dp_allocs = self._get_dp_allocs_basic_dictionary()
+            jsonutils.dump(dp_allocs, f)
+        finally:
+            f.close()
+
+    def _get_dp_allocs_basic_dictionary(self):
+        return {key: self._dp_alloc_to_dict(value)
+                for key, value in self._dp_allocs.items()}
+
+    def _dp_alloc_to_dict(self, dpalloc):
+        return {
+            'states': dict(dpalloc.states),
+            'entrypoints': dict(dpalloc.entrypoints),
+            'exitpoints': dict(dpalloc.exitpoints),
+            'full_mapping': dict(dpalloc.full_mapping),
+        }
