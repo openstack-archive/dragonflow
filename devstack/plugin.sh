@@ -539,11 +539,6 @@ function setup_rootwrap_filters {
     fi
 }
 
-function create_tables_script {
-    echo "Creating add_table_names script"
-    $DRAGONFLOW_DIR/tools/create_add_tables_script.sh $DRAGONFLOW_DIR $DRAGONFLOW_DIR/tools/add_table_names
-}
-
 function stop_df_bgp_service {
     if is_service_enabled df-bgp ; then
        echo "Stopping Dragonflow BGP dynamic routing service"
@@ -607,7 +602,6 @@ function handle_df_stack_post_install {
     start_df_metadata_agent
     start_df_bgp_service
     setup_rootwrap_filters
-    create_tables_script
     start_df_skydive
 }
 
