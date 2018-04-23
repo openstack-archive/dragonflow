@@ -185,7 +185,7 @@ df_opts = [
                default=True),
     cfg.StrOpt('datapath_allocation_output_path',
                help=_("Path to output the datapath allocation data"),
-               default="/var/run/dragonflow_datapath_allocation.yaml"),
+               default="/var/run/dragonflow_datapath_allocation.json"),
     cfg.BoolOpt('overwrite_datapath_allocation_output_path',
                 help=_("Overwrite datapath allocation data?"),
                 default=False),
