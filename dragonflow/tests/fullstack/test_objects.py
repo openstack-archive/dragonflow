@@ -16,6 +16,7 @@ import netaddr
 from neutron.agent.common import utils as agent_utils
 from neutron_lib import constants as n_const
 from neutronclient.common import exceptions
+from novaclient import exceptions as nova_exceptions
 from oslo_log import log
 
 from dragonflow.db.models import bgp
@@ -319,7 +320,10 @@ class VMTestObj(object):
         if self.server is None:
             return False
         while timeout > 0:
-            server = self.nova.servers.find(id=self.server.id)
+            try:
+                server = self.nova.servers.find(id=self.server.id)
+            except nova_exceptions.NoUniqueMatch:
+                server = None
             if server is not None and server.status == 'ACTIVE':
                 return True
             time.sleep(1)
