@@ -9,7 +9,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import collections
 from os import path
+
 from oslo_log import log
 from oslo_serialization import jsonutils
 import stevedore
@@ -311,3 +313,38 @@ class Datapath(object):
             'exitpoints': dict(dpalloc.exitpoints),
             'full_mapping': dict(dpalloc.full_mapping),
         }
+
+# LoadedDatapath.apps: dict: vertex name -> dpalloc (of AttributeDict)
+LoadedDatapath = collections.namedtuple('LoadedDatapath', ('apps',))
+
+
+def _parse_dp_alloc(dpalloc):
+    kwargs = {k: app_base.AttributeDict(dpalloc.get(k, ()))
+              for k in ('states', 'exitpoints', 'entrypoints', 'full_mapping')}
+    return app_base.DpAlloc(**kwargs)
+
+
+def load_datapath_from_dict(dp_allocs_dict):
+    apps = {app: _parse_dp_alloc(dpalloc)
+            for app, dpalloc in dp_allocs_dict.items()}
+    return LoadedDatapath(apps=apps)
+
+
+def load_datapath_from_file_stream(stream):
+    dp_allocs_dict = jsonutils.load(stream)
+    return load_datapath_from_dict(dp_allocs_dict)
+
+
+def load_datapath_from_file_name(dppath):
+    with open(dppath, 'r') as f:
+        return load_datapath_from_file_stream(f)
+
+
+def load_datapath():
+    if not cfg.CONF.df.write_datapath_allocation:
+        # We assume that if the DF-controller is not allowed to write the file,
+        # then it would not exist. Otherwise, change the config or use one of
+        # the other methods available above.
+        return
+    dppath = cfg.CONF.df.datapath_allocation_output_path
+    return load_datapath_from_file_name(dppath)
