@@ -10,9 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import sys
-
 from oslo_log import log
+from oslo_utils import excutils
 
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import utils as test_utils
@@ -46,12 +45,10 @@ class TestApps(test_base.DFTestBase):
                 ['ovsdb-client', 'dump', 'Open_vSwitch'],
                 True
             )
-        except Exception as e:
-            traceback = sys.exc_info()[2]
-            try:
-                topology.close()
-            except Exception:
-                pass  # Ignore
-            # Just calling raise may raise an exception from topology.close()
-            raise e, None, traceback
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    topology.close()
+                except Exception:
+                    pass  # Ignore
         topology.close()

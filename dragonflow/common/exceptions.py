@@ -39,7 +39,7 @@ class DragonflowException(Exception):
 
     if six.PY2:
         def __unicode__(self):
-            return unicode(self.msg)
+            return six.text_type(self.msg)
 
     def __str__(self):
         return self.msg

@@ -82,7 +82,7 @@ def check_dhcp_network_rule(flows, network_key):
 
 
 def print_command(full_args, run_as_root=False):
-    print ('{}'.format(agent_utils.execute(
+    print('{}'.format(agent_utils.execute(
         full_args,
         run_as_root=run_as_root,
         process_input=None,
