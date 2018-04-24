@@ -45,8 +45,8 @@ class RejectRules(ctypes.Structure):
                 self.version_eq_given, self.version_gt_given,
                 self.given_version)
 
-    def __cmp__(self, other):
-        return cmp(self._as_tuple(), other._as_tuple())
+    def __lt__(self, other):
+        return self._as_tuple() < other._as_tuple()
 
     def __repr__(self):
         return 'ramcloud.RejectRules(%s)' % str(self._as_tuple())

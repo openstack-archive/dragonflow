@@ -416,13 +416,13 @@ class TestDbTableMonitors(PubSubTestBase):
         }
 
         expected_event = {
-            'table': unicode('chassis'),
-            'key': unicode('chassis-1'),
-            'action': unicode('create'),
+            'table': six.text_type('chassis'),
+            'key': six.text_type('chassis-1'),
+            'action': six.text_type('create'),
             'value': None,
         }
         self.assertNotIn(expected_event, self.namespace.events)
-        expected_event['value'] = unicode(jsonutils.dumps(test_chassis))
+        expected_event['value'] = six.text_type(jsonutils.dumps(test_chassis))
         self.assertNotIn(expected_event, self.namespace.events)
         self.nb_api.driver.create_key(
             'chassis',
@@ -435,13 +435,13 @@ class TestDbTableMonitors(PubSubTestBase):
 
         test_chassis["ip"] = "2.3.4.5"
         expected_event = {
-            'table': unicode('chassis'),
-            'key': unicode('chassis-1'),
-            'action': unicode('set'),
+            'table': six.text_type('chassis'),
+            'key': six.text_type('chassis-1'),
+            'action': six.text_type('set'),
             'value': None,
         }
         self.assertNotIn(expected_event, self.namespace.events)
-        expected_event['value'] = unicode(jsonutils.dumps(test_chassis))
+        expected_event['value'] = six.text_type(jsonutils.dumps(test_chassis))
         self.assertNotIn(expected_event, self.namespace.events)
         self.nb_api.driver.set_key(
             'chassis',
@@ -453,9 +453,9 @@ class TestDbTableMonitors(PubSubTestBase):
         self.assertIn(expected_event, self.namespace.events)
 
         expected_event = {
-            'table': unicode('chassis'),
-            'key': unicode('chassis-1'),
-            'action': unicode('delete'),
+            'table': six.text_type('chassis'),
+            'key': six.text_type('chassis-1'),
+            'action': six.text_type('delete'),
             'value': None,
         }
         self.assertNotIn(expected_event, self.namespace.events)

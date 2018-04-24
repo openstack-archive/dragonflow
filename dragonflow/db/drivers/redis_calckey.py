@@ -11,6 +11,7 @@
 #    under the License.
 
 import crc16
+import six
 
 RedisClusterHashSlots = 16384
 
@@ -21,7 +22,7 @@ def key2slot(key):
 
     This also works for binary keys that is used in python 3.
     """
-    k = unicode(key)
+    k = six.text_type(key)
     start = k.find("{")
 
     if start > -1:
