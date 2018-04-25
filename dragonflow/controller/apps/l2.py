@@ -79,9 +79,11 @@ class L2App(df_base_app.DFlowApp):
                                   const.SERVICES_CLASSIFICATION_TABLE)
 
         # Default: traffic => send to dispatch table
-        self.add_flow_go_to_table(const.INGRESS_CONNTRACK_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.INGRESS_DISPATCH_TABLE)
+        self.add_flow_go_to_table(
+            const.INGRESS_CONNTRACK_TABLE,
+            const.PRIORITY_DEFAULT,
+            self.dfdp.apps['classifier'].entrypoints.dispatch,
+        )
 
         # Clear local networks cache so the multicast/broadcast flows
         # are installed correctly
