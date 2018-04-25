@@ -18,6 +18,7 @@ import testscenarios
 
 from dragonflow.common import constants
 from dragonflow.controller.common import constants as const
+from dragonflow.controller import datapath_layout
 from dragonflow.db.models import l2
 from dragonflow.db.models import ovs
 from dragonflow.tests.unit import test_app_base
@@ -51,7 +52,18 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
         subnet.id = 'fake_vlan_subnet1'
         subnet.lswitch = 'fake_vlan_switch1'
         self.controller.update(subnet)
-        self.app = self.open_flow_app.dispatcher.apps['classifier']
+        self.app = self.open_flow_app._new_dp.apps['classifier']
+
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+        )
+        return datapath_layout.Layout(vertices, edges)
 
     def test_classifier_for_vlan_port(self):
         fake_local_vlan_port = make_fake_local_port(
@@ -67,7 +79,7 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
         match = self.app.parser.OFPMatch(reg7=port_key)
         self.app.mod_flow.assert_called_with(
             inst=mock.ANY,
-            table_id=const.INGRESS_DISPATCH_TABLE,
+            table_id=self.app.states.dispatch,
             priority=const.PRIORITY_MEDIUM,
             match=match)
         self.app.mod_flow.reset_mock()
@@ -82,7 +94,7 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
         else:
             self.fail("Bad order")
         self.app.mod_flow.assert_called_with(
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.app.states.classification,
             command=self.datapath.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)

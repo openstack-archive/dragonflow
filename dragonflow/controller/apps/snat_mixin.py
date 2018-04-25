@@ -91,8 +91,9 @@ class SNATApp_mixin(object):
         inst = [parser.OFPInstructionActions(
                     self.datapath.ofproto.OFPIT_APPLY_ACTIONS, actions),
                 parser.OFPInstructionGotoTable(const.INGRESS_NAT_TABLE)]
+        classifier_table = self.dfdp.apps['classifier'].states.classification
         self.mod_flow(inst=inst,
-                      table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                      table_id=classifier_table,
                       priority=const.PRIORITY_DEFAULT,
                       match=match)
 
@@ -241,7 +242,7 @@ class SNATApp_mixin(object):
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(
-            const.INGRESS_DISPATCH_TABLE)
+            self.dfdp.apps['classifier'].entrypoints.dispatch)
         inst = [action_inst, goto_inst]
 
         self.mod_flow(
@@ -254,5 +255,5 @@ class SNATApp_mixin(object):
                 self.external_ofport, self.ofproto.OFPCML_NO_BUFFER)]
         self.mod_flow(
             actions=actions,
-            table_id=const.INGRESS_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.dispatch,
             priority=const.PRIORITY_DEFAULT)

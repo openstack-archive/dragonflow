@@ -101,11 +101,11 @@ class Datapath(object):
             dp_alloc = self._create_dp_alloc(app_class._specification)
             self.log_datapath_allocation(vertex.name, dp_alloc)
             self._dp_allocs[vertex.name] = dp_alloc
-            app = app_class(api=ryu_base,
+            app = app_class(dp_alloc,  # dp_alloc
+                            ryu_base,  # api
                             vswitch_api=vswitch_api,
                             nb_api=nb_api,
                             neutron_server_notifier=notifier,
-                            dp_alloc=dp_alloc,
                             **(vertex.params or {})
                             )
             self.apps[vertex.name] = app
