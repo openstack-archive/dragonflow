@@ -288,16 +288,12 @@ class ProviderApp(df_base_app.DFlowApp):
         match, actions = self._match_actions_by_network_type(lport,
                                                              network_id,
                                                              network_type)
-        action_inst = self.parser.OFPInstructionActions(
-            self.ofproto.OFPIT_APPLY_ACTIONS, actions)
+        actions.append(self.parser.NXActionResubmitTable(table_id=
+            const.EXTERNAL_INGRESS_DETECT_SOURCE_TABLE))
 
-        goto_inst = self.parser.OFPInstructionGotoTable(
-            const.EXTERNAL_INGRESS_DETECT_SOURCE_TABLE)
-
-        inst = [action_inst, goto_inst]
         self.mod_flow(
-            inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            actions=actions,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             priority=const.PRIORITY_LOW,
             match=match)
 
@@ -332,7 +328,7 @@ class ProviderApp(df_base_app.DFlowApp):
                                                              network_id,
                                                              network_type)
         self.mod_flow(
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             command=self.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,
             match=match)
