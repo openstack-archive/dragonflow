@@ -15,8 +15,8 @@
 from oslo_log import log
 from ryu.ofproto import nicira_ext
 
+from dragonflow.controller import app_base
 from dragonflow.controller.common import constants as const
-from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import ovs
 
@@ -24,22 +24,59 @@ from dragonflow.db.models import ovs
 LOG = log.getLogger(__name__)
 
 
-class ClassifierApp(df_base_app.DFlowApp):
+@app_base.define_specification(
+    states=('classification', 'dispatch'),
+    public_mapping=app_base.VariableMapping(
+        source_port_key='reg6',
+        destination_port_key='reg7',
+        network_key='metadata',
+    ),
+    entrypoints=(
+        app_base.Entrypoint(
+            name='classification',
+            target='classification',
+            consumes=(),
+        ),
+        app_base.Entrypoint(
+            name='dispatch',
+            target='dispatch',
+            consumes=(
+                'destination_port_key',
+            ),
+        ),
+    ),
+    exitpoints=(
+        app_base.Exitpoint(
+            name='classification',
+            provides=(
+                'source_port_key',
+                'network_key',
+            ),
+        ),
+        app_base.Exitpoint(
+            name='dispatch',
+            provides=(
+                'destination_port_key',
+            ),
+        ),
+    ),
+)
+class ClassifierApp(app_base.Base):
 
     def __init__(self, *args, **kwargs):
         super(ClassifierApp, self).__init__(*args, **kwargs)
         self._ofport_unique_key_map = {}
 
-    def switch_features_handler(self, ev):
+    def initialize(self):
         self._ofport_unique_key_map.clear()
         self.add_flow_go_to_table(
-            table=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table=self.states.classification,
             priority=const.PRIORITY_DEFAULT,
-            goto_table_id=self.dfdp.apps['portsec'].entrypoints.default,
+            goto_table_id=self.exitpoints.classification,
         )
 
-    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_CREATED)
-    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_UPDATED)
+    @app_base.register_event(ovs.OvsPort, model_constants.EVENT_CREATED)
+    @app_base.register_event(ovs.OvsPort, model_constants.EVENT_UPDATED)
     def _ovs_port_created(self, ovs_port, orig_ovs_port=None):
         ofport = ovs_port.ofport
         lport_ref = ovs_port.lport
@@ -70,7 +107,7 @@ class ClassifierApp(df_base_app.DFlowApp):
         inst = [action_inst]
         self.mod_flow(
             inst=inst,
-            table_id=const.INGRESS_DISPATCH_TABLE,
+            table_id=self.states.dispatch,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
@@ -92,13 +129,13 @@ class ClassifierApp(df_base_app.DFlowApp):
             self.parser.NXActionResubmit(),
         ]
         self.mod_flow(
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.states.classification,
             priority=const.PRIORITY_MEDIUM,
             match=match,
             actions=actions,
         )
 
-    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_DELETED)
+    @app_base.register_event(ovs.OvsPort, model_constants.EVENT_DELETED)
     def _ovs_port_deleted(self, ovs_port):
         try:
             ofport, port_key = self._ofport_unique_key_map.pop(ovs_port.id)
@@ -114,7 +151,7 @@ class ClassifierApp(df_base_app.DFlowApp):
                   {'port_key': port_key})
         match = self.parser.OFPMatch(reg7=port_key)
         self.mod_flow(
-            table_id=const.INGRESS_DISPATCH_TABLE,
+            table_id=self.states.dispatch,
             command=self.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
@@ -124,7 +161,7 @@ class ClassifierApp(df_base_app.DFlowApp):
                   {'in_port': ofport})
         match = self.parser.OFPMatch(in_port=ofport)
         self.mod_flow(
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.states.classification,
             command=self.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
