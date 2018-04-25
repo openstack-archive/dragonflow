@@ -18,6 +18,7 @@ import netaddr
 from neutron.agent.common import utils
 from neutron_lib import constants as n_const
 
+from dragonflow.controller import datapath_layout
 from dragonflow.db.models import l2
 from dragonflow.db.models import secgroups
 from dragonflow.tests.unit import test_app_base
@@ -42,6 +43,17 @@ class TestSGApp(test_app_base.DFAppTestBase):
         self.datapath.ofproto.OFPFC_MODIFY = COMMAND_ADD
         self.datapath.ofproto.OFPFC_DELETE_STRICT = COMMAND_DELETE
         self.datapath.ofproto.OFPFC_DELETE = COMMAND_DELETE
+
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+        )
+        return datapath_layout.Layout(vertices, edges)
 
     def _get_ip_prefix(self, is_ipv6):
         if is_ipv6:

@@ -26,6 +26,7 @@ from ryu.lib.packet import packet as ryu_packet
 from ryu.ofproto import ether
 
 from dragonflow.controller.common import constants as const
+from dragonflow.controller import datapath_layout
 from dragonflow.tests.unit import test_app_base
 
 
@@ -41,6 +42,23 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
     def setUp(self):
         super(TestDHCPApp, self).setUp()
         self.app = self.open_flow_app.dispatcher.apps['dhcp']
+
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+            # Uncomment once dhcp app is converted
+            #datapath_layout.Vertex(
+            #    name='dhcp',
+            #    type='dhcp',
+            #    params=None,
+            #),
+        )
+        return datapath_layout.Layout(vertices, edges)
 
     def test_host_route_include_metadata_route(self):
         cfg.CONF.set_override('df_add_link_local_route', True,

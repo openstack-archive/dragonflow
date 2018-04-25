@@ -67,7 +67,9 @@ class NeighborAdvertiser(object):
         ]
         instructions = [
             parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
-            parser.OFPInstructionGotoTable(const.INGRESS_DISPATCH_TABLE),
+            parser.OFPInstructionGotoTable(
+                self.app.dfdp.apps['classifier'].entrypoints.dispatch
+            ),
         ]
         return instructions
 

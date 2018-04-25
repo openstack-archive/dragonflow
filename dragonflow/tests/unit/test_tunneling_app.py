@@ -16,6 +16,7 @@
 import copy
 
 from dragonflow.controller.common import constants as const
+from dragonflow.controller import datapath_layout
 from dragonflow.db.models import l2
 from dragonflow.tests.unit import test_app_base
 
@@ -45,6 +46,23 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
         self.controller.update(subnet)
         self.app = self.open_flow_app.dispatcher.apps['tunneling']
 
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+            # Uncomment once tunneling gets converted
+            #datapath_layout.Vertex(
+            #    name='tunneling',
+            #    type='tunneling',
+            #    params=None,
+            #),
+        )
+        return datapath_layout.Layout(vertices, edges)
+
     def test_tunneling_for_local_port(self):
         fake_local_gre_port1 = make_fake_local_port(
                 lswitch='fake_gre_switch1')
@@ -58,7 +76,7 @@ class TestTunnelingApp(test_app_base.DFAppTestBase):
         self.controller.update(fake_local_gre_port1)
         self.app.mod_flow.assert_called_with(
             inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             priority=const.PRIORITY_MEDIUM,
             match=match)
         self.app.mod_flow.reset_mock()

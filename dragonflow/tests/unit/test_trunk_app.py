@@ -18,6 +18,7 @@ import netaddr
 import ryu.lib.packet
 
 from dragonflow.controller.common import constants
+from dragonflow.controller import datapath_layout
 from dragonflow.controller import port_locator
 from dragonflow.db import db_store
 from dragonflow.db.models import l2
@@ -95,6 +96,23 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.app.ofproto.OFPVID_PRESENT = 0x1000
         self.db_store.update(test_app_base.fake_local_port2)
 
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+            # Uncomment once trunk port gets converted
+            #datapath_layout.Vertex(
+            #    name='trunk',
+            #    type='trunk',
+            #    params=None,
+            #),
+        )
+        return datapath_layout.Layout(vertices, edges)
+
     def test_create_child_segmentation(self):
         lswitch2 = _create_2nd_lswitch()
         self.controller.update(lswitch2)
@@ -108,13 +126,13 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.controller.update(segmentation)
 
         classification_flow = mock.call(
-            table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             priority=constants.PRIORITY_HIGH,
             match=mock.ANY,
             actions=mock.ANY,
         )
         dispatch_flow = mock.call(
-            table_id=constants.INGRESS_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.dispatch,
             priority=constants.PRIORITY_HIGH,
             match=mock.ANY,
             actions=mock.ANY,
@@ -134,13 +152,13 @@ class TestTrunkApp(test_app_base.DFAppTestBase):
         self.controller.delete_by_id(type(segmentation), segmentation.id)
 
         classification_flow = mock.call(
-                table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                table_id=self.dfdp.apps['classifier'].states.classification,
                 priority=constants.PRIORITY_HIGH,
                 match=mock.ANY,
                 command=self.app.ofproto.OFPFC_DELETE_STRICT,
         )
         dispatch_flow = mock.call(
-            table_id=constants.INGRESS_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.dispatch,
             priority=constants.PRIORITY_MEDIUM,
             match=mock.ANY,
             command=self.app.ofproto.OFPFC_DELETE_STRICT,
@@ -159,6 +177,23 @@ class _TestTrunkSegmentationTypes(object):
         self.db_store = db_store.get_instance()
         self.app.ofproto.OFPVID_PRESENT = 0x1000
         self.db_store.update(test_app_base.fake_local_port2)
+
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+            # Uncomment once trunk port gets converted
+            #datapath_layout.Vertex(
+            #    name='trunk',
+            #    type='trunk',
+            #    params=None,
+            #),
+        )
+        return datapath_layout.Layout(vertices, edges)
 
     def test_installed_flows(self):
         lswitch2 = _create_2nd_lswitch()
