@@ -16,6 +16,7 @@
 import copy
 
 from dragonflow.controller.common import constants as const
+from dragonflow.controller import datapath_layout
 from dragonflow.db.models import l2
 from dragonflow.tests.unit import test_app_base
 
@@ -47,6 +48,23 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
         self.controller.update(fake_vlan_subnet)
         self.app = self.open_flow_app.dispatcher.apps['provider']
         self.app.ofproto.OFPVID_PRESENT = 0x1000
+
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+            # Add once provider network app is converted
+            # datapath_layout.Vertex(
+            #     name='provider',
+            #     type='provider',
+            #     params=None, (or e.g., provider_type: vlan)
+            # ),
+        )
+        return datapath_layout.Layout(vertices, edges)
 
     def test_provider_vlan_port(self):
         fake_local_vlan_port1 = make_fake_local_port(

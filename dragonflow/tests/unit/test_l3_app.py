@@ -17,6 +17,7 @@ import copy
 import mock
 
 from dragonflow.controller.common import constants as const
+from dragonflow.controller import datapath_layout
 from dragonflow.tests.unit import _test_l3
 from dragonflow.tests.unit import test_app_base
 
@@ -30,6 +31,23 @@ class TestL3App(test_app_base.DFAppTestBase,
         self.app = self.open_flow_app.dispatcher.apps['l3_reactive']
         self.app.mod_flow = mock.Mock()
         self.router = copy.deepcopy(test_app_base.fake_logic_router1)
+
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+            # Uncomment once l3 app is converted
+            # datapath_layout.Vertex(
+            #     name='l3',
+            #     type='l3_reactive',
+            #     params=None,
+            # ),
+        )
+        return datapath_layout.Layout(vertices, edges)
 
     def test_install_flow_by_ports_and_continue_set_metadata(self):
         dst_router_port = self.router.ports[0]
