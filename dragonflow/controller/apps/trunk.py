@@ -76,7 +76,7 @@ class BaseNestedPortImpl(object):
         match = self.get_classification_match(child_port_segmentation)
         actions = self.get_classification_actions(child_port_segmentation)
         self.app.mod_flow(
-            table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.app.dfdp.apps['classifier'].states.classification,
             priority=constants.PRIORITY_HIGH,
             match=match,
             actions=actions,
@@ -93,7 +93,7 @@ class BaseNestedPortImpl(object):
                   type(self).__name__, child_port_segmentation)
         match = self.get_classification_match(child_port_segmentation)
         self.app.mod_flow(
-            table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.app.dfdp.apps['classifier'].states.classification,
             priority=constants.PRIORITY_HIGH,
             match=match,
             command=self.app.ofproto.OFPFC_DELETE_STRICT,
@@ -174,7 +174,7 @@ class BaseNestedPortImpl(object):
         match = self.get_dispatch_match(child_port_segmentation)
         actions = self.get_dispatch_actions(child_port_segmentation)
         self.app.mod_flow(
-            table_id=constants.INGRESS_DISPATCH_TABLE,
+            table_id=self.app.dfdp.apps['classifier'].states.dispatch,
             priority=constants.PRIORITY_HIGH,
             match=match,
             actions=actions,
@@ -190,7 +190,7 @@ class BaseNestedPortImpl(object):
                   type(self).__name__, child_port_segmentation)
         match = self.get_dispatch_match(child_port_segmentation)
         self.app.mod_flow(
-            table_id=constants.INGRESS_DISPATCH_TABLE,
+            table_id=self.app.dfdp.apps['classifier'].states.dispatch,
             priority=constants.PRIORITY_MEDIUM,
             match=match,
             command=self.app.ofproto.OFPFC_DELETE_STRICT,
