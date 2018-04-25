@@ -17,6 +17,7 @@ import mock
 from oslo_config import cfg
 
 from dragonflow.controller.common import constants
+from dragonflow.controller import datapath_layout
 from dragonflow.tests.unit import test_app_base
 
 
@@ -31,6 +32,23 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
         super(TestChassisSNATApp, self).setUp()
         self.SNAT_app = self.open_flow_app.dispatcher.apps['chassis_snat']
         self.SNAT_app.external_ofport = 99
+
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+            # Uncomment once chassis_snat is converted
+            #datapath_layout.Vertex(
+            #    name='snat',
+            #    type='chassis_snat',
+            #    params=None,
+            #),
+        )
+        return datapath_layout.Layout(vertices, edges)
 
     def test_switch_features_handler(self):
         ev = mock.Mock()
@@ -47,7 +65,7 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
         self.SNAT_app.mod_flow.assert_has_calls(
              [mock.call(
                    inst=mock.ANY,
-                   table_id=constants.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                   table_id=self.dfdp.apps['classifier'].states.classification,
                    priority=constants.PRIORITY_DEFAULT,
                    match=mock.ANY),
               mock.call(

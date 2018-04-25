@@ -102,7 +102,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         ofproto = self.ofproto
 
         self.mod_flow(
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=parser.OFPMatch(in_port=self._ofport))
@@ -166,7 +166,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                              actions)]
         self.mod_flow(
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             command=ofproto.OFPFC_ADD,
             priority=const.PRIORITY_MEDIUM,
             match=match,
@@ -181,12 +181,12 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             parser.NXActionResubmitTable(
                 table_id=const.METADATA_SERVICE_REPLY_TABLE),
             parser.NXActionResubmitTable(
-                table_id=const.INGRESS_DISPATCH_TABLE)
+                table_id=self.dfdp.apps['classifier'].entrypoints.dispatch)
         ]
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                              actions)]
         self.mod_flow(
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             command=ofproto.OFPFC_ADD,
             priority=const.PRIORITY_MEDIUM,
             match=match,

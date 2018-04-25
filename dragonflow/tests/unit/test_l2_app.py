@@ -17,6 +17,7 @@ import copy
 import mock
 
 from dragonflow.controller.common import constants as const
+from dragonflow.controller import datapath_layout
 from dragonflow.db.models import l2
 from dragonflow.tests.unit import test_app_base
 
@@ -41,6 +42,23 @@ class TestL2App(test_app_base.DFAppTestBase):
         subnet.lswitch = 'fake_local_switch1'
         self.controller.update(subnet)
         self.app = self.open_flow_app.dispatcher.apps['l2']
+
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+            # Uncomment once l2 app is converted
+            #datapath_layout.Vertex(
+            #    name='l2',
+            #    type='l2',
+            #    params=None,
+            #),
+        )
+        return datapath_layout.Layout(vertices, edges)
 
     def test_multicast_local_port(self):
         fake_local_port1 = test_app_base.make_fake_local_port(

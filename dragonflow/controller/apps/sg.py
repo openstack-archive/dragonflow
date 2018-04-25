@@ -333,7 +333,7 @@ class SGApp(df_base_app.DFlowApp):
 
         if direction == DIRECTION_INGRESS:
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            recirc_table = const.INGRESS_DISPATCH_TABLE
+            recirc_table = self.dfdp.apps['classifier'].entrypoints.dispatch
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
             recirc_table = const.SERVICES_CLASSIFICATION_TABLE
@@ -686,7 +686,7 @@ class SGApp(df_base_app.DFlowApp):
     def _install_env_init_flow_by_direction(self, direction):
         if direction == DIRECTION_INGRESS:
             table_id = const.INGRESS_SECURITY_GROUP_TABLE
-            goto_table_id = const.INGRESS_DISPATCH_TABLE
+            goto_table_id = self.dfdp.apps['classifier'].entrypoints.dispatch
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
             goto_table_id = const.SERVICES_CLASSIFICATION_TABLE
