@@ -103,7 +103,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         inst = [action_inst, goto_inst]
         self.mod_flow(
             inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
@@ -111,7 +111,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         match = self._make_network_match(lport)
         self.mod_flow(
                 command=self.ofproto.OFPFC_DELETE,
-                table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                table_id=self.dfdp.apps['classifier'].states.classification,
                 priority=const.PRIORITY_MEDIUM,
                 match=match)
 

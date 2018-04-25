@@ -219,7 +219,7 @@ class DFlowApp(object):
     def dispatch_packet(self, pkt, unique_key):
         self.reinject_packet(
             pkt,
-            table_id=constants.INGRESS_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].entrypoints.dispatch,
             actions=[
                 self.parser.OFPActionSetField(reg7=unique_key),
             ]
