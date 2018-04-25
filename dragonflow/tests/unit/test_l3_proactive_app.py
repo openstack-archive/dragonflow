@@ -17,6 +17,7 @@ import copy
 
 import mock
 
+from dragonflow.controller import datapath_layout
 from dragonflow.db.models import host_route
 from dragonflow.tests.unit import _test_l3
 from dragonflow.tests.unit import test_app_base
@@ -31,6 +32,23 @@ class TestL3ProactiveApp(test_app_base.DFAppTestBase,
         self.app = self.open_flow_app.dispatcher.apps['l3_proactive']
         self.app.mod_flow = mock.Mock()
         self.router = copy.deepcopy(test_app_base.fake_logic_router1)
+
+    def get_layout(self):
+        edges = ()
+        vertices = (
+            datapath_layout.Vertex(
+                name='classifier',
+                type='classifier',
+                params=None,
+            ),
+            # Uncomment once l3 app is converted
+            # datapath_layout.Vertex(
+            #     name='l3',
+            #     type='l3_proactive',
+            #     params=None,
+            # ),
+        )
+        return datapath_layout.Layout(vertices, edges)
 
     def test_add_del_lport_after_router_route(self):
         # add route

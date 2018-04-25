@@ -1,8 +1,12 @@
 vertices:
+  classifier:
+    type: classifier
   portsec:
     type: portsec
 
 edges:
-  dragonflow-legacy.out.5: portsec.in.default
+  dragonflow-legacy.out.0: classifier.in.classification
+  classifier.out.classification: portsec.in.default
   portsec.out.default: dragonflow-legacy.in.10
   portsec.out.services: dragonflow-legacy.in.20
+  dragonflow-legacy.out.115: classifier.in.dispatch

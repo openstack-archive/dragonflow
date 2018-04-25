@@ -93,17 +93,14 @@ class TunnelingApp(df_base_app.DFlowApp):
                    'network_id': network_id})
 
         match = self._make_network_match(lport)
-        actions = [self.parser.OFPActionSetField(metadata=network_id)]
-        action_inst = self.parser.OFPInstructionActions(
-            self.ofproto.OFPIT_APPLY_ACTIONS, actions)
-
-        goto_inst = self.parser.OFPInstructionGotoTable(
-            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
-
-        inst = [action_inst, goto_inst]
+        actions = [
+            self.parser.OFPActionSetField(metadata=network_id),
+            self.parser.NXActionResubmitTable(
+                table_id=const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE),
+        ]
         self.mod_flow(
-            inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            actions=actions,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
@@ -111,7 +108,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         match = self._make_network_match(lport)
         self.mod_flow(
                 command=self.ofproto.OFPFC_DELETE,
-                table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+                table_id=self.dfdp.apps['classifier'].states.classification,
                 priority=const.PRIORITY_MEDIUM,
                 match=match)
 
