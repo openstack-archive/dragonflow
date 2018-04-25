@@ -31,6 +31,10 @@ OFPVID_PRESENT = 0x1000
 
 
 class TestL2FLows(test_base.DFTestBase):
+    def setUp(self):
+        super(TestL2FLows, self).setUp()
+        self.dfdp = datapath.load_datapath()
+
     def _get_metadata_id(self, flows, ip, mac):
         for flow in flows:
             if flow['table'] == str(const.L3_PROACTIVE_LOOKUP_TABLE):
@@ -182,7 +186,7 @@ class TestL2FLows(test_base.DFTestBase):
                         l2_lookup_unicast_check = True
 
             if flow['table'] == str(
-                    const.INGRESS_CLASSIFICATION_DISPATCH_TABLE):
+                    self.dfdp.apps['classifier'].states.classification):
                 if (ingress_match in flow['match']):
                     if ingress_action in flow['actions']:
                         ingress_check = True
@@ -248,7 +252,7 @@ class TestL2FLows(test_base.DFTestBase):
                         egress_check = True
                         continue
             if flow['table'] == str(
-                    const.INGRESS_CLASSIFICATION_DISPATCH_TABLE):
+                    self.dfdp.apps['classifier'].states.classification):
                 if (ingress_match in flow['match']):
                     if ingress_action in flow['actions']:
                         ingress_check = True
@@ -372,7 +376,7 @@ class TestL2FLows(test_base.DFTestBase):
                         egress_check = True
                         continue
             if flow['table'] == str(
-                    const.INGRESS_CLASSIFICATION_DISPATCH_TABLE):
+                    self.dfdp.apps['classifier'].states.classification):
                 if (ingress_match in flow['match']):
                     if ingress_action in flow['actions']:
                         ingress_check = True

@@ -297,7 +297,7 @@ class ProviderApp(df_base_app.DFlowApp):
         inst = [action_inst, goto_inst]
         self.mod_flow(
             inst=inst,
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             priority=const.PRIORITY_LOW,
             match=match)
 
@@ -332,7 +332,7 @@ class ProviderApp(df_base_app.DFlowApp):
                                                              network_id,
                                                              network_type)
         self.mod_flow(
-            table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
+            table_id=self.dfdp.apps['classifier'].states.classification,
             command=self.ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_LOW,
             match=match)

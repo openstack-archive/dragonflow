@@ -34,7 +34,7 @@ class ArpResponder(object):
     def __init__(self, app, network_id, interface_ip,
                  interface_mac=None, table_id=const.ARP_TABLE,
                  priority=const.PRIORITY_MEDIUM,
-                 goto_table_id=const.INGRESS_DISPATCH_TABLE,
+                 goto_table_id=None,
                  source_port_key=None):
         self.app = app
         self.datapath = app.datapath
@@ -44,6 +44,9 @@ class ArpResponder(object):
         self.table_id = table_id
         self.priority = priority
         self.goto_table_id = goto_table_id
+        if goto_table_id is None:
+            classifier = self.app.dfdp.apps['classifier']
+            goto_table_id = classifier.entrypoints.dispatch
         self.source_port_key = source_port_key
 
     def _get_match(self):
