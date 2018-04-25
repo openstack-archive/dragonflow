@@ -17,15 +17,6 @@
 # In general each time packet is forwarded from one table to another
 # as it goes in the pipeline, table id is increased.
 
-# First table in the pipeline. All packets are landed here.
-# In case packet is originated from local port, it is forwarded
-# to the port sec application.
-# In case packet is coming from outside with a fip, it is
-# forwarded to table INGRESS_NAT_TABLE for translation.
-# In case the packet is coming with a tunnel id, it is
-# translated to network id and the packet is forwarded to
-# INGRESS_DESTINATION_PORT_LOOKUP_TABLE.
-INGRESS_CLASSIFICATION_DISPATCH_TABLE = 0
 # Detect reg6 (provider network and dNAT)
 EXTERNAL_INGRESS_DETECT_SOURCE_TABLE = 2
 # Next 2 tables are related to connection tracking and packet filtering.
@@ -73,8 +64,6 @@ INGRESS_DESTINATION_PORT_LOOKUP_TABLE = 100
 # Used for SG.
 INGRESS_CONNTRACK_TABLE = 105
 INGRESS_SECURITY_GROUP_TABLE = 110
-# Send packets to target local ovs ports.
-INGRESS_DISPATCH_TABLE = 115
 
 # SFC tables
 SFC_ENCAP_TABLE = 120
