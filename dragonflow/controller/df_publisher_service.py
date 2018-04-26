@@ -147,7 +147,10 @@ class PublisherService(object):
 
 def main():
     df_config.init(sys.argv)
-    nb_api = api_nb.NbApi.get_instance(False, True)
+    # PATCH(snapiri): Disable pub_sub as it creates a publisher in nb_api
+    # which collides with the publisher we create here.
+    cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
+    nb_api = api_nb.NbApi.get_instance(False)
     service = PublisherService(nb_api)
     df_service.register_service('df-publisher-service', nb_api)
     service.initialize()
