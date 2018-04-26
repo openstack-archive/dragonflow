@@ -96,9 +96,9 @@ def _is_ovsport_update_valid(action, ovsport):
 
 
 class DFIdl(idl.Idl):
-    def __init__(self, nb_api, remote, schema):
+    def __init__(self, remote, schema, db_change_callback):
         super(DFIdl, self).__init__(remote, schema)
-        self.nb_api = nb_api
+        self.db_change_callback = db_change_callback
 
     def notify(self, event, row, updates=None):
         if not row or not hasattr(row, '_table'):
@@ -109,7 +109,7 @@ class DFIdl(idl.Idl):
         local_interface = ovs.OvsPort.from_idl_row(row)
         action = event if event != 'update' else 'set'
         if _is_ovsport_update_valid(action, local_interface):
-            self.nb_api.db_change_callback(
+            self.db_change_callback(
                 local_interface.table_name,
                 local_interface.id,
                 action,
@@ -117,7 +117,8 @@ class DFIdl(idl.Idl):
             )
 
 
-def df_idl_from_server(nb_api, connection_string, schema_name):
+def df_idl_from_server(connection_string, schema_name,
+                       db_change_callback):
     """Create the Idl instance by pulling the schema from OVSDB server"""
     helper = idlutils.get_schema_helper(connection_string, schema_name)
     tables = ovsdb_monitor_table_filter_default
@@ -126,7 +127,7 @@ def df_idl_from_server(nb_api, connection_string, schema_name):
             helper.register_table(table_name)
         else:
             helper.register_columns(table_name, columns)
-    return DFIdl(nb_api, connection_string, helper)
+    return DFIdl(connection_string, helper, db_change_callback)
 
 
 class DFOvsdbApi(impl_idl.OvsdbIdl):
@@ -136,8 +137,9 @@ class DFOvsdbApi(impl_idl.OvsdbIdl):
     class OvsdbIdl has defined lots of command. Dragonflow can use
     them. And Dragonflow can extend its own commands in this class.
     """
-    def __init__(self, nb_api, db_connection, timeout):
-        idl = df_idl_from_server(nb_api, db_connection, 'Open_vSwitch')
+    def __init__(self, db_connection, timeout, db_change_callback):
+        idl = df_idl_from_server(db_connection, 'Open_vSwitch',
+                                 db_change_callback)
         type(self).ovsdb_connection = None
         ovsdb_connection = connection.Connection(idl, timeout)
         super(DFOvsdbApi, self).__init__(ovsdb_connection)
