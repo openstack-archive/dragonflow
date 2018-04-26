@@ -33,16 +33,18 @@ class TestRyuBaseApp(test_base.DFTestBase):
         ryu_cfg.CONF.ofp_listen_host = cfg.CONF.df_ryu.of_listen_address
         ryu_cfg.CONF.ofp_tcp_listen_port = cfg.CONF.df_ryu.of_listen_port + 1
         app_mgr = app_manager.AppManager.get_instance()
-        self.open_flow_app = app_mgr.instantiate(ryu_base_app.RyuDFAdapter,
-                                                 vswitch_api=mock.Mock(),
-                                                 nb_api=mock.Mock())
+        self.open_flow_app = app_mgr.instantiate(
+            ryu_base_app.RyuDFAdapter,
+            vswitch_api=mock.Mock(),
+            nb_api=mock.Mock(),
+            db_change_callback=self._db_change_handler)
         self.open_flow_app.load = mock.Mock()
         self.addCleanup(app_mgr.uninstantiate, self.open_flow_app.name)
 
         test_controller = ('tcp:' + cfg.CONF.df_ryu.of_listen_address + ':' +
                            str(cfg.CONF.df_ryu.of_listen_port + 1))
         self.vswitch_api = vswitch_impl.OvsApi(self.mgt_ip)
-        self.vswitch_api.initialize(self.nb_api)
+        self.vswitch_api.initialize(self._db_change_callback)
         cur_controllers = self.vswitch_api.ovsdb.get_controller(
             self.integration_bridge).execute()
         cur_controllers.append(test_controller)
