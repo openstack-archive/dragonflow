@@ -13,7 +13,9 @@
 import os
 import random
 import string
+import time
 
+from eventlet import queue
 from oslo_log import log
 
 from dragonflow.common import utils as df_utils
@@ -57,14 +59,16 @@ class DFTestBase(base.BaseTestCase):
         self.conf = cfg.CONF.df
         self.integration_bridge = self.conf.integration_bridge
 
+        self._queue = queue.PriorityQueue()
         self.nb_api = api_nb.NbApi.get_instance(False)
+        self.nb_api.set_db_change_callback(self.__db_change_callback)
 
         self.mgt_ip = self.conf.management_ip
         self.__objects_to_close = []
         self.addCleanup(self._close_stored_objects)
 
         self.vswitch_api = utils.OvsTestApi(self.mgt_ip)
-        self.vswitch_api.initialize(self.nb_api)
+        self.vswitch_api.initialize(self.__db_change_callback)
 
         if cfg.CONF.df.enable_selective_topology_distribution:
             self.start_subscribing()
@@ -72,6 +76,11 @@ class DFTestBase(base.BaseTestCase):
         if cfg.CONF.df.enable_df_pub_sub:
             self._publish_log_event('started')
             self.addCleanup(self._publish_log_event, 'finished')
+
+    def __db_change_callback(self, table, key, action, value, topic=None):
+        update = db_common.DbUpdate(table, key, action, value, topic=topic)
+        self._queue.put(update)
+        time.sleep(0)
 
     def _publish_log_event(self, event):
         global _publisher
