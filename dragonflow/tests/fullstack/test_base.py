@@ -21,6 +21,7 @@ from oslo_log import log
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as ctrl_const
+from dragonflow.controller import datapath
 from dragonflow.db import api_nb
 from dragonflow.db import db_common
 from dragonflow.tests import base
@@ -79,6 +80,8 @@ class DFTestBase(base.BaseTestCase):
         if cfg.CONF.df.enable_df_pub_sub:
             self._publish_log_event('started')
             self.addCleanup(self._publish_log_event, 'finished')
+
+        self.dfdp = datapath.load_datapath()
 
     def _db_change_callback(self, table, key, action, value, topic=None):
         update = db_common.DbUpdate(table, key, action, value, topic=topic)
