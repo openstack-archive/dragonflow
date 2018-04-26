@@ -147,7 +147,7 @@ class PublisherService(object):
 
 def main():
     df_config.init(sys.argv)
-    nb_api = api_nb.NbApi.get_instance(False, True)
+    nb_api = api_nb.NbApi.get_instance(False)
     service = PublisherService(nb_api)
     df_service.register_service('df-publisher-service', nb_api)
     service.initialize()

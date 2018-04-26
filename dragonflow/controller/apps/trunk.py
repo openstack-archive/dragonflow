@@ -380,10 +380,12 @@ class IPVlanNestedPortArpImpl(IPv4NestedPortMixin, BaseNestedPortImpl):
 class TrunkApp(df_base_app.DFlowApp):
 
     def __init__(self, api, vswitch_api=None, nb_api=None,
+                 db_change_callback=None,
                  neutron_server_notifier=None):
         super(TrunkApp, self).__init__(
             api, vswitch_api=vswitch_api,
             nb_api=nb_api,
+            db_change_callback=db_change_callback,
             neutron_server_notifier=neutron_server_notifier)
         # A dispatch table, to add the relevant openflow rules according to
         # the segmentation type
