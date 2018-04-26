@@ -64,22 +64,22 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return True
 
     def _get_wanted_vm_online(self, mac):
-        while self.nb_api._queue.qsize() > 0:
-            self.next_update = self.nb_api._queue.get()
+        while self._queue.qsize() > 0:
+            self.next_update = self._queue.get()
             if self._check_wanted_vm_online(self.next_update, mac):
                 return True
         return False
 
     def _get_wanted_vm_offline(self, mac):
-        while self.nb_api._queue.qsize() > 0:
-            self.next_update = self.nb_api._queue.get()
+        while self._queue.qsize() > 0:
+            self.next_update = self._queue.get()
             if self._check_wanted_vm_offline(self.next_update, mac):
                 return True
         return False
 
     def _get_all_wanted_vms_online(self, mac1, mac2):
-        while self.nb_api._queue.qsize() > 0:
-            self.next_update = self.nb_api._queue.get()
+        while self._queue.qsize() > 0:
+            self.next_update = self._queue.get()
             if self._check_wanted_vm_online(self.next_update, mac1):
                 self.set_wanted_vms.add(mac1)
                 if len(self.set_wanted_vms) == 2:
@@ -93,7 +93,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         return False
 
     def test_notify_message(self):
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
         network_id = network.create()
         subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
                                                   network_id))
