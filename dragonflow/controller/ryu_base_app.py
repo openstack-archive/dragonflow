@@ -38,6 +38,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     OF_AUTO_PORT_DESC_STATS_REQ_VER = 0x04
 
     def __init__(self, vswitch_api, nb_api,
+                 db_change_callback,
                  neutron_server_notifier=None):
         super(RyuDFAdapter, self).__init__()
         self.dispatcher = dispatcher.AppDispatcher(cfg.CONF.df.apps_list)
@@ -47,6 +48,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         self._datapath = None
         self.table_handlers = {}
         self.first_connect = True
+        self.db_change_callback = db_change_callback
 
     @property
     def datapath(self):
@@ -57,6 +59,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         self.load(self,
                   vswitch_api=self.vswitch_api,
                   nb_api=self.nb_api,
+                  db_change_callback=self.db_change_callback,
                   neutron_server_notifier=self.neutron_server_notifier)
         self.wait_until_ready()
 
@@ -111,11 +114,11 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         if not self.first_connect:
             # For reconnecting to the ryu controller, df needs a full sync
             # in case any resource added during the disconnection.
-            self.nb_api.db_change_callback(None, None,
-                                           constants.CONTROLLER_REINITIALIZE,
-                                           None)
+            self.db_change_callback(None, None,
+                                    constants.CONTROLLER_REINITIALIZE,
+                                    None)
         self.first_connect = False
-        self.vswitch_api.initialize(self.nb_api)
+        self.vswitch_api.initialize(self.db_change_callback)
 
     def _send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
