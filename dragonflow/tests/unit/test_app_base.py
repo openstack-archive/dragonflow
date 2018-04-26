@@ -80,6 +80,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         kwargs = dict(
             nb_api=self.controller.nb_api,
             vswitch_api=self.controller.vswitch_api,
+            db_change_callback=self.controller.db_change_callback
         )
         self.controller.open_flow_app = ryu_base_app.RyuDFAdapter(**kwargs)
         self.open_flow_app = self.controller.open_flow_app
