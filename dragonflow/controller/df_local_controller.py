@@ -14,7 +14,9 @@
 #    under the License.
 
 import sys
+import time
 
+from eventlet import queue
 from oslo_log import log
 from oslo_service import loopingcall
 from ryu.app.ofctl import service as of_service
@@ -47,9 +49,11 @@ class DfLocalController(object):
 
     def __init__(self, chassis_name, nb_api):
         self.db_store = db_store.get_instance()
+        self._queue = queue.PriorityQueue()
 
         self.chassis_name = chassis_name
         self.nb_api = nb_api
+        self.nb_api.set_db_change_callback(self.db_change_callback)
         self.ip = cfg.CONF.df.local_ip
         # Virtual tunnel port support multiple tunnel types together
         self.tunnel_types = cfg.CONF.df.tunnel_types
@@ -85,6 +89,19 @@ class DfLocalController(object):
         self.sync_rate_limiter = df_utils.RateLimiter(
                 max_rate=1, time_unit=db_common.DB_SYNC_MINIMUM_INTERVAL)
 
+    def db_change_callback(self, table, key, action, value, topic=None):
+        update = db_common.DbUpdate(table, key, action, value, topic=topic)
+        LOG.debug("Pushing Update to Queue: %s", update)
+        self._queue.put(update)
+        time.sleep(0)
+
+    def process_changes(self):
+        while True:
+            next_update = self._queue.get(block=True)
+            LOG.debug("Event update: %s", next_update)
+            self._notification_cb(next_update)
+            self._queue.task_done()
+
     def run(self):
         self.vswitch_api.initialize(self.nb_api)
         self.nb_api.register_notification_callback(self._handle_update)
@@ -118,7 +135,7 @@ class DfLocalController(object):
         self._register_models()
         self.register_chassis()
         self.sync()
-        self.nb_api.process_changes()
+        self.process_changes()
 
     def _submit_sync_event(self):
         self.nb_api.db_change_callback(None, None,
