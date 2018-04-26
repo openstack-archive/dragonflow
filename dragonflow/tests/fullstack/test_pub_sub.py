@@ -84,10 +84,10 @@ class TestPubSub(PubSubTestBase):
             self.skipTest('pub/sub is not enabled')
             return
 
-        def _db_change_callback(table, key, action, value, topic):
+        def __db_change_callback(table, key, action, value, topic):
             global events_num
             events_num += 1
-        subscriber = self._get_subscriber(_db_change_callback)
+        subscriber = self._get_subscriber(__db_change_callback)
         self.addCleanup(subscriber.close)
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
@@ -128,10 +128,10 @@ class TestPubSub(PubSubTestBase):
             self.skipTest('pub/sub is not enabled')
             return
 
-        def _db_change_callback(table, key, action, value, topic):
+        def __db_change_callback(table, key, action, value, topic):
             ns.events_num += 1
 
-        subscriber = self._get_subscriber(_db_change_callback)
+        subscriber = self._get_subscriber(__db_change_callback)
         self.addCleanup(subscriber.close)
         network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
         network_id = network.create()
@@ -180,14 +180,14 @@ class TestPubSub(PubSubTestBase):
         ns.events_num = 0
         ns.events_action = None
 
-        def _db_change_callback(table, key, action, value, topic):
+        def __db_change_callback(table, key, action, value, topic):
             if 'log' == key:
                 ns.events_num += 1
                 ns.events_action = action
 
         publisher = self._get_server_publisher()
         self.addCleanup(self._stop_publisher, publisher)
-        subscriber = self._get_subscriber(_db_change_callback)
+        subscriber = self._get_subscriber(__db_change_callback)
         self.addCleanup(subscriber.close)
 
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
@@ -263,14 +263,14 @@ class TestPubSub(PubSubTestBase):
         ns.events_num = 0
         ns.events_action = None
 
-        def _db_change_callback(table, key, action, value, topic):
+        def __db_change_callback(table, key, action, value, topic):
             if 'log' == key:
                 ns.events_num += 1
                 ns.events_action = action
 
         publisher = self._get_server_publisher()
         self.addCleanup(self._stop_publisher, publisher)
-        subscriber = self._get_subscriber(_db_change_callback)
+        subscriber = self._get_subscriber(__db_change_callback)
         self.addCleanup(subscriber.close)
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         action = "log"
@@ -374,7 +374,7 @@ class TestDbTableMonitors(PubSubTestBase):
         self.namespace.events = []
         self.namespace.has_values = False
         self.publisher = self._get_server_publisher()
-        self.subscriber = self._get_subscriber(self._db_change_callback)
+        self.subscriber = self._get_subscriber(self.__db_change_callback)
         self.monitor = self._create_monitor('chassis')
 
     def tearDown(self):
@@ -384,7 +384,7 @@ class TestDbTableMonitors(PubSubTestBase):
         self._stop_publisher(self.publisher)
         super(TestDbTableMonitors, self).tearDown()
 
-    def _db_change_callback(self, table, key, action, value, topic):
+    def __db_change_callback(self, table, key, action, value, topic):
         self.namespace.events.append({
             'table': table,
             'key': key,
