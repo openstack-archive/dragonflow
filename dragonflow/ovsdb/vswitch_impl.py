@@ -54,17 +54,18 @@ class OvsApi(object):
         else:
             vlog.Vlog.init()
 
-    def initialize(self, nb_api):
+    def initialize(self, db_change_callback):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
 
-        nb_api.db_change_callback(None, None,
-                                  constants.CONTROLLER_OVS_SYNC_STARTED, None)
+        db_change_callback(None, None,
+                           constants.CONTROLLER_OVS_SYNC_STARTED, None)
 
         self.ovsdb = impl_idl.DFOvsdbApi(
-            nb_api, db_connection, self.vsctl_timeout)
+            db_connection, self.vsctl_timeout,
+            db_change_callback)
 
-        nb_api.db_change_callback(None, None,
-                                  constants.CONTROLLER_OVS_SYNC_FINISHED, None)
+        db_change_callback(None, None,
+                           constants.CONTROLLER_OVS_SYNC_FINISHED, None)
 
     def _db_get_val(self, table, record, column, check_error=False,
                     log_errors=True):
