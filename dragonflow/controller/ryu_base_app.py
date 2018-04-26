@@ -111,11 +111,11 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         if not self.first_connect:
             # For reconnecting to the ryu controller, df needs a full sync
             # in case any resource added during the disconnection.
-            self.nb_api.db_change_callback(None, None,
-                                           constants.CONTROLLER_REINITIALIZE,
-                                           None)
+            self.db_change_callback(None, None,
+                                    constants.CONTROLLER_REINITIALIZE,
+                                    None)
         self.first_connect = False
-        self.vswitch_api.initialize(self.nb_api)
+        self.vswitch_api.initialize(self.db_change_callback)
 
     def _send_port_desc_stats_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
