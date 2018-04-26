@@ -17,7 +17,6 @@
 import time
 import traceback
 
-from eventlet import queue
 from jsonmodels import errors
 from oslo_config import cfg
 from oslo_log import log
@@ -60,7 +59,6 @@ class NbApi(object):
         super(NbApi, self).__init__()
         self.driver = db_driver
         self.controller = None
-        self._queue = queue.PriorityQueue()
         self.use_pubsub = use_pubsub
         self.publisher = None
         self.subscriber = None
@@ -73,7 +71,7 @@ class NbApi(object):
             self.pub_sub_use_multiproc = cfg.CONF.df.pub_sub_use_multiproc
 
     @staticmethod
-    def get_instance(is_neutron_server, is_external_app=False):
+    def get_instance(is_neutron_server):
         global _nb_api
         if _nb_api is None:
             nb_driver = df_utils.load_driver(
@@ -82,18 +80,16 @@ class NbApi(object):
             # Do not use pubsub for external apps - this causes issues with
             # threads and other issues.
             use_pubsub = cfg.CONF.df.enable_df_pub_sub
-            if is_external_app:
-                use_pubsub = False
             nb_api = NbApi(
                 nb_driver,
                 use_pubsub=use_pubsub,
                 is_neutron_server=is_neutron_server)
             ip, port = get_db_ip_port()
-            nb_api.initialize(db_ip=ip, db_port=port)
+            nb_api._initialize(db_ip=ip, db_port=port)
             _nb_api = nb_api
         return _nb_api
 
-    def initialize(self, db_ip='127.0.0.1', db_port=4001):
+    def _initialize(self, db_ip='127.0.0.1', db_port=4001):
         self.driver.initialize(db_ip, db_port, config=cfg.CONF.df)
         if self.use_pubsub:
             self.publisher = self._get_publisher()
@@ -113,14 +109,19 @@ class NbApi(object):
                 if "active_port_detection" in cfg.CONF.df.apps_list:
                     self.publisher.initialize()
 
-                # NOTE(gampel) we want to start queuing event as soon
-                # as possible
-                self._start_subscriber()
+    def set_db_change_callback(self, db_change_callback):
+        if self.use_pubsub and not self.is_neutron_server:
+            # NOTE(gampel) we want to start queuing event as soon
+            # as possible
+            if not self.subscriber.is_running():
+                self._start_subscriber(db_change_callback)
                 # Register for DB Failover detection in NB Plugin
                 self.subscriber.set_subscriber_for_failover(
                     self.subscriber,
-                    self.db_change_callback)
+                    db_change_callback)
                 self.subscriber.register_hamsg_for_db()
+            else:
+                LOG.warning('Subscriber is already initialized, ignoring call')
 
     def close(self):
         if self.publisher:
@@ -152,8 +153,8 @@ class NbApi(object):
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_subscriber()
 
-    def _start_subscriber(self):
-        self.subscriber.initialize(self.db_change_callback)
+    def _start_subscriber(self, db_change_callback):
+        self.subscriber.initialize(db_change_callback)
         self.subscriber.register_topic(db_common.SEND_ALL_TOPIC)
         publishers_ips = cfg.CONF.df.publishers_ips
         uris = {'%s://%s:%s' % (
@@ -199,19 +200,6 @@ class NbApi(object):
         self.subscriber.initialize(cb)
         self.subscriber.register_topic(topic)
         self.subscriber.daemonize()
-
-    def db_change_callback(self, table, key, action, value, topic=None):
-        update = db_common.DbUpdate(table, key, action, value, topic=topic)
-        LOG.debug("Pushing Update to Queue: %s", update)
-        self._queue.put(update)
-        time.sleep(0)
-
-    def process_changes(self):
-        while True:
-            next_update = self._queue.get(block=True)
-            LOG.debug("Event update: %s", next_update)
-            self._notification_cb(next_update)
-            self._queue.task_done()
 
     def create(self, obj, skip_send_event=False):
         """Create the provided object in the database and publish an event
