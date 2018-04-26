@@ -34,6 +34,7 @@ LOG = log.getLogger(__name__)
 
 class DFlowApp(object):
     def __init__(self, api, vswitch_api=None, nb_api=None,
+                 db_change_callback=None,
                  neutron_server_notifier=None):
         self.api = api
         self.db_store = db_store.get_instance()
