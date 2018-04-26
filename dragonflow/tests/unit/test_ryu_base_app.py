@@ -31,7 +31,8 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         super(TestRyuDFAdapter, self).setUp()
         self.ryu_df_adapter = ryu_base_app.RyuDFAdapter(
             vswitch_api=mock.Mock(),
-            nb_api=mock.Mock())
+            db_change_callback=mock.Mock()
+        )
         self.mock_app = mock.Mock(spec=[
                 'router_updated',
                 'router_deleted',

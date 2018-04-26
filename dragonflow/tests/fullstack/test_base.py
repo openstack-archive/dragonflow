@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
 import os
 import random
 import string
@@ -64,7 +65,7 @@ class DFTestBase(base.BaseTestCase):
         self.addCleanup(self._close_stored_objects)
 
         self.vswitch_api = utils.OvsTestApi(self.mgt_ip)
-        self.vswitch_api.initialize(self.nb_api)
+        self.vswitch_api.initialize(mock.Mock())
 
         if cfg.CONF.df.enable_selective_topology_distribution:
             self.start_subscribing()
