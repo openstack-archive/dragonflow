@@ -374,7 +374,7 @@ class TestDbTableMonitors(PubSubTestBase):
         self.namespace.events = []
         self.namespace.has_values = False
         self.publisher = self._get_server_publisher()
-        self.subscriber = self._get_subscriber(self._db_change_callback)
+        self.subscriber = self._get_subscriber(self.__db_change_callback)
         self.monitor = self._create_monitor('chassis')
 
     def tearDown(self):
@@ -384,7 +384,7 @@ class TestDbTableMonitors(PubSubTestBase):
         self._stop_publisher(self.publisher)
         super(TestDbTableMonitors, self).tearDown()
 
-    def _db_change_callback(self, table, key, action, value, topic):
+    def __db_change_callback(self, table, key, action, value, topic):
         self.namespace.events.append({
             'table': table,
             'key': key,

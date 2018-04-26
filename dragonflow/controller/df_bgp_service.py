@@ -165,7 +165,7 @@ class BGPService(service.Service):
 
 def main():
     df_config.init(sys.argv)
-    nb_api = api_nb.NbApi.get_instance(False, True)
+    nb_api = api_nb.NbApi.get_instance(False)
     server = BGPService(nb_api)
     df_service.register_service('df-bgp-service', nb_api)
     service.launch(cfg.CONF, server).wait()
