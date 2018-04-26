@@ -10,8 +10,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+
+from eventlet import queue
+
 from dragonflow.common import constants
 from dragonflow import conf as cfg
+from dragonflow.db import db_common
 from dragonflow.db.models import ovs
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
@@ -23,6 +28,13 @@ class TestOvsdbMonitor(test_base.DFTestBase):
     def setUp(self):
         super(TestOvsdbMonitor, self).setUp()
         self.set_wanted_vms = set()
+        self._queue = queue.PriorityQueue()
+        self.nb_api.set_db_change_callback(self._db_change_callback)
+
+    def _db_change_callback(self, table, key, action, value, topic=None):
+        update = db_common.DbUpdate(table, key, action, value, topic=topic)
+        self._queue.put(update)
+        time.sleep(0)
 
     def _check_wanted_vm_online(self, update, mac):
         if update.table != ovs.OvsPort.table_name:
@@ -64,22 +76,22 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return True
 
     def _get_wanted_vm_online(self, mac):
-        while self.nb_api._queue.qsize() > 0:
-            self.next_update = self.nb_api._queue.get()
+        while self._queue.qsize() > 0:
+            self.next_update = self._queue.get()
             if self._check_wanted_vm_online(self.next_update, mac):
                 return True
         return False
 
     def _get_wanted_vm_offline(self, mac):
-        while self.nb_api._queue.qsize() > 0:
-            self.next_update = self.nb_api._queue.get()
+        while self._queue.qsize() > 0:
+            self.next_update = self._queue.get()
             if self._check_wanted_vm_offline(self.next_update, mac):
                 return True
         return False
 
     def _get_all_wanted_vms_online(self, mac1, mac2):
-        while self.nb_api._queue.qsize() > 0:
-            self.next_update = self.nb_api._queue.get()
+        while self._queue.qsize() > 0:
+            self.next_update = self._queue.get()
             if self._check_wanted_vm_online(self.next_update, mac1):
                 self.set_wanted_vms.add(mac1)
                 if len(self.set_wanted_vms) == 2:
