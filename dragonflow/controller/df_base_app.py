@@ -95,9 +95,16 @@ class DFlowApp(object):
         if datapath is None:
             datapath = self.datapath
 
-        inst = [datapath.ofproto_parser.OFPInstructionGotoTable(goto_table_id)]
-        self.mod_flow(datapath, inst=inst, table_id=table,
-                      priority=priority, match=match)
+        if table < goto_table_id:
+            inst = [
+                datapath.ofproto_parser.OFPInstructionGotoTable(goto_table_id)
+            ]
+            self.mod_flow(datapath, inst=inst, table_id=table,
+                          priority=priority, match=match)
+        else:
+            actions = [parser.NXActionResubmitTable(table_id=table_id)]
+            self.mod_flow(datapath, actions=actions, table_id=table,
+                          priority=priority, match=match)
 
     def mod_flow(self, datapath=None, cookie=0, cookie_mask=0, table_id=0,
                  command=None, idle_timeout=0, hard_timeout=0,
