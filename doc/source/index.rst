@@ -28,6 +28,7 @@ Contents:
    contributing
    releasenotes_create
    reviewers_guide
+   osprofiler
 
 Dragonflow Specs
 ================

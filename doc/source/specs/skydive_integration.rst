@@ -23,6 +23,7 @@ us to provide the overall topology view (skydive model) and use the skydive
 for all the different ways to visualize and dissect the information (skydive
 view).
 
+There is a talk on Skydive from the Austin summit in 2016 [2]_.
 
 Problem Description
 ===================
