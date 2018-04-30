@@ -191,6 +191,11 @@ class SubscriberApi(object):
         """Start the Subscriber thread
         """
 
+    @property
+    @abc.abstractmethod
+    def is_running(self):
+        """Returns True if the subscriber is running, False otherwise"""
+
     @abc.abstractmethod
     def close(self):
         """Close the subscriber. Release all used resources"""
@@ -217,6 +222,8 @@ class SubscriberAgentBase(SubscriberApi):
 
     def __init__(self):
         super(SubscriberAgentBase, self).__init__()
+        self.db_changes_callback = None
+        self.daemon = None
         self.topic_list = []
         self.uri_list = []
 
@@ -238,7 +245,7 @@ class SubscriberAgentBase(SubscriberApi):
         self.daemon.start()
 
     @property
-    def is_daemonize(self):
+    def is_running(self):
         return self.daemon.is_alive()
 
     def register_topic(self, topic):
