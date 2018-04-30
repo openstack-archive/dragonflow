@@ -110,6 +110,11 @@ class EtcdSubscriberAgent(pub_sub_api.SubscriberApi):
         for topic in self.topic_dict:
             self.topic_dict[topic].start()
 
+    @property
+    def is_running(self):
+        """Returns True if the subscriber is running, False otherwise"""
+        return self.running
+
     def close(self):
         self.running = False
         for topic, thread in self.topic_dict.items():
