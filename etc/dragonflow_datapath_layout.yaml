@@ -3,10 +3,15 @@ vertices:
     type: classifier
   portsec:
     type: portsec
+  dhcp:
+    type: dhcp
 
 edges:
   dragonflow-legacy.out.0: classifier.in.classification
   classifier.out.classification: portsec.in.default
   portsec.out.default: dragonflow-legacy.in.10
-  portsec.out.services: dragonflow-legacy.in.20
+  portsec.out.services: dhcp.in.default
+  dhcp.out.not_dhcp: dragonflow-legacy.in.20
+  dhcp.out.not_found: dragonflow-legacy.in.55
+  dhcp.out.dispatch: classifier.in.dispatch
   dragonflow-legacy.out.115: classifier.in.dispatch

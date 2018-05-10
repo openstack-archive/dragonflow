@@ -41,7 +41,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestDHCPApp, self).setUp()
-        self.app = self.open_flow_app.dispatcher.apps['dhcp']
+        self.app = self.dfdp.apps['dhcp']
 
     def get_layout(self):
         edges = ()
@@ -51,12 +51,11 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
                 type='classifier',
                 params=None,
             ),
-            # Uncomment once dhcp app is converted
-            # datapath_layout.Vertex(
-            #     name='dhcp',
-            #     type='dhcp',
-            #     params=None,
-            # ),
+            datapath_layout.Vertex(
+                name='dhcp',
+                type='dhcp',
+                params=None,
+            ),
         )
         return datapath_layout.Layout(vertices, edges)
 
