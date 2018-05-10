@@ -37,7 +37,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         found_dhcp_cast_flow = False
         ovs = utils.OvsFlowsParser()
         flows = ovs.dump(self.integration_bridge)
-        goto_dhcp = 'goto_table:' + str(constants.DHCP_TABLE)
+        goto_dhcp = 'goto_table:' + str(self.dfdp.apps['dhcp'].states.main)
         dhcp_ports = ',tp_src=' + str(constants.DHCP_CLIENT_PORT) + \
                      ',tp_dst=' + str(constants.DHCP_SERVER_PORT)
         for flow in flows:
@@ -77,9 +77,10 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         )
         self.assertIsNotNone(dhcp_ip)
         self.assertFalse(utils.check_dhcp_network_rule(
-            flows_before_change, network_key))
+            self.dfdp, flows_before_change, network_key))
         utils.wait_until_true(
             lambda: utils.check_dhcp_network_rule(
+                self.dfdp,
                 ovs.dump(self.integration_bridge),
                 network_key),
             exception=Exception('DHCP ip was not found in OpenFlow rules'),
@@ -91,7 +92,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         flows_after_update = ovs.dump(self.integration_bridge)
         self.assertFalse(utils.check_dhcp_network_rule(
-            flows_after_update, network_key))
+            self.dfdp, flows_after_update, network_key))
         network.close()
 
     def test_create_update_subnet_without_dhcp(self):
@@ -117,11 +118,12 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         )
         self.assertIsNotNone(dhcp_ip)
         self.assertFalse(utils.check_dhcp_network_rule(
-            flows_before_change, network_key))
+            self.dfdp, flows_before_change, network_key))
         self.assertFalse(utils.check_dhcp_network_rule(
-            flows_after_change, network_key))
+            self.dfdp, flows_after_change, network_key))
         utils.wait_until_true(
             lambda: utils.check_dhcp_network_rule(
+                self.dfdp,
                 ovs.dump(self.integration_bridge),
                 network_key),
             exception=Exception('DHCP ip was not found in OpenFlow rules'),
@@ -130,6 +132,7 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         network.close()
         utils.wait_until_none(
             lambda: utils.check_dhcp_network_rule(
+                self.dfdp,
                 ovs.dump(self.integration_bridge),
                 network_key),
             exception=Exception('DHCP IP was not removed from OpenFlow rules'),
@@ -161,14 +164,15 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         self.assertIsNotNone(dhcp_ip)
         flows_after_change = ovs.dump(self.integration_bridge)
         self.assertFalse(utils.check_dhcp_network_rule(
-            flows_before_change, network_key))
+            self.dfdp, flows_before_change, network_key))
         self.assertTrue(utils.check_dhcp_network_rule(
-            flows_after_change, network_key))
+            self.dfdp, flows_after_change, network_key))
         self.neutron.remove_interface_router(router_id, body=subnet_msg)
         router.close()
         network.close()
         utils.wait_until_none(
             lambda: utils.check_dhcp_network_rule(
+                self.dfdp,
                 ovs.dump(self.integration_bridge),
                 network_key),
             exception=Exception('DHCP IP was not removed from OpenFlow rules'),

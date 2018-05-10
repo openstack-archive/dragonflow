@@ -32,10 +32,10 @@ from ryu.ofproto import ether
 
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
+from dragonflow.controller import app_base
 from dragonflow.controller.common import arp_responder
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import icmp_responder
-from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
 from dragonflow.db.models import host_route
 from dragonflow.db.models import l2
@@ -43,7 +43,46 @@ from dragonflow.db.models import l2
 LOG = log.getLogger(__name__)
 
 
-class DHCPApp(df_base_app.DFlowApp):
+@app_base.define_specification(
+    states=('main',),
+    public_mapping=app_base.VariableMapping(
+        source_port_key='reg6',
+        network_key='metadata',
+    ),
+    entrypoints=(
+        app_base.Entrypoint(
+            name='default',
+            target='main',
+            consumes=(
+                'source_port_key',
+                'network_key',
+            ),
+        ),
+    ),
+    exitpoints=(
+        app_base.Exitpoint(
+            name='dispatch',
+            provides=(
+                'destination_port_key',
+            ),
+        ),
+        app_base.Exitpoint(
+            name='not_found',
+            provides=(
+                'source_port_key',
+                'network_key',
+            ),
+        ),
+        app_base.Exitpoint(
+            name='not_dhcp',
+            provides=(
+                'source_port_key',
+                'network_key',
+            ),
+        ),
+    ),
+)
+class DHCPApp(app_base.Base):
     def __init__(self, *args, **kwargs):
         super(DHCPApp, self).__init__(*args, **kwargs)
         self.idle_timeout = 30
@@ -61,7 +100,7 @@ class DHCPApp(df_base_app.DFlowApp):
             functools.partial(df_utils.RateLimiter,
                               max_rate=self.conf.df_dhcp_max_rate_per_sec,
                               time_unit=1))
-        self.api.register_table_handler(const.DHCP_TABLE,
+        self.api.register_table_handler(self.states.main,
                                         self.packet_in_handler)
         self._dhcp_ip_by_subnet = {}
 
@@ -79,11 +118,9 @@ class DHCPApp(df_base_app.DFlowApp):
             index=l2.LogicalPort.get_index('switch,owner')
         )
 
-    def switch_features_handler(self, ev):
-        self._install_dhcp_packet_match_flow()
-        self.add_flow_go_to_table(const.DHCP_TABLE,
-                                  const.PRIORITY_DEFAULT,
-                                  const.L2_LOOKUP_TABLE)
+    def initialize(self):
+        self._install_not_found_flow()
+        self._install_not_dhcp_flow()
         self._port_rate_limiters.clear()
 
     def _check_port_limit(self, lport):
@@ -160,7 +197,11 @@ class DHCPApp(df_base_app.DFlowApp):
                       dhcp_message_type)
         if send_packet:
             unique_key = lport.unique_key
-            self.dispatch_packet(send_packet, unique_key)
+            self.reinject_packet(
+                send_packet,
+                table_id=self.exitpoints.dispatch,
+                actions=[self.parser.OFPActionSetField(reg7=unique_key)]
+            )
 
     def _create_dhcp_response(self, packet, dhcp_request,
                               response_type, lport, dhcp_port):
@@ -375,18 +416,6 @@ class DHCPApp(df_base_app.DFlowApp):
             return mtu
         return self.default_interface_mtu
 
-    def _install_dhcp_classification_flow(self):
-        parser = self.parser
-
-        match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
-                                ip_proto=n_const.PROTO_NUM_UDP,
-                                udp_src=const.DHCP_CLIENT_PORT,
-                                udp_dst=const.DHCP_SERVER_PORT)
-
-        self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
-                                  const.PRIORITY_MEDIUM,
-                                  const.DHCP_TABLE, match=match)
-
     def _block_port_dhcp_traffic(self, unique_key, lport):
         match = self.parser.OFPMatch(reg6=unique_key)
         drop_inst = None
@@ -394,10 +423,10 @@ class DHCPApp(df_base_app.DFlowApp):
              inst=drop_inst,
              priority=const.PRIORITY_VERY_HIGH,
              hard_timeout=self.block_hard_timeout,
-             table_id=const.DHCP_TABLE,
+             table_id=self.states.main,
              match=match)
 
-    def _install_dhcp_packet_match_flow(self):
+    def _install_not_found_flow(self):
         parser = self.parser
 
         match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -405,9 +434,15 @@ class DHCPApp(df_base_app.DFlowApp):
                                 udp_src=const.DHCP_CLIENT_PORT,
                                 udp_dst=const.DHCP_SERVER_PORT)
 
-        self.add_flow_go_to_table(const.SERVICES_CLASSIFICATION_TABLE,
-                                  const.PRIORITY_MEDIUM,
-                                  const.DHCP_TABLE, match=match)
+        self.add_flow_go_to_table(self.states.main,
+                                  const.PRIORITY_DEFAULT + 1,
+                                  self.exitpoints.not_found,
+                                  match=match)
+
+    def _install_not_dhcp_flow(self):
+        self.add_flow_go_to_table(self.states.main,
+                                  const.PRIORITY_DEFAULT,
+                                  self.exitpoints.not_dhcp)
 
     def _install_dhcp_port_flow(self, lswitch):
         parser = self.parser
@@ -415,11 +450,9 @@ class DHCPApp(df_base_app.DFlowApp):
         match = parser.OFPMatch(metadata=lswitch.unique_key)
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
         self.mod_flow(
-            inst=inst,
-            table_id=const.DHCP_TABLE,
+            actions=actions,
+            table_id=self.states.main,
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
@@ -428,7 +461,7 @@ class DHCPApp(df_base_app.DFlowApp):
         ofproto = self.ofproto
         match = parser.OFPMatch(metadata=lswitch.unique_key)
         self.mod_flow(
-            table_id=const.DHCP_TABLE,
+            table_id=self.states.main,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
             match=match)
@@ -437,7 +470,7 @@ class DHCPApp(df_base_app.DFlowApp):
         subnet_ids = (subnet.id for subnet in lport.subnets)
         self._dhcp_ip_by_subnet.update(dict(zip(subnet_ids, lport.ips)))
 
-    @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_CREATED)
+    @app_base.register_event(l2.LogicalPort, model_constants.EVENT_CREATED)
     def _lport_created(self, lport):
         if lport.device_owner != n_const.DEVICE_OWNER_DHCP:
             return
@@ -469,7 +502,7 @@ class DHCPApp(df_base_app.DFlowApp):
         if lport.id in self._port_rate_limiters:
             del self._port_rate_limiters[lport.id]
 
-    @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_UPDATED)
+    @app_base.register_event(l2.LogicalPort, model_constants.EVENT_UPDATED)
     def _lport_updated(self, lport, orig_lport):
         if lport.device_owner != n_const.DEVICE_OWNER_DHCP:
             return
@@ -488,7 +521,7 @@ class DHCPApp(df_base_app.DFlowApp):
         for subnet in lport.subnets:
             del self._dhcp_ip_by_subnet[subnet.id]
 
-    @df_base_app.register_event(l2.LogicalPort, model_constants.EVENT_DELETED)
+    @app_base.register_event(l2.LogicalPort, model_constants.EVENT_DELETED)
     def _lport_deleted(self, lport):
         if lport.device_owner != n_const.DEVICE_OWNER_DHCP:
             self._delete_lport_rate_limiter(lport)

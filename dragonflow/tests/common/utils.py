@@ -21,7 +21,6 @@ from neutron_lib import constants as n_const
 import six
 
 from dragonflow.common import exceptions
-from dragonflow.controller.common import constants as df_const
 from dragonflow.db import db_store
 from dragonflow.db import model_proxy
 from dragonflow.db.models import l2
@@ -70,11 +69,11 @@ def wait_until_none(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
     wait_until_true(internal_predicate, timeout, sleep, exception)
 
 
-def check_dhcp_network_rule(flows, network_key):
+def check_dhcp_network_rule(dfdp, flows, network_key):
     controller_action = CONTROLLER_ACTION
     network_id = 'metadata=' + str(hex(network_key))
     for flow in flows:
-        if (flow['table'] == str(df_const.DHCP_TABLE)
+        if (flow['table'] == str(dfdp.apps['dhcp'].states.main)
                 and flow['actions'] == controller_action):
             if network_id in flow['match']:
                 return True
