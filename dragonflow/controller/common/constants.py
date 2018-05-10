@@ -27,8 +27,6 @@ EGRESS_SECURITY_GROUP_TABLE = 15
 SERVICES_CLASSIFICATION_TABLE = 20
 # All ARP packets are landed here. ARP responses are generated.
 ARP_TABLE = 25
-# DHCP requests are forwarded to controller at this table.
-DHCP_TABLE = 30
 # Metadata service related tables.
 METADATA_SERVICE_TABLE = 35
 METADATA_SERVICE_REPLY_TABLE = 40

@@ -336,7 +336,7 @@ class SGApp(df_base_app.DFlowApp):
             recirc_table = self.dfdp.apps['classifier'].entrypoints.dispatch
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            recirc_table = const.SERVICES_CLASSIFICATION_TABLE
+            recirc_table = self.dfdp.apps['dhcp'].entrypoints.default
 
         parser = self.parser
         ofproto = self.ofproto
@@ -689,7 +689,7 @@ class SGApp(df_base_app.DFlowApp):
             goto_table_id = self.dfdp.apps['classifier'].entrypoints.dispatch
         else:
             table_id = const.EGRESS_SECURITY_GROUP_TABLE
-            goto_table_id = const.SERVICES_CLASSIFICATION_TABLE
+            goto_table_id = self.dfdp.apps['dhcp'].entrypoints.default
 
         parser = self.parser
         ofproto = self.ofproto

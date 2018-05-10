@@ -34,7 +34,7 @@ class TestDbConsistent(test_base.DFTestBase):
         return False
 
     def _check_no_lswitch_dhcp_rule(self, flows, network_key):
-        if utils.check_dhcp_network_rule(flows, network_key):
+        if utils.check_dhcp_network_rule(self.dfdp, flows, network_key):
             return False
         return True
 
@@ -125,7 +125,9 @@ class TestDbConsistent(test_base.DFTestBase):
         time.sleep(self.db_sync_time)
         utils.wait_until_true(
             lambda: utils.check_dhcp_network_rule(
-                    ovs.dump(self.integration_bridge), df_net_unique_key),
+                    self.dfdp,
+                    ovs.dump(self.integration_bridge),
+                    df_net_unique_key),
             timeout=self.db_sync_time + constants.DEFAULT_CMD_TIMEOUT, sleep=1,
             exception=Exception('no goto dhcp rule for lswitch')
         )
