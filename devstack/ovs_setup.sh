@@ -79,8 +79,9 @@ function _neutron_ovs_install_ovs_ubuntu {
     pushd $DEST/ovs
     _neutron_ovs_install_ovs_deps_ubuntu
     DEB_BUILD_OPTIONS='nocheck' fakeroot debian/rules binary
-    sudo dpkg -i ../openvswitch-datapath-dkms*.deb
     sudo dpkg -i ../openvswitch-common*.deb ../openvswitch-switch*.deb
+    sudo dpkg -i ../openvswitch-datapath-dkms*.deb
+    sudo dpkg -i ../libopenvswitch*.deb ../openvswitch-common*.deb ../openvswitch-switch*.deb
     sudo pip install ./python
     popd
 }
