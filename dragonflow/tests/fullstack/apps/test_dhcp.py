@@ -356,6 +356,7 @@ class TestDHCPApp(test_base.DFTestBase):
                 unknown_port_action=app_testing_objects.IgnoreAction()
             )
         )
+        sleep(10)
         apps.start_policy(policy, self.topology,
                           const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
