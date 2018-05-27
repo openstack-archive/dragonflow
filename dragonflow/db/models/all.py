@@ -9,14 +9,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from dragonflow.db.models import active_port  # noqa
-from dragonflow.db.models import bgp  # noqa
-from dragonflow.db.models import core  # noqa
-from dragonflow.db.models import l2  # noqa
-from dragonflow.db.models import l3  # noqa
-from dragonflow.db.models import migration  # noqa
-from dragonflow.db.models import qos  # noqa
-from dragonflow.db.models import secgroups  # noqa
-from dragonflow.db.models import service  # noqa
-from dragonflow.db.models import sfc  # noqa
-from dragonflow.db.models import trunk  # noqa
+
+import stevedore
+
+def load_all_extensions():
+    """Get an application class (Python class) by app name"""
+    stevedore.ExtensionManager(
+        'dragonflow.db.models',
+    )
+
+load_all_extensions()
