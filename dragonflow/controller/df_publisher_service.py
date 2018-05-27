@@ -80,7 +80,12 @@ class PublisherService(object):
         self._start_db_table_monitors()
         while True:
             try:
-                event = self._queue.get()
+                try:
+                    timeout = cfg.CONF.df.publisher_timeout/2
+                    event = self._queue.get(timeout=timeout)
+                except queue.Empty:
+                    self._update_timestamp_in_db()
+                    continue
                 self.publisher.send_event(event)
                 if event.table != core.Publisher.table_name:
                     self._update_timestamp_in_db()
