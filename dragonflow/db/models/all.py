@@ -9,14 +9,17 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from dragonflow.db.models import active_port  # noqa
-from dragonflow.db.models import bgp  # noqa
-from dragonflow.db.models import core  # noqa
-from dragonflow.db.models import l2  # noqa
-from dragonflow.db.models import l3  # noqa
-from dragonflow.db.models import migration  # noqa
-from dragonflow.db.models import qos  # noqa
-from dragonflow.db.models import secgroups  # noqa
-from dragonflow.db.models import service  # noqa
-from dragonflow.db.models import sfc  # noqa
-from dragonflow.db.models import trunk  # noqa
+
+import stevedore
+
+
+def load_all_extensions():
+    """Load all available modules with DF models"""
+    manager = stevedore.ExtensionManager(  # noqa F841
+        'dragonflow.db.models',
+    )
+    # NOTE(oanson) In case Stevedore changes and we need to manually load
+    # the extensions:
+    # modules = [extension.plugin for extension in manager]
+
+load_all_extensions()
