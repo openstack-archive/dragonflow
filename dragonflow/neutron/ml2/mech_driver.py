@@ -79,7 +79,7 @@ class DFMechDriver(api.MechanismDriver):
     def post_fork_initialize(self, resource, event, trigger, **kwargs):
         # NOTE(nick-ma-z): This will initialize all workers (API, RPC,
         # plugin service, etc) and threads with network connections.
-        self.nb_api = api_nb.NbApi.get_instance(True)
+        self.nb_api = api_nb.NbApi.get_instance()
         df_qos.initialize(self.nb_api)
         if cfg.CONF.df.enable_neutron_notifier:
             neutron_notifier = df_utils.load_driver(

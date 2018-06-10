@@ -81,7 +81,7 @@ def main():
     config.init(sys.argv[1:])
     config.setup_logging()
     environment_setup()
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance()
     service_instance = metadata_service.DFMetadataProxyHandler(
             cfg.CONF, nb_api)
     df_service.register_service('df-metadata-service', nb_api)

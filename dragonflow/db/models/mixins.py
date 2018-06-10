@@ -55,5 +55,5 @@ class UniqueKey(mf.MixinBase):
         # Relevant bp:
         # https://blueprints.launchpad.net/dragonflow/+spec/pub-sub-v2
         from dragonflow.db import api_nb
-        nb_api = api_nb.NbApi.get_instance(True)
+        nb_api = api_nb.NbApi.get_instance()
         self.unique_key = nb_api.driver.allocate_unique_key(self.table_name)

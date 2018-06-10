@@ -1,15 +1,13 @@
 #!/bin/bash
 
-ZMQ_IPC_SOCKET=$DF_PUBLISHER_MULTIPROC_SOCKET
-
 function configure_pubsub_service_plugin {
     NEUTRON_CONF=${NEUTRON_CONF:-"/etc/neutron/neutron.conf"}
     PUB_SUB_DRIVER=${PUB_SUB_DRIVER:-"zmq_pubsub_driver"}
-    PUB_SUB_MULTIPROC_DRIVER=${PUB_SUB_MULTIPROC_DRIVER:-"zmq_pubsub_multiproc_driver"}
     iniset $DRAGONFLOW_CONF df pub_sub_driver $PUB_SUB_DRIVER
-    iniset $DRAGONFLOW_CONF df pub_sub_multiproc_driver $PUB_SUB_MULTIPROC_DRIVER
+    DF_PUBLISHER_DRIVER=${DF_PUBLISHER_DRIVER:-"zmq_bind_pubsub_driver"}
+    iniset $DRAGONFLOW_PUBLISHER_CONF df pub_sub_driver $DF_PUBLISHER_DRIVER
 
-    ZMQ_IPC_SOCKET_DIR=`dirname $ZMQ_IPC_SOCKET`
+    ZMQ_IPC_SOCKET_DIR=`dirname $DF_ZMQ_IPC_SOCKET`
     sudo mkdir -p $ZMQ_IPC_SOCKET_DIR
     sudo chown $STACK_USER $ZMQ_IPC_SOCKET_DIR
 }

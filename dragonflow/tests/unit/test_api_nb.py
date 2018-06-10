@@ -12,6 +12,8 @@
 from jsonmodels import fields
 import mock
 
+from oslo_config import cfg
+
 from dragonflow.common import exceptions
 from dragonflow.db import api_nb
 from dragonflow.db import db_common
@@ -40,11 +42,8 @@ class TopicModelTest(mf.ModelBase, mixins.Topic):
 class TestNbApi(tests_base.BaseTestCase):
     def setUp(self):
         super(TestNbApi, self).setUp()
-        self.api_nb = api_nb.NbApi(
-            db_driver=mock.Mock(),
-            use_pubsub=True,
-            is_neutron_server=True
-        )
+        cfg.CONF.set_override('enable_df_pub_sub', True, group='df')
+        self.api_nb = api_nb.NbApi(db_driver=mock.Mock())
         self.api_nb.publisher = mock.Mock()
         self.api_nb.enable_selective_topo_dist = True
 
