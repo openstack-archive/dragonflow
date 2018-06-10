@@ -163,10 +163,3 @@ class DbApi(object):
 
         :returns:    None
         """
-
-    @abc.abstractmethod
-    def set_neutron_server(self, is_neutron_server):
-        """Set neutron server flag
-
-        :returns:    None
-        """

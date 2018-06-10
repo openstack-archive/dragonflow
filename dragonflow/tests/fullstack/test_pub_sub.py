@@ -306,7 +306,7 @@ class TestMultiprocPubSub(PubSubTestBase):
 
     def setUp(self):
         super(TestMultiprocPubSub, self).setUp()
-        self.do_test = cfg.CONF.df.pub_sub_use_multiproc
+        self.do_test = (cfg.CONF.df.pub_sub_driver == 'zmq_pubsub_driver')
         self.key = 'key-{}'.format(random.random())
         self.event = db_common.DbUpdate(
             'info',
@@ -338,10 +338,10 @@ class TestMultiprocPubSub(PubSubTestBase):
             self.skipTest('pub/sub is not enabled')
             return
         self.event_received = False
-        cfg.CONF.set_override('publisher_multiproc_socket',
-                              '/tmp/ipc_test_socket', group='df')
+        cfg.CONF.set_override('ipc_socket',
+                              '/tmp/ipc_test_socket', group='df_zmq')
         pub_sub_driver = df_utils.load_driver(
-            cfg.CONF.df.pub_sub_multiproc_driver,
+            cfg.CONF.df.pub_sub_driver,
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         publisher = pub_sub_driver.get_publisher()
         publisher.initialize()
