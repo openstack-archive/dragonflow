@@ -27,6 +27,7 @@ from dragonflow.conf import df_redis
 from dragonflow.conf import df_ryu
 from dragonflow.conf import df_skydive
 from dragonflow.conf import df_snat
+from dragonflow.conf import df_zmq
 
 
 CONF = cfg.CONF
@@ -42,6 +43,7 @@ df_l2.register_opts()
 df_l3.register_opts()
 df_dnat.register_opts()
 df_redis.register_opts()
+df_zmq.register_opts()
 df_ryu.register_opts()
 df_provider_networks.register_opts()
 df_snat.register_opts()

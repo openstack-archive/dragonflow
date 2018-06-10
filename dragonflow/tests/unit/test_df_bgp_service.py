@@ -77,7 +77,7 @@ class TestDFBGPService(tests_base.BaseTestCase):
         mock_nb_api = mock.patch('dragonflow.db.api_nb.NbApi.get_instance')
         mock_nb_api.start()
         self.addCleanup(mock_nb_api.stop)
-        nb_api = api_nb.NbApi.get_instance(False)
+        nb_api = api_nb.NbApi.get_instance()
         self.bgp_service = df_bgp_service.BGPService(nb_api)
         self.bgp_service.bgp_driver = mock.Mock()
         self.bgp_service.bgp_pulse = LoopingCallByEvent(

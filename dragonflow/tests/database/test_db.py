@@ -156,7 +156,7 @@ def main():
     elif sys.argv[1] != 'client':
         raise Exception('Bad parameter #1: Expected \'server\' or \'client\','
                         ' found: %s' % sys.argv[1])
-    nb_api = api_nb.NbApi.get_instance(is_server)
+    nb_api = api_nb.NbApi.get_instance()
     if is_server:
         run_server(nb_api)
     else:

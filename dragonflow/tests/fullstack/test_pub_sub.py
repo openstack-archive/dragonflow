@@ -22,7 +22,6 @@ from dragonflow.db import db_common
 from dragonflow.db.models import core
 from dragonflow.db import pub_sub_api
 from dragonflow.tests.common import constants as const
-from dragonflow.tests.common import utils as test_utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
 
@@ -306,7 +305,7 @@ class TestMultiprocPubSub(PubSubTestBase):
 
     def setUp(self):
         super(TestMultiprocPubSub, self).setUp()
-        self.do_test = cfg.CONF.df.pub_sub_use_multiproc
+        self.do_test = (cfg.CONF.df.pub_sub_driver == 'zmq_pubsub_driver')
         self.key = 'key-{}'.format(random.random())
         self.event = db_common.DbUpdate(
             'info',
@@ -332,34 +331,6 @@ class TestMultiprocPubSub(PubSubTestBase):
             value,
             topic=topic)
         self.event_received = True
-
-    def test_multiproc_pub_sub(self):
-        if not self.do_test:
-            self.skipTest('pub/sub is not enabled')
-            return
-        self.event_received = False
-        cfg.CONF.set_override('publisher_multiproc_socket',
-                              '/tmp/ipc_test_socket', group='df')
-        pub_sub_driver = df_utils.load_driver(
-            cfg.CONF.df.pub_sub_multiproc_driver,
-            df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
-        publisher = pub_sub_driver.get_publisher()
-        publisher.initialize()
-        self.subscriber = pub_sub_driver.get_subscriber()
-        self.subscriber.initialize(self._handle_received_event)
-        self.subscriber.daemonize()
-        publisher.send_event(self.event)
-        test_utils.wait_until_true(lambda: self.event_received)
-        self.subscriber.close()
-        self.subscriber = None
-
-        # Check that we received the same event
-        self.assertEqual(self.event.table, self.event_received_info.table)
-        self.assertEqual(self.event.key, self.event_received_info.key)
-        self.assertEqual(self.event.action, self.event_received_info.action)
-        # Value is not tested, since it's currently set to None
-        # self.assertEqual(self.event.value, self.event_received_info.value)
-        self.assertEqual(self.event.topic, self.event_received_info.topic)
 
 
 class TestDbTableMonitors(PubSubTestBase):

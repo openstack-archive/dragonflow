@@ -155,13 +155,11 @@ fi
 
 if is_service_enabled df-etcd-pubsub-service ; then
     init_pubsub
-    DF_PUB_SUB_USE_MULTIPROC="False"
     source $DEST/dragonflow/devstack/etcd_pubsub_driver
 fi
 
 if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
     init_pubsub
-    DF_PUB_SUB_USE_MULTIPROC="False"
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
 
@@ -316,8 +314,7 @@ function configure_df_plugin {
     iniset $DRAGONFLOW_CONF df apps_list "$DF_APPS_LIST"
     iniset $DRAGONFLOW_CONF df_l2_app l2_responder "$DF_L2_RESPONDER"
     iniset $DRAGONFLOW_CONF df enable_df_pub_sub "$DF_PUB_SUB"
-    iniset $DRAGONFLOW_CONF df pub_sub_use_multiproc "$DF_PUB_SUB_USE_MULTIPROC"
-    iniset $DRAGONFLOW_CONF df publisher_multiproc_socket "$DF_PUBLISHER_MULTIPROC_SOCKET"
+    iniset $DRAGONFLOW_CONF df_zmq ipc_socket "$DF_ZMQ_IPC_SOCKET"
     if [[ ! -z ${EXTERNAL_HOST_IP} ]]; then
         iniset $DRAGONFLOW_CONF df external_host_ip "$EXTERNAL_HOST_IP"
         iniset $DRAGONFLOW_CONF df_snat_app external_network_bridge "$PUBLIC_BRIDGE"
@@ -483,9 +480,9 @@ function verify_ryu_version {
 }
 
 function start_pubsub_service {
-    echo "Starting Dragonflow publisher service"
     if is_service_enabled df-publisher-service ; then
-        run_process df-publisher-service "$DF_PUBLISHER_SERVICE_BINARY --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF"
+        echo "Starting Dragonflow publisher service"
+        run_process df-publisher-service "$DF_PUBLISHER_SERVICE_BINARY --config-file $NEUTRON_CONF --config-file $DRAGONFLOW_CONF --config-file $DRAGONFLOW_PUBLISHER_CONF"
     fi
 }
 
@@ -587,7 +584,6 @@ function handle_df_stack_post_install {
         if [ -z $PUB_SUB_DRIVER ]; then
             die $LINENO "pub-sub enabled, but no pub-sub driver selected"
         fi
-        PUB_SUB_MULTIPROC_DRIVER=${PUB_SUB_MULTIPROC_DRIVER:-$PUB_SUB_DRIVER}
     fi
 
     if is_service_enabled nova; then
