@@ -179,7 +179,7 @@ def add_object_from_json(json_str, table):
     :param table: table name where object should be added
     :return: None
     """
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance()
     try:
         model = model_framework.get_model(table)
     except KeyError:
@@ -377,7 +377,7 @@ def main():
     df_utils.config_parse()
 
     global nb_api
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance()
 
     args.handle(args)
 

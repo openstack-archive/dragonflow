@@ -279,7 +279,7 @@ def start(is_service):
     """main method"""
     df_config.init(sys.argv)
     df_utils.config_parse()
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance()
     if is_service:
         df_service.register_service('df-skydive-service', nb_api)
     service_manager = cotyledon.ServiceManager()

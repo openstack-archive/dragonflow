@@ -178,7 +178,3 @@ class EtcdDbDriver(db_api.DbApi):
     def process_ha(self):
         # Not needed in etcd
         pass
-
-    def set_neutron_server(self, is_neutron_server):
-        # Not needed in etcd
-        pass
