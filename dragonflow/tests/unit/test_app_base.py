@@ -80,7 +80,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         # CLear old objects from cache
         db_store.get_instance().clear()
 
-        self.nb_api = api_nb.NbApi.get_instance(False)
+        self.nb_api = api_nb.NbApi.get_instance()
         self.controller = df_local_controller.DfLocalController(
             fake_chassis1.id, self.nb_api)
         self.vswitch_api = self.controller.vswitch_api = mock.MagicMock()

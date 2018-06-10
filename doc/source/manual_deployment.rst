@@ -140,8 +140,6 @@ Dragonflow supports zeromq and redis. You need to change the configuration, for 
     enable_df_pub_sub = True
     pub_sub_driver = zmq_pubsub_driver
     publisher_multiproc_socket = /var/run/zmq_pubsub/zmq-publisher-socket
-    pub_sub_multiproc_driver = zmq_pubsub_multiproc_driver
-    pub_sub_use_multiproc = True
     publisher_rate_limit_count = 1
     publisher_rate_limit_timeout = 180
     monitor_table_poll_time = 30

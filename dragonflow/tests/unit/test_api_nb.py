@@ -40,11 +40,7 @@ class TopicModelTest(mf.ModelBase, mixins.Topic):
 class TestNbApi(tests_base.BaseTestCase):
     def setUp(self):
         super(TestNbApi, self).setUp()
-        self.api_nb = api_nb.NbApi(
-            db_driver=mock.Mock(),
-            use_pubsub=True,
-            is_neutron_server=True
-        )
+        self.api_nb = api_nb.NbApi(db_driver=mock.Mock())
         self.api_nb.publisher = mock.Mock()
         self.api_nb.enable_selective_topo_dist = True
 

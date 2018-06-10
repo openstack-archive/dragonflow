@@ -58,11 +58,7 @@ class TestSync(tests_base.BaseTestCase):
         self._db_store = db_store.get_instance()
         self._db_store.clear()
 
-        self.nb_api = api_nb.NbApi(
-            db_driver=mock.Mock(),
-            use_pubsub=True,
-            is_neutron_server=True
-        )
+        self.nb_api = api_nb.NbApi(db_driver=mock.Mock())
         self.nb_api.publisher = mock.Mock()
         self.nb_api.enable_selective_topo_dist = True
         self._update = mock.Mock(side_effect=self._db_store.update)
