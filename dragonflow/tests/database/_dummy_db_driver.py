@@ -79,7 +79,3 @@ class _DummyDbDriver(db_api.DbApi):
     def process_ha(self):
         # Do nothing
         pass
-
-    def set_neutron_server(self, is_neutron_server):
-        # Do nothing
-        pass
