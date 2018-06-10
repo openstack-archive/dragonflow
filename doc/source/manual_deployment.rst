@@ -130,7 +130,7 @@ Next you need to change the configuration, for example, etcd:
 Pub/Sub Driver
 --------------
 
-Dragonflow supports zeromq and redis. You need to change the configuration, for example, zeromq:
+Dragonflow supports etcd, redis and zeromq. You need to change the configuration, for example, etcd:
 
 /etc/neutron/dragonflow.ini:
 
@@ -138,10 +138,7 @@ Dragonflow supports zeromq and redis. You need to change the configuration, for 
 
     [df]
     enable_df_pub_sub = True
-    pub_sub_driver = zmq_pubsub_driver
-    publisher_multiproc_socket = /var/run/zmq_pubsub/zmq-publisher-socket
-    pub_sub_multiproc_driver = zmq_pubsub_multiproc_driver
-    pub_sub_use_multiproc = True
+    pub_sub_driver = etcd_pubsub_driver
     publisher_rate_limit_count = 1
     publisher_rate_limit_timeout = 180
     monitor_table_poll_time = 30

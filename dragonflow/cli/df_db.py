@@ -430,7 +430,7 @@ def main():
     df_utils.config_parse()
 
     global nb_api
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance()
 
     args.handle(args)
 

@@ -61,7 +61,7 @@ class DFTestBase(base.BaseTestCase):
         self.integration_bridge = self.conf.integration_bridge
 
         self._queue = queue.PriorityQueue()
-        self.nb_api = api_nb.NbApi.get_instance(False)
+        self.nb_api = api_nb.NbApi.get_instance()
         # As we are running in the same process over and over,
         # do not perform redundant calls to the subscriber
         if not self.nb_api.subscriber.is_running:
@@ -112,10 +112,7 @@ class DFTestBase(base.BaseTestCase):
         return publisher
 
     def get_publisher(self, port=None):
-        if cfg.CONF.df.pub_sub_use_multiproc:
-            pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
-        else:
-            pubsub_driver_name = cfg.CONF.df.pub_sub_driver
+        pubsub_driver_name = cfg.CONF.df.pub_sub_driver
         if port is not None:
             cfg.CONF.set_override('publisher_port', port, group='df')
         return self._get_publisher(pubsub_driver_name)
