@@ -473,7 +473,7 @@ def main():
     df_config.init(sys.argv)
 
     init_ryu_config()
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance()
     controller = DfLocalController(chassis_name, nb_api)
     service.register_service('df-local-controller', nb_api)
     controller.run()

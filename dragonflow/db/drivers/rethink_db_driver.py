@@ -134,6 +134,3 @@ class RethinkDbDriver(db_api.DbApi):
 
     def process_ha(self):
         pass
-
-    def set_neutron_server(self, is_neutron_server):
-        pass  # Not implemented
