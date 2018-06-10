@@ -42,7 +42,7 @@ class PublisherService(object):
     def __init__(self, nb_api):
         self._queue = queue.Queue()
         self.publisher = _get_publisher()
-        self.multiproc_subscriber = self._get_multiproc_subscriber()
+        self.subscriber = self._get_subscriber()
         self.nb_api = nb_api
         self.db = self.nb_api.driver
         self.uuid = pub_sub_api.generate_publisher_uuid()
@@ -51,22 +51,20 @@ class PublisherService(object):
             cfg.CONF.df.publisher_rate_limit_timeout,
         )
 
-    def _get_multiproc_subscriber(self):
+    def _get_subscriber(self):
         """
         Return the subscriber for inter-process communication. If multi-proc
         communication is not use (i.e. disabled from config), return None.
         """
-        if not cfg.CONF.df.pub_sub_use_multiproc:
-            return None
         pub_sub_driver = df_utils.load_driver(
-                                    cfg.CONF.df.pub_sub_multiproc_driver,
+                                    cfg.CONF.df.pub_sub_driver,
                                     df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_subscriber()
 
     def initialize(self):
-        if self.multiproc_subscriber:
-            self.multiproc_subscriber.initialize(self._append_event_to_queue)
-        self.publisher.initialize()
+        if cfg.CONF.df.enable_df_pub_sub:
+            self.subscriber.initialize(self._append_event_to_queue)
+            self.publisher.initialize()
 
     def _append_event_to_queue(self, table, key, action, value, topic):
         event = db_common.DbUpdate(table, key, action, value, topic=topic)
@@ -74,9 +72,9 @@ class PublisherService(object):
         time.sleep(0)
 
     def run(self):
-        if self.multiproc_subscriber:
-            self.multiproc_subscriber.daemonize()
-        self._register_as_publisher()
+        if cfg.CONF.df.enable_df_pub_sub:
+            self.subscriber.daemonize()
+            self._register_as_publisher()
         self._start_db_table_monitors()
         while True:
             try:
@@ -152,10 +150,7 @@ class PublisherService(object):
 
 def main():
     df_config.init(sys.argv)
-    # PATCH(snapiri): Disable pub_sub as it creates a publisher in nb_api
-    # which collides with the publisher we create here.
-    cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
-    nb_api = api_nb.NbApi.get_instance(False)
+    nb_api = api_nb.NbApi.get_instance()
     service = PublisherService(nb_api)
     df_service.register_service('df-publisher-service', nb_api)
     service.initialize()

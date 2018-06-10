@@ -62,9 +62,6 @@ df_opts = [
     cfg.StrOpt('pub_sub_driver',
                default='zmq_pubsub_driver',
                help=_('Drivers to use for the Dragonflow pub/sub')),
-    cfg.StrOpt('pub_sub_multiproc_driver',
-               default='zmq_pubsub_multiproc_driver',
-               help=_('Drivers to use for the Dragonflow pub/sub')),
     cfg.BoolOpt('enable_neutron_notifier',
                 default=False,
                 help=_('Enable notifier for Dragonflow controller sending '
@@ -84,19 +81,6 @@ df_opts = [
     cfg.StrOpt('publisher_bind_address',
                default='*',
                help=_('Neutron Server Publishers bind address')),
-    cfg.BoolOpt(
-        'pub_sub_use_multiproc',
-        default=True,
-        help=_(
-            'Use inter-process publish/subscribe. '
-            'Publishers send events via the publisher service.'
-        )
-    ),
-    cfg.StrOpt(
-        'publisher_multiproc_socket',
-        default='/var/run/zmq_pubsub/zmq-publisher-socket',
-        help=_('Neutron Server Publisher inter-process socket address')
-    ),
     cfg.IntOpt(
         'publisher_timeout',
         default=300,
