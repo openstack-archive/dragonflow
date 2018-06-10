@@ -76,19 +76,16 @@ __ _COMMON_PARAMS
  1. pub_sub_driver - The alias to the class implementing ``PubSubApi`` for
     network-based pub/sub.
 
- 2. pub_sub_multiproc_driver - The alias to the class implementing ``PubSubApi``
-    for IPC-based pub/sub.
-
- 3. publisher_port - The port to which the network publisher should bind. It is
+ 2. publisher_port - The port to which the network publisher should bind. It is
     also the port the network subscribers connect.
 
- 4. publisher_transport - The transport protocol (e.g. TCP, UDP) over which
+ 3. publisher_transport - The transport protocol (e.g. TCP, UDP) over which
     pub/sub netwrok communication is passed.
 
- 5. publisher_bind_address - The local address to which the network publisher
+ 4. publisher_bind_address - The local address to which the network publisher
     should bind. '*' means all addresses.
 
- 6. publisher_multiproc_socket - The local socket over which the multi-proc
+ 5. publisher_multiproc_socket - The local socket over which the multi-proc
     pub/sub implementation should communicate. The actual value is
     implementation specific, since different implementations may use different
     IPC mechanisms.
@@ -98,14 +95,7 @@ Some publish-subscribe drivers do not need to use a publisher service.
 This can be the case if e.g. the publisher does not bind to the communication
 socket.
 
-In this case, the pub_sub_multiproc_driver and publisher_multiproc_socket
-options are ignored. All publishers are created using the pub_sub_driver.
-
-In case this is what you want, disable the following option.
-
-  1. pub_sub_use_multiproc - Use inter-process publish/subscribe. Publishers
-     send events via the publisher service. When disabled, publishers send
-     events directly to the network.
+All publishers are created using the pub_sub_driver.
 
 ========================
 Reference Implementation

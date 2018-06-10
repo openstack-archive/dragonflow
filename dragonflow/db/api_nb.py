@@ -55,35 +55,24 @@ def _get_topic(obj):
 
 class NbApi(object):
 
-    def __init__(self, db_driver, use_pubsub=False, is_neutron_server=False):
+    def __init__(self, db_driver):
         super(NbApi, self).__init__()
         self.driver = db_driver
         self.controller = None
-        self.use_pubsub = use_pubsub
+        self.use_pubsub = cfg.CONF.df.enable_df_pub_sub
         self.publisher = None
         self.subscriber = None
-        self.is_neutron_server = is_neutron_server
         self.enable_selective_topo_dist = \
             cfg.CONF.df.enable_selective_topology_distribution
-        self.pub_sub_use_multiproc = False
-        if self.is_neutron_server:
-            # multiproc pub/sub is only supported in neutron server
-            self.pub_sub_use_multiproc = cfg.CONF.df.pub_sub_use_multiproc
 
     @staticmethod
-    def get_instance(is_neutron_server):
+    def get_instance():
         global _nb_api
         if _nb_api is None:
             nb_driver = df_utils.load_driver(
                 cfg.CONF.df.nb_db_class,
                 df_utils.DF_NB_DB_DRIVER_NAMESPACE)
-            # Do not use pubsub for external apps - this causes issues with
-            # threads and other issues.
-            use_pubsub = cfg.CONF.df.enable_df_pub_sub
-            nb_api = NbApi(
-                nb_driver,
-                use_pubsub=use_pubsub,
-                is_neutron_server=is_neutron_server)
+            nb_api = NbApi(nb_driver)
             ip, port = get_db_ip_port()
             nb_api._initialize(db_ip=ip, db_port=port)
             _nb_api = nb_api
@@ -94,25 +83,17 @@ class NbApi(object):
         if self.use_pubsub:
             self.publisher = self._get_publisher()
             self.subscriber = self._get_subscriber()
-            if self.is_neutron_server:
-                self.publisher.initialize()
-                # Start a thread to detect DB failover in Plugin
-                self.publisher.set_publisher_for_failover(
-                    self.publisher,
-                    self.db_recover_callback)
-                self.publisher.start_detect_for_failover()
-                self.driver.set_neutron_server(True)
-            else:
-                # FIXME(nick-ma-z): if active-detection is enabled,
-                # we initialize the publisher here. Make sure it
-                # only supports redis-based pub/sub driver.
-                if "active_port_detection" in cfg.CONF.df.apps_list:
-                    self.publisher.initialize()
+            self.publisher.initialize()
+            # Start a thread to detect DB failover in Plugin
+            self.publisher.set_publisher_for_failover(
+                self.publisher,
+                self.db_recover_callback)
+            self.publisher.start_detect_for_failover()
 
     def set_db_change_callback(self, db_change_callback):
-        if self.use_pubsub and not self.is_neutron_server:
-            # NOTE(gampel) we want to start queuing event as soon
-            # as possible
+        if self.use_pubsub:
+            # This is here to not allow multiple subscribers to be started
+            # under the same process. One should be more than enough.
             if not self.subscriber.is_running:
                 self._start_subscriber(db_change_callback)
                 # Register for DB Failover detection in NB Plugin
@@ -134,16 +115,11 @@ class NbApi(object):
         self.driver.process_ha()
         self.publisher.process_ha()
         self.subscriber.process_ha()
-        if not self.is_neutron_server:
-            self.controller.sync()
+        self.controller.sync()
 
     def _get_publisher(self):
-        if self.pub_sub_use_multiproc:
-            pubsub_driver_name = cfg.CONF.df.pub_sub_multiproc_driver
-        else:
-            pubsub_driver_name = cfg.CONF.df.pub_sub_driver
         pub_sub_driver = df_utils.load_driver(
-            pubsub_driver_name,
+            cfg.CONF.df.pub_sub_driver,
             df_utils.DF_PUBSUB_DRIVER_NAMESPACE)
         return pub_sub_driver.get_publisher()
 

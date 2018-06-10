@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import abc
+import six
 import traceback
 
 import eventlet
@@ -27,39 +29,42 @@ LOG = logging.getLogger(__name__)
 SUPPORTED_TRANSPORTS = set(['tcp', 'epgm'])
 
 
-class ZMQPubSub(pub_sub_api.PubSubApi):
-    def __init__(self):
-        super(ZMQPubSub, self).__init__()
-        transport = cfg.CONF.df.publisher_transport
-        if transport not in SUPPORTED_TRANSPORTS:
-            message = ("zmq_pub_sub: Unsupported publisher_transport value "
-                       "%(transport)s, expected %(expected)s")
-            LOG.error(message, {
-                'transport': transport,
-                'expected': SUPPORTED_TRANSPORTS
-            })
-            raise exceptions.UnsupportedTransportException(transport=transport)
-        self.subscriber = ZMQSubscriberAgent()
-        self.publisher = ZMQPublisherAgent()
-
-    def get_publisher(self):
-        return self.publisher
-
-    def get_subscriber(self):
-        return self.subscriber
-
-
-class ZMQPubSubMultiproc(pub_sub_api.PubSubApi):
-    def __init__(self):
-        super(ZMQPubSubMultiproc, self).__init__()
-        self.subscriber = ZMQSubscriberMultiprocAgent()
-        self.publisher = ZMQPublisherMultiprocAgent()
-
-    def get_publisher(self):
-        return self.publisher
-
-    def get_subscriber(self):
-        return self.subscriber
+# class ZMQPubSub(pub_sub_api.PubSubApi):
+#     """ZMQ pubsub driver using TCP/PGM communication"""
+#     def __init__(self):
+#         super(ZMQPubSub, self).__init__()
+#         transport = cfg.CONF.df.publisher_transport
+#         if transport not in SUPPORTED_TRANSPORTS:
+#             message = ("zmq_pub_sub: Unsupported publisher_transport value "
+#                        "%(transport)s, expected %(expected)s")
+#             LOG.error(message, {
+#                 'transport': transport,
+#                 'expected': SUPPORTED_TRANSPORTS
+#             })
+#             raise exceptions.UnsupportedTransportException(
+#                   transport=transport)
+#         self.subscriber = ZMQSubscriberAgent()
+#         self.publisher = ZMQPublisherAgent()
+#
+#     def get_publisher(self):
+#         return self.publisher
+#
+#     def get_subscriber(self):
+#         return self.subscriber
+#
+#
+# class ZMQPubSubMultiproc(pub_sub_api.PubSubApi):
+#     """ZMQ pubsub driver using IPC communication"""
+#     def __init__(self):
+#         super(ZMQPubSubMultiproc, self).__init__()
+#         self.subscriber = ZMQSubscriberMultiprocAgent()
+#         self.publisher = ZMQPublisherMultiprocAgent()
+#
+#     def get_publisher(self):
+#         return self.publisher
+#
+#     def get_subscriber(self):
+#         return self.subscriber
 
 
 class ZMQPublisherAgentBase(pub_sub_api.PublisherAgentBase):
@@ -187,3 +192,42 @@ class ZMQSubscriberAgent(ZMQSubscriberAgentBase):
             self.sub_socket.connect(uri)
         for topic in self.topic_list:
             self.sub_socket.setsockopt(zmq.SUBSCRIBE, topic)
+
+
+@six.add_metaclass(abc.ABCMeta)
+class ZMQPubSubBase(pub_sub_api.PubSubApi):
+    def __init__(self):
+        super(ZMQPubSubBase, self).__init__()
+        transport = cfg.CONF.df.publisher_transport
+        if transport not in SUPPORTED_TRANSPORTS:
+            message = ("zmq_pub_sub: Unsupported publisher_transport value "
+                       "%(transport)s, expected %(expected)s")
+            LOG.error(message, {
+                'transport': transport,
+                'expected': SUPPORTED_TRANSPORTS
+            })
+            raise exceptions.UnsupportedTransportException(transport=transport)
+        self.subscriber = None
+        self.publisher = None
+
+    def get_publisher(self):
+        return self.publisher
+
+    def get_subscriber(self):
+        return self.subscriber
+
+
+class ZMQPubSubRemote(ZMQPubSubBase):
+    """Has IPC subscriber and TCP/PGM publisher"""
+    def __init__(self):
+        super(ZMQPubSubRemote, self).__init__()
+        self.subscriber = ZMQSubscriberMultiprocAgent()
+        self.publisher = ZMQPublisherAgent()
+
+
+class ZMQPubSubLocal(ZMQPubSubBase):
+    """Has TCP/PGM subscriber and IPC publisher"""
+    def __init__(self):
+        super(ZMQPubSubLocal, self).__init__()
+        self.subscriber = ZMQSubscriberAgent()
+        self.publisher = ZMQPublisherMultiprocAgent()
