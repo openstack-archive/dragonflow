@@ -171,51 +171,73 @@ def remove_record(table, key):
         print('Key %s is not found in table %s.' % (key, table))
 
 
-def add_object_from_json(json_str, table):
-    """add a new object that described by json
+def model_object_from_json(json_str, model):
+    """Constructs a model object that described by json
      string to dragonflow db.
+
+    :param json_str: json string that describes the object to be updated
+    :param model: The object model name (table name) to be constructed
+    :raises ValueError: exception raised from model.from_json
+    :raises TypeError: exception raised from model.from_json
+    :return: None
+    """
+    try:
+        model = model_framework.get_model(model)
+    except KeyError:
+        print("Model {} is not found in models list".format(model))
+        return
+
+    obj = model.from_json(json_str)
+    return obj
+
+
+def update_object_in_nb_api(json_str, table, action_handler):
+    """create or update an object that described by json
+     string to dragonflow db, according to the action_handler param.
 
     :param json_str: json string that describes the object to be added
     :param table: table name where object should be added
+    :param action_handler: which method to run on the received json
     :return: None
     """
-    nb_api = api_nb.NbApi.get_instance(False)
     try:
-        model = model_framework.get_model(table)
-    except KeyError:
-        print("Model {} is not found in models list".format(table))
-        return
-
-    try:
-        obj = model.from_json(json_str)
+        obj = model_object_from_json(json_str, table)
     except ValueError:
-        print("Json {} is not valid".format(json_str))
+        print("Record {} is not valid".format(json_str))
         return
     except TypeError:
-        print("Json {} is not applicable to {}".format(json_str, table))
+        print("Json {} does not match schema of {}".format(json_str, table))
         return
 
     try:
-        nb_api.create(obj)
+        action_handler(obj)
     except errors.ValidationError:
-        print("Json {} is not applicable to {}".format(json_str, table))
+        print("Json {} failed validation for {}".format(json_str, table))
 
 
-def add_object_from_file(file_path, table):
-    """add a new object that described by json
-    file to dragonflow db.
+def read_json_from_file(file_path):
+    """reads a JSON from a file
 
     :param file_path: path to the file
-    :param table: table name where object should be added
-    :return:
+    :return: JSON string
     """
-
     try:
         with open(file_path, 'rb') as f:
-            json_str = f.read()
-            add_object_from_json(json_str, table)
+            return f.read()
     except IOError:
         print("Can't read data from file " + file_path)
+        return
+
+
+def read_json(args):
+    if args.file:
+        file_path = args.file
+        return read_json_from_file(file_path)
+    elif args.json:
+        return args.json
+    else:
+        print("JSON or file argument must be supplied "
+              "(use '-h' for details)")
 
 
 def _check_valid_table(parser, table_name):
@@ -319,20 +341,50 @@ def add_dropall_command(subparsers):
     sub_parser.set_defaults(handle=handle)
 
 
+def add_update_command(subparsers):
+    def handle(args):
+        table = args.table
+
+        json_str = read_json(args)
+        if not json_str:
+            return
+
+        try:
+            update_object_in_nb_api(json_str, table, nb_api.update)
+        except df_exceptions.DBKeyNotFound:
+            print("Record {} was not found".format(json_str))
+
+    sub_parser = subparsers.add_parser(
+        'update', help="Update a record in a table",
+        description="Updates a record matching a table in the db"
+                    " (from JSON string or file). The given fields will "
+                    "overide the stored fields. Current record ID must be "
+                    " included in the record. The record MUST "
+                    "match the table data-model as defined by Dragonflow "
+                    "(the data-model definition could be viewed by the "
+                    "utility \"df-model\" ,run 'df-model -h' for "
+                    "more details)."
+    )
+    sub_parser.add_argument('table', help='The name of the table.')
+
+    group = sub_parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        '-j', '--json', help="Object represented by JSON string")
+    group.add_argument(
+        '-f', '--file', help="Path to file with object json representation")
+    sub_parser.set_defaults(handle=handle)
+
+
 def add_create_command(subparsers):
 
     def handle(args):
         table = args.table
 
-        if args.file:
-            file_path = args.file
-            add_object_from_file(file_path, table)
-        elif args.json:
-            json_str = args.json
-            add_object_from_json(json_str, table)
-        else:
-            print("JSON or file argument must be supplied "
-                  "(use '-h' for details)")
+        json_str = read_json(args)
+        if not json_str:
+            return
+
+        update_object_in_nb_api(json_str, table, nb_api.create)
 
     sub_parser = subparsers.add_parser(
         'add', help="Add new record to table",
@@ -367,6 +419,7 @@ def main():
     add_init_command(subparsers)
     add_dropall_command(subparsers)
     add_create_command(subparsers)
+    add_update_command(subparsers)
 
     if len(sys.argv) == 1:
         parser.print_help()
