@@ -144,23 +144,23 @@ fi
 #----------------
 # To be called to initialise params common to all pubsub drivers
 function init_pubsub {
-    enable_service df-publisher-service
     DF_PUB_SUB="True"
 }
 
 if is_service_enabled df-zmq-publisher-service ; then
     init_pubsub
+    enable_service df-publisher-service
     source $DEST/dragonflow/devstack/zmq_pubsub_driver
 fi
 
 if is_service_enabled df-etcd-pubsub-service ; then
-    DF_PUB_SUB="True"
+    init_pubsub
     DF_PUB_SUB_USE_MULTIPROC="False"
     source $DEST/dragonflow/devstack/etcd_pubsub_driver
 fi
 
 if [[ "$DF_REDIS_PUBSUB" == "True" ]]; then
-    DF_PUB_SUB="True"
+    init_pubsub
     DF_PUB_SUB_USE_MULTIPROC="False"
     source $DEST/dragonflow/devstack/redis_pubsub_driver
 fi
