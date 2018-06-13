@@ -14,9 +14,11 @@
             voting: false
         - kuryr-kubernetes-tempest-dragonflow:
             voting: false
+        - openstack-tox-lower-constraints
     gate:
       jobs:
         - dragonflow-dsvm-fullstack-redis
+        - openstack-tox-lower-constraints
 
 - job:
     name: dragonflow-dsvm-fullstack-redis
