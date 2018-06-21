@@ -9,6 +9,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import struct
+
 from jsonmodels import fields
 
 import dragonflow.db.model_framework as mf
@@ -57,3 +59,10 @@ class UniqueKey(mf.MixinBase):
         from dragonflow.db import api_nb
         nb_api = api_nb.NbApi.get_instance()
         self.unique_key = nb_api.driver.allocate_unique_key(self.table_name)
+
+    @property
+    def unique_key_packed(self):
+        unique_key = self.unique_key
+        if unique_key is None:
+            return None
+        return struct.pack('!I', self.unique_key)
