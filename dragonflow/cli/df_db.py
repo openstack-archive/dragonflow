@@ -15,6 +15,8 @@ from jsonmodels import errors
 import socket
 import sys
 
+from oslo_serialization import jsonutils
+
 from dragonflow.cli import utils as cli_utils
 from dragonflow.common import exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
@@ -26,6 +28,16 @@ from dragonflow.db.models import l2
 
 db_tables = list(model_framework.iter_tables()) + [db_common.UNIQUE_KEY_TABLE]
 nb_api = None
+
+FORMAT_PRETTY = 'pretty'
+FORMAT_JSON = 'json'
+
+
+def _print_dict(dct, format_):
+    if not format_ or format_ == FORMAT_PRETTY:
+        cli_utils.print_dict(dct)
+    elif format_ == FORMAT_JSON:
+        jsonutils.dump(dct, sys.stdout)
 
 
 def _get_model_or_exit(table):
@@ -40,7 +52,13 @@ def _get_model_or_exit(table):
         raise SystemExit(1)
 
 
-def _print_list(columns, values, first_label=None):
+def _print_list_json(columns, values):
+    result = [{column: value[column]}
+              for column in columns for value in values]
+    jsonutils.dump(result, sys.stdout)
+
+
+def _print_list(columns, values, first_label=None, format_=FORMAT_PRETTY):
     """
     Print the given columns from the given values. You can override the label
     of the first column with 'first_label'.
@@ -51,35 +69,41 @@ def _print_list(columns, values, first_label=None):
     :param first_label: The label of the first column
     :type first_label:  String
     """
-    labels, formatters = \
-        cli_utils.get_list_table_columns_and_formatters(columns, values)
-    if first_label:
-        labels[0] = first_label
-    cli_utils.print_list(values, columns, formatters=formatters,
-                         field_labels=labels)
+    if not format_ or format_ == FORMAT_PRETTY:
+        labels, formatters = \
+            cli_utils.get_list_table_columns_and_formatters(columns, values)
+        if first_label:
+            labels[0] = first_label
+        cli_utils.print_list(values, columns, formatters=formatters,
+                             field_labels=labels)
+    elif format_ == FORMAT_JSON:
+        _print_list_json(columns, values)
 
 
-def print_tables():
+def print_tables(format_):
     columns = ['table']
     tables = [{'table': table} for table in db_tables]
-    _print_list(columns, tables, 'DB Tables')
+    _print_list(columns, tables, 'DB Tables', format_)
 
 
-def print_table(table):
+def print_table(table, format_):
     if table == db_common.UNIQUE_KEY_TABLE:
         keys = nb_api.driver.get_all_keys(table)
         values = [{'id': key} for key in keys]
-        _print_list(['id'], values)
+        _print_list(['id'], values, format_)
         return
     model = _get_model_or_exit(table)
     instances = nb_api.get_all(model)
 
     if not instances:
-        print('Table is empty: ' + table)
+        if not format_ or format_ == FORMAT_PRETTY:
+            print('Table is empty: ' + table)
+        elif format_ == FORMAT_JSON:
+            jsonutils.dump([], sys.stdout)
         return
 
     keys = [{'key': instance.id} for instance in instances]
-    _print_list(['key'], keys, 'Keys for table')
+    _print_list(['key'], keys, 'Keys for table', format_)
 
 
 def print_whole_table(table):
@@ -103,11 +127,33 @@ def print_whole_table(table):
     _print_list(columns, values)
 
 
-def print_key(table, key):
+def _get_table_struct(table):
+    if table == db_common.UNIQUE_KEY_TABLE:
+        keys = nb_api.driver.get_all_keys(table)
+        values = [{'id': key, table: int(nb_api.driver.get_key(table, key))}
+                  for key in keys]
+        return values
+
+    model = _get_model_or_exit(table)
+    instances = nb_api.get_all(model)
+    values = [instance.to_struct() for instance in instances]
+    return values
+
+
+def dump_tables(format_):
+    if not format_ or format_ == FORMAT_PRETTY:
+        for table in db_tables:
+            print_whole_table(table)
+    elif format_ == FORMAT_JSON:
+        result = {table: _get_table_struct(table) for table in db_tables}
+        jsonutils.dump(result, sys.stdout)
+
+
+def print_key(table, key, format_):
     if table == db_common.UNIQUE_KEY_TABLE:
         value = nb_api.driver.get_key(table, key)
         value_dict = {'id': key, table: int(value)}
-        cli_utils.print_dict(value_dict)
+        _print_dict(value_dict, format_)
         return
     model = _get_model_or_exit(table)
     try:
@@ -115,7 +161,7 @@ def print_key(table, key):
     except df_exceptions.DBKeyNotFound:
         print('Key not found: ' + table)
         return
-    cli_utils.print_dict(value.to_struct())
+    _print_dict(value.to_struct(), format_)
 
 
 def bind_port_to_localhost(port_id):
@@ -249,20 +295,27 @@ def _check_valid_table(parser, table_name):
 
 def add_table_command(subparsers):
     def handle(args):
-        print_tables()
+        print_tables(args.format)
 
     sub_parser = subparsers.add_parser('tables', help="Print all the db "
                                                       "tables.")
+    sub_parser.add_argument('-f', '--format', default=FORMAT_PRETTY,
+                            choices=(FORMAT_PRETTY, FORMAT_JSON),
+                            help='Output format (pretty (default), json)')
     sub_parser.set_defaults(handle=handle)
 
 
 def add_ls_command(subparsers):
     def handle(args):
         table = args.table
-        print_table(table)
+        format_ = args.format
+        print_table(table, format_)
 
     sub_parser = subparsers.add_parser('ls', help="Print all the keys for "
                                                   "specific table.")
+    sub_parser.add_argument('-f', '--format', default=FORMAT_PRETTY,
+                            choices=(FORMAT_PRETTY, FORMAT_JSON),
+                            help='Output format (pretty (default), json)')
     sub_parser.add_argument('table', help='The name of the table.')
     sub_parser.set_defaults(handle=handle)
 
@@ -271,10 +324,14 @@ def add_get_command(subparsers):
     def handle(args):
         table = args.table
         key = args.key
-        print_key(table, key)
+        format_ = args.format
+        print_key(table, key, format_)
 
     sub_parser = subparsers.add_parser('get', help="Print value for specific "
                                                    "key.")
+    sub_parser.add_argument('-f', '--format', default=FORMAT_PRETTY,
+                            choices=(FORMAT_PRETTY, FORMAT_JSON),
+                            help='Output format (pretty (default), json)')
     sub_parser.add_argument('table', help='The name of the table.')
     sub_parser.add_argument('key', help='The key of the resource.')
     sub_parser.set_defaults(handle=handle)
@@ -282,11 +339,14 @@ def add_get_command(subparsers):
 
 def add_dump_command(subparsers):
     def handle(args):
-        for table in db_tables:
-            print_whole_table(table)
+        format_ = args.format
+        dump_tables(format_)
 
     sub_parser = subparsers.add_parser('dump', help="Dump content of all "
                                                     "tables.")
+    sub_parser.add_argument('-f', '--format', default=FORMAT_PRETTY,
+                            choices=(FORMAT_PRETTY, FORMAT_JSON),
+                            help='Output format (pretty (default), json)')
     sub_parser.set_defaults(handle=handle)
 
 
