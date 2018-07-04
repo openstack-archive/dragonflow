@@ -1,0 +1,264 @@
+time: 2017-07-13 15:36:42.863677Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestTrunkApp.test_icmp_ping_pong
+time: 2017-07-13 15:37:38.070376Z
+failure: dragonflow.tests.fullstack.test_apps.TestTrunkApp.test_icmp_ping_pong [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+570
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_apps.py", line 2465, in test_icmp_ping_pong
+    self.port1.port.port_id, self.vlan_port1.port_id, 'vlan', 7)
+  File "dragonflow/tests/fullstack/test_objects.py", line 658, in create
+    result = self.neutron.create_trunk({'trunk': trunk_dict})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 2053, in create_trunk
+    return self.post(self.trunks_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-fa83081a-08f9-47f9-a7d5-f55fe9a99ed4']
+0
+Content-Type: text/x-traceback;charset=utf8
+traceback-1
+BD
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_objects.py", line 669, in close
+    self.trunk['id'],
+TypeError: 'NoneType' object has no attribute '__getitem__'
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:47:51.682237Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_add_remove_bgp_network
+time: 2017-07-13 15:47:59.698880Z
+failure: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_add_remove_bgp_network [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+5E6
+Traceback (most recent call last):
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/oslo_concurrency/lockutils.py", line 271, in inner
+    return f(*args, **kwargs)
+  File "dragonflow/tests/fullstack/test_neutron_api.py", line 663, in test_add_remove_bgp_network
+    bgp_speaker.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 573, in create
+    {'bgp_speaker': bgp_speaker})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 1968, in create_bgp_speaker
+    return self.post(self.bgp_speakers_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-a8ffa143-ed75-4447-90c0-80ad40b82e6e']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:47:59.699590Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_add_remove_bgp_peer
+time: 2017-07-13 15:48:06.941075Z
+failure: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_add_remove_bgp_peer [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+55C
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_neutron_api.py", line 630, in test_add_remove_bgp_peer
+    bgp_peer.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 547, in create
+    bgp_peer = self.neutron.create_bgp_peer({'bgp_peer': bgp_peer})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 2014, in create_bgp_peer
+    return self.post(self.bgp_peers_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-703571d8-5bca-4d16-9347-1962318762c6']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:48:27.887833Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_bgp_peer
+time: 2017-07-13 15:48:35.708810Z
+failure: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_bgp_peer [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+55F
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_neutron_api.py", line 612, in test_create_delete_bgp_peer
+    bgp_peer.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 547, in create
+    bgp_peer = self.neutron.create_bgp_peer({'bgp_peer': bgp_peer})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 2014, in create_bgp_peer
+    return self.post(self.bgp_peers_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-b13f6998-44fd-47b4-b97f-0cd3cb640696']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:48:35.709463Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_bgp_speaker
+time: 2017-07-13 15:48:42.532947Z
+failure: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_bgp_speaker [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+549
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_neutron_api.py", line 620, in test_create_delete_bgp_speaker
+    bgp_speaker.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 573, in create
+    {'bgp_speaker': bgp_speaker})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 1968, in create_bgp_speaker
+    return self.post(self.bgp_speakers_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-0709c302-2812-436f-99c2-14f6d2cf90d7']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:50:12.892814Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_delete_bgp_peer_update_bgp_speaker
+time: 2017-07-13 15:50:20.310167Z
+failure: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_delete_bgp_peer_update_bgp_speaker [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+56B
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_neutron_api.py", line 647, in test_delete_bgp_peer_update_bgp_speaker
+    bgp_peer.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 547, in create
+    bgp_peer = self.neutron.create_bgp_peer({'bgp_peer': bgp_peer})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 2014, in create_bgp_peer
+    return self.post(self.bgp_peers_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-e2a22c82-8f7e-4caf-b1e7-629e0365b949']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:53:34.217759Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_portqos.TestPortQos.test_port_with_qospolicy
+time: 2017-07-13 15:53:54.169913Z
+failure: dragonflow.tests.fullstack.test_portqos.TestPortQos.test_port_with_qospolicy [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+573
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_portqos.py", line 41, in test_port_with_qospolicy
+    qos_policy_id = qospolicy.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 511, in create
+    new_qospolicy = self.neutron.create_qos_policy({'policy': qospolicy})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 1776, in create_qos_policy
+    return self.post(self.qos_policies_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-7f37d451-e8a8-4d63-8247-b0b95f34e85c']
+0
+]
+tags: -worker-0
+time: 2017-07-13 16:05:38.374006Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_topology.TestTopology.test_topology_create_vm
+time: 2017-07-13 16:05:49.828192Z
+failure: dragonflow.tests.fullstack.test_topology.TestTopology.test_topology_create_vm [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+582
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_topology.py", line 29, in test_topology_create_vm
+    vm1 = self._create_vm(network)
+  File "dragonflow/tests/fullstack/test_topology.py", line 58, in _create_vm
+    vm.create(network=network)
+  File "dragonflow/tests/fullstack/test_objects.py", line 294, in create
+    user_data=script, security_groups=security_groups)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/v2/servers.py", line 1437, in create
+    **boot_kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/v2/servers.py", line 790, in _boot
+    return_raw=return_raw, **kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/base.py", line 361, in _create
+    resp, body = self.api.client.post(url, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/keystoneauth1/adapter.py", line 240, in post
+    return self.request(url, 'POST', **kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/client.py", line 83, in request
+    raise exceptions.from_response(resp, body, url, method)
+novaclient.exceptions.Forbidden: Quota exceeded for instances: Requested 1, but already used 10 of 10 instances (HTTP 403) (Request-ID: req-0e93fa9c-1afb-4dae-9b4a-6203859c4acd)
+0
+]
+tags: -worker-0
+time: 2017-07-13 16:05:49.828860Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_topology.TestTopology.test_topology_create_vm2
+time: 2017-07-13 16:06:00.754865Z
+failure: dragonflow.tests.fullstack.test_topology.TestTopology.test_topology_create_vm2 [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+583
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_topology.py", line 38, in test_topology_create_vm2
+    vm1 = self._create_vm(network)
+  File "dragonflow/tests/fullstack/test_topology.py", line 58, in _create_vm
+    vm.create(network=network)
+  File "dragonflow/tests/fullstack/test_objects.py", line 294, in create
+    user_data=script, security_groups=security_groups)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/v2/servers.py", line 1437, in create
+    **boot_kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/v2/servers.py", line 790, in _boot
+    return_raw=return_raw, **kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/base.py", line 361, in _create
+    resp, body = self.api.client.post(url, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/keystoneauth1/adapter.py", line 240, in post
+    return self.request(url, 'POST', **kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/client.py", line 83, in request
+    raise exceptions.from_response(resp, body, url, method)
+novaclient.exceptions.Forbidden: Quota exceeded for instances: Requested 1, but already used 10 of 10 instances (HTTP 403) (Request-ID: req-26ca045b-b3d1-4e54-8c6a-a1238f782125)
+0
+]
+tags: -worker-0

@@ -1,0 +1,1703 @@
+time: 2017-07-13 15:09:06.181545Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_allowed_address_pairs_flows.TestOVSFlowsForActivePortDectionApp.test_sending_arp_to_controller_flows
+time: 2017-07-13 15:09:14.729204Z
+skip: dragonflow.tests.fullstack.test_allowed_address_pairs_flows.TestOVSFlowsForActivePortDectionApp.test_sending_arp_to_controller_flows [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+246
+    INFO [console] 2017-07-13T15:09:06Z |  2  | reconnect | INFO | tcp:10.164.180.73:6640: connecting...
+    INFO [syslog] ovs|  2  | reconnect | INFO | tcp:10.164.180.73:6640: connecting...
+    INFO [file] 2017-07-13T15:09:06.505Z |  2  | reconnect | INFO | tcp:10.164.180.73:6640: connecting...
+    INFO [console] 2017-07-13T15:09:06Z |  5  | reconnect | INFO | tcp:10.164.180.73:6640: connected
+    INFO [syslog] ovs|  5  | reconnect | INFO | tcp:10.164.180.73:6640: connected
+    INFO [file] 2017-07-13T15:09:06.506Z |  5  | reconnect | INFO | tcp:10.164.180.73:6640: connected
+0
+Content-Type: text/plain;charset=utf8
+reason
+25
+ActivePortDetectionApp is not enabled0
+Content-Type: text/plain;charset=utf8
+stderr
+A8
+2017-07-13T15:09:06Z |  2  | reconnect | INFO | tcp:10.164.180.73:6640: connecting...
+2017-07-13T15:09:06Z |  5  | reconnect | INFO | tcp:10.164.180.73:6640: connected
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:09:14.729828Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_api_nb.Test_API_NB.test_create_lport
+time: 2017-07-13 15:09:24.070988Z
+successful: dragonflow.tests.fullstack.test_api_nb.Test_API_NB.test_create_lport [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:09:24.071325Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_api_nb.Test_API_NB.test_create_lrouter
+time: 2017-07-13 15:09:33.065358Z
+successful: dragonflow.tests.fullstack.test_api_nb.Test_API_NB.test_create_lrouter [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:09:33.065734Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_api_nb.Test_API_NB.test_create_lswitch
+time: 2017-07-13 15:09:40.654724Z
+successful: dragonflow.tests.fullstack.test_api_nb.Test_API_NB.test_create_lswitch [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:09:40.655088Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestAllowedAddressPairsDetectActive.test_detected_active_port
+time: 2017-07-13 15:09:48.159452Z
+skip: dragonflow.tests.fullstack.test_apps.TestAllowedAddressPairsDetectActive.test_detected_active_port [ multipart
+Content-Type: text/plain;charset=utf8
+reason
+25
+ActivePortDetectionApp is not enabled0
+]
+tags: -worker-0
+time: 2017-07-13 15:09:48.159929Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestApps.test_infrastructure
+time: 2017-07-13 15:10:14.859275Z
+successful: dragonflow.tests.fullstack.test_apps.TestApps.test_infrastructure [ multipart
+Content-Type: text/plain;charset=utf8
+stdout
+10000
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s31f6: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 90:1b:0e:a3:ac:20 brd ff:ff:ff:ff:ff:ff
+    inet 10.164.180.73/26 brd 10.164.180.127 scope global dynamic enp0s31f6
+       valid_lft 529082sec preferred_lft 529082sec
+    inet6 fe80::a8de:4d51:78f5:3524/64 scope link 
+       valid_lft forever preferred_lft forever
+3: ovs-system: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 6e:21:fc:1a:f7:ba brd ff:ff:ff:ff:ff:ff
+13: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 00:00:00:00:00:00 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+14: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast state DOWN group default qlen 1000
+    link/ether 52:54:00:30:5c:76 brd ff:ff:ff:ff:ff:ff
+29: tapb478418d-89@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 3a:19:2a:69:bc:a7 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+36: tap4f85ed78-55@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 9e:c2:0c:03:86:78 brd ff:ff:ff:ff:ff:ff link-netnsid 2
+49: qbr1f927e8c-d7: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default qlen 1000
+    link/ether 7e:6e:07:97:64:5e brd ff:ff:ff:ff:ff:ff
+50: qvo1f927e8c-d7@qvb1f927e8c-d7: <BROADCAST,MULTICAST,PROMISC,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default qlen 1000
+    link/ether 0e:86:6d:fd:2b:0c brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::c86:6dff:fefd:2b0c/64 scope link 
+       valid_lft forever preferred_lft forever
+51: qvb1f927e8c-d7@qvo1f927e8c-d7: <BROADCAST,MULTICAST,PROMISC,UP,LOWER_UP> mtu 1450 qdisc noqueue master qbr1f927e8c-d7 state UP group default qlen 1000
+    link/ether 7e:6e:07:97:64:5e brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::7c6e:7ff:fe97:645e/64 scope link 
+       valid_lft forever preferred_lft forever
+55: qbrc71e5d66-76: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default qlen 1000
+    link/ether fe:e9:15:10:e9:d6 brd ff:ff:ff:ff:ff:ff
+56: qvoc71e5d66-76@qvbc71e5d66-76: <BROADCAST,MULTICAST,PROMISC,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default qlen 1000
+    link/ether 96:12:bd:79:d1:76 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::9412:bdff:fe79:d176/64 scope link 
+       valid_lft forever preferred_lft forever
+57: qvbc71e5d66-76@qvoc71e5d66-76: <BROADCAST,MULTICAST,PROMISC,UP,LOWER_UP> mtu 1450 qdisc noqueue master qbrc71e5d66-76 state UP group default qlen 1000
+    link/ether fe:e9:15:10:e9:d6 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::fce9:15ff:fe10:e9d6/64 scope link 
+       valid_lft forever preferred_lft forever
+68: qbr6426fe01-9a: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default qlen 1000
+    link/ether ba:bc:00:83:98:be brd ff:ff:ff:ff:ff:ff
+69: qvo6426fe01-9a@qvb6426fe01-9a: <BROADCAST,MULTICAST,PROMISC,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default qlen 1000
+    link/ether 22:8d:7f:1c:33:e2 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::208d:7fff:fe1c:33e2/64 scope link 
+       valid_lft forever preferred_lft forever
+70: qvb6426fe01-9a@qvo6426fe01-9a: <BROADCAST,MULTICAST,PROMISC,UP,LOWER_UP> mtu 1450 qdisc noqueue master qbr6426fe01-9a state UP group default qlen 1000
+    link/ether ba:bc:00:83:98:be brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::b8bc:ff:fe83:98be/64 scope link 
+       valid_lft forever preferred_lft forever
+72: qbr87ef0845-76: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default qlen 1000
+    link/ether ca:83:fc:c3:18:72 brd ff:ff:ff:ff:ff:ff
+73: qvo87ef0845-76@qvb87ef0845-76: <BROADCAST,MULTICAST,PROMISC,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default qlen 1000
+    link/ether 9a:bb:32:8e:13:ac brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::98bb:32ff:fe8e:13ac/64 scope link 
+       valid_lft forever preferred_lft forever
+74: qvb87ef0845-76@qvo87ef0845-76: <BROADCAST,MULTICAST,PROMISC,UP,LOWER_UP> mtu 1450 qdisc noqueue master qbr87ef0845-76 state UP group default qlen 1000
+    link/ether ca:83:fc:c3:18:72 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::c883:fcff:fec3:1872/64 scope link 
+       valid_lft forever preferred_lft forever
+76: br-ex: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/ether f6:81:8f:c5:53:44 brd ff:ff:ff:ff:ff:ff
+    inet 172.24.4.1/24 scope global br-ex
+       valid_lft forever preferred_lft forever
+    inet6 2001:db8::2/64 scope global 
+       valid_lft forever preferred_lft forever
+    inet6 fe80::f481:8fff:fec5:5344/64 scope link 
+       valid_lft forever preferred_lft forever
+77: br-int: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether ae:85:3a:e4:fc:4f brd ff:ff:ff:ff:ff:ff
+78: vxlan_sys_4789: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 65485 qdisc noqueue master ovs-system state UNKNOWN group default qlen 1000
+    link/ether a6:1b:c9:9b:fa:f0 brd ff:ff:ff:ff:ff:ff
+79: genev_sys_6081: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 65485 qdisc noqueue master ovs-system state UNKNOWN group default qlen 1000
+    link/ether 46:26:d1:4b:0a:91 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::4426:d1ff:fe4b:a91/64 scope link 
+       valid_lft forever preferred_lft forever
+80: gre0@NONE: <NOARP> mtu 1476 qdisc noop state DOWN group default qlen 1
+    link/gre 0.0.0.0 brd 0.0.0.0
+81: gretap0@NONE: <BROADCAST,MULTICAST> mtu 1462 qdisc noop state DOWN group default qlen 1000
+    link/ether 00:00:00:00:00:00 brd ff:ff:ff:ff:ff:ff
+82: gre_sys@NONE: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 65490 qdisc pfifo_fast master ovs-system state UNKNOWN group default qlen 1000
+    link/ether c6:e4:a1:4d:92:be brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::c4e4:a1ff:fe4d:92be/64 scope link 
+       valid_lft forever preferred_lft forever
+83: tap-metadata: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/ether 72:b2:30:08:bd:b8 brd ff:ff:ff:ff:ff:ff
+    inet 169.254.169.254/0 scope global tap-metadata
+       valid_lft forever preferred_lft forever
+    inet6 fe80::70b2:30ff:fe08:bdb8/64 scope link 
+       valid_lft forever preferred_lft forever
+92: tap175dd18d-cc: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master ovs-system state UP group default qlen 1000
+    link/ether fa:16:3e:72:7b:80 brd ff:ff:ff:ff:ff:ff
+93: tap0577216b-a5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master ovs-system state UP group default qlen 1000
+    link/ether fa:16:3e:21:74:1f brd ff:ff:ff:ff:ff:ff
+94: tap2d29c645-ac: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master ovs-system state UP group default qlen 1000
+    link/ether fa:16:3e:cc:1d:ad brd ff:ff:ff:ff:ff:ff
+
+0c7e2158-80ed-4689-9aaa-f53cc424ebcd
+    Manager "ptcp:6640:0.0.0.0"
+        is_connected: true
+    Bridge br-ex
+        Port phy-br-ex
+            Interface phy-br-ex
+                type: patch
+                options: {peer=int-br-ex}
+        Port "qg-b6531aa6-86"
+            Interface "qg-b6531aa6-86"
+                type: internal
+        Port br-ex
+            Interface br-ex
+                type: internal
+        Port patch-ex
+            Interface patch-ex
+                type: patch
+                options: {peer=patch-int}
+    Bridge br-int
+        Controller "tcp:127.0.0.1:6653"
+            is_connected: true
+        fail_mode: secure
+        Port gre-vtp
+            Interface gre-vtp
+                type: gre
+                options: {key=flow, local_ip="10.164.180.73", remote_ip=flow}
+        Port int-br-ex
+            Interface int-br-ex
+                type: patch
+                options: {peer=phy-br-ex}
+        Port patch-int
+            Interface patch-int
+                type: patch
+                options: {peer=patch-ex}
+        Port "qr-487dd9de-eb"
+            Interface "qr-487dd9de-eb"
+                type: internal
+        Port vxlan-vtp
+            Interface vxlan-vtp
+                type: vxlan
+                options: {key=flow, local_ip="10.164.180.73", remote_ip=flow}
+        Port br-int
+            Interface br-int
+                type: internal
+        Port "tap0577216b-a5"
+            Interface "tap0577216b-a5"
+        Port "qr-4b6cf90b-90"
+            Interface "qr-4b6cf90b-90"
+                type: internal
+        Port "tap175dd18d-cc"
+            Interface "tap175dd18d-cc"
+        Port tap-metadata
+            Interface tap-metadata
+                type: internal
+        Port "qr-0ed2580c-a3"
+            Interface "qr-0ed2580c-a3"
+                type: internal
+        Port geneve-vtp
+            Interface geneve-vtp
+                type: geneve
+                options: {key=flow, local_ip="10.164.180.73", remote_ip=flow}
+        Port "tap2d29c645-ac"
+            Interface "tap2d29c645-ac"
+    ovs_version: "2.6.1"
+
+OFPT_FEATURES_REPLY (xid=0x2): dpid:0000ae853ae4fc4f
+n_tables:254, n_buffers:256
+capabilities: FLOW_STATS TABLE_STATS PORT_STATS QUEUE_STATS ARP_MATCH_IP
+actions: output enqueue set_vlan_vid set_vlan_pcp strip_vlan mod_dl_src mod_dl_dst mod_nw_src mod_nw_dst mod_nw_tos mod_tp_src mod_tp_dst
+ 1(int-br-ex): addr:ee:f2:8d:ad:84:1b
+     config:     0
+     state:      0
+     speed: 0 Mbps now, 0 Mbps max
+ 2(patch-int): addr:16:fe:a2:f6:05:5e
+     config:     0
+     state:      0
+     speed: 0 Mbps now, 0 Mbps max
+ 3(vxlan-vtp): addr:ba:83:e7:46:d1:e6
+     config:     0
+     state:      0
+     speed: 0 Mbps now, 0 Mbps max
+ 4(geneve-vtp): addr:4a:38:06:37:8e:69
+     config:     0
+     state:      0
+     speed: 0 Mbps now, 0 Mbps max
+ 5(gre-vtp): addr:5a:7b:0d:54:c9:9b
+     config:     0
+     state:      0
+     speed: 0 Mbps now, 0 Mbps max
+ 6(tap-metadata): addr:72:b2:30:08:bd:b8
+     config:     0
+     state:      0
+     speed: 0 Mbps now, 0 Mbps max
+ 7(qr-0ed2580c-a3): addr:00:00:00:00:0e:00
+     config:     PORT_DOWN
+     state:      LINK_DOWN
+     speed: 0 Mbps now, 0 Mbps max
+ 8(qr-487dd9de-eb): addr:00:00:00:00:0e:00
+     config:     PORT_DOWN
+     state:      LINK_DOWN
+     speed: 0 Mbps now, 0 Mbps max
+ 14(tap175dd18d-cc): addr:fa:16:3e:72:7b:80
+     config:     0
+     state:      0
+     current:    10MB-FD COPPER
+     speed: 10 Mbps now, 0 Mbps max
+ 15(tap0577216b-a5): addr:fa:16:3e:21:74:1f
+     config:     0
+     state:      0
+     current:    10MB-FD COPPER
+     speed: 10 Mbps now, 0 Mbps max
+ 16(tap2d29c645-ac): addr:fa:16:3e:cc:1d:ad
+     config:     0
+     state:      0
+     current:    10MB-FD COPPER
+     speed: 10 Mbps now, 0 Mbps max
+ 17(qr-4b6cf90b-90): addr:00:00:00:00:0e:00
+     config:     PORT_DOWN
+     state:      LINK_DOWN
+     speed: 0 Mbps now, 0 Mbps max
+ LOCAL(br-int): addr:ae:85:3a:e4:fc:4f
+     config:     PORT_DOWN
+     state:      LINK_DOWN
+     speed: 0 Mbps now, 0 Mbps max
+OFPT_GET_CONFIG_REPLY (xid=0x4): frags=normal miss_send_len=0
+
+NXST_FLOW reply (xid=0x4):
+ cookie=0x0, duration=660.629s, table=0, n_packets=0, n_bytes=0, idle_age=660, priority=100,arp,in_port=6 actions=resubmit(,40),IN_PORT
+ cookie=0x0, duration=660.629s, table=0, n_packets=26, n_bytes=2994, idle_age=149, priority=100,ip,in_port=6 actions=resubmit(,40),resubmit(,115)
+ cookie=0x0, duration=590.822s, table=0, n_packets=13, n_bytes=990, idle_age=586, priority=100,in_port=7 actions=load:0x3->NXM_NX_REG6[],load:0x1->OXM_OF_METADATA[],resubmit(,5)
+ cookie=0x0, duration=582.515s, table=0, n_packets=19, n_bytes=2186, idle_age=83, priority=100,in_port=8 actions=load:0x5->NXM_NX_REG6[],load:0x1->OXM_OF_METADATA[],resubmit(,5)
+ cookie=0x0, duration=10.408s, table=0, n_packets=0, n_bytes=0, idle_age=10, priority=100,in_port=14 actions=load:0x13->NXM_NX_REG6[],load:0xa->OXM_OF_METADATA[],resubmit(,5)
+ cookie=0x0, duration=5.173s, table=0, n_packets=0, n_bytes=0, idle_age=5, priority=100,in_port=15 actions=load:0x16->NXM_NX_REG6[],load:0xb->OXM_OF_METADATA[],resubmit(,5)
+ cookie=0x0, duration=3.912s, table=0, n_packets=0, n_bytes=0, idle_age=3, priority=100,in_port=16 actions=load:0x17->NXM_NX_REG6[],load:0xb->OXM_OF_METADATA[],resubmit(,5)
+ cookie=0x0, duration=0.633s, table=0, n_packets=4, n_bytes=272, idle_age=0, priority=100,in_port=17 actions=load:0x18->NXM_NX_REG6[],load:0xb->OXM_OF_METADATA[],resubmit(,5)
+ cookie=0x0, duration=590.817s, table=0, n_packets=0, n_bytes=0, idle_age=590, priority=100,tun_id=0x25,in_port=3 actions=load:0x1->OXM_OF_METADATA[],resubmit(,100)
+ cookie=0x0, duration=10.404s, table=0, n_packets=0, n_bytes=0, idle_age=10, priority=100,tun_id=0x18,in_port=3 actions=load:0xa->OXM_OF_METADATA[],resubmit(,100)
+ cookie=0x0, duration=5.169s, table=0, n_packets=0, n_bytes=0, idle_age=5, priority=100,tun_id=0x38,in_port=3 actions=load:0xb->OXM_OF_METADATA[],resubmit(,100)
+ cookie=0x0, duration=660.629s, table=5, n_packets=0, n_bytes=0, idle_age=660, priority=300,tcp,nw_dst=169.254.169.254,tp_dst=80 actions=resubmit(,20)
+ cookie=0x0, duration=590.822s, table=5, n_packets=13, n_bytes=990, idle_age=586, priority=200,reg6=0x3 actions=resubmit(,10)
+ cookie=0x0, duration=582.515s, table=5, n_packets=19, n_bytes=2186, idle_age=83, priority=200,reg6=0x5 actions=resubmit(,10)
+ cookie=0x0, duration=0.633s, table=5, n_packets=4, n_bytes=272, idle_age=0, priority=200,reg6=0x18 actions=resubmit(,10)
+ cookie=0x0, duration=10.416s, table=5, n_packets=0, n_bytes=0, idle_age=10, priority=200,ip,reg6=0x13,dl_src=fa:16:3e:72:7b:80,nw_src=192.168.200.12 actions=resubmit(,10)
+ cookie=0x0, duration=5.182s, table=5, n_packets=0, n_bytes=0, idle_age=5, priority=200,ip,reg6=0x16,dl_src=fa:16:3e:21:74:1f,nw_src=192.168.10.7 actions=resubmit(,10)
+ cookie=0x0, duration=3.923s, table=5, n_packets=0, n_bytes=0, idle_age=3, priority=200,ip,reg6=0x17,dl_src=fa:16:3e:cc:1d:ad,nw_src=192.168.11.7 actions=resubmit(,10)
+ cookie=0x0, duration=10.416s, table=5, n_packets=0, n_bytes=0, idle_age=10, priority=200,arp,reg6=0x13,dl_src=fa:16:3e:72:7b:80,arp_spa=192.168.200.12,arp_sha=fa:16:3e:72:7b:80 actions=resubmit(,20)
+ cookie=0x0, duration=5.182s, table=5, n_packets=0, n_bytes=0, idle_age=5, priority=200,arp,reg6=0x16,dl_src=fa:16:3e:21:74:1f,arp_spa=192.168.10.7,arp_sha=fa:16:3e:21:74:1f actions=resubmit(,20)
+ cookie=0x0, duration=3.923s, table=5, n_packets=0, n_bytes=0, idle_age=3, priority=200,arp,reg6=0x17,dl_src=fa:16:3e:cc:1d:ad,arp_spa=192.168.11.7,arp_sha=fa:16:3e:cc:1d:ad actions=resubmit(,20)
+ cookie=0x0, duration=10.416s, table=5, n_packets=0, n_bytes=0, idle_age=10, priority=200,udp,reg6=0x13,dl_src=fa:16:3e:72:7b:80,dl_dst=ff:ff:ff:ff:ff:ff,tp_src=68,tp_dst=67 actions=resubmit(,10)
+ cookie=0x0, duration=10.416s, table=5, n_packets=0, n_bytes=0, idle_age=10, priority=200,udp6,reg6=0x13,dl_src=fa:16:3e:72:7b:80,dl_dst=ff:ff:ff:ff:ff:ff,tp_src=546,tp_dst=547 actions=resubmit(,10)
+ cookie=0x0, duration=5.182s, table=5, n_packets=0, n_bytes=0, idle_age=5, priority=200,udp,reg6=0x16,dl_src=fa:16:3e:21:74:1f,dl_dst=ff:ff:ff:ff:ff:ff,tp_src=68,tp_dst=67 actions=resubmit(,10)
+ cookie=0x0, duration=5.182s, table=5, n_packets=0, n_bytes=0, idle_age=5, priority=200,udp6,reg6=0x16,dl_src=fa:16:3e:21:74:1f,dl_dst=ff:ff:ff:ff:ff:ff,tp_src=546,tp_dst=547 actions=resubmit(,10)
+ cookie=0x0, duration=3.923s, table=5, n_packets=0, n_bytes=0, idle_age=3, priority=200,udp,reg6=0x17,dl_src=fa:16:3e:cc:1d:ad,dl_dst=ff:ff:ff:ff:ff:ff,tp_src=68,tp_dst=67 actions=resubmit(,10)
+ cookie=0x0, duration=3.923s, table=5, n_packets=0, n_bytes=0, idle_age=3, priority=200,udp6,reg6=0x17,dl_src=fa:16:3e:cc:1d:ad,dl_dst=ff:ff:ff:ff:ff:ff,tp_src=546,tp_dst=547 actions=resubmit(,10)
+ cookie=0x0, duration=10.416s, table=5, n_packets=0, n_bytes=0, idle_age=10, priority=200,arp,reg6=0x13,dl_src=fa:16:3e:72:7b:80,arp_spa=0.0.0.0,arp_op=1,arp_sha=fa:16:3e:72:7b:80 actions=resubmit(,20)
+ cookie=0x0, duration=5.182s, table=5, n_packets=0, n_bytes=0, idle_age=5, priority=200,arp,reg6=0x16,dl_src=fa:16:3e:21:74:1f,arp_spa=0.0.0.0,arp_op=1,arp_sha=fa:16:3e:21:74:1f actions=resubmit(,20)
+ cookie=0x0, duration=3.923s, table=5, n_packets=0, n_bytes=0, idle_age=3, priority=200,arp,reg6=0x17,dl_src=fa:16:3e:cc:1d:ad,arp_spa=0.0.0.0,arp_op=1,arp_sha=fa:16:3e:cc:1d:ad actions=resubmit(,20)
+ cookie=0x0, duration=10.416s, table=5, n_packets=0, n_bytes=0, idle_age=10, priority=200,icmp6,reg6=0x13,dl_src=fa:16:3e:72:7b:80 actions=resubmit(,20)
+ cookie=0x0, duration=5.182s, table=5, n_packets=0, n_bytes=0, idle_age=5, priority=200,icmp6,reg6=0x16,dl_src=fa:16:3e:21:74:1f actions=resubmit(,20)
+ cookie=0x0, duration=3.923s, table=5, n_packets=0, n_bytes=0, idle_age=3, priority=200,icmp6,reg6=0x17,dl_src=fa:16:3e:cc:1d:ad actions=resubmit(,20)
+ cookie=0x0, duration=662.075s, table=5, n_packets=0, n_bytes=0, idle_age=662, priority=100,ip actions=drop
+ cookie=0x0, duration=662.075s, table=5, n_packets=0, n_bytes=0, idle_age=662, priority=100,ipv6 actions=drop
+ cookie=0x0, duration=662.075s, table=5, n_packets=0, n_bytes=0, idle_age=662, priority=100,arp actions=drop
+ cookie=0x0, duration=10.416s, table=5, n_packets=0, n_bytes=0, idle_age=10, priority=50,reg6=0x13,dl_src=fa:16:3e:72:7b:80 actions=resubmit(,20)
+ cookie=0x0, duration=5.182s, table=5, n_packets=0, n_bytes=0, idle_age=5, priority=50,reg6=0x16,dl_src=fa:16:3e:21:74:1f actions=resubmit(,20)
+ cookie=0x0, duration=3.923s, table=5, n_packets=0, n_bytes=0, idle_age=3, priority=50,reg6=0x17,dl_src=fa:16:3e:cc:1d:ad actions=resubmit(,20)
+ cookie=0x0, duration=662.075s, table=5, n_packets=0, n_bytes=0, idle_age=662, priority=20 actions=drop
+ cookie=0x0, duration=662.063s, table=5, n_packets=0, n_bytes=0, idle_age=662, priority=1 actions=resubmit(,10)
+ cookie=0x0, duration=10.408s, table=10, n_packets=0, n_bytes=0, idle_age=10, priority=100,ip,reg6=0x13 actions=ct(table=15,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=10.408s, table=10, n_packets=0, n_bytes=0, idle_age=10, priority=100,ipv6,reg6=0x13 actions=ct(table=15,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=5.173s, table=10, n_packets=0, n_bytes=0, idle_age=5, priority=100,ip,reg6=0x16 actions=ct(table=15,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=5.173s, table=10, n_packets=0, n_bytes=0, idle_age=5, priority=100,ipv6,reg6=0x16 actions=ct(table=15,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=3.912s, table=10, n_packets=0, n_bytes=0, idle_age=3, priority=100,ip,reg6=0x17 actions=ct(table=15,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=3.912s, table=10, n_packets=0, n_bytes=0, idle_age=3, priority=100,ipv6,reg6=0x17 actions=ct(table=15,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=662.063s, table=10, n_packets=36, n_bytes=3448, idle_age=0, priority=1 actions=resubmit(,20)
+ cookie=0x0, duration=662.062s, table=15, n_packets=0, n_bytes=0, idle_age=662, priority=65534,ct_state=-new+est-rel-inv+trk actions=resubmit(,20)
+ cookie=0x0, duration=662.062s, table=15, n_packets=0, n_bytes=0, idle_age=662, priority=65534,ct_state=-new+rel-inv+trk actions=resubmit(,20)
+ cookie=0x0, duration=662.062s, table=15, n_packets=0, n_bytes=0, idle_age=662, priority=65534,ct_state=+new+rel-inv+trk,ip actions=ct(commit,table=20,zone=NXM_NX_CT_ZONE[])
+ cookie=0x0, duration=662.062s, table=15, n_packets=0, n_bytes=0, idle_age=662, priority=65534,ct_state=+new+rel-inv+trk,ipv6 actions=ct(commit,table=20,zone=NXM_NX_CT_ZONE[])
+ cookie=0x0, duration=662.062s, table=15, n_packets=0, n_bytes=0, idle_age=662, priority=65534,ct_state=+inv+trk actions=drop
+ cookie=0x0, duration=10.416s, table=15, n_packets=0, n_bytes=0, idle_age=10, priority=11,conj_id=9,ip actions=ct(commit,table=20,zone=NXM_NX_CT_ZONE[])
+ cookie=0x0, duration=10.408s, table=15, n_packets=0, n_bytes=0, idle_age=10, priority=11,conj_id=9,ipv6 actions=ct(commit,table=20,zone=NXM_NX_CT_ZONE[])
+ cookie=0x0, duration=5.182s, table=15, n_packets=0, n_bytes=0, idle_age=5, priority=12,conj_id=10,ip actions=ct(commit,table=20,zone=NXM_NX_CT_ZONE[])
+ cookie=0x0, duration=5.173s, table=15, n_packets=0, n_bytes=0, idle_age=5, priority=12,conj_id=10,ipv6 actions=ct(commit,table=20,zone=NXM_NX_CT_ZONE[])
+ cookie=0x200000000, duration=10.408s, table=15, n_packets=0, n_bytes=0, idle_age=10, priority=11,ipv6 actions=conjunction(9,2/2)
+ cookie=0x300000000, duration=10.408s, table=15, n_packets=0, n_bytes=0, idle_age=10, priority=11,ip actions=conjunction(9,2/2)
+ cookie=0x500000000, duration=5.173s, table=15, n_packets=0, n_bytes=0, idle_age=5, priority=12,ip actions=conjunction(10,2/2)
+ cookie=0x600000000, duration=5.173s, table=15, n_packets=0, n_bytes=0, idle_age=5, priority=12,ipv6 actions=conjunction(10,2/2)
+ cookie=0x0, duration=10.408s, table=15, n_packets=0, n_bytes=0, idle_age=10, priority=11,ct_state=+new-est-rel-inv+trk,reg6=0x13 actions=conjunction(9,1/2)
+ cookie=0x0, duration=5.173s, table=15, n_packets=0, n_bytes=0, idle_age=5, priority=12,ct_state=+new-est-rel-inv+trk,reg6=0x16 actions=conjunction(10,1/2)
+ cookie=0x0, duration=3.923s, table=15, n_packets=0, n_bytes=0, idle_age=3, priority=12,ct_state=+new-est-rel-inv+trk,reg6=0x17 actions=conjunction(10,1/2)
+ cookie=0x0, duration=662.062s, table=15, n_packets=0, n_bytes=0, idle_age=662, priority=1 actions=drop
+ cookie=0x0, duration=662.063s, table=20, n_packets=8, n_bytes=336, idle_age=0, priority=100,arp actions=resubmit(,25)
+ cookie=0x0, duration=662.063s, table=20, n_packets=28, n_bytes=3112, idle_age=0, priority=100,icmp6 actions=resubmit(,45)
+ cookie=0x0, duration=662.063s, table=20, n_packets=0, n_bytes=0, idle_age=662, priority=100,udp,dl_dst=ff:ff:ff:ff:ff:ff,tp_src=68,tp_dst=67 actions=resubmit(,30)
+ cookie=0x0, duration=660.629s, table=20, n_packets=0, n_bytes=0, idle_age=660, priority=100,tcp,nw_dst=169.254.169.254,tp_dst=80 actions=mod_tp_dst:18080,resubmit(,35)
+ cookie=0x0, duration=590.843s, table=20, n_packets=0, n_bytes=0, idle_age=590, priority=100,udp,metadata=0x1,nw_dst=10.0.0.2,tp_src=68,tp_dst=67 actions=resubmit(,30)
+ cookie=0x0, duration=10.428s, table=20, n_packets=0, n_bytes=0, idle_age=10, priority=100,udp,metadata=0xa,nw_dst=192.168.200.2,tp_src=68,tp_dst=67 actions=resubmit(,30)
+ cookie=0x0, duration=7.725s, table=20, n_packets=0, n_bytes=0, idle_age=7, priority=100,udp,metadata=0xb,nw_dst=192.168.10.2,tp_src=68,tp_dst=67 actions=resubmit(,30)
+ cookie=0x0, duration=6.558s, table=20, n_packets=0, n_bytes=0, idle_age=6, priority=100,udp,metadata=0xb,nw_dst=192.168.11.2,tp_src=68,tp_dst=67 actions=resubmit(,30)
+ cookie=0x0, duration=662.063s, table=20, n_packets=0, n_bytes=0, idle_age=662, priority=1 actions=resubmit(,55)
+ cookie=0x0, duration=660.629s, table=25, n_packets=0, n_bytes=0, idle_age=660, priority=100,arp,arp_tpa=169.254.169.254,arp_op=1 actions=load:0x2->NXM_OF_ARP_OP[],move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[],move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:72:b2:30:08:bd:b8,load:0x72b23008bdb8->NXM_NX_ARP_SHA[],load:0xa9fea9fe->NXM_OF_ARP_SPA[],move:NXM_NX_REG6[]->NXM_NX_REG7[],load:0->OXM_OF_IN_PORT[],resubmit(,115)
+ cookie=0x0, duration=590.822s, table=25, n_packets=3, n_bytes=126, idle_age=586, priority=100,arp,metadata=0x1,arp_tpa=10.0.0.1,arp_op=1 actions=load:0x2->NXM_OF_ARP_OP[],move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[],move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:fa:16:3e:57:d9:7d,load:0xfa163e57d97d->NXM_NX_ARP_SHA[],load:0xa000001->NXM_OF_ARP_SPA[],move:NXM_NX_REG6[]->NXM_NX_REG7[],load:0->OXM_OF_IN_PORT[],resubmit(,115)
+ cookie=0x0, duration=10.416s, table=25, n_packets=0, n_bytes=0, idle_age=10, priority=100,arp,metadata=0xa,arp_tpa=192.168.200.12,arp_op=1 actions=load:0x2->NXM_OF_ARP_OP[],move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[],move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:fa:16:3e:72:7b:80,load:0xfa163e727b80->NXM_NX_ARP_SHA[],load:0xc0a8c80c->NXM_OF_ARP_SPA[],move:NXM_NX_REG6[]->NXM_NX_REG7[],load:0->OXM_OF_IN_PORT[],resubmit(,115)
+ cookie=0x0, duration=5.182s, table=25, n_packets=0, n_bytes=0, idle_age=5, priority=100,arp,metadata=0xb,arp_tpa=192.168.10.7,arp_op=1 actions=load:0x2->NXM_OF_ARP_OP[],move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[],move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:fa:16:3e:21:74:1f,load:0xfa163e21741f->NXM_NX_ARP_SHA[],load:0xc0a80a07->NXM_OF_ARP_SPA[],move:NXM_NX_REG6[]->NXM_NX_REG7[],load:0->OXM_OF_IN_PORT[],resubmit(,115)
+ cookie=0x0, duration=3.923s, table=25, n_packets=0, n_bytes=0, idle_age=3, priority=100,arp,metadata=0xb,arp_tpa=192.168.11.7,arp_op=1 actions=load:0x2->NXM_OF_ARP_OP[],move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[],move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:fa:16:3e:cc:1d:ad,load:0xfa163ecc1dad->NXM_NX_ARP_SHA[],load:0xc0a80b07->NXM_OF_ARP_SPA[],move:NXM_NX_REG6[]->NXM_NX_REG7[],load:0->OXM_OF_IN_PORT[],resubmit(,115)
+ cookie=0x0, duration=0.633s, table=25, n_packets=1, n_bytes=42, idle_age=0, priority=100,arp,metadata=0xb,arp_tpa=192.168.10.1,arp_op=1 actions=load:0x2->NXM_OF_ARP_OP[],move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[],move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:fa:16:3e:48:90:59,load:0xfa163e489059->NXM_NX_ARP_SHA[],load:0xc0a80a01->NXM_OF_ARP_SPA[],move:NXM_NX_REG6[]->NXM_NX_REG7[],load:0->OXM_OF_IN_PORT[],resubmit(,115)
+ cookie=0x0, duration=0.210s, table=25, n_packets=0, n_bytes=0, idle_age=0, priority=100,arp,metadata=0xb,arp_tpa=192.168.11.1,arp_op=1 actions=load:0x2->NXM_OF_ARP_OP[],move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[],move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:fa:16:3e:e6:60:cb,load:0xfa163ee660cb->NXM_NX_ARP_SHA[],load:0xc0a80b01->NXM_OF_ARP_SPA[],move:NXM_NX_REG6[]->NXM_NX_REG7[],load:0->OXM_OF_IN_PORT[],resubmit(,115)
+ cookie=0x0, duration=662.063s, table=25, n_packets=4, n_bytes=168, idle_age=0, priority=1 actions=resubmit(,55)
+ cookie=0x0, duration=10.408s, table=30, n_packets=0, n_bytes=0, idle_age=10, priority=100,reg6=0x13 actions=CONTROLLER:65535
+ cookie=0x0, duration=5.173s, table=30, n_packets=0, n_bytes=0, idle_age=5, priority=100,reg6=0x16 actions=CONTROLLER:65535
+ cookie=0x0, duration=3.912s, table=30, n_packets=0, n_bytes=0, idle_age=3, priority=100,reg6=0x17 actions=CONTROLLER:65535
+ cookie=0x0, duration=662.063s, table=30, n_packets=0, n_bytes=0, idle_age=662, priority=1 actions=resubmit(,55)
+ cookie=0x0, duration=660.629s, table=35, n_packets=0, n_bytes=0, idle_age=660, priority=200,tcp,tcp_flags=+syn-ack actions=learn(table=40,fin_idle_timeout=1,fin_hard_timeout=1,eth_type=0x800,nw_proto=6,NXM_OF_IP_DST[31]=0x1,NXM_OF_IP_DST[0..30]=NXM_NX_REG6[0..30],NXM_OF_TCP_DST[]=NXM_OF_TCP_SRC[],load:NXM_OF_IP_SRC[]->NXM_OF_IP_DST[],load:0xa9fea9fe->NXM_OF_IP_SRC[],load:0x50->NXM_OF_TCP_SRC[],load:NXM_NX_REG6[]->NXM_NX_REG7[]),learn(table=40,idle_timeout=30,priority=200,eth_type=0x806,NXM_OF_ARP_TPA[0..30]=NXM_NX_REG6[0..30],NXM_OF_ARP_OP[0..7]=0x1,load:0->NXM_NX_REG6[],load:0x2->NXM_OF_ARP_OP[0..7],load:NXM_OF_ETH_DST[]->NXM_NX_ARP_THA[],load:0xa9fea9fe->NXM_OF_ARP_TPA[],load:NXM_OF_ETH_SRC[]->NXM_OF_ETH_SRC[],load:NXM_OF_ETH_SRC[]->NXM_NX_ARP_SHA[],load:NXM_NX_REG6[]->NXM_OF_ARP_SPA[],load:0x1->NXM_OF_ARP_SPA[31]),move:NXM_NX_REG6[]->NXM_OF_IP_SRC[],load:0x1->NXM_OF_IP_SRC[31],output:6
+ cookie=0x0, duration=660.629s, table=35, n_packets=0, n_bytes=0, idle_age=660, priority=100,ip actions=move:NXM_NX_REG6[]->NXM_OF_IP_SRC[],load:0x1->NXM_OF_IP_SRC[31],output:6
+ cookie=0x0, duration=582.515s, table=45, n_packets=0, n_bytes=0, idle_age=582, priority=100,icmp6,metadata=0x1,ipv6_dst=fdfd:5c75:935e::1,icmp_type=135 actions=load:0x88->NXM_NX_ICMPV6_TYPE[],move:NXM_NX_IPV6_SRC[]->NXM_NX_IPV6_DST[],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:fa:16:3e:6e:ed:a0,load:0xfa163e6eeda0->NXM_NX_ND_SLL[],IN_PORT
+ cookie=0x0, duration=662.063s, table=45, n_packets=28, n_bytes=3112, idle_age=0, priority=1 actions=resubmit(,55)
+ cookie=0x0, duration=590.840s, table=55, n_packets=0, n_bytes=0, idle_age=590, priority=200,metadata=0x1,dl_dst=fa:16:3e:57:d9:7d actions=load:0x1->NXM_NX_REG5[],resubmit(,60)
+ cookie=0x0, duration=583.326s, table=55, n_packets=0, n_bytes=0, idle_age=583, priority=200,metadata=0x1,dl_dst=fa:16:3e:6e:ed:a0 actions=load:0x1->NXM_NX_REG5[],resubmit(,60)
+ cookie=0x0, duration=10.416s, table=55, n_packets=0, n_bytes=0, idle_age=10, priority=100,metadata=0xa,dl_dst=fa:16:3e:72:7b:80 actions=load:0x13->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=5.182s, table=55, n_packets=0, n_bytes=0, idle_age=5, priority=100,metadata=0xb,dl_dst=fa:16:3e:21:74:1f actions=load:0x16->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=3.923s, table=55, n_packets=0, n_bytes=0, idle_age=3, priority=100,metadata=0xb,dl_dst=fa:16:3e:cc:1d:ad actions=load:0x17->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=1.769s, table=55, n_packets=0, n_bytes=0, idle_age=1, priority=200,metadata=0xb,dl_dst=fa:16:3e:48:90:59 actions=load:0x4->NXM_NX_REG5[],resubmit(,60)
+ cookie=0x0, duration=0.210s, table=55, n_packets=0, n_bytes=0, idle_age=0, priority=200,metadata=0xb,dl_dst=fa:16:3e:e6:60:cb actions=load:0x4->NXM_NX_REG5[],resubmit(,60)
+ cookie=0x0, duration=590.822s, table=55, n_packets=29, n_bytes=3050, idle_age=83, hard_age=582, priority=100,metadata=0x1,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=load:0x5->NXM_NX_REG7[],resubmit(,75),load:0x3->NXM_NX_REG7[],resubmit(,75),load:0->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=10.416s, table=55, n_packets=0, n_bytes=0, idle_age=10, priority=100,metadata=0xa,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=load:0x13->NXM_NX_REG7[],resubmit(,75),load:0->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=5.182s, table=55, n_packets=3, n_bytes=230, idle_age=0, hard_age=0, priority=100,metadata=0xb,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=load:0x18->NXM_NX_REG7[],resubmit(,75),load:0x17->NXM_NX_REG7[],resubmit(,75),load:0x16->NXM_NX_REG7[],resubmit(,75),load:0->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=590.840s, table=60, n_packets=0, n_bytes=0, idle_age=590, priority=300,icmp,reg5=0x1,nw_dst=10.0.0.1,icmp_type=8 actions=move:NXM_OF_ETH_DST[]->OXM_OF_METADATA[0..47],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],move:OXM_OF_METADATA[0..47]->NXM_OF_ETH_SRC[],move:NXM_OF_IP_SRC[]->NXM_OF_IP_DST[],mod_nw_src:10.0.0.1,load:0x40->NXM_NX_IP_TTL[],load:0->NXM_OF_ICMP_TYPE[],load:0->NXM_OF_ICMP_CODE[],IN_PORT
+ cookie=0x0, duration=1.770s, table=60, n_packets=0, n_bytes=0, idle_age=1, priority=300,icmp,reg5=0x4,nw_dst=192.168.10.1,icmp_type=8 actions=move:NXM_OF_ETH_DST[]->OXM_OF_METADATA[0..47],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],move:OXM_OF_METADATA[0..47]->NXM_OF_ETH_SRC[],move:NXM_OF_IP_SRC[]->NXM_OF_IP_DST[],mod_nw_src:192.168.10.1,load:0x40->NXM_NX_IP_TTL[],load:0->NXM_OF_ICMP_TYPE[],load:0->NXM_OF_ICMP_CODE[],IN_PORT
+ cookie=0x0, duration=0.211s, table=60, n_packets=0, n_bytes=0, idle_age=0, priority=300,icmp,reg5=0x4,nw_dst=192.168.11.1,icmp_type=8 actions=move:NXM_OF_ETH_DST[]->OXM_OF_METADATA[0..47],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],move:OXM_OF_METADATA[0..47]->NXM_OF_ETH_SRC[],move:NXM_OF_IP_SRC[]->NXM_OF_IP_DST[],mod_nw_src:192.168.11.1,load:0x40->NXM_NX_IP_TTL[],load:0->NXM_OF_ICMP_TYPE[],load:0->NXM_OF_ICMP_CODE[],IN_PORT
+ cookie=0x0, duration=590.818s, table=60, n_packets=0, n_bytes=0, idle_age=590, priority=200,ip,reg5=0x1,nw_dst=10.0.0.1 actions=load:0x3->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=0.634s, table=60, n_packets=0, n_bytes=0, idle_age=1, priority=200,ip,reg5=0x4,nw_dst=192.168.10.1 actions=load:0x18->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=0.211s, table=60, n_packets=0, n_bytes=0, idle_age=0, priority=200,ip,reg5=0x4,nw_dst=192.168.11.1 actions=CONTROLLER:65535
+ cookie=0x0, duration=582.516s, table=60, n_packets=0, n_bytes=0, idle_age=583, priority=200,ipv6,reg5=0x1,ipv6_dst=fdfd:5c75:935e::1 actions=load:0x5->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=590.840s, table=60, n_packets=0, n_bytes=0, idle_age=590, priority=100,ip,reg5=0x1,nw_dst=10.0.0.0/26 actions=dec_ttl,load:0x1->OXM_OF_METADATA[],mod_dl_src:fa:16:3e:57:d9:7d,resubmit(,65)
+ cookie=0x0, duration=583.327s, table=60, n_packets=0, n_bytes=0, idle_age=583, priority=100,ipv6,reg5=0x1,ipv6_dst=fdfd:5c75:935e::/64 actions=dec_ttl,load:0x1->OXM_OF_METADATA[],mod_dl_src:fa:16:3e:6e:ed:a0,resubmit(,65)
+ cookie=0x0, duration=1.770s, table=60, n_packets=0, n_bytes=0, idle_age=1, priority=100,ip,reg5=0x4,nw_dst=192.168.10.0/24 actions=dec_ttl,load:0xb->OXM_OF_METADATA[],mod_dl_src:fa:16:3e:48:90:59,resubmit(,65)
+ cookie=0x0, duration=0.211s, table=60, n_packets=0, n_bytes=0, idle_age=0, priority=100,ip,reg5=0x4,nw_dst=192.168.11.0/24 actions=dec_ttl,load:0xb->OXM_OF_METADATA[],mod_dl_src:fa:16:3e:e6:60:cb,resubmit(,65)
+ cookie=0x0, duration=10.405s, table=65, n_packets=0, n_bytes=0, idle_age=10, priority=200,ip,metadata=0xa,nw_dst=192.168.200.12 actions=mod_dl_dst:fa:16:3e:72:7b:80,load:0x13->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=5.169s, table=65, n_packets=0, n_bytes=0, idle_age=5, priority=200,ip,metadata=0xb,nw_dst=192.168.10.7 actions=mod_dl_dst:fa:16:3e:21:74:1f,load:0x16->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=3.913s, table=65, n_packets=0, n_bytes=0, idle_age=3, priority=200,ip,metadata=0xb,nw_dst=192.168.11.7 actions=mod_dl_dst:fa:16:3e:cc:1d:ad,load:0x17->NXM_NX_REG7[],resubmit(,75)
+ cookie=0x0, duration=590.823s, table=75, n_packets=29, n_bytes=3050, idle_age=83, priority=100,reg7=0x3 actions=resubmit(,105)
+ cookie=0x0, duration=582.516s, table=75, n_packets=19, n_bytes=2186, idle_age=83, priority=100,reg7=0x5 actions=resubmit(,105)
+ cookie=0x0, duration=10.417s, table=75, n_packets=0, n_bytes=0, idle_age=10, priority=100,reg7=0x13 actions=resubmit(,105)
+ cookie=0x0, duration=5.183s, table=75, n_packets=3, n_bytes=230, idle_age=0, priority=100,reg7=0x16 actions=resubmit(,105)
+ cookie=0x0, duration=3.924s, table=75, n_packets=3, n_bytes=230, idle_age=0, priority=100,reg7=0x17 actions=resubmit(,105)
+ cookie=0x0, duration=0.634s, table=75, n_packets=3, n_bytes=230, idle_age=0, priority=100,reg7=0x18 actions=resubmit(,105)
+ cookie=0x0, duration=662.064s, table=80, n_packets=0, n_bytes=0, idle_age=662, priority=100 actions=output:2
+ cookie=0x0, duration=590.823s, table=100, n_packets=0, n_bytes=0, idle_age=590, priority=200,metadata=0x1,dl_dst=fa:16:3e:57:d9:7d actions=load:0x3->NXM_NX_REG7[],resubmit(,105)
+ cookie=0x0, duration=582.516s, table=100, n_packets=0, n_bytes=0, idle_age=582, priority=200,metadata=0x1,dl_dst=fa:16:3e:6e:ed:a0 actions=load:0x5->NXM_NX_REG7[],resubmit(,105)
+ cookie=0x0, duration=10.417s, table=100, n_packets=0, n_bytes=0, idle_age=10, priority=200,metadata=0xa,dl_dst=fa:16:3e:72:7b:80 actions=load:0x13->NXM_NX_REG7[],resubmit(,105)
+ cookie=0x0, duration=5.183s, table=100, n_packets=0, n_bytes=0, idle_age=5, priority=200,metadata=0xb,dl_dst=fa:16:3e:21:74:1f actions=load:0x16->NXM_NX_REG7[],resubmit(,105)
+ cookie=0x0, duration=3.924s, table=100, n_packets=0, n_bytes=0, idle_age=3, priority=200,metadata=0xb,dl_dst=fa:16:3e:cc:1d:ad actions=load:0x17->NXM_NX_REG7[],resubmit(,105)
+ cookie=0x0, duration=0.634s, table=100, n_packets=0, n_bytes=0, idle_age=0, priority=200,metadata=0xb,dl_dst=fa:16:3e:48:90:59 actions=load:0x18->NXM_NX_REG7[],resubmit(,105)
+ cookie=0x0, duration=590.823s, table=100, n_packets=0, n_bytes=0, idle_age=590, hard_age=582, priority=200,metadata=0x1,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=load:0x5->NXM_NX_REG7[],resubmit(,105),load:0x3->NXM_NX_REG7[],resubmit(,105)
+ cookie=0x0, duration=10.417s, table=100, n_packets=0, n_bytes=0, idle_age=10, priority=200,metadata=0xa,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=load:0x13->NXM_NX_REG7[],resubmit(,105)
+ cookie=0x0, duration=5.183s, table=100, n_packets=0, n_bytes=0, idle_age=5, hard_age=0, priority=200,metadata=0xb,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=load:0x18->NXM_NX_REG7[],resubmit(,105),load:0x17->NXM_NX_REG7[],resubmit(,105),load:0x16->NXM_NX_REG7[],resubmit(,105)
+ cookie=0x0, duration=10.409s, table=105, n_packets=0, n_bytes=0, idle_age=10, priority=100,ip,reg7=0x13 actions=ct(table=110,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=10.409s, table=105, n_packets=0, n_bytes=0, idle_age=10, priority=100,ipv6,reg7=0x13 actions=ct(table=110,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=5.174s, table=105, n_packets=0, n_bytes=0, idle_age=5, priority=100,ip,reg7=0x16 actions=ct(table=110,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=5.174s, table=105, n_packets=2, n_bytes=188, idle_age=0, priority=100,ipv6,reg7=0x16 actions=ct(table=110,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=3.913s, table=105, n_packets=0, n_bytes=0, idle_age=3, priority=100,ip,reg7=0x17 actions=ct(table=110,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=3.913s, table=105, n_packets=2, n_bytes=188, idle_age=0, priority=100,ipv6,reg7=0x17 actions=ct(table=110,zone=OXM_OF_METADATA[0..15])
+ cookie=0x0, duration=662.064s, table=105, n_packets=53, n_bytes=5550, idle_age=0, priority=1 actions=resubmit(,115)
+ cookie=0x0, duration=662.064s, table=110, n_packets=0, n_bytes=0, idle_age=662, priority=65534,ct_state=-new+est-rel-inv+trk actions=resubmit(,115)
+ cookie=0x0, duration=662.064s, table=110, n_packets=0, n_bytes=0, idle_age=662, priority=65534,ct_state=-new+rel-inv+trk actions=resubmit(,115)
+ cookie=0x0, duration=662.064s, table=110, n_packets=0, n_bytes=0, idle_age=662, priority=65534,ct_state=+new+rel-inv+trk,ip actions=ct(commit,table=115,zone=NXM_NX_CT_ZONE[])
+ cookie=0x0, duration=662.064s, table=110, n_packets=0, n_bytes=0, idle_age=662, priority=65534,ct_state=+new+rel-inv+trk,ipv6 actions=ct(commit,table=115,zone=NXM_NX_CT_ZONE[])
+ cookie=0x0, duration=662.063s, table=110, n_packets=0, n_bytes=0, idle_age=662, priority=65534,ct_state=+inv+trk actions=drop
+ cookie=0x0, duration=10.417s, table=110, n_packets=0, n_bytes=0, idle_age=10, priority=11,conj_id=9,ip actions=ct(commit,table=115,zone=NXM_NX_CT_ZONE[])
+ cookie=0x0, duration=10.417s, table=110, n_packets=0, n_bytes=0, idle_age=10, priority=11,conj_id=9,ipv6 actions=ct(commit,table=115,zone=NXM_NX_CT_ZONE[])
+ cookie=0x0, duration=5.183s, table=110, n_packets=0, n_bytes=0, idle_age=5, priority=12,conj_id=10,ip actions=ct(commit,table=115,zone=NXM_NX_CT_ZONE[])
+ cookie=0x0, duration=5.183s, table=110, n_packets=0, n_bytes=0, idle_age=5, priority=12,conj_id=10,ipv6 actions=ct(commit,table=115,zone=NXM_NX_CT_ZONE[])
+ cookie=0x100000000, duration=10.409s, table=110, n_packets=0, n_bytes=0, idle_age=10, priority=11,ip,nw_src=192.168.200.12 actions=conjunction(9,2/2)
+ cookie=0x400000000, duration=5.174s, table=110, n_packets=0, n_bytes=0, idle_age=5, priority=12,ip,nw_src=192.168.10.7 actions=conjunction(10,2/2)
+ cookie=0x400000000, duration=3.924s, table=110, n_packets=0, n_bytes=0, idle_age=3, priority=12,ip,nw_src=192.168.11.7 actions=conjunction(10,2/2)
+ cookie=0x0, duration=10.409s, table=110, n_packets=0, n_bytes=0, idle_age=10, priority=11,ct_state=+new-est-rel-inv+trk,reg7=0x13 actions=conjunction(9,1/2)
+ cookie=0x0, duration=5.174s, table=110, n_packets=0, n_bytes=0, idle_age=5, priority=12,ct_state=+new-est-rel-inv+trk,reg7=0x16 actions=conjunction(10,1/2)
+ cookie=0x0, duration=3.924s, table=110, n_packets=0, n_bytes=0, idle_age=3, priority=12,ct_state=+new-est-rel-inv+trk,reg7=0x17 actions=conjunction(10,1/2)
+ cookie=0x0, duration=662.064s, table=110, n_packets=2, n_bytes=220, idle_age=0, priority=1 actions=drop
+ cookie=0x0, duration=590.823s, table=115, n_packets=32, n_bytes=3176, idle_age=83, priority=100,reg7=0x3 actions=output:7
+ cookie=0x0, duration=582.516s, table=115, n_packets=19, n_bytes=2186, idle_age=83, priority=100,reg7=0x5 actions=output:8
+ cookie=0x0, duration=10.409s, table=115, n_packets=0, n_bytes=0, idle_age=10, priority=100,reg7=0x13 actions=output:14
+ cookie=0x0, duration=5.174s, table=115, n_packets=1, n_bytes=42, idle_age=0, priority=100,reg7=0x16 actions=output:15
+ cookie=0x0, duration=3.913s, table=115, n_packets=1, n_bytes=42, idle_age=0, priority=100,reg7=0x17 actions=output:16
+ cookie=0x0, duration=0.634s, table=115, n_packets=4, n_bytes=272, idle_age=0, priority=100,reg7=0x18 actions=output:17
+
+AutoAttach table
+_uuid mappings system_description system_name
+----- -------- ------------------ -----------
+
+Bridge table
+_uuid                                auto_attach controller                             datapath_id        datapath_type datapath_version external_ids       fail_mode flood_vlans flow_tables ipfix mcast_snooping_enable mirrors name   netflow other_config             ports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          protocols                    rstp_enable rstp_status sflow status stp_enable
+------------------------------------ ----------- -------------------------------------- ------------------ ------------- ---------------- ------------------ --------- ----------- ----------- ----- --------------------- ------- ------ ------- ------------------------ -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------------------------- ----------- ----------- ----- ------ ----------
+e43a85ae-906c-4ffc-9ed6-83a851f1a47b []          [a9752009-7d0d-4e8c-9bfa-ab7bf49c9e86] "0000ae853ae4fc4f" system        "<unknown>"      {bridge-id=br-int} secure    []          {}          []    false                 []      br-int []      {disable-in-band="true"} [2c713b03-0328-4286-adf6-da32775306c8, 5c00a75e-95b3-47bf-856c-1e25f208cf71, 635346b7-4672-4b12-9515-e4703d8c5674, 6a026386-0bbc-41c7-9c32-a67bc71beb51, 7afe3420-8800-4dbd-a6aa-35b87d1f07ad, 89ebbb6f-95c5-4cfd-b044-4d2483af1ec4, a0df6267-d22f-49c4-a44a-a6b451f7cfdf, bc0994a0-9281-45da-9b6e-110a425e92a7, c401cb0b-ffd1-4f7e-8205-cfd3615f08fd, c5f1636a-0619-40e1-862d-43c19eb65b34, e2e63c03-00e4-4fcd-8a2d-f2c9c6ba9a47, e3e7b231-e826-46db-9c64-40350d1ff453, e88fa4c8-39d2-4abe-854a-cce657072577] ["OpenFlow10", "OpenFlow13"] false       {}          []    {}     false     
+c58f81f6-6813-4453-80ed-ae813b46c35d []          []                                     "0000f6818fc55344" system        "<unknown>"      {bridge-id=br-ex}  []        []          {}          []    false                 []      br-ex  []      {disable-in-band="true"} [9a1de347-3756-4716-b3ad-76515c0fbe0d, b5cef816-09e8-4c0f-a046-efc195a52682, c93de2fc-148a-440d-a613-afe068c88381, ce0c5732-543c-4e5c-a9b4-eba7be639529]                                                                                                                                                                                                                                                                                                                                                       []                           false       {}          []    {}     false     
+
+Controller table
+_uuid                                connection_mode controller_burst_limit controller_rate_limit enable_async_messages external_ids inactivity_probe is_connected local_gateway local_ip local_netmask max_backoff other_config role  status                                                                   target              
+------------------------------------ --------------- ---------------------- --------------------- --------------------- ------------ ---------------- ------------ ------------- -------- ------------- ----------- ------------ ----- ------------------------------------------------------------------------ --------------------
+a9752009-7d0d-4e8c-9bfa-ab7bf49c9e86 []              []                     []                    []                    {}           []               true         []            []       []            []          {}           other {last_error="Connection refused", sec_since_connect="658", state=ACTIVE} "tcp:127.0.0.1:6653"
+
+Flow_Sample_Collector_Set table
+_uuid bridge external_ids id ipfix
+----- ------ ------------ -- -----
+
+Flow_Table table
+_uuid external_ids flow_limit groups name overflow_policy prefixes
+----- ------------ ---------- ------ ---- --------------- --------
+
+IPFIX table
+_uuid cache_active_timeout cache_max_flows external_ids obs_domain_id obs_point_id other_config sampling targets
+----- -------------------- --------------- ------------ ------------- ------------ ------------ -------- -------
+
+Interface table
+_uuid                                admin_state bfd bfd_status cfm_fault cfm_fault_status cfm_flap_count cfm_health cfm_mpid cfm_remote_mpids cfm_remote_opstate duplex error external_ids                                                                                             ifindex ingress_policing_burst ingress_policing_rate lacp_current link_resets link_speed link_state lldp mac mac_in_use          mtu  mtu_request name             ofport ofport_request options                                              other_config statistics                                                                                                                                                                    status                                                       type    
+------------------------------------ ----------- --- ---------- --------- ---------------- -------------- ---------- -------- ---------------- ------------------ ------ ----- -------------------------------------------------------------------------------------------------------- ------- ---------------------- --------------------- ------------ ----------- ---------- ---------- ---- --- ------------------- ---- ----------- ---------------- ------ -------------- ---------------------------------------------------- ------------ ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ------------------------------------------------------------ --------
+52afdab1-d00f-439b-b8b4-6d46f140015d down        {}  {}         []        []               []             []         []       []               []                 []     []    {}                                                                                                       77      0                      0                     []           0           []         down       {}   []  "ae:85:3a:e4:fc:4f" 1500 []          br-int           65534  []             {}                                                   {}           {collisions=0, rx_bytes=0, rx_crc_err=0, rx_dropped=0, rx_errors=0, rx_frame_err=0, rx_over_err=0, rx_packets=0, tx_bytes=0, tx_dropped=0, tx_errors=0, tx_packets=0}         {driver_name=openvswitch}                                    internal
+931a93f3-d76d-476c-b311-4a45baf39d7a down        {}  {}         []        []               []             []         []       []               []                 []     []    {attached-mac="fa:16:3e:48:90:59", iface-id="4b6cf90b-90b5-4a40-bb2a-7abd757091b1", iface-status=active} 0       0                      0                     []           0           []         down       {}   []  []                  []   []          "qr-4b6cf90b-90" 17     []             {}                                                   {}           {collisions=0, rx_bytes=0, rx_crc_err=0, rx_dropped=0, rx_errors=0, rx_frame_err=0, rx_over_err=0, rx_packets=0, tx_bytes=0, tx_dropped=0, tx_errors=0, tx_packets=0}         {driver_name=openvswitch}                                    internal
+f153f7f9-9e59-44be-9afa-a09e8cbd4b79 down        {}  {}         []        []               []             []         []       []               []                 []     []    {attached-mac="fa:16:3e:4f:3f:0d", iface-id="b6531aa6-86c5-4dd2-b146-36b316a431c9", iface-status=active} 0       0                      0                     []           0           []         down       {}   []  []                  []   []          "qg-b6531aa6-86" 3      []             {}                                                   {}           {collisions=0, rx_bytes=7681, rx_crc_err=0, rx_dropped=0, rx_errors=0, rx_frame_err=0, rx_over_err=0, rx_packets=60, tx_bytes=2012, tx_dropped=0, tx_errors=0, tx_packets=30} {driver_name=openvswitch}                                    internal
+54b847e5-3d6f-47ad-aa96-b713892eb398 down        {}  {}         []        []               []             []         []       []               []                 []     []    {attached-mac="fa:16:3e:57:d9:7d", iface-id="0ed2580c-a3d7-4011-8e34-ad64262df591", iface-status=active} 0       0                      0                     []           0           []         down       {}   []  []                  []   []          "qr-0ed2580c-a3" 7      []             {}                                                   {}           {collisions=0, rx_bytes=2004, rx_crc_err=0, rx_dropped=0, rx_errors=0, rx_frame_err=0, rx_over_err=0, rx_packets=22, tx_bytes=990, tx_dropped=0, tx_errors=0, tx_packets=13}  {driver_name=openvswitch}                                    internal
+af161895-89c5-430a-8361-c8676e9b5b62 down        {}  {}         []        []               []             []         []       []               []                 []     []    {attached-mac="fa:16:3e:6e:ed:a0", iface-id="487dd9de-ebef-4271-8c41-62e3823f4c1b", iface-status=active} 0       0                      0                     []           0           []         down       {}   []  []                  []   []          "qr-487dd9de-eb" 8      []             {}                                                   {}           {collisions=0, rx_bytes=0, rx_crc_err=0, rx_dropped=0, rx_errors=0, rx_frame_err=0, rx_over_err=0, rx_packets=0, tx_bytes=2186, tx_dropped=0, tx_errors=0, tx_packets=19}     {driver_name=openvswitch}                                    internal
+fe6ab9ca-eb4a-4b06-8b01-aba9dfb369dc up          {}  {}         []        []               []             []         []       []               []                 []     []    {}                                                                                                       0       0                      0                     []           0           []         up         {}   []  "16:fe:a2:f6:05:5e" []   []          patch-int        2      []             {peer=patch-ex}                                      {}           {rx_bytes=11530, rx_packets=100, tx_bytes=0, tx_packets=0}                                                                                                                    {}                                                           patch   
+c99b4804-675c-45c1-8050-552650d2f990 up          {}  {}         []        []               []             []         []       []               []                 []     []    {}                                                                                                       0       0                      0                     []           0           []         up         {}   []  "4a:38:06:37:8e:69" []   []          geneve-vtp       4      []             {key=flow, local_ip="10.164.180.73", remote_ip=flow} {}           {rx_bytes=0, rx_packets=0, tx_bytes=0, tx_packets=0}                                                                                                                          {}                                                           geneve  
+a790a239-e49e-4e06-97cb-cafafeefac46 up          {}  {}         []        []               []             []         []       []               []                 []     []    {}                                                                                                       0       0                      0                     []           0           []         up         {}   []  "5a:7b:0d:54:c9:9b" []   []          gre-vtp          5      []             {key=flow, local_ip="10.164.180.73", remote_ip=flow} {}           {rx_bytes=0, rx_packets=0, tx_bytes=0, tx_packets=0}                                                                                                                          {}                                                           gre     
+b062ab73-c910-4c2f-92c1-4561763d3ab4 up          {}  {}         []        []               []             []         []       []               []                 []     []    {}                                                                                                       0       0                      0                     []           0           []         up         {}   []  "66:93:56:90:1b:3d" []   []          phy-br-ex        1      []             {peer=int-br-ex}                                     {}           {rx_bytes=0, rx_packets=0, tx_bytes=11530, tx_packets=100}                                                                                                                    {}                                                           patch   
+2f41d73e-ff19-4304-9017-567c937153ff up          {}  {}         []        []               []             []         []       []               []                 []     []    {}                                                                                                       0       0                      0                     []           0           []         up         {}   []  "7e:23:06:8c:69:4e" []   []          patch-ex         2      []             {peer=patch-int}                                     {}           {rx_bytes=0, rx_packets=0, tx_bytes=11530, tx_packets=100}                                                                                                                    {}                                                           patch   
+3a30f850-053f-4bdd-ae46-e27e9304f087 up          {}  {}         []        []               []             []         []       []               []                 []     []    {}                                                                                                       0       0                      0                     []           0           []         up         {}   []  "ba:83:e7:46:d1:e6" []   []          vxlan-vtp        3      []             {key=flow, local_ip="10.164.180.73", remote_ip=flow} {}           {rx_bytes=0, rx_packets=0, tx_bytes=0, tx_packets=0}                                                                                                                          {}                                                           vxlan   
+7292dc3f-fc76-47d5-9af6-2825ce476d85 up          {}  {}         []        []               []             []         []       []               []                 []     []    {}                                                                                                       0       0                      0                     []           0           []         up         {}   []  "ee:f2:8d:ad:84:1b" []   []          int-br-ex        1      []             {peer=phy-br-ex}                                     {}           {rx_bytes=11530, rx_packets=100, tx_bytes=0, tx_packets=0}                                                                                                                    {}                                                           patch   
+abde28ab-82de-42ae-a1d0-79475485eff6 up          {}  {}         []        []               []             []         []       []               []                 []     []    {}                                                                                                       76      0                      0                     []           1           []         up         {}   []  "f6:81:8f:c5:53:44" 1500 []          br-ex            65534  []             {}                                                   {}           {collisions=0, rx_bytes=1592, rx_crc_err=0, rx_dropped=0, rx_errors=0, rx_frame_err=0, rx_over_err=0, rx_packets=30, tx_bytes=9518, tx_dropped=0, tx_errors=0, tx_packets=70} {driver_name=openvswitch}                                    internal
+ea22b690-bdfe-49f2-b5e3-860ac9b52645 up          {}  {}         []        []               []             []         []       []               []                 []     []    {}                                                                                                       83      0                      0                     []           1           []         up         {}   []  "72:b2:30:08:bd:b8" 1500 []          tap-metadata     6      []             {}                                                   {}           {collisions=0, rx_bytes=0, rx_crc_err=0, rx_dropped=0, rx_errors=0, rx_frame_err=0, rx_over_err=0, rx_packets=0, tx_bytes=6086, tx_dropped=0, tx_errors=0, tx_packets=49}     {driver_name=openvswitch}                                    internal
+57f38d9e-0e6f-4d02-b324-020528000a36 up          {}  {}         []        []               []             []         []       []               []                 full   []    {iface-id="0577216b-a5b6-4306-a7ae-dd2cba833947"}                                                        93      0                      0                     []           0           10000000   up         {}   []  "fa:16:3e:21:74:1f" 1500 []          "tap0577216b-a5" 15     []             {}                                                   {}           {collisions=0, rx_bytes=0, rx_crc_err=0, rx_dropped=0, rx_errors=0, rx_frame_err=0, rx_over_err=0, rx_packets=0, tx_bytes=0, tx_dropped=0, tx_errors=0, tx_packets=0}         {driver_name=tun, driver_version="1.6", firmware_version=""} ""      
+74e0c8f2-309f-48ac-8359-c88240e4a2b9 up          {}  {}         []        []               []             []         []       []               []                 full   []    {iface-id="175dd18d-cc9c-42ac-8c74-bf41d2828735"}                                                        92      0                      0                     []           0           10000000   up         {}   []  "fa:16:3e:72:7b:80" 1500 []          "tap175dd18d-cc" 14     []             {}                                                   {}           {collisions=0, rx_bytes=0, rx_crc_err=0, rx_dropped=0, rx_errors=0, rx_frame_err=0, rx_over_err=0, rx_packets=0, tx_bytes=0, tx_dropped=0, tx_errors=0, tx_packets=0}         {driver_name=tun, driver_version="1.6", firmware_version=""} ""      
+d26a98e4-52d8-4894-8603-82877872b624 up          {}  {}         []        []               []             []         []       []               []                 full   []    {iface-id="2d29c645-ac61-4419-80f4-93659910e523"}                                                        94      0                      0                     []           0           10000000   up         {}   []  "fa:16:3e:cc:1d:ad" 1500 []          "tap2d29c645-ac" 16     []             {}                                                   {}           {collisions=0, rx_bytes=0, rx_crc_err=0, rx_dropped=0, rx_errors=0, rx_frame_err=0, rx_over_err=0, rx_packets=0, tx_bytes=0, tx_dropped=0, tx_errors=0, tx_packets=0}         {driver_name=tun, driver_version="1.6", firmware_version=""} ""      
+
+Manager table
+_uuid                                connection_mode external_ids inactivity_probe is_connected max_backoff other_config status                                                                                  target             
+------------------------------------ --------------- ------------ ---------------- ------------ ----------- ------------ --------------------------------------------------------------------------------------- -------------------
+1adbd487-421e-485c-b0fe-760657990de2 []              {}           []               true         []          {}           {bound_port="6640", n_connections="3", sec_since_connect="0", sec_since_disconnect="0"} "ptcp:6640:0.0.0.0"
+
+Mirror table
+_uuid external_ids name output_port output_vlan select_all select_dst_port select_src_port select_vlan snaplen statistics
+----- ------------ ---- ----------- ----------- ---------- --------------- --------------- ----------- ------- ----------
+
+NetFlow table
+_uuid active_timeout add_id_to_interface engine_id engine_type external_ids targets
+----- -------------- ------------------- --------- ----------- ------------ -------
+
+Open_vSwitch table
+_uuid                                bridges                                                                      cur_cfg datapath_types   db_version external_ids                                                        iface_types                                                              manager_options                        next_cfg other_config ovs_version ssl statistics system_type system_version
+------------------------------------ ---------------------------------------------------------------------------- ------- ---------------- ---------- ------------------------------------------------------------------- ------------------------------------------------------------------------ -------------------------------------- -------- ------------ ----------- --- ---------- ----------- --------------
+0c7e2158-80ed-4689-9aaa-f53cc424ebcd [c58f81f6-6813-4453-80ed-ae813b46c35d, e43a85ae-906c-4ffc-9ed6-83a851f1a47b] 619     [netdev, system] "7.14.0"   {hostname=tuanvu, system-id="86587d5b-3e4c-4a5a-afff-ffff3f058f1d"} [geneve, gre, internal, ipsec_gre, lisp, patch, stt, system, tap, vxlan] [1adbd487-421e-485c-b0fe-760657990de2] 619      {}           "2.6.1"     []  {}         ubuntu      "16.04"       
+
+Port table
+_uuid                                bond_active_slave bond_downdelay bond_fake_iface bond_mode bond_updelay external_ids fake_bridge interfaces                             lacp mac name             other_config qos rstp_statistics rstp_status statistics status tag trunks vlan_mode
+------------------------------------ ----------------- -------------- --------------- --------- ------------ ------------ ----------- -------------------------------------- ---- --- ---------------- ------------ --- --------------- ----------- ---------- ------ --- ------ ---------
+c93de2fc-148a-440d-a613-afe068c88381 []                0              false           []        0            {}           false       [abde28ab-82de-42ae-a1d0-79475485eff6] []   []  br-ex            {}           []  {}              {}          {}         {}     []  []     []       
+89ebbb6f-95c5-4cfd-b044-4d2483af1ec4 []                0              false           []        0            {}           false       [52afdab1-d00f-439b-b8b4-6d46f140015d] []   []  br-int           {}           []  {}              {}          {}         {}     []  []     []       
+e3e7b231-e826-46db-9c64-40350d1ff453 []                0              false           []        0            {}           false       [c99b4804-675c-45c1-8050-552650d2f990] []   []  geneve-vtp       {}           []  {}              {}          {}         {}     []  []     []       
+2c713b03-0328-4286-adf6-da32775306c8 []                0              false           []        0            {}           false       [a790a239-e49e-4e06-97cb-cafafeefac46] []   []  gre-vtp          {}           []  {}              {}          {}         {}     []  []     []       
+5c00a75e-95b3-47bf-856c-1e25f208cf71 []                0              false           []        0            {}           false       [7292dc3f-fc76-47d5-9af6-2825ce476d85] []   []  int-br-ex        {}           []  {}              {}          {}         {}     []  []     []       
+ce0c5732-543c-4e5c-a9b4-eba7be639529 []                0              false           []        0            {}           false       [2f41d73e-ff19-4304-9017-567c937153ff] []   []  patch-ex         {}           []  {}              {}          {}         {}     []  []     []       
+635346b7-4672-4b12-9515-e4703d8c5674 []                0              false           []        0            {}           false       [fe6ab9ca-eb4a-4b06-8b01-aba9dfb369dc] []   []  patch-int        {}           []  {}              {}          {}         {}     []  []     []       
+9a1de347-3756-4716-b3ad-76515c0fbe0d []                0              false           []        0            {}           false       [b062ab73-c910-4c2f-92c1-4561763d3ab4] []   []  phy-br-ex        {}           []  {}              {}          {}         {}     []  []     []       
+b5cef816-09e8-4c0f-a046-efc195a52682 []                0              B7B
+false           []        0            {}           false       [f153f7f9-9e59-44be-9afa-a09e8cbd4b79] []   []  "qg-b6531aa6-86" {}           []  {}              {}          {}         {}     []  []     []       
+e2e63c03-00e4-4fcd-8a2d-f2c9c6ba9a47 []                0              false           []        0            {}           false       [54b847e5-3d6f-47ad-aa96-b713892eb398] []   []  "qr-0ed2580c-a3" {}           []  {}              {}          {}         {}     []  []     []       
+6a026386-0bbc-41c7-9c32-a67bc71beb51 []                0              false           []        0            {}           false       [af161895-89c5-430a-8361-c8676e9b5b62] []   []  "qr-487dd9de-eb" {}           []  {}              {}          {}         {}     []  []     []       
+bc0994a0-9281-45da-9b6e-110a425e92a7 []                0              false           []        0            {}           false       [931a93f3-d76d-476c-b311-4a45baf39d7a] []   []  "qr-4b6cf90b-90" {}           []  {}              {}          {}         {}     []  []     []       
+c5f1636a-0619-40e1-862d-43c19eb65b34 []                0              false           []        0            {}           false       [ea22b690-bdfe-49f2-b5e3-860ac9b52645] []   []  tap-metadata     {}           []  {}              {}          {}         {}     []  []     []       
+a0df6267-d22f-49c4-a44a-a6b451f7cfdf []                0              false           []        0            {}           false       [57f38d9e-0e6f-4d02-b324-020528000a36] []   []  "tap0577216b-a5" {}           []  {}              {}          {}         {}     []  []     []       
+c401cb0b-ffd1-4f7e-8205-cfd3615f08fd []                0              false           []        0            {}           false       [74e0c8f2-309f-48ac-8359-c88240e4a2b9] []   []  "tap175dd18d-cc" {}           []  {}              {}          {}         {}     []  []     []       
+e88fa4c8-39d2-4abe-854a-cce657072577 []                0              false           []        0            {}           false       [d26a98e4-52d8-4894-8603-82877872b624] []   []  "tap2d29c645-ac" {}           []  {}              {}          {}         {}     []  []     []       
+7afe3420-8800-4dbd-a6aa-35b87d1f07ad []                0              false           []        0            {}           false       [3a30f850-053f-4bdd-ae46-e27e9304f087] []   []  vxlan-vtp        {}           []  {}              {}          {}         {}     []  []     []       
+
+QoS table
+_uuid external_ids other_config queues type
+----- ------------ ------------ ------ ----
+
+Queue table
+_uuid dscp external_ids other_config
+----- ---- ------------ ------------
+
+SSL table
+_uuid bootstrap_ca_cert ca_cert certificate external_ids private_key
+----- ----------------- ------- ----------- ------------ -----------
+
+sFlow table
+_uuid agent external_ids header polling sampling targets
+----- ----- ------------ ------ ------- -------- -------
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:10:14.860216Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestArpResponder.test_simple_response
+time: 2017-07-13 15:11:01.420556Z
+successful: dragonflow.tests.fullstack.test_apps.TestArpResponder.test_simple_response [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:11:01.420938Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestDHCPApp.test_dhcp_app
+time: 2017-07-13 15:11:53.140596Z
+successful: dragonflow.tests.fullstack.test_apps.TestDHCPApp.test_dhcp_app [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:11:53.140945Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestDHCPApp.test_dhcp_app_dos_block
+time: 2017-07-13 15:12:41.666265Z
+successful: dragonflow.tests.fullstack.test_apps.TestDHCPApp.test_dhcp_app_dos_block [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:12:41.666695Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestDHCPApp.test_disable_enable_dhcp
+time: 2017-07-13 15:14:06.135172Z
+successful: dragonflow.tests.fullstack.test_apps.TestDHCPApp.test_disable_enable_dhcp [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:14:06.135545Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestDNATApp.test_icmp_ttl_packet
+time: 2017-07-13 15:14:28.925064Z
+successful: dragonflow.tests.fullstack.test_apps.TestDNATApp.test_icmp_ttl_packet [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:14:28.925393Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestDNATApp.test_nat_embedded_packet
+time: 2017-07-13 15:14:53.741061Z
+successful: dragonflow.tests.fullstack.test_apps.TestDNATApp.test_nat_embedded_packet [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:14:53.741446Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestDNATApp.test_nat_embedded_rate_limit
+time: 2017-07-13 15:15:48.388858Z
+successful: dragonflow.tests.fullstack.test_apps.TestDNATApp.test_nat_embedded_rate_limit [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:15:48.389156Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestDNATApp.test_ttl_packet_rate_limit
+time: 2017-07-13 15:16:42.244177Z
+successful: dragonflow.tests.fullstack.test_apps.TestDNATApp.test_ttl_packet_rate_limit [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:16:42.244520Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestL3App.test_icmp_other_router_interface
+time: 2017-07-13 15:17:39.063046Z
+successful: dragonflow.tests.fullstack.test_apps.TestL3App.test_icmp_other_router_interface [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:17:39.063378Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestL3App.test_icmp_ping_pong
+time: 2017-07-13 15:18:35.812107Z
+successful: dragonflow.tests.fullstack.test_apps.TestL3App.test_icmp_ping_pong [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:18:35.812395Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestL3App.test_icmp_router_interfaces
+time: 2017-07-13 15:19:33.354086Z
+successful: dragonflow.tests.fullstack.test_apps.TestL3App.test_icmp_router_interfaces [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:19:33.354520Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestL3App.test_icmp_ttl_packet_with_rate_limit
+time: 2017-07-13 15:20:59.829490Z
+successful: dragonflow.tests.fullstack.test_apps.TestL3App.test_icmp_ttl_packet_with_rate_limit [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:20:59.829798Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestL3App.test_reconnect_of_controller
+time: 2017-07-13 15:22:32.154734Z
+successful: dragonflow.tests.fullstack.test_apps.TestL3App.test_reconnect_of_controller [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:22:32.155023Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestL3App.test_router_extra_route
+time: 2017-07-13 15:23:36.564064Z
+successful: dragonflow.tests.fullstack.test_apps.TestL3App.test_router_extra_route [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:23:36.564354Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestL3App.test_udp_concrete_router_interface
+time: 2017-07-13 15:24:33.882811Z
+successful: dragonflow.tests.fullstack.test_apps.TestL3App.test_udp_concrete_router_interface [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:24:33.883174Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestL3App.test_udp_virtual_router_interface_with_rate_limit
+time: 2017-07-13 15:26:07.123067Z
+successful: dragonflow.tests.fullstack.test_apps.TestL3App.test_udp_virtual_router_interface_with_rate_limit [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:26:07.123437Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestNeighborAdvertiser.test_simple_response
+time: 2017-07-13 15:26:54.304269Z
+successful: dragonflow.tests.fullstack.test_apps.TestNeighborAdvertiser.test_simple_response [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:26:54.304703Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestPortSecAppV4.test_icmp_ping_using_different_ip_mac
+time: 2017-07-13 15:27:44.546913Z
+successful: dragonflow.tests.fullstack.test_apps.TestPortSecAppV4.test_icmp_ping_using_different_ip_mac [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:27:44.547262Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestPortSecAppV6.test_icmp_ping_using_different_ip_mac
+time: 2017-07-13 15:28:34.203189Z
+successful: dragonflow.tests.fullstack.test_apps.TestPortSecAppV6.test_icmp_ping_using_different_ip_mac [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:28:34.203540Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestSGAppIpv4.test_icmp_ping_pong
+time: 2017-07-13 15:32:38.229776Z
+successful: dragonflow.tests.fullstack.test_apps.TestSGAppIpv4.test_icmp_ping_pong [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+466
+   ERROR [dragonflow.tests.common.app_testing_objects] Adding exception:
+Traceback (most recent call last):
+  File "dragonflow/tests/common/app_testing_objects.py", line 521, in handle_packet
+    port_policy.handle_packet(self, port_thread, buf)
+  File "dragonflow/tests/common/app_testing_objects.py", line 612, in handle_packet
+    if rule.apply_rule(policy, port_thread, buf):
+  File "dragonflow/tests/common/app_testing_objects.py", line 654, in apply_rule
+    action(policy, self, port_thread, buf)
+  File "dragonflow/tests/common/app_testing_objects.py", line 986, in __call__
+    packet = packet(buf)
+  File "dragonflow/tests/fullstack/test_apps.py", line 1477, in _create_pong_packet
+    self.port1.port.get_logical_port().mac
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/testtools/testcase.py", line 411, in assertEqual
+    self.assertThat(observed, matcher, message)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/testtools/testcase.py", line 498, in assertThat
+    raise mismatch_error
+MismatchError: 'fa:16:3e:16:fd:7e' != EUI('fa:16:3e:40:ca:cb')
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:32:38.230126Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestSGAppIpv6.test_icmp_ping_pong
+time: 2017-07-13 15:36:42.863288Z
+successful: dragonflow.tests.fullstack.test_apps.TestSGAppIpv6.test_icmp_ping_pong [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+466
+   ERROR [dragonflow.tests.common.app_testing_objects] Adding exception:
+Traceback (most recent call last):
+  File "dragonflow/tests/common/app_testing_objects.py", line 521, in handle_packet
+    port_policy.handle_packet(self, port_thread, buf)
+  File "dragonflow/tests/common/app_testing_objects.py", line 612, in handle_packet
+    if rule.apply_rule(policy, port_thread, buf):
+  File "dragonflow/tests/common/app_testing_objects.py", line 654, in apply_rule
+    action(policy, self, port_thread, buf)
+  File "dragonflow/tests/common/app_testing_objects.py", line 986, in __call__
+    packet = packet(buf)
+  File "dragonflow/tests/fullstack/test_apps.py", line 1477, in _create_pong_packet
+    self.port1.port.get_logical_port().mac
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/testtools/testcase.py", line 411, in assertEqual
+    self.assertThat(observed, matcher, message)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/testtools/testcase.py", line 498, in assertThat
+    raise mismatch_error
+MismatchError: 'fa:16:3e:1d:e9:0e' != EUI('fa:16:3e:87:f5:3a')
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:36:42.863677Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_apps.TestTrunkApp.test_icmp_ping_pong
+time: 2017-07-13 15:37:38.070376Z
+failure: dragonflow.tests.fullstack.test_apps.TestTrunkApp.test_icmp_ping_pong [ multipart
+Content-Type: text/x-traceback;charset=utf8,language=python
+traceback
+570
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_apps.py", line 2465, in test_icmp_ping_pong
+    self.port1.port.port_id, self.vlan_port1.port_id, 'vlan', 7)
+  File "dragonflow/tests/fullstack/test_objects.py", line 658, in create
+    result = self.neutron.create_trunk({'trunk': trunk_dict})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 2053, in create_trunk
+    return self.post(self.trunks_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-fa83081a-08f9-47f9-a7d5-f55fe9a99ed4']
+0
+Content-Type: text/x-traceback;charset=utf8,language=python
+traceback-1
+BD
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_objects.py", line 669, in close
+    self.trunk['id'],
+TypeError: 'NoneType' object has no attribute '__getitem__'
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:37:38.071657Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_db_consistent.TestDbConsistent.test_db_consistent
+time: 2017-07-13 15:44:34.247754Z
+successful: dragonflow.tests.fullstack.test_db_consistent.TestDbConsistent.test_db_consistent [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:44:34.248186Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_dhcp_flows.TestOVSFlowsForDHCP.test_broadcast_dhcp_rule
+time: 2017-07-13 15:44:41.470914Z
+successful: dragonflow.tests.fullstack.test_dhcp_flows.TestOVSFlowsForDHCP.test_broadcast_dhcp_rule [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:44:41.471238Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_dhcp_flows.TestOVSFlowsForDHCP.test_create_router_interface
+time: 2017-07-13 15:45:27.625867Z
+successful: dragonflow.tests.fullstack.test_dhcp_flows.TestOVSFlowsForDHCP.test_create_router_interface [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:45:27.626174Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_dhcp_flows.TestOVSFlowsForDHCP.test_create_update_subnet_with_dhcp
+time: 2017-07-13 15:46:09.618188Z
+successful: dragonflow.tests.fullstack.test_dhcp_flows.TestOVSFlowsForDHCP.test_create_update_subnet_with_dhcp [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:46:09.618496Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_dhcp_flows.TestOVSFlowsForDHCP.test_create_update_subnet_without_dhcp
+time: 2017-07-13 15:46:26.955887Z
+successful: dragonflow.tests.fullstack.test_dhcp_flows.TestOVSFlowsForDHCP.test_create_update_subnet_without_dhcp [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:46:26.956232Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_l2_flows.TestL2FLows.test_flat_network_flows
+time: 2017-07-13 15:46:34.651561Z
+successful: dragonflow.tests.fullstack.test_l2_flows.TestL2FLows.test_flat_network_flows [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:46:34.651881Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_l2_flows.TestL2FLows.test_tunnel_network_flows
+time: 2017-07-13 15:46:42.563506Z
+successful: dragonflow.tests.fullstack.test_l2_flows.TestL2FLows.test_tunnel_network_flows [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:46:42.563813Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_l2_flows.TestL2FLows.test_vlan_network_flows
+time: 2017-07-13 15:46:49.755154Z
+successful: dragonflow.tests.fullstack.test_l2_flows.TestL2FLows.test_vlan_network_flows [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:46:49.755564Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_l2_flows.TestL2FLows.test_vm_multicast
+time: 2017-07-13 15:47:11.273967Z
+successful: dragonflow.tests.fullstack.test_l2_flows.TestL2FLows.test_vm_multicast [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:47:11.275056Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_l3_flows.TestL3Flows.test_router_add_extra_route
+time: 2017-07-13 15:47:31.061995Z
+successful: dragonflow.tests.fullstack.test_l3_flows.TestL3Flows.test_router_add_extra_route [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:47:31.062333Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_metadata_service.TestMetadataService.test_metadata_proxy_exit_clear_ip_rule
+time: 2017-07-13 15:47:38.438984Z
+successful: dragonflow.tests.fullstack.test_metadata_service.TestMetadataService.test_metadata_proxy_exit_clear_ip_rule [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:47:38.439420Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_add_remove_allowed_address_pairs
+time: 2017-07-13 15:47:51.681920Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_add_remove_allowed_address_pairs [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:47:51.682237Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_add_remove_bgp_network
+time: 2017-07-13 15:47:59.698880Z
+failure: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_add_remove_bgp_network [ multipart
+Content-Type: text/x-traceback;charset=utf8,language=python
+traceback
+5E6
+Traceback (most recent call last):
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/oslo_concurrency/lockutils.py", line 271, in inner
+    return f(*args, **kwargs)
+  File "dragonflow/tests/fullstack/test_neutron_api.py", line 663, in test_add_remove_bgp_network
+    bgp_speaker.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 573, in create
+    {'bgp_speaker': bgp_speaker})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 1968, in create_bgp_speaker
+    return self.post(self.bgp_speakers_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-a8ffa143-ed75-4447-90c0-80ad40b82e6e']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:47:59.699590Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_add_remove_bgp_peer
+time: 2017-07-13 15:48:06.941075Z
+failure: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_add_remove_bgp_peer [ multipart
+Content-Type: text/x-traceback;charset=utf8,language=python
+traceback
+55C
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_neutron_api.py", line 630, in test_add_remove_bgp_peer
+    bgp_peer.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 547, in create
+    bgp_peer = self.neutron.create_bgp_peer({'bgp_peer': bgp_peer})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 2014, in create_bgp_peer
+    return self.post(self.bgp_peers_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-703571d8-5bca-4d16-9347-1962318762c6']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:48:06.941838Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_associate_floatingip
+time: 2017-07-13 15:48:27.887440Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_associate_floatingip [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+486
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=8aa068eb-528b-4a3e-b9a9-ea4a880e2b5b
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=6818d534-8962-4552-9c48-f3a6990cef18
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=d2dd6098-e51b-4e1b-9978-4534f98019e4
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:48:27.887833Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_bgp_peer
+time: 2017-07-13 15:48:35.708810Z
+failure: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_bgp_peer [ multipart
+Content-Type: text/x-traceback;charset=utf8,language=python
+traceback
+55F
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_neutron_api.py", line 612, in test_create_delete_bgp_peer
+    bgp_peer.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 547, in create
+    bgp_peer = self.neutron.create_bgp_peer({'bgp_peer': bgp_peer})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 2014, in create_bgp_peer
+    return self.post(self.bgp_peers_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-b13f6998-44fd-47b4-b97f-0cd3cb640696']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:48:35.709463Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_bgp_speaker
+time: 2017-07-13 15:48:42.532947Z
+failure: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_bgp_speaker [ multipart
+Content-Type: text/x-traceback;charset=utf8,language=python
+traceback
+549
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_neutron_api.py", line 620, in test_create_delete_bgp_speaker
+    bgp_speaker.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 573, in create
+    {'bgp_speaker': bgp_speaker})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 1968, in create_bgp_speaker
+    return self.post(self.bgp_speakers_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-0709c302-2812-436f-99c2-14f6d2cf90d7']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:48:42.533606Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_qos_policy
+time: 2017-07-13 15:48:42.533671Z
+skip: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_qos_policy [ multipart
+Content-Type: text/plain;charset=utf8
+reason
+B
+bug/16837840
+]
+tags: -worker-0
+time: 2017-07-13 15:48:42.533853Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_router
+time: 2017-07-13 15:48:52.020018Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_router [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+182
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=540153b0-72d2-4358-8395-dfa93a01cbcc
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:48:52.020370Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_security_group
+time: 2017-07-13 15:49:00.155766Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_security_group [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+182
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=626d9831-36c2-4077-8784-3d85c81bff1c
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:49:00.156111Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_security_group_rule
+time: 2017-07-13 15:49:08.973410Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_security_group_rule [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+182
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=7fd39be1-eadd-4397-a179-0be9979c24ca
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:49:08.973745Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_subnet
+time: 2017-07-13 15:49:20.283833Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_delete_subnet [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:49:20.284145Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_network
+time: 2017-07-13 15:49:29.275395Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_network [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+182
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=234963a4-5ec2-4161-84d8-818b77fdc300
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:49:29.275734Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_network_with_mtu
+time: 2017-07-13 15:49:38.039042Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_network_with_mtu [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+182
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=0a218a45-0036-48d4-9ec5-29f28f59e0a7
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:49:38.039381Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_port
+time: 2017-07-13 15:49:47.676026Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_port [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+304
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=2a644156-24fe-408b-a632-f467f724d9b5
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=b045ee1f-b216-415d-af86-be2df3170815
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:49:47.676357Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_port_with_qospolicy
+time: 2017-07-13 15:49:47.676418Z
+skip: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_port_with_qospolicy [ multipart
+Content-Type: text/plain;charset=utf8
+reason
+B
+bug/16837840
+]
+tags: -worker-0
+time: 2017-07-13 15:49:47.676581Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_router_interface
+time: 2017-07-13 15:50:02.544249Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_router_interface [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+486
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=d9d05d17-b806-4c01-8160-c80129a57d60
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=045d23cc-5d1a-44fc-afe1-a644dad6b5ac
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=24d1d707-ffd5-416d-9113-179ce425ae30
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:50:02.544598Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_subnet_with_host_routes
+time: 2017-07-13 15:50:12.892428Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_create_subnet_with_host_routes [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:50:12.892814Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_delete_bgp_peer_update_bgp_speaker
+time: 2017-07-13 15:50:20.310167Z
+failure: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_delete_bgp_peer_update_bgp_speaker [ multipart
+Content-Type: text/x-traceback;charset=utf8,language=python
+traceback
+56B
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_neutron_api.py", line 647, in test_delete_bgp_peer_update_bgp_speaker
+    bgp_peer.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 547, in create
+    bgp_peer = self.neutron.create_bgp_peer({'bgp_peer': bgp_peer})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 2014, in create_bgp_peer
+    return self.post(self.bgp_peers_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-e2a22c82-8f7e-4caf-b1e7-629e0365b949']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:50:20.310849Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_delete_router_interface_port
+time: 2017-07-13 15:50:35.526989Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_delete_router_interface_port [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+486
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=6cbde1b6-ca9b-4c3f-a481-7259e4a8d7ef
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=f623f36e-5d46-4ffd-ae8c-fd9e86018fef
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=f61047cc-d013-4ee8-abbf-c3cc240f4883
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:50:35.527400Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_dhcp_port_created
+time: 2017-07-13 15:50:45.567782Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_dhcp_port_created [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:50:45.568089Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_disassociate_floatingip
+time: 2017-07-13 15:51:06.159115Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_disassociate_floatingip [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+486
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=8a9ffd56-2340-4460-80a0-1ec789f29045
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=4d875def-b426-452a-ba3c-dbacaefb3347
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=b267ca76-0c24-48c7-8da3-baae6527d1c9
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:51:06.159463Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_enable_disable_portsec
+time: 2017-07-13 15:51:24.776021Z
+successful: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_enable_disable_portsec [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:51:24.776363Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_update_port_with_qospolicy
+time: 2017-07-13 15:51:24.776430Z
+skip: dragonflow.tests.fullstack.test_neutron_api.TestNeutronAPIandDB.test_update_port_with_qospolicy [ multipart
+Content-Type: text/plain;charset=utf8
+reason
+B
+bug/16837840
+]
+tags: -worker-0
+time: 2017-07-13 15:51:24.776651Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_floatingip_version
+time: 2017-07-13 15:51:45.989368Z
+successful: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_floatingip_version [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+486
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=2b0aada6-d655-421f-8ba1-b1471c10a665
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=7649cae9-fb31-4678-b416-089f125e6b90
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=bbfe6ba8-880d-408b-b5ee-70a1d22f1b15
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:51:45.989728Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_network_version
+time: 2017-07-13 15:51:56.831906Z
+successful: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_network_version [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+182
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=4f1f6002-ba15-41d0-b998-95ae929aebac
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:51:56.832266Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_port_version
+time: 2017-07-13 15:52:08.904628Z
+successful: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_port_version [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+304
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=b368bf2b-d0fd-4455-94dc-32bfddd78127
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=836f27fc-b665-4205-892f-b9edf55a3e91
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:52:08.904993Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_qospolicy_version
+time: 2017-07-13 15:52:08.905054Z
+skip: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_qospolicy_version [ multipart
+Content-Type: text/plain;charset=utf8
+reason
+B
+bug/16837840
+]
+tags: -worker-0
+time: 2017-07-13 15:52:08.905220Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_router_version
+time: 2017-07-13 15:52:24.268124Z
+successful: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_router_version [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+304
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=50f0aa13-6f9d-4b58-9411-da23c46bd446
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=43d49b16-02cc-4cc7-85fc-5f3abbcc315b
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:52:24.268441Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_sg_version
+time: 2017-07-13 15:52:33.203646Z
+successful: dragonflow.tests.fullstack.test_object_version.TestObjectVersion.test_sg_version [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+182
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=6b378811-188b-477d-bce0-301a6ba97cc1
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:52:33.204123Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_ovsdb_monitor.TestOvsdbMonitor.test_notify_message
+time: 2017-07-13 15:52:55.476996Z
+successful: dragonflow.tests.fullstack.test_ovsdb_monitor.TestOvsdbMonitor.test_notify_message [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:52:55.477475Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_ovsdb_monitor.TestOvsdbMonitor.test_reply_message
+time: 2017-07-13 15:53:27.081042Z
+successful: dragonflow.tests.fullstack.test_ovsdb_monitor.TestOvsdbMonitor.test_reply_message [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:53:27.081654Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_ovsdb_monitor.TestOvsdbMonitor.test_virtual_tunnel_port
+time: 2017-07-13 15:53:34.217342Z
+successful: dragonflow.tests.fullstack.test_ovsdb_monitor.TestOvsdbMonitor.test_virtual_tunnel_port [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:53:34.217759Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_portqos.TestPortQos.test_port_with_qospolicy
+time: 2017-07-13 15:53:54.169913Z
+failure: dragonflow.tests.fullstack.test_portqos.TestPortQos.test_port_with_qospolicy [ multipart
+Content-Type: text/x-traceback;charset=utf8,language=python
+traceback
+573
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_portqos.py", line 41, in test_port_with_qospolicy
+    qos_policy_id = qospolicy.create()
+  File "dragonflow/tests/fullstack/test_objects.py", line 511, in create
+    new_qospolicy = self.neutron.create_qos_policy({'policy': qospolicy})
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 1776, in create_qos_policy
+    return self.post(self.qos_policies_path, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 357, in post
+    headers=headers, params=params)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 292, in do_request
+    self._handle_fault_response(status_code, replybody, resp)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 268, in _handle_fault_response
+    exception_handler_v20(status_code, error_body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 92, in exception_handler_v20
+    request_ids=request_ids)
+neutronclient.common.exceptions.NotFound: The resource could not be found.
+Neutron server returns request_ids: ['req-7f37d451-e8a8-4d63-8247-b0b95f34e85c']
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:53:54.172048Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_portsec_flows.TestOVSFlowsForPortSecurity.test_anti_spoof_flows_ipv4
+time: 2017-07-13 15:54:44.106978Z
+successful: dragonflow.tests.fullstack.test_portsec_flows.TestOVSFlowsForPortSecurity.test_anti_spoof_flows_ipv4 [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:54:44.107281Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_portsec_flows.TestOVSFlowsForPortSecurity.test_anti_spoof_flows_ipv6
+time: 2017-07-13 15:55:36.237339Z
+successful: dragonflow.tests.fullstack.test_portsec_flows.TestOVSFlowsForPortSecurity.test_anti_spoof_flows_ipv6 [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:55:36.237669Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_portsec_flows.TestOVSFlowsForPortSecurity.test_default_flows
+time: 2017-07-13 15:55:44.470905Z
+successful: dragonflow.tests.fullstack.test_portsec_flows.TestOVSFlowsForPortSecurity.test_default_flows [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:55:44.471248Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_pub_sub.TestDbTableMonitors.test_operations
+time: 2017-07-13 15:57:22.315584Z
+successful: dragonflow.tests.fullstack.test_pub_sub.TestDbTableMonitors.test_operations [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:57:22.315916Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_pub_sub.TestMultiprocPubSub.test_multiproc_pub_sub
+time: 2017-07-13 15:57:31.156318Z
+successful: dragonflow.tests.fullstack.test_pub_sub.TestMultiprocPubSub.test_multiproc_pub_sub [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+59
+ WARNING [dragonflow.db.pubsub_drivers.zmq_pubsub_driver] Socket operation on non-socket
+0
+Content-Type: text/plain;charset=utf8
+stderr
+346
+Exception in thread Thread-4:
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/threading.py", line 801, in __bootstrap_inner
+    self.run()
+  File "/usr/lib/python2.7/threading.py", line 754, in run
+    self.__target(*self.__args, **self.__kwargs)
+  File "dragonflow/db/pubsub_drivers/zmq_pubsub_driver.py", line 164, in run
+    None, None)
+  File "dragonflow/tests/fullstack/test_pub_sub.py", line 321, in _verify_event
+    self.assertEqual(self.event.table, table)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/testtools/testcase.py", line 411, in assertEqual
+    self.assertThat(observed, matcher, message)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/testtools/testcase.py", line 498, in assertThat
+    raise mismatch_error
+MismatchError: 'info' != None
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:57:31.156721Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_pub_sub.TestPubSub.test_pub_sub_add_port
+time: 2017-07-13 15:59:12.193445Z
+successful: dragonflow.tests.fullstack.test_pub_sub.TestPubSub.test_pub_sub_add_port [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+182
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=c3bdabf8-6209-467e-86b3-68674315b415
+0
+]
+tags: -worker-0
+time: 2017-07-13 15:59:12.193831Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_pub_sub.TestPubSub.test_pub_sub_add_topic
+time: 2017-07-13 15:59:40.528843Z
+successful: dragonflow.tests.fullstack.test_pub_sub.TestPubSub.test_pub_sub_add_topic [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 15:59:40.529140Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_pub_sub.TestPubSub.test_pub_sub_event_number_different_port
+time: 2017-07-13 16:00:03.836305Z
+successful: dragonflow.tests.fullstack.test_pub_sub.TestPubSub.test_pub_sub_event_number_different_port [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 16:00:03.836622Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_pub_sub.TestPubSub.test_pub_sub_register_addr
+time: 2017-07-13 16:00:32.591512Z
+successful: dragonflow.tests.fullstack.test_pub_sub.TestPubSub.test_pub_sub_register_addr [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 16:00:32.591909Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_pub_sub.TestPubSub.test_pub_sub_update_port
+time: 2017-07-13 16:03:03.995443Z
+successful: dragonflow.tests.fullstack.test_pub_sub.TestPubSub.test_pub_sub_update_port [ multipart
+Content-Type: text/plain;charset=utf8
+pythonlogging:''
+182
+   ERROR [dragonflow.db.api_nb] Could not get object %(id)s from table %(table)s
+Traceback (most recent call last):
+  File "dragonflow/db/api_nb.py", line 271, in get
+    _get_topic(lean_obj),
+  File "dragonflow/db/drivers/redis_db_driver.py", line 186, in get_key
+    raise df_exceptions.DBKeyNotFound(key=key)
+DBKeyNotFound: DB Key not found, key=0e4582f0-69de-4283-b746-9324d404fa61
+0
+]
+tags: -worker-0
+time: 2017-07-13 16:03:03.995801Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_remote_port.TestRemotePort.test_remote_port
+time: 2017-07-13 16:03:22.530964Z
+successful: dragonflow.tests.fullstack.test_remote_port.TestRemotePort.test_remote_port [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 16:03:22.531324Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_responder.ArpResponderTest.test_arp_responder
+time: 2017-07-13 16:04:14.741420Z
+successful: dragonflow.tests.fullstack.test_responder.ArpResponderTest.test_arp_responder [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 16:04:14.741831Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_responder.ICMPResponderTest.test_icmp_responder
+time: 2017-07-13 16:05:09.251393Z
+successful: dragonflow.tests.fullstack.test_responder.ICMPResponderTest.test_icmp_responder [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 16:05:09.251737Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_ryu_base_app.TestRyuBaseApp.test_TTL_set_in_packet_in_mask
+time: 2017-07-13 16:05:30.277833Z
+successful: dragonflow.tests.fullstack.test_ryu_base_app.TestRyuBaseApp.test_TTL_set_in_packet_in_mask [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 16:05:30.278150Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_snat_flows.TestSnatFlows.test_port_based_flows
+time: 2017-07-13 16:05:38.373690Z
+successful: dragonflow.tests.fullstack.test_snat_flows.TestSnatFlows.test_port_based_flows [ multipart
+]
+tags: -worker-0
+time: 2017-07-13 16:05:38.374006Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_topology.TestTopology.test_topology_create_vm
+time: 2017-07-13 16:05:49.828192Z
+failure: dragonflow.tests.fullstack.test_topology.TestTopology.test_topology_create_vm [ multipart
+Content-Type: text/x-traceback;charset=utf8,language=python
+traceback
+582
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_topology.py", line 29, in test_topology_create_vm
+    vm1 = self._create_vm(network)
+  File "dragonflow/tests/fullstack/test_topology.py", line 58, in _create_vm
+    vm.create(network=network)
+  File "dragonflow/tests/fullstack/test_objects.py", line 294, in create
+    user_data=script, security_groups=security_groups)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/v2/servers.py", line 1437, in create
+    **boot_kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/v2/servers.py", line 790, in _boot
+    return_raw=return_raw, **kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/base.py", line 361, in _create
+    resp, body = self.api.client.post(url, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/keystoneauth1/adapter.py", line 240, in post
+    return self.request(url, 'POST', **kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/client.py", line 83, in request
+    raise exceptions.from_response(resp, body, url, method)
+novaclient.exceptions.Forbidden: Quota exceeded for instances: Requested 1, but already used 10 of 10 instances (HTTP 403) (Request-ID: req-0e93fa9c-1afb-4dae-9b4a-6203859c4acd)
+0
+]
+tags: -worker-0
+time: 2017-07-13 16:05:49.828860Z
+tags: worker-0
+test: dragonflow.tests.fullstack.test_topology.TestTopology.test_topology_create_vm2
+time: 2017-07-13 16:06:00.754865Z
+failure: dragonflow.tests.fullstack.test_topology.TestTopology.test_topology_create_vm2 [ multipart
+Content-Type: text/x-traceback;charset=utf8,language=python
+traceback
+583
+Traceback (most recent call last):
+  File "dragonflow/tests/fullstack/test_topology.py", line 38, in test_topology_create_vm2
+    vm1 = self._create_vm(network)
+  File "dragonflow/tests/fullstack/test_topology.py", line 58, in _create_vm
+    vm.create(network=network)
+  File "dragonflow/tests/fullstack/test_objects.py", line 294, in create
+    user_data=script, security_groups=security_groups)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/v2/servers.py", line 1437, in create
+    **boot_kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/v2/servers.py", line 790, in _boot
+    return_raw=return_raw, **kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/base.py", line 361, in _create
+    resp, body = self.api.client.post(url, body=body)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/keystoneauth1/adapter.py", line 240, in post
+    return self.request(url, 'POST', **kwargs)
+  File "/opt/stack/dragonflow/.tox/fullstack/local/lib/python2.7/site-packages/novaclient/client.py", line 83, in request
+    raise exceptions.from_response(resp, body, url, method)
+novaclient.exceptions.Forbidden: Quota exceeded for instances: Requested 1, but already used 10 of 10 instances (HTTP 403) (Request-ID: req-26ca045b-b3d1-4e54-8c6a-a1238f782125)
+0
+]
+tags: -worker-0
