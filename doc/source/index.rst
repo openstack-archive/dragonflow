@@ -15,6 +15,7 @@ Contents:
    installation
    testing_and_debugging
    distributed_dragonflow
+   docker_install
    distributed_dhcp
    pluggable_db
    pluggable_pubsub
