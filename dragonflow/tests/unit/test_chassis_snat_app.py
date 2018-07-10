@@ -35,7 +35,8 @@ class TestChassisSNATApp(test_app_base.DFAppTestBase):
     def test_switch_features_handler(self):
         ev = mock.Mock()
         ev.msg.datapath.ofproto.OFP_VERSION = 0x04
-        self.controller.open_flow_app.switch_features_handler(ev)
+        open_flow_app = self.controller.switch_backend.open_flow_app
+        open_flow_app.switch_features_handler(ev)
 
         self.SNAT_app.add_flow_go_to_table.assert_has_calls(
             [mock.call(
