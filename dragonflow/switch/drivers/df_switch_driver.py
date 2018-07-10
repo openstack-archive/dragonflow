@@ -25,8 +25,9 @@ class DfSwitchDriver(object):
         self.db_change_callback = None
         self.nb_api = nb_api
 
-    def initialize(self, db_change_callback):
+    def initialize(self, db_change_callback, neutron_notifier):
         self.db_change_callback = db_change_callback
+        self.neutron_notifier = neutron_notifier
 
     @abc.abstractmethod
     def start(self):
