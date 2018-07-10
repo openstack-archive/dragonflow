@@ -92,11 +92,11 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def unregister_table_handler(self, table_id, handler):
         self.table_handlers.pop(table_id, None)
 
-    def notify_ovs_sync_finished(self):
-        self.dispatcher.dispatch('ovs_sync_finished')
+    def notify_switch_sync_finished(self):
+        self.dispatcher.dispatch(constants.CONTROLLER_SWITCH_SYNC_FINISHED)
 
-    def notify_ovs_sync_started(self):
-        self.dispatcher.dispatch('ovs_sync_started')
+    def notify_switch_sync_started(self):
+        self.dispatcher.dispatch(constants.CONTROLLER_SWITCH_SYNC_STARTED)
 
     @handler.set_ev_handler(ofp_event.EventOFPSwitchFeatures,
                             handler.CONFIG_DISPATCHER)
