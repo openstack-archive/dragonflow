@@ -14,6 +14,7 @@ Distributed SDN-based Neutron Implementation
 * Source: https://git.openstack.org/cgit/openstack/dragonflow
 * Bugs: https://bugs.launchpad.net/dragonflow
 * Documentation: https://docs.openstack.org/dragonflow/latest/
+* Release notes: https://docs.openstack.org/developer/dragonflow/releasenotes.html
 
 .. image:: https://raw.githubusercontent.com/openstack/dragonflow/master/doc/images/df_logo.png
     :alt: Solution Overview
