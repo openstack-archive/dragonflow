@@ -32,8 +32,9 @@ class TestMigrationApp(test_app_base.DFAppTestBase):
 
         self.controller.db_store.update(fake_lswitch)
         self.controller.db_store.update(lport)
-        self.controller.vswitch_api.get_chassis_ofport.return_value = 3
-        self.controller.vswitch_api.get_port_ofport_by_id.return_value = 2
+        vswitch_api = self.controller.switch_backend.vswitch_api
+        vswitch_api.get_chassis_ofport.return_value = 3
+        vswitch_api.get_port_ofport_by_id.return_value = 2
 
         mock_update_patch = mock.patch.object(
                 self.controller.db_store,

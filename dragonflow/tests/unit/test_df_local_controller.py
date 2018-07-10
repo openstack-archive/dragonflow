@@ -38,7 +38,8 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
     apps_list = ["l2"]
 
-    @mock.patch.object(ryu_base_app.RyuDFAdapter, 'notify_switch_sync_finished')
+    @mock.patch.object(ryu_base_app.RyuDFAdapter,
+                       'notify_switch_sync_finished')
     def test_switch_sync_finished(self, mock_notify):
         self.controller.switch_sync_finished()
         mock_notify.assert_called_once()
