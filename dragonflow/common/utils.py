@@ -97,7 +97,7 @@ def is_valid_version(old_obj, new_obj):
         return False
 
 
-def load_driver(driver_cfg, namespace):
+def load_driver(driver_cfg, namespace, *args, **kwargs):
     try:
         # Try to resolve by alias
         mgr = driver.DriverManager(namespace, driver_cfg)
@@ -114,7 +114,7 @@ def load_driver(driver_cfg, namespace):
             LOG.error("Error loading class by class name",
                       exc_info=True)
             raise ImportError(_("Class not found."))
-    return class_to_load()
+    return class_to_load(*args, **kwargs)
 
 
 def is_port_owner_of_type(owner_type, type_list):
