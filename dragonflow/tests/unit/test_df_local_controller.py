@@ -38,14 +38,14 @@ class DfLocalControllerTestCase(test_app_base.DFAppTestBase):
 
     apps_list = ["l2"]
 
-    @mock.patch.object(ryu_base_app.RyuDFAdapter, 'notify_ovs_sync_finished')
-    def test_ovs_sync_finished(self, mock_notify):
-        self.controller.ovs_sync_finished()
+    @mock.patch.object(ryu_base_app.RyuDFAdapter, 'notify_switch_sync_finished')
+    def test_switch_sync_finished(self, mock_notify):
+        self.controller.switch_sync_finished()
         mock_notify.assert_called_once()
 
-    @mock.patch.object(ryu_base_app.RyuDFAdapter, 'notify_ovs_sync_started')
-    def test_ovs_sync_started(self, mock_notify):
-        self.controller.ovs_sync_started()
+    @mock.patch.object(ryu_base_app.RyuDFAdapter, 'notify_switch_sync_started')
+    def test_switch_sync_started(self, mock_notify):
+        self.controller.switch_sync_started()
         mock_notify.assert_called_once()
 
     @mock.patch.object(df_local_controller.DfLocalController,
