@@ -16,6 +16,7 @@
 import mock
 import testtools
 
+from dragonflow import conf as cfg
 from dragonflow.controller import ryu_base_app
 from dragonflow.tests import base as tests_base
 
@@ -29,6 +30,11 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
     """
     def setUp(self):
         super(TestRyuDFAdapter, self).setUp()
+        cfg.CONF.set_override(
+            'datapath_layout_path',
+            'etc/dragonflow_datapath_layout.yaml',
+            group='df',
+        )
         self.ryu_df_adapter = ryu_base_app.RyuDFAdapter(
             vswitch_api=mock.Mock(),
             nb_api=mock.Mock(),
