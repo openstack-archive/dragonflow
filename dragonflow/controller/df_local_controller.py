@@ -236,11 +236,11 @@ class DfLocalController(object):
         self.nb_api.subscriber.unregister_listen_address(publisher.uri)
         self.db_store.delete(publisher)
 
-    def ovs_sync_finished(self):
-        self.open_flow_app.notify_ovs_sync_finished()
+    def switch_sync_finished(self):
+        self.open_flow_app.notify_switch_sync_finished()
 
-    def ovs_sync_started(self):
-        self.open_flow_app.notify_ovs_sync_started()
+    def switch_sync_started(self):
+        self.open_flow_app.notify_switch_sync_started()
 
     def _is_newer(self, obj, cached_obj):
         '''Check wether obj is newer than cached_on.
@@ -287,6 +287,8 @@ class DfLocalController(object):
     def get_chassis_name(self):
         return self.chassis_name
 
+    # TODO(snapiri): We should not have ovs here
+    # TODO(snapiri): This should be part of the interface
     def notify_port_status(self, ovs_port, status):
         if self.neutron_notifier:
             table_name = l2.LogicalPort.table_name
@@ -333,10 +335,10 @@ class DfLocalController(object):
             self.sync()
         elif action == ctrl_const.CONTROLLER_DBRESTART:
             self.nb_api.db_recover_callback()
-        elif action == ctrl_const.CONTROLLER_OVS_SYNC_FINISHED:
-            self.ovs_sync_finished()
-        elif action == ctrl_const.CONTROLLER_OVS_SYNC_STARTED:
-            self.ovs_sync_started()
+        elif action == ctrl_const.CONTROLLER_SWITCH_SYNC_FINISHED:
+            self.switch_sync_finished()
+        elif action == ctrl_const.CONTROLLER_SWITCH_SYNC_STARTED:
+            self.switch_sync_started()
         elif action == ctrl_const.CONTROLLER_LOG:
             LOG.info('Log event: %s', str(update))
         elif update.table is not None:
@@ -469,6 +471,7 @@ def init_ryu_config():
 # python df_local_controller.py <chassis_unique_name>
 # <local ip address> <southbound_db_ip_address>
 def main():
+    df_config.init(sys.argv[1:])
     chassis_name = cfg.CONF.host
     df_config.init(sys.argv)
 

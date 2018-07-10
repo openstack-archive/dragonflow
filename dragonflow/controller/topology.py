@@ -49,6 +49,7 @@ class Topology(object):
         self.chassis_name = controller.get_chassis_name()
         self.db_store = db_store.get_instance()
 
+        # TODO(snapiri) this should not be ovs specific
         ovs.OvsPort.register_created(self.ovs_port_updated)
         ovs.OvsPort.register_updated(self.ovs_port_updated)
         ovs.OvsPort.register_deleted(self.ovs_port_deleted)
