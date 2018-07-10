@@ -32,6 +32,7 @@ from dragonflow import version
 DF_PUBSUB_DRIVER_NAMESPACE = 'dragonflow.pubsub_driver'
 DF_NB_DB_DRIVER_NAMESPACE = 'dragonflow.nb_db_driver'
 DF_NEUTRON_NOTIFIER_DRIVER_NAMESPACE = 'dragonflow.neutron_notifier_driver'
+DF_SWITCH_BACKEND_DRIVER_NAMESPACE = 'dragonflow.switch_backend_driver'
 LOG = logging.getLogger(__name__)
 
 
