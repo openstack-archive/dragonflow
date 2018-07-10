@@ -58,14 +58,14 @@ class OvsApi(object):
         db_connection = ('%s:%s:%s' % (self.protocol, self.ip, self.port))
 
         db_change_callback(None, None,
-                           constants.CONTROLLER_OVS_SYNC_STARTED, None)
+                           constants.CONTROLLER_SWITCH_SYNC_STARTED, None)
 
         self.ovsdb = impl_idl.DFOvsdbApi(
             db_connection, self.vsctl_timeout,
             db_change_callback)
 
         db_change_callback(None, None,
-                           constants.CONTROLLER_OVS_SYNC_FINISHED, None)
+                           constants.CONTROLLER_SWITCH_SYNC_FINISHED, None)
 
     def _db_get_val(self, table, record, column, check_error=False,
                     log_errors=True):
