@@ -3,15 +3,15 @@
 # First get all the arguments
 while test ${#} -gt 0; do
   case $1 in
-    --dragonflow_address)
+    --dragonflow_ip)
       shift
-      DRAGONFLOW_ADDRESS=$1
+      DRAGONFLOW_IP=$1
       ;;
-    --db_address)
+    --db_ip)
       shift
-      DB_ADDRESS=$1
+      DB_IP=$1
       ;;
-    --mgmt_address)
+    --management_ip)
       shift
       MANAGEMENT_IP=$1
       ;;
@@ -29,14 +29,14 @@ while test ${#} -gt 0; do
   shift
 done
 
-# SET DRAGONFLOW_ADDRESS and DB_ADDRESS on the ini file
+# SET DRAGONFLOW_IP and DB_IP on the ini file
 if [ ! -d /etc/dragonflow ]; then
   mkdir -p /etc/dragonflow
 fi
 if [ ! -e /etc/dragonflow/dragonflow.ini ]; then
-  sed -e "s/LOCAL_IP/$DRAGONFLOW_ADDRESS/g" etc/standalone/dragonflow.ini | \
+  sed -e "s/LOCAL_IP/$DRAGONFLOW_IP/g" etc/standalone/dragonflow.ini | \
     sed -e "s/MANAGEMENT_IP/$MANAGEMENT_IP/g" | \
-    sed -e "s/DB_SERVER_IP/$DB_ADDRESS/g"  > /etc/dragonflow/dragonflow.ini
+    sed -e "s/DB_SERVER_IP/$DB_IP/g"  > /etc/dragonflow/dragonflow.ini
 fi
 if [ ! -e /etc/dragonflow/dragonflow_datapath_layout.yaml ]; then
   cp etc/dragonflow_datapath_layout.yaml /etc/dragonflow
