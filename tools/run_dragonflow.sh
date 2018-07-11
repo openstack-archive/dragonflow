@@ -11,7 +11,7 @@ while test ${#} -gt 0; do
       shift
       DB_ADDRESS=$1
       ;;
-    --mgmt_address)
+    --management_ip)
       shift
       MANAGEMENT_IP=$1
       ;;
