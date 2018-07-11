@@ -77,7 +77,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         execute_mock = execute.start()
         self.addCleanup(execute.stop)
 
-        # CLear old objects from cache
+        # Clear old objects from cache
         db_store.get_instance().clear()
 
         self.nb_api = api_nb.NbApi.get_instance()
