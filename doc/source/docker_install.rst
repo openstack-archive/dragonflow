@@ -1,3 +1,7 @@
+==============
+DOCKER INSTALL
+==============
+
 Building the image
 ------------------
 * Run the following command
