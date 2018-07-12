@@ -54,7 +54,7 @@ A new provider network application that will deal with vlan and flat related
 flows.
 
 On setup it will create the patch ports according to bridge-network mapping
-configuration parameters from the local integration bridge to the bridges 
+configuration parameters from the local integration bridge to the bridges
 connected with the provider networks.
 
 Ingress processing
