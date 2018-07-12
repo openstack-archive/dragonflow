@@ -306,18 +306,21 @@ We propose the following new configuration:
       router ports connected to this subnet are not multicast routers. IGMP
       packets are treated as regular routed IP packets. MCPs are not routed to
       sibling networks. IGMP queries are not sent. Default - True
-    *robustness-variable* : Integer - The robustness variable as defined in [1].
+    *robustness-variable* : Integer - The robustness variable as defined in
+      [1].
       While not used directly, it is used to calculate the *Group membership
       interval*, default values for *Startup query count*, and *Last member
       query count*. Default - 2
     *query-interval* : Integer - the interval between General Queries sent by
       the MCVR. Default - 125 (Seconds)
     *query-response-interval* : Integer - used to calculate the maximum amount
-      of time a IGMP group member may respond to a query. Default - 10 (Seconds)
+      of time a IGMP group member may respond to a query. Default - 10
+      (Seconds)
     *startup-query-interval* : Integer - the interval between General Queries
       sent by an MCVR on startup. Default - 1/4 of *query-interval*
     *startup-query-count* : Integer - number of Queries sent out on startup,
-      separated by the *startup-query-interval*. Default - *robustness-variable*
+      separated by the *startup-query-interval*. Default -
+      *robustness-variable*
     *last-member-query-interval* : Integer - used to calculate the maximum
       amount of time an IGMP group member may respond to a group-specific query
       sent in response to a leave message. Default - 1 (Seconds)

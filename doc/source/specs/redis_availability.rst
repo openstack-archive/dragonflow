@@ -54,7 +54,8 @@ to all Dragonflow controllers to check if the DB cluster nodes changed.
 And controllers should subscribe a "HA" topic to receive messages from
 plugin.
 In Dragonflow controller, it never read nodes information from Redis cluster
-after initialization but only listen the messages from detecting task from plugin.
+after initialization but only listen the messages from detecting task from
+plugin.
 
 There are 2 types of connections between Redis client and cluster:
 1. read/write connection, client connects to every Redis master nodes.

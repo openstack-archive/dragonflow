@@ -119,8 +119,8 @@ For scenario 3, the QoS app will delete the configuration for the port.
 QoS Object Delete
 -----------------
 
-It is not permitted to delete the QoS object attached to some ports. If no ports
-apply the QoS, it can be deleted from the DragonFlow DB.
+It is not permitted to delete the QoS object attached to some ports. If no
+ports apply the QoS, it can be deleted from the DragonFlow DB.
 
 QoS Object Update
 -----------------

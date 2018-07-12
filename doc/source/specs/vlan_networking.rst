@@ -126,13 +126,15 @@ if this port is the first port of the network on the host,
 controller will install broadcast flows on OVS like this:
 1.Table=L2_Lookup,
 Match: metadata=network_id, dl_dst=01:00:00:00:00:00/01:00:00:00:00:00,
-Actions:  resubmit(,EGRESSTABLE), load_reg7=port_unique_key,resubmit(,EGRESSTABLE)
+Actions: resubmit(,EGRESSTABLE), load_reg7=port_unique_key,
+resubmit(,EGRESSTABLE)
 
 2.Table=Egress_Table,
 Match: metadata=network_id,
 Actions:mod_vlan=vlan_id,output:path_br_1
 
-If this port is not the first one, controller only updates the first flow above.
+If this port is not the first one, controller only updates the first flow
+above.
 
 Remote Port
 ~~~~~~~~~~~
@@ -141,9 +143,11 @@ broadcast flows. Because with broadcast, OVS just needs to forward it to br-1.
 This has been done when local port updated.like this.
 1.Table=L2_Lookup,
 Match: metadata=network_id, dl_dst=01:00:00:00:00:00/01:00:00:00:00:00,
-Actions:  resubmit(,EGRESSTABLE), load_reg7=port_unique_key,resubmit(,EGRESSTABLE)
+Actions: resubmit(,EGRESSTABLE), load_reg7=port_unique_key,
+resubmit(,EGRESSTABLE)
 
-The first action 'resubmit(,EGRESSTABLE)' has included remote broadcast scenario.
+The first action 'resubmit(,EGRESSTABLE)' has included remote broadcast
+scenario.
 
 
 Outbound-Unicast
@@ -178,7 +182,8 @@ With inbound, a flow item will be installed to table 0, which will strip VLAN
 tag and set metadata for next table. Flow item like this:
 Table=0,
 Match:dl_vlan=network_vlan_id,
-Actions:metadata=network_id, strip_vlan, goto "Destination Port Classification".
+Actions:metadata=network_id, strip_vlan, goto "Destination Port
+Classification".
 
 For simplicity, I will omit some flow tables that are not so directly related
 with VLAN networking.

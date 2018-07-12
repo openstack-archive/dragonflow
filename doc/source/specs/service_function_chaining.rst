@@ -401,8 +401,8 @@ Tests
 #. Traversing the SFC - given an SFC and SF layout, we can check that our
    packet takes a logical route and visits all SFs in a logical order.
 
-#. Graphs - re-classification occurs only between SFCs that are part of the same
-   graph
+#. Graphs - re-classification occurs only between SFCs that are part of the
+   same graph
 
 
 Work Items

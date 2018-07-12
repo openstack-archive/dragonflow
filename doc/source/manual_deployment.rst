@@ -21,9 +21,11 @@ Dragonflow mainly has several components:
 #. Dragonflow neutron plugins (set up in neutron-server configuration)
 #. Dragonflow local controller running on each compute node
 #. Dragonflow metadata service running on each compute node
-#. Dragonflow publisher service running aside neutron server (if zeromq pub/sub driver is enabled)
+#. Dragonflow publisher service running aside neutron server (if zeromq pub/sub
+   driver is enabled)
 #. Dragonflow l3 agent running on each network node
-#. Dragonflow northbound database (depends on which database you set up in dragonflow configuration)
+#. Dragonflow northbound database (depends on which database you set up in
+   dragonflow configuration)
 
 Source Code
 -----------
@@ -114,8 +116,8 @@ Basic Configurations
 Northbound Database
 -------------------
 
-Dragonflow supports etcd, redis, zookeeper and ramcloud. You need to deploy one of them
-in your environment and expose the necessary TCP port.
+Dragonflow supports etcd, redis, zookeeper and ramcloud. You need to deploy one
+of them in your environment and expose the necessary TCP port.
 
 Next you need to change the configuration, for example, etcd:
 
@@ -130,7 +132,8 @@ Next you need to change the configuration, for example, etcd:
 Pub/Sub Driver
 --------------
 
-Dragonflow supports etcd, redis and zeromq. You need to change the configuration, for example, etcd:
+Dragonflow supports etcd, redis and zeromq. You need to change the
+configuration, for example, etcd:
 
 /etc/neutron/dragonflow.ini:
 

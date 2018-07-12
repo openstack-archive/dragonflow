@@ -43,51 +43,55 @@ Besides performance, it also has many noticeable advantages such as
    data cluster is fully implemented without support of external applications.
    It also provides an operation portal for daily maintenance.
 
-Currently, we implement control plane of clustering for Redis inside Dragonflow,
-which is actually beyond the scope of Dragonflow project. The reason why we
-implement db-api layer is that we do not want to maintain the details of data
-backend as it is not the responsibility of Dragonflow project.
+Currently, we implement control plane of clustering for Redis inside
+Dragonflow, which is actually beyond the scope of Dragonflow project. The
+reason why we implement db-api layer is that we do not want to maintain the
+details of data backend as it is not the responsibility of Dragonflow project.
 
 The disadvantage of Cassandra is that it needs external mechanism for PUB/SUB,
-for example, Zookeeper or ZeroMQ. The latter has been implemented in Dragonflow,
-so it is usable for now.
+for example, Zookeeper or ZeroMQ. The latter has been implemented in
+Dragonflow, so it is usable for now.
 
 It is noted that Cassandra is run over JVM.
 
 Highlights
 ----------
 
-In this section I will highlight some internal mechanisms of Cassandra that will
-greatly help Dragonflow scale out and put into production.
+In this section I will highlight some internal mechanisms of Cassandra that
+will greatly help Dragonflow scale out and put into production.
 
-#. You can adjust ReplicationFactor to have multiple replications across data centers.
-#. You can adjust ConsistencyLevel to use different algorithms, like Quorum.
-#. Every node in the cluster is identical. No Master or Slave roles.
-#. The data written to Cassandra node is going to append-only CommitLog first and
-   fsync to disk next. You also can adjust the policy of fsync. It guarantees the durability.
+  #. You can adjust ReplicationFactor to have multiple replications across data
+     centers.
+  #. You can adjust ConsistencyLevel to use different algorithms, like Quorum.
+  #. Every node in the cluster is identical. No Master or Slave roles.
+  #. The data written to Cassandra node is going to append-only CommitLog first
+     and fsync to disk next. You also can adjust the policy of fsync. It
+     guarantees the durability.
 
 High Availability
 -----------------
 
-You just need to specify a set of nodes in configuration, *remote_db_hosts* in [df] section.
-The nodes will automatically form a Quorum-like cluster with replications and consistency
-you specify in Cassandra configuration.
+You just need to specify a set of nodes in configuration, *remote_db_hosts* in
+[df] section.
+The nodes will automatically form a Quorum-like cluster with replications and
+consistency you specify in Cassandra configuration.
 
 JVM in Production
 -----------------
 
-Although this section is beyond the scope of Dragonflow, the following links are provided
-by Cassandra official to guide users on tuning Cassandra and JVM.
+Although this section is beyond the scope of Dragonflow, the following links
+are provided by Cassandra official to guide users on tuning Cassandra and JVM.
 
 #. https://docs.datastax.com/en/landing_page/doc/landing_page/recommendedSettingsLinux.html
 #. https://docs.datastax.com/en/cassandra/3.x/cassandra/operations/opsTuneJVM.html
 
-It is observed that the operations on data store in Dragonflow is read intensive according to
-monitoring in the production. This is actually not the Dragonflow's characteristic but the
-Neutron's. Most of the operations on data store in Neutron are *high concurrent read*.
+It is observed that the operations on data store in Dragonflow is read
+intensive according to monitoring in the production. This is actually not the
+Dragonflow's characteristic but the Neutron's. Most of the operations on data
+store in Neutron are *high concurrent read*.
 
-Here is another link [#]_ that provides hints on how to optimize JVM in Cassandra for
-read heavy workloads.
+Here is another link [#]_ that provides hints on how to optimize JVM in
+Cassandra for read heavy workloads.
 
 .. [#] https://www.planetcassandra.org/blog/cassandra-tuning-the-jvm-for-read-heavy-workloads/
 

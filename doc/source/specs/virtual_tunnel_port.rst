@@ -100,12 +100,12 @@ remote port will create a tunnel port for each remote chassis, and maintain a
 relationship of remote port and remote chassis in the cache of Dragonflow
 controller. If there is no remote port in the remote chassis, the tunnel port
 for remote chassis will be deleted. By using the virtual tunnel port, there is
-no need to maintain tunnel port for remote chassis. When a remote port is added,
-the IP address and tunnel type of the remote chassis will be added in the
-binding_profile. The tunnel type value will be the type of the network of the
-remote port. If a network packet needs to go to the remote port, it will go to
-the virtual tunnel port, instead of the specific tunnel port created in the old
-implementation. The OpenFlow will designate the destination IP address,
+no need to maintain tunnel port for remote chassis. When a remote port is
+added, the IP address and tunnel type of the remote chassis will be added in
+the binding_profile. The tunnel type value will be the type of the network of
+the remote port. If a network packet needs to go to the remote port, it will go
+to the virtual tunnel port, instead of the specific tunnel port created in the
+old implementation. The OpenFlow will designate the destination IP address,
 according to the information of remote port's binding_profile. When the remote
 port is deleted, only the related OpenFlows needs to be deleted.
 

@@ -74,8 +74,8 @@ Database.
 NB Data Model Impact
 --------------------
 
-A service table will be added in Dragonflow NB database, which contains following
-information regarding each service.
+A service table will be added in Dragonflow NB database, which contains
+following information regarding each service.
 
 ::
 
@@ -155,15 +155,16 @@ Plan is to store information on following bassis, if possible.
     -
   }
 
-The assumption for the above data management is, there can be only one instance of
-a service on a node that has to be registered.
+The assumption for the above data management is, there can be only one instance
+of a service on a node that has to be registered.
 
-It does not add any overhead during status reporting, services has to report their
-binary and host. And updation of service status can be done easily in constant time.
+It does not add any overhead during status reporting, services has to report
+their binary and host. And updation of service status can be done easily in
+constant time.
 
 It provides benefit for queries asking for example "list all the host running
-publishers." or "list all the publishers in the cluster". These queries seems to be
-more frequent as load has to be balanced between services etc.
+publishers." or "list all the publishers in the cluster". These queries seems
+to be more frequent as load has to be balanced between services etc.
 
 Publisher Subscriber Impact
 ---------------------------

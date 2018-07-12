@@ -16,8 +16,8 @@ Running the image
 
 Preparation work
 ~~~~~~~~~~~~~~~~
-* Create a network to be used by the containers, use any subnet you find fit, the subnet here is
-  just an example.
+* Create a network to be used by the containers, use any subnet you find fit,
+  the subnet here is just an example.
 
 .. code-block:: bash
 
@@ -68,12 +68,13 @@ to allow this via `selinux`.
 
   docker inspect --format "{{ .NetworkSettings.Networks.${DRAGONFLOW_NET_NAME}.IPAddress }}" dragonflow
 
-There are two configuration files that Dragonflow needs, and creates automatically if they do not
-exist:
+There are two configuration files that Dragonflow needs, and creates
+automatically if they do not exist:
 
 * `/etc/dragonflow/dragonflow.ini`
 
 * `/etc/dragonflow//etc/dragonflow/dragonflow_datapath_layout.yaml`
 
-If these files exist, they are used as-is, and are not overwritten. You can add these files using
-e.g. `-v local-dragonflow-conf.ini:/etc/dragonflow/dragonflow.ini`.
+If these files exist, they are used as-is, and are not overwritten. You can add
+these files using e.g.
+`-v local-dragonflow-conf.ini:/etc/dragonflow/dragonflow.ini`.
