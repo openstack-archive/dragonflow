@@ -139,8 +139,8 @@ Solution to residual flows
 --------------------------
 Residual flows means flows which don't take effect any more but stay in flow
 table. Backward incompatible upgrade and incorrect implementation may generate
-this kind of flows. The residual flows may not affect the forwarding but it will
-occupy flow table space and add difficulty for maintenance.
+this kind of flows. The residual flows may not affect the forwarding but it
+will occupy flow table space and add difficulty for maintenance.
 
 The methods to manage this issue:
 We could reuse the solution for 'local controller restart', trigger local
@@ -161,11 +161,11 @@ Solution to missing flows
 -------------------------
 When there are missing flows, OVS cannot forward the packet by itself, it will
 forward the packet to local controller. For example, in the context of DVR
-forwarding, if no corresponding host route flow to destination, OVS will forward
-the packet to local controller according to the network flow. Upon receive the
-packet, local controller forward the packet, regenerate host flow and flush it
-to OVS. We don't plan to discuss it in more detail here and it will be processed
-by the specific application of Dragonflow.
+forwarding, if no corresponding host route flow to destination, OVS will
+forward the packet to local controller according to the network flow. Upon
+receive the packet, local controller forward the packet, regenerate host flow
+and flush it to OVS. We don't plan to discuss it in more detail here and it
+will be processed by the specific application of Dragonflow.
 
 References
 ==========

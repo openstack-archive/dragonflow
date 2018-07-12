@@ -26,8 +26,8 @@ Dragonflow, we will only support allowed address pairs using IP addresses (not
 IP address prefixes) in the same subnet of the port's fixed IP.
 
 In current implementation, security modules like port security and security
-group will require that packets sent/received from a VM port which must have the
-fixed IP/MAC address of this VM port. Besides, L2 and L3 transmission will
+group will require that packets sent/received from a VM port which must have
+the fixed IP/MAC address of this VM port. Besides, L2 and L3 transmission will
 forward packets only according to those fixed addresses. Those modules should
 make some changes to support allowed address pairs.
 

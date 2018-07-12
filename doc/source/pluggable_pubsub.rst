@@ -51,8 +51,9 @@ understand the API.
 __ _PUB_SUB_API
 
 For both network and IPC based communication, a driver has to implement
-``dragonflow.db.pub_sub_api.PubSubApi`` (`Link`__).  In both cases, ``get_publisher`` and
-``get_subscriber`` return a ``dragonflow.db.pub_sub_api.PublisherApi`` and a
+``dragonflow.db.pub_sub_api.PubSubApi`` (`Link`__).  In both cases,
+``get_publisher`` and ``get_subscriber`` return a
+``dragonflow.db.pub_sub_api.PublisherApi`` and a
 ``dragonflow.db.pub_sub_api.SubscriberApi``, respectively.
 
 __ _PUB_SUB_API
@@ -116,9 +117,9 @@ the network implementation connects over the transport protocol provided via
 *publisher_transport*.
 
 In the case of the publisher, the difference is both in the implementation of
-``initialize``, ``_connect``, and ``send_event``. The difference in connect is for
-the same reasons as the subscribers. The difference in ``initialize`` is since
-the multi-proc subscriber uses the lazy initialization pattern. This also
+``initialize``, ``_connect``, and ``send_event``. The difference in connect is
+for the same reasons as the subscribers. The difference in ``initialize`` is
+since the multi-proc subscriber uses the lazy initialization pattern. This also
 accounts for the difference in ``send_event``.
 
 ==========

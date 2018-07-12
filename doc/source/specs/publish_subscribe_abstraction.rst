@@ -21,8 +21,8 @@ to listen to configuration change events.
 The flow is as follows:
 
 * The local controller reads the DB and sync all needed configuration
-* Then, it waits for change notifications by calling a specific DB driver API with a
-  callback method to report the changes
+* Then, it waits for change notifications by calling a specific DB driver API
+  with a callback method to report the changes
 
 It is then the DB driver responsibility to update the controller with
 any configuration change.
@@ -44,8 +44,8 @@ We require a consistently reliable and scalable publish-subscribe mechanism.
 In order to be efficient with large scale deployments, we want to sync only
 relevant configuration and topology with the compute node.
 
-We therefore want to abstract the publish-subscribe mechanism from the DB driver,
-so that we can control the published topics in an applicative manner.
+We therefore want to abstract the publish-subscribe mechanism from the DB
+driver, so that we can control the published topics in an applicative manner.
 
 We require that this change will be *optional* thus using the previous
 behavior as default, i.e. the publish-subscribe is managed by the DB driver
@@ -106,8 +106,8 @@ interoperability with the proposed built-in publish-subscribe capability:
   +--------------------+           +-----------------------+  changes (callback)
 
 
-When the controller is brought up it first tries to sync all the relevant policy
-from the DB using the NB API which calls the specific loaded DB driver.
+When the controller is brought up it first tries to sync all the relevant
+policy from the DB using the NB API which calls the specific loaded DB driver.
 
 When this process ends up, until now the controller had two options, it would
 ask the DB driver if it supports publish subscribe, if not the controller
@@ -116,23 +116,25 @@ continues with the sync loop and keeps polling for changes.
 If the DB driver supports publish-subscribe the controller calls a specific
 API to the driver to register a callback.
 The DB driver is responsible to update any DB change to the callback,
-The callback gets table name, action ('create', 'set', 'delete'), the key and value
-as parameters.
+The callback gets table name, action ('create', 'set', 'delete'), the key and
+value as parameters.
 
 If the user configured pub-sub, the controller instead of calling the DB driver
-API calls Dragonflow pub-sub module with the callback prior to starting the full sync process.
+API calls Dragonflow pub-sub module with the callback prior to starting the
+full sync process.
 
-The pub-sub module is in-charge of dispatching configuration changes (DB changes)
-to all the local controllers, it exposes a simple API of "subscriber" or "publisher".
+The pub-sub module is in-charge of dispatching configuration changes (DB
+changes) to all the local controllers, it exposes a simple API of "subscriber"
+or "publisher".
 
-The pub-sub module will be pluggable and allow different drivers to be developed as
-the pubsub module driver that will implement the interface of the pubsub api
-referenced below [2].
+The pub-sub module will be pluggable and allow different drivers to be
+developed as the pubsub module driver that will implement the interface of the
+pubsub api referenced below [2].
 
 Publisher
 ---------
-The NB API class is used both by the Dragonflow local controller and the Neutron
-plugin.
+The NB API class is used both by the Dragonflow local controller and the
+Neutron plugin.
 
 The following diagram shows how DB changes are dispatched to the pub-sub
 module and published to all local controllers.
@@ -161,11 +163,12 @@ module and published to all local controllers.
 Neutron Server q-svc process is forked on a multi-core host, in order to work
 around Python cooperative threading.
 
-For PubSub solutions that are "bind based" e.g "tcp" (meaning one publisher per host)
-we will use an IPC mechanism provided by the Publisher driver, in order
+For PubSub solutions that are "bind based" e.g "tcp" (meaning one publisher per
+host) we will use an IPC mechanism provided by the Publisher driver, in order
 to push its events through a shared socket.
 
-*Publisher Service* diagram below, which binds to a one-per-host publisher socket.
+*Publisher Service* diagram below, which binds to a one-per-host publisher
+socket.
 
 ::
 
@@ -261,106 +264,131 @@ an applicative method to track message order and verify delivery.
 
 Delivery
 --------
-Each publisher on startup selects a GUID and publish it to all the subscribers via the
-hello message descend below.
+Each publisher on startup selects a GUID and publish it to all the subscribers
+via the hello message descend below.
 
-Subscribers will store in memory the publisher UUID on receiving the hello message and its current message ID.
+Subscribers will store in memory the publisher UUID on receiving the hello
+message and its current message ID.
 
-In order to detect message delay/loss, we introduce a *per-pub-per-message* sequence ID.
-The client verifies the sequence order of messages by tracking *current per-pub-message-id*.
+In order to detect message delay/loss, we introduce a *per-pub-per-message*
+sequence ID.
+The client verifies the sequence order of messages by tracking
+*current per-pub-message-id*.
 
-In case the client detects sequence that is >2 IDs from the *current*, it will wait
-for a period defined by *message delay window* for the missing messages to arrive.
+In case the client detects sequence that is >2 IDs from the *current*, it will
+wait for a period defined by *message delay window* for the missing messages to
+arrive.
 
-If the time elapsed and some messages did not arrive, the client will perform a full sync against the DB.
+If the time elapsed and some messages did not arrive, the client will perform a
+full sync against the DB.
 
-In case that subscriber receives an hello message from a registered publisher with different
-sequence number the subscriber will perform a full sync.
+In case that subscriber receives an hello message from a registered publisher
+with different sequence number the subscriber will perform a full sync.
 
 
 Flow 1: Subscriber (re)connects
 -------------------------------
 
-When a subscriber connects for the first time, or reconnects after an outage, it will do full-resync.
+When a subscriber connects for the first time, or reconnects after an outage,
+it will do full-resync.
 
 
 Flow 2: Publisher (re)connects
 ------------------------------
 
 When a publisher connects for the first time, or reconnects after an outage,
-it will publish its initial sequence number and its UUID, in a special *hello* message.
+it will publish its initial sequence number and its UUID, in a special *hello*
+message.
 
-The subscribers will receive this message and reset their *current per-sub-per-message-id* accordingly.
+The subscribers will receive this message and reset their
+*current per-sub-per-message-id* accordingly.
 
-The publisher UUID and the sequence message id will be sent in an envelope in every published message
+The publisher UUID and the sequence message id will be sent in an envelope in
+every published message
 
 Flow 3: Subscriber missed a message in a mostly-idle system
 -----------------------------------------------------------
 
-When the system is mostly idle, a subscriber may miss a message and not detect it for a long time.
+When the system is mostly idle, a subscriber may miss a message and not detect
+it for a long time.
 
-In order to mitigate this, the publisher will emit its *hello* message every configurable *max_idle_time*.
+In order to mitigate this, the publisher will emit its *hello* message every
+configurable *max_idle_time*.
 
-We define Idle Time as a period of time where no messages are published from a specific publisher.
+We define Idle Time as a period of time where no messages are published from a
+specific publisher.
 
 Order
 -----
 
-We introduce *versioning* on the object level in the database, in order to track message order.
+We introduce *versioning* on the object level in the database, in order to
+track message order.
 
 We compare this versioning to the local cache, before we update it.
 
-We only update when local cache version is older, and drop updates that have older version than the local cache.
-Local cache will be updated with any newer version head even if it is few versions ahead, older
-version will be dropped.
+We only update when local cache version is older, and drop updates that have
+older version than the local cache.
+Local cache will be updated with any newer version head even if it is few
+versions ahead, older version will be dropped.
 
 Neutron Server Publisher discovery
 ==================================
 
-Each subscriber (i.e. Distributed Dragonflow Controller) uses a local configuration with the
-addresses of the publishers.
+Each subscriber (i.e. Distributed Dragonflow Controller) uses a local
+configuration with the addresses of the publishers.
 
 We will optimize this by adding a Service Directory in the Dragonflow database.
-Each publisher on startup will register itself into this discovery table with a timestamp
-and will renew its lease every x minutes
+Each publisher on startup will register itself into this discovery table with a
+timestamp and will renew its lease every x minutes
 
-A Discovery table garbage collector will remove publisher with out a valid lease
+A Discovery table garbage collector will remove publisher with out a valid
+lease
 
 Controller-to-Controller Publisher Proposed Solution
 ====================================================
 
-Local Controllers publish messages through the Neutron Server, by writing to the Dragonflow database.
+Local Controllers publish messages through the Neutron Server, by writing to
+the Dragonflow database.
 
-A polling mechanism in the Dragonflow publisher service detects such updates and publish them to everyone.
+A polling mechanism in the Dragonflow publisher service detects such updates
+and publish them to everyone.
 
-This mechanism is enough for handling rarely-occurring events, such as chassis registration
-(i.e. adding new compute nodes).
+This mechanism is enough for handling rarely-occurring events, such as chassis
+registration (i.e. adding new compute nodes).
 
-TODO: if we will see significant increase in Controller-to-Controller publishing traffic, we will
-implement an enhancement to
-enable multi-publisher-multi-subscriber mechanism, using something like ZMQ EPGM.
+TODO: if we will see significant increase in Controller-to-Controller
+publishing traffic, we will implement an enhancement to
+enable multi-publisher-multi-subscriber mechanism, using something like ZMQ
+EPGM.
 
 Configuration Options
 =====================
 
-'enable_df_pub_sub', default=False, help=_("Enable use of Dragonflow built-in pub/sub")),
+'enable_df_pub_sub', default=False, help=_("Enable use of Dragonflow built-in
+pub/sub")),
 
-'pub_sub_driver', default='zmq_pubsub_driver', help=_('Drivers to use for the Dragonflow pub/sub')),
+'pub_sub_driver', default='zmq_pubsub_driver', help=_('Drivers to use for the
+Dragonflow pub/sub')),
 
-'publishers_ips', default=['$local_ip'], help=_('List of the Neutron Server Publisher IPs.')),
+'publishers_ips', default=['$local_ip'], help=_('List of the Neutron Server
+Publisher IPs.')),
 
 'publisher_port', default=8866, help=_('Neutron Server Publishers Port'))
 
-'pub_sub_use_multiproc', default=True, help=_('Use inter-process publish/subscribe. '
-'Publishers send events via the publisher service.')
+'pub_sub_use_multiproc', default=True, help=_('Use inter-process
+publish/subscribe.' 'Publishers send events via the publisher service.')
 
-'publisher_transport', default='tcp', help=_('Neutron Server Publishers transport protocol')),
+'publisher_transport', default='tcp', help=_('Neutron Server Publishers
+transport protocol')),
 
-'publisher_bind_address', default='*', help=_('Neutron Server Publishers bind address')),
+'publisher_bind_address', default='*', help=_('Neutron Server Publishers bind
+address')),
 
-'pub_sub_multiproc_driver', default='zmq_pubsub_multiproc_driver', help=_('Drivers to use for the Dragonflow pub/sub')),
+'pub_sub_multiproc_driver', default='zmq_pubsub_multiproc_driver',
+help=_('Drivers to use for the Dragonflow pub/sub')),
 
-'publisher_multiproc_socket', default='/var/run/zmq_pubsub/zmq-publisher-socket',
+'publisher_multiproc_socket',
+default='/var/run/zmq_pubsub/zmq-publisher-socket',
 help=_('Neutron Server Publisher inter-process socket address')),
 
 References

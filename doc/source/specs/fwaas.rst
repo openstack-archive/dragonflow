@@ -83,7 +83,8 @@ table will be added to the Dragonflow ingress and egress pipelines.
 
 To decouple ports and firewall rules, the firewall group port table only handle
 ports that has been added to a firewall group, and the firewall rule table maps
-the firewall rules to Openflow flow entries without caring adding/removing ports.
+the firewall rules to Openflow flow entries without caring adding/removing
+ports.
 When a port is added or deleted from a firewall group, only the firewall group
 port table is updated and the traffic from/to other ports in the firewall group
 will not be affected during the updating.
@@ -160,12 +161,12 @@ The priority of the flow entry in firewall rule table is corresponding to the
 order of firewall rules. The rules come first have the higher priority.
 
 To support inserting firewall rules, we use a big number as the priority when
-firewall group is created and leave a big gap between rules. For example, a rule
-is inserted between rule1 with priority A and rule2 with priority B in an
+firewall group is created and leave a big gap between rules. For example, a
+rule is inserted between rule1 with priority A and rule2 with priority B in an
 existing firewall policy, the firewall APP will check if there is a number
 between A and B available. If yes, install the flow with this number as the
-priority; if no, re-organize the priorities of all the flows, and then reinstall
-them.
+priority; if no, re-organize the priorities of all the flows, and then
+reinstall them.
 
 Ingress:
 
@@ -211,9 +212,9 @@ It is similar to the Egress pipeline:
 NB Data Model Impact
 --------------------
 
-Three tables will be added to the Dragonflow Northbound DB, firewall group table,
-firewall policy table, firewall rule table. Similar to the Neutron FwaaS data
-model, firewall group tables contains ingress firewall policy
+Three tables will be added to the Dragonflow Northbound DB, firewall group
+table, firewall policy table, firewall rule table. Similar to the Neutron FwaaS
+data model, firewall group tables contains ingress firewall policy
 and egress firewall policy, as well a list of ports. Each firewall policy
 tables contains a list of firewall rules in the policy.
 

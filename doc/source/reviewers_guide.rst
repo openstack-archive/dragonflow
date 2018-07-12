@@ -2,7 +2,8 @@
 Contributors & Reviewers Guide
 ==============================
 
-In this document, we try to guide contributors to know what should be included in the patch.
+In this document, we try to guide contributors to know what should be included
+in the patch.
 This guide is also helpful for reviewers covering what to look for when
 accepting a patch for Dragonflow.
 
@@ -35,8 +36,9 @@ The following items are expected for every patch:
   discretion whether the change is truly a Trivial Fix.
 
 # Release Notes:
-  For NB API changes, configuration changes, new drivers and new application relevant
-  release note should be added. It is recommended to use reno, see TBD.
+  For NB API changes, configuration changes, new drivers and new application
+  relevant release note should be added. It is recommended to use reno, see
+  TBD.
 
 
 Spec & DevRef
@@ -56,16 +58,16 @@ cover the southbound implementation, including the rationale. The general
 guideline should be - if a new contributor reads this document, they should
 be able to understand the code of the application.
 
-The difference between a spec and a devref is difficult to formalize. In essence,
-the spec should give a high-level design, while the dev-ref should give a low-level
-design of the feature. The guiding thought is that the spec should remain unchange
-unless there is a massive feature overhaul, but the dev-ref may change due to
-bug fixes, since it covers the low-level specifics.
+The difference between a spec and a devref is difficult to formalize. In
+essence, the spec should give a high-level design, while the dev-ref should
+give a low-level design of the feature. The guiding thought is that the spec
+should remain unchange unless there is a massive feature overhaul, but the
+dev-ref may change due to bug fixes, since it covers the low-level specifics.
 
-Note that when writing the dev-ref, that the code is also available. Rather than
-explain the code, try to explain what the code is supposed to do, what is the
-end result supposed to look like, and most importantly, why the code looks that
-way.
+Note that when writing the dev-ref, that the code is also available. Rather
+than explain the code, try to explain what the code is supposed to do, what is
+the end result supposed to look like, and most importantly, why the code looks
+that way.
 
 Specs are usually reviewed and accepted before the implementation begins.
 Dev-refs are usually reviewed and accepted as part of the implementation or
@@ -76,12 +78,13 @@ Bugs & Blueprints
 
 For any issue with existing implementation, a bug report is expected.
 
-For any new feature request or existing feature enhancement bug report with [RFE] tag is expected.
+For any new feature request or existing feature enhancement bug report with
+[RFE] tag is expected.
 Blueprint creation is not required.
 
 Bug report should have descriptive title and detailed description. It is not
-a trivial task to submit a good bug-report, so we try to outline some guidelines
-that may help:
+a trivial task to submit a good bug-report, so we try to outline some
+guidelines that may help:
 
 * First explain the functionality issue
   We have seen many bug reports which were just a stack-trace dump, with no
@@ -91,8 +94,9 @@ that may help:
   just mis-understood the feature.
 
 * Explain how to reproduce
-  It is very difficult to mark a bug as solved, if we don't know how you reached
-  it. Reproduction steps go a long way to make a bug clear and easy to tackle.
+  It is very difficult to mark a bug as solved, if we don't know how you
+  reached it. Reproduction steps go a long way to make a bug clear and easy to
+  tackle.
   It is also very helpful to have a copy of the deployment configurations, e.g.
   a config file or (in the case of devstack) a local.conf file.
 

@@ -159,15 +159,16 @@ to external CN:
 
     filter: tun_id=DEST_TUN_ID action:output:OVERLAY_NET_PORT
 
-  +----------------------+---------------------------------------------------------+
-  |   Field Name         |  Description                                            |
-  +======================+=========================================================+
-  | ``DEST_TUN_ID``      |  a tunnel number will specify a destination VM          |
-  +----------------------+---------------------------------------------------------+
-  | ``DEST_LOCAL_PORT``  |  destination OVS port number (in case it is on same CN) |
-  +----------------------+---------------------------------------------------------+
-  | ``OVERLAY_NET_PORT`` |  packet will be forwarded to other CN                   |
-  +----------------------+---------------------------------------------------------+
+  +----------------------+----------------------------------------------------+
+  |   Field Name         |  Description                                       |
+  +======================+====================================================+
+  | ``DEST_TUN_ID``      |  a tunnel number will specify a destination VM     |
+  +----------------------+----------------------------------------------------+
+  | ``DEST_LOCAL_PORT``  |  destination OVS port number (in case it is on same|
+  |                      |  CN)                                               |
+  +----------------------+----------------------------------------------------+
+  | ``OVERLAY_NET_PORT`` |  packet will be forwarded to other CN              |
+  +----------------------+----------------------------------------------------+
 
 Assigning tunnel id for each TapService
 ---------------------------------------
@@ -175,14 +176,14 @@ Assigning tunnel id for each TapService
 Each TapService will have a unique id that corresponds to the overlay network
 tunnel id.
 
-By default, each network has it's own id called segment id allocated from neutron
-segment pool. A naive approach will be to assign a unique id to be used for
-TapService from this pool but we concern that admins setup network vnis and they
-expects number of network to be supported.
+By default, each network has it's own id called segment id allocated from
+neutron segment pool. A naive approach will be to assign a unique id to be used
+for TapService from this pool but we concern that admins setup network vnis and
+they expects number of network to be supported.
 
-More advance solution will be to create a new segment pool to be used exclusively
-for TapServices. This new network pool should not coincide with the one used in
-neutron.
+More advance solution will be to create a new segment pool to be used
+exclusively for TapServices. This new network pool should not coincide with the
+one used in neutron.
 
 In case we run out of free ids in the new segment pool, as a fallback solution,
 we will assign segment id from the neutron segment pool.
@@ -220,8 +221,8 @@ Tap position is ``BEFORESG``
 This configuration mode actually implies that packets will be mirrored without
 filtering by security group.
 
-Change ``table=1`` (``EGRESS_PORT_SECURITY_TABLE``) to be ``table=2`` and install our
-tap rules in ``table=1``.
+Change ``table=1`` (``EGRESS_PORT_SECURITY_TABLE``) to be ``table=2`` and
+install our tap rules in ``table=1``.
 
 In new ``table=1`` we will add the following rules:
 
@@ -270,7 +271,8 @@ Tap on the Input
 Tap position is ``AFTERSG``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-After passing the firewall, packets are forwarded to ``table=78`` (``INGRESS_DISPATCH_TABLE``).
+After passing the firewall, packets are forwarded to ``table=78``
+(``INGRESS_DISPATCH_TABLE``).
 
 We should move all rules from ``table=78`` to a new table (e.g. ``table=79``).
 

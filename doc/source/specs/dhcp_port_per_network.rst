@@ -12,8 +12,9 @@ For forwarding packets toward the dhcp-port its needs to install flow for
 each port in the subnet.
 
 This behaviour causes complexity in the code and create a performance penalty,
-that because every change in subnet (updated/add/delete/enabled-dhcp/disabled-dhcp)
-raises the need to do diff with the previous state, and install/remove all relevant flows.
+that because every change in subnet
+(updated/add/delete/enabled-dhcp/disabled-dhcp) raises the need to do diff with
+the previous state, and install/remove all relevant flows.
 
 Proposed Change
 ===============
@@ -29,8 +30,9 @@ plugin for using it's ip-address-managemnt.
 Neutron data-model impact
 -------------------------
 Instead of one dhcp logical port subnet, there will be
-one dhcp-port per network.That port will be connected to all enabled-dhcp-subnet,
-and will hold an ip for each subnet (The port owner will remain "neutron:dhcp").
+one dhcp-port per network.That port will be connected to all
+enabled-dhcp-subnet, and will hold an ip for each subnet (The port owner will
+remain "neutron:dhcp").
 
 Dragonflow data-model impact
 ----------------------------

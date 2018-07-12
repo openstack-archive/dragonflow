@@ -33,7 +33,8 @@ Firstly, we use ``tox -e genconfig`` to generate all the conf files.
 If tox is not prepared, we introduce ./tools/generate_config_file_samples.sh
 instead.
 
-Secondly, we use etc/oslo-config-generator/dragonflow.ini to manage oslo options.
+Secondly, we use etc/oslo-config-generator/dragonflow.ini to manage oslo
+options.
 For example::
 [DEFAULT]
 output_file = etc/dragonflow.ini.sample
@@ -41,8 +42,8 @@ wrap_width = 79
 namespace = dragonflow
 namespace = oslo.log
 
-Finally, we implements dragonflow/opts.py to include all the references of options
-from different modules of dragonflow.
+Finally, we implements dragonflow/opts.py to include all the references of
+options from different modules of dragonflow.
 
 References
 ==========
