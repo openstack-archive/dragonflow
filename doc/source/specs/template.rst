@@ -48,10 +48,10 @@ design at the same time as use cases, if desired. Note that by high-level,
 we mean the "view from orbit" rough cut at how things will happen.
 
 This section should 'scope' the effort from a feature standpoint: how is the
-'dragonflow end-to-end system' going to look like after this change? What Dragonflow
-areas do you intend to touch and how do you intend to work on them? The list
-below is not meant to be a template to fill in, but rather a jumpstart on the
-sorts of areas to consider in your proposed change description.
+'dragonflow end-to-end system' going to look like after this change? What
+Dragonflow areas do you intend to touch and how do you intend to work on them?
+The list below is not meant to be a template to fill in, but rather a jumpstart
+on the sorts of areas to consider in your proposed change description.
 
 You do not need to detail API or data model changes.
 

@@ -21,13 +21,13 @@ Copy one of the following as your local.conf to your devstack folder
 Automated setup using Vagrant
 =============================
 
-This will create a 3 node devstack (controller + two computes), where Dragonflow is used as
-the Open vSwitch backend.
+This will create a 3 node devstack (controller + two computes), where
+Dragonflow is used as the Open vSwitch backend.
 
 Vagrant allows to configure the provider on which the virtual machines are
 created. Virtualbox is the default provider used to launch the VM's on a
-developer computer, but other providers can be used: libvirt, VMWare, AWS, OpenStack,
-containers stuff, ...
+developer computer, but other providers can be used: libvirt, VMWare, AWS,
+OpenStack, containers stuff, ...
 
 Quick Start
 -----------
@@ -49,7 +49,8 @@ Quick Start
     vagrant plugin install vagrant-cachier
     vagrant plugin install vagrant-vbguest
 
-4. | For full install with a controller node and 2 compute nodes follow step 4.1;
+4. | For full install with a controller node and 2 compute nodes follow step
+     4.1;
    | For a minimal install with All-In-One setup, follow step 4.2
 
    4.1. Adjust the settings in `vagrant/provisioning/dragonflow.conf.yml` if

@@ -24,7 +24,8 @@ Models
 
 Dragonflow, as many other projects interfacing with a database, uses model
 layer to allow uniform and easy access to data stored in the (north-bound)
-database. The current model framework is a fruit of the :doc:`../specs/nb_api_refactor`
+database. The current model framework is a fruit of the
+:doc:`../specs/nb_api_refactor`
 
 Creating new models
 -------------------
@@ -45,14 +46,16 @@ with `construct_nb_db_model` decorator. Below we'll introduce an example:
 
 The above example defines a new `Movie` model, that contains 5 fields:
 
- #. `id` - Object identifier, derived form ModelBase, present in all model objects.
+ #. `id` - Object identifier, derived form ModelBase, present in all model
+    objects.
  #. `title` - A string containing the movie title, marked as mandatory.
  #. `year` - A year movie was published.
- #. `director` - A reference field to an object of director type (will be covered later).
+ #. `director` - A reference field to an object of director type (will be
+    covered later).
  #. `awards` - A list of all the awards the movie received.
 
-Class definition also contains `table_name` field that stores the name of the table
-our model is stored in the north-bound database.
+Class definition also contains `table_name` field that stores the name of the
+table our model is stored in the north-bound database.
 
 
 Initializing this object is done by passing the values as keyword arguments.
@@ -157,7 +160,8 @@ For each event, 2 class methods are defined:
 
  * `register_{event_name}(callback)` - adds callback to be invoked each time
    event is emitted.
- * `unregister_{event_name}(callback)` - removes the callback from being called.
+ * `unregister_{event_name}(callback)` - removes the callback from being
+   called.
 
 Additionally, an instance method named `emit_{event_name}(*args, **kwargs)` is
 added.
@@ -178,7 +182,8 @@ would be translated to a sequence of
 
 The convention of parameters is specific to each event.
 
-The register calls can be also used as decorators for some extra syntactic sugar
+The register calls can be also used as decorators for some extra syntactic
+sugar
 
 .. code-block:: python
 
@@ -191,11 +196,11 @@ Indexes
 
 To allow easy retrieval and lookup of in memory objects we use DbStore module
 to fetch by IDs and other properties, the new DbStore takes note of model's
-indexes and creates lookups to allow faster retrieval. Indexes, similar to events
-are passed in `indexes=` parameter of construct_nb_db_model decorator and
-specified as a dictionary where the key is the index name and the value is the
-field indexed by (or a tuple of fields, if the index is multi-key). For example
-if we'd like to add index by year we can define it as:
+indexes and creates lookups to allow faster retrieval. Indexes, similar to
+events are passed in `indexes=` parameter of construct_nb_db_model decorator
+and specified as a dictionary where the key is the index name and the value is
+the field indexed by (or a tuple of fields, if the index is multi-key). For
+example if we'd like to add index by year we can define it as:
 
 .. code-block:: python
 

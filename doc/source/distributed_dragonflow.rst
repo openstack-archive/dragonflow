@@ -59,7 +59,8 @@ Dragonflow applications that communicate with the local OpenVSwitch.
 The DB is being populated by Dragonflow Neutron plugin that converts neutron
 API to our model.
 
-The following sections each describe a specific topic/functionality in Dragonflow
+The following sections each describe a specific topic/functionality in
+Dragonflow
 
 Dragonflow Supported Features
 =============================

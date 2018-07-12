@@ -19,7 +19,9 @@ Quick Installation
 
 `DevStack Multi Node Configuration <https://github.com/openstack/dragonflow/tree/master/doc/source/multi-node-conf>`_
 
-3) Edit local.conf according to your configuration, See `Detailed Installation`_ for more details, or the Devstack_ configuration manual
+3) Edit local.conf according to your configuration, See
+   `Detailed Installation`_ for more details, or the Devstack_ configuration
+   manual
 
 `Devstack <https://docs.openstack.org/devstack/latest/configuration.html>`_
 
@@ -105,7 +107,8 @@ Important parameters that needs to be set in ``local.conf`` :
     RABBIT_HOST <- Management IP address of the controller node
     GLANCE_HOSTPORT <- Management IP address of the controller node (Leave the port as-is)
 
-You can find example configuration files in the multi-node-conf or the single-node-conf directories.
+You can find example configuration files in the multi-node-conf or the
+single-node-conf directories.
 
 
 ==========================================

@@ -19,7 +19,8 @@ Problem Description
 ===================
 Tunneling is currently handled both by the df_local_controller and by the
 L2 application for both ingress and egress packets propagation.
-The tunneling related flows are set when either local or remote port is updated.
+The tunneling related flows are set when either local or remote port is
+updated.
 
 Upon VM port creation, its properties such as its overlay network membership,
 ports database id is used to match flows to/from it. A tunnel port is created
@@ -54,8 +55,8 @@ Ingress Processing
 
 The classification flow should match against the tunnel in_port, a port of a
 specific segmentation id and tunnel's virtual network key, according
-to which metadata will be set as network_id to identify incoming traffic being part
-of the network identified by the segmentation id.
+to which metadata will be set as network_id to identify incoming traffic being
+part of the network identified by the segmentation id.
 
 An example classification flow, for two VMS, one is part of "admin-private"
 network, with segmentation id 0x13 and the second which is part of "private"
@@ -69,10 +70,10 @@ are:
    table=0, priority=100,in_port=4,tun_id=0x13 actions=load:0x3->OXM_OF_METADATA[],resubmit(,100)
    table=0, priority=100,in_port=4,tun_id=0x49 actions=load:0x1->OXM_OF_METADATA[],resubmit(,100)
 
-Currently in the ingress port lookup table (100), a match is done according to unique
-network id and vm's port mac, where vm's port key is set into reg7, and sent to
-table (105), the ingress conn-track table which passes the packet to ingress
-dispatch table
+Currently in the ingress port lookup table (100), a match is done according to
+unique network id and vm's port mac, where vm's port key is set into reg7, and
+sent to table (105), the ingress conn-track table which passes the packet to
+ingress dispatch table
 
 Set fields are:
 * reg7 <- Unique port key
@@ -85,7 +86,8 @@ Set fields are:
    table=100, priority=200,metadata=0x1,dl_dst=fa:16:3e:bc:5b:08 actions=load:0x6->NXM_NX_REG7[],resubmit(,105)
 
 Eventually the processing reaches table (115), the ingress dispatch table where
-the packet is matched against vm's port's key, and forwarded to the local vm port.
+the packet is matched against vm's port's key, and forwarded to the local vm
+port.
 
 ::
 
@@ -102,15 +104,15 @@ and metadata ovs registers, respectively.
     table=0, priority=100,in_port=8 actions=load:0xa->NXM_NX_REG6[],load:0x1->OXM_OF_METADATA[],resubmit(,5)
 
 In the security table (5), the flow makes sure that the packet has originated
-from VM's assigned address and prevent network address spoofing, making the packet goto
-the 'connection track' table (10).
+from VM's assigned address and prevent network address spoofing, making the
+packet goto the 'connection track' table (10).
 
 ::
 
     table=5, priority=200,in_port=8,dl_src=fa:16:3e:95:bf:e9,nw_src=10.0.0.5 actions=resubmit(,10)
 
-The 'connection track' table is used to create a connection track entry in Linux
-Kernel, and pass the packet to the service classification table.
+The 'connection track' table is used to create a connection track entry in
+Linux Kernel, and pass the packet to the service classification table.
 The service classification table filters out service oriented packets and pass
 the packet to the L2 lookup table, same as any other network type.
 
@@ -139,8 +141,8 @@ following flow is set
 
 Add remote port
 ---------------
-A flow in the  L2 lookup (55) is planted to translate VM mac and network membership
-to it's port key in Reg7 and pass to egress table 75
+A flow in the  L2 lookup (55) is planted to translate VM mac and network
+membership to it's port key in Reg7 and pass to egress table 75
 
 ::
 
@@ -189,11 +191,13 @@ egress bum traffic flows.
 
 Impact on other DF applications
 -------------------------------
-The changes in the L2 application will affect the Provider Networks App. DNAT App, SNAT App et al.
+The changes in the L2 application will affect the Provider Networks App. DNAT
+App, SNAT App et al.
 
-According to the propsed design, L2 application deals with local chassis flows, while
-the 'tunneling app', 'provider networks app', 'DNAT app' and 'SNAT app', should deal
-with setting the flows for incoming/outgoing packets from/to external nodes.
+According to the propsed design, L2 application deals with local chassis flows,
+while the 'tunneling app', 'provider networks app', 'DNAT app' and 'SNAT app',
+should deal with setting the flows for incoming/outgoing packets from/to
+external nodes.
 
 Work Items
 ----------

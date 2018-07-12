@@ -28,9 +28,11 @@ Proposed Change
 A new table is added in Dragonflow pipeline for mac spoofing protection.
 
 This table will have MAC-IP validation rules which blocks any traffic
-that has different MAC-IP src address than the MAC-IP address configured for the VM.
+that has different MAC-IP src address than the MAC-IP address configured for
+the VM.
 This table can also be used for egress security validations (make sure
-to dispatch traffic to a certain VM only if it has the correct configured MAC and IP)
+to dispatch traffic to a certain VM only if it has the correct configured
+MAC and IP)
 
 It will also have rules allowing DST broadcast/multicast MAC traffic
 to pass.
@@ -38,11 +40,12 @@ to pass.
 Additional drop rules:
 
 1. Packets with SRC MAC broadcast/multicast bit set.
-   (This option might be needed in some environments, we can leave this as a configurable
-   option in case it is -
+   (This option might be needed in some environments, we can leave this as a
+   configurable option in case it is -
    https://www.cisco.com/c/en/us/support/docs/switches/catalyst-6500-series-switches/107995-config-catalyst-00.html#mm)
 
-2. VLAN tagged frames where the TCI "Drop eligible indicator" (TEI) bit is set (congestion)
+2. VLAN tagged frames where the TCI "Drop eligible indicator" (TEI) bit is set
+   (congestion)
 
 Following are examples for the flows configured in that table::
 
@@ -101,16 +104,16 @@ We still need to verify that this also block gratitude ARPs.
 Blocking invalid broadcast/multicast traffic
 --------------------------------------------
 As part of the port security feature we should also prevent traffic loops.
-We drop traffic that has the same src and dst ports classified (the src port register
-and the dst port register are same).
+We drop traffic that has the same src and dst ports classified (the src port
+register and the dst port register are same).
 This scenario happens when we handle broadcast/multicast traffic and just
 duplicate packet few times for every port in the broadcast domain or
 multicast group.
 
 DHCP protection
 ---------------
-Protection from DHCP DDoS on the controller (DHCP application) is going to be handled
-on a different spec that will address controller reliability concerns.
+Protection from DHCP DDoS on the controller (DHCP application) is going to be
+handled on a different spec that will address controller reliability concerns.
 
 References
 ==========

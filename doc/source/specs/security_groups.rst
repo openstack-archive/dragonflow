@@ -31,7 +31,7 @@ Dragonflow.
 
 Data path performance
 ---------------------
-Its important to note that Security groups are stateful — responses to allowed
+Its important to note that Security groups are stateful - responses to allowed
 ingress traffic are allowed to flow out regardless of egress rules, and vice
 versa. Current Neutron implementation adds a linux bridge in the path between
 each port (VM) and OVS bridge.

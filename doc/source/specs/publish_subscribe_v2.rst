@@ -30,7 +30,8 @@ Moreover this superficial problem will lead to the rest of the mess.
   to be the generic one. The gap is that it requires df-local-controller run
   publisher and neutron-server run subscriber.
 
-* The active-port-detection app also requires df-local-controller run publisher.
+* The active-port-detection app also requires df-local-controller run
+  publisher.
 
 * We set up publisher port in the common [df] section in the configuration.
   When we run both df-local-controller and df-publisher-service, they read
@@ -122,8 +123,9 @@ Publisher Subscriber Impact
 Other Impact
 ------------
 
-* Make api_nb module singleton in df-local-controller. We don't need to initialize
-  it each time, for instance, in port-status-driver, just passing its reference.
+* Make api_nb module singleton in df-local-controller. We don't need to
+  initialize it each time, for instance, in port-status-driver, just passing
+  its reference.
 
 * Make redis-port-status driver work for all the db drivers.
 
