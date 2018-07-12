@@ -45,7 +45,7 @@ Meta data and cloud init
 
 In order to enable the VMs to get configuration like public keys,
 hostnames, etc.. you need to enable meta service. You can do it
-by adding the following lines to local.conf file (before running 
+by adding the following lines to local.conf file (before running
 'stack.sh' command):
 
   enable_service q-meta
@@ -56,7 +56,7 @@ must be started. It is called meta-service-proxy and it is
 used to forward meta data client requests to real meta service.
 By default, it is started by regular q-dhcp service for each tenant.
 As a result 'q-meta' and 'q-dhcp' services must be enabled.
- 
+
 Database configuration
 -----------------------
 
