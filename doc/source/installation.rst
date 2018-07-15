@@ -60,11 +60,11 @@ Quick Start
 
         * This may take a while, once it is finished:
 
-          * You can ssh into the virtual machines: 
+          * You can ssh into the virtual machines:
             `vagrant ssh devstack_controller`, `vagrant ssh devstack_compute1`
             or `vagrant ssh devstack_compute2`
 
-          * You can access the horizon dashboard at 
+          * You can access the horizon dashboard at
             http://controller.devstack.dev
 
           * The dragonflow folder is shared between the host and the two nodes
@@ -82,7 +82,7 @@ Quick Start
 
           * You can ssh into the virtual machine: `vagrant ssh devstack_aio`
 
-          * You can access the horizon dashboard at 
+          * You can access the horizon dashboard at
             http://allinone.devstack.dev
 
           * The dragonflow folder is shared between the host and the VM (at
