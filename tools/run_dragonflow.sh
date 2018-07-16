@@ -42,6 +42,14 @@ if [ ! -e /etc/dragonflow/dragonflow_datapath_layout.yaml ]; then
   cp etc/dragonflow_datapath_layout.yaml /etc/dragonflow
 fi
 
+if [ ! -e /etc/neutron ]; then
+  ln -s /etc/dragonflow /etc/neutron
+fi
+
+if [ ! -e /etc/neutron/neutron.conf ]; then
+  touch /etc/neutron/neutron.conf
+fi
+
 if [ -n "$DB_INIT" ]; then
   df-db init
 fi
