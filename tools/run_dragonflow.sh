@@ -54,5 +54,8 @@ if [ -n "$DB_INIT" ]; then
   df-db init
 fi
 
-/usr/local/bin/df-local-controller --config-file /etc/dragonflow/dragonflow.ini
-
+if [ -z "$DF_NO_CONTROLLER" ]; then
+  /usr/local/bin/df-local-controller --config-file /etc/dragonflow/dragonflow.ini
+else
+  /bin/bash
+fi
