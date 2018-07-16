@@ -77,3 +77,17 @@ exist:
 
 If these files exist, they are used as-is, and are not overwritten. You can add these files using
 e.g. `-v local-dragonflow-conf.ini:/etc/dragonflow/dragonflow.ini`.
+
+
+
+Running the container without the controller service
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This section enables you to run the container without running the container service.
+This is useful in order to create a standalone node for Dragonflow API,
+separated from the controller node.
+
+* Run the following commands:
+
+.. code-block:: bash
+
+  docker run --name dragonflow --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_ADDRESS} -i -t dragonflow:latest --dragonflow_address ${DRAGONFLOW_ADDRESS} --db_address ${NODE1}:2379 --DF_NO_CONTROLLER=1
