@@ -43,10 +43,10 @@ class AgingApp(df_base_app.DFlowApp):
                aging
         -> renew_aging_cookie()
         -> add canary flows with new cookie
-    after all apps flushed flows with new cookie, ovs_sync_finished() will
+    after all apps flushed flows with new cookie, switch_sync_finished() will
     be called
     """
-    def ovs_sync_started(self):
+    def switch_sync_started(self):
         LOG.info("start aging")
         canary_flow = self._get_canary_flow()
         if not canary_flow:
@@ -68,7 +68,7 @@ class AgingApp(df_base_app.DFlowApp):
     now all apps had flushed flows with new cookie
     delete flows with old cookie
     """
-    def ovs_sync_finished(self):
+    def switch_sync_finished(self):
         if self.do_aging:
             # Give apps a few more seconds to finish their magic
             eventlet.spawn_after(5, self._start_aging)
