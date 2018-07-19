@@ -19,7 +19,7 @@ import testscenarios
 from dragonflow.common import constants
 from dragonflow.controller.common import constants as const
 from dragonflow.db.models import l2
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 from dragonflow.tests.unit import test_app_base
 
 make_fake_local_port = test_app_base.make_fake_local_port
@@ -58,10 +58,10 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
             lswitch='fake_vlan_switch1')
         self.controller.update(fake_local_vlan_port)
         self.app.mod_flow.assert_not_called()
-        ovs_port = ovs.OvsPort(id='fake_ovs_port',
-                               lport=fake_local_vlan_port.id,
-                               ofport=1, admin_state='up',
-                               type=constants.SWITCH_COMPUTE_INTERFACE)
+        ovs_port = switch.SwitchPort(id='fake_ovs_port',
+                                     lport=fake_local_vlan_port.id,
+                                     ofport=1, admin_state='up',
+                                     type=constants.SWITCH_COMPUTE_INTERFACE)
         self.controller.update(ovs_port)
         port_key = fake_local_vlan_port.unique_key
         match = self.app.parser.OFPMatch(reg7=port_key)

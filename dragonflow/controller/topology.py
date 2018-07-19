@@ -19,7 +19,7 @@ from dragonflow.common import constants
 from dragonflow.db import db_store
 from dragonflow.db.models import l2
 from dragonflow.db.models import migration
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 
 LOG = log.getLogger(__name__)
 
@@ -50,9 +50,9 @@ class Topology(object):
         self.db_store = db_store.get_instance()
 
         # TODO(snapiri) this should not be ovs specific
-        ovs.OvsPort.register_created(self.ovs_port_updated)
-        ovs.OvsPort.register_updated(self.ovs_port_updated)
-        ovs.OvsPort.register_deleted(self.ovs_port_deleted)
+        switch.SwitchPort.register_created(self.ovs_port_updated)
+        switch.SwitchPort.register_updated(self.ovs_port_updated)
+        switch.SwitchPort.register_deleted(self.ovs_port_deleted)
 
     def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
         """
@@ -289,7 +289,7 @@ class Topology(object):
         new_ovs_to_lport_mapping = {}
         add_ovs_to_lport_mapping = {}
         delete_ovs_to_lport_mapping = self.ovs_to_lport_mapping
-        for ovs_port in self.db_store.get_all(ovs.OvsPort):
+        for ovs_port in self.db_store.get_all(switch.SwitchPort):
             key = ovs_port.id
             if ovs_port.type == constants.SWITCH_COMPUTE_INTERFACE:
                 lport = self._get_lport(ovs_port)
