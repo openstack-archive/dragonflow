@@ -36,7 +36,7 @@ from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_const
 from dragonflow.db.models import l2
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 
 
 LOG = log.getLogger(__name__)
@@ -62,12 +62,12 @@ class MetadataServiceApp(df_base_app.DFlowApp):
 
     def switch_features_handler(self, ev):
         if self._interface_mac and self._ofport and self._ofport > 0:
-            # For reconnection, if the mac and ofport is set, re-download
+            # For reconnection, if the mac and port_num is set, re-download
             # the flows.
             self._add_tap_metadata_port(self._ofport, self._interface_mac)
 
-    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_CREATED)
-    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
+    @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_CREATED)
+    @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_UPDATED)
     def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
         if ovs_port.name != cfg.CONF.df_metadata.metadata_interface:
             return
@@ -87,7 +87,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         self._ofport = ofport
         self._interface_mac = mac
 
-    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_DELETED)
+    @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_DELETED)
     def ovs_port_deleted(self, ovs_port):
         if ovs_port.name != cfg.CONF.df_metadata.metadata_interface:
             return

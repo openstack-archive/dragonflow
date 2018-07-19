@@ -18,7 +18,7 @@ from ryu.ofproto import nicira_ext
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_constants
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 
 
 LOG = log.getLogger(__name__)
@@ -38,8 +38,10 @@ class ClassifierApp(df_base_app.DFlowApp):
             goto_table_id=self.dfdp.apps['portsec'].entrypoints.default,
         )
 
-    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_CREATED)
-    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_UPDATED)
+    @df_base_app.register_event(
+        switch.SwitchPort, model_constants.EVENT_CREATED)
+    @df_base_app.register_event(
+        switch.SwitchPort, model_constants.EVENT_UPDATED)
     def _ovs_port_created(self, ovs_port, orig_ovs_port=None):
         ofport = ovs_port.ofport
         lport_ref = ovs_port.lport
@@ -98,7 +100,8 @@ class ClassifierApp(df_base_app.DFlowApp):
             actions=actions,
         )
 
-    @df_base_app.register_event(ovs.OvsPort, model_constants.EVENT_DELETED)
+    @df_base_app.register_event(
+        switch.SwitchPort, model_constants.EVENT_DELETED)
     def _ovs_port_deleted(self, ovs_port):
         try:
             ofport, port_key = self._ofport_unique_key_map.pop(ovs_port.id)
