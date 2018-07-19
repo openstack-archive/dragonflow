@@ -66,9 +66,9 @@ ovsdb_monitor_table_filter_default = {
 }
 
 _HANDLED_INTERFACE_TYPES = (
-    constants.OVS_COMPUTE_INTERFACE,
-    constants.OVS_TUNNEL_INTERFACE,
-    constants.OVS_BRIDGE_INTERFACE,
+    constants.SWITCH_COMPUTE_INTERFACE,
+    constants.SWITCH_TUNNEL_INTERFACE,
+    constants.SWITCH_BRIDGE_INTERFACE,
 )
 
 
@@ -82,7 +82,7 @@ def _is_ovsport_update_valid(action, ovsport):
     if ovsport.name.startswith('qg'):
         return False
 
-    if (ovsport.type == constants.OVS_COMPUTE_INTERFACE and
+    if (ovsport.type == constants.SWITCH_COMPUTE_INTERFACE and
             ovsport.lport is None):
         return False
 

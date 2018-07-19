@@ -23,19 +23,19 @@ def _get_interface_type(row):
     interface_name = row.name
 
     if interface_type == "internal" and "br" in interface_name:
-        return constants.OVS_BRIDGE_INTERFACE
+        return constants.SWITCH_BRIDGE_INTERFACE
 
     if interface_type == "patch":
-        return constants.OVS_PATCH_INTERFACE
+        return constants.SWITCH_PATCH_INTERFACE
 
     if 'iface-id' in row.external_ids:
-        return constants.OVS_COMPUTE_INTERFACE
+        return constants.SWITCH_COMPUTE_INTERFACE
 
     options = row.options
     if 'remote_ip' in options:
-        return constants.OVS_TUNNEL_INTERFACE
+        return constants.SWITCH_TUNNEL_INTERFACE
 
-    return constants.OVS_UNKNOWN_INTERFACE
+    return constants.SWITCH_UNKNOWN_INTERFACE
 
 
 @mf.register_model
@@ -48,11 +48,11 @@ class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
     lport = df_fields.ReferenceField(l2.LogicalPort)
     type = df_fields.EnumField(
         (
-            constants.OVS_BRIDGE_INTERFACE,
-            constants.OVS_PATCH_INTERFACE,
-            constants.OVS_COMPUTE_INTERFACE,
-            constants.OVS_TUNNEL_INTERFACE,
-            constants.OVS_UNKNOWN_INTERFACE,
+            constants.SWITCH_BRIDGE_INTERFACE,
+            constants.SWITCH_PATCH_INTERFACE,
+            constants.SWITCH_COMPUTE_INTERFACE,
+            constants.SWITCH_TUNNEL_INTERFACE,
+            constants.SWITCH_UNKNOWN_INTERFACE,
         ),
     )
     peer = fields.StringField()
@@ -76,10 +76,10 @@ class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
         if row.admin_state:
             res.admin_state = row.admin_state[0]
 
-        if res.type == constants.OVS_PATCH_INTERFACE:
+        if res.type == constants.SWITCH_PATCH_INTERFACE:
             res.peer = row.options['peer']
 
-        if res.type == constants.OVS_TUNNEL_INTERFACE:
+        if res.type == constants.SWITCH_TUNNEL_INTERFACE:
             res.tunnel_type = row.type
 
         external_ids = row.external_ids
