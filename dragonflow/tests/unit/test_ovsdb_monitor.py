@@ -57,7 +57,7 @@ class TestDFIdl(tests_base.BaseTestCase):
                 'set',
                 ovs.OvsPort(
                     ofport=1,
-                    type=constants.OVS_PATCH_INTERFACE,
+                    type=constants.SWITCH_PATCH_INTERFACE,
                     name='tap-uuid',
                 ),
             ),
@@ -69,7 +69,7 @@ class TestDFIdl(tests_base.BaseTestCase):
                 'set',
                 ovs.OvsPort(
                     ofport=1,
-                    type=constants.OVS_COMPUTE_INTERFACE,
+                    type=constants.SWITCH_COMPUTE_INTERFACE,
                     name='tap-uuid',
                 ),
             ),
