@@ -22,7 +22,7 @@ from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_const
 from dragonflow.db.models import l2
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 
 LOG = log.getLogger(__name__)
 
@@ -82,8 +82,8 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
         self.external_ofport = self.vswitch_api.get_port_ofport(
             mapping[0])
 
-    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_CREATED)
-    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
+    @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_CREATED)
+    @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_UPDATED)
     def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
         if ovs_port.name != self.external_network_bridge:
             return
