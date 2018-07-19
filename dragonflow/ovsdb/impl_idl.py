@@ -141,10 +141,6 @@ def _port_from_idl_row(row):
     if lport_id is not None:
         res.lport = lport_id
 
-    attached_mac = external_ids.get('attached-mac')
-    if attached_mac is not None:
-        res.attached_mac = attached_mac
-
     return res
 
 
