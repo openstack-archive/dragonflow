@@ -33,7 +33,10 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return False
 
         _interface = ovs.OvsPort.from_json(update.value)
-        if str(_interface.attached_mac) != mac:
+        # FIXME(snapiri): what we have is the lport MAC, but we want to get
+        # notified on the VM port.
+        # Luckily they are the same but the first two chard (byte)
+        if str(_interface.mac_in_use)[2:] != mac[2:]:
             return False
         elif _interface.type != constants.SWITCH_COMPUTE_INTERFACE:
             return False
@@ -54,7 +57,10 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         _interface = ovs.OvsPort.from_json(update.value)
         if _interface is None:
             return False
-        elif str(_interface.attached_mac) != mac:
+        # FIXME(snapiri): what we have is the lport MAC, but we want to get
+        # notified on the VM port.
+        # Luckily they are the same but the first two chard (byte)
+        elif str(_interface.mac_in_use)[2:] != mac[2:]:
             return False
         elif _interface.type != constants.SWITCH_COMPUTE_INTERFACE:
             return False

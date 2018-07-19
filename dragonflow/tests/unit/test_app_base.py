@@ -297,7 +297,7 @@ fake_ovs_port1 = ovs.OvsPort(
     admin_state='up',
     type=constants.SWITCH_COMPUTE_INTERFACE,
     lport='fake_port1',
-    attached_mac='fa:16:3e:8c:2e:b3',
+    mac_in_use='fa:16:3e:8c:2e:b3',
 )
 
 
@@ -315,7 +315,7 @@ fake_ovs_port2 = ovs.OvsPort(
     admin_state='up',
     type=constants.SWITCH_COMPUTE_INTERFACE,
     lport='fake_port2',
-    attached_mac='fa:16:3e:8c:2e:b4',
+    mac_in_use='fa:16:3e:8c:2e:b4',
 )
 
 
