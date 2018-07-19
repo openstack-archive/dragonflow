@@ -83,16 +83,18 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.nb_api = api_nb.NbApi.get_instance()
         self.controller = df_local_controller.DfLocalController(
             fake_chassis1.id, self.nb_api)
-        self.vswitch_api = self.controller.vswitch_api = mock.MagicMock()
+        switch_backend = self.controller.switch_backend
+        self.vswitch_api = switch_backend.vswitch_api = mock.MagicMock()
         kwargs = dict(
             nb_api=self.controller.nb_api,
-            vswitch_api=self.controller.vswitch_api
+            vswitch_api=self.vswitch_api
         )
-        self.controller.open_flow_app = ryu_base_app.RyuDFAdapter(
-            db_change_callback=self.controller.db_change_callback, **kwargs)
-        self.open_flow_app = self.controller.open_flow_app
+        switch_backend.open_flow_app = ryu_base_app.RyuDFAdapter(
+                db_change_callback=self.controller.db_change_callback,
+                **kwargs)
+        self.open_flow_app = switch_backend.open_flow_app
         self.datapath = self.open_flow_app._datapath = mock.Mock()
-        self.open_flow_app.load(self.controller.open_flow_app, **kwargs)
+        self.open_flow_app.load(self.open_flow_app, **kwargs)
         self.topology = self.controller.topology = topology.Topology(
             self.controller, enable_selective_topo_dist)
         cfg.CONF.set_override(
