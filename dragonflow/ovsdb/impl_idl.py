@@ -17,7 +17,7 @@ from ovsdbapp.backend.ovs_idl import idlutils
 from ovsdbapp.schema.open_vswitch import impl_idl
 
 from dragonflow.common import constants
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 from dragonflow.ovsdb import commands
 
 ovsdb_monitor_table_filter_default = {
@@ -72,24 +72,24 @@ _HANDLED_INTERFACE_TYPES = (
 )
 
 
-def _is_ovsport_update_valid(action, ovsport):
-    if ovsport.name == cfg.CONF.df_metadata.metadata_interface:
+def _is_ovsport_update_valid(action, switch_port):
+    if switch_port.name == cfg.CONF.df_metadata.metadata_interface:
         return True
 
-    if ovsport.type not in _HANDLED_INTERFACE_TYPES:
+    if switch_port.type not in _HANDLED_INTERFACE_TYPES:
         return False
 
-    if ovsport.name.startswith('qg'):
+    if switch_port.name.startswith('qg'):
         return False
 
-    if (ovsport.type == constants.SWITCH_COMPUTE_INTERFACE and
-            ovsport.lport is None):
+    if (switch_port.type == constants.SWITCH_COMPUTE_INTERFACE and
+            switch_port.lport is None):
         return False
 
     if action == 'set':
-        # No need for 'updated' event if the ofport is being deleted
-        ofport = ovsport.ofport
-        if (ofport is None) or (ofport < 0):
+        # No need for 'updated' event if the port_num is being deleted
+        port_num = switch_port.port_num
+        if (port_num is None) or (port_num < 0):
             return False
 
     return True
@@ -116,13 +116,13 @@ def _get_interface_type(row):
 
 
 def _port_from_idl_row(row):
-    res = ovs.OvsPort(
+    res = switch.SwitchPort(
         id=str(row.uuid),
         name=row.name,
         type=_get_interface_type(row),
     )
     if row.ofport:
-        res.ofport = int(row.ofport[0])
+        res.port_num = int(row.ofport[0])
 
     if row.mac_in_use:
         res.mac_in_use = row.mac_in_use[0]

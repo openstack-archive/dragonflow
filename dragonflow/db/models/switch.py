@@ -20,8 +20,8 @@ from dragonflow.db.models import mixins
 
 @mf.register_model
 @mf.construct_nb_db_model
-class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
-    table_name = 'ovs_port'
+class SwitchPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
+    table_name = 'switch_port'
 
     ofport = fields.IntField()
     admin_state = df_fields.EnumField(('up', 'down'))

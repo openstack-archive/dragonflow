@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from dragonflow.common import constants
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 from dragonflow.ovsdb import impl_idl
 from dragonflow.tests import base as tests_base
 
@@ -23,7 +23,7 @@ class TestDFIdl(tests_base.BaseTestCase):
         self.assertFalse(
             impl_idl._is_ovsport_update_valid(
                 'set',
-                ovs.OvsPort(
+                switch.SwitchPort(
                     ofport=1,
                     name='qg-some-uuid',
                 ),
@@ -34,7 +34,7 @@ class TestDFIdl(tests_base.BaseTestCase):
         self.assertFalse(
             impl_idl._is_ovsport_update_valid(
                 'set',
-                ovs.OvsPort(
+                switch.SwitchPort(
                     name='tap-uuid',
                 ),
             ),
@@ -44,7 +44,7 @@ class TestDFIdl(tests_base.BaseTestCase):
         self.assertFalse(
             impl_idl._is_ovsport_update_valid(
                 'set',
-                ovs.OvsPort(
+                switch.SwitchPort(
                     ofport=-1,
                     name='tap-uuid',
                 ),
@@ -55,7 +55,7 @@ class TestDFIdl(tests_base.BaseTestCase):
         self.assertFalse(
             impl_idl._is_ovsport_update_valid(
                 'set',
-                ovs.OvsPort(
+                switch.SwitchPort(
                     ofport=1,
                     type=constants.SWITCH_PATCH_INTERFACE,
                     name='tap-uuid',
@@ -67,7 +67,7 @@ class TestDFIdl(tests_base.BaseTestCase):
         self.assertFalse(
             impl_idl._is_ovsport_update_valid(
                 'set',
-                ovs.OvsPort(
+                switch.SwitchPort(
                     ofport=1,
                     type=constants.SWITCH_COMPUTE_INTERFACE,
                     name='tap-uuid',

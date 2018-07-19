@@ -25,7 +25,7 @@ from dragonflow.controller.common import logical_networks
 from dragonflow.controller import df_base_app
 from dragonflow.db.models import constants as model_const
 from dragonflow.db.models import l2
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 
 
 NET_VLAN = 'vlan'
@@ -80,12 +80,12 @@ class ProviderApp(df_base_app.DFlowApp):
             mac = self.vswitch_api.get_port_mac_in_use(bridge)
             self.bridge_macs[physical_network] = mac
 
-    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_CREATED)
-    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_UPDATED)
+    @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_CREATED)
+    @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_UPDATED)
     def _bridge_updated(self, ovsport, orig_ovsport=None):
         self._update_bridge_mac(ovsport.name, ovsport.mac_in_use)
 
-    @df_base_app.register_event(ovs.OvsPort, model_const.EVENT_DELETED)
+    @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_DELETED)
     def _bridge_deleted(self, ovsport):
         self._update_bridge_mac(ovsport.name, None)
 

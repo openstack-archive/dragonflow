@@ -20,8 +20,8 @@ from oslo_log import log
 from ovs import vlog
 
 from dragonflow.controller.common import constants
-from dragonflow.db.models import ovs
 from dragonflow.db.models import qos
+from dragonflow.db.models import switch
 from dragonflow.ovsdb import impl_idl
 
 LOG = log.getLogger(__name__)
@@ -102,7 +102,7 @@ class OvsApi(object):
                 continue
 
             tunnel_ports.append(
-                ovs.OvsPort(
+                switch.SwitchPort(
                     id=str(iface['uuid']),
                     name=iface['name'],
                     tunnel_type=iface['type'],
@@ -121,11 +121,11 @@ class OvsApi(object):
     @staticmethod
     def _check_ofport(port_name, ofport):
         if ofport is None:
-            LOG.warning("Can't find ofport for port %s.", port_name)
+            LOG.warning("Can't find port_num for port %s.", port_name)
             return False
         if ofport < OFPORT_RANGE_MIN or ofport > OFPORT_RANGE_MAX:
-            LOG.warning("ofport %(ofport)s for port %(port)s is invalid.",
-                        {'ofport': ofport, 'port': port_name})
+            LOG.warning("port_num %(port_num)s for port %(port)s is invalid.",
+                        {'port_num': ofport, 'port': port_name})
             return False
 
         return True
@@ -148,9 +148,9 @@ class OvsApi(object):
 
     def get_port_ofport_by_id(self, port_id):
         iface = self.get_interface_by_id_with_specified_columns(
-            port_id, {'name', 'ofport'})
-        if iface and self._check_ofport(iface['name'], iface['ofport']):
-            return iface['ofport']
+            port_id, {'name', 'port_num'})
+        if iface and self._check_ofport(iface['name'], iface['port_num']):
+            return iface['port_num']
 
     def get_local_port_mac_in_use(self, port_id):
         iface = self.get_interface_by_id_with_specified_columns(
@@ -226,7 +226,7 @@ class OvsApi(object):
                                            log_errors=False)
 
     def get_port_ofport(self, port):
-        return self._db_get_val('Interface', port, 'ofport',
+        return self._db_get_val('Interface', port, 'port_num',
                                 check_error=False, log_errors=False)
 
     def get_port_mac_in_use(self, port):
