@@ -184,6 +184,8 @@ function configure_df_metadata_service {
         iniset $DRAGONFLOW_CONF df_metadata ip "$DF_METADATA_SERVICE_IP"
         iniset $DRAGONFLOW_CONF df_metadata port "$DF_METADATA_SERVICE_PORT"
         iniset $DRAGONFLOW_CONF df_metadata metadata_interface "$DF_METADATA_SERVICE_INTERFACE"
+        # TODO(snapiri) When we add more switch backends, this should be conditional
+        tools/ovs_metadata_service_deployment.sh install $INTEGRATION_BRIDGE $DF_METADATA_SERVICE_INTERFACE $DF_METADATA_SERVICE_IP
     fi
 }
 
@@ -503,7 +505,8 @@ function stop_df_metadata_agent {
     if is_service_enabled df-metadata ; then
         echo "Stopping Dragonflow metadata service"
         stop_process df-metadata
-        sudo ovs-vsctl del-port br-int $DF_METADATA_SERVICE_INTERFACE
+        # TODO(snapiri) When we add more switch backends, this should be conditional
+        tools/ovs_metadata_service_deployment.sh remove $INTEGRATION_BRIDGE $DF_METADATA_SERVICE_INTERFACE
     fi
 }
 
