@@ -61,7 +61,7 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
         ovs_port = ovs.OvsPort(id='fake_ovs_port',
                                lport=fake_local_vlan_port.id,
                                ofport=1, admin_state='up',
-                               type=constants.OVS_COMPUTE_INTERFACE)
+                               type=constants.SWITCH_COMPUTE_INTERFACE)
         self.controller.update(ovs_port)
         port_key = fake_local_vlan_port.unique_key
         match = self.app.parser.OFPMatch(reg7=port_key)
