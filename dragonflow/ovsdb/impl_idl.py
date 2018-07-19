@@ -17,12 +17,12 @@ from ovsdbapp.backend.ovs_idl import idlutils
 from ovsdbapp.schema.open_vswitch import impl_idl
 
 from dragonflow.common import constants
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 from dragonflow.ovsdb import commands
 
 ovsdb_monitor_table_filter_default = {
     'Interface': [
-        'ofport',
+        'port_num',
         'name',
         'admin_state',
         'type',
@@ -87,7 +87,7 @@ def _is_ovsport_update_valid(action, ovsport):
         return False
 
     if action == 'set':
-        # No need for 'updated' event if the ofport is being deleted
+        # No need for 'updated' event if the port_num is being deleted
         ofport = ovsport.ofport
         if (ofport is None) or (ofport < 0):
             return False
@@ -116,13 +116,13 @@ def _get_interface_type(row):
 
 
 def _port_from_idl_row(row):
-    res = ovs.OvsPort(
+    res = switch.SwitchPort(
         id=str(row.uuid),
         name=row.name,
         type=_get_interface_type(row),
     )
     if row.ofport:
-        res.ofport = int(row.ofport[0])
+        res.port_num = int(row.ofport[0])
 
     if row.mac_in_use:
         res.mac_in_use = row.mac_in_use[0]

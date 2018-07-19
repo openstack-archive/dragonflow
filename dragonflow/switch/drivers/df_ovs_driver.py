@@ -20,7 +20,7 @@ from ryu import cfg as ryu_cfg
 from dragonflow import conf as cfg
 from dragonflow.controller import ryu_base_app
 from dragonflow.db.models import l2
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 from dragonflow.ovsdb import vswitch_impl
 from dragonflow.switch.drivers import df_switch_driver
 
@@ -79,7 +79,7 @@ class DfOvsDriver(df_switch_driver.DfSwitchDriver):
         self.open_flow_app.notify_switch_sync_finished()
 
     def sync_ignore_models(self):
-        return [ovs.OvsPort, ]
+        return [switch.SwitchPort, ]
 
     def notify_port_status(self, ovs_port, status):
         if self.neutron_notifier:
