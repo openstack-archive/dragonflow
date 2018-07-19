@@ -37,5 +37,4 @@ class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
     )
     peer = fields.StringField()
     mac_in_use = df_fields.MacAddressField()
-    attached_mac = df_fields.MacAddressField()
     tunnel_type = fields.StringField()
