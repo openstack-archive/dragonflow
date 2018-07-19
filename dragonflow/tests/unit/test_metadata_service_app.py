@@ -19,7 +19,7 @@ from neutron.conf.agent.metadata import config as metadata_config
 from oslo_config import fixture as cfg_fixture
 
 from dragonflow.controller.apps import metadata_service
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 from dragonflow.tests import base as tests_base
 from dragonflow.tests.unit import test_app_base
 
@@ -36,7 +36,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
                                '_add_tap_metadata_port') as mock_func:
             # Device without mac will not trigger update flow
             self.controller.update(
-                ovs.OvsPort(
+                switch.SwitchPort(
                     id='fake_ovs_port',
                     ofport=1,
                     name=self.meta_app._interface,
@@ -47,7 +47,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
 
             # Other device update will not trigger update flow
             self.controller.update(
-                ovs.OvsPort(
+                switch.SwitchPort(
                     id='fake_ovs_port',
                     ofport=1,
                     name='no-interface',
@@ -59,7 +59,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
 
             # Device with mac will trigger update flow
             self.controller.update(
-                ovs.OvsPort(
+                switch.SwitchPort(
                     id='fake_ovs_port',
                     ofport=1,
                     name=self.meta_app._interface,
@@ -71,7 +71,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
 
             # Duplicated updated will not trigger update flow
             self.controller.update(
-                ovs.OvsPort(
+                switch.SwitchPort(
                     id='fake_ovs_port1',
                     ofport=1,
                     name=self.meta_app._interface,
