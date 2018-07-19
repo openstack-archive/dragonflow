@@ -95,6 +95,59 @@ def _is_ovsport_update_valid(action, ovsport):
     return True
 
 
+def _get_interface_type(row):
+    interface_type = row.type
+    interface_name = row.name
+
+    if interface_type == "internal" and "br" in interface_name:
+        return constants.SWITCH_BRIDGE_INTERFACE
+
+    if interface_type == "patch":
+        return constants.SWITCH_PATCH_INTERFACE
+
+    if 'iface-id' in row.external_ids:
+        return constants.SWITCH_COMPUTE_INTERFACE
+
+    options = row.options
+    if 'remote_ip' in options:
+        return constants.SWITCH_TUNNEL_INTERFACE
+
+    return constants.SWITCH_UNKNOWN_INTERFACE
+
+
+def _port_from_idl_row(row):
+    res = ovs.OvsPort(
+        id=str(row.uuid),
+        name=row.name,
+        type=_get_interface_type(row),
+    )
+    if row.ofport:
+        res.ofport = int(row.ofport[0])
+
+    if row.mac_in_use:
+        res.mac_in_use = row.mac_in_use[0]
+
+    if row.admin_state:
+        res.admin_state = row.admin_state[0]
+
+    if res.type == constants.SWITCH_PATCH_INTERFACE:
+        res.peer = row.options['peer']
+
+    if res.type == constants.SWITCH_TUNNEL_INTERFACE:
+        res.tunnel_type = row.type
+
+    external_ids = row.external_ids
+    lport_id = external_ids.get('iface-id')
+    if lport_id is not None:
+        res.lport = lport_id
+
+    attached_mac = external_ids.get('attached-mac')
+    if attached_mac is not None:
+        res.attached_mac = attached_mac
+
+    return res
+
+
 class DFIdl(idl.Idl):
     def __init__(self, remote, schema, db_change_callback):
         super(DFIdl, self).__init__(remote, schema)
@@ -106,7 +159,7 @@ class DFIdl(idl.Idl):
         if row._table.name != 'Interface':
             return
 
-        local_interface = ovs.OvsPort.from_idl_row(row)
+        local_interface = _port_from_idl_row(row)
         action = event if event != 'update' else 'set'
         if _is_ovsport_update_valid(action, local_interface):
             self.db_change_callback(
