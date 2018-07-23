@@ -54,13 +54,12 @@ class ArpResponderTest(test_base.DFTestBase):
         """
         Add a VM. Verify it's ARP flow is there.
         """
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create(network={'name': 'arp_responder_test'})
-        subnet_obj = self.store(objects.SubnetTestObj(
-            self.neutron,
-            self.nb_api,
-            network_id,
-        ))
+        subnet_obj = objects.SubnetTestObj(self.neutron, self.nb_api,
+                                           network_id)
+        self.addCleanup(subnet_obj.close)
 
         subnet = {'network_id': network_id,
                   'cidr': '10.10.10.0/24',
@@ -71,7 +70,8 @@ class ArpResponderTest(test_base.DFTestBase):
         subnet = subnet_obj.create(subnet)
 
         flows_before = self._get_arp_table_flows()
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm.create(network=network)
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
@@ -134,13 +134,12 @@ class ICMPResponderTest(test_base.DFTestBase):
         """
         Add a VM. Verify the icmp flow is there.
         """
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create(network={'name': 'icmp_responder_test'})
-        subnet_obj = self.store(objects.SubnetTestObj(
-            self.neutron,
-            self.nb_api,
-            network_id,
-        ))
+        subnet_obj = objects.SubnetTestObj(self.neutron, self.nb_api,
+                                           network_id)
+        self.addCleanup(subnet_obj.close)
 
         subnet = {'network_id': network_id,
                   'cidr': '10.10.10.0/24',
@@ -152,7 +151,8 @@ class ICMPResponderTest(test_base.DFTestBase):
 
         flows_before = self._get_l3_lookup_table_flows()
 
-        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        router = objects.RouterTestObj(self.neutron, self.nb_api)
+        self.addCleanup(router.close)
         router_id = router.create()
         subnet_msg = {'subnet_id': subnet_id}
         interface = self.neutron.add_interface_router(router_id,
@@ -165,7 +165,8 @@ class ICMPResponderTest(test_base.DFTestBase):
                 router_ip = ip['ip_address']
                 break
 
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm.create(network=network)
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)

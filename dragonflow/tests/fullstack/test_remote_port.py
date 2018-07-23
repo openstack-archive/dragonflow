@@ -22,7 +22,8 @@ from dragonflow.tests.fullstack import test_objects as objects
 class TestRemotePort(test_base.DFTestBase):
 
     def test_remote_port(self):
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         self.assertTrue(network.exists())
 
@@ -32,14 +33,14 @@ class TestRemotePort(test_base.DFTestBase):
                        'ip_version': 4,
                        'name': 'subnet1',
                        'enable_dhcp': True}
-        subnet = self.store(objects.SubnetTestObj(self.neutron,
-                                                  self.nb_api,
-                                                  network_id=network_id))
+        subnet = objects.SubnetTestObj(self.neutron, self.nb_api,
+                                       network_id=network_id)
+        self.addCleanup(subnet.close)
         subnet.create(subnet_info)
         self.assertTrue(subnet.exists())
 
-        port = self.store(objects.PortTestObj(
-                self.neutron, self.nb_api, network_id))
+        port = objects.PortTestObj(self.neutron, self.nb_api, network_id)
+        self.addCleanup(port.close)
         port_body = {
                 'admin_state_up': True,
                 'name': 'port1',

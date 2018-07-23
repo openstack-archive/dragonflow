@@ -37,26 +37,18 @@ class TestL3App(test_base.DFTestBase):
         self.topology = None
         self.policy = None
         self._ping = None
-        try:
-            self.topology = self.store(
-                app_testing_objects.Topology(
-                    self.neutron,
-                    self.nb_api
-                )
-            )
-            self.subnet1 = self.topology.create_subnet(cidr='192.168.12.0/24')
-            self.subnet2 = self.topology.create_subnet(cidr='192.168.13.0/24')
-            self.port1 = self.subnet1.create_port()
-            self.port2 = self.subnet2.create_port()
-            self.router = self.topology.create_router([
-                self.subnet1.subnet_id,
-                self.subnet2.subnet_id,
-            ])
-            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        except Exception:
-            if self.topology:
-                self.topology.close()
-            raise
+        self.topology = app_testing_objects.Topology(self.neutron,
+                                                     self.nb_api)
+        self.addCleanup(self.topology.close)
+        self.subnet1 = self.topology.create_subnet(cidr='192.168.12.0/24')
+        self.subnet2 = self.topology.create_subnet(cidr='192.168.13.0/24')
+        self.port1 = self.subnet1.create_port()
+        self.port2 = self.subnet2.create_port()
+        self.router = self.topology.create_router([
+            self.subnet1.subnet_id,
+            self.subnet2.subnet_id,
+        ])
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
     def _create_port_policies(self, connected=True):
         ignore_action = app_testing_objects.IgnoreAction()
@@ -236,19 +228,18 @@ class TestL3App(test_base.DFTestBase):
         port_policies = self._create_port_policies()
         initial_packet = self._create_packet(
             dst_ip, ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet1.subnet_id,
-                        self.port1.port_id,
-                        initial_packet,
-                    ),
-                ],
-                port_policies=port_policies,
-                unknown_port_action=app_testing_objects.IgnoreAction()
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                app_testing_objects.SendAction(
+                    self.subnet1.subnet_id,
+                    self.port1.port_id,
+                    initial_packet,
+                ),
+            ],
+            port_policies=port_policies,
+            unknown_port_action=app_testing_objects.IgnoreAction()
         )
+        self.addCleanup(policy.close)
         apps.start_policy(policy, self.topology,
                           const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
@@ -298,19 +289,18 @@ class TestL3App(test_base.DFTestBase):
         port_policies = self._create_port_policies(connected=False)
         initial_packet = self._create_packet(
             dst_ip, ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet1.subnet_id,
-                        self.port1.port_id,
-                        initial_packet,
-                    ),
-                ],
-                port_policies=port_policies,
-                unknown_port_action=app_testing_objects.IgnoreAction()
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                app_testing_objects.SendAction(
+                    self.subnet1.subnet_id,
+                    self.port1.port_id,
+                    initial_packet,
+                ),
+            ],
+            port_policies=port_policies,
+            unknown_port_action=app_testing_objects.IgnoreAction()
         )
+        self.addCleanup(policy.close)
         policy.start(self.topology)
         # Since there is no OpenFlow in vswitch, we are expecting timeout
         # exception here.
@@ -405,18 +395,17 @@ class TestL3App(test_base.DFTestBase):
             self.subnet1.subnet_id,
             self.port1.port_id,
             initial_packet)
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    send_action,
-                    send_action,
-                    send_action,
-                    send_action
-                ],
-                port_policies=port_policy,
-                unknown_port_action=ignore_action
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                send_action,
+                send_action,
+                send_action,
+                send_action
+            ],
+            port_policies=port_policy,
+            unknown_port_action=ignore_action
         )
+        self.addCleanup(policy.close)
         policy.start(self.topology)
         # Since the rate limit, we expect timeout to wait for 4th packet hit
         # the policy.
@@ -437,19 +426,18 @@ class TestL3App(test_base.DFTestBase):
             app_testing_objects.RyuICMPUnreachFilter)
         initial_packet = self._create_packet(
             "192.168.12.1", ryu.lib.packet.ipv4.inet.IPPROTO_UDP)
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet1.subnet_id,
-                        self.port1.port_id,
-                        initial_packet,
-                    ),
-                ],
-                port_policies=port_policy,
-                unknown_port_action=ignore_action
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                app_testing_objects.SendAction(
+                    self.subnet1.subnet_id,
+                    self.port1.port_id,
+                    initial_packet,
+                ),
+            ],
+            port_policies=port_policy,
+            unknown_port_action=ignore_action
         )
+        self.addCleanup(policy.close)
         apps.start_policy(policy, self.topology,
                           const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
@@ -491,18 +479,17 @@ class TestL3App(test_base.DFTestBase):
             self.port1.port_id,
             initial_packet)
 
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    send_action,
-                    send_action,
-                    send_action,
-                    send_action
-                ],
-                port_policies=port_policy,
-                unknown_port_action=ignore_action
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                send_action,
+                send_action,
+                send_action,
+                send_action
+            ],
+            port_policies=port_policy,
+            unknown_port_action=ignore_action
         )
+        self.addCleanup(policy.close)
         policy.start(self.topology)
         # Since the rate limit, we expect timeout to wait for 4th packet hit
         # the policy.
@@ -561,14 +548,13 @@ class TestL3App(test_base.DFTestBase):
             self.subnet1.subnet_id,
             self.port1.port_id,
             initial_packet)
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    send_action
-                ],
-                port_policies=port_policy,
-                unknown_port_action=ignore_action
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                send_action
+            ],
+            port_policies=port_policy,
+            unknown_port_action=ignore_action
         )
+        self.addCleanup(policy.close)
         apps.start_policy(policy, self.topology,
                           const.DEFAULT_RESOURCE_READY_TIMEOUT)

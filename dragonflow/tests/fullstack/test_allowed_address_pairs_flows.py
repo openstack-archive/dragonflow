@@ -81,13 +81,12 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
         if not self.check_app_loaded("active_port_detection"):
             self.skipTest("ActivePortDetectionApp is not enabled")
 
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create(network={'name': 'aap_test'})
-        subnet_obj = self.store(objects.SubnetTestObj(
-            self.neutron,
-            self.nb_api,
-            network_id,
-        ))
+        subnet_obj = objects.SubnetTestObj(self.neutron, self.nb_api,
+                                           network_id)
+        self.addCleanup(subnet_obj.close)
 
         subnet = {'network_id': network_id,
                   'cidr': '192.168.97.0/24',
@@ -97,7 +96,8 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
                   'enable_dhcp': True}
         subnet_obj.create(subnet)
 
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm_id = vm.create(network=network)
 
         vm_port_id = self.vswitch_api.get_port_id_by_vm_id(vm_id)

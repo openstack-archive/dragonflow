@@ -88,7 +88,8 @@ class TestPubSub(PubSubTestBase):
             events_num += 1
         subscriber = self._get_subscriber(_db_change_callback)
         self.addCleanup(subscriber.close)
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         if cfg.CONF.df.enable_selective_topology_distribution:
             topic = network.get_topic()
@@ -97,11 +98,8 @@ class TestPubSub(PubSubTestBase):
             time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
             self.assertNotEqual(local_event_num, events_num)
             local_event_num = events_num
-        port = self.store(objects.PortTestObj(
-            self.neutron,
-            self.nb_api,
-            network_id
-        ))
+        port = objects.PortTestObj(self.neutron, self.nb_api, network_id)
+        self.addCleanup(port.close)
         port.create()
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
@@ -132,7 +130,8 @@ class TestPubSub(PubSubTestBase):
 
         subscriber = self._get_subscriber(_db_change_callback)
         self.addCleanup(subscriber.close)
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         if cfg.CONF.df.enable_selective_topology_distribution:
             topic = network.get_topic()
@@ -140,11 +139,8 @@ class TestPubSub(PubSubTestBase):
         else:
             time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
             self.assertNotEqual(local_event_num, ns.events_num)
-        port = self.store(objects.PortTestObj(
-            self.neutron,
-            self.nb_api,
-            network_id
-        ))
+        port = objects.PortTestObj(self.neutron, self.nb_api, network_id)
+        self.addCleanup(port.close)
         local_event_num = ns.events_num
         port_id = port.create()
         time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)

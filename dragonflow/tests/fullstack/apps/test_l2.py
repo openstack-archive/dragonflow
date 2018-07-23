@@ -34,62 +34,57 @@ class TestArpResponder(test_base.DFTestBase):
         super(TestArpResponder, self).setUp()
         self.topology = None
         self.policy = None
-        try:
-            self.topology = app_testing_objects.Topology(
-                self.neutron,
-                self.nb_api)
-            subnet1 = self.topology.create_subnet(cidr='192.168.10.0/24')
-            port1 = subnet1.create_port()
-            port2 = subnet1.create_port()
-            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-            # Create policy
-            arp_packet = self._create_arp_request(
-                src_port=port1.port.get_logical_port(),
-                dst_port=port2.port.get_logical_port(),
-            )
-            send_arp_request = app_testing_objects.SendAction(
-                subnet1.subnet_id,
-                port1.port_id,
-                arp_packet,
-            )
-            ignore_action = app_testing_objects.IgnoreAction()
-            log_action = app_testing_objects.LogAction()
-            key1 = (subnet1.subnet_id, port1.port_id)
-            port_policies = {
-                key1: app_testing_objects.PortPolicy(
-                    rules=[
-                        app_testing_objects.PortPolicyRule(
-                            # Detect arp replies
-                            app_testing_objects.RyuARPReplyFilter(),
-                            actions=[
-                                log_action,
-                                app_testing_objects.StopSimulationAction()
-                            ]
-                        ),
-                        app_testing_objects.PortPolicyRule(
-                            # Ignore IPv6 packets
-                            app_testing_objects.RyuIPv6Filter(),
-                            actions=[
-                                ignore_action
-                            ]
-                        ),
-                    ],
-                    default_action=app_testing_objects.RaiseAction(
-                        "Unexpected packet"
-                    )
-                ),
-            }
-            self.policy = app_testing_objects.Policy(
-                initial_actions=[send_arp_request],
-                port_policies=port_policies,
-                unknown_port_action=ignore_action
-            )
-        except Exception:
-            if self.topology:
-                self.topology.close()
-            raise
-        self.store(self.topology)
-        self.store(self.policy)
+        self.topology = app_testing_objects.Topology(
+            self.neutron,
+            self.nb_api)
+        self.addCleanup(self.topology.close)
+        subnet1 = self.topology.create_subnet(cidr='192.168.10.0/24')
+        port1 = subnet1.create_port()
+        port2 = subnet1.create_port()
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        # Create policy
+        arp_packet = self._create_arp_request(
+            src_port=port1.port.get_logical_port(),
+            dst_port=port2.port.get_logical_port(),
+        )
+        send_arp_request = app_testing_objects.SendAction(
+            subnet1.subnet_id,
+            port1.port_id,
+            arp_packet,
+        )
+        ignore_action = app_testing_objects.IgnoreAction()
+        log_action = app_testing_objects.LogAction()
+        key1 = (subnet1.subnet_id, port1.port_id)
+        port_policies = {
+            key1: app_testing_objects.PortPolicy(
+                rules=[
+                    app_testing_objects.PortPolicyRule(
+                        # Detect arp replies
+                        app_testing_objects.RyuARPReplyFilter(),
+                        actions=[
+                            log_action,
+                            app_testing_objects.StopSimulationAction()
+                        ]
+                    ),
+                    app_testing_objects.PortPolicyRule(
+                        # Ignore IPv6 packets
+                        app_testing_objects.RyuIPv6Filter(),
+                        actions=[
+                            ignore_action
+                        ]
+                    ),
+                ],
+                default_action=app_testing_objects.RaiseAction(
+                    "Unexpected packet"
+                )
+            ),
+        }
+        self.policy = app_testing_objects.Policy(
+            initial_actions=[send_arp_request],
+            port_policies=port_policies,
+            unknown_port_action=ignore_action
+        )
+        self.addCleanup(self.policy.close)
 
     def _create_arp_request(self, src_port, dst_port):
         ethernet = ryu.lib.packet.ethernet.ethernet(
@@ -133,73 +128,68 @@ class TestNeighborAdvertiser(test_base.DFTestBase):
         super(TestNeighborAdvertiser, self).setUp()
         self.topology = None
         self.policy = None
-        try:
-            # Disable Duplicate Address Detection requests from the interface
-            self.dad_conf = utils.execute(['sysctl', '-n',
-                                           'net.ipv6.conf.default.accept_dad'])
-            utils.execute(['sysctl', '-w',
-                           'net.ipv6.conf.default.accept_dad=0'],
-                          run_as_root=True)
-            # Disable Router Solicitation requests from the interface
-            self.router_solicit_conf = utils.execute(
-                ['sysctl', '-n', 'net.ipv6.conf.default.router_solicitations'])
-            utils.execute(['sysctl', '-w',
-                           'net.ipv6.conf.default.router_solicitations=0'],
-                          run_as_root=True)
-            self.topology = app_testing_objects.Topology(
-                self.neutron,
-                self.nb_api)
-            subnet1 = self.topology.create_subnet(cidr='1111:1111:1111::/64')
-            port1 = subnet1.create_port()
-            port2 = subnet1.create_port()
-            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-            # Create Neighbor Solicitation packet
-            ns_packet = self._create_ns_request(
-                src_port=port1.port.get_logical_port(),
-                dst_port=port2.port.get_logical_port(),
-            )
-            send_ns_request = app_testing_objects.SendAction(
-                subnet1.subnet_id,
-                port1.port_id,
-                ns_packet,
-            )
-            ignore_action = app_testing_objects.IgnoreAction()
-            log_action = app_testing_objects.LogAction()
-            key1 = (subnet1.subnet_id, port1.port_id)
-            adv_filter = app_testing_objects.RyuNeighborAdvertisementFilter()
-            port_policies = {
-                key1: app_testing_objects.PortPolicy(
-                    rules=[
-                        app_testing_objects.PortPolicyRule(
-                            # Detect advertisements
-                            adv_filter,
-                            actions=[
-                                log_action,
-                                app_testing_objects.StopSimulationAction()
-                            ]
-                        ),
-                        app_testing_objects.PortPolicyRule(
-                            # Filter local VM's Multicast requests
-                            app_testing_objects.RyuIpv6MulticastFilter(),
-                            actions=[ignore_action]
-                        )
-                    ],
-                    default_action=app_testing_objects.RaiseAction(
-                        "Unexpected packet"
+        # Disable Duplicate Address Detection requests from the interface
+        self.dad_conf = utils.execute(['sysctl', '-n',
+                                       'net.ipv6.conf.default.accept_dad'])
+        utils.execute(['sysctl', '-w',
+                       'net.ipv6.conf.default.accept_dad=0'],
+                      run_as_root=True)
+        # Disable Router Solicitation requests from the interface
+        self.router_solicit_conf = utils.execute(
+            ['sysctl', '-n', 'net.ipv6.conf.default.router_solicitations'])
+        utils.execute(['sysctl', '-w',
+                       'net.ipv6.conf.default.router_solicitations=0'],
+                      run_as_root=True)
+        self.topology = app_testing_objects.Topology(
+            self.neutron,
+            self.nb_api)
+        self.addCleanup(self.topology.close)
+        subnet1 = self.topology.create_subnet(cidr='1111:1111:1111::/64')
+        port1 = subnet1.create_port()
+        port2 = subnet1.create_port()
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        # Create Neighbor Solicitation packet
+        ns_packet = self._create_ns_request(
+            src_port=port1.port.get_logical_port(),
+            dst_port=port2.port.get_logical_port(),
+        )
+        send_ns_request = app_testing_objects.SendAction(
+            subnet1.subnet_id,
+            port1.port_id,
+            ns_packet,
+        )
+        ignore_action = app_testing_objects.IgnoreAction()
+        log_action = app_testing_objects.LogAction()
+        key1 = (subnet1.subnet_id, port1.port_id)
+        adv_filter = app_testing_objects.RyuNeighborAdvertisementFilter()
+        port_policies = {
+            key1: app_testing_objects.PortPolicy(
+                rules=[
+                    app_testing_objects.PortPolicyRule(
+                        # Detect advertisements
+                        adv_filter,
+                        actions=[
+                            log_action,
+                            app_testing_objects.StopSimulationAction()
+                        ]
+                    ),
+                    app_testing_objects.PortPolicyRule(
+                        # Filter local VM's Multicast requests
+                        app_testing_objects.RyuIpv6MulticastFilter(),
+                        actions=[ignore_action]
                     )
-                ),
-            }
-            self.policy = app_testing_objects.Policy(
-                initial_actions=[send_ns_request],
-                port_policies=port_policies,
-                unknown_port_action=ignore_action
-            )
-        except Exception:
-            if self.topology:
-                self.topology.close()
-            raise
-        self.store(self.topology)
-        self.store(self.policy)
+                ],
+                default_action=app_testing_objects.RaiseAction(
+                    "Unexpected packet"
+                )
+            ),
+        }
+        self.policy = app_testing_objects.Policy(
+            initial_actions=[send_ns_request],
+            port_policies=port_policies,
+            unknown_port_action=ignore_action
+        )
+        self.addCleanup(self.policy.close)
 
     def _create_ns_request(self, src_port, dst_port):
         ethernet = ryu.lib.packet.ethernet.ethernet(

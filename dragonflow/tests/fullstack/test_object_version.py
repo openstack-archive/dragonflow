@@ -28,14 +28,15 @@ class TestObjectVersion(test_base.DFTestBase):
         super(TestObjectVersion, self).setUp()
 
     def test_network_version(self):
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         lean_lswitch = l2.LogicalSwitch(id=network_id)
         self.assertTrue(network.exists())
         version = self.nb_api.get(lean_lswitch).version
 
-        subnet = self.store(objects.SubnetTestObj(
-                self.neutron, self.nb_api, network_id))
+        subnet = objects.SubnetTestObj(self.neutron, self.nb_api, network_id)
+        self.addCleanup(subnet.close)
         subnet.create()
         self.assertTrue(subnet.exists())
         new_version = self.nb_api.get(lean_lswitch).version
@@ -51,17 +52,18 @@ class TestObjectVersion(test_base.DFTestBase):
         self.assertFalse(network.exists())
 
     def test_port_version(self):
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         self.assertTrue(network.exists())
 
-        subnet = self.store(objects.SubnetTestObj(
-                self.neutron, self.nb_api, network_id))
+        subnet = objects.SubnetTestObj(self.neutron, self.nb_api, network_id)
+        self.addCleanup(subnet.close)
         subnet.create()
         self.assertTrue(subnet.exists())
 
-        port = self.store(objects.PortTestObj(
-                self.neutron, self.nb_api, network_id))
+        port = objects.PortTestObj(self.neutron, self.nb_api, network_id)
+        self.addCleanup(port.close)
         port_id = port.create()
         self.assertTrue(port.exists())
         prev_version = self.nb_api.get(l2.LogicalPort(id=port_id)).version
@@ -79,17 +81,16 @@ class TestObjectVersion(test_base.DFTestBase):
         self.assertFalse(network.exists())
 
     def test_router_version(self):
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         self.assertTrue(network.exists())
-        subnet = self.store(objects.SubnetTestObj(
-            self.neutron,
-            self.nb_api,
-            network_id,
-        ))
+        subnet = objects.SubnetTestObj(self.neutron, self.nb_api, network_id)
+        self.addCleanup(subnet.close)
         subnet_id = subnet.create()
         self.assertTrue(subnet.exists())
-        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        router = objects.RouterTestObj(self.neutron, self.nb_api)
+        self.addCleanup(router.close)
         router_id = router.create()
         self.assertTrue(router.exists())
         prev_version = self.nb_api.get(l3.LogicalRouter(id=router_id)).version
@@ -112,8 +113,8 @@ class TestObjectVersion(test_base.DFTestBase):
         self.assertFalse(network.exists())
 
     def test_sg_version(self):
-        secgroup = self.store(
-                        objects.SecGroupTestObj(self.neutron, self.nb_api))
+        secgroup = objects.SecGroupTestObj(self.neutron, self.nb_api)
+        self.addCleanup(secgroup.close)
         sg_id = secgroup.create()
         self.assertTrue(secgroup.exists())
         sg_obj = secgroups.SecurityGroup(id=sg_id)
@@ -136,8 +137,8 @@ class TestObjectVersion(test_base.DFTestBase):
         self.assertFalse(secgroup.exists())
 
     def test_qospolicy_version(self):
-        qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
-                                                        self.nb_api))
+        qospolicy = objects.QosPolicyTestObj(self.neutron, self.nb_api)
+        self.addCleanup(qospolicy.close)
         policy_id = qospolicy.create()
         self.assertTrue(qospolicy.exists())
         version = self.nb_api.get(qos.QosPolicy(id=policy_id)).version
@@ -156,16 +157,14 @@ class TestObjectVersion(test_base.DFTestBase):
         external_net = objects.find_first_network(self.neutron,
                                                   {'router:external': True})
         if not external_net:
-            network = self.store(
-                objects.NetworkTestObj(self.neutron, self.nb_api))
+            network = objects.NetworkTestObj(self.neutron, self.nb_api)
+            self.addCleanup(network.close)
             external_net_para = {'name': 'public', 'router:external': True}
             external_network_id = network.create(network=external_net_para)
             self.assertTrue(network.exists())
-            ext_subnet = self.store(objects.SubnetTestObj(
-                self.neutron,
-                self.nb_api,
-                external_network_id,
-            ))
+            ext_subnet = objects.SubnetTestObj(self.neutron, self.nb_api,
+                                               external_network_id)
+            self.addCleanup(ext_subnet.close)
             external_subnet_para = {'cidr': '192.168.199.0/24',
                                     'ip_version': 4,
                                     'network_id': external_network_id}
@@ -187,22 +186,20 @@ class TestObjectVersion(test_base.DFTestBase):
     @lockutils.synchronized('need-external-net')
     def test_floatingip_version(self):
         with self._prepare_ext_net() as external_network_id:
-            private_network = self.store(
-                objects.NetworkTestObj(self.neutron, self.nb_api))
+            private_network = objects.NetworkTestObj(self.neutron, self.nb_api)
+            self.addCleanup(private_network.close)
             private_network_id = private_network.create()
             self.assertTrue(private_network.exists())
-            priv_subnet = self.store(objects.SubnetTestObj(
-                self.neutron,
-                self.nb_api,
-                private_network_id,
-            ))
-            router = self.store(
-                objects.RouterTestObj(self.neutron, self.nb_api))
-            port = self.store(
-                objects.PortTestObj(self.neutron,
-                                    self.nb_api, private_network_id))
-            fip = self.store(
-                objects.FloatingipTestObj(self.neutron, self.nb_api))
+            priv_subnet = objects.SubnetTestObj(self.neutron, self.nb_api,
+                                                private_network_id)
+            self.addCleanup(priv_subnet.close)
+            router = objects.RouterTestObj(self.neutron, self.nb_api)
+            self.addCleanup(router.close)
+            port = objects.PortTestObj(self.neutron,
+                                       self.nb_api, private_network_id)
+            self.addCleanup(port.close)
+            fip = objects.FloatingipTestObj(self.neutron, self.nb_api)
+            self.addCleanup(fip.close)
 
             router_para = {
                 'name': 'myrouter1', 'admin_state_up': True,

@@ -63,41 +63,35 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
         self.policy = None
         self.allowed_address_pair_ip_address = None
         self.allowed_address_pair_mac_address = None
-        try:
-            self.topology = self.store(app_testing_objects.Topology(
-                self.neutron,
-                self.nb_api))
-            subnet = self.topology.create_subnet(cidr='192.168.98.0/24')
-            self.subnet = subnet
-            port = subnet.create_port()
-            self.port = port
+        self.topology = app_testing_objects.Topology(self.neutron,
+                                                     self.nb_api)
+        self.addCleanup(self.topology.close)
+        subnet = self.topology.create_subnet(cidr='192.168.98.0/24')
+        self.subnet = subnet
+        port = subnet.create_port()
+        self.port = port
 
-            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
-            port.update({'allowed_address_pairs': [{
-                'ip_address': '192.168.98.100'}]})
+        port.update({'allowed_address_pairs': [{
+            'ip_address': '192.168.98.100'}]})
 
-            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
-            port_lport = port.port.get_logical_port()
-            self.assertIsNotNone(port_lport)
+        port_lport = port.port.get_logical_port()
+        self.assertIsNotNone(port_lport)
 
-            self.allowed_address_pair_mac_address, \
-                self.allowed_address_pair_ip_address = \
-                apps.get_port_mac_and_ip(port, True)
+        self.allowed_address_pair_mac_address, \
+            self.allowed_address_pair_ip_address = \
+            apps.get_port_mac_and_ip(port, True)
 
-            # Create policy to reply arp request sent from controller
-            self.policy = self.store(
-                app_testing_objects.Policy(
-                    initial_actions=[],
-                    port_policies=self._create_policy_to_reply_arp_request(),
-                    unknown_port_action=app_testing_objects.IgnoreAction()
-                )
-            )
-        except Exception:
-            if self.topology:
-                self.topology.close()
-            raise
+        # Create policy to reply arp request sent from controller
+        self.policy = app_testing_objects.Policy(
+            initial_actions=[],
+            port_policies=self._create_policy_to_reply_arp_request(),
+            unknown_port_action=app_testing_objects.IgnoreAction()
+        )
+        self.addCleanup(self.policy.close)
 
     def _create_arp_response(self, buf):
         pkt = ryu.lib.packet.packet.Packet(buf)

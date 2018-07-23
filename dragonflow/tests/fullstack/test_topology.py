@@ -41,20 +41,19 @@ class TestTopology(test_base.DFTestBase):
         self._remove_vm(vm2)
 
     def _create_network(self):
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         self.assertTrue(network.exists())
-        subnet = self.store(objects.SubnetTestObj(
-            self.neutron,
-            self.nb_api,
-            network_id,
-        ))
+        subnet = objects.SubnetTestObj(self.neutron, self.nb_api, network_id)
+        self.addCleanup(subnet.close)
         subnet.create()
         self.assertTrue(subnet.exists())
         return network
 
     def _create_vm(self, network):
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm.create(network=network)
         vm_mac = vm.get_first_mac()
         self.assertTrue(vm_mac is not None)

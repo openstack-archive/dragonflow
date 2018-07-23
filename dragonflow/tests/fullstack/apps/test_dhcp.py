@@ -30,22 +30,13 @@ LOG = log.getLogger(__name__)
 class TestDHCPApp(test_base.DFTestBase):
 
     def _create_topology(self, enable_dhcp=True, cidr='192.168.11.0/24'):
-        try:
-            self.topology = self.store(
-                app_testing_objects.Topology(
-                    self.neutron,
-                    self.nb_api
-                )
-            )
-            self.subnet1 = self.topology.create_subnet(
-                cidr=cidr, enable_dhcp=enable_dhcp)
-            self.port1 = self.subnet1.create_port()
-            self.port2 = self.subnet1.create_port()
-            time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
-        except Exception:
-            if self.topology:
-                self.topology.close()
-            raise
+        self.topology = app_testing_objects.Topology(self.neutron, self.nb_api)
+        self.addCleanup(self.topology.close)
+        self.subnet1 = self.topology.create_subnet(
+            cidr=cidr, enable_dhcp=enable_dhcp)
+        self.port1 = self.subnet1.create_port()
+        self.port2 = self.subnet1.create_port()
+        time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
     def _create_udp_packet_for_dhcp(self,
                                     dst_mac=constants.BROADCAST_MAC,
@@ -275,16 +266,15 @@ class TestDHCPApp(test_base.DFTestBase):
         )
 
         port_policies = self._create_port_policies(disable_rule=False)
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[send_dhcp_offer,
-                                 send_dhcp_offer,
-                                 send_dhcp_offer,
-                                 send_dhcp_offer],
-                port_policies=port_policies,
-                unknown_port_action=app_testing_objects.IgnoreAction()
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[send_dhcp_offer,
+                             send_dhcp_offer,
+                             send_dhcp_offer,
+                             send_dhcp_offer],
+            port_policies=port_policies,
+            unknown_port_action=app_testing_objects.IgnoreAction()
         )
+        self.addCleanup(policy.close)
 
         policy.start(self.topology)
         test_utils.wait_until_true(internal_predicate,
@@ -322,13 +312,12 @@ class TestDHCPApp(test_base.DFTestBase):
             rules=rules,
             default_action=raise_action
         )
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[send_dhcp_offer],
-                port_policies={key: port_policy},
-                unknown_port_action=app_testing_objects.IgnoreAction()
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[send_dhcp_offer],
+            port_policies={key: port_policy},
+            unknown_port_action=app_testing_objects.IgnoreAction()
         )
+        self.addCleanup(policy.close)
         policy.start(self.topology)
         # Since there is no dhcp response, we are expecting timeout
         # exception here.
@@ -349,13 +338,12 @@ class TestDHCPApp(test_base.DFTestBase):
             dhcp_packet,
         )
         port_policies = self._create_port_policies()
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[send_dhcp_offer],
-                port_policies=port_policies,
-                unknown_port_action=app_testing_objects.IgnoreAction()
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[send_dhcp_offer],
+            port_policies=port_policies,
+            unknown_port_action=app_testing_objects.IgnoreAction()
         )
+        self.addCleanup(policy.close)
         apps.start_policy(policy, self.topology,
                           const.DEFAULT_RESOURCE_READY_TIMEOUT)
 

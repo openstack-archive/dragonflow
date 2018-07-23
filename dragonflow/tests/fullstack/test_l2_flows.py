@@ -44,7 +44,8 @@ class TestL2FLows(test_base.DFTestBase):
         if self._check_tunneling_app_enable() is False:
             return
 
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         network_params = network.get_network()
         segmentation_id = network_params['network']['provider:segmentation_id']
@@ -58,7 +59,8 @@ class TestL2FLows(test_base.DFTestBase):
         self.assertIsNotNone(subnet)
 
         ovs = utils.OvsFlowsParser()
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm.create(network=network)
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
@@ -98,7 +100,8 @@ class TestL2FLows(test_base.DFTestBase):
             return
 
         # Create network
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_params = {"name": "vlan_1",
                           "provider:network_type": "vlan",
                           "provider:physical_network": physical_network,
@@ -117,7 +120,8 @@ class TestL2FLows(test_base.DFTestBase):
 
         # Create VM
         ovs = utils.OvsFlowsParser()
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm.create(network=network)
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
@@ -271,7 +275,8 @@ class TestL2FLows(test_base.DFTestBase):
             return
 
         # Create network
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_params = {"name": "flat_1",
                           "provider:network_type": "flat",
                           "provider:physical_network": physical_network}
@@ -290,7 +295,8 @@ class TestL2FLows(test_base.DFTestBase):
 
         # Create VM
         ovs = utils.OvsFlowsParser()
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm.create(network=network)
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
@@ -474,7 +480,8 @@ class TestL2FLows(test_base.DFTestBase):
         return None
 
     def test_vm_multicast(self):
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         subnet = {'network_id': network_id,
                   'cidr': '10.200.0.0/24',
@@ -485,7 +492,8 @@ class TestL2FLows(test_base.DFTestBase):
         subnet = self.neutron.create_subnet({'subnet': subnet})
 
         ovs = utils.OvsFlowsParser()
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm.create(network=network)
         ip = vm.get_first_ipv4()
         self.assertIsNotNone(ip)
