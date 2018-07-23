@@ -32,43 +32,33 @@ class TestSGApp(test_base.DFTestBase):
         super(TestSGApp, self).setUp()
         self.topology = None
         self.policy = None
-        try:
-            self.security_group = self.store(objects.SecGroupTestObj(
-                self.neutron,
-                self.nb_api))
-            security_group_id = self.security_group.create()
-            self.assertTrue(self.security_group.exists())
+        self.security_group = objects.SecGroupTestObj(self.neutron,
+                                                      self.nb_api)
+        self.addCleanup(self.security_group.close)
+        security_group_id = self.security_group.create()
+        self.assertTrue(self.security_group.exists())
 
-            self.security_group2 = self.store(objects.SecGroupTestObj(
-                self.neutron,
-                self.nb_api))
-            security_group_id2 = self.security_group2.create()
-            self.assertTrue(self.security_group2.exists())
+        self.security_group2 = objects.SecGroupTestObj(self.neutron,
+                                                       self.nb_api)
+        self.addCleanup(self.security_group2.close)
+        security_group_id2 = self.security_group2.create()
+        self.assertTrue(self.security_group2.exists())
 
-            self.security_group3 = self.store(objects.SecGroupTestObj(
-                self.neutron,
-                self.nb_api))
-            security_group_id3 = self.security_group3.create()
-            self.assertTrue(self.security_group3.exists())
+        self.security_group3 = objects.SecGroupTestObj(self.neutron,
+                                                       self.nb_api)
+        self.addCleanup(self.security_group3.close)
+        security_group_id3 = self.security_group3.create()
+        self.assertTrue(self.security_group3.exists())
 
-            self.topology = self.store(
-                app_testing_objects.Topology(
-                    self.neutron,
-                    self.nb_api
-                )
-            )
+        self.topology = app_testing_objects.Topology(self.neutron, self.nb_api)
+        self.addCleanup(self.topology.close)
 
-            self.active_security_group_id = security_group_id
-            self.inactive_security_group_id = security_group_id2
-            self.allowed_address_pairs_security_group_id = security_group_id3
+        self.active_security_group_id = security_group_id
+        self.inactive_security_group_id = security_group_id2
+        self.allowed_address_pairs_security_group_id = security_group_id3
 
-            self.permit_icmp_request = self._get_icmp_request1
-            self.no_permit_icmp_request = self._get_icmp_request2
-
-        except Exception:
-            if self.topology:
-                self.topology.close()
-            raise
+        self.permit_icmp_request = self._get_icmp_request1
+        self.no_permit_icmp_request = self._get_icmp_request2
 
     def _setup_subnet(self, cidr):
         network = netaddr.IPNetwork(cidr)
@@ -147,24 +137,19 @@ class TestSGApp(test_base.DFTestBase):
 
         port_policies = self._create_port_policies()
 
-        self.policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet.subnet_id,
-                        self.port1.port_id,
-                        packet1.data,
-                    ),
-                    app_testing_objects.SendAction(
-                        self.subnet.subnet_id,
-                        self.port2.port_id,
-                        packet2.data,
-                    )
-                ],
-                port_policies=port_policies,
-                unknown_port_action=app_testing_objects.IgnoreAction()
-            )
+        self.policy = app_testing_objects.Policy(
+            initial_actions=[
+                app_testing_objects.SendAction(self.subnet.subnet_id,
+                                               self.port1.port_id,
+                                               packet1.data),
+                app_testing_objects.SendAction(self.subnet.subnet_id,
+                                               self.port2.port_id,
+                                               packet2.data)
+            ],
+            port_policies=port_policies,
+            unknown_port_action=app_testing_objects.IgnoreAction()
         )
+        self.addCleanup(self.policy.close)
 
     def _create_allowed_address_pairs_policy(self):
         packet1, self.allowed_address_pairs_icmp_request = \
@@ -172,19 +157,16 @@ class TestSGApp(test_base.DFTestBase):
 
         port_policies = self._create_allowed_address_pairs_port_policies()
 
-        self.allowed_address_pairs_policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet.subnet_id,
-                        self.port4.port_id,
-                        packet1.data,
-                    )
-                ],
-                port_policies=port_policies,
-                unknown_port_action=app_testing_objects.IgnoreAction()
-            )
+        self.allowed_address_pairs_policy = app_testing_objects.Policy(
+            initial_actions=[
+                app_testing_objects.SendAction(self.subnet.subnet_id,
+                                               self.port4.port_id,
+                                               packet1.data)
+            ],
+            port_policies=port_policies,
+            unknown_port_action=app_testing_objects.IgnoreAction()
         )
+        self.addCleanup(self.allowed_address_pairs_policy.close)
 
     def _get_icmp_request1(self):
         return self.icmp_request1

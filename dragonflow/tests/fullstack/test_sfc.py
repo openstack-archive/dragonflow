@@ -115,7 +115,8 @@ class SfcTestsCommonBase(test_base.DFTestBase):
         ingress = self._create_sf_port()
         egress = self._create_sf_port()
 
-        pp = self.store(objects.PortPairTestObj(self.neutron, self.nb_api))
+        pp = objects.PortPairTestObj(self.neutron, self.nb_api)
+        self.addCleanup(pp.close)
         pp.create_from_ports(
             ingress=ingress,
             egress=egress,
@@ -126,25 +127,24 @@ class SfcTestsCommonBase(test_base.DFTestBase):
 
     def _create_ppg(self, width):
         pps = [self._create_pp() for _ in range(width)]
-        ppg = self.store(
-            objects.PortPairGroupTestObj(self.neutron, self.nb_api))
+        ppg = objects.PortPairGroupTestObj(self.neutron, self.nb_api)
+        self.addCleanup(ppg.close)
         ppg.create_from_portpairs(pps)
         return ppg
 
     def _create_pc(self, fc, layout):
         ppgs = [self._create_ppg(w) for w in layout]
-        pc = self.store(
-            objects.PortChainTestObj(self.neutron, self.nb_api))
+        pc = objects.PortChainTestObj(self.neutron, self.nb_api)
+        self.addCleanup(pc.close)
         pc.create_from_fcs_ppgs([fc], ppgs)
         return pc
 
     def setUp(self):
         super(SfcTestsCommonBase, self).setUp()
 
-        self.security_group = self.store(objects.SecGroupTestObj(
-            self.neutron,
-            self.nb_api))
-
+        self.security_group = objects.SecGroupTestObj(self.neutron,
+                                                      self.nb_api)
+        self.addCleanup(self.security_group.close)
         security_group_id = self.security_group.create()
         self.assertTrue(self.security_group.exists())
 
@@ -163,12 +163,8 @@ class SfcTestsCommonBase(test_base.DFTestBase):
             rule_id = self.security_group.rule_create(secrule=rule)
             self.assertTrue(self.security_group.rule_exists(rule_id))
 
-        self.topology = self.store(
-            app_testing_objects.Topology(
-                self.neutron,
-                self.nb_api,
-            ),
-        )
+        self.topology = app_testing_objects.Topology(self.neutron, self.nb_api)
+        self.addCleanup(self.topology.close)
 
         self.subnet = self.topology.create_subnet(
             cidr=IPV4_CIDR,
@@ -520,9 +516,8 @@ class TestFcApp(SfcTestsCommonBase):
         return packet
 
     def test_fc(self):
-        fc = self.store(
-            objects.FlowClassifierTestObj(self.neutron, self.nb_api),
-        )
+        fc = objects.FlowClassifierTestObj(self.neutron, self.nb_api)
+        self.addCleanup(fc.close)
         fc.create(self._fc_params)
         pc = self._create_pc(fc, [1])
         time.sleep(_QUICK_RESOURCE_READY_TIMEOUT)
@@ -541,19 +536,18 @@ class TestFcApp(SfcTestsCommonBase):
             ),
         }
         port_policies.update(self._create_port_policies(pc))
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet.subnet_id,
-                        self.src_port.port_id,
-                        self._initial_packet,
-                    ),
-                ],
-                port_policies=port_policies,
-                unknown_port_action=app_testing_objects.LogAction()
-            ),
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                app_testing_objects.SendAction(
+                    self.subnet.subnet_id,
+                    self.src_port.port_id,
+                    self._initial_packet,
+                ),
+            ],
+            port_policies=port_policies,
+            unknown_port_action=app_testing_objects.LogAction()
         )
+        self.addCleanup(policy.close)
         policy.start(self.topology)
         policy.wait(10)
 
@@ -588,9 +582,8 @@ class TestSfcApp(SfcTestsCommonBase):
             self._gen_udp(src_port=SRC_PORT, dst_port=DST_PORT) /
             ('{len}'.format(len=len(self.layout)) * 64)
         )
-        fc = self.store(
-            objects.FlowClassifierTestObj(self.neutron, self.nb_api),
-        )
+        fc = objects.FlowClassifierTestObj(self.neutron, self.nb_api)
+        self.addCleanup(fc.close)
         fc.create(
             {
                 'logical_source_port': self.src_port.port.port_id
@@ -611,19 +604,18 @@ class TestSfcApp(SfcTestsCommonBase):
             ),
         }
         port_policies.update(self._create_port_policies(pc))
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet.subnet_id,
-                        self.src_port.port_id,
-                        initial_packet,
-                    ),
-                ],
-                port_policies=port_policies,
-                unknown_port_action=app_testing_objects.LogAction()
-            ),
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                app_testing_objects.SendAction(
+                    self.subnet.subnet_id,
+                    self.src_port.port_id,
+                    initial_packet,
+                ),
+            ],
+            port_policies=port_policies,
+            unknown_port_action=app_testing_objects.LogAction()
         )
+        self.addCleanup(policy.close)
         policy.start(self.topology)
         policy.wait(10)
 

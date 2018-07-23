@@ -94,9 +94,10 @@ class TestOvsdbMonitor(test_base.DFTestBase):
 
     def test_notify_message(self):
         network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
-        subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
-                                                  network_id))
+        subnet = objects.SubnetTestObj(self.neutron, self.nb_api, network_id)
+        self.addCleanup(subnet.close)
         subnet_body = {'network_id': network_id,
                        'cidr': '10.10.0.0/24',
                        'gateway_ip': '10.10.0.1',
@@ -107,7 +108,8 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         self.assertTrue(network.exists())
         self.assertTrue(subnet.exists())
 
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm.create(network=network)
         self.assertIsNotNone(vm.server.addresses['mynetwork'])
         mac = vm.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
@@ -133,10 +135,11 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         )
 
     def test_reply_message(self):
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
-        subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
-                                                  network_id))
+        subnet = objects.SubnetTestObj(self.neutron, self.nb_api, network_id)
+        self.addCleanup(subnet.close)
         subnet_body = {'network_id': network_id,
                        'cidr': '10.20.0.0/24',
                        'gateway_ip': '10.20.0.1',
@@ -147,13 +150,15 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         self.assertTrue(network.exists())
         self.assertTrue(subnet.exists())
 
-        vm1 = self.store(objects.VMTestObj(self, self.neutron))
+        vm1 = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm1.close)
         vm1.create(network=network)
         self.assertIsNotNone(vm1.server.addresses['mynetwork'])
         mac1 = vm1.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']
         self.assertIsNotNone(mac1)
 
-        vm2 = self.store(objects.VMTestObj(self, self.neutron))
+        vm2 = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm2.close)
         vm2.create(network=network)
         self.assertIsNotNone(vm2.server.addresses['mynetwork'])
         mac2 = vm2.server.addresses['mynetwork'][0]['OS-EXT-IPS-MAC:mac_addr']

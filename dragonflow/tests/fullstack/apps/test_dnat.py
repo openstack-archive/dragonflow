@@ -28,29 +28,21 @@ class TestDNATApp(test_base.DFTestBase):
         super(TestDNATApp, self).setUp()
 
         self.topology = None
-        try:
-            self.topology = self.store(
-                app_testing_objects.Topology(
-                    self.neutron,
-                    self.nb_api
-                )
-            )
-            self.subnet = self.topology.create_subnet()
-            self.port = self.subnet.create_port()
-            self.router = self.topology.create_router([
-                self.subnet.subnet_id
-            ])
-            ext_net_id = self.topology.create_external_network([
-                self.router.router_id
-            ])
-            self.fip = self.store(
-                objects.FloatingipTestObj(self.neutron, self.nb_api))
-            self.fip.create({'floating_network_id': ext_net_id,
-                             'port_id': self.port.port.port_id})
-        except Exception:
-            if self.topology:
-                self.topology.close()
-            raise
+        self.topology = app_testing_objects.Topology(self.neutron,
+                                                     self.nb_api)
+        self.addCleanup(self.topology.close)
+        self.subnet = self.topology.create_subnet()
+        self.port = self.subnet.create_port()
+        self.router = self.topology.create_router([
+            self.subnet.subnet_id
+        ])
+        ext_net_id = self.topology.create_external_network([
+            self.router.router_id
+        ])
+        self.fip = objects.FloatingipTestObj(self.neutron, self.nb_api)
+        self.addCleanup(self.fip.close)
+        self.fip.create({'floating_network_id': ext_net_id,
+                         'port_id': self.port.port.port_id})
 
     def _create_icmp_test_port_policies(self, icmp_filter):
         ignore_action = app_testing_objects.IgnoreAction()
@@ -129,20 +121,19 @@ class TestDNATApp(test_base.DFTestBase):
             self.topology.external_network.get_gw_ip(),
             ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
             ttl=1)
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet.subnet_id,
-                        self.port.port_id,
-                        initial_packet,
-                    ),
-                ],
-                port_policies=self._create_icmp_test_port_policies(
-                    app_testing_objects.RyuICMPTimeExceedFilter),
-                unknown_port_action=ignore_action
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                app_testing_objects.SendAction(
+                    self.subnet.subnet_id,
+                    self.port.port_id,
+                    initial_packet,
+                ),
+            ],
+            port_policies=self._create_icmp_test_port_policies(
+                app_testing_objects.RyuICMPTimeExceedFilter),
+            unknown_port_action=ignore_action
         )
+        self.addCleanup(policy.close)
         apps.start_policy(policy, self.topology,
                           const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
@@ -188,20 +179,19 @@ class TestDNATApp(test_base.DFTestBase):
             self.port.port_id,
             initial_packet)
         ignore_action = app_testing_objects.IgnoreAction()
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    send_action,
-                    send_action,
-                    send_action,
-                    send_action,
-                ],
-                port_policies=self._create_rate_limit_port_policies(
-                    cfg.CONF.df_dnat_app.dnat_ttl_invalid_max_rate,
-                    app_testing_objects.RyuICMPTimeExceedFilter),
-                unknown_port_action=ignore_action
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                send_action,
+                send_action,
+                send_action,
+                send_action,
+            ],
+            port_policies=self._create_rate_limit_port_policies(
+                cfg.CONF.df_dnat_app.dnat_ttl_invalid_max_rate,
+                app_testing_objects.RyuICMPTimeExceedFilter),
+            unknown_port_action=ignore_action
         )
+        self.addCleanup(policy.close)
         policy.start(self.topology)
         # Since the rate limit, we expect timeout to wait for 4th packet hit
         # the policy.
@@ -219,20 +209,19 @@ class TestDNATApp(test_base.DFTestBase):
         initial_packet = self._create_packet(
             self.topology.external_network.get_gw_ip(),
             ryu.lib.packet.ipv4.inet.IPPROTO_UDP)
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    app_testing_objects.SendAction(
-                        self.subnet.subnet_id,
-                        self.port.port_id,
-                        initial_packet,
-                    ),
-                ],
-                port_policies=self._create_icmp_test_port_policies(
-                    app_testing_objects.RyuICMPUnreachFilter),
-                unknown_port_action=ignore_action
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                app_testing_objects.SendAction(
+                    self.subnet.subnet_id,
+                    self.port.port_id,
+                    initial_packet,
+                ),
+            ],
+            port_policies=self._create_icmp_test_port_policies(
+                app_testing_objects.RyuICMPUnreachFilter),
+            unknown_port_action=ignore_action
         )
+        self.addCleanup(policy.close)
         policy.start(self.topology)
         policy.wait(const.DEFAULT_RESOURCE_READY_TIMEOUT)
         if len(policy.exceptions) > 0:
@@ -248,20 +237,19 @@ class TestDNATApp(test_base.DFTestBase):
             self.port.port_id,
             initial_packet)
         ignore_action = app_testing_objects.IgnoreAction()
-        policy = self.store(
-            app_testing_objects.Policy(
-                initial_actions=[
-                    send_action,
-                    send_action,
-                    send_action,
-                    send_action,
-                ],
-                port_policies=self._create_rate_limit_port_policies(
-                    cfg.CONF.df_dnat_app.dnat_icmp_error_max_rate,
-                    app_testing_objects.RyuICMPUnreachFilter),
-                unknown_port_action=ignore_action
-            )
+        policy = app_testing_objects.Policy(
+            initial_actions=[
+                send_action,
+                send_action,
+                send_action,
+                send_action,
+            ],
+            port_policies=self._create_rate_limit_port_policies(
+                cfg.CONF.df_dnat_app.dnat_icmp_error_max_rate,
+                app_testing_objects.RyuICMPUnreachFilter),
+            unknown_port_action=ignore_action
         )
+        self.addCleanup(policy.close)
         policy.start(self.topology)
         # Since the rate limit, we expect timeout to wait for 4th packet hit
         # the policy.

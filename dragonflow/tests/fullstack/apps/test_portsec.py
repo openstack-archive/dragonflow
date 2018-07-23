@@ -39,34 +39,33 @@ class TestPortSecApp(test_base.DFTestBase):
             time.sleep(const.DEFAULT_RESOURCE_READY_TIMEOUT)
 
             port_policies = self._create_port_policies()
-            self.policy = self.store(
-                app_testing_objects.Policy(
-                    initial_actions=[
-                        app_testing_objects.SendAction(
-                            self.subnet.subnet_id,
-                            self.port1.port_id,
-                            self._create_ping_using_fake_ip
-                        ),
-                        app_testing_objects.SendAction(
-                            self.subnet.subnet_id,
-                            self.port1.port_id,
-                            self._create_ping_using_fake_mac
-                        ),
-                        app_testing_objects.SendAction(
-                            self.subnet.subnet_id,
-                            self.port1.port_id,
-                            self._create_ping_using_vm_ip_mac
-                        ),
-                        app_testing_objects.SendAction(
-                            self.subnet.subnet_id,
-                            self.port1.port_id,
-                            self._create_ping_using_allowed_address_pair
-                        ),
-                    ],
-                    port_policies=port_policies,
-                    unknown_port_action=app_testing_objects.IgnoreAction()
-                )
+            self.policy = app_testing_objects.Policy(
+                initial_actions=[
+                    app_testing_objects.SendAction(
+                        self.subnet.subnet_id,
+                        self.port1.port_id,
+                        self._create_ping_using_fake_ip
+                    ),
+                    app_testing_objects.SendAction(
+                        self.subnet.subnet_id,
+                        self.port1.port_id,
+                        self._create_ping_using_fake_mac
+                    ),
+                    app_testing_objects.SendAction(
+                        self.subnet.subnet_id,
+                        self.port1.port_id,
+                        self._create_ping_using_vm_ip_mac
+                    ),
+                    app_testing_objects.SendAction(
+                        self.subnet.subnet_id,
+                        self.port1.port_id,
+                        self._create_ping_using_allowed_address_pair
+                    ),
+                ],
+                port_policies=port_policies,
+                unknown_port_action=app_testing_objects.IgnoreAction()
             )
+            self.addCleanup(self.policy.close)
         except Exception:
             if self.topology:
                 self.topology.close()
@@ -74,9 +73,8 @@ class TestPortSecApp(test_base.DFTestBase):
 
     def _init_topology(self):
         network = netaddr.IPNetwork(self.cidr)
-        security_group = self.store(objects.SecGroupTestObj(
-            self.neutron,
-            self.nb_api))
+        security_group = objects.SecGroupTestObj(self.neutron, self.nb_api)
+        self.addCleanup(security_group.close)
         security_group_id = security_group.create()
         self.assertTrue(security_group.exists())
 
@@ -94,12 +92,9 @@ class TestPortSecApp(test_base.DFTestBase):
         ingress_rule_id = security_group.rule_create(
             secrule=ingress_rule_info)
         self.assertTrue(security_group.rule_exists(ingress_rule_id))
-        self.topology = self.store(
-            app_testing_objects.Topology(
-                self.neutron,
-                self.nb_api
-            )
-        )
+        self.topology = app_testing_objects.Topology(self.neutron,
+                                                     self.nb_api)
+        self.addCleanup(self.topology.close)
 
         self.subnet = self.topology.create_subnet(
             cidr=self.cidr
