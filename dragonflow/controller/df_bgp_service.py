@@ -168,4 +168,4 @@ def main():
     nb_api = api_nb.NbApi.get_instance()
     server = BGPService(nb_api)
     df_service.register_service('df-bgp-service', nb_api)
-    service.launch(cfg.CONF, server).wait()
+    service.launch(cfg.CONF, server, restart_method='mutate').wait()
