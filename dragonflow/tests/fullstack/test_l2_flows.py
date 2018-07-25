@@ -77,12 +77,12 @@ class TestL2FLows(test_base.DFTestBase):
         tunnel_key = port.unique_key
         tunnel_key_hex = hex(tunnel_key)
         n_type = network.get_network()['network']['provider:network_type']
-        ofport = self.vswitch_api.get_vtp_ofport(n_type)
+        port_num = self.vswitch_api.get_vtp_ofport(n_type)
         r = self._check_tunnel_flows(ovs.dump(self.integration_bridge),
                                      metadataid,
                                      hex(segmentation_id),
                                      tunnel_key_hex,
-                                     mac, ofport)
+                                     mac, port_num)
         for key, value in r.items():
             self.assertIsNotNone(value, key)
         vm.close()
@@ -148,7 +148,7 @@ class TestL2FLows(test_base.DFTestBase):
         network.close()
 
     def _check_tunnel_flows(self, flows, metadtata, segmentation_id,
-                            port_key_hex, mac, tunnel_ofport):
+                            port_key_hex, mac, tunnel_port_num):
         l2_lookup_unicast_match = 'metadata=0x' + metadtata + \
                                  ',dl_dst=' + mac
         l2_lookup_unicast_action = 'goto_table:' + \
@@ -163,7 +163,7 @@ class TestL2FLows(test_base.DFTestBase):
                                      str(const.EGRESS_TABLE) + ')'
 
         ingress_match = ('tun_id=' + str(segmentation_id)
-                         + ",in_port=" + str(tunnel_ofport))
+                         + ",in_port=" + str(tunnel_port_num))
         ingress_action = 'set_field:0x' + metadtata + '->metadata,' + \
                          'goto_table:' + \
                          str(const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)

@@ -292,7 +292,7 @@ fake_local_port1 = make_fake_local_port(
 
 fake_ovs_port1 = switch.SwitchPort(
     id='fake_ovs_port1',
-    ofport=2,
+    port_num=2,
     name='tap-fake_port1',
     admin_state='up',
     type=constants.SWITCH_COMPUTE_INTERFACE,
@@ -310,7 +310,7 @@ fake_local_port2 = make_fake_local_port(
 
 fake_ovs_port2 = switch.SwitchPort(
     id='fake_ovs_port2',
-    ofport=3,
+    port_num=3,
     name='tap-fake_port2',
     admin_state='up',
     type=constants.SWITCH_COMPUTE_INTERFACE,

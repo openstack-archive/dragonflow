@@ -23,7 +23,7 @@ from dragonflow.db.models import mixins
 class SwitchPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
     table_name = 'switch_port'
 
-    ofport = fields.IntField()
+    port_num = fields.IntField()
     admin_state = df_fields.EnumField(('up', 'down'))
     lport = df_fields.ReferenceField(l2.LogicalPort)
     type = df_fields.EnumField(

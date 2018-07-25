@@ -38,7 +38,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
             self.controller.update(
                 switch.SwitchPort(
                     id='fake_ovs_port',
-                    ofport=1,
+                    port_num=1,
                     name=self.meta_app._interface,
                 )
             )
@@ -49,7 +49,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
             self.controller.update(
                 switch.SwitchPort(
                     id='fake_ovs_port',
-                    ofport=1,
+                    port_num=1,
                     name='no-interface',
                     mac_in_use='aa:bb:cc:dd:ee:ff',
                 )
@@ -61,7 +61,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
             self.controller.update(
                 switch.SwitchPort(
                     id='fake_ovs_port',
-                    ofport=1,
+                    port_num=1,
                     name=self.meta_app._interface,
                     mac_in_use='aa:bb:cc:dd:ee:ff',
                 )
@@ -73,7 +73,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
             self.controller.update(
                 switch.SwitchPort(
                     id='fake_ovs_port1',
-                    ofport=1,
+                    port_num=1,
                     name=self.meta_app._interface,
                     mac_in_use='aa:bb:cc:dd:ee:ff',
                 )

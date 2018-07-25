@@ -24,7 +24,7 @@ class TestDFIdl(tests_base.BaseTestCase):
             impl_idl._is_ovsport_update_valid(
                 'set',
                 switch.SwitchPort(
-                    ofport=1,
+                    port_num=1,
                     name='qg-some-uuid',
                 ),
             ),
@@ -45,7 +45,7 @@ class TestDFIdl(tests_base.BaseTestCase):
             impl_idl._is_ovsport_update_valid(
                 'set',
                 switch.SwitchPort(
-                    ofport=-1,
+                    port_num=-1,
                     name='tap-uuid',
                 ),
             ),
@@ -56,7 +56,7 @@ class TestDFIdl(tests_base.BaseTestCase):
             impl_idl._is_ovsport_update_valid(
                 'set',
                 switch.SwitchPort(
-                    ofport=1,
+                    port_num=1,
                     type=constants.SWITCH_PATCH_INTERFACE,
                     name='tap-uuid',
                 ),
@@ -68,7 +68,7 @@ class TestDFIdl(tests_base.BaseTestCase):
             impl_idl._is_ovsport_update_valid(
                 'set',
                 switch.SwitchPort(
-                    ofport=1,
+                    port_num=1,
                     type=constants.SWITCH_COMPUTE_INTERFACE,
                     name='tap-uuid',
                 ),
