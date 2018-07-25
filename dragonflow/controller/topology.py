@@ -30,8 +30,8 @@ LOG = log.getLogger(__name__)
 OvsLportMapping = collections.namedtuple('OvsLportMapping',
                                          ('lport_id', 'topic'))
 
-_OVS_PORT_TYPES = (constants.OVS_COMPUTE_INTERFACE,
-                   constants.OVS_TUNNEL_INTERFACE)
+_SWITCH_PORT_TYPES = (constants.SWITCH_COMPUTE_INTERFACE,
+                      constants.SWITCH_TUNNEL_INTERFACE)
 
 
 class Topology(object):
@@ -65,7 +65,7 @@ class Topology(object):
         """
         LOG.info("Ovs port updated: %s", ovs_port)
 
-        if ovs_port.type not in _OVS_PORT_TYPES:
+        if ovs_port.type not in _SWITCH_PORT_TYPES:
             LOG.info("Unmanaged port online: %s", ovs_port)
             return
 
@@ -80,18 +80,18 @@ class Topology(object):
 
     def _handle_ovs_port_added(self, ovs_port):
         port_type = ovs_port.type
-        if port_type == constants.OVS_COMPUTE_INTERFACE:
+        if port_type == constants.SWITCH_COMPUTE_INTERFACE:
             self._compute_port_added(ovs_port)
-        elif port_type == constants.OVS_TUNNEL_INTERFACE:
+        elif port_type == constants.SWITCH_TUNNEL_INTERFACE:
             self._tunnel_port_added(ovs_port)
         else:
             LOG.warning('Invalid port type on %r', ovs_port)
 
     def _handle_ovs_port_updated(self, ovs_port):
         port_type = ovs_port.type
-        if port_type == constants.OVS_COMPUTE_INTERFACE:
+        if port_type == constants.SWITCH_COMPUTE_INTERFACE:
             self._compute_port_updated(ovs_port)
-        elif port_type == constants.OVS_TUNNEL_INTERFACE:
+        elif port_type == constants.SWITCH_TUNNEL_INTERFACE:
             self._tunnel_port_updated(ovs_port)
         else:
             LOG.warning('Invalid port type on %r', ovs_port)
@@ -105,7 +105,7 @@ class Topology(object):
         @param ovs_port:
         @return : None
         """
-        if ovs_port.type not in _OVS_PORT_TYPES:
+        if ovs_port.type not in _SWITCH_PORT_TYPES:
             LOG.info("Unmanaged port offline: %s", ovs_port)
             return
 
@@ -117,9 +117,9 @@ class Topology(object):
 
     def _handle_ovs_port_deleted(self, ovs_port):
         port_type = ovs_port.type
-        if port_type == constants.OVS_COMPUTE_INTERFACE:
+        if port_type == constants.SWITCH_COMPUTE_INTERFACE:
             self._compute_port_deleted(ovs_port)
-        elif port_type == constants.OVS_TUNNEL_INTERFACE:
+        elif port_type == constants.SWITCH_TUNNEL_INTERFACE:
             self._tunnel_port_deleted(ovs_port)
         else:
             LOG.warning('Invalid port type on %r', ovs_port)
@@ -291,7 +291,7 @@ class Topology(object):
         delete_ovs_to_lport_mapping = self.ovs_to_lport_mapping
         for ovs_port in self.db_store.get_all(ovs.OvsPort):
             key = ovs_port.id
-            if ovs_port.type == constants.OVS_COMPUTE_INTERFACE:
+            if ovs_port.type == constants.SWITCH_COMPUTE_INTERFACE:
                 lport = self._get_lport(ovs_port)
                 if lport is None:
                     LOG.warning("No logical port found for ovs port: %s",
