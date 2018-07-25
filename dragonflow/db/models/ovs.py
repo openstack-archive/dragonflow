@@ -18,26 +18,6 @@ from dragonflow.db.models import l2
 from dragonflow.db.models import mixins
 
 
-def _get_interface_type(row):
-    interface_type = row.type
-    interface_name = row.name
-
-    if interface_type == "internal" and "br" in interface_name:
-        return constants.SWITCH_BRIDGE_INTERFACE
-
-    if interface_type == "patch":
-        return constants.SWITCH_PATCH_INTERFACE
-
-    if 'iface-id' in row.external_ids:
-        return constants.SWITCH_COMPUTE_INTERFACE
-
-    options = row.options
-    if 'remote_ip' in options:
-        return constants.SWITCH_TUNNEL_INTERFACE
-
-    return constants.SWITCH_UNKNOWN_INTERFACE
-
-
 @mf.register_model
 @mf.construct_nb_db_model
 class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
@@ -59,36 +39,3 @@ class OvsPort(mf.ModelBase, mixins.BasicEvents, mixins.Name):
     mac_in_use = df_fields.MacAddressField()
     attached_mac = df_fields.MacAddressField()
     tunnel_type = fields.StringField()
-
-    @classmethod
-    def from_idl_row(cls, row):
-        res = cls(
-            id=str(row.uuid),
-            name=row.name,
-            type=_get_interface_type(row),
-        )
-        if row.ofport:
-            res.ofport = int(row.ofport[0])
-
-        if row.mac_in_use:
-            res.mac_in_use = row.mac_in_use[0]
-
-        if row.admin_state:
-            res.admin_state = row.admin_state[0]
-
-        if res.type == constants.SWITCH_PATCH_INTERFACE:
-            res.peer = row.options['peer']
-
-        if res.type == constants.SWITCH_TUNNEL_INTERFACE:
-            res.tunnel_type = row.type
-
-        external_ids = row.external_ids
-        lport_id = external_ids.get('iface-id')
-        if lport_id is not None:
-            res.lport = lport_id
-
-        attached_mac = external_ids.get('attached-mac')
-        if attached_mac is not None:
-            res.attached_mac = attached_mac
-
-        return res
