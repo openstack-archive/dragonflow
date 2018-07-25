@@ -68,12 +68,12 @@ class MetadataServiceApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_CREATED)
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_UPDATED)
-    def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
-        if ovs_port.name != cfg.CONF.df_metadata.metadata_interface:
+    def switch_port_updated(self, switch_port, orig_switch_port=None):
+        if switch_port.name != cfg.CONF.df_metadata.metadata_interface:
             return
 
-        port_num = ovs_port.port_num
-        mac = ovs_port.mac_in_use
+        port_num = switch_port.port_num
+        mac = switch_port.mac_in_use
         if not port_num or not mac:
             return
 
@@ -88,8 +88,8 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         self._interface_mac = mac
 
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_DELETED)
-    def ovs_port_deleted(self, ovs_port):
-        if ovs_port.name != cfg.CONF.df_metadata.metadata_interface:
+    def switch_port_deleted(self, switch_port):
+        if switch_port.name != cfg.CONF.df_metadata.metadata_interface:
             return
 
         self._remove_metadata_interface_flows()

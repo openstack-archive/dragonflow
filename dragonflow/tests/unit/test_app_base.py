@@ -290,8 +290,8 @@ fake_local_port1 = make_fake_local_port(
     dhcp_params=fake_dhcp_params)
 
 
-fake_ovs_port1 = switch.SwitchPort(
-    id='fake_ovs_port1',
+fake_switch_port1 = switch.SwitchPort(
+    id='fake_switch_port1',
     port_num=2,
     name='tap-fake_port1',
     admin_state='up',
@@ -308,8 +308,8 @@ fake_local_port2 = make_fake_local_port(
     subnets=['fake_subnet1'])
 
 
-fake_ovs_port2 = switch.SwitchPort(
-    id='fake_ovs_port2',
+fake_switch_port2 = switch.SwitchPort(
+    id='fake_switch_port2',
     port_num=3,
     name='tap-fake_port2',
     admin_state='up',

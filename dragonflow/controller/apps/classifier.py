@@ -42,18 +42,19 @@ class ClassifierApp(df_base_app.DFlowApp):
         switch.SwitchPort, model_constants.EVENT_CREATED)
     @df_base_app.register_event(
         switch.SwitchPort, model_constants.EVENT_UPDATED)
-    def _ovs_port_created(self, ovs_port, orig_ovs_port=None):
-        port_num = ovs_port.port_num
-        lport_ref = ovs_port.lport
+    def _switch_port_created(self, switch_port, orig_switch_port=None):
+        port_num = switch_port.port_num
+        lport_ref = switch_port.lport
         if not lport_ref:
             return  # Not relevant
-        if orig_ovs_port and orig_ovs_port.port_num != port_num:
-            self._ovs_port_deleted(ovs_port)
+        if orig_switch_port and orig_switch_port.port_num != port_num:
+            self._switch_port_deleted(switch_port)
         if not port_num or port_num == -1:
             return  # Not ready yet, or error
         lport = self.nb_api.get(lport_ref)
-        self._ofport_unique_key_map[ovs_port.id] = (port_num, lport.unique_key)
-        LOG.info("Add local ovs port %(ovs_port)s, logical port "
+        self._ofport_unique_key_map[switch_port.id] = (
+            port_num, lport.unique_key)
+        LOG.info("Add local ovs port %(switch_port)s, logical port "
                  "%(lport)s for classification",
                  {'switch_port': port_num, 'lport': lport})
         self._make_ingress_classification_flow(lport, port_num)
@@ -102,11 +103,12 @@ class ClassifierApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(
         switch.SwitchPort, model_constants.EVENT_DELETED)
-    def _ovs_port_deleted(self, ovs_port):
+    def _switch_port_deleted(self, switch_port):
         try:
-            port_num, port_key = self._ofport_unique_key_map.pop(ovs_port.id)
+            port_num, port_key = self._ofport_unique_key_map.pop(
+                switch_port.id)
         except KeyError:
-            # OvsPort not present in lookup, was either not added, or removed
+            # Port not present in lookup, was either not added, or removed
             # by a previous update. In both cases irrelevant.
             return
         self._del_ingress_dispatch_flow(port_key)

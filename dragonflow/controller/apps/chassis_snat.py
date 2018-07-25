@@ -84,12 +84,12 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
 
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_CREATED)
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_UPDATED)
-    def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
-        if ovs_port.name != self.external_network_bridge:
+    def switch_port_updated(self, switch_port, orig_switch_port=None):
+        if switch_port.name != self.external_network_bridge:
             return
 
         LOG.debug("Ex. Bridge port update is called ... ")
-        mac = ovs_port.mac_in_use
+        mac = switch_port.mac_in_use
         if mac in (None, const.EMPTY_MAC, self.external_bridge_mac):
             return
 

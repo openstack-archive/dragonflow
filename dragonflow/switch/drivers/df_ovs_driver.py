@@ -81,10 +81,10 @@ class DfOvsDriver(df_switch_driver.DfSwitchDriver):
     def sync_ignore_models(self):
         return [switch.SwitchPort, ]
 
-    def notify_port_status(self, ovs_port, status):
+    def notify_port_status(self, switch_port, status):
         if self.neutron_notifier:
             table_name = l2.LogicalPort.table_name
-            iface_id = ovs_port.lport
+            iface_id = switch_port.lport
             self.neutron_notifier.notify_neutron_server(table_name, iface_id,
                                                         'update', status)
 

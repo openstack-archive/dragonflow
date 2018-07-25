@@ -169,7 +169,7 @@ class OvsTestApi(vswitch_impl.OvsApi):
                 continue
             return interface['external_ids'].get('iface-id')
 
-    def get_ovs_port_by_id_with_specified_columns(
+    def get_switch_port_by_id_with_specified_columns(
             self, port_id, specified_columns):
         port_name = self._get_port_name_by_id(port_id)
         if not port_name:
