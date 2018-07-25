@@ -82,12 +82,12 @@ class ProviderApp(df_base_app.DFlowApp):
 
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_CREATED)
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_UPDATED)
-    def _bridge_updated(self, ovsport, orig_ovsport=None):
-        self._update_bridge_mac(ovsport.name, ovsport.mac_in_use)
+    def _bridge_updated(self, switch_port, orig_switch_port=None):
+        self._update_bridge_mac(switch_port.name, switch_port.mac_in_use)
 
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_DELETED)
-    def _bridge_deleted(self, ovsport):
-        self._update_bridge_mac(ovsport.name, None)
+    def _bridge_deleted(self, switch_port):
+        self._update_bridge_mac(switch_port.name, None)
 
     def _update_bridge_mac(self, bridge, mac):
         if bridge not in self.bridge_macs:

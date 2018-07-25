@@ -77,10 +77,10 @@ class TestPortQos(test_base.DFTestBase):
         self.assertIsNotNone(qos)
         self.assertEqual(qos['queues'][0].uuid, queue['_uuid'])
 
-        ovs_port = self.vswitch_api.get_ovs_port_by_id_with_specified_columns(
+        port = self.vswitch_api.get_switch_port_by_id_with_specified_columns(
             vm_port_id, {'qos'})
-        self.assertIsNotNone(ovs_port)
-        self.assertEqual(ovs_port['qos'], qos['_uuid'])
+        self.assertIsNotNone(port)
+        self.assertEqual(port['qos'], qos['_uuid'])
 
         vm.close()
         time.sleep(const.DEFAULT_CMD_TIMEOUT)

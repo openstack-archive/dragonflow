@@ -125,8 +125,6 @@ class DfLocalController(object):
         ignore_models = self.switch_backend.sync_ignore_models()
         for model in model_framework.iter_models_by_dependency_order():
             # FIXME (dimak) generalize sync to support non-northbound models
-            # Adding OvsPort will cause sync to delete all OVS ports
-            # periodically
             if model not in ignore_models:
                 self._sync.add_model(model)
 
@@ -257,10 +255,9 @@ class DfLocalController(object):
     def get_chassis_name(self):
         return self.chassis_name
 
-    # TODO(snapiri): We should not have ovs here
     # TODO(snapiri): This should be part of the interface
-    def notify_port_status(self, ovs_port, status):
-        self.switch_backend.notify_port_status(ovs_port, status)
+    def notify_port_status(self, switch_port, status):
+        self.switch_backend.notify_port_status(switch_port, status)
 
     def _get_delete_handler(self, table):
         method_name = 'delete_{0}'.format(table)
