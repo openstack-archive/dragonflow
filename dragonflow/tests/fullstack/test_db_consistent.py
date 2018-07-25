@@ -40,12 +40,11 @@ class TestDbConsistent(test_base.DFTestBase):
 
     def test_db_consistent(self):
         self.db_sync_time = self.conf.db_sync_time
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
         network_id = network.create()
         self.addCleanup(network.close)
         topic = network.get_topic()
-        subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
-                                                  network_id))
+        subnet = objects.SubnetTestObj(self.neutron, self.nb_api, network_id)
         subnet_body = {'network_id': network_id,
                        'cidr': '10.50.0.0/24',
                        'gateway_ip': '10.50.0.1',
@@ -58,7 +57,7 @@ class TestDbConsistent(test_base.DFTestBase):
         self.assertTrue(network.exists())
         self.assertTrue(subnet.exists())
 
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
         vm.create(network=network)
         self.addCleanup(vm.close)
         self.assertIsNotNone(vm.server.addresses['mynetwork'])

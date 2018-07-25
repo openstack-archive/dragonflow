@@ -23,20 +23,14 @@ class TestL3Flows(test_base.DFTestBase):
     def setUp(self):
         super(TestL3Flows, self).setUp()
         self.topology = None
-        try:
-            self.topology = app_testing_objects.Topology(
-                self.neutron,
-                self.nb_api)
-            self.subnet1 = self.topology.create_subnet(cidr='192.168.10.0/24')
-            self.port1 = self.subnet1.create_port()
-            self.router = self.topology.create_router([
-                self.subnet1.subnet_id])
-
-        except Exception:
-            if self.topology:
-                self.topology.close()
-            raise
-        self.store(self.topology)
+        self.topology = app_testing_objects.Topology(
+            self.neutron,
+            self.nb_api)
+        self.addCleanup(self.topology.close)
+        self.subnet1 = self.topology.create_subnet(cidr='192.168.10.0/24')
+        self.port1 = self.subnet1.create_port()
+        self.router = self.topology.create_router([
+            self.subnet1.subnet_id])
 
     def test_router_add_extra_route(self):
         lport = self.port1.port.get_logical_port()

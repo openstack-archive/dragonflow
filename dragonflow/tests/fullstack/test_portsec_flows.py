@@ -211,18 +211,20 @@ class TestOVSFlowsForPortSecurity(test_base.DFTestBase):
 
     def _test_anti_spoof_flows(self, subnet_info):
 
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         self.assertTrue(network.exists())
 
         subnet_info['network_id'] = network_id
-        subnet = self.store(objects.SubnetTestObj(self.neutron,
-                                                  self.nb_api,
-                                                  network_id=network_id))
+        subnet = objects.SubnetTestObj(self.neutron, self.nb_api,
+                                       network_id=network_id)
+        self.addCleanup(subnet.close)
         subnet.create(subnet_info)
         self.assertTrue(subnet.exists())
 
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm.create(network=network)
 
         addresses = vm.server.addresses['mynetwork']

@@ -19,16 +19,19 @@ from dragonflow.tests.fullstack import test_objects as objects
 
 class TestPortQos(test_base.DFTestBase):
     def test_port_with_qospolicy(self):
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         self.assertTrue(network.exists())
 
-        subnet = self.store(objects.SubnetTestObj(self.neutron, self.nb_api,
-                                                  network_id=network_id))
+        subnet = objects.SubnetTestObj(self.neutron, self.nb_api,
+                                       network_id=network_id)
+        self.addCleanup(subnet.close)
         subnet.create()
         self.assertTrue(subnet.exists())
 
-        vm = self.store(objects.VMTestObj(self, self.neutron))
+        vm = objects.VMTestObj(self, self.neutron)
+        self.addCleanup(vm.close)
         vm_id = vm.create(network=network)
 
         vm_port_id = self.vswitch_api.get_port_id_by_vm_id(vm_id)
@@ -36,8 +39,8 @@ class TestPortQos(test_base.DFTestBase):
         port = objects.PortTestObj(self.neutron, self.nb_api, network_id,
                                    vm_port_id)
 
-        qospolicy = self.store(objects.QosPolicyTestObj(self.neutron,
-                                                        self.nb_api))
+        qospolicy = objects.QosPolicyTestObj(self.neutron, self.nb_api)
+        self.addCleanup(qospolicy.close)
         qos_policy_id = qospolicy.create()
         time.sleep(const.DEFAULT_CMD_TIMEOUT)
         self.assertTrue(qospolicy.exists())

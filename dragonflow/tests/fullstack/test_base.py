@@ -68,8 +68,6 @@ class DFTestBase(base.BaseTestCase):
             self.nb_api.set_db_change_callback(self._db_change_callback)
 
         self.mgt_ip = self.conf.management_ip
-        self.__objects_to_close = []
-        self.addCleanup(self._close_stored_objects)
 
         self.vswitch_api = utils.OvsTestApi(self.mgt_ip)
         self.vswitch_api.initialize(self._db_change_callback)
@@ -123,11 +121,6 @@ class DFTestBase(base.BaseTestCase):
             return True
         return False
 
-    def _close_stored_objects(self):
-        while self.__objects_to_close:
-            close_func = self.__objects_to_close.pop()
-            close_func()
-
     def get_default_subnetpool(self):
         default_subnetpool = None
         subnetpool_filter = {'is_default': True,
@@ -147,14 +140,9 @@ class DFTestBase(base.BaseTestCase):
         self.neutron.create_subnetpool(
             body={'subnetpool': default_subnetpool})
 
-    def store(self, obj, close_func=None):
-        close_func = close_func if close_func else obj.close
-        self.__objects_to_close.append(close_func)
-        return obj
-
     def start_subscribing(self):
-        self._topology = self.store(
-            test_objects.Topology(self.neutron, self.nb_api))
+        self._topology = test_objects.Topology(self.neutron, self.nb_api)
+        self.addCleanup(self._topology.close)
         subnet = self._topology.create_subnet(cidr="192.168.200.0/24")
         port = subnet.create_port()
         utils.wait_until_true(

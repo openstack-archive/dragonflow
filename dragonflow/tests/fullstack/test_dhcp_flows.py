@@ -50,7 +50,8 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
         self.assertTrue(found_dhcp_cast_flow)
 
     def _create_network(self):
-        network = self.store(objects.NetworkTestObj(self.neutron, self.nb_api))
+        network = objects.NetworkTestObj(self.neutron, self.nb_api)
+        self.addCleanup(network.close)
         network_id = network.create()
         self.assertTrue(network.exists())
         lean_lswitch = l2.LogicalSwitch(id=network_id)
@@ -139,7 +140,8 @@ class TestOVSFlowsForDHCP(test_base.DFTestBase):
     def test_create_router_interface(self):
         ovs = utils.OvsFlowsParser()
         flows_before_change = ovs.dump(self.integration_bridge)
-        router = self.store(objects.RouterTestObj(self.neutron, self.nb_api))
+        router = objects.RouterTestObj(self.neutron, self.nb_api)
+        self.addCleanup(router.close)
         network, network_id, network_key = self._create_network()
         subnet = {'network_id': network_id,
                   'cidr': '10.30.0.0/24',
