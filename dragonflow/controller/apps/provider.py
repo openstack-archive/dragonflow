@@ -230,7 +230,7 @@ class ProviderApp(df_base_app.DFlowApp):
                   {'net_id': network_id})
 
         physical_network = lport.lswitch.physical_network
-        ofport = self.int_ofports[physical_network]
+        port_num = self.int_ofports[physical_network]
 
         # Output without updating MAC:
         self.mod_flow(
@@ -242,7 +242,7 @@ class ProviderApp(df_base_app.DFlowApp):
                     self.ofproto.OFPIT_APPLY_ACTIONS,
                     [
                         self.parser.OFPActionOutput(
-                            ofport,
+                            port_num,
                             self.ofproto.OFPCML_NO_BUFFER,
                         ),
                     ]
@@ -257,7 +257,7 @@ class ProviderApp(df_base_app.DFlowApp):
         # If dest MAC is the placeholder, update it to bridge MAC
         network_id = lport.lswitch.unique_key
         physical_network = lport.lswitch.physical_network
-        ofport = self.int_ofports[physical_network]
+        port_num = self.int_ofports[physical_network]
 
         self.mod_flow(
             table_id=const.EGRESS_EXTERNAL_TABLE,
@@ -274,7 +274,7 @@ class ProviderApp(df_base_app.DFlowApp):
                             eth_dst=self.bridge_macs[physical_network],
                         ),
                         self.parser.OFPActionOutput(
-                            ofport,
+                            port_num,
                             self.ofproto.OFPCML_NO_BUFFER,
                         ),
                     ]

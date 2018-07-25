@@ -43,29 +43,29 @@ class ClassifierApp(df_base_app.DFlowApp):
     @df_base_app.register_event(
         switch.SwitchPort, model_constants.EVENT_UPDATED)
     def _ovs_port_created(self, ovs_port, orig_ovs_port=None):
-        ofport = ovs_port.ofport
+        port_num = ovs_port.port_num
         lport_ref = ovs_port.lport
         if not lport_ref:
             return  # Not relevant
-        if orig_ovs_port and orig_ovs_port.ofport != ofport:
+        if orig_ovs_port and orig_ovs_port.port_num != port_num:
             self._ovs_port_deleted(ovs_port)
-        if not ofport or ofport == -1:
+        if not port_num or port_num == -1:
             return  # Not ready yet, or error
         lport = self.nb_api.get(lport_ref)
-        self._ofport_unique_key_map[ovs_port.id] = (ofport, lport.unique_key)
+        self._ofport_unique_key_map[ovs_port.id] = (port_num, lport.unique_key)
         LOG.info("Add local ovs port %(ovs_port)s, logical port "
                  "%(lport)s for classification",
-                 {'ovs_port': ofport, 'lport': lport})
-        self._make_ingress_classification_flow(lport, ofport)
-        self._make_ingress_dispatch_flow(lport, ofport)
+                 {'switch_port': port_num, 'lport': lport})
+        self._make_ingress_classification_flow(lport, port_num)
+        self._make_ingress_dispatch_flow(lport, port_num)
 
     def _make_ingress_dispatch_flow(self, lport,
-                                    ofport):
+                                    port_num):
         port_key = lport.unique_key
         match = self.parser.OFPMatch(reg7=port_key)
         LOG.debug("match reg7=%(reg7)s for ingress dispatch of %(lport)s",
                   {'reg7': port_key, 'lport': lport})
-        actions = [self.parser.OFPActionOutput(ofport,
+        actions = [self.parser.OFPActionOutput(port_num,
                                                self.ofproto.OFPCML_NO_BUFFER)]
         action_inst = self.parser.OFPInstructionActions(
             self.ofproto.OFPIT_APPLY_ACTIONS, actions)
@@ -76,12 +76,12 @@ class ClassifierApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def _make_ingress_classification_flow(self, lport, ofport):
-        match = self.parser.OFPMatch(in_port=ofport)
+    def _make_ingress_classification_flow(self, lport, port_num):
+        match = self.parser.OFPMatch(in_port=port_num)
         network_id = lport.lswitch.unique_key
         LOG.debug("match in_port=%(in_port)s for ingress classification "
                   "of %(lport)s in network %(network)s",
-                  {'in_port': ofport, 'lport': lport, 'network': network_id})
+                  {'in_port': port_num, 'lport': lport, 'network': network_id})
         # Reset in_port to 0 to avoid drop by output command.
         actions = [
             self.parser.OFPActionSetField(reg6=lport.unique_key),
@@ -104,13 +104,13 @@ class ClassifierApp(df_base_app.DFlowApp):
         switch.SwitchPort, model_constants.EVENT_DELETED)
     def _ovs_port_deleted(self, ovs_port):
         try:
-            ofport, port_key = self._ofport_unique_key_map.pop(ovs_port.id)
+            port_num, port_key = self._ofport_unique_key_map.pop(ovs_port.id)
         except KeyError:
             # OvsPort not present in lookup, was either not added, or removed
             # by a previous update. In both cases irrelevant.
             return
         self._del_ingress_dispatch_flow(port_key)
-        self._del_ingress_classification_flow(ofport)
+        self._del_ingress_classification_flow(port_num)
 
     def _del_ingress_dispatch_flow(self, port_key):
         LOG.debug("delete ingress dispatch flow for port_key=%(port_key)s",
@@ -122,10 +122,10 @@ class ClassifierApp(df_base_app.DFlowApp):
             priority=const.PRIORITY_MEDIUM,
             match=match)
 
-    def _del_ingress_classification_flow(self, ofport):
+    def _del_ingress_classification_flow(self, port_num):
         LOG.debug("delete in_port=%(in_port)s ingress classification",
-                  {'in_port': ofport})
-        match = self.parser.OFPMatch(in_port=ofport)
+                  {'in_port': port_num})
+        match = self.parser.OFPMatch(in_port=port_num)
         self.mod_flow(
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=self.ofproto.OFPFC_DELETE,

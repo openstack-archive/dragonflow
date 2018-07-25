@@ -105,8 +105,8 @@ class TestOVSFlowsForActivePortDectionApp(test_base.DFTestBase):
 
         vm_port = objects.PortTestObj(self.neutron, self.nb_api, network_id,
                                       vm_port_id)
-        of_port = self.vswitch_api.get_port_ofport_by_id(vm_port_id)
-        self.assertIsNotNone(of_port)
+        port_num = self.vswitch_api.get_port_ofport_by_id(vm_port_id)
+        self.assertIsNotNone(port_num)
         vm_lport = vm_port.get_logical_port()
         self.assertIsNotNone(vm_lport)
         result = self._check_sending_arp_reply_to_controller_flows(
