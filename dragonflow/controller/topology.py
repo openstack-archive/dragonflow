@@ -50,85 +50,85 @@ class Topology(object):
         self.db_store = db_store.get_instance()
 
         # TODO(snapiri) this should not be ovs specific
-        switch.SwitchPort.register_created(self.ovs_port_updated)
-        switch.SwitchPort.register_updated(self.ovs_port_updated)
-        switch.SwitchPort.register_deleted(self.ovs_port_deleted)
+        switch.SwitchPort.register_created(self.switch_port_updated)
+        switch.SwitchPort.register_updated(self.switch_port_updated)
+        switch.SwitchPort.register_deleted(self.switch_port_deleted)
 
-    def ovs_port_updated(self, ovs_port, orig_ovs_port=None):
+    def switch_port_updated(self, switch_port, orig_switch_port=None):
         """
         Changes in ovs port status will be monitored by ovsdb monitor thread
         and notified to topology. This method is the entry port to process
         port online/update event
 
-        @param ovs_port:
+        @param switch_port:
         @return : None
         """
-        LOG.info("Ovs port updated: %s", ovs_port)
+        LOG.info("Ovs port updated: %s", switch_port)
 
-        if ovs_port.type not in _SWITCH_PORT_TYPES:
-            LOG.info("Unmanaged port online: %s", ovs_port)
+        if switch_port.type not in _SWITCH_PORT_TYPES:
+            LOG.info("Unmanaged port online: %s", switch_port)
             return
 
         try:
-            if orig_ovs_port is None:
-                self._handle_ovs_port_added(ovs_port)
+            if orig_switch_port is None:
+                self._handle_switch_port_added(switch_port)
             else:
-                self._handle_ovs_port_updated(ovs_port)
+                self._handle_switch_port_updated(switch_port)
         except Exception:
             LOG.exception(
                 "Exception occurred when handling port online event")
 
-    def _handle_ovs_port_added(self, ovs_port):
-        port_type = ovs_port.type
+    def _handle_switch_port_added(self, switch_port):
+        port_type = switch_port.type
         if port_type == constants.SWITCH_COMPUTE_INTERFACE:
-            self._compute_port_added(ovs_port)
+            self._compute_port_added(switch_port)
         elif port_type == constants.SWITCH_TUNNEL_INTERFACE:
-            self._tunnel_port_added(ovs_port)
+            self._tunnel_port_added(switch_port)
         else:
-            LOG.warning('Invalid port type on %r', ovs_port)
+            LOG.warning('Invalid port type on %r', switch_port)
 
-    def _handle_ovs_port_updated(self, ovs_port):
-        port_type = ovs_port.type
+    def _handle_switch_port_updated(self, switch_port):
+        port_type = switch_port.type
         if port_type == constants.SWITCH_COMPUTE_INTERFACE:
-            self._compute_port_updated(ovs_port)
+            self._compute_port_updated(switch_port)
         elif port_type == constants.SWITCH_TUNNEL_INTERFACE:
-            self._tunnel_port_updated(ovs_port)
+            self._tunnel_port_updated(switch_port)
         else:
-            LOG.warning('Invalid port type on %r', ovs_port)
+            LOG.warning('Invalid port type on %r', switch_port)
 
-    def ovs_port_deleted(self, ovs_port):
+    def switch_port_deleted(self, switch_port):
         """
         Changes in ovs port status will be monitored by ovsdb monitor thread
         and notified to topology. This method is the entrance port to process
         port offline event
 
-        @param ovs_port:
+        @param switch_port:
         @return : None
         """
-        if ovs_port.type not in _SWITCH_PORT_TYPES:
-            LOG.info("Unmanaged port offline: %s", ovs_port)
+        if switch_port.type not in _SWITCH_PORT_TYPES:
+            LOG.info("Unmanaged port offline: %s", switch_port)
             return
 
         try:
-            self._handle_ovs_port_deleted(ovs_port)
+            self._handle_switch_port_deleted(switch_port)
         except Exception:
             LOG.exception("Exception occurred when handling "
                           "ovs port offline event")
 
-    def _handle_ovs_port_deleted(self, ovs_port):
-        port_type = ovs_port.type
+    def _handle_switch_port_deleted(self, switch_port):
+        port_type = switch_port.type
         if port_type == constants.SWITCH_COMPUTE_INTERFACE:
-            self._compute_port_deleted(ovs_port)
+            self._compute_port_deleted(switch_port)
         elif port_type == constants.SWITCH_TUNNEL_INTERFACE:
-            self._tunnel_port_deleted(ovs_port)
+            self._tunnel_port_deleted(switch_port)
         else:
-            LOG.warning('Invalid port type on %r', ovs_port)
+            LOG.warning('Invalid port type on %r', switch_port)
 
-    def _tunnel_port_added(self, ovs_port):
-        self._tunnel_port_updated(ovs_port)
+    def _tunnel_port_added(self, switch_port):
+        self._tunnel_port_updated(switch_port)
 
-    def _process_ovs_tunnel_port(self, ovs_port, action):
-        tunnel_type = ovs_port.tunnel_type
+    def _process_ovs_tunnel_port(self, switch_port, action):
+        tunnel_type = switch_port.tunnel_type
         if not tunnel_type:
             return
 
@@ -155,29 +155,29 @@ class Topology(object):
                                   "when %(action)s tunnel %(lport)s",
                                   {'action': action, 'lport': lport})
 
-    def _tunnel_port_updated(self, ovs_port):
-        self._process_ovs_tunnel_port(ovs_port, "set")
+    def _tunnel_port_updated(self, switch_port):
+        self._process_ovs_tunnel_port(switch_port, "set")
 
-    def _tunnel_port_deleted(self, ovs_port):
-        self._process_ovs_tunnel_port(ovs_port, "delete")
+    def _tunnel_port_deleted(self, switch_port):
+        self._process_ovs_tunnel_port(switch_port, "delete")
 
-    def _compute_port_added(self, ovs_port):
-        self._compute_port_updated(ovs_port)
+    def _compute_port_added(self, switch_port):
+        self._compute_port_updated(switch_port)
         self.controller.notify_port_status(
-            ovs_port, n_const.PORT_STATUS_ACTIVE)
+            switch_port, n_const.PORT_STATUS_ACTIVE)
 
-    def _compute_port_updated(self, ovs_port):
-        lport = self._get_lport(ovs_port)
+    def _compute_port_updated(self, switch_port):
+        lport = self._get_lport(switch_port)
         if lport is None:
             LOG.warning("No logical port found for ovs port: %s",
-                        ovs_port)
+                        switch_port)
             return
         topic = lport.topic
         if not topic:
             return
         self._add_to_topic_subscribed(topic, lport.id)
 
-        self.ovs_to_lport_mapping[ovs_port.id] = OvsLportMapping(
+        self.ovs_to_lport_mapping[switch_port.id] = OvsLportMapping(
                 lport_id=lport.id, topic=topic)
 
         chassis = lport.binding.chassis
@@ -192,7 +192,7 @@ class Topology(object):
                         status=migration.MIGRATION_STATUS_DEST_PLUG))
             return
 
-        cached_lport = ovs_port.lport.get_object()
+        cached_lport = switch_port.lport.get_object()
         if not cached_lport:
             # If the logical port is not in db store it has not been applied
             # to dragonflow apps. We need to update it in dragonflow controller
@@ -203,16 +203,16 @@ class Topology(object):
                 LOG.exception('Failed to process logical port online '
                               'event: %s', lport)
 
-    def _compute_port_deleted(self, ovs_port):
-        ovs_port_id = ovs_port.id
-        lport_ref = ovs_port.lport
+    def _compute_port_deleted(self, switch_port):
+        switch_port_id = switch_port.id
+        lport_ref = switch_port.lport
         lport = lport_ref.get_object()
         if lport is None:
-            lport_mapping = self.ovs_to_lport_mapping.get(ovs_port_id)
+            lport_mapping = self.ovs_to_lport_mapping.get(switch_port_id)
             if lport_mapping is None:
                 return
             topic = lport_mapping.topic
-            del self.ovs_to_lport_mapping[ovs_port_id]
+            del self.ovs_to_lport_mapping[switch_port_id]
             self._del_from_topic_subscribed(topic, lport_mapping.lport_id)
             return
 
@@ -226,7 +226,7 @@ class Topology(object):
                           lport_ref.id)
         finally:
             self.controller.notify_port_status(
-                ovs_port, n_const.PORT_STATUS_DOWN)
+                switch_port, n_const.PORT_STATUS_DOWN)
 
             migration_obj = self.nb_api.get(
                     migration.Migration(id=lport_ref.id))
@@ -236,7 +236,7 @@ class Topology(object):
                 migration_obj.status = migration.MIGRATION_STATUS_SRC_UNPLUG
                 self.nb_api.update(migration_obj)
 
-            del self.ovs_to_lport_mapping[ovs_port_id]
+            del self.ovs_to_lport_mapping[switch_port_id]
             self._del_from_topic_subscribed(topic, lport_ref.id)
 
     def _add_to_topic_subscribed(self, topic, lport_id):
@@ -271,12 +271,12 @@ class Topology(object):
         # set, which represents no topic is subscribed now.
         return set(self.topic_subscribed)
 
-    def _get_lport(self, ovs_port):
-        if not ovs_port.lport:
+    def _get_lport(self, switch_port):
+        if not switch_port.lport:
             return None
-        lport = ovs_port.lport.get_object()
+        lport = switch_port.lport.get_object()
         if lport is None:
-            lport = self.nb_api.get(ovs_port.lport)
+            lport = self.nb_api.get(switch_port.lport)
         return lport
 
     def check_topology_info(self):
@@ -289,13 +289,13 @@ class Topology(object):
         new_ovs_to_lport_mapping = {}
         add_ovs_to_lport_mapping = {}
         delete_ovs_to_lport_mapping = self.ovs_to_lport_mapping
-        for ovs_port in self.db_store.get_all(switch.SwitchPort):
-            key = ovs_port.id
-            if ovs_port.type == constants.SWITCH_COMPUTE_INTERFACE:
-                lport = self._get_lport(ovs_port)
+        for switch_port in self.db_store.get_all(switch.SwitchPort):
+            key = switch_port.id
+            if switch_port.type == constants.SWITCH_COMPUTE_INTERFACE:
+                lport = self._get_lport(switch_port)
                 if lport is None:
                     LOG.warning("No logical port found for ovs port: %s",
-                                ovs_port)
+                                switch_port)
                     continue
                 topic = lport.topic
                 if not topic:
