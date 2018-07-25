@@ -60,7 +60,7 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
         self.app.mod_flow.assert_not_called()
         ovs_port = switch.SwitchPort(id='fake_ovs_port',
                                      lport=fake_local_vlan_port.id,
-                                     ofport=1, admin_state='up',
+                                     port_num=1, admin_state='up',
                                      type=constants.SWITCH_COMPUTE_INTERFACE)
         self.controller.update(ovs_port)
         port_key = fake_local_vlan_port.unique_key
@@ -71,8 +71,8 @@ class TestClassifierAppForVlan(testscenarios.WithScenarios,
             priority=const.PRIORITY_MEDIUM,
             match=match)
         self.app.mod_flow.reset_mock()
-        ofport = ovs_port.ofport
-        match = self.app.parser.OFPMatch(in_port=ofport)
+        port_num = ovs_port.port_num
+        match = self.app.parser.OFPMatch(in_port=port_num)
         if self.order == SCENARIO_ORDER_DELETE_LPORT_FIRST:
             self.controller.delete(fake_local_vlan_port)
             self.controller.delete(ovs_port)

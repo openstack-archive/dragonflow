@@ -119,13 +119,13 @@ class OvsApi(object):
                             self.integration_bridge).execute()
 
     @staticmethod
-    def _check_ofport(port_name, ofport):
-        if ofport is None:
-            LOG.warning("Can't find ofport for port %s.", port_name)
+    def _check_ofport(port_name, port_num):
+        if port_num is None:
+            LOG.warning("Can't find port_num for port %s.", port_name)
             return False
-        if ofport < OFPORT_RANGE_MIN or ofport > OFPORT_RANGE_MAX:
-            LOG.warning("ofport %(ofport)s for port %(port)s is invalid.",
-                        {'ofport': ofport, 'port': port_name})
+        if port_num < OFPORT_RANGE_MIN or port_num > OFPORT_RANGE_MAX:
+            LOG.warning("port_num %(port_num)s for port %(port)s is invalid.",
+                        {'port_num': port_num, 'port': port_name})
             return False
 
         return True

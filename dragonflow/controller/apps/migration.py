@@ -66,7 +66,7 @@ class MigrationApp(df_base_app.DFlowApp):
             return
 
         # Here It could be either source node or other nodes, so
-        # get ofport from chassis.
+        # get port_num from chassis.
         remote_chassis = dest_chassis.get_object()
         if not remote_chassis:
             # chassis has not been online yet.

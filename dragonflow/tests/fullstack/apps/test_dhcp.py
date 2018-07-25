@@ -243,11 +243,11 @@ class TestDHCPApp(test_base.DFTestBase):
         self._create_topology()
         self._test_enable_dhcp()
 
-    def _check_dhcp_block_rule(self, flows, ofport=None):
+    def _check_dhcp_block_rule(self, flows, port_num=None):
         for flow in flows:
             if (int(flow['table']) == constants.DHCP_TABLE and
                     'drop' in flow['actions']):
-                if ofport is None or 'inport=' + ofport in flow['match']:
+                if port_num is None or 'inport=' + port_num in flow['match']:
                     return True
         return False
 
