@@ -123,7 +123,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
 
     def get_layout(self):
         """
-        This method should be overriden by test classes to provide the
+        This method should be overridden by test classes to provide the
         minimal layout needed for the tests. For most unit tests of
         applications, the layout would include the classification and the
         application under test.
