@@ -20,8 +20,8 @@ from oslo_log import log
 from ovs import vlog
 
 from dragonflow.controller.common import constants
-from dragonflow.db.models import ovs
 from dragonflow.db.models import qos
+from dragonflow.db.models import switch
 from dragonflow.ovsdb import impl_idl
 
 LOG = log.getLogger(__name__)
@@ -102,7 +102,7 @@ class OvsApi(object):
                 continue
 
             tunnel_ports.append(
-                ovs.OvsPort(
+                switch.SwitchPort(
                     id=str(iface['uuid']),
                     name=iface['name'],
                     tunnel_type=iface['type'],

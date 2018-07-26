@@ -32,8 +32,8 @@ from dragonflow.db import model_framework
 from dragonflow.db.models import core
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3
-from dragonflow.db.models import ovs
 from dragonflow.db.models import secgroups
+from dragonflow.db.models import switch
 from dragonflow.tests import base as tests_base
 
 
@@ -290,7 +290,7 @@ fake_local_port1 = make_fake_local_port(
     dhcp_params=fake_dhcp_params)
 
 
-fake_ovs_port1 = ovs.OvsPort(
+fake_ovs_port1 = switch.SwitchPort(
     id='fake_ovs_port1',
     ofport=2,
     name='tap-fake_port1',
@@ -308,7 +308,7 @@ fake_local_port2 = make_fake_local_port(
     subnets=['fake_subnet1'])
 
 
-fake_ovs_port2 = ovs.OvsPort(
+fake_ovs_port2 = switch.SwitchPort(
     id='fake_ovs_port2',
     ofport=3,
     name='tap-fake_port2',

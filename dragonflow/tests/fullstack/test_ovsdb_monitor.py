@@ -12,7 +12,7 @@
 
 from dragonflow.common import constants
 from dragonflow import conf as cfg
-from dragonflow.db.models import ovs
+from dragonflow.db.models import switch
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
@@ -25,14 +25,14 @@ class TestOvsdbMonitor(test_base.DFTestBase):
         self.set_wanted_vms = set()
 
     def _check_wanted_vm_online(self, update, mac):
-        if update.table != ovs.OvsPort.table_name:
+        if update.table != switch.SwitchPort.table_name:
             return False
         if update.action != "create" and update.action != "set":
             return False
         if update.value is None:
             return False
 
-        _interface = ovs.OvsPort.from_json(update.value)
+        _interface = switch.SwitchPort.from_json(update.value)
         if str(_interface.attached_mac) != mac:
             return False
         elif _interface.type != constants.SWITCH_COMPUTE_INTERFACE:
@@ -47,11 +47,11 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return True
 
     def _check_wanted_vm_offline(self, update, mac):
-        if update.table != ovs.OvsPort.table_name:
+        if update.table != switch.SwitchPort.table_name:
             return False
         if update.action != "delete":
             return False
-        _interface = ovs.OvsPort.from_json(update.value)
+        _interface = switch.SwitchPort.from_json(update.value)
         if _interface is None:
             return False
         elif str(_interface.attached_mac) != mac:
