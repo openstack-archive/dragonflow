@@ -57,13 +57,13 @@ class TestRemotePort(test_base.DFTestBase):
         network_obj = network.get_network()['network']
         network_type = network_obj['provider:network_type']
         segmentation_id = network_obj['provider:segmentation_id']
-        ofport = self.vswitch_api.get_vtp_ofport(network_type)
+        port_num = self.vswitch_api.get_vtp_ofport(network_type)
         port_unique_key = port.get_logical_port().unique_key
 
         match = "reg7=" + str(hex(port_unique_key))
         action = ("set_field:10.10.10.10" +
                   "->tun_dst,set_field:" + str(hex(segmentation_id)) +
-                  "->tun_id,output:" + str(ofport))
+                  "->tun_id,output:" + str(port_num))
         ovs = utils.OvsFlowsParser()
         matched = False
         for flow in ovs.dump(self.integration_bridge):

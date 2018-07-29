@@ -39,7 +39,7 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return False
         elif _interface.lport is None:
             return False
-        elif _interface.ofport <= 0:
+        elif _interface.port_num <= 0:
             return False
         elif _interface.admin_state != "up":
             return False

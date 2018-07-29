@@ -54,17 +54,17 @@ class MetadataServiceApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(MetadataServiceApp, self).__init__(*args, **kwargs)
         self._arp_responder = None
-        self._ofport = None
+        self._port_num = None
         self._interface_mac = ""
         self._ip = cfg.CONF.df_metadata.ip
         self._port = cfg.CONF.df_metadata.port
         self._interface = cfg.CONF.df_metadata.metadata_interface
 
     def switch_features_handler(self, ev):
-        if self._interface_mac and self._ofport and self._ofport > 0:
-            # For reconnection, if the mac and ofport is set, re-download
+        if self._interface_mac and self._port_num and self._port_num > 0:
+            # For reconnection, if the mac and port_num is set, re-download
             # the flows.
-            self._add_tap_metadata_port(self._ofport, self._interface_mac)
+            self._add_tap_metadata_port(self._port_num, self._interface_mac)
 
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_CREATED)
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_UPDATED)
@@ -72,19 +72,19 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         if ovs_port.name != cfg.CONF.df_metadata.metadata_interface:
             return
 
-        ofport = ovs_port.ofport
+        port_num = ovs_port.port_num
         mac = ovs_port.mac_in_use
-        if not ofport or not mac:
+        if not port_num or not mac:
             return
 
-        if ofport <= 0:
+        if port_num <= 0:
             return
 
-        if ofport == self._ofport and mac == self._interface_mac:
+        if port_num == self._port_num and mac == self._interface_mac:
             return
 
-        self._add_tap_metadata_port(ofport, mac)
-        self._ofport = ofport
+        self._add_tap_metadata_port(port_num, mac)
+        self._port_num = port_num
         self._interface_mac = mac
 
     @df_base_app.register_event(switch.SwitchPort, model_const.EVENT_DELETED)
@@ -95,7 +95,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         self._remove_metadata_interface_flows()
 
     def _remove_metadata_interface_flows(self):
-        if not self._ofport:
+        if not self._port_num:
             return
 
         parser = self.parser
@@ -105,12 +105,12 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             table_id=const.INGRESS_CLASSIFICATION_DISPATCH_TABLE,
             command=ofproto.OFPFC_DELETE,
             priority=const.PRIORITY_MEDIUM,
-            match=parser.OFPMatch(in_port=self._ofport))
+            match=parser.OFPMatch(in_port=self._port_num))
 
-        self._ofport = None
+        self._port_num = None
         self._interface_mac = ""
 
-    def _add_tap_metadata_port(self, ofport, mac):
+    def _add_tap_metadata_port(self, port_num, mac):
         """
         Add the flows that can be added with the current available information:
         Regular Client->Server packets have IP rewritten, and sent to OVS port
@@ -118,7 +118,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
             added.
         Packets from the OVS port are detected and sent for classification.
         """
-        self._ofport = ofport
+        self._port_num = port_num
         ofproto = self.ofproto
         parser = self.parser
         self._add_incoming_flows()
@@ -157,7 +157,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         )
 
         # ARP responder
-        match = parser.OFPMatch(in_port=ofport,
+        match = parser.OFPMatch(in_port=port_num,
                                 eth_type=ethernet.ether.ETH_TYPE_ARP)
         actions = [
             parser.NXActionResubmitTable(
@@ -175,7 +175,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
         self._create_arp_responder(mac)
 
         # Response packet
-        match = parser.OFPMatch(in_port=ofport,
+        match = parser.OFPMatch(in_port=port_num,
                                 eth_type=ethernet.ether.ETH_TYPE_IP)
         actions = [
             parser.NXActionResubmitTable(
@@ -266,7 +266,7 @@ class MetadataServiceApp(df_base_app.DFlowApp):
                 dst="ipv4_src",
                 value=1,),
             parser.OFPActionOutput(
-                self._ofport,
+                self._port_num,
                 ofproto.OFPCML_NO_BUFFER,
             )
         ]

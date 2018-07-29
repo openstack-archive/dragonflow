@@ -117,9 +117,9 @@ class TunnelingApp(df_base_app.DFlowApp):
 
     def _make_network_match(self, lport):
         segmentation_id = lport.lswitch.segmentation_id
-        ofport = self._get_lport_tunnel_ofport(lport)
+        port_num = self._get_lport_tunnel_ofport(lport)
         return self.parser.OFPMatch(tunnel_id_nxm=segmentation_id,
-                                    in_port=ofport)
+                                    in_port=port_num)
 
     def _get_lport_tunnel_ofport(self, lport):
         network_type = lport.lswitch.network_type
@@ -165,7 +165,7 @@ class TunnelingApp(df_base_app.DFlowApp):
     def _add_egress_dispatch_flow(self, lport, segmentation_id):
         binding = port_locator.get_port_binding(lport)
         remote_ip = binding.ip
-        ofport = self._get_lport_tunnel_ofport(lport)
+        port_num = self._get_lport_tunnel_ofport(lport)
         LOG.debug("set egress dispatch flow %(seg)s peer %(remote_ip)s",
                   {'seg': segmentation_id,
                    'remote_ip': remote_ip})
@@ -174,7 +174,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         actions = [
                 self.parser.OFPActionSetField(tun_ipv4_dst=remote_ip),
                 self.parser.OFPActionSetField(tunnel_id_nxm=segmentation_id),
-                self.parser.OFPActionOutput(port=ofport)]
+                self.parser.OFPActionOutput(port=port_num)]
         ofproto = self.ofproto
         action_inst = self.parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
@@ -248,10 +248,10 @@ class TunnelingApp(df_base_app.DFlowApp):
             if peer_ip in peer_ip_list:
                 continue
             peer_ip_list.add(peer_ip)
-            ofport = self._get_lport_tunnel_ofport(lport)
+            port_num = self._get_lport_tunnel_ofport(lport)
             ofpact_set_field = self.parser.OFPActionSetField
             actions += [
                     ofpact_set_field(tun_ipv4_dst=peer_ip),
                     ofpact_set_field(tunnel_id_nxm=segmentation_id),
-                    self.parser.OFPActionOutput(port=ofport)]
+                    self.parser.OFPActionOutput(port=port_num)]
         return actions

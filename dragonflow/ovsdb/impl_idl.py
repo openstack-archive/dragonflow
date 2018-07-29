@@ -87,9 +87,9 @@ def _is_ovsport_update_valid(action, switch_port):
         return False
 
     if action == 'set':
-        # No need for 'updated' event if the ofport is being deleted
-        ofport = switch_port.ofport
-        if (ofport is None) or (ofport < 0):
+        # No need for 'updated' event if the port_num is being deleted
+        port_num = switch_port.port_num
+        if (port_num is None) or (port_num < 0):
             return False
 
     return True
@@ -122,7 +122,7 @@ def _port_from_idl_row(row):
         type=_get_interface_type(row),
     )
     if row.ofport:
-        res.ofport = int(row.ofport[0])
+        res.port_num = int(row.ofport[0])
 
     if row.mac_in_use:
         res.mac_in_use = row.mac_in_use[0]
