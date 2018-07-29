@@ -91,13 +91,14 @@ class TestDNATApp(test_app_base.DFAppTestBase):
 
     def test_floatingip_removed_only_once(self):
         self.controller.update(test_app_base.fake_local_port1)
-        self.controller.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
+        self.controller.topology.switch_port_updated(
+            test_app_base.fake_switch_port1)
         self.controller.update(test_app_base.fake_floatingip1)
         self.controller.delete(test_app_base.fake_floatingip1)
         self.controller.delete(test_app_base.fake_local_port1)
         with mock.patch.object(self.controller, 'delete') as mock_func:
-            self.controller.topology.ovs_port_deleted(
-                test_app_base.fake_ovs_port1)
+            self.controller.topology.switch_port_deleted(
+                test_app_base.fake_switch_port1)
             mock_func.assert_not_called()
 
     @utils.add_objs_to_db_store(local_lport1, floating_lport)

@@ -61,8 +61,8 @@ class TestTopology(test_app_base.DFAppTestBase):
         # By default, return empty value for all resources, each case can
         # customize the return value on their own.
         self.nb_api.get_all.return_value = []
-        self.fake_invalid_ovs_port = copy.deepcopy(
-            test_app_base.fake_ovs_port1)
+        self.fake_invalid_switch_port = copy.deepcopy(
+            test_app_base.fake_switch_port1)
         self.controller._register_models()
 
     @utils.with_nb_objects(
@@ -86,7 +86,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.controller.delete_by_id.side_effect = original_delete_by_id
 
         # Verify port online
-        self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
+        self.topology.switch_port_updated(test_app_base.fake_switch_port1)
         self.controller.update.assert_has_calls(
             (mock.call(test_app_base.fake_logic_switch1),
              mock.call(test_app_base.fake_local_port1)),
@@ -98,7 +98,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.controller.delete.reset_mock()
         self.controller.update.reset_mock()
         self.nb_api.get_all.return_value = []
-        self.topology.ovs_port_deleted(test_app_base.fake_ovs_port1)
+        self.topology.switch_port_deleted(test_app_base.fake_switch_port1)
         self.controller.delete.assert_has_calls([
             mock.call(test_app_base.fake_local_port1),
             mock.call(test_app_base.fake_logic_switch1),
@@ -114,7 +114,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         )
         self.nb_api.get.return_value = test_app_base.fake_local_port1
         # Pull topology by first ovs port online
-        self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
+        self.topology.switch_port_updated(test_app_base.fake_switch_port1)
 
         # Another port online
         self.nb_api.get_all.side_effect = nb_api_get_all_func(
@@ -125,7 +125,7 @@ class TestTopology(test_app_base.DFAppTestBase):
         )
         self.controller.update = mock.Mock()
         self.nb_api.get.return_value = test_app_base.fake_local_port2
-        self.topology.ovs_port_updated(test_app_base.fake_ovs_port2)
+        self.topology.switch_port_updated(test_app_base.fake_switch_port2)
         self.controller.update.assert_called_once_with(
             test_app_base.fake_local_port2)
         self.nb_api.subscriber.register_topic.assert_called_once()
@@ -152,8 +152,8 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.controller._sync._update_cb = self.controller.update
 
         # The vm ports are online one by one
-        self.topology.ovs_port_updated(test_app_base.fake_ovs_port1)
-        self.topology.ovs_port_updated(test_app_base.fake_ovs_port2)
+        self.topology.switch_port_updated(test_app_base.fake_switch_port1)
+        self.topology.switch_port_updated(test_app_base.fake_switch_port2)
 
         calls = [mock.call(test_app_base.fake_chassis1),
                  mock.call(test_app_base.fake_logic_switch1),
@@ -164,20 +164,20 @@ class TestTopology(test_app_base.DFAppTestBase):
         self.assertEqual(4, self.controller.update.call_count)
         self.nb_api.subscriber.register_topic.assert_called_once()
 
-    @utils.with_local_objects(test_app_base.fake_ovs_port1)
+    @utils.with_local_objects(test_app_base.fake_switch_port1)
     def test_check_topology_info(self):
         topic = 'fake_tenant1'
         lport_id2 = '2'
-        ovs_port_id2 = 'ovs_port2'
+        switch_port_id2 = 'switch_port2'
         lport_id3 = '3'
-        ovs_port_id3 = 'ovs_port3'
+        switch_port_id3 = 'switch_port3'
 
         self.topology.ovs_to_lport_mapping = {
-            ovs_port_id2: topology.OvsLportMapping(
+            switch_port_id2: topology.OvsLportMapping(
                 lport_id=lport_id2,
                 topic=topic
             ),
-            ovs_port_id3: topology.OvsLportMapping(
+            switch_port_id3: topology.OvsLportMapping(
                 lport_id=lport_id3,
                 topic=topic
             )

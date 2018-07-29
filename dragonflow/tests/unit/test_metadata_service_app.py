@@ -37,7 +37,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
             # Device without mac will not trigger update flow
             self.controller.update(
                 switch.SwitchPort(
-                    id='fake_ovs_port',
+                    id='fake_switch_port',
                     port_num=1,
                     name=self.meta_app._interface,
                 )
@@ -48,7 +48,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
             # Other device update will not trigger update flow
             self.controller.update(
                 switch.SwitchPort(
-                    id='fake_ovs_port',
+                    id='fake_switch_port',
                     port_num=1,
                     name='no-interface',
                     mac_in_use='aa:bb:cc:dd:ee:ff',
@@ -60,7 +60,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
             # Device with mac will trigger update flow
             self.controller.update(
                 switch.SwitchPort(
-                    id='fake_ovs_port',
+                    id='fake_switch_port',
                     port_num=1,
                     name=self.meta_app._interface,
                     mac_in_use='aa:bb:cc:dd:ee:ff',
@@ -72,7 +72,7 @@ class TestMetadataServiceApp(test_app_base.DFAppTestBase):
             # Duplicated updated will not trigger update flow
             self.controller.update(
                 switch.SwitchPort(
-                    id='fake_ovs_port1',
+                    id='fake_switch_port1',
                     port_num=1,
                     name=self.meta_app._interface,
                     mac_in_use='aa:bb:cc:dd:ee:ff',
