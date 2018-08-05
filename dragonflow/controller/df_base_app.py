@@ -33,11 +33,11 @@ LOG = log.getLogger(__name__)
 
 
 class DFlowApp(object):
-    def __init__(self, api, vswitch_api=None, nb_api=None,
+    def __init__(self, api, switch_backend=None, nb_api=None,
                  neutron_server_notifier=None):
         self.api = api
         self.db_store = db_store.get_instance()
-        self.vswitch_api = vswitch_api
+        self.switch_backend = switch_backend
         self.nb_api = nb_api
         self.neutron_server_notifier = neutron_server_notifier
         # Though there is nothing to initialize in super class, call it
@@ -75,7 +75,7 @@ class DFlowApp(object):
 
     @property
     def dfdp(self):
-        return self.api._new_dp
+        return self.switch_backend.datapath
 
     @property
     def parser(self):

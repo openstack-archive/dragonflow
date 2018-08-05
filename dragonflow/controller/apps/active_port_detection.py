@@ -52,6 +52,7 @@ class ActivePortDetectionApp(df_base_app.DFlowApp):
         self.allowed_address_pairs_refs_list = collections.defaultdict(set)
         self.api.register_table_handler(controller_const.ARP_TABLE,
                                         self.packet_in_handler)
+        self.vswitch_api = self.switch_backend.vswitch_api
 
     def packet_in_handler(self, event):
         msg = event.msg

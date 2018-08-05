@@ -21,10 +21,8 @@ from oslo_config import cfg
 from oslo_log import fixture as log_fixture
 
 from dragonflow.common import constants
-from dragonflow.controller import datapath
 from dragonflow.controller import datapath_layout
 from dragonflow.controller import df_local_controller
-from dragonflow.controller import ryu_base_app
 from dragonflow.controller import topology
 from dragonflow.db import api_nb
 from dragonflow.db import db_store
@@ -34,6 +32,8 @@ from dragonflow.db.models import l2
 from dragonflow.db.models import l3
 from dragonflow.db.models import secgroups
 from dragonflow.db.models import switch
+from dragonflow.switch.drivers.ovs import datapath
+from dragonflow.switch.drivers.ovs import ryu_base_app
 from dragonflow.tests import base as tests_base
 
 
@@ -87,7 +87,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         self.vswitch_api = switch_backend.vswitch_api = mock.MagicMock()
         kwargs = dict(
             nb_api=self.controller.nb_api,
-            vswitch_api=self.vswitch_api
+            switch_backend=switch_backend
         )
         switch_backend.open_flow_app = ryu_base_app.RyuDFAdapter(
                 db_change_callback=self.controller.db_change_callback,
