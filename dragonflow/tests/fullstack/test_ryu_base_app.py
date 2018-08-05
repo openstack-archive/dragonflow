@@ -20,8 +20,8 @@ from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
 from dragonflow import conf as cfg
-from dragonflow.controller import ryu_base_app
 from dragonflow.ovsdb import vswitch_impl
+from dragonflow.switch.drivers.ovs import ryu_base_app
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.fullstack import test_base
 
@@ -35,7 +35,7 @@ class TestRyuBaseApp(test_base.DFTestBase):
         app_mgr = app_manager.AppManager.get_instance()
         self.open_flow_app = app_mgr.instantiate(
             ryu_base_app.RyuDFAdapter,
-            vswitch_api=mock.Mock(),
+            switch_backend=mock.Mock(),
             nb_api=mock.Mock(),
             db_change_callback=self._db_change_callback)
         self.open_flow_app.load = mock.Mock()
