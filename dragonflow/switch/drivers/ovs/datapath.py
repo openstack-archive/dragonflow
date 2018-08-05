@@ -72,7 +72,7 @@ class Datapath(object):
             }
         )
 
-    def set_up(self, ryu_base, vswitch_api, nb_api, notifier):
+    def set_up(self, ryu_base, switch_backend, nb_api, neutron_notifier):
         """
         Instantiate the application classes.
         Instantiate the applications (Including table and register allocation)
@@ -102,9 +102,9 @@ class Datapath(object):
             self.log_datapath_allocation(vertex.name, dp_alloc)
             self._dp_allocs[vertex.name] = dp_alloc
             app = app_class(api=ryu_base,
-                            vswitch_api=vswitch_api,
+                            switch_backend=switch_backend,
                             nb_api=nb_api,
-                            neutron_server_notifier=notifier,
+                            neutron_server_notifier=neutron_notifier,
                             dp_alloc=dp_alloc,
                             **(vertex.params or {})
                             )

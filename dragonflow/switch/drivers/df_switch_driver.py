@@ -29,6 +29,14 @@ class DfSwitchDriver(object):
         self.db_change_callback = db_change_callback
         self.neutron_notifier = neutron_notifier
 
+    # TODO(snapiri): remove the need for the df_app argument
+    @abc.abstractmethod
+    def setup_datapath(self, df_app):
+        """Setup the datapath flow
+        This method needs to be called for every dragonflow application in the
+        packet flow to initialize its datapath
+        """
+
     @abc.abstractmethod
     def start(self):
         """Start running the switch backend"""

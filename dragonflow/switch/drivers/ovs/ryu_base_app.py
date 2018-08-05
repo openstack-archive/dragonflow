@@ -27,8 +27,6 @@ from ryu import utils
 
 from dragonflow.common import profiler as df_profiler
 from dragonflow.controller.common import constants
-from dragonflow.controller import datapath as new_dp
-from dragonflow.controller import datapath_layout as new_dp_layout
 from dragonflow.controller import dispatcher
 
 
@@ -39,19 +37,19 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OF_AUTO_PORT_DESC_STATS_REQ_VER = 0x04
 
-    def __init__(self, vswitch_api, nb_api,
+    def __init__(self, switch_backend, nb_api,
                  db_change_callback,
                  neutron_server_notifier=None):
         super(RyuDFAdapter, self).__init__()
         self.dispatcher = dispatcher.AppDispatcher(cfg.CONF.df.apps_list)
-        self.vswitch_api = vswitch_api
+        self.vswitch_api = switch_backend.vswitch_api
         self.nb_api = nb_api
+        self.switch_backend = switch_backend
         self.neutron_server_notifier = neutron_server_notifier
         self._datapath = None
         self.table_handlers = {}
         self.first_connect = True
         self.db_change_callback = db_change_callback
-        self._new_dp = new_dp.Datapath(new_dp_layout.get_datapath_layout())
 
     @property
     def datapath(self):
@@ -111,9 +109,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
 
         self.get_sw_async_msg_config()
 
-        self._new_dp.set_up(
-            self, self.vswitch_api, self.nb_api, self.neutron_server_notifier)
-
+        self.switch_backend.setup_datapath(self)
         self.dispatcher.dispatch('switch_features_handler', ev)
 
         if not self.first_connect:

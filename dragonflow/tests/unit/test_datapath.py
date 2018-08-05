@@ -15,8 +15,8 @@ import mock
 import testscenarios
 
 from dragonflow.controller import app_base
-from dragonflow.controller import datapath
 from dragonflow.controller import datapath_layout
+from dragonflow.switch.drivers.ovs import datapath
 from dragonflow.tests import base as tests_base
 
 load_tests = testscenarios.load_tests_apply_scenarios

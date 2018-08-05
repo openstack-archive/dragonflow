@@ -326,7 +326,7 @@ class TestModelFramework(tests_base.BaseTestCase):
 
         TestApp(
             api=mock.MagicMock(),
-            vswitch_api=mock.MagicMock(),
+            switch_backend=mock.MagicMock(),
             nb_api=mock.MagicMock(),
         )
 
