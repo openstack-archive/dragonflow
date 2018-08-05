@@ -40,6 +40,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
         LOG.info("Loading SNAT application ... ")
         self.external_network_bridge = (
             cfg.CONF.df_snat_app.external_network_bridge)
+        self.vswitch_api = self.switch_backend.vswitch_api
         self.external_bridge_mac = self.vswitch_api.get_port_mac_in_use(
                 self.external_network_bridge) or const.EMPTY_MAC
         self.chassis = None

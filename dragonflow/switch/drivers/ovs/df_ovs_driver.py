@@ -18,11 +18,13 @@ from ryu.base import app_manager
 from ryu import cfg as ryu_cfg
 
 from dragonflow import conf as cfg
-from dragonflow.controller import ryu_base_app
+from dragonflow.controller import datapath_layout
 from dragonflow.db.models import l2
 from dragonflow.db.models import switch
 from dragonflow.ovsdb import vswitch_impl
 from dragonflow.switch.drivers import df_switch_driver
+from dragonflow.switch.drivers.ovs import datapath
+from dragonflow.switch.drivers.ovs import ryu_base_app
 
 
 class DfOvsDriver(df_switch_driver.DfSwitchDriver):
@@ -34,6 +36,8 @@ class DfOvsDriver(df_switch_driver.DfSwitchDriver):
         self.open_flow_app = None
         self.open_flow_service = None
         self.neutron_notifier = None
+        self._datapath = datapath.Datapath(
+            datapath_layout.get_datapath_layout())
 
     def initialize(self, db_change_callback, neutron_notifier):
         super(DfOvsDriver, self).initialize(db_change_callback,
@@ -41,13 +45,17 @@ class DfOvsDriver(df_switch_driver.DfSwitchDriver):
         self.open_flow_app = self.app_mgr.instantiate(
             ryu_base_app.RyuDFAdapter,
             nb_api=self.nb_api,
-            vswitch_api=self.vswitch_api,
+            switch_backend=self,
             neutron_server_notifier=self.neutron_notifier,
             db_change_callback=self.db_change_callback
         )
         # The OfctlService is needed to support the 'get_flows' method
         self.open_flow_service = self.app_mgr.instantiate(
             of_service.OfctlService)
+
+    def setup_datapath(self, df_app):
+        self._datapath.set_up(df_app, self,
+                              self.nb_api, self.neutron_notifier)
 
     def start(self):
         self.vswitch_api.initialize(self.db_change_callback)

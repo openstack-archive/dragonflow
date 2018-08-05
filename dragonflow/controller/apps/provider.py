@@ -40,6 +40,7 @@ LOG = log.getLogger(__name__)
 class ProviderApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(ProviderApp, self).__init__(*args, **kwargs)
+        self.vswitch_api = self.switch_backend.vswitch_api
         self.integration_bridge = cfg.CONF.df.integration_bridge
         self.logical_networks = logical_networks.LogicalNetworks()
         self.bridge_mappings = self._parse_bridge_mappings(

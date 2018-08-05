@@ -31,6 +31,7 @@ class TunnelingApp(df_base_app.DFlowApp):
         super(TunnelingApp, self).__init__(*args, **kwargs)
         self.tunnel_types = cfg.CONF.df.tunnel_types
         self.local_networks = logical_networks.LogicalNetworks()
+        self.vswitch_api = self.switch_backend.vswitch_api
 
     def switch_features_handler(self, ev):
         self._create_tunnels()
@@ -123,7 +124,7 @@ class TunnelingApp(df_base_app.DFlowApp):
 
     def _get_lport_tunnel_ofport(self, lport):
         network_type = lport.lswitch.network_type
-        return self.vswitch_api.get_vtp_ofport(network_type)
+        return self.switch_backend.vswitch_api.get_vtp_ofport(network_type)
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_REMOTE)
     def _add_remote_port(self, lport):

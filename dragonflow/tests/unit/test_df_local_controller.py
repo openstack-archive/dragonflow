@@ -14,12 +14,12 @@ import mock
 from oslo_config import cfg
 
 from dragonflow.controller import df_local_controller
-from dragonflow.controller import ryu_base_app
 from dragonflow.db import db_store
 from dragonflow.db import field_types as df_fields
 from dragonflow.db import model_framework
 from dragonflow.db.models import core
 from dragonflow.db.models import mixins
+from dragonflow.switch.drivers.ovs import ryu_base_app
 from dragonflow.tests.common import utils
 from dragonflow.tests.unit import test_app_base
 

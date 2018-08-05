@@ -31,6 +31,7 @@ class PortQosApp(df_base_app.DFlowApp):
     def __init__(self, *args, **kwargs):
         super(PortQosApp, self).__init__(*args, **kwargs)
         self._local_ports = collections.defaultdict(set)
+        self.vswitch_api = self.switch_backend.vswitch_api
 
     @df_base_app.register_event(l2.LogicalPort, l2.EVENT_BIND_LOCAL)
     def _add_local_port(self, lport):
