@@ -134,6 +134,7 @@ class TestDFMechDriver(DFMechanismDriverTestCase):
     def test_create_network_revision(self):
         self._test_create_network_revision()
 
+    @unittest.skip("Extension path 'neutron/tests/unit/extensions' doesn't exist!")
     def test_create_update_delete_subnet_network_revision(self):
         network = self._test_create_network_revision()
         with self.subnet(network={'network': network}, set_context=True) as s:
