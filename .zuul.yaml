@@ -1,4 +1,9 @@
 - project:
+    templates:
+      - openstack-python-jobs-neutron
+      - check-requirements
+      - publish-openstack-sphinx-docs
+      - openstack-python35-jobs-neutron
     check:
       jobs:
         - dragonflow-tempest:
@@ -8,13 +13,52 @@
               - ^setup.cfg$
         - dragonflow-dsvm-rally:
             voting: false
-        - dragonflow-dsvm-fullstack-redis
-        - dragonflow-dsvm-fullstack-etcd-zmq
+        - dragonflow-dsvm-fullstack-redis:
+            voting: false
+        - dragonflow-dsvm-fullstack-etcd-zmq:
+            voting: false
         - dragonflow-openstack-ansible-cross-repo:
             voting: false
+        - build-openstack-sphinx-docs:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
+        - openstack-tox-pep8:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
+        - openstack-tox-py27:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
+        - openstack-tox-py35:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
     gate:
       jobs:
-        - dragonflow-dsvm-fullstack-redis
+        - build-openstack-sphinx-docs:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
+        - openstack-tox-pep8:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
+        - openstack-tox-py27:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
+        - openstack-tox-py35:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
+    post:
+      jobs:
+        - publish-openstack-python-branch-tarball:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
 
 - job:
     name: dragonflow-dsvm-fullstack-redis
