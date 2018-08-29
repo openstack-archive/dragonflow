@@ -4,6 +4,7 @@
       - check-requirements
       - publish-openstack-docs-pti
       - openstack-python35-jobs-neutron
+      - openstack-python36-jobs-neutron
     check:
       jobs:
         - dragonflow-tempest:
@@ -36,6 +37,14 @@
             required-projects:
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
+        - openstack-tox-py36:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
+        - openstack-tox-py36:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
     gate:
       jobs:
         - dragonflow-dsvm-fullstack-redis
@@ -54,6 +63,14 @@
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
         - openstack-tox-py35:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
+        - openstack-tox-py36:
+            required-projects:
+              - openstack/networking-sfc
+              - openstack/neutron-dynamic-routing
+        - openstack-tox-py36:
             required-projects:
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
