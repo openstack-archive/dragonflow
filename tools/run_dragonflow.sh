@@ -56,6 +56,6 @@ fi
 
 if [ -z "$DF_NO_CONTROLLER" ]; then
   /usr/local/bin/df-local-controller --config-file /etc/dragonflow/dragonflow.ini
-else
+else if [ -z "$DF_NO_BASH" ]; then
   /bin/bash
 fi
