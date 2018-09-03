@@ -18,6 +18,14 @@ while test ${#} -gt 0; do
     --db_init)
       DB_INIT=1
       ;;
+    --nb_db_driver)
+      shift
+      NB_DB_DRIVER=$1
+      ;;
+    --pubsub_driver)
+      shift
+      PUBSUB_DRIVER=$1
+      ;;
     --)
       shift
       break
@@ -30,14 +38,20 @@ while test ${#} -gt 0; do
   shift
 done
 
-# SET DRAGONFLOW_IP and DB_IP on the ini file
+# Use defaults if not supplied
+NB_DB_DRIVER=${NB_DB_DRIVER:-etcd_nb_db_driver}
+PUBSUB_DRIVER=${PUBSUB_DRIVER:-etcd_pubsub_driver}
+
 if [ ! -d /etc/dragonflow ]; then
   mkdir -p /etc/dragonflow
 fi
+# Set parameters to the ini file
 if [ ! -e /etc/dragonflow/dragonflow.ini ]; then
   sed -e "s/LOCAL_IP/$DRAGONFLOW_IP/g" etc/standalone/dragonflow.ini | \
     sed -e "s/MANAGEMENT_IP/$MANAGEMENT_IP/g" | \
-    sed -e "s/DB_SERVER_IP/$DB_IP/g"  > /etc/dragonflow/dragonflow.ini
+    sed -e "s/DB_SERVER_IP/$DB_IP/g" | \
+    sed -e "s/NB_DB_DRIVER/$NB_DB_DRIVER/g" | \
+    sed -e "s/PUBSUB_DRIVER/$PUBSUB_DRIVER/g"  > /etc/dragonflow/dragonflow.ini
 fi
 if [ ! -e /etc/dragonflow/dragonflow_datapath_layout.yaml ]; then
   cp etc/dragonflow_datapath_layout.yaml /etc/dragonflow
