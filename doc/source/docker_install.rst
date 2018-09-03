@@ -58,9 +58,9 @@ to allow this via `selinux`.
 
 .. code-block:: bash
 
-  export DRAGONFLOW_ADDRESS=172.18.0.3 # Any free IP in the subnet
+  export DRAGONFLOW_IP=172.18.0.3 # Any free IP in the subnet
   export MANAGEMENT_IP=$(docker inspect --format "{{ .NetworkSettings.Networks.${DRAGONFLOW_NET_NAME}.Gateway }}" etcd)  # Assuming you put OVS on the host
-  docker run --name dragonflow --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_ADDRESS} dragonflow:latest --dragonflow_address ${DRAGONFLOW_ADDRESS} --db_address ${NODE1}:2379 --management_ip ${MANAGEMENT_IP}
+  docker run --name dragonflow --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_IP} dragonflow:latest --dragonflow_ip ${DRAGONFLOW_IP} --db_ip ${NODE1}:2379 --management_ip ${MANAGEMENT_IP}
 
 * Make sure the IP was properly assigned to the container:
 
