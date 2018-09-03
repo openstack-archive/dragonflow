@@ -21,9 +21,9 @@ from oslo_log import log
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as ctrl_const
-from dragonflow.controller import datapath
 from dragonflow.db import api_nb
 from dragonflow.db import db_common
+from dragonflow.switch.drivers.ovs import datapath
 from dragonflow.tests import base
 from dragonflow.tests.common import app_testing_objects as test_objects
 from dragonflow.tests.common import clients
