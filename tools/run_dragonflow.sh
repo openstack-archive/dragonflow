@@ -19,6 +19,7 @@ while test ${#} -gt 0; do
       DB_INIT=1
       ;;
     --)
+      shift
       break
       ;;
     *)
