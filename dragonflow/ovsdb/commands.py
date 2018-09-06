@@ -56,11 +56,14 @@ class GetBridgePorts(commands.BaseCommand):
 
 
 class AddVirtualTunnelPort(commands.BaseCommand):
-    def __init__(self, api, tunnel_type):
+    def __init__(self, api, tunnel_type, local_ip=None):
         super(AddVirtualTunnelPort, self).__init__(api)
         self.tunnel_type = tunnel_type
         self.integration_bridge = cfg.CONF.df.integration_bridge
         self.port = tunnel_type + "-vtp"
+        self.local_ip = local_ip
+        if local_ip is None:
+            self.local_ip = cfg.CONF.df.local_ip
 
     def run_idl(self, txn):
         port = idlutils.row_by_value(self.api.idl, 'Port', 'name',
@@ -85,7 +88,7 @@ class AddVirtualTunnelPort(commands.BaseCommand):
         options_dict = getattr(iface, 'options', {})
         options_dict['remote_ip'] = 'flow'
         options_dict['key'] = 'flow'
-        options_dict['local_ip'] = cfg.CONF.df.local_ip
+        options_dict['local_ip'] = self.local_ip
         iface.options = options_dict
         port.verify('interfaces')
         ifaces = getattr(port, 'interfaces', [])
