@@ -161,12 +161,12 @@ class EtcdDbDriver(db_api.DbApi):
                 # Create new key
                 if self.client.create(table_key, "1"):
                     return 1
-            raise RuntimeError()  # Error occured. Restart the allocation
+            raise RuntimeError()  # Error occurred. Restart the allocation
 
         new_unique = prev_value + 1
         if self.client.replace(table_key, str(prev_value), str(new_unique)):
             return new_unique
-        raise RuntimeError()  # Error occured. Restart the allocation
+        raise RuntimeError()  # Error occurred. Restart the allocation
 
     def allocate_unique_key(self, table):
         while True:

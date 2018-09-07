@@ -337,7 +337,7 @@ No session persistence:
    | type      | Enum (None)              | Must be 'None'                    |
    +-----------+--------------------------+-----------------------------------+
 
-There is no session persistence. Every packet is load-balanced independantly.
+There is no session persistence. Every packet is load-balanced independently.
 
 Source IP session persistence:
 

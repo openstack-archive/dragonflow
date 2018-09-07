@@ -43,7 +43,7 @@ class ModelsPrinter(object):
     implement the methods for the specific output format.
 
     All the models are handled one after the other, and it is guaranteed
-    that if a model depends on another model, the dependant model will
+    that if a model depends on another model, the dependent model will
     be handled _after_ the model it depends on.
     """
 
@@ -476,7 +476,7 @@ class DfModelsParser(object):
     """Parser for the Dragonflow models schema
 
     This parser iterates over the Dragonflow models by their dependency order
-    (models that others depend on will be before the dependant ones).
+    (models that others depend on will be before the dependent ones).
     It uses a ModelsPrinter to actually print the information to the supported
     formats.
     """

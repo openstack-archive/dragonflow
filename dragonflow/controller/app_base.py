@@ -22,7 +22,7 @@ from dragonflow.controller import df_base_app
 # Exitpoints - Where do packets come out?
 # Public Mappings - Metadata that is passed between applications
 # Private Mappings - Metadata that is private to this application (e.g. to save
-#                    a state accross tables)
+#                    a state across tables)
 Specification = collections.namedtuple(
     'Specification',
     ('states', 'entrypoints', 'exitpoints', 'public_mapping',

@@ -266,7 +266,7 @@ class WSClientDragonflowProtocol(skydive_client.WSClientDebugProtocol):
         :type wasClean: bool
         :param code: error code of the current error
         :type code: integer
-        :param reason: description of the error that occured
+        :param reason: description of the error that occurred
         :type reason: string
         """
         LOG.debug("Client closing %s %s %s", wasClean, code, reason)

@@ -49,7 +49,7 @@ CookieBitPair = collections.namedtuple('CookieBitPair', ('offset', 'mask'))
 def register_cookie_bits(name, length, is_local=False, app_name=None):
     """Register this many cookie bits for the given 'task'.
     There are two types of cookies: global and local.
-    Global cookies are global accross all applications. All applications share
+    Global cookies are global across all applications. All applications share
     the information, and the cookie bits can only be assigned once.
     Local cookies are local to a specific application. That application is
     responsible to the data encoded in the cookie. Therefore, local cookie

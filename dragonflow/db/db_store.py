@@ -225,7 +225,7 @@ class DbStore(object):
         return self._get_cache(model).get_all(obj, index)
 
     def get_keys(self, obj, index=None):
-        '''Returns IDs for all objects matching the query. If index is ommited,
+        '''Returns IDs for all objects matching the query. If index is omitted,
            we assume result should contain all object of the model.
 
            >>> db_store.get_keys(Lport(topic='topic1'),
