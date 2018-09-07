@@ -32,12 +32,12 @@ Set fields are:
 * reg6 <- unique port key, for egress remote forwarding processing
 * reg7 <- unique port key, for ingress local l2 lookup processing
 
-Ingress Proccessing
+Ingress Processing
 -------------------
 A classification flow should match against vlan membership in case of vlan
 network. or use the untagged vlan id 0 to match flat networks traffic.
 
-Egress Proccessing
+Egress Processing
 ------------------
 For locally originated traffic, the destination mac and network membership are
 translated to port key which is push to reg7, and passed to EGRESS_TABLE.
