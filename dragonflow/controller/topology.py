@@ -63,10 +63,10 @@ class Topology(object):
         @param switch_port:
         @return : None
         """
-        LOG.info("Ovs port updated: %s", switch_port)
+        LOG.info("Ovs port updated: %r", switch_port)
 
         if switch_port.type not in _SWITCH_PORT_TYPES:
-            LOG.info("Unmanaged port online: %s", switch_port)
+            LOG.info("Unmanaged port online: %r", switch_port)
             return
 
         try:
@@ -106,7 +106,7 @@ class Topology(object):
         @return : None
         """
         if switch_port.type not in _SWITCH_PORT_TYPES:
-            LOG.info("Unmanaged port offline: %s", switch_port)
+            LOG.info("Unmanaged port offline: %r", switch_port)
             return
 
         try:
@@ -169,7 +169,7 @@ class Topology(object):
     def _compute_port_updated(self, switch_port):
         lport = self._get_lport(switch_port)
         if lport is None:
-            LOG.warning("No logical port found for ovs port: %s",
+            LOG.warning("No logical port found for ovs port: %r",
                         switch_port)
             return
         topic = lport.topic
@@ -294,7 +294,7 @@ class Topology(object):
             if switch_port.type == constants.SWITCH_COMPUTE_INTERFACE:
                 lport = self._get_lport(switch_port)
                 if lport is None:
-                    LOG.warning("No logical port found for ovs port: %s",
+                    LOG.warning("No logical port found for ovs port: %r",
                                 switch_port)
                     continue
                 topic = lport.topic
