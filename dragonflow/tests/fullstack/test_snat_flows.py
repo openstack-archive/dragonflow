@@ -12,6 +12,7 @@
 from oslo_config import cfg
 
 from dragonflow.controller.common import constants as const
+from dragonflow.db.models import l2
 from dragonflow.tests.common import utils
 from dragonflow.tests.fullstack import test_base
 from dragonflow.tests.fullstack import test_objects as objects
@@ -26,13 +27,15 @@ class TestSnatFlows(test_base.DFTestBase):
         return SNAT_APP_NAME in cfg.CONF.df.apps_list
 
     def _check_port_based_flows(self,
-                                flows, hex_port_key, external_host_mac, mac):
+                                flows, hex_port_key,
+                                hex_lswitch_key, external_host_mac, mac):
         match = 'ct_mark=' + hex_port_key + ',ip'
         action = 'set_field:' + external_host_mac + '->eth_src' \
             ',set_field:' + mac + '->eth_dst' \
             ',load:' + hex_port_key + '->NXM_NX_REG7[]' + \
             ',move:NXM_NX_CT_LABEL[0..31]->NXM_OF_IP_DST[]' + \
-            ',goto_table:' + str(const.INGRESS_DISPATCH_TABLE)
+            ',set_field:' + hex_lswitch_key + '->metadata' + \
+            ',goto_table:' + str(const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
 
         port_based_ingress = None
         for flow in flows:
@@ -82,9 +85,12 @@ class TestSnatFlows(test_base.DFTestBase):
             exception=Exception('No port assigned to VM')
         )
         port_key = port.unique_key
+        network_key = network.nb_api.get(
+            l2.LogicalSwitch(id=network_id)).unique_key
         r = self._check_port_based_flows(
             ovs.dump(self.integration_bridge),
             hex(port_key),
+            hex(network_key),
             external_host_mac,
             mac)
         for key, value in r.items():
