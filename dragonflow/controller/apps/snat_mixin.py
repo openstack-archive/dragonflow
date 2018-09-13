@@ -209,6 +209,7 @@ class SNATApp_mixin(object):
     def _install_snat_ingress_after_conntrack(self,
                                               unique_key,
                                               vm_mac,
+                                              network_id,
                                               external_host_mac):
         """complements reverse sNAT translation from unique IP to tenant IP
 
@@ -236,12 +237,13 @@ class SNATApp_mixin(object):
             parser.NXActionRegMove(
                             src_field='ct_label',
                             dst_field='ipv4_dst',
-                            n_bits=32)
+                            n_bits=32),
+            parser.OFPActionSetField(metadata=network_id),
                    ]
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
         goto_inst = parser.OFPInstructionGotoTable(
-            const.INGRESS_DISPATCH_TABLE)
+            const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
         inst = [action_inst, goto_inst]
 
         self.mod_flow(

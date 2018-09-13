@@ -32,7 +32,7 @@ class TestSnatFlows(test_base.DFTestBase):
             ',set_field:' + mac + '->eth_dst' \
             ',load:' + hex_port_key + '->NXM_NX_REG7[]' + \
             ',move:NXM_NX_CT_LABEL[0..31]->NXM_OF_IP_DST[]' + \
-            ',goto_table:' + str(const.INGRESS_DISPATCH_TABLE)
+            ',goto_table:' + str(const.INGRESS_DESTINATION_PORT_LOOKUP_TABLE)
 
         port_based_ingress = None
         for flow in flows:
