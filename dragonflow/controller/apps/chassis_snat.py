@@ -162,6 +162,7 @@ class ChassisSNATApp(df_base_app.DFlowApp, snat_mixin.SNATApp_mixin):
         self._install_snat_ingress_after_conntrack(
                                         lport.unique_key,
                                         lport.mac,
+                                        lport.lswitch.unique_key,
                                         self.external_host_mac)
 
     def remove_lport_based_flows(self, lport):
