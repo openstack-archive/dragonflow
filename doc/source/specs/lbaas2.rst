@@ -291,7 +291,7 @@ This object represents the listening endpoint of a load balanced service.
    +------------------+-----------------+-------------------------------------+
    | enabled          | Boolean         | Is the listener enabled?            |
    +------------------+-----------------+-------------------------------------+
-   | conenction_limit | Integer         | Max number of connections permitted |
+   | connection_limit | Integer         | Max number of connections permitted |
    +------------------+-----------------+-------------------------------------+
    | tls              | Embed<TLS>      | Object needed to terminate HTTPS    |
    +------------------+-----------------+-------------------------------------+
@@ -358,7 +358,7 @@ Packets from the same source IP will be directed to the same pool member.
    +-----------+--------------------------+-----------------------------------+
 
 Packets with the same 5-tuple will be directed to the same pool member. In the
-case of ICMP, or protocls that do not have port numbers, 3-tuples will be used.
+case of ICMP, or protcols that do not have port numbers, 3-tuples will be used.
 
 HTTP cookie session persistence:
 
