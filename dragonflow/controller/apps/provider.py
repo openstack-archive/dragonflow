@@ -90,14 +90,17 @@ class ProviderApp(df_base_app.DFlowApp):
         self._update_bridge_mac(switch_port.name, None)
 
     def _update_bridge_mac(self, bridge, mac):
-        if bridge not in self.bridge_macs:
+        physical_network = self.reverse_bridge_mappings.get(bridge)
+        if not physical_network:
             return
 
-        old_mac = self.bridge_macs[bridge]
+        if physical_network not in self.bridge_macs:
+            return
+
+        old_mac = self.bridge_macs[physical_network]
         if old_mac == mac:
             return
 
-        physical_network = self.reverse_bridge_mappings[bridge]
         lswitch = self.db_store.get_one(
             l2.LogicalSwitch(physical_network=physical_network),
             index=l2.LogicalSwitch.get_index('physical_network'))
@@ -106,7 +109,7 @@ class ProviderApp(df_base_app.DFlowApp):
             self._remove_egress_placeholder_flow(lswitch.unique_key)
 
         if mac is not None:
-            self._egress_placeholder_flow(lswitch.unique_key)
+            self._egress_placeholder_flow(lswitch)
 
         self.bridge_macs[physical_network] = mac
 
@@ -251,12 +254,12 @@ class ProviderApp(df_base_app.DFlowApp):
         )
 
         if self.bridge_macs.get(physical_network) is not None:
-            self._egress_placeholder_flow(lport)
+            self._egress_placeholder_flow(lport.lswitch)
 
-    def _egress_placeholder_flow(self, lport):
+    def _egress_placeholder_flow(self, lswitch):
         # If dest MAC is the placeholder, update it to bridge MAC
-        network_id = lport.lswitch.unique_key
-        physical_network = lport.lswitch.physical_network
+        network_id = lswitch.unique_key
+        physical_network = lswitch.physical_network
         port_num = self.int_ofports[physical_network]
 
         self.mod_flow(
