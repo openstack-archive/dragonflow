@@ -211,7 +211,7 @@ class DfLocalController(object):
         self.switch_backend.switch_sync_started()
 
     def _is_newer(self, obj, cached_obj):
-        '''Check wether obj is newer than cached_on.
+        '''Check whether obj is newer than cached_on.
 
         If obj is a subtype of Version mixin we can use is_newer_than,
         otherwise we assume that our NB-received object is always newer than
