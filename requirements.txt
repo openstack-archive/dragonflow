@@ -35,3 +35,8 @@ PyYAML>=3.12  # MIT
 neutron>=13.0.0.0b1  # Apache-2.0
 networking-sfc>=6.0.0  # Apache-2.0
 
+# The comment below indicates this project repo is current with neutron-lib
+# and should receive neutron-lib consumption patches as they are released
+# in neutron-lib. It also implies the project will stay current with TC
+# and infra initiatives ensuring consumption patches can land.
+# neutron-lib-current
