@@ -17,7 +17,6 @@
 import netaddr
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import l3_rpc
-from neutron.common import rpc as n_rpc
 from neutron.db import common_db_mixin
 from neutron.db import extraroute_db
 from neutron.db import l3_agentschedulers_db
@@ -32,6 +31,7 @@ from neutron_lib.callbacks import resources
 from neutron_lib import constants as const
 from neutron_lib.plugins import constants as plugin_const
 from neutron_lib.plugins import directory
+from neutron_lib import rpc as n_rpc
 from neutron_lib.services import base as service_base
 from oslo_config import cfg
 from oslo_log import log
