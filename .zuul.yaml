@@ -56,12 +56,6 @@
             required-projects:
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
-    post:
-      jobs:
-        - publish-openstack-python-branch-tarball:
-            required-projects:
-              - openstack/networking-sfc
-              - openstack/neutron-dynamic-routing
 
 - job:
     name: dragonflow-dsvm-fullstack-redis
