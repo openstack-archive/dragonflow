@@ -1,0 +1,13 @@
+---
+prelude: >
+    Added new tool ``dragonflow-status upgrade check``.
+features:
+  - |
+    New framework for ``dragonflow-status upgrade check`` command is added.
+    This framework allows adding various checks which can be run before a
+    Dragonflow upgrade to ensure if the upgrade can be performed safely.
+upgrade:
+  - |
+    Operator can now use new CLI tool ``dragonflow-status upgrade check``
+    to check if Dragonflow deployment can be safely upgraded from
+    N-1 to N release.

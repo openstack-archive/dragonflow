@@ -39,6 +39,14 @@ Dragonflow Specs
 
    specs/index
 
+CLI Reference
+=============
+
+.. toctree::
+   :maxdepth: 1
+
+   cli/index
+
 Developer References
 ====================
 
