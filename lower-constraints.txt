@@ -86,6 +86,7 @@ oslo.reports==1.18.0
 oslo.rootwrap==5.13.0
 oslo.serialization==2.18.0
 oslo.service==1.30.0
+oslo.upgradecheck==0.1.0
 oslo.utils==3.36.0
 oslo.versionedobjects==1.32.0
 oslotest==3.2.0
