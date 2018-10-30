@@ -540,7 +540,7 @@ class L3AppMixin(object):
                                          router_key=router_unique_key).add()
 
         # If router interface is not concrete, send to local controller. local
-        # controller will create icmp unreachable mesage. A virtual router
+        # controller will create icmp unreachable message. A virtual router
         # interface will not be in local cache, as it doesn't have chassis
         # information.
         lport = self.db_store.get_one(l2.LogicalPort(id=router_port.id))
