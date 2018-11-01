@@ -5,7 +5,7 @@
       - openstack-python-jobs-neutron
       - openstack-python35-jobs-neutron
       - openstack-python36-jobs-neutron
-      - publish-openstack-docs-pti
+      - build-openstack-docs-pti
     check:
       jobs:
         - dragonflow-tempest:
