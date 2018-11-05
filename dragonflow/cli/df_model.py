@@ -18,6 +18,7 @@ import contextlib
 import six
 import sys
 
+from http import HTTPStatus  # Only from Python 3.5
 from jsonmodels import fields
 from oslo_serialization import jsonutils
 import prettytable
@@ -74,25 +75,25 @@ class ModelsPrinter(object):
         """
         pass
 
-    def model_start(self, model_name):
+    def model_start(self, model):
         """Handler called once per model, before processing the model.
 
         This should be used to clean/initialize any data specific for the
         handling of the model.
 
-        :param model_name: the name of the model
-        :type model_name: string
+        :param model: the model
+        :type model: Model class
         """
         pass
 
-    def model_end(self, model_name):
+    def model_end(self, model):
         """Handler called once per model, after processing the model.
 
         This should be used to cleanup or to print any remaining data or
         suffixes specific for the handling of the model.
 
-        :param model_name: the name of the model
-        :type model_name: string
+        :param model: the model
+        :type model: Model class
         """
         pass
 
@@ -209,12 +210,12 @@ class PlaintextPrinter(ModelsPrinter):
     def __init__(self, fh):
         super(PlaintextPrinter, self).__init__(fh)
 
-    def model_start(self, model_name):
+    def model_start(self, model):
         self._print('-------------')
-        self._print('{}'.format(model_name))
+        self._print('{}'.format(model.__name__))
         self._print('-------------')
 
-    def model_end(self, model_name):
+    def model_end(self, model):
         self._print('')
 
     def fields_start(self):
@@ -277,13 +278,13 @@ class UMLPrinter(ModelsPrinter):
         self._output_relations()
         self._print('@enduml')
 
-    def model_start(self, model_name):
-        self._model = model_name
-        self._print('class {} {{'.format(model_name))
+    def model_start(self, model):
+        self._model = model.__name__
+        self._print('class {} {{'.format(model.__name__))
 
-    def model_end(self, model_name):
+    def model_end(self, model):
         self._print('}')
-        self._processed.add(model_name)
+        self._processed.add(model.__name__)
         self._model = ''
 
     def handle_field(self, field_name, field_type, is_required, is_embedded,
@@ -306,6 +307,10 @@ class UMLPrinter(ModelsPrinter):
 
     def handle_event(self, event_name):
         self._print('  {}'.format(event_name))
+
+
+def is_first_class(model):
+    return (hasattr(model, 'is_first_class') and model.is_first_class())
 
 
 class OASPrinter(ModelsPrinter):
@@ -335,6 +340,10 @@ class OASPrinter(ModelsPrinter):
         paths = dict()
         schemas = dict()
         components = dict()
+        servers = [
+            # TODO(oanson) Take from command line?
+            {"url": "http://dragonflow-backend/v1"},
+        ]
         self._models_obj['openapi'] = OASPrinter._OPENAPI_VERSION
         self._models_obj['info'] = info
         info['title'] = OASPrinter._INFO_TITLE
@@ -343,6 +352,7 @@ class OASPrinter(ModelsPrinter):
         license['name'] = OASPrinter._LIC_NAME
         license['url'] = OASPrinter._LIC_URL
         info['version'] = OASPrinter._MODEL_SCHEMA_VERSION
+        self._models_obj['servers'] = servers
         self._models_obj['paths'] = paths
         self._models_obj['components'] = components
         components['schemas'] = schemas
@@ -350,13 +360,145 @@ class OASPrinter(ModelsPrinter):
     def output_end(self):
         jsonutils.dump(self._models_obj, self._output, indent=2)
 
-    def model_start(self, model_name):
+    def model_start(self, model):
         self._required = list()
         self._model = dict()
-        self._models_obj['components']['schemas'][model_name] = self._model
+        self._models_obj['components']['schemas'][model.__name__] = self._model
         self._model['type'] = 'object'
+        if is_first_class(model):
+            path_plural = '/' + model.table_name
+            self._models_obj['paths'][path_plural] = {
+                'get': self.get_list_path(model),
+                'post': self.get_post_path(model),
+                'put': self.get_put_path(model),
+            }
+            self._models_obj['paths']['/' + model.table_name + '/{id}'] = {
+                'parameters': [
+                    self.get_id_parameter(),
+                ],
+                'get': self.get_get_path(model),
+                'delete': self.get_delete_path(model),
+            }
 
-    def model_end(self, model_name):
+    def get_id_parameter(self):
+        return {
+            'name': 'id',
+            'required': True,
+            'in': 'path',
+            'schema': {
+                'type': 'string',
+            },
+        }
+
+    def get_model_content(self, model):
+        return {
+            'application/json': {
+                'schema': {
+                    '$ref': '#/components/schemas/' + model.__name__,
+                },
+            },
+        }
+
+    def get_model_list_content(self, model):
+        return {
+            'application/json': {
+                'schema': {
+                    'type': 'array',
+                    'items': {
+                        '$ref': '#/components/schemas/' + model.__name__,
+                    },
+                },
+            },
+        }
+
+    def get_list_path(self, model):
+        return {
+            'summary': 'Get all ' + model.__name__ + 's',
+            'description': 'Get all ' + model.__name__ + 's',
+            'responses': {
+                HTTPStatus.OK.value: {
+                    'description': model.__name__,
+                    'content': self.get_model_list_content(model),
+                },
+            },
+        }
+
+    def get_request_body(self, model):
+        return {
+            'description': model.__name__ + ' object',
+            'required': True,
+            'content': self.get_model_content(model),
+        }
+
+    def get_post_path(self, model):
+        return {
+            'summary': 'Create a ' + model.__name__,
+            'description': 'Create a ' + model.__name__,
+            'requestBody': self.get_request_body(model),
+            'responses': {
+                HTTPStatus.CREATED.value: {
+                    'description': model.__name__ + ' created',
+                },
+                HTTPStatus.PRECONDITION_FAILED.value: {
+                    'description': 'Invalid content type',
+                },
+                HTTPStatus.BAD_REQUEST.value: {
+                    'description': 'Invalid content',
+                },
+            },
+        }
+
+    def get_get_path(self, model):
+        return {
+            'summary': 'Get a ' + model.__name__,
+            'description': 'Get a ' + model.__name__,
+            'responses': {
+                HTTPStatus.OK.value: {
+                    'description': model.__name__,
+                    'content': self.get_model_content(model),
+                },
+                HTTPStatus.NOT_FOUND.value: {
+                    'description': 'Instance not found',
+                },
+            },
+        }
+
+    def get_put_path(self, model):
+        return {
+            'summary': 'Update a ' + model.__name__,
+            'description': 'Update a ' + model.__name__,
+            'requestBody': self.get_request_body(model),
+            'responses': {
+                HTTPStatus.NO_CONTENT.value: {
+                    'description': model.__name__ + ' updated',
+                },
+                HTTPStatus.PRECONDITION_FAILED.value: {
+                    'description': 'Invalid content type',
+                },
+                HTTPStatus.BAD_REQUEST.value: {
+                    'description': 'Invalid content',
+                },
+                HTTPStatus.NOT_FOUND.value: {
+                    'description': 'Instance not found',
+                },
+            },
+        }
+
+    def get_delete_path(self, model):
+        return {
+            'summary': 'Delete a ' + model.__name__,
+            'description': 'Delete a ' + model.__name__,
+            'responses': {
+                HTTPStatus.NO_CONTENT.value: {
+                    'description': model.__name__ + ' deleted',
+                },
+                HTTPStatus.NOT_FOUND.value: {
+                    'description': 'Instance not found',
+                },
+            },
+        }
+
+    def model_end(self, model):
         if len(self._required) > 0:
             self._model['required'] = self._required
 
@@ -367,10 +509,15 @@ class OASPrinter(ModelsPrinter):
         pass
 
     def _simple_field(self, field_type, restrictions):
-        if field_type in self._base_types:
+        if field_type == ENUM_TYPE:
+            return {
+                'type': STRING_TYPE,
+                field_type: list(restrictions),
+            }
+        elif field_type in self._base_types:
+            if field_type == FLOAT_TYPE:
+                field_type = NUMBER_TYPE
             return {'type': field_type}
-        elif field_type == ENUM_TYPE:
-            return {field_type: list(restrictions)}
         else:
             return {'$ref': '{}/{}'.format(OASPrinter._SCHEMA_BASE_PATH,
                                            field_type)}
@@ -424,17 +571,17 @@ class RstPrinter(ModelsPrinter):
             table.header_style = 'cap'
             table.align = 'l'
 
-    def model_start(self, model_name):
+    def model_start(self, model):
         # Print separator, anchor and title
         if self._model_printed:
             self._print('\n----\n')
-        _title = '{}'.format(model_name)
+        _title = '{}'.format(model.__name__)
         _surround_line = '-' * len(_title)
         self._print(_surround_line)
         self._print(_title)
         self._print(_surround_line)
 
-    def model_end(self, model_name):
+    def model_end(self, model):
         self._model_printed = True
 
     def fields_end(self):
@@ -574,19 +721,17 @@ class DfModelsParser(object):
             self._printer.events_end()
 
     def _process_model(self, df_model):
-        model_name = df_model.__name__
-        self._printer.model_start(model_name)
+        self._printer.model_start(df_model)
         self._process_fields(df_model)
         self._process_indexes(df_model)
         self._process_events(df_model)
-        self._printer.model_end(model_name)
+        self._printer.model_end(df_model)
         self._processed_models.add(df_model)
 
     def _process_unvisited_model(self, model):
-        model_name = model.__name__
-        self._printer.model_start(model_name)
+        self._printer.model_start(model)
         self._process_fields(model)
-        self._printer.model_end(model_name)
+        self._printer.model_end(model)
 
     def parse_models(self):
         """Iterates over the models and processes them with the printer
