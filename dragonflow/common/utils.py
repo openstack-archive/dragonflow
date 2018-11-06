@@ -53,10 +53,15 @@ def etcdir(*p):
 
 
 def config_parse(conf=None, args=None, **kwargs):
+    config_files = [etcdir('neutron.conf'), etcdir('dragonflow.ini')]
+    config_init(conf, config_files, args, **kwargs)
+
+
+def config_init(conf, config_files, args=None, **kwargs):
     if args is None:
         args = []
-    args += ['--config-file', etcdir('neutron.conf')]
-    args += ['--config-file', etcdir('dragonflow.ini')]
+    for conf_file in config_files:
+        args.extend(['--config-file', conf_file])
     if conf is None:
         release = version.version_info.release_string()
         cfg.CONF(args=args, project='dragonflow',
