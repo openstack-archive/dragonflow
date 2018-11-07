@@ -1,5 +1,6 @@
 #!/bin/bash
 
+VERB=""
 # First get all the arguments
 while test ${#} -gt 0; do
   case $1 in
@@ -31,8 +32,12 @@ while test ${#} -gt 0; do
       break
       ;;
     *)
-      echo >&2 "Unknown command line argument: $1"
-      exit 1
+      if [ -n "$VERB" ]; then
+        echo >&2 "Unknown command line argument: $1"
+        exit 1
+      fi
+      VERB=$1
+      shift
       ;;
   esac
   shift
@@ -69,8 +74,15 @@ if [ -n "$DB_INIT" ]; then
   df-db init
 fi
 
-if [ -z "$DF_NO_CONTROLLER" ]; then
-  /usr/local/bin/df-local-controller --config-file /etc/dragonflow/dragonflow.ini
-elif [ -z "$DF_NO_BASH" ]; then
-  /bin/bash
-fi
+case "$VERB" in
+  ""|"controller")
+    /usr/local/bin/df-local-controller --config-file /etc/dragonflow/dragonflow.ini
+    ;;
+  "bash")
+    /bin/bash
+    ;;
+  "rest")
+    df-model -j -o /var/dragonflow_model.json
+    /usr/local/bin/df-rest-service --config /etc/dragonflow/dragonflow.ini --host 0.0.0.0 --json /var/dragonflow_model.json
+    ;;
+esac
