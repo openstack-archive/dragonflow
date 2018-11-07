@@ -83,12 +83,25 @@ these files using e.g.
 
 Running the container without the controller service
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The docker entrypoint accepts verbs. To start the container without the
+controller service, use the verb `bash`.
+
+.. code-block:: bash
+
+  docker run --name dragonflow --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_ADDRESS} -i -t dragonflow:latest --dragonflow_address ${DRAGONFLOW_ADDRESS} --db_address ${NODE1}:2379 bash
+
 This enables you to run the container without running the container service.
 This is useful in order to create a standalone node for Dragonflow API,
 separated from the controller node.
 
-* Run the following commands:
+Running a REST API Service
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To start a REST API service, running on HTTP port 8080, use the verb `rest`.
 
 .. code-block:: bash
 
-  docker run --name dragonflow --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_ADDRESS} -e DF_NO_CONTROLLER=1 -i -t dragonflow:latest --dragonflow_address ${DRAGONFLOW_ADDRESS} --db_address ${NODE1}:2379
+  docker run --name dragonflow --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_ADDRESS} -i -t dragonflow:latest --dragonflow_address ${DRAGONFLOW_ADDRESS} --db_address ${NODE1}:2379 rest
+
+The schema would be available on `http://$DRAGONFLOW_ADDRESS:8080/schema.json`.
