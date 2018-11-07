@@ -28,6 +28,8 @@ HTTP_CODE_SUCCESS_EMPTY_RESPONSE = 204
 HTTP_CODE_CLIENT_ERROR_NOT_FOUND = 404
 HTTP_CODE_CLIENT_ERROR_PRECONDITIONS_FAILED = 412
 
+schema_file = None
+
 
 def nbapi_decorator(f):
     # f(nbapi, ...) -> f(...)
@@ -117,6 +119,13 @@ def delete(nbapi, model, name, id_):
     bottle.response.status = HTTP_CODE_SUCCESS_EMPTY_RESPONSE
 
 
+@bottle.get('/schema.json')
+def schema():
+    if not schema_file:
+        bottle.abort(HTTP_CODE_CLIENT_ERROR_NOT_FOUND)
+    return bottle.static_file(schema_file, '/')
+
+
 def main():
     parser = argparse.ArgumentParser(description='Dragonflow REST server')
     parser.add_argument('--host', type=str, default='127.0.0.1',
@@ -127,6 +136,11 @@ def main():
                         default='/etc/dragonflow/dragonflow.ini',
                         help=('Dragonflow config file '
                               '(/etc/dragonflow/dragonflow.ini)'))
+    parser.add_argument('--json', type=str,
+                        default=None,
+                        help=('JSON schema file (None)'))
     args = parser.parse_args()
+    global schema_file
+    schema_file = args.json
     utils.config_init(None, [args.config])
     bottle.run(host=args.host, port=args.port)
