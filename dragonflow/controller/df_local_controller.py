@@ -292,7 +292,8 @@ class DfLocalController(object):
         action = update.action
         if action == ctrl_const.CONTROLLER_REINITIALIZE:
             self.db_store.clear()
-            self.switch_backend.initialize(self.db_change_callback)
+            self.switch_backend.initialize(self.db_change_callback,
+                                           self.neutron_notifier)
             self.sync()
         elif action == ctrl_const.CONTROLLER_SYNC:
             self.sync()
