@@ -95,9 +95,9 @@ class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
 
     def _start_rpc_notifiers(self):
         """Initialization RPC notifiers for agents"""
-        self.agent_notifiers[const.AGENT_TYPE_L3] = {
+        self.agent_notifiers[const.AGENT_TYPE_L3] = (
             l3_rpc_agent_api.L3AgentNotifyAPI()
-        }
+        )
 
     def start_rpc_listeners(self):
         self.topic = topics.L3PLUGIN
