@@ -280,7 +280,12 @@ class DHCPApp(df_base_app.DFlowApp):
             return {}
 
         for opt in requested_opts:
-            opt_int = ord(opt)
+            # For python3 opt is already int.
+            if isinstance(opt, str):
+                opt_int = ord(opt)
+            else:
+                opt_int = opt
+
             if opt_int in default_opts:
                 # already answered by the default options
                 continue
