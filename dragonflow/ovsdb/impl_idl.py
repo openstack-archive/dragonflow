@@ -203,8 +203,8 @@ class DFOvsdbApi(impl_idl.OvsdbIdl):
     def add_patch_port(self, bridge, port, peer_port):
         return commands.AddPatchPort(self, bridge, port, peer_port)
 
-    def add_virtual_tunnel_port(self, tunnel_type):
-        return commands.AddVirtualTunnelPort(self, tunnel_type)
+    def add_virtual_tunnel_port(self, tunnel_type, local_ip=None):
+        return commands.AddVirtualTunnelPort(self, tunnel_type, local_ip)
 
     def create_qos(self, port_id, qos):
         return commands.CreateQos(self, port_id, qos)

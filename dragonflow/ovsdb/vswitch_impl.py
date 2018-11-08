@@ -111,8 +111,8 @@ class OvsApi(object):
 
         return tunnel_ports
 
-    def add_virtual_tunnel_port(self, tunnel_type):
-        self.ovsdb.add_virtual_tunnel_port(tunnel_type).execute()
+    def add_virtual_tunnel_port(self, tunnel_type, local_ip=None):
+        self.ovsdb.add_virtual_tunnel_port(tunnel_type, local_ip).execute()
 
     def delete_port(self, switch_port):
         self.ovsdb.del_port(switch_port.name,
