@@ -14,9 +14,12 @@
 #    under the License.
 
 import copy
+import mock
 
+from dragonflow.common import constants
 from dragonflow.controller.common import constants as const
 from dragonflow.db.models import l2
+from dragonflow.db.models import switch
 from dragonflow.tests.unit import test_app_base
 
 
@@ -29,7 +32,7 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
 
     def setUp(self):
         super(TestProviderNetsApp, self).setUp()
-        fake_vlan_switch1 = l2.LogicalSwitch(
+        self.fake_vlan_switch1 = l2.LogicalSwitch(
                 network_type='vlan',
                 id='fake_vlan_switch1',
                 mtu=1454,
@@ -43,7 +46,7 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
             test_app_base.fake_lswitch_default_subnets[0])
         fake_vlan_subnet.id = 'fake_vlan_subnet1'
         fake_vlan_subnet.lswitch = 'fake_vlan_switch1'
-        self.controller.update(fake_vlan_switch1)
+        self.controller.update(self.fake_vlan_switch1)
         self.controller.update(fake_vlan_subnet)
         self.app = self.open_flow_app.dispatcher.apps['provider']
         self.app.ofproto.OFPVID_PRESENT = 0x1000
@@ -88,3 +91,43 @@ class TestProviderNetsApp(test_app_base.DFAppTestBase):
             priority=const.PRIORITY_HIGH,
             match=match)
         self.app.mod_flow.reset_mock()
+
+    def test_provider_bridge(self):
+        self.app.int_ofports['phynet'] = 1
+        self.app.bridge_macs['phynet'] = '00:12:23:34:45:56'
+        self.app.reverse_bridge_mappings['private'] = 'phynet'
+
+        fake_local_vlan_port = make_fake_local_port(
+            lswitch='fake_vlan_switch1')
+        self.controller.update(fake_local_vlan_port)
+        self.app.mod_flow.reset_mock()
+
+        switch_port = switch.SwitchPort(
+            id='fake_switch_port', lport=fake_local_vlan_port.id,
+            port_num=1, admin_state='up', name='private',
+            mac_in_use='00:00:00:00:00:01',
+            type=constants.SWITCH_COMPUTE_INTERFACE)
+        self.controller.update(switch_port)
+
+        call_list = [
+            mock.call(
+                command=self.app.ofproto.OFPFC_DELETE,
+                table_id=const.EGRESS_EXTERNAL_TABLE,
+                priority=const.PRIORITY_HIGH,
+                match=self.app.parser.OFPMatch()),
+            mock.call(
+                table_id=const.EGRESS_EXTERNAL_TABLE,
+                priority=const.PRIORITY_HIGH,
+                match=self.app.parser.OFPMatch(),
+                inst=[self.app.parser.OFPInstructionActions()]
+            )]
+        self.assertEqual(len(call_list), self.app.mod_flow.call_count)
+        self.app.mod_flow.assert_has_calls(call_list)
+
+        self.app.mod_flow.reset_mock()
+        self.controller.delete(switch_port)
+        self.app.mod_flow.assert_called_with(
+            command=self.app.ofproto.OFPFC_DELETE,
+            table_id=const.EGRESS_EXTERNAL_TABLE,
+            priority=const.PRIORITY_HIGH,
+            match=self.app.parser.OFPMatch())
