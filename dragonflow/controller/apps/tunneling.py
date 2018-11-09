@@ -51,8 +51,8 @@ class TunnelingApp(df_base_app.DFlowApp):
         lswitch = lport.lswitch
         network_type = lswitch.network_type
         if network_type not in self.tunnel_types:
-            LOG.warning("added unsupported network %(net_type)s lport",
-                        {'net_type': network_type})
+            LOG.info("added unsupported network %(net_type)s lport",
+                     {'net_type': network_type})
             return
         network_id = lswitch.unique_key
         LOG.info("adding %(net_type)s lport %(lport)s",
@@ -74,8 +74,8 @@ class TunnelingApp(df_base_app.DFlowApp):
         lswitch = lport.lswitch
         network_type = lswitch.network_type
         if network_type not in self.tunnel_types:
-            LOG.warning("removed unsupported network %(net_type)s lport",
-                        {'net_type': network_type})
+            LOG.info("removed unsupported network %(net_type)s lport",
+                     {'net_type': network_type})
             return
         network_id = lswitch.unique_key
         self.local_networks.remove_local_port(port_id=lport.id,
