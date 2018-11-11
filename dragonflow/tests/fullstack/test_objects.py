@@ -381,7 +381,7 @@ class VMTestObj(object):
         if self.server is None:
             return None
         try:
-            return self.server.addresses.values()[0][0][
+            return list(self.server.addresses.values())[0][0][
                 'OS-EXT-IPS-MAC:mac_addr'
             ]
         except (KeyError, IndexError):
