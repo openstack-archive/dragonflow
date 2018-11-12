@@ -80,28 +80,32 @@ these files using e.g.
 `-v local-dragonflow-conf.ini:/etc/dragonflow/dragonflow.ini`.
 
 
-
-Running the container without the controller service
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The docker entrypoint accepts verbs. To start the container without the
-controller service, use the verb `bash`.
-
-.. code-block:: bash
-
-  docker run --name dragonflow --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_ADDRESS} -i -t dragonflow:latest --dragonflow_address ${DRAGONFLOW_ADDRESS} --db_address ${NODE1}:2379 bash
-
-This enables you to run the container without running the container service.
-This is useful in order to create a standalone node for Dragonflow API,
-separated from the controller node.
-
 Running a REST API Service
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To start a REST API service, running on HTTP port 8080, use the verb `rest`.
+The docker entrypoint accepts verbs. To start the container with the REST API
+service, running on HTTP port 8080, use the verb `rest`.
 
 .. code-block:: bash
 
-  docker run --name dragonflow --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_ADDRESS} -i -t dragonflow:latest --dragonflow_address ${DRAGONFLOW_ADDRESS} --db_address ${NODE1}:2379 rest
+  export DRAGONFLOW_IP=172.18.0.4 # Any free IP in the subnet
+  docker run --name dragonflow-rest --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_IP} -i -t dragonflow:latest --dragonflow_ip ${DRAGONFLOW_IP} --db_ip ${NODE1}:2379 rest
 
-The schema would be available on `http://$DRAGONFLOW_ADDRESS:8080/schema.json`.
+The schema would be available on `http://$DRAGONFLOW_IP:8080/schema.json`.
+
+
+Running the container without the any service
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The docker entrypoint accepts verbs. To start the container without any
+service, use the verb `bash`.
+
+.. code-block:: bash
+
+  export DRAGONFLOW_IP=172.18.0.5 # Any free IP in the subnet
+  docker run --name dragonflow-bash --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_IP} -i -t dragonflow:latest --dragonflow_ip ${DRAGONFLOW_IP} --db_ip ${NODE1}:2379 bash
+
+This will start the container with the Dragonflow installed, but no service.
+This is useful in order to test any standalone binaries or code that should
+use the Dragonflow as a library, separated from the controller node.
+
