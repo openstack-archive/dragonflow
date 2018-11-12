@@ -89,9 +89,9 @@ controller service, use the verb `bash`.
 
 .. code-block:: bash
 
-  docker run --name dragonflow --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_ADDRESS} -i -t dragonflow:latest --dragonflow_address ${DRAGONFLOW_ADDRESS} --db_address ${NODE1}:2379 bash
+  docker run --name dragonflow --net $DRAGONFLOW_NET_NAME --ip ${DRAGONFLOW_IP} -i -t dragonflow:latest --dragonflow_ip ${DRAGONFLOW_IP} --db_ip ${NODE1}:2379 bash
 
-This enables you to run the container without running the container service.
+This enables you to run the container without running the controller service.
 This is useful in order to create a standalone node for Dragonflow API,
 separated from the controller node.
 
