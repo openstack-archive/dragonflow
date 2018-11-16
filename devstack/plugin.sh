@@ -8,7 +8,7 @@ DPDK_BIND_DRIVER=${DPDK_BIND_DRIVER:-igb_uio}
 DPDK_NIC_NAME=${DPDK_NIC_NAME:-eth1}
 
 # The git repo to use
-OVS_REPO=${OVS_REPO:-http://github.com/openvswitch/ovs.git}
+OVS_REPO=${OVS_REPO:-https://github.com/openvswitch/ovs.git}
 OVS_REPO_NAME=$(basename ${OVS_REPO} | cut -f1 -d'.')
 
 # The branch to use from $OVS_REPO
