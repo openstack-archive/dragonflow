@@ -173,8 +173,8 @@ class DFMechDriver(api.MechanismDriver):
         return sg_obj
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
-    def delete_security_group(self, resource, event, trigger, **kwargs):
-        sg = kwargs['security_group']
+    def delete_security_group(self, resource, event, trigger, payload=None):
+        sg = payload.latest_state
         topic = df_utils.get_obj_topic(sg)
         sg_obj = secgroups.SecurityGroup(id=sg['id'], topic=topic)
         self.nb_api.delete(sg_obj)
