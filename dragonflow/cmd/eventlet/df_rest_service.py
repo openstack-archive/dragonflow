@@ -63,7 +63,7 @@ def get_all(nbapi, model, name):
 @nbapi_decorator
 def create(nbapi, model, name):
     """POST is create! Create a new instance"""
-    json_data_dict = bottle.json
+    json_data_dict = bottle.request.json
     if not json_data_dict:
         bottle.abort(HTTPStatus.PRECONDITION_FAILED.value,
                      "JSON content required")
@@ -77,7 +77,7 @@ def create(nbapi, model, name):
 @nbapi_decorator
 def update(nbapi, model, name):
     """PUT is update! Update an existing instance"""
-    json_data_dict = bottle.json
+    json_data_dict = bottle.request.json
     if not json_data_dict:
         bottle.abort(HTTPStatus.PRECONDITION_FAILED.value,
                      "JSON content required")
