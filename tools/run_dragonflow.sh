@@ -86,4 +86,10 @@ case "$VERB" in
     pip install bottle
     /usr/local/bin/df-rest-service --config /etc/dragonflow/dragonflow.ini --host 0.0.0.0 --json /var/dragonflow_model.json
     ;;
+  "noop")
+    echo "Dragonflow script end"
+    ;;
+  *)
+    echo>&2 "Warning: Unknown option supplied to Dragonflow: $VERB"
+    ;;
 esac
