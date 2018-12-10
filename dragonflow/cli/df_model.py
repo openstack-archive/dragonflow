@@ -366,6 +366,7 @@ class OASPrinter(ModelsPrinter):
         self._models_obj['components']['schemas'][model.__name__] = self._model
         self._model['type'] = 'object'
         if is_first_class(model):
+            self._model['x-table-name'] = model.table_name
             path_plural = '/' + model.table_name
             self._models_obj['paths'][path_plural] = {
                 'get': self.get_list_path(model),
