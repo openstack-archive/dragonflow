@@ -109,3 +109,17 @@ This will start the container with the Dragonflow installed, but no service.
 This is useful in order to test any standalone binaries or code that should
 use the Dragonflow as a library, separated from the controller node.
 
+
+Using the container as a base for other container
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The docker entrypoint script accepts verbs. To only run the configuration and
+use the container with another main process, in your entrypoint run the
+following command:
+
+.. code-block:: bash
+
+  /opt/dragonflow/tools/run_dragonflow.sh --dragonflow_ip <DRAGONFLOW_IP> --db_ip <DB_IP>:2379 noop
+
+Note that running a container with the noop verb witout a live process as
+entrypoint will casue the container to exit immediately.
