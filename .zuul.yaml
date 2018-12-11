@@ -1,13 +1,13 @@
 - project:
     templates:
       - check-requirements
-      - openstack-lower-constraints-jobs
       - openstack-python-jobs-neutron
       - openstack-python35-jobs-neutron
       - openstack-python36-jobs-neutron
       - build-openstack-docs-pti
     check:
       jobs:
+        - dragonflow-tox-lower-constraints
         - dragonflow-tempest:
             voting: false
             irrelevant-files:
@@ -39,6 +39,7 @@
               - openstack/neutron-dynamic-routing
     gate:
       jobs:
+        - dragonflow-tox-lower-constraints
         - dragonflow-dsvm-fullstack-redis
         - openstack-tox-pep8:
             required-projects:
@@ -121,3 +122,11 @@
     vars:
       tox_env: dragonflow
       osa_test_repo: openstack/openstack-ansible-os_neutron
+
+- job:
+    name: dragonflow-tox-lower-constraints
+    parent: openstack-tox-lower-constraints
+    required-projects:
+      - openstack/networking-sfc
+      - openstack/neutron-dynamic-routing
+      - openstack/neutron
