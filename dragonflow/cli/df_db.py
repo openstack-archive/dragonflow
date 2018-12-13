@@ -86,9 +86,16 @@ def print_tables(format_):
     _print_list(columns, tables, 'DB Tables', format_)
 
 
+def _get_all_keys(table):
+    keys = nb_api.driver.get_all_keys(table)
+    if six.PY3:
+        keys = [key.decode("utf-8") for key in keys]
+    return keys
+
+
 def print_table(table, format_):
     if table == db_common.UNIQUE_KEY_TABLE:
-        keys = nb_api.driver.get_all_keys(table)
+        keys = self._get_all_keys(table)
         values = [{'id': key} for key in keys]
         _print_list(['id'], values, format_)
         return
@@ -108,7 +115,7 @@ def print_table(table, format_):
 
 def print_whole_table(table):
     if table == db_common.UNIQUE_KEY_TABLE:
-        keys = nb_api.driver.get_all_keys(table)
+        keys = self._get_all_keys(table)
         values = [{'id': key, table: int(nb_api.driver.get_key(table, key))}
                   for key in keys]
         columns = ['id', table]
@@ -129,7 +136,7 @@ def print_whole_table(table):
 
 def _get_table_struct(table):
     if table == db_common.UNIQUE_KEY_TABLE:
-        keys = nb_api.driver.get_all_keys(table)
+        keys = self._get_all_keys(table)
         values = [{'id': key, table: int(nb_api.driver.get_key(table, key))}
                   for key in keys]
         return values
@@ -174,7 +181,7 @@ def bind_port_to_localhost(port_id):
 
 def clean_whole_table(table):
     if table == db_common.UNIQUE_KEY_TABLE:
-        keys = nb_api.driver.get_all_keys(table)
+        keys = self._get_all_keys(table)
         for key in keys:
             try:
                 nb_api.driver.delete_key(table, key)
