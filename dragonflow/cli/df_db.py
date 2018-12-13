@@ -16,6 +16,7 @@ import socket
 import sys
 
 from oslo_serialization import jsonutils
+import six
 
 from dragonflow.cli import utils as cli_utils
 from dragonflow.common import exceptions as df_exceptions
