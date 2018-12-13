@@ -15,6 +15,7 @@ from socket import timeout as SocketTimeout
 
 import etcd3gw as etcd
 from oslo_log import log
+import six
 import urllib3
 from urllib3 import connection
 from urllib3 import exceptions
@@ -114,7 +115,10 @@ class EtcdDbDriver(db_api.DbApi):
         return key
 
     def get_key(self, table, key, topic=None):
-        return self._get_key(self._make_key(table, key), key)
+        key = self._get_key(self._make_key(table, key), key)
+        if not six.PY2:
+            key = key.decode("utf-8")
+        return key
 
     def _get_key(self, table_key, key):
         value = self.client.get(table_key)
@@ -147,8 +151,11 @@ class EtcdDbDriver(db_api.DbApi):
         directory = self.client.get_prefix(self._make_key(table))
         table_name_size = len(table) + 2
         for entry in directory:
-            key = entry[1]["key"]
-            res.append(key[table_name_size:])
+            _key = entry[1]["key"]
+            key = _key[table_name_size:]
+            if not six.PY2:
+                key = key.decode("utf-8")
+            res.append(key)
         return res
 
     def _allocate_unique_key(self, table):
