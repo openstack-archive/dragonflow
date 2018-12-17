@@ -10,7 +10,9 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && apt-get install -y $DRAGONFLOW_PACKAGES
 
-RUN mkdir -p /opt/dragonflow
+# Create config folder
+ENV DRAGONFLOW_ETCDIR /etc/dragonflow
+RUN mkdir -p $DRAGONFLOW_ETCDIR /opt/dragonflow /var/run/dragonflow
 
 # Copy Dragonflow sources to the container
 COPY . /opt/dragonflow/
@@ -18,10 +20,6 @@ COPY . /opt/dragonflow/
 # Install Dragonflow on the container
 WORKDIR /opt/dragonflow
 RUN pip install -e .
-
-# Create config folder
-ENV DRAGONFLOW_ETCDIR /etc/dragonflow
-RUN mkdir -p $DRAGONFLOW_ETCDIR
 
 ENTRYPOINT ["./tools/run_dragonflow.sh"]
 
