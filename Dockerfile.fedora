@@ -18,6 +18,7 @@ RUN pip install -e .
 # Create config folder
 ENV DRAGONFLOW_ETCDIR /etc/dragonflow
 RUN mkdir -p $DRAGONFLOW_ETCDIR
+RUN mkdir -p /var/run/dragonflow
 
 ENTRYPOINT ["./tools/run_dragonflow.sh"]
 
