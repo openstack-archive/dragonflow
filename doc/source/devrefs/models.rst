@@ -233,8 +233,8 @@ director objects better we could define a common class:
            super(AccessMixin, self).on_create_pre()
            self.created_at = datetime.datetime.now()
 
-       def on_update_pre(self):
-           super(AccessMixin, self).on_update_pre()
+       def on_update_pre(self, orig):
+           super(AccessMixin, self).on_update_pre(orig)
            self.updated_at = datetime.datetime.now()
 
 The above code updates the relevant fields on create/update operations, so if

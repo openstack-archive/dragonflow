@@ -65,6 +65,6 @@ class Listener(mf.ModelBase):
         super(Listener, self).on_create_pre()
         self.update_timestamp()
 
-    def on_update_pre(self):
-        super(Listener, self).on_update_pre()
+    def on_update_pre(self, orig):
+        super(Listener, self).on_update_pre(orig)
         self.update_timestamp()
