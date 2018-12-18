@@ -132,7 +132,7 @@ rfc3986==1.1.0
 Routes==2.4.1
 ryu==4.24
 simplejson==3.13.2
-six==1.10.0
+six==1.11.0
 skydive-client==0.4.5
 snowballstemmer==1.2.1
 Sphinx==1.6.5
