@@ -189,6 +189,7 @@ operations performed in NbApi, e.g.
 
  * `on_update_pre` - Called on the object each time it is updated, can be used
    for example to generate a new version or trigger updates on other objects.
+   Gets the original object that exists in the database as a parameter.
 
 Since those hooks are methods on objects themselves, we can use super() to
 chain all needed hooks in parents and mixins, according to Python's native MRO.

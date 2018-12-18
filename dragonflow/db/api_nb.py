@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import time
 import traceback
 
@@ -201,6 +202,7 @@ class NbApi(object):
         """
         model = type(obj)
         full_obj = self.get(obj)
+        db_obj = copy.copy(full_obj)
 
         if full_obj is None:
             raise df_exceptions.DBKeyNotFound(key=obj.id)
@@ -210,7 +212,7 @@ class NbApi(object):
         if not changed_fields:
             return
 
-        full_obj.on_update_pre()
+        full_obj.on_update_pre(db_obj)
         serialized_obj = full_obj.to_json()
         topic = _get_topic(full_obj)
 
