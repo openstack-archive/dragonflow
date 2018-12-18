@@ -36,6 +36,16 @@ class BasicEvents(mf.MixinBase):
 class Version(mf.MixinBase):
     version = fields.IntField()
 
+    def on_create_pre(self):
+        super(Version, self).on_create_pre()
+        if self.version is None:
+            self.version = 1
+
+    def on_update_pre(self, orig):
+        super(Version, self).on_update_pre(orig)
+        if self.version == orig.version:
+            self.version += 1
+
     def is_newer_than(self, other):
         return other is None or self.version > other.version
 
