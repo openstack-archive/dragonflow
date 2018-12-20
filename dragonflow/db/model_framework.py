@@ -156,7 +156,7 @@ class _CommonBase(models.Base):
         '''
         pass
 
-    def on_update_pre(self):
+    def on_update_pre(self, orig):
         '''Hook function called before object is updated in the NB database.
         '''
         pass
