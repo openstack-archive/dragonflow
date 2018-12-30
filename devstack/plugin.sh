@@ -205,8 +205,6 @@ function configure_trunk {
 
 function configure_bgp {
     setup_develop $DEST/neutron-dynamic-routing
-    sudo install -d -o $STACK_USER $NEUTRON_CONF_DIR/policy.d
-    cp -v $DEST/neutron-dynamic-routing/etc/neutron/policy.d/dynamic_routing.conf $NEUTRON_CONF_DIR/policy.d
     _neutron_service_plugin_class_add df-bgp
     # Since we are using a plugin outside neutron-dynamic-routing, we need to
     # specify api_extensions_path explicitly.
