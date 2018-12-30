@@ -21,5 +21,5 @@ COPY . /opt/dragonflow/
 WORKDIR /opt/dragonflow
 RUN pip install -e .
 
-ENTRYPOINT ["./tools/run_dragonflow.sh"]
+ENTRYPOINT ["/opt/dragonflow/tools/run_dragonflow.sh"]
 
