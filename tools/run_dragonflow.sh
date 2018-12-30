@@ -1,5 +1,7 @@
 #!/bin/bash
 
+CONF_SRC_DIR=${CONF_SRC_DIR:/opt/dragonflow/etc/standalone}
+
 VERB=""
 # First get all the arguments
 while test ${#} -gt 0; do
@@ -52,7 +54,7 @@ if [ ! -d /etc/dragonflow ]; then
 fi
 # Set parameters to the ini file
 if [ ! -e /etc/dragonflow/dragonflow.ini ]; then
-  sed -e "s/LOCAL_IP/$DRAGONFLOW_IP/g" etc/standalone/dragonflow.ini | \
+  sed -e "s/LOCAL_IP/$DRAGONFLOW_IP/g" ${CONF_SRC_DIR}/dragonflow.ini | \
     sed -e "s/MANAGEMENT_IP/$MANAGEMENT_IP/g" | \
     sed -e "s/DB_SERVER_IP/$DB_IP/g" | \
     sed -e "s/NB_DB_DRIVER/$NB_DB_DRIVER/g" | \
