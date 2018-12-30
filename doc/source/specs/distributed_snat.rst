@@ -112,33 +112,38 @@ Model alternatives
 There are number of solutions to achieve "Distributed SNAT". Every solution
 has its advantages and weak points.
 
+..  _[1]:
+
 [1] Single external IP per compute node solution requires double NAT.
 
-Pros:
-    - easy to implement
-    - requires single external IP address in manual configuration
-    - solution consumes #[compute host] external IPs
-Cons:
-    - all deployed VMs of different tenants have single source IP that is
-      reflected outside. If this IP is blacklisted than all tenants VMs on
-      this host will 'suffer' service outage.
+    Pros:
+        - easy to implement
+        - requires single external IP address in manual configuration
+        - solution consumes #[compute host] external IPs
+    Cons:
+        - all deployed VMs of different tenants have single source IP that is
+          reflected outside. If this IP is blacklisted than all tenants VMs on
+          this host will 'suffer' service outage.
 
-(*) This solution is chosen as first phase implementation and below
-    sections provide details to this solution
+    (*) This solution is chosen as first phase implementation and below
+        sections provide details for this solution
 
+
+.. _[2]:
 
 [2] External IP address per [compute node, tenant gateway] pair
 
-Pros:
-    - generic solution similar to Neutron in terms of tenants separation
-    - blacklisting single tenant will not affect others on same compute host
-Cons:
-    - more complex implementation in terms of external IPs management
-    - solution consumes #[tenants * compute hosts] external IPs
+    Pros:
+        - generic solution similar to Neutron in terms of tenants separation
+        - blacklisting single tenant will not affect others on same compute
+          host
+    Cons:
+        - more complex implementation in terms of external IPs management
+        - solution consumes #[tenants * compute hosts] external IPs
 
-Note: excessive external IPs consumption in solution [2] can be further reduced
-by provider router translation that should lead to single IP per tenant. Such
-scheme is out of scope of this spec.
+    Note: excessive external IPs consumption in solution [2] can be further
+    reduced by provider router translation that should lead to single IP per
+    tenant. Such scheme is out of scope of this spec.
 
 
 Resources consumption
@@ -153,7 +158,7 @@ that none of solution alternatives achieves both targets. However
 implementing more than one alternative may give a cloud admin set of tools
 to reach desired result in terms of "Distributed SNAT".
 
-In alternative [1], all private networks on br-int IP should be reached via
+In alternative `[1]`_, all private networks on br-int IP should be reached via
 single static external IP. This scheme requires ARP responder flows for
 external IP address similar to floating IP management in DNAT application.
 
@@ -162,7 +167,7 @@ Flow
 ====
 
 This section describes all the handling in the pipeline for north/south
-traffic and provides design details for solution alternative [1].
+traffic and provides design details for solution alternative `[1]`_.
 
 NAT translation can take place natively in OVS that supports NAT feature
 starting from version 2.6.x.
