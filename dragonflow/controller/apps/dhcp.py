@@ -264,8 +264,8 @@ class DHCPApp(df_base_app.DFlowApp):
             options_dict[dhcp.DHCP_GATEWAY_ADDR_OPT] = gw_ip_bin
 
         if response_type == dhcp.DHCP_ACK:
-            intreface_mtu = self._get_port_mtu(lport)
-            mtu_bin = struct.pack('!H', intreface_mtu)
+            interface_mtu = self._get_port_mtu(lport)
+            mtu_bin = struct.pack('!H', interface_mtu)
             options_dict[dhcp.DHCP_INTERFACE_MTU_OPT] = mtu_bin
 
         return options_dict
