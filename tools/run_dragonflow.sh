@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONF_SRC_DIR=${CONF_SRC_DIR:/opt/dragonflow/etc/standalone}
+CONF_SRC_DIR=${CONF_SRC_DIR:-/opt/dragonflow/etc/standalone}
 
 VERB=""
 # First get all the arguments
