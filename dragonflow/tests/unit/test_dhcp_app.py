@@ -167,7 +167,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
 
         return dhcp_res
 
-    def test_dhcp_request_params_response_not_override_defualt(self):
+    def test_dhcp_request_params_response_not_override_default(self):
 
         dhcp_opts = {
             1: "error"
