@@ -290,7 +290,7 @@ class VMTestObj(object):
 
     def create(self, network=None, script=None, security_groups=None,
                net_address=None):
-        image = self.nova.glance.find_image("cirros-0.3.6-x86_64-disk")
+        image = self.nova.glance.find_image("cirros-0.4.0-x86_64-disk")
         self.parent.assertIsNotNone(image)
         flavor = self.nova.flavors.find(name="m1.tiny")
         self.parent.assertIsNotNone(flavor)
@@ -352,7 +352,8 @@ class VMTestObj(object):
     def close(self):
         if self.closed or self.server is None:
             return
-        self.nova.servers.delete(self.server)
+        # No patience
+        self.nova.servers.force_delete(self.server)
         self._wait_for_server_delete()
         self.closed = True
 

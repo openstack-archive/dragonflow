@@ -184,20 +184,20 @@ resources:
             write_files:
               - content: |
                   import os
-                  from ryu.base import app_manager
-                  from ryu.controller import ofp_event
-                  from ryu.controller.handler import CONFIG_DISPATCHER
-                  from ryu.controller.handler import MAIN_DISPATCHER
-                  from ryu.controller.handler import set_ev_cls
-                  from ryu.lib.packet import packet
-                  from ryu.lib.packet import ethernet
-                  from ryu.lib.packet import ipv4
-                  from ryu.lib.packet import mpls
-                  from ryu.lib.packet import udp
-                  from ryu.ofproto import ofproto_v1_3
+                  from os_ken.base import app_manager
+                  from os_ken.controller import ofp_event
+                  from os_ken.controller.handler import CONFIG_DISPATCHER
+                  from os_ken.controller.handler import MAIN_DISPATCHER
+                  from os_ken.controller.handler import set_ev_cls
+                  from os_ken.lib.packet import packet
+                  from os_ken.lib.packet import ethernet
+                  from os_ken.lib.packet import ipv4
+                  from os_ken.lib.packet import mpls
+                  from os_ken.lib.packet import udp
+                  from os_ken.ofproto import ofproto_v1_3
                   FILTER = os.environ.get('SF_FILTER')
                   SUB = os.environ.get('SF_SUB')
-                  class SimpleServiceFunction(app_manager.RyuApp):
+                  class SimpleServiceFunction(app_manager.OsKenApp):
                       OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
                       @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
                       def switch_features_handler(self, ev):

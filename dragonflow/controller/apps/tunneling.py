@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from os_ken.lib import mac as mac_api
 from oslo_log import log
-from ryu.lib import mac as mac_api
 
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as const

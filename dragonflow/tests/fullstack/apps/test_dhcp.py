@@ -13,9 +13,9 @@
 import struct
 import time
 
+import os_ken.lib.packet
+from os_ken.lib.packet import dhcp
 from oslo_log import log
-import ryu.lib.packet
-from ryu.lib.packet import dhcp
 
 from dragonflow.controller.common import constants
 from dragonflow.tests.common import app_testing_objects
@@ -42,21 +42,21 @@ class TestDHCPApp(test_base.DFTestBase):
                                     dst_mac=constants.BROADCAST_MAC,
                                     src_ip='0.0.0.0',
                                     dst_ip=constants.BROADCAST_IP):
-        ethernet = ryu.lib.packet.ethernet.ethernet(
+        ethernet = os_ken.lib.packet.ethernet.ethernet(
             src=str(self.port1.port.get_logical_port().mac),
             dst=str(dst_mac),
-            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+            ethertype=os_ken.lib.packet.ethernet.ether.ETH_TYPE_IP,
         )
-        ip = ryu.lib.packet.ipv4.ipv4(
+        ip = os_ken.lib.packet.ipv4.ipv4(
             src=str(src_ip),
             dst=str(dst_ip),
-            proto=ryu.lib.packet.ipv4.inet.IPPROTO_UDP,
+            proto=os_ken.lib.packet.ipv4.inet.IPPROTO_UDP,
         )
-        udp = ryu.lib.packet.udp.udp(
+        udp = os_ken.lib.packet.udp.udp(
             src_port=constants.DHCP_CLIENT_PORT,
             dst_port=constants.DHCP_SERVER_PORT,
         )
-        result = ryu.lib.packet.packet.Packet()
+        result = os_ken.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
         result.add_protocol(ip)
         result.add_protocol(udp)
@@ -65,19 +65,19 @@ class TestDHCPApp(test_base.DFTestBase):
     def _create_dhcp_discover(self):
         result = self._create_udp_packet_for_dhcp()
         options = [
-            ryu.lib.packet.dhcp.option(
-                ryu.lib.packet.dhcp.DHCP_MESSAGE_TYPE_OPT,
-                chr(ryu.lib.packet.dhcp.DHCP_DISCOVER),
+            os_ken.lib.packet.dhcp.option(
+                os_ken.lib.packet.dhcp.DHCP_MESSAGE_TYPE_OPT,
+                chr(os_ken.lib.packet.dhcp.DHCP_DISCOVER),
             ),
-            ryu.lib.packet.dhcp.option(
-                ryu.lib.packet.dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT,
-                chr(ryu.lib.packet.dhcp.DHCP_GATEWAY_ADDR_OPT),
+            os_ken.lib.packet.dhcp.option(
+                os_ken.lib.packet.dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT,
+                chr(os_ken.lib.packet.dhcp.DHCP_GATEWAY_ADDR_OPT),
             ),
         ]
-        dhcp = ryu.lib.packet.dhcp.dhcp(
+        dhcp = os_ken.lib.packet.dhcp.dhcp(
             op=1,
             chaddr=str(self.port1.port.get_logical_port().mac),
-            options=ryu.lib.packet.dhcp.options(option_list=options),
+            options=os_ken.lib.packet.dhcp.options(option_list=options),
         )
         result.add_protocol(dhcp)
         result.serialize()
@@ -90,16 +90,16 @@ class TestDHCPApp(test_base.DFTestBase):
                     return True
             return False
 
-        pkt = ryu.lib.packet.packet.Packet(offer_buf)
-        offer = pkt.get_protocol(ryu.lib.packet.dhcp.dhcp)
+        pkt = os_ken.lib.packet.packet.Packet(offer_buf)
+        offer = pkt.get_protocol(os_ken.lib.packet.dhcp.dhcp)
         self.assertEqual(
             str(self.port1.port.get_logical_port().ip),
             offer.yiaddr
         )
         self.assertTrue(is_121_exist(offer))
         if is_renewal:
-            ether = pkt.get_protocol(ryu.lib.packet.ethernet.ethernet)
-            ip = pkt.get_protocol(ryu.lib.packet.ipv4.ipv4)
+            ether = pkt.get_protocol(os_ken.lib.packet.ethernet.ethernet)
+            ip = pkt.get_protocol(os_ken.lib.packet.ipv4.ipv4)
             dst_mac = ether.src
             dst_ip = ip.src
             src_ip = self.port1.port.get_logical_port().ip
@@ -111,24 +111,24 @@ class TestDHCPApp(test_base.DFTestBase):
         else:
             result = self._create_udp_packet_for_dhcp()
         options = [
-            ryu.lib.packet.dhcp.option(
-                ryu.lib.packet.dhcp.DHCP_MESSAGE_TYPE_OPT,
-                chr(ryu.lib.packet.dhcp.DHCP_REQUEST),
+            os_ken.lib.packet.dhcp.option(
+                os_ken.lib.packet.dhcp.DHCP_MESSAGE_TYPE_OPT,
+                chr(os_ken.lib.packet.dhcp.DHCP_REQUEST),
             ),
-            ryu.lib.packet.dhcp.option(
-                ryu.lib.packet.dhcp.DHCP_REQUESTED_IP_ADDR_OPT,
+            os_ken.lib.packet.dhcp.option(
+                os_ken.lib.packet.dhcp.DHCP_REQUESTED_IP_ADDR_OPT,
                 offer.yiaddr,
             ),
-            ryu.lib.packet.dhcp.option(
-                ryu.lib.packet.dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT,
-                chr(ryu.lib.packet.dhcp.DHCP_GATEWAY_ADDR_OPT),
+            os_ken.lib.packet.dhcp.option(
+                os_ken.lib.packet.dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT,
+                chr(os_ken.lib.packet.dhcp.DHCP_GATEWAY_ADDR_OPT),
             ),
         ]
-        dhcp = ryu.lib.packet.dhcp.dhcp(
+        dhcp = os_ken.lib.packet.dhcp.dhcp(
             op=1,
             chaddr=str(self.port1.port.get_logical_port().mac),
             xid=offer.xid,
-            options=ryu.lib.packet.dhcp.options(option_list=options),
+            options=os_ken.lib.packet.dhcp.options(option_list=options),
         )
         result.add_protocol(dhcp)
         result.serialize()
@@ -149,7 +149,7 @@ class TestDHCPApp(test_base.DFTestBase):
 
         testclass = self
 
-        class DHCPAckFilterVerifiesMTU(app_testing_objects.RyuDHCPAckFilter):
+        class DHCPAckFilterVerifiesMTU(app_testing_objects.OsKenDHCPAckFilter):
 
             def __init__(self, expected_mtu):
                 super(DHCPAckFilterVerifiesMTU, self).__init__()
@@ -159,7 +159,7 @@ class TestDHCPApp(test_base.DFTestBase):
                 result = super(DHCPAckFilterVerifiesMTU, self).__call__(buf)
                 if not result:
                     return result
-                pkt = ryu.lib.packet.packet.Packet(buf)
+                pkt = os_ken.lib.packet.packet.Packet(buf)
                 pkt_dhcp_protocol = pkt.get_protocol(dhcp.dhcp)
                 for option in pkt_dhcp_protocol.options.option_list:
                     if option.tag == dhcp.DHCP_INTERFACE_MTU_OPT:
@@ -174,7 +174,7 @@ class TestDHCPApp(test_base.DFTestBase):
         rules1 = [
             app_testing_objects.PortPolicyRule(
                 # Detect dhcp offer
-                app_testing_objects.RyuDHCPOfferFilter(),
+                app_testing_objects.OsKenDHCPOfferFilter(),
                 actions
             ),
             app_testing_objects.PortPolicyRule(
@@ -200,7 +200,7 @@ class TestDHCPApp(test_base.DFTestBase):
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     ignore_action
                 ]
@@ -210,7 +210,7 @@ class TestDHCPApp(test_base.DFTestBase):
         rules2 = [
             app_testing_objects.PortPolicyRule(
                 # Detect arp replies
-                app_testing_objects.RyuDHCPFilter(),
+                app_testing_objects.OsKenDHCPFilter(),
                 actions=[
                     app_testing_objects.RaiseAction(
                         "Received DHCP packet"
@@ -219,7 +219,7 @@ class TestDHCPApp(test_base.DFTestBase):
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     ignore_action
                 ]
@@ -292,7 +292,7 @@ class TestDHCPApp(test_base.DFTestBase):
         rules = [
             app_testing_objects.PortPolicyRule(
                 # Detect arp replies
-                app_testing_objects.RyuDHCPFilter(),
+                app_testing_objects.OsKenDHCPFilter(),
                 actions=[
                     app_testing_objects.RaiseAction(
                         "Received DHCP packet"
@@ -301,7 +301,7 @@ class TestDHCPApp(test_base.DFTestBase):
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     app_testing_objects.IgnoreAction()
                 ]

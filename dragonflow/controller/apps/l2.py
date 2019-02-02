@@ -16,10 +16,10 @@
 import collections
 
 from neutron_lib import constants as common_const
+from os_ken.lib.mac import haddr_to_bin
+from os_ken.lib.packet import in_proto
+from os_ken.ofproto import ether
 from oslo_log import log
-from ryu.lib.mac import haddr_to_bin
-from ryu.lib.packet import in_proto
-from ryu.ofproto import ether
 
 from dragonflow import conf as cfg
 from dragonflow.controller.common import arp_responder

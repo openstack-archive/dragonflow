@@ -14,12 +14,12 @@
 #    under the License.
 
 import eventlet
+from os_ken.app.ofctl import api as ofctl_api
+from os_ken.lib.packet import arp
+from os_ken.lib.packet import ethernet
+from os_ken.lib.packet import packet
+from os_ken.ofproto import ether
 from oslo_log import log
-from ryu.app.ofctl import api as ofctl_api
-from ryu.lib.packet import arp
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import packet
-from ryu.ofproto import ether
 
 from dragonflow._i18n import _
 from dragonflow.controller.common import constants

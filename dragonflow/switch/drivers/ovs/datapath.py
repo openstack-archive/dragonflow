@@ -72,13 +72,13 @@ class Datapath(object):
             }
         )
 
-    def set_up(self, ryu_base, switch_backend, nb_api, neutron_notifier):
+    def set_up(self, os_ken_base, switch_backend, nb_api, neutron_notifier):
         """
         Instantiate the application classes.
         Instantiate the applications (Including table and register allocation)
         Wire the applications (including translating registers)
         """
-        self._dp = ryu_base.datapath
+        self._dp = os_ken_base.datapath
         self._table_generator = _sequence_generator(
             cfg.CONF.df.datapath_autoalloc_table_offset)
         self._public_variables.clear()
@@ -101,7 +101,7 @@ class Datapath(object):
             dp_alloc = self._create_dp_alloc(app_class._specification)
             self.log_datapath_allocation(vertex.name, dp_alloc)
             self._dp_allocs[vertex.name] = dp_alloc
-            app = app_class(api=ryu_base,
+            app = app_class(api=os_ken_base,
                             switch_backend=switch_backend,
                             nb_api=nb_api,
                             neutron_server_notifier=neutron_notifier,

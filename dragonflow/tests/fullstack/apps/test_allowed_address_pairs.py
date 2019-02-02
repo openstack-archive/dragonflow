@@ -12,8 +12,8 @@
 
 import time
 
+import os_ken.lib.packet
 from oslo_log import log
-import ryu.lib.packet
 
 from dragonflow.db.models import active_port
 from dragonflow.tests.common import app_testing_objects
@@ -34,7 +34,7 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
                 rules=[
                     app_testing_objects.PortPolicyRule(
                         # Detect arp requests
-                        app_testing_objects.RyuARPRequestFilter(
+                        app_testing_objects.OsKenARPRequestFilter(
                             self.allowed_address_pair_ip_address
                         ),
                         actions=[
@@ -94,9 +94,9 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
         self.addCleanup(self.policy.close)
 
     def _create_arp_response(self, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
-        ether = pkt.get_protocol(ryu.lib.packet.ethernet.ethernet)
-        arp = pkt.get_protocol(ryu.lib.packet.arp.arp)
+        pkt = os_ken.lib.packet.packet.Packet(buf)
+        ether = pkt.get_protocol(os_ken.lib.packet.ethernet.ethernet)
+        arp = pkt.get_protocol(os_ken.lib.packet.arp.arp)
 
         ether.src, ether.dst = self.allowed_address_pair_mac_address, ether.src
 
@@ -108,13 +108,13 @@ class TestAllowedAddressPairsDetectActive(test_base.DFTestBase):
         arp_spa = self.allowed_address_pair_ip_address
         arp_tha = arp.src_mac
         arp_tpa = arp.src_ip
-        arp.opcode = ryu.lib.packet.arp.ARP_REPLY
+        arp.opcode = os_ken.lib.packet.arp.ARP_REPLY
         arp.src_mac = arp_sha
         arp.src_ip = arp_spa
         arp.dst_mac = arp_tha
         arp.dst_ip = arp_tpa
 
-        result = ryu.lib.packet.packet.Packet()
+        result = os_ken.lib.packet.packet.Packet()
         result.add_protocol(ether)
         result.add_protocol(arp)
         result.serialize()

@@ -16,11 +16,11 @@
 import collections
 
 from neutron_lib import constants as n_const
+from os_ken.lib.packet import arp
+from os_ken.lib.packet import packet
+from os_ken.ofproto import ether
 from oslo_log import log
 from oslo_service import loopingcall
-from ryu.lib.packet import arp
-from ryu.lib.packet import packet
-from ryu.ofproto import ether
 
 from dragonflow import conf as cfg
 from dragonflow.controller.common import constants as controller_const

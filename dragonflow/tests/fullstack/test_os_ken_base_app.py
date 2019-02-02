@@ -16,33 +16,34 @@
 import time
 
 import mock
-from ryu.base import app_manager
-from ryu import cfg as ryu_cfg
+from os_ken.base import app_manager
+from os_ken import cfg as os_ken_cfg
 
 from dragonflow import conf as cfg
 from dragonflow.ovsdb import vswitch_impl
-from dragonflow.switch.drivers.ovs import ryu_base_app
+from dragonflow.switch.drivers.ovs import os_ken_base_app
 from dragonflow.tests.common import constants as const
 from dragonflow.tests.fullstack import test_base
 
 
-class TestRyuBaseApp(test_base.DFTestBase):
+class TestOsKenBaseApp(test_base.DFTestBase):
     def setUp(self):
-        super(TestRyuBaseApp, self).setUp()
-        ryu_cfg.CONF(project='ryu', args=[])
-        ryu_cfg.CONF.ofp_listen_host = cfg.CONF.df_ryu.of_listen_address
-        ryu_cfg.CONF.ofp_tcp_listen_port = cfg.CONF.df_ryu.of_listen_port + 1
+        super(TestOsKenBaseApp, self).setUp()
+        os_ken_cfg.CONF(project='os_ken', args=[])
+        os_ken_cfg.CONF.ofp_listen_host = cfg.CONF.df_os_ken.of_listen_address
+        os_ken_cfg.CONF.ofp_tcp_listen_port = (
+                cfg.CONF.df_os_ken.of_listen_port + 1)
         app_mgr = app_manager.AppManager.get_instance()
         self.open_flow_app = app_mgr.instantiate(
-            ryu_base_app.RyuDFAdapter,
+            os_ken_base_app.OsKenDFAdapter,
             switch_backend=mock.Mock(),
             nb_api=mock.Mock(),
             db_change_callback=self._db_change_callback)
         self.open_flow_app.load = mock.Mock()
         self.addCleanup(app_mgr.uninstantiate, self.open_flow_app.name)
 
-        test_controller = ('tcp:' + cfg.CONF.df_ryu.of_listen_address + ':' +
-                           str(cfg.CONF.df_ryu.of_listen_port + 1))
+        test_controller = ('tcp:' + cfg.CONF.df_os_ken.of_listen_address +
+                           ':' + str(cfg.CONF.df_os_ken.of_listen_port + 1))
         self.vswitch_api = vswitch_impl.OvsApi(self.mgt_ip)
         self.vswitch_api.initialize(self._db_change_callback)
         cur_controllers = self.vswitch_api.ovsdb.get_controller(

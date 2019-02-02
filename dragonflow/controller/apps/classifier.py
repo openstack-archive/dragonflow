@@ -12,8 +12,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from os_ken.ofproto import nicira_ext
 from oslo_log import log
-from ryu.ofproto import nicira_ext
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller import df_base_app

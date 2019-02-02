@@ -22,9 +22,9 @@ from dragonflow.conf import df_l2
 from dragonflow.conf import df_l3
 from dragonflow.conf import df_loadbalancer
 from dragonflow.conf import df_metadata_service
+from dragonflow.conf import df_os_ken
 from dragonflow.conf import df_provider_networks
 from dragonflow.conf import df_redis
-from dragonflow.conf import df_ryu
 from dragonflow.conf import df_skydive
 from dragonflow.conf import df_snat
 from dragonflow.conf import df_zmq
@@ -44,7 +44,7 @@ df_l3.register_opts()
 df_dnat.register_opts()
 df_redis.register_opts()
 df_zmq.register_opts()
-df_ryu.register_opts()
+df_os_ken.register_opts()
 df_provider_networks.register_opts()
 df_snat.register_opts()
 df_bgp.register_opts()

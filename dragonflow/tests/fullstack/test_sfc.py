@@ -14,16 +14,16 @@ import time
 
 import mock
 from neutron_lib import constants
+from os_ken.lib.packet import ether_types
+from os_ken.lib.packet import ethernet
+from os_ken.lib.packet import in_proto as inet
+from os_ken.lib.packet import ipv4
+from os_ken.lib.packet import ipv6
+from os_ken.lib.packet import mpls
+from os_ken.lib.packet import packet
+from os_ken.lib.packet import tcp
+from os_ken.lib.packet import udp
 from oslo_log import log
-from ryu.lib.packet import ether_types
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import in_proto as inet
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import ipv6
-from ryu.lib.packet import mpls
-from ryu.lib.packet import packet
-from ryu.lib.packet import tcp
-from ryu.lib.packet import udp
 import testscenarios
 
 from dragonflow.db.models import l2
@@ -81,7 +81,7 @@ class SfcTestsCommonBase(test_base.DFTestBase):
                 return res[0], cls, res[2]
 
             with mock.patch(
-                'ryu.lib.packet.mpls.mpls.parser', side_effect=parser,
+                'os_ken.lib.packet.mpls.mpls.parser', side_effect=parser,
             ):
                 pkt = packet.Packet(buf)
             if not isinstance(pkt.protocols[-1], mpls.mpls):
@@ -212,9 +212,9 @@ class SfcTestsCommonBase(test_base.DFTestBase):
     def _create_port_policies(self, pc):
         res = {}
         if self.corr == sfc.CORR_MPLS:
-            sf_filter = app_testing_objects.RyuMplsFilter()
+            sf_filter = app_testing_objects.OsKenMplsFilter()
         else:
-            sf_filter = app_testing_objects.RyuUdpFilter(DST_PORT)
+            sf_filter = app_testing_objects.OsKenUdpFilter(DST_PORT)
 
         for _, ppg in enumerate(pc.port_pair_groups):
             for _, pp in enumerate(ppg.port_pairs):

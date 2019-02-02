@@ -15,7 +15,7 @@
 
 import mock
 import netaddr
-import ryu.lib.packet
+import os_ken.lib.packet
 
 from dragonflow.controller.common import constants
 from dragonflow.controller import port_locator
@@ -228,20 +228,20 @@ class TestTrunkSegmentationTypesMACVLAN(_TestTrunkSegmentationTypes,
             {
                 'reg6': test_app_base.fake_local_port2.unique_key,
                 'eth_src': netaddr.EUI('fa:16:3e:00:00:01'),
-                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_IP,
+                'eth_type': os_ken.lib.packet.ether_types.ETH_TYPE_IP,
                 'ipv4_src': netaddr.IPAddress('192.168.18.3'),
             }, {
                 'reg7': 33,
-                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_IP,
+                'eth_type': os_ken.lib.packet.ether_types.ETH_TYPE_IP,
             }, {
                 'reg6': test_app_base.fake_local_port2.unique_key,
                 'eth_src': netaddr.EUI('fa:16:3e:00:00:01'),
-                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_ARP,
+                'eth_type': os_ken.lib.packet.ether_types.ETH_TYPE_ARP,
                 'arp_sha': netaddr.EUI('fa:16:3e:00:00:01'),
                 'arp_spa': netaddr.IPAddress('192.168.18.3'),
             }, {
                 'reg7': 33,
-                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_ARP,
+                'eth_type': os_ken.lib.packet.ether_types.ETH_TYPE_ARP,
             }
         ]
 
@@ -277,20 +277,20 @@ class TestTrunkSegmentationTypesIPVLAN(_TestTrunkSegmentationTypes,
             {
                 'reg6': test_app_base.fake_local_port2.unique_key,
                 'eth_src': test_app_base.fake_local_port2.mac,
-                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_IP,
+                'eth_type': os_ken.lib.packet.ether_types.ETH_TYPE_IP,
                 'ipv4_src': netaddr.IPAddress('192.168.18.3'),
             }, {
                 'reg7': 33,
-                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_IP,
+                'eth_type': os_ken.lib.packet.ether_types.ETH_TYPE_IP,
             }, {
                 'reg6': test_app_base.fake_local_port2.unique_key,
                 'eth_src': test_app_base.fake_local_port2.mac,
-                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_ARP,
+                'eth_type': os_ken.lib.packet.ether_types.ETH_TYPE_ARP,
                 'arp_sha': test_app_base.fake_local_port2.mac,
                 'arp_spa': netaddr.IPAddress('192.168.18.3'),
             }, {
                 'reg7': 33,
-                'eth_type': ryu.lib.packet.ether_types.ETH_TYPE_ARP,
+                'eth_type': os_ken.lib.packet.ether_types.ETH_TYPE_ARP,
             }
         ]
 

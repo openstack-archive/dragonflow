@@ -173,7 +173,7 @@ remote BGP router will be updated by this service. When BGP speaker is updated,
 this service will advertise/withdraw routes to/from remote BGP peer router
 
 The service will use the BGP drivers at [#]_. Currently, the only
-implementation is based on *ryu.services.protocols.bgp*. But when other
+implementation is based on *os_ken.services.protocols.bgp*. But when other
 drivers are added, it is easy to switch to other implementations.
 
 .. [#] https://github.com/openstack/neutron-dynamic-routing/tree/master/neutron_dynamic_routing/services/bgp/agent/driver

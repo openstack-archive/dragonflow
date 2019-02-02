@@ -15,9 +15,9 @@
 import netaddr
 
 from neutron_lib import constants as n_const
+from os_ken.ofproto import ether
+from os_ken.ofproto import nicira_ext
 from oslo_log import log
-from ryu.ofproto import ether
-from ryu.ofproto import nicira_ext
 
 from dragonflow.common import constants as df_common_const
 from dragonflow.common import utils as df_utils

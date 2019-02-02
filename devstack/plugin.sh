@@ -470,14 +470,14 @@ function disable_libvirt_apparmor {
     sudo aa-complain /etc/apparmor.d/usr.sbin.libvirtd
 }
 
-function verify_ryu_version {
-    # Verify ryu is installed. Version greater than 3.29. Does not return
+function verify_os_ken_version {
+    # Verify os_ken is installed. Version greater than 0.3.0. Does not return
     # on failure.
-    RYU_VER_LINE=`ryu --version 2>&1 | head -n 1`
-    RYU_VER=`echo $RYU_VER_LINE | cut -d' ' -f2`
-    echo "Found ryu version $RYU_VER ($RYU_VER_LINE)"
-    if [ `vercmp_numbers "$RYU_VER" "3.29.1"` -lt 0 ]; then
-        die $LINENO "ryu version $RYU_VER too low. Version 3.29.1+ is required for Dragonflow."
+    OS_KEN_VER_LINE=`osken --version 2>&1 | head -n 1`
+    OS_KEN_VER=`echo $OS_KEN_VER_LINE | cut -d' ' -f2`
+    echo "Found os_ken version $OS_KEN_VER ($OS_KEN_VER_LINE)"
+    if [ `vercmp_numbers "$OS_KEN_VER" "0.3.0"` -lt 0 ]; then
+        die $LINENO "os_ken version $OS_KEN_VER too low. Version 0.3.0+ is required for Dragonflow."
     fi
 }
 

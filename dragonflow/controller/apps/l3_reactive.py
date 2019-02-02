@@ -16,11 +16,11 @@
 import netaddr
 
 from neutron_lib import constants as n_const
+from os_ken.lib.packet import ipv4
+from os_ken.lib.packet import ipv6
+from os_ken.lib.packet import packet
+from os_ken.ofproto import ether
 from oslo_log import log
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import ipv6
-from ryu.lib.packet import packet
-from ryu.ofproto import ether
 
 from dragonflow.controller.apps import l3_base
 from dragonflow.controller.common import constants as const
@@ -73,12 +73,12 @@ class L3ReactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
         Install the routing flows by the information in the packet, and
         have the packet continue along the pipelone.
 
-        :param pkt_ip:      IP header on the packet (IPv4 or IPv6)
-        :type pkt_ip:       ryu.packet.ipv4 or ryu.packet.ipv6
-        :param network_id:  The source network from which the packet arrived
-        :type network_id:   Integer
-        :param msg:         Packet in message
-        :type msg:          ryu.ofproto.ofproto_v<version>_parser.OFPPacketIn
+        :param pkt_ip:     IP header on the packet (IPv4 or IPv6)
+        :type pkt_ip:      os_ken.packet.ipv4 or os_ken.packet.ipv6
+        :param network_id: The source network from which the packet arrived
+        :type network_id:  Integer
+        :param msg:        Packet in message
+        :type msg:         os_ken.ofproto.ofproto_v<version>_parser.OFPPacketIn
         """
         ip_addr = netaddr.IPAddress(pkt_ip.dst)
         router_unique_key = msg.match.get('reg5')
@@ -110,7 +110,7 @@ class L3ReactiveApp(df_base_app.DFlowApp, l3_base.L3AppMixin):
         :param dst_port:        Destination port
         :type dst_port:         LogicalPort
         :param msg:             Packet in message
-        :type msg:              ryu.ofproto.ofproto_v<version>_parser.\
+        :type msg:              os_ken.ofproto.ofproto_v<version>_parser.\
                                 OFPPacketIn
         :param src_network_id:  The source network of the packet
         :type src_network_id:   Integer

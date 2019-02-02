@@ -9,8 +9,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from os_ken.lib.packet import ether_types
 from oslo_log import log
-from ryu.lib.packet import ether_types
 
 from dragonflow.controller.apps import sfc_driver_base
 from dragonflow.controller.common import constants

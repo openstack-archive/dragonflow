@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from ryu.app.ofctl import service as of_service
-from ryu.base import app_manager
-from ryu import cfg as ryu_cfg
+from os_ken.app.ofctl import service as of_service
+from os_ken.base import app_manager
+from os_ken import cfg as os_ken_cfg
 
 from dragonflow import conf as cfg
 from dragonflow.controller import datapath_layout
@@ -24,13 +24,13 @@ from dragonflow.db.models import switch
 from dragonflow.ovsdb import vswitch_impl
 from dragonflow.switch.drivers import df_switch_driver
 from dragonflow.switch.drivers.ovs import datapath
-from dragonflow.switch.drivers.ovs import ryu_base_app
+from dragonflow.switch.drivers.ovs import os_ken_base_app
 
 
 class DfOvsDriver(df_switch_driver.DfSwitchDriver):
     def __init__(self, nb_api, ip):
         super(DfOvsDriver, self).__init__(nb_api)
-        init_ryu_config()
+        init_os_ken_config()
         self.vswitch_api = vswitch_impl.OvsApi(ip)
         self.app_mgr = app_manager.AppManager.get_instance()
         self.open_flow_app = None
@@ -43,7 +43,7 @@ class DfOvsDriver(df_switch_driver.DfSwitchDriver):
         super(DfOvsDriver, self).initialize(db_change_callback,
                                             neutron_notifier)
         self.open_flow_app = self.app_mgr.instantiate(
-            ryu_base_app.RyuDFAdapter,
+            os_ken_base_app.OsKenDFAdapter,
             nb_api=self.nb_api,
             switch_backend=self,
             neutron_server_notifier=self.neutron_notifier,
@@ -67,8 +67,8 @@ class DfOvsDriver(df_switch_driver.DfSwitchDriver):
         # for reliability, here we should check if controller is set for OVS,
         # if yes, don't set controller and don't delete controller.
         # if no, set controller
-        targets = ('tcp:' + cfg.CONF.df_ryu.of_listen_address + ':' +
-                   str(cfg.CONF.df_ryu.of_listen_port))
+        targets = ('tcp:' + cfg.CONF.df_os_ken.of_listen_address + ':' +
+                   str(cfg.CONF.df_os_ken.of_listen_port))
         is_controller_set = self.vswitch_api.check_controller(targets)
         integration_bridge = cfg.CONF.df.integration_bridge
         if not is_controller_set:
@@ -101,7 +101,7 @@ class DfOvsDriver(df_switch_driver.DfSwitchDriver):
                                                         'update', status)
 
 
-def init_ryu_config():
-    ryu_cfg.CONF(project='ryu', args=[])
-    ryu_cfg.CONF.ofp_listen_host = cfg.CONF.df_ryu.of_listen_address
-    ryu_cfg.CONF.ofp_tcp_listen_port = cfg.CONF.df_ryu.of_listen_port
+def init_os_ken_config():
+    os_ken_cfg.CONF(project='os_ken', args=[])
+    os_ken_cfg.CONF.ofp_listen_host = cfg.CONF.df_os_ken.of_listen_address
+    os_ken_cfg.CONF.ofp_tcp_listen_port = cfg.CONF.df_os_ken.of_listen_port

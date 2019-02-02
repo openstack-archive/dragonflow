@@ -33,7 +33,7 @@ from dragonflow.db.models import l3
 from dragonflow.db.models import secgroups
 from dragonflow.db.models import switch
 from dragonflow.switch.drivers.ovs import datapath
-from dragonflow.switch.drivers.ovs import ryu_base_app
+from dragonflow.switch.drivers.ovs import os_ken_base_app
 from dragonflow.tests import base as tests_base
 
 
@@ -58,7 +58,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
         cfg.CONF.set_override('host', fake_chassis1.id)
         super(DFAppTestBase, self).setUp()
         self.useFixture(log_fixture.SetLogLevel([None], logging.DEBUG))
-        mock_app = mock.patch('ryu.base.app_manager.AppManager.get_instance'
+        mock_app = mock.patch('os_ken.base.app_manager.AppManager.get_instance'
                               ).start()
         self.addCleanup(mock_app.stop)
         mock_nb = mock.patch('dragonflow.db.api_nb.NbApi.get_instance')
@@ -89,7 +89,7 @@ class DFAppTestBase(tests_base.BaseTestCase):
             nb_api=self.controller.nb_api,
             switch_backend=switch_backend
         )
-        switch_backend.open_flow_app = ryu_base_app.RyuDFAdapter(
+        switch_backend.open_flow_app = os_ken_base_app.OsKenDFAdapter(
                 db_change_callback=self.controller.db_change_callback,
                 **kwargs)
         self.open_flow_app = switch_backend.open_flow_app

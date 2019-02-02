@@ -24,18 +24,18 @@ import greenlet
 import netaddr
 from neutron.agent.common import utils
 from neutron_lib import constants as n_const
+from os_ken.lib.packet import arp
+from os_ken.lib.packet import dhcp
+from os_ken.lib.packet import icmp
+from os_ken.lib.packet import icmpv6
+from os_ken.lib.packet import ipv4
+from os_ken.lib.packet import ipv6
+from os_ken.lib.packet import mpls
+from os_ken.lib.packet import packet
+from os_ken.lib.packet import udp
+from os_ken.lib.packet import vlan
 from oslo_log import log
 import pytun
-from ryu.lib.packet import arp
-from ryu.lib.packet import dhcp
-from ryu.lib.packet import icmp
-from ryu.lib.packet import icmpv6
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import ipv6
-from ryu.lib.packet import mpls
-from ryu.lib.packet import packet
-from ryu.lib.packet import udp
-from ryu.lib.packet import vlan
 import six
 
 from dragonflow import conf as cfg
@@ -702,23 +702,23 @@ class ExactMatchFilter(Filter):
         return self._fixture == buf
 
 
-class RyuIPv4Filter(object):
-    """Use ryu to parse the packet and test if it's IPv4."""
+class OsKenIPv4Filter(object):
+    """Use os_ken to parse the packet and test if it's IPv4."""
     def __call__(self, buf):
         pkt = packet.Packet(buf)
         return (pkt.get_protocol(ipv4.ipv4) is not None)
 
 
-class RyuIPv6Filter(object):
-    """Use ryu to parse the packet and test if it's IPv6."""
+class OsKenIPv6Filter(object):
+    """Use os_ken to parse the packet and test if it's IPv6."""
     def __call__(self, buf):
         pkt = packet.Packet(buf)
         return (pkt.get_protocol(ipv6.ipv6) is not None)
 
 
-class RyuFilterIcmpv6ProtocolType(object):
+class OsKenFilterIcmpv6ProtocolType(object):
     """
-    Use ryu to parse the object and see if it from the requested icmpv6 type
+    Use os_ken to parse the object and see if it from the requested icmpv6 type
     """
     type_ = icmpv6.icmpv6
 
@@ -730,28 +730,32 @@ class RyuFilterIcmpv6ProtocolType(object):
         return pkt_protocol.type_ == self.type_
 
 
-class RyuNeighborSolicitationFilter(RyuFilterIcmpv6ProtocolType):
-    """Use ryu to parse the packet and test if it's a Neighbor Solicitaion"""
+class OsKenNeighborSolicitationFilter(OsKenFilterIcmpv6ProtocolType):
+    """Use os_ken to parse the packet and test if it's a Neighbor
+       Solicitaion
+       """
     type_ = icmpv6.ND_NEIGHBOR_SOLICIT
 
 
-class RyuNeighborAdvertisementFilter(RyuFilterIcmpv6ProtocolType):
-    """Use ryu to parse the packet and test if it's a Neighbor Advertisement"""
+class OsKenNeighborAdvertisementFilter(OsKenFilterIcmpv6ProtocolType):
+    """Use os_ken to parse the packet and test if it's a Neighbor
+       Advertisement
+       """
     type_ = icmpv6.ND_NEIGHBOR_ADVERT
 
 
-class RyuRouterSolicitationFilter(RyuFilterIcmpv6ProtocolType):
-    """Use ryu to parse the packet and test if it's a Router Solicitation"""
+class OsKenRouterSolicitationFilter(OsKenFilterIcmpv6ProtocolType):
+    """Use os_ken to parse the packet and test if it's a Router Solicitation"""
     type_ = icmpv6.ND_ROUTER_SOLICIT
 
 
-class RyuIpv6MulticastFilter(RyuFilterIcmpv6ProtocolType):
-    """Use ryu to parse the object and see if it is a multicast request"""
+class OsKenIpv6MulticastFilter(OsKenFilterIcmpv6ProtocolType):
+    """Use os_ken to parse the object and see if it is a multicast request"""
     type_ = icmpv6.MLDV2_LISTENER_REPORT
 
 
-class RyuARPRequestFilter(object):
-    """Use ryu to parse the packet and test if it's an ARP request."""
+class OsKenARPRequestFilter(object):
+    """Use os_ken to parse the packet and test if it's an ARP request."""
     def __init__(self, arp_tpa=None):
         self.arp_tpa = str(arp_tpa) if arp_tpa else None
 
@@ -767,8 +771,8 @@ class RyuARPRequestFilter(object):
         return True
 
 
-class RyuARPReplyFilter(object):
-    """Use ryu to parse the packet and test if it's an ARP reply."""
+class OsKenARPReplyFilter(object):
+    """Use os_ken to parse the packet and test if it's an ARP reply."""
     def __call__(self, buf):
         pkt = packet.Packet(buf)
         pkt_arp_protocol = pkt.get_protocol(arp.arp)
@@ -777,8 +781,8 @@ class RyuARPReplyFilter(object):
         return pkt_arp_protocol.opcode == 2
 
 
-class RyuARPGratuitousFilter(object):
-    """Use ryu to parse the packet and test if it's a gratuitous ARP."""
+class OsKenARPGratuitousFilter(object):
+    """Use os_ken to parse the packet and test if it's a gratuitous ARP."""
     def __call__(self, buf):
         pkt = packet.Packet(buf)
         pkt_arp_protocol = pkt.get_protocol(arp.arp)
@@ -794,15 +798,15 @@ def _get_dhcp_message_type_opt(dhcp_packet):
             return ord(opt.value)
 
 
-class RyuDHCPFilter(object):
-    """Use ryu to parse the packet and test if it's a DHCP Ack"""
+class OsKenDHCPFilter(object):
+    """Use os_ken to parse the packet and test if it's a DHCP Ack"""
     def __call__(self, buf):
         pkt = packet.Packet(buf)
         return (pkt.get_protocol(dhcp.dhcp) is not None)
 
 
-class RyuDHCPPacketTypeFilter(object):
-    """Use ryu to parse the packet and test if it's a DHCP Ack"""
+class OsKenDHCPPacketTypeFilter(object):
+    """Use os_ken to parse the packet and test if it's a DHCP Ack"""
     def __call__(self, buf):
         pkt = packet.Packet(buf)
         pkt_dhcp_protocol = pkt.get_protocol(dhcp.dhcp)
@@ -815,19 +819,19 @@ class RyuDHCPPacketTypeFilter(object):
         raise Exception('DHCP packet type filter not fully implemented')
 
 
-class RyuDHCPOfferFilter(RyuDHCPPacketTypeFilter):
+class OsKenDHCPOfferFilter(OsKenDHCPPacketTypeFilter):
     def get_dhcp_packet_type(self):
         return dhcp.DHCP_OFFER
 
 
-class RyuDHCPAckFilter(RyuDHCPPacketTypeFilter):
+class OsKenDHCPAckFilter(OsKenDHCPPacketTypeFilter):
     def get_dhcp_packet_type(self):
         return dhcp.DHCP_ACK
 
 
-class RyuICMPFilter(object):
+class OsKenICMPFilter(object):
     def __init__(self, ethertype=n_const.IPv4):
-        super(RyuICMPFilter, self).__init__()
+        super(OsKenICMPFilter, self).__init__()
         self.ethertype = ethertype
 
     def __call__(self, buf):
@@ -853,14 +857,14 @@ class RyuICMPFilter(object):
         return True
 
 
-class RyuICMPPingFilter(RyuICMPFilter):
+class OsKenICMPPingFilter(OsKenICMPFilter):
     """
     A filter to detect ICMP echo request messages.
     :param get_ping:    Return an object contained the original echo request
     :type get_ping:     Callable with no arguments.
     """
     def __init__(self, get_ping=None, ethertype=n_const.IPv4):
-        super(RyuICMPPingFilter, self).__init__()
+        super(OsKenICMPPingFilter, self).__init__()
         self.get_ping = get_ping
         self.ethertype = ethertype
 
@@ -877,18 +881,18 @@ class RyuICMPPingFilter(RyuICMPFilter):
         result = True
         if self.get_ping is not None:
             ping = self.get_ping()
-            result = super(RyuICMPPingFilter, self).is_same_icmp(proto, ping)
+            result = super(OsKenICMPPingFilter, self).is_same_icmp(proto, ping)
         return result
 
 
-class RyuICMPPongFilter(RyuICMPFilter):
+class OsKenICMPPongFilter(OsKenICMPFilter):
     """
     A filter to detect ICMP echo reply messages.
     :param get_ping:    Return an object contained the original echo request
     :type get_ping:     Callable with no arguments.
     """
     def __init__(self, get_ping, ethertype=n_const.IPv4):
-        super(RyuICMPPongFilter, self).__init__()
+        super(OsKenICMPPongFilter, self).__init__()
         self.get_ping = get_ping
         self.ethertype = ethertype
 
@@ -903,17 +907,17 @@ class RyuICMPPongFilter(RyuICMPFilter):
         if proto_type != icmp_req:
             return False
         ping = self.get_ping()
-        return super(RyuICMPPongFilter, self).is_same_icmp(icmp_prot, ping)
+        return super(OsKenICMPPongFilter, self).is_same_icmp(icmp_prot, ping)
 
 
-class RyuICMPTimeExceedFilter(RyuICMPFilter):
+class OsKenICMPTimeExceedFilter(OsKenICMPFilter):
     """
     A filter to detect ICMP time exceed messages.
     :param get_ip:    Return an object contained the original IP header
     :type get_ip:     Callable with no arguments.
     """
     def __init__(self, get_ip):
-        super(RyuICMPTimeExceedFilter, self).__init__()
+        super(OsKenICMPTimeExceedFilter, self).__init__()
         self.get_ip = get_ip
 
     def filter_icmp(self, pkt, icmp_prot):
@@ -929,14 +933,14 @@ class RyuICMPTimeExceedFilter(RyuICMPFilter):
         return True
 
 
-class RyuICMPUnreachFilter(RyuICMPFilter):
+class OsKenICMPUnreachFilter(OsKenICMPFilter):
     """
     A filter to detect ICMP unreachable messages.
     :param get_ip:    Return an object contained the original IP header
     :type get_ip:     Callable with no arguments.
     """
     def __init__(self, get_ip):
-        super(RyuICMPUnreachFilter, self).__init__()
+        super(OsKenICMPUnreachFilter, self).__init__()
         self.get_ip = get_ip
 
     def filter_icmp(self, pkt, icmp_prot):
@@ -952,7 +956,7 @@ class RyuICMPUnreachFilter(RyuICMPFilter):
         return True
 
 
-class RyuVLANTagFilter(object):
+class OsKenVLANTagFilter(object):
     """
     A filter that detects a VLAN tagged packet
     :param tag:     The VLAN tag to detect. None for any
@@ -980,7 +984,7 @@ class AndingFilter(object):
         return all(filter_(buf) for filter_ in self.filters)
 
 
-class RyuMplsFilter(object):
+class OsKenMplsFilter(object):
     def __init__(self, label=None):
         self._label = label
 
@@ -997,7 +1001,7 @@ class RyuMplsFilter(object):
         return True
 
 
-class RyuUdpFilter(object):
+class OsKenUdpFilter(object):
     def __init__(self, dst_port=None):
         self._dst_port = dst_port
 

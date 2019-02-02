@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import icmp
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import packet
-from ryu.ofproto import inet
+from os_ken.lib.packet import ethernet
+from os_ken.lib.packet import icmp
+from os_ken.lib.packet import ipv4
+from os_ken.lib.packet import packet
+from os_ken.ofproto import inet
 
 
 def generate(icmp_type, icmp_code, msg_data, src_ip=None, pkt=None):
@@ -28,7 +28,8 @@ def generate(icmp_type, icmp_code, msg_data, src_ip=None, pkt=None):
     :param msg_data: The original data that cause this ICMP error packet
     :param src_ip: The source ip of the packet
     :param pkt: The original packet that cause this ICMP error
-    :returns: An ryu.lib.packet.packet.Packet instance, which is an ICMP packet
+    :returns: An os_ken.lib.packet.packet.Packet instance,
+              which is an ICMP packet
     """
     if not pkt:
         pkt = packet.Packet(msg_data)

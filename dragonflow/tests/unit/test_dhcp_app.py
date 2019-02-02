@@ -17,13 +17,13 @@ import copy
 import mock
 
 from neutron_lib import constants as n_const
+from os_ken.lib import addrconv
+from os_ken.lib.packet import dhcp
+from os_ken.lib.packet import ethernet
+from os_ken.lib.packet import ipv4
+from os_ken.lib.packet import packet as os_ken_packet
+from os_ken.ofproto import ether
 from oslo_config import cfg
-from ryu.lib import addrconv
-from ryu.lib.packet import dhcp
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import packet as ryu_packet
-from ryu.ofproto import ether
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.unit import test_app_base
@@ -129,7 +129,7 @@ class TestDHCPApp(test_app_base.DFAppTestBase):
         return dhcp_response_pkt
 
     def _create_fake_empty_packet(self):
-        pkt = ryu_packet.Packet()
+        pkt = os_ken_packet.Packet()
         pkt.add_protocol(ethernet.ethernet(
             ethertype=ether.ETH_TYPE_IP))
         pkt.add_protocol(ipv4.ipv4())

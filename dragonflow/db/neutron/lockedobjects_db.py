@@ -110,7 +110,10 @@ def _get_lock_id_by_resource_type(resource_type, *args, **kwargs):
     elif RESOURCE_ROUTER_UPDATE_OR_DELETE == resource_type:
         lock_id = args[2]
     elif RESOURCE_ML2_SECURITY_GROUP == resource_type:
-        lock_id = kwargs['security_group']['id']
+        try:
+            lock_id = kwargs['security_group']['id']
+        except KeyError:
+            lock_id = kwargs['payload'].latest_state['id']
     elif RESOURCE_ML2_SECURITY_GROUP_RULE_CREATE == resource_type:
         lock_id = kwargs['security_group_rule']['security_group_id']
     elif RESOURCE_ML2_SECURITY_GROUP_RULE_DELETE == resource_type:

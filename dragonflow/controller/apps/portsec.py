@@ -16,10 +16,10 @@
 import netaddr
 
 from neutron_lib import constants as n_const
+from os_ken.lib.packet import arp
+from os_ken.lib.packet import in_proto
+from os_ken.ofproto import ether
 from oslo_log import log
-from ryu.lib.packet import arp
-from ryu.lib.packet import in_proto
-from ryu.ofproto import ether
 
 from dragonflow.controller import app_base
 from dragonflow.controller.common import constants as const

@@ -13,12 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from os_ken.ofproto import ofproto_common
 from oslo_config import cfg
-from ryu.ofproto import ofproto_common
 
 from dragonflow._i18n import _
 
-df_ryu_opts = [
+df_os_ken_opts = [
     cfg.IPOpt('of_listen_address', default='127.0.0.1',
               help=_("Address to listen on for OpenFlow connections.")),
     cfg.PortOpt('of_listen_port', default=ofproto_common.OFP_TCP_PORT,
@@ -27,8 +27,8 @@ df_ryu_opts = [
 
 
 def register_opts():
-    cfg.CONF.register_opts(df_ryu_opts, 'df_ryu')
+    cfg.CONF.register_opts(df_os_ken_opts, 'df_os_ken')
 
 
 def list_opts():
-    return {'df_ryu': df_ryu_opts}
+    return {'df_os_ken': df_os_ken_opts}

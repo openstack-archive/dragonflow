@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from ryu.lib.packet import icmp
-from ryu.lib.packet import in_proto
-from ryu.ofproto import ether
+from os_ken.lib.packet import icmp
+from os_ken.lib.packet import in_proto
+from os_ken.ofproto import ether
 
 from dragonflow.controller.common import constants as const
 
