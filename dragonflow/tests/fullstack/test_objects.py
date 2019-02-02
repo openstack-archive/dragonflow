@@ -290,7 +290,7 @@ class VMTestObj(object):
 
     def create(self, network=None, script=None, security_groups=None,
                net_address=None):
-        image = self.nova.glance.find_image("cirros-0.3.6-x86_64-disk")
+        image = self.nova.glance.find_image("cirros-0.4.0-x86_64-disk")
         self.parent.assertIsNotNone(image)
         flavor = self.nova.flavors.find(name="m1.tiny")
         self.parent.assertIsNotNone(flavor)
