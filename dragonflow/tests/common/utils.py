@@ -61,7 +61,8 @@ def wait_until_is_and_return(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
 
 
 def wait_until_none(predicate, timeout=const.DEFAULT_CMD_TIMEOUT,
-                    sleep=1, exception=None):
+                    sleep=const.DEFAULT_RESOURCE_READY_SLEEP,
+                    exception=None):
     def internal_predicate():
         ret = predicate()
         if ret:
