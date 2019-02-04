@@ -135,6 +135,12 @@ class DfPortBehindPortDetector(mixins.LazyNbApiMixin):
     @registry.receives(resources.PORT,
                        [events.AFTER_CREATE, events.AFTER_UPDATE])
     def _update_port_aap_handler(self, *args, **kwargs):
-        port = kwargs['port']
-        orig_port = kwargs.get('original_port')
-        self._detect_port_behind_port(kwargs['context'], port, orig_port)
+        # TODO(boden): remove shim and refactor when all events use paylaods
+        if 'payload' in kwargs:
+            port = kwargs['payload'].latest_state
+            context = kwargs['payload'].context
+        else:
+            port = kwargs['port']
+            orig_port = kwargs.get('original_port')
+            context = kwargs['context']
+        self._detect_port_behind_port(context, port, orig_port)
