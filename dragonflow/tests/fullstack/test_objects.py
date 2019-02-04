@@ -326,7 +326,7 @@ class VMTestObj(object):
                 server = None
             if server is not None and server.status == 'ACTIVE':
                 return True
-            time.sleep(1)
+            time.sleep(5)
             timeout = timeout - 1
         return False
 
