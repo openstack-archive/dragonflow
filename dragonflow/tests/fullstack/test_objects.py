@@ -326,8 +326,8 @@ class VMTestObj(object):
                 server = None
             if server is not None and server.status == 'ACTIVE':
                 return True
-            time.sleep(1)
-            timeout = timeout - 1
+            time.sleep(const.DEFAULT_RESOURCE_READY_SLEEP)
+            timeout = timeout - const.DEFAULT_RESOURCE_READY_SLEEP
         return False
 
     def _wait_for_server_delete(self,

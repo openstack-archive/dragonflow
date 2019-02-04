@@ -16,5 +16,9 @@ DEFAULT_CMD_TIMEOUT = 5
 
 # It takes some time from the moment the command is sent to Neutron, until
 # the resource of Neutron is ready for usage. It shouldn't be more than,
-# say, 30 seconds.
-DEFAULT_RESOURCE_READY_TIMEOUT = 30
+# say, 60 seconds.
+DEFAULT_RESOURCE_READY_TIMEOUT = 60
+
+# As we do not want to "choke" the system with polling requests, we would like
+# to have some time between checks, say, 5 seconds.
+DEFAULT_RESOURCE_READY_SLEEP = 5
