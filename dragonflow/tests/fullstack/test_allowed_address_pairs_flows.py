@@ -12,7 +12,7 @@
 
 import time
 
-from ryu.lib.packet import arp
+from os_ken.lib.packet import arp
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import constants as test_const

@@ -16,9 +16,9 @@ import struct
 import netaddr
 from neutron.agent.common import utils
 from neutron_lib import constants as n_const
+from os_ken.lib import addrconv
+from os_ken.ofproto import ether
 from oslo_log import log
-from ryu.lib import addrconv
-from ryu.ofproto import ether
 
 from dragonflow.common import exceptions
 

@@ -17,25 +17,25 @@ import mock
 import testtools
 
 from dragonflow import conf as cfg
-from dragonflow.switch.drivers.ovs import ryu_base_app
+from dragonflow.switch.drivers.ovs import os_ken_base_app
 from dragonflow.tests import base as tests_base
 
 
-class TestRyuDFAdapter(tests_base.BaseTestCase):
+class TestOsKenDFAdapter(tests_base.BaseTestCase):
     """
     This unit test has to verify that all events are called correctly, both
-    via the notify* functions, as well as the events called from ryu.
+    via the notify* functions, as well as the events called from os_ken.
 
-    Having ryu call these events will be done in the functional tests.
+    Having os_ken call these events will be done in the functional tests.
     """
     def setUp(self):
-        super(TestRyuDFAdapter, self).setUp()
+        super(TestOsKenDFAdapter, self).setUp()
         cfg.CONF.set_override(
             'datapath_layout_path',
             'etc/dragonflow_datapath_layout.yaml',
             group='df',
         )
-        self.ryu_df_adapter = ryu_base_app.RyuDFAdapter(
+        self.os_ken_df_adapter = os_ken_base_app.OsKenDFAdapter(
             switch_backend=mock.Mock(),
             nb_api=mock.Mock(),
             db_change_callback=mock.Mock())
@@ -50,9 +50,9 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         ])
 
         def dispatcher_load(*args, **kwargs):
-            self.ryu_df_adapter.dispatcher.apps = {'mock': self.mock_app}
-        self.ryu_df_adapter.dispatcher.load = dispatcher_load
-        self.ryu_df_adapter.load()
+            self.os_ken_df_adapter.dispatcher.apps = {'mock': self.mock_app}
+        self.os_ken_df_adapter.dispatcher.load = dispatcher_load
+        self.os_ken_df_adapter.load()
 
     def test_switch_features_handler(self):
         self.mock_app.reset_mock()
@@ -61,13 +61,13 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         ev.msg.datapath = mock.Mock()
         ev.msg.datapath.ofproto = mock.Mock()
         ev.msg.datapath.ofproto.OFP_VERSION = 0x04
-        self.ryu_df_adapter.switch_features_handler(ev)
+        self.os_ken_df_adapter.switch_features_handler(ev)
         self.mock_app.assert_has_calls([mock.call.switch_features_handler(ev)])
 
     def test_port_desc_stats_reply_handler(self):
         self.mock_app.reset_mock()
         ev = mock.Mock()
-        self.ryu_df_adapter.port_desc_stats_reply_handler(ev)
+        self.os_ken_df_adapter.port_desc_stats_reply_handler(ev)
         self.mock_app.assert_has_calls([
                 mock.call.port_desc_stats_reply_handler(ev)])
 
@@ -76,12 +76,12 @@ class TestRyuDFAdapter(tests_base.BaseTestCase):
         ev = mock.Mock()
         ev.msg.table_id = 10
         self.mock_app.packet_in_handler.__name__ = 'mock'
-        self.ryu_df_adapter.register_table_handler(
+        self.os_ken_df_adapter.register_table_handler(
                 10, self.mock_app.packet_in_handler)
-        self.ryu_df_adapter.OF_packet_in_handler(ev)
+        self.os_ken_df_adapter.OF_packet_in_handler(ev)
         self.mock_app.assert_has_calls([mock.call.packet_in_handler(ev)])
 
     def test_register_twice(self):
-        self.ryu_df_adapter.register_table_handler(0, 0)
+        self.os_ken_df_adapter.register_table_handler(0, 0)
         with testtools.ExpectedException(RuntimeError):
-            self.ryu_df_adapter.register_table_handler(0, 0)
+            self.os_ken_df_adapter.register_table_handler(0, 0)

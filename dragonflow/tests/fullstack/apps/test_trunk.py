@@ -14,8 +14,8 @@ import netaddr
 import time
 
 from neutron_lib import constants as n_const
+import os_ken.lib.packet
 from oslo_log import log
-import ryu.lib.packet
 
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import constants as const
@@ -74,21 +74,22 @@ class TestTrunkApp(test_base.DFTestBase):
             app_testing_objects.PortPolicyRule(
                 # Detect pong, end simulation
                 app_testing_objects.AndingFilter(
-                        app_testing_objects.RyuVLANTagFilter(7),
-                        app_testing_objects.RyuICMPPongFilter(self._get_ping)),
+                        app_testing_objects.OsKenVLANTagFilter(7),
+                        app_testing_objects.OsKenICMPPongFilter(
+                            self._get_ping)),
                 actions=[app_testing_objects.DisableRuleAction(),
                          app_testing_objects.StopSimulationAction()]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
+                app_testing_objects.OsKenARPGratuitousFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     ignore_action
                 ]
@@ -99,8 +100,8 @@ class TestTrunkApp(test_base.DFTestBase):
             app_testing_objects.PortPolicyRule(
                 # Detect ping, reply with pong
                 app_testing_objects.AndingFilter(
-                        app_testing_objects.RyuVLANTagFilter(8),
-                        app_testing_objects.RyuICMPPingFilter()),
+                        app_testing_objects.OsKenVLANTagFilter(8),
+                        app_testing_objects.OsKenICMPPingFilter()),
                 actions=[app_testing_objects.SendAction(
                                 self.subnet1.subnet_id,
                                 self.port2.port_id,
@@ -109,14 +110,14 @@ class TestTrunkApp(test_base.DFTestBase):
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
+                app_testing_objects.OsKenARPGratuitousFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     ignore_action
                 ]
@@ -165,28 +166,28 @@ class TestTrunkApp(test_base.DFTestBase):
         return self._ping
 
     def _create_ping_packet(self, ttl=255):
-        ethernet = ryu.lib.packet.ethernet.ethernet(
+        ethernet = os_ken.lib.packet.ethernet.ethernet(
             src=self.vlan_port1.get_logical_port().mac,
             dst=self.vlan_port2.get_logical_port().mac,
-            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_8021Q,
+            ethertype=os_ken.lib.packet.ethernet.ether.ETH_TYPE_8021Q,
         )
-        vlan = ryu.lib.packet.vlan.vlan(
+        vlan = os_ken.lib.packet.vlan.vlan(
             vid=7,
-            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+            ethertype=os_ken.lib.packet.ethernet.ether.ETH_TYPE_IP,
         )
-        ip = ryu.lib.packet.ipv4.ipv4(
+        ip = os_ken.lib.packet.ipv4.ipv4(
             src=str(self.vlan_port1.get_logical_port().ip),
             dst=str(self.vlan_port2.get_logical_port().ip),
             ttl=ttl,
-            proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+            proto=os_ken.lib.packet.ipv4.inet.IPPROTO_ICMP,
         )
-        ip_data = ryu.lib.packet.icmp.icmp(
-            type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
-            data=ryu.lib.packet.icmp.echo(
+        ip_data = os_ken.lib.packet.icmp.icmp(
+            type_=os_ken.lib.packet.icmp.ICMP_ECHO_REQUEST,
+            data=os_ken.lib.packet.icmp.echo(
                 data=self._create_random_string())
         )
         self._ping = ip_data
-        result = ryu.lib.packet.packet.Packet()
+        result = os_ken.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
         result.add_protocol(vlan)
         result.add_protocol(ip)
@@ -195,11 +196,11 @@ class TestTrunkApp(test_base.DFTestBase):
         return result.data
 
     def _create_pong_packet(self, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
-        ether = pkt.get_protocol(ryu.lib.packet.ethernet.ethernet)
-        vlan = pkt.get_protocol(ryu.lib.packet.vlan.vlan)
-        ip = pkt.get_protocol(ryu.lib.packet.ipv4.ipv4)
-        icmp = pkt.get_protocol(ryu.lib.packet.icmp.icmp)
+        pkt = os_ken.lib.packet.packet.Packet(buf)
+        ether = pkt.get_protocol(os_ken.lib.packet.ethernet.ethernet)
+        vlan = pkt.get_protocol(os_ken.lib.packet.vlan.vlan)
+        ip = pkt.get_protocol(os_ken.lib.packet.ipv4.ipv4)
+        icmp = pkt.get_protocol(os_ken.lib.packet.icmp.icmp)
 
         ether.src, ether.dst = ether.dst, ether.src
         self.assertEqual(
@@ -225,9 +226,9 @@ class TestTrunkApp(test_base.DFTestBase):
             vlan.vid
         )
 
-        icmp.type = ryu.lib.packet.icmp.ICMP_ECHO_REPLY
+        icmp.type = os_ken.lib.packet.icmp.ICMP_ECHO_REPLY
         icmp.csum = 0
-        result = ryu.lib.packet.packet.Packet()
+        result = os_ken.lib.packet.packet.Packet()
         result.add_protocol(ether)
         result.add_protocol(vlan)
         result.add_protocol(ip)

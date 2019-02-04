@@ -13,14 +13,14 @@
 import copy
 
 import mock
-from ryu.controller import ofp_event
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import icmp
-from ryu.lib.packet import in_proto
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import packet
-from ryu.lib.packet import udp
-from ryu.ofproto import ofproto_v1_3_parser as ofproto_parser
+from os_ken.controller import ofp_event
+from os_ken.lib.packet import ethernet
+from os_ken.lib.packet import icmp
+from os_ken.lib.packet import in_proto
+from os_ken.lib.packet import ipv4
+from os_ken.lib.packet import packet
+from os_ken.lib.packet import udp
+from os_ken.ofproto import ofproto_v1_3_parser as ofproto_parser
 
 from dragonflow.controller.common import constants as const
 from dragonflow.db.models import l2

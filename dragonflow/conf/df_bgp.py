@@ -23,7 +23,7 @@ df_bgp_app_opts = [
                'and advertise BGP routes')),
     cfg.StrOpt('bgp_speaker_driver',
                default='neutron_dynamic_routing.services.bgp.agent.driver.'
-                       'ryu.driver.RyuBgpDriver',
+                       'os_ken.driver.OsKenBgpDriver',
                help=_("BGP speaker driver class to be instantiated.")),
     cfg.StrOpt('bgp_router_id',
                default='127.0.0.1',

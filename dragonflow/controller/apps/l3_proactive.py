@@ -11,8 +11,8 @@
 #    under the License.
 
 from neutron_lib import constants as n_const
+from os_ken.ofproto import ether
 from oslo_log import log
-from ryu.ofproto import ether
 
 from dragonflow.controller.apps import l3_base
 from dragonflow.controller.common import constants as const

@@ -15,8 +15,8 @@ import netaddr
 import time
 
 from neutron.agent.common import utils
+import os_ken.lib.packet
 from oslo_log import log
-import ryu.lib.packet
 import testtools
 
 from dragonflow import conf as cfg
@@ -63,19 +63,19 @@ class TestL3App(test_base.DFTestBase):
         rules1 = [
             app_testing_objects.PortPolicyRule(
                 # Detect pong, end simulation
-                app_testing_objects.RyuICMPPongFilter(self._get_ping),
+                app_testing_objects.OsKenICMPPongFilter(self._get_ping),
                 actions=actions
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
+                app_testing_objects.OsKenARPGratuitousFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     ignore_action
                 ]
@@ -94,12 +94,12 @@ class TestL3App(test_base.DFTestBase):
         rules2 = [
             app_testing_objects.PortPolicyRule(
                 # Detect ping, reply with pong
-                app_testing_objects.RyuICMPPingFilter(),
+                app_testing_objects.OsKenICMPPingFilter(),
                 actions=actions
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
+                app_testing_objects.OsKenARPGratuitousFilter(),
                 actions=[
                     ignore_action
                 ]
@@ -107,14 +107,14 @@ class TestL3App(test_base.DFTestBase):
             app_testing_objects.PortPolicyRule(
                 # Ignore ARP requests from active port detection app for
                 # ports with allowed_address_pairs
-                app_testing_objects.RyuARPRequestFilter(),
+                app_testing_objects.OsKenARPRequestFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     ignore_action
                 ]
@@ -140,30 +140,30 @@ class TestL3App(test_base.DFTestBase):
         router_interface_port = self.neutron.show_port(
             router_interface['port_id']
         )
-        ethernet = ryu.lib.packet.ethernet.ethernet(
+        ethernet = os_ken.lib.packet.ethernet.ethernet(
             src=self.port1.port.get_logical_port().mac,
             dst=router_interface_port['port']['mac_address'],
-            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+            ethertype=os_ken.lib.packet.ethernet.ether.ETH_TYPE_IP,
         )
-        ip = ryu.lib.packet.ipv4.ipv4(
+        ip = os_ken.lib.packet.ipv4.ipv4(
             src=str(self.port1.port.get_logical_port().ip),
             dst=str(dst_ip),
             ttl=ttl,
             proto=proto,
         )
-        if proto == ryu.lib.packet.ipv4.inet.IPPROTO_ICMP:
-            ip_data = ryu.lib.packet.icmp.icmp(
-                type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
-                data=ryu.lib.packet.icmp.echo(
+        if proto == os_ken.lib.packet.ipv4.inet.IPPROTO_ICMP:
+            ip_data = os_ken.lib.packet.icmp.icmp(
+                type_=os_ken.lib.packet.icmp.ICMP_ECHO_REQUEST,
+                data=os_ken.lib.packet.icmp.echo(
                     data=self._create_random_string())
             )
             self._ping = ip_data
-        elif proto == ryu.lib.packet.ipv4.inet.IPPROTO_UDP:
-            ip_data = ryu.lib.packet.udp.udp(
+        elif proto == os_ken.lib.packet.ipv4.inet.IPPROTO_UDP:
+            ip_data = os_ken.lib.packet.udp.udp(
                 dst_port=33534,
             )
         self._ip = ip
-        result = ryu.lib.packet.packet.Packet()
+        result = os_ken.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
         result.add_protocol(ip)
         result.add_protocol(ip_data)
@@ -177,10 +177,10 @@ class TestL3App(test_base.DFTestBase):
         return self._ip
 
     def _create_pong_packet(self, buf):
-        pkt = ryu.lib.packet.packet.Packet(buf)
-        ether = pkt.get_protocol(ryu.lib.packet.ethernet.ethernet)
-        ip = pkt.get_protocol(ryu.lib.packet.ipv4.ipv4)
-        icmp = pkt.get_protocol(ryu.lib.packet.icmp.icmp)
+        pkt = os_ken.lib.packet.packet.Packet(buf)
+        ether = pkt.get_protocol(os_ken.lib.packet.ethernet.ethernet)
+        ip = pkt.get_protocol(os_ken.lib.packet.ipv4.ipv4)
+        icmp = pkt.get_protocol(os_ken.lib.packet.icmp.icmp)
 
         ether.src, ether.dst = ether.dst, ether.src
 
@@ -215,9 +215,9 @@ class TestL3App(test_base.DFTestBase):
             self.port1.port.get_logical_port().ip
         )
 
-        icmp.type = ryu.lib.packet.icmp.ICMP_ECHO_REPLY
+        icmp.type = os_ken.lib.packet.icmp.ICMP_ECHO_REPLY
         icmp.csum = 0
-        result = ryu.lib.packet.packet.Packet()
+        result = os_ken.lib.packet.packet.Packet()
         result.add_protocol(ether)
         result.add_protocol(ip)
         result.add_protocol(icmp)
@@ -227,7 +227,7 @@ class TestL3App(test_base.DFTestBase):
     def _test_icmp_address(self, dst_ip):
         port_policies = self._create_port_policies()
         initial_packet = self._create_packet(
-            dst_ip, ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
+            dst_ip, os_ken.lib.packet.ipv4.inet.IPPROTO_ICMP)
         policy = app_testing_objects.Policy(
             initial_actions=[
                 app_testing_objects.SendAction(
@@ -288,7 +288,7 @@ class TestL3App(test_base.DFTestBase):
         dst_ip = self.port2.port.get_logical_port().ip
         port_policies = self._create_port_policies(connected=False)
         initial_packet = self._create_packet(
-            dst_ip, ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
+            dst_ip, os_ken.lib.packet.ipv4.inet.IPPROTO_ICMP)
         policy = app_testing_objects.Policy(
             initial_actions=[
                 app_testing_objects.SendAction(
@@ -330,14 +330,14 @@ class TestL3App(test_base.DFTestBase):
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
+                app_testing_objects.OsKenARPGratuitousFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     ignore_action
                 ]
@@ -367,12 +367,12 @@ class TestL3App(test_base.DFTestBase):
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
+                app_testing_objects.OsKenARPGratuitousFilter(),
                 actions=[ignore_action]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[ignore_action]
             ),
         ]
@@ -386,10 +386,10 @@ class TestL3App(test_base.DFTestBase):
         ignore_action = app_testing_objects.IgnoreAction()
         port_policy = self._create_rate_limit_port_policies(
             cfg.CONF.df_l3_app.router_ttl_invalid_max_rate,
-            app_testing_objects.RyuICMPTimeExceedFilter)
+            app_testing_objects.OsKenICMPTimeExceedFilter)
         initial_packet = self._create_packet(
             self.port2.port.get_logical_port().ip,
-            ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+            os_ken.lib.packet.ipv4.inet.IPPROTO_ICMP,
             ttl=1)
         send_action = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
@@ -423,9 +423,9 @@ class TestL3App(test_base.DFTestBase):
         self.port1.port.update({"security_groups": []})
         ignore_action = app_testing_objects.IgnoreAction()
         port_policy = self._create_icmp_test_port_policies(
-            app_testing_objects.RyuICMPUnreachFilter)
+            app_testing_objects.OsKenICMPUnreachFilter)
         initial_packet = self._create_packet(
-            "192.168.12.1", ryu.lib.packet.ipv4.inet.IPPROTO_UDP)
+            "192.168.12.1", os_ken.lib.packet.ipv4.inet.IPPROTO_UDP)
         policy = app_testing_objects.Policy(
             initial_actions=[
                 app_testing_objects.SendAction(
@@ -471,9 +471,9 @@ class TestL3App(test_base.DFTestBase):
         ignore_action = app_testing_objects.IgnoreAction()
         port_policy = self._create_rate_limit_port_policies(
             cfg.CONF.df_l3_app.router_port_unreach_max_rate,
-            app_testing_objects.RyuICMPUnreachFilter)
+            app_testing_objects.OsKenICMPUnreachFilter)
         initial_packet = self._create_packet(
-            "192.168.12.1", ryu.lib.packet.ipv4.inet.IPPROTO_UDP)
+            "192.168.12.1", os_ken.lib.packet.ipv4.inet.IPPROTO_UDP)
         send_action = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
             self.port1.port_id,
@@ -507,20 +507,20 @@ class TestL3App(test_base.DFTestBase):
             app_testing_objects.PortPolicyRule(
                 # The nexthop lport should get the icmp echo request whose
                 # destination is the cidr of extra route.
-                app_testing_objects.RyuICMPPingFilter(self._get_ping),
+                app_testing_objects.OsKenICMPPingFilter(self._get_ping),
                 actions=[app_testing_objects.DisableRuleAction(),
                          app_testing_objects.StopSimulationAction()]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
+                app_testing_objects.OsKenARPGratuitousFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     ignore_action
                 ]
@@ -543,7 +543,7 @@ class TestL3App(test_base.DFTestBase):
         port_policy = self._create_extra_route_policies(nexthop_port)
         initial_packet = self._create_packet(
             "30.0.0.12",
-            ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
+            os_ken.lib.packet.ipv4.inet.IPPROTO_ICMP)
         send_action = app_testing_objects.SendAction(
             self.subnet1.subnet_id,
             self.port1.port_id,

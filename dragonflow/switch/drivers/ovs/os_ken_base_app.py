@@ -15,15 +15,15 @@
 
 import time
 
+from os_ken.controller import handler
+from os_ken.controller import ofp_event
+from os_ken.controller import ofp_handler
+from os_ken.ofproto import ofproto_common
+from os_ken.ofproto import ofproto_parser
+from os_ken.ofproto import ofproto_v1_3
+from os_ken import utils
 from oslo_config import cfg
 from oslo_log import log
-from ryu.controller import handler
-from ryu.controller import ofp_event
-from ryu.controller import ofp_handler
-from ryu.ofproto import ofproto_common
-from ryu.ofproto import ofproto_parser
-from ryu.ofproto import ofproto_v1_3
-from ryu import utils
 
 from dragonflow.common import profiler as df_profiler
 from dragonflow.controller.common import constants
@@ -33,14 +33,14 @@ from dragonflow.controller import dispatcher
 LOG = log.getLogger(__name__)
 
 
-class RyuDFAdapter(ofp_handler.OFPHandler):
+class OsKenDFAdapter(ofp_handler.OFPHandler):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OF_AUTO_PORT_DESC_STATS_REQ_VER = 0x04
 
     def __init__(self, switch_backend, nb_api,
                  db_change_callback,
                  neutron_server_notifier=None):
-        super(RyuDFAdapter, self).__init__()
+        super(OsKenDFAdapter, self).__init__()
         self.dispatcher = dispatcher.AppDispatcher(cfg.CONF.df.apps_list)
         self.vswitch_api = switch_backend.vswitch_api
         self.nb_api = nb_api
@@ -56,7 +56,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         return self._datapath
 
     def start(self):
-        super(RyuDFAdapter, self).start()
+        super(OsKenDFAdapter, self).start()
         self.load(self,
                   switch_backend=self.switch_backend,
                   nb_api=self.nb_api,
@@ -101,9 +101,9 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
     def switch_features_handler(self, ev):
         # TODO(oanson) is there a better way to get the datapath?
         self._datapath = ev.msg.datapath
-        super(RyuDFAdapter, self).switch_features_handler(ev)
+        super(OsKenDFAdapter, self).switch_features_handler(ev)
         version = self.datapath.ofproto.OFP_VERSION
-        if version < RyuDFAdapter.OF_AUTO_PORT_DESC_STATS_REQ_VER:
+        if version < OsKenDFAdapter.OF_AUTO_PORT_DESC_STATS_REQ_VER:
             # Otherwise, this is done automatically by OFPHandler
             self._send_port_desc_stats_request(self.datapath)
 
@@ -113,7 +113,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         self.dispatcher.dispatch('switch_features_handler', ev)
 
         if not self.first_connect:
-            # For reconnecting to the ryu controller, df needs a full sync
+            # For reconnecting to the os_ken controller, df needs a full sync
             # in case any resource added during the disconnection.
             self.db_change_callback(None, None,
                                     constants.CONTROLLER_REINITIALIZE,
@@ -151,10 +151,10 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         msg = event.msg
         try:
             (version, msg_type, msg_len, xid) = ofproto_parser.header(msg.data)
-            ryu_msg = ofproto_parser.msg(
+            os_ken_msg = ofproto_parser.msg(
                 self._datapath, version, msg_type,
                 msg_len - ofproto_common.OFP_HEADER_SIZE, xid, msg.data)
-            LOG.error('OFPErrorMsg received: %s', ryu_msg)
+            LOG.error('OFPErrorMsg received: %s', os_ken_msg)
         except Exception:
             LOG.error('Unrecognized OFPErrorMsg received: '
                       'type=0x%(type)02x code=0x%(code)02x '
@@ -184,7 +184,7 @@ class RyuDFAdapter(ofp_handler.OFPHandler):
         """Configure switch for TTL
 
         Configure the switch to packet-in TTL invalid packets to controller.
-        Note that this method only works in OFP 1.3, however, this ryu app
+        Note that this method only works in OFP 1.3, however, this os_ken app
         claims that it only supports ofproto_v1_3.OFP_VERSION. So, no check
         will be made here.
         """

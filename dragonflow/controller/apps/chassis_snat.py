@@ -12,8 +12,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from os_ken.ofproto import ether
 from oslo_log import log
-from ryu.ofproto import ether
 
 from dragonflow._i18n import _
 from dragonflow import conf as cfg

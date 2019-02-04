@@ -17,14 +17,14 @@ import copy
 
 import netaddr
 from neutron_lib import constants as common_const
+from os_ken.lib import mac as os_ken_mac_lib
+from os_ken.lib.packet import ethernet
+from os_ken.lib.packet import icmp
+from os_ken.lib.packet import packet
+from os_ken.lib.packet import tcp
+from os_ken.lib.packet import udp
+from os_ken.ofproto import ether
 from oslo_log import log
-from ryu.lib import mac as ryu_mac_lib
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import icmp
-from ryu.lib.packet import packet
-from ryu.lib.packet import tcp
-from ryu.lib.packet import udp
-from ryu.ofproto import ether
 
 from dragonflow.common import exceptions
 from dragonflow.common import utils as df_utils
@@ -72,7 +72,7 @@ class L3AppMixin(object):
         Create an ICMP error packet, and return it.
 
         :param msg: Packet in message
-        :type msg:  ryu.ofproto.ofproto_v<version>_parser.OFPPacketIn
+        :type msg:  os_ken.ofproto.ofproto_v<version>_parser.OFPPacketIn
         """
         if self.ttl_invalid_handler_rate_limit():
             LOG.warning("Get more than %(rate)s TTL invalid packets per "
@@ -114,7 +114,7 @@ class L3AppMixin(object):
         Destination Unreachable message.
 
         :param msg: Packet in message
-        :type msg:  ryu.ofproto.ofproto_v<version>_parser.OFPPacketIn
+        :type msg:  os_ken.ofproto.ofproto_v<version>_parser.OFPPacketIn
         """
         # If the destination is router interface, the unique key of router
         # interface will be set to reg7 before sending to local controller.
@@ -147,7 +147,7 @@ class L3AppMixin(object):
         handle.
 
         :param msg: Packet in message
-        :type msg:  ryu.ofproto.ofproto_v<version>_parser.OFPPacketIn
+        :type msg:  os_ken.ofproto.ofproto_v<version>_parser.OFPPacketIn
         """
 
         if msg.reason == self.ofproto.OFPR_INVALID_TTL:
@@ -518,7 +518,7 @@ class L3AppMixin(object):
         # to L3_LOOKUP_TABLE
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
-        match.set_dl_dst(ryu_mac_lib.haddr_to_bin(mac))
+        match.set_dl_dst(os_ken_mac_lib.haddr_to_bin(mac))
         actions = [parser.OFPActionSetField(reg5=router_unique_key)]
         action_inst = parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)
@@ -586,7 +586,7 @@ class L3AppMixin(object):
         # to L3_LOOKUP_TABLE
         match = parser.OFPMatch()
         match.set_metadata(local_network_id)
-        match.set_dl_dst(ryu_mac_lib.haddr_to_bin(mac))
+        match.set_dl_dst(os_ken_mac_lib.haddr_to_bin(mac))
         self.mod_flow(
             table_id=const.L2_LOOKUP_TABLE,
             command=ofproto.OFPFC_DELETE,

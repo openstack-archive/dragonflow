@@ -13,9 +13,9 @@
 import time
 
 from neutron.agent.common import utils
+import os_ken.lib.packet
+from os_ken.ofproto import inet
 from oslo_log import log
-import ryu.lib.packet
-from ryu.ofproto import inet
 
 from dragonflow.controller.common import constants
 from dragonflow.tests.common import app_testing_objects
@@ -60,7 +60,7 @@ class TestArpResponder(test_base.DFTestBase):
                 rules=[
                     app_testing_objects.PortPolicyRule(
                         # Detect arp replies
-                        app_testing_objects.RyuARPReplyFilter(),
+                        app_testing_objects.OsKenARPReplyFilter(),
                         actions=[
                             log_action,
                             app_testing_objects.StopSimulationAction()
@@ -68,7 +68,7 @@ class TestArpResponder(test_base.DFTestBase):
                     ),
                     app_testing_objects.PortPolicyRule(
                         # Ignore IPv6 packets
-                        app_testing_objects.RyuIPv6Filter(),
+                        app_testing_objects.OsKenIPv6Filter(),
                         actions=[
                             ignore_action
                         ]
@@ -87,17 +87,17 @@ class TestArpResponder(test_base.DFTestBase):
         self.addCleanup(self.policy.close)
 
     def _create_arp_request(self, src_port, dst_port):
-        ethernet = ryu.lib.packet.ethernet.ethernet(
+        ethernet = os_ken.lib.packet.ethernet.ethernet(
             src=str(src_port.mac),
             dst=str(constants.BROADCAST_MAC),
-            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_ARP,
+            ethertype=os_ken.lib.packet.ethernet.ether.ETH_TYPE_ARP,
         )
-        arp = ryu.lib.packet.arp.arp_ip(
-            opcode=ryu.lib.packet.arp.ARP_REQUEST,
+        arp = os_ken.lib.packet.arp.arp_ip(
+            opcode=os_ken.lib.packet.arp.ARP_REQUEST,
             src_mac=str(src_port.mac), src_ip=str(src_port.ip),
             dst_mac='00:00:00:00:00:00', dst_ip=str(dst_port.ip),
         )
-        result = ryu.lib.packet.packet.Packet()
+        result = os_ken.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
         result.add_protocol(arp)
         result.serialize()
@@ -161,7 +161,7 @@ class TestNeighborAdvertiser(test_base.DFTestBase):
         ignore_action = app_testing_objects.IgnoreAction()
         log_action = app_testing_objects.LogAction()
         key1 = (subnet1.subnet_id, port1.port_id)
-        adv_filter = app_testing_objects.RyuNeighborAdvertisementFilter()
+        adv_filter = app_testing_objects.OsKenNeighborAdvertisementFilter()
         port_policies = {
             key1: app_testing_objects.PortPolicy(
                 rules=[
@@ -175,7 +175,7 @@ class TestNeighborAdvertiser(test_base.DFTestBase):
                     ),
                     app_testing_objects.PortPolicyRule(
                         # Filter local VM's Multicast requests
-                        app_testing_objects.RyuIpv6MulticastFilter(),
+                        app_testing_objects.OsKenIpv6MulticastFilter(),
                         actions=[ignore_action]
                     )
                 ],
@@ -192,23 +192,23 @@ class TestNeighborAdvertiser(test_base.DFTestBase):
         self.addCleanup(self.policy.close)
 
     def _create_ns_request(self, src_port, dst_port):
-        ethernet = ryu.lib.packet.ethernet.ethernet(
+        ethernet = os_ken.lib.packet.ethernet.ethernet(
             src=str(src_port.mac),
             dst=str(constants.BROADCAST_MAC),
-            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IPV6,
+            ethertype=os_ken.lib.packet.ethernet.ether.ETH_TYPE_IPV6,
         )
-        ipv6 = ryu.lib.packet.ipv6.ipv6(
+        ipv6 = os_ken.lib.packet.ipv6.ipv6(
             src=str(src_port.ip),
             dst=str(dst_port.ip),
             nxt=inet.IPPROTO_ICMPV6
         )
-        icmpv6 = ryu.lib.packet.icmpv6.icmpv6(
-            type_=ryu.lib.packet.icmpv6.ND_NEIGHBOR_SOLICIT,
-            data=ryu.lib.packet.icmpv6.nd_neighbor(
+        icmpv6 = os_ken.lib.packet.icmpv6.icmpv6(
+            type_=os_ken.lib.packet.icmpv6.ND_NEIGHBOR_SOLICIT,
+            data=os_ken.lib.packet.icmpv6.nd_neighbor(
                 dst=str(dst_port.ip)
             )
         )
-        result = ryu.lib.packet.packet.Packet()
+        result = os_ken.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
         result.add_protocol(ipv6)
         result.add_protocol(icmpv6)

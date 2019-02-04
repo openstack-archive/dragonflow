@@ -14,9 +14,9 @@
 #    under the License.
 
 from neutron_lib.utils import helpers
+from os_ken.lib import mac as mac_api
+from os_ken.ofproto import nicira_ext
 from oslo_log import log
-from ryu.lib import mac as mac_api
-from ryu.ofproto import nicira_ext
 
 from dragonflow.common import utils
 from dragonflow import conf as cfg

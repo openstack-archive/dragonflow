@@ -21,14 +21,14 @@ import struct
 
 from neutron.conf import common as common_config
 from neutron_lib import constants as n_const
+from os_ken.lib import addrconv
+from os_ken.lib.packet import dhcp
+from os_ken.lib.packet import ethernet
+from os_ken.lib.packet import ipv4
+from os_ken.lib.packet import packet as os_ken_packet
+from os_ken.lib.packet import udp
+from os_ken.ofproto import ether
 from oslo_log import log
-from ryu.lib import addrconv
-from ryu.lib.packet import dhcp
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import packet as ryu_packet
-from ryu.lib.packet import udp
-from ryu.ofproto import ether
 
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg
@@ -95,7 +95,7 @@ class DHCPApp(df_base_app.DFlowApp):
     def packet_in_handler(self, event):
         msg = event.msg
 
-        pkt = ryu_packet.Packet(msg.data)
+        pkt = os_ken_packet.Packet(msg.data)
         pkt_ip = pkt.get_protocol(ipv4.ipv4)
 
         if not pkt_ip:
@@ -187,7 +187,7 @@ class DHCPApp(df_base_app.DFlowApp):
 
         options = dhcp.options(option_list=option_list)
 
-        dhcp_response = ryu_packet.Packet()
+        dhcp_response = os_ken_packet.Packet()
         dhcp_response.add_protocol(ethernet.ethernet(
                                                 ethertype=ether.ETH_TYPE_IP,
                                                 dst=pkt_ethernet.src,

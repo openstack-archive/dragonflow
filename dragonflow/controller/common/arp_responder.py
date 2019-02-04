@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from ryu.lib.packet import arp
-from ryu.ofproto import ether
+from os_ken.lib.packet import arp
+from os_ken.ofproto import ether
 
 from dragonflow.controller.common import constants as const
 from dragonflow.controller.common import utils

@@ -14,8 +14,8 @@ import time
 
 from neutron.agent.common import ip_lib
 from neutron.conf.agent import common as n_common
+import os_ken.lib.packet
 from oslo_log import log
-import ryu.lib.packet
 
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import constants as const
@@ -72,7 +72,7 @@ class TestSNat(test_base.DFTestBase):
     def _create_policy(self):
         port_policies = self._create_port_policies()
         initial_packet = self._create_packet(
-            '10.0.1.2', ryu.lib.packet.ipv4.inet.IPPROTO_ICMP)
+            '10.0.1.2', os_ken.lib.packet.ipv4.inet.IPPROTO_ICMP)
         policy = app_testing_objects.Policy(
             initial_actions=[
                 app_testing_objects.SendAction(self.subnet1.subnet_id,
@@ -94,19 +94,19 @@ class TestSNat(test_base.DFTestBase):
         rules1 = [
             app_testing_objects.PortPolicyRule(
                 # Detect pong, end simulation
-                app_testing_objects.RyuICMPPongFilter(self._get_ping),
+                app_testing_objects.OsKenICMPPongFilter(self._get_ping),
                 actions=actions
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
+                app_testing_objects.OsKenARPGratuitousFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     ignore_action
                 ]
@@ -127,25 +127,25 @@ class TestSNat(test_base.DFTestBase):
         router_interface_port = self.neutron.show_port(
             router_interface['port_id']
         )
-        ethernet = ryu.lib.packet.ethernet.ethernet(
+        ethernet = os_ken.lib.packet.ethernet.ethernet(
             src=self.port1.port.get_logical_port().mac,
             dst=router_interface_port['port']['mac_address'],
-            ethertype=ryu.lib.packet.ethernet.ether.ETH_TYPE_IP,
+            ethertype=os_ken.lib.packet.ethernet.ether.ETH_TYPE_IP,
         )
-        ip = ryu.lib.packet.ipv4.ipv4(
+        ip = os_ken.lib.packet.ipv4.ipv4(
             src=self.port1.port.get_logical_port().ip,
             dst=dst_ip,
             ttl=ttl,
             proto=proto,
         )
-        ip_data = ryu.lib.packet.icmp.icmp(
-            type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
-            data=ryu.lib.packet.icmp.echo(
+        ip_data = os_ken.lib.packet.icmp.icmp(
+            type_=os_ken.lib.packet.icmp.ICMP_ECHO_REQUEST,
+            data=os_ken.lib.packet.icmp.echo(
                 data=self._create_random_string())
         )
         self._ping = ip_data
         self._ip = ip
-        result = ryu.lib.packet.packet.Packet()
+        result = os_ken.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
         result.add_protocol(ip)
         result.add_protocol(ip_data)

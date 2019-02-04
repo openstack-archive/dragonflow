@@ -14,13 +14,13 @@
 #    under the License.
 
 from neutron_lib import constants as n_const
+from os_ken.lib.packet import ethernet
+from os_ken.lib.packet import icmp
+from os_ken.lib.packet import in_proto
+from os_ken.lib.packet import ipv4
+from os_ken.lib.packet import packet
+from os_ken.ofproto import ether
 from oslo_log import log
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import icmp
-from ryu.lib.packet import in_proto
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import packet
-from ryu.ofproto import ether
 
 from dragonflow.common import utils as df_utils
 from dragonflow import conf as cfg

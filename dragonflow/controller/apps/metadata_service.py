@@ -18,12 +18,12 @@ import hmac
 
 import httplib2
 import netaddr
+from os_ken.lib.packet import arp
+from os_ken.lib.packet import ethernet
+from os_ken.lib.packet import ipv4
+from os_ken.ofproto import nicira_ext
 from oslo_log import log
 from oslo_utils import encodeutils
-from ryu.lib.packet import arp
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import ipv4
-from ryu.ofproto import nicira_ext
 import six
 import six.moves.urllib.parse as urlparse
 import webob
@@ -43,9 +43,9 @@ LOG = log.getLogger(__name__)
 
 FLOW_IDLE_TIMEOUT = 60
 
-# TODO(oanson) The TCP_* flag constants have already made it into ryu
+# TODO(oanson) The TCP_* flag constants have already made it into os_ken
 # master, but not to pip. Once that is done, they should be taken from
-# there. (ryu.lib.packet.tcp.TCP_SYN and ryu.lib.packet.tcp.TCP_ACK)
+# there. (os_ken.lib.packet.tcp.TCP_SYN and os_ken.lib.packet.tcp.TCP_ACK)
 TCP_SYN = 0x002
 TCP_ACK = 0x010
 

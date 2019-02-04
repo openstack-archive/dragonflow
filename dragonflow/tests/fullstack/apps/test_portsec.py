@@ -14,8 +14,8 @@ import netaddr
 import time
 
 from neutron_lib import constants as n_const
+import os_ken.lib.packet
 from oslo_log import log
-import ryu.lib.packet
 
 from dragonflow.tests.common import app_testing_objects
 from dragonflow.tests.common import constants as const
@@ -120,17 +120,17 @@ class TestPortSecApp(test_base.DFTestBase):
         self.icmp_id_cursor += 1
         icmp_seq = 0
         if self.ethertype == n_const.IPv4:
-            icmp = ryu.lib.packet.icmp.icmp(
-                type_=ryu.lib.packet.icmp.ICMP_ECHO_REQUEST,
-                data=ryu.lib.packet.icmp.echo(
+            icmp = os_ken.lib.packet.icmp.icmp(
+                type_=os_ken.lib.packet.icmp.ICMP_ECHO_REQUEST,
+                data=os_ken.lib.packet.icmp.echo(
                     id_=icmp_id,
                     seq=icmp_seq,
                     data=self._create_random_string())
             )
         else:
-            icmp = ryu.lib.packet.icmpv6.icmpv6(
-                type_=ryu.lib.packet.icmpv6.ICMPV6_ECHO_REQUEST,
-                data=ryu.lib.packet.icmpv6.echo(
+            icmp = os_ken.lib.packet.icmpv6.icmpv6(
+                type_=os_ken.lib.packet.icmpv6.ICMPV6_ECHO_REQUEST,
+                data=os_ken.lib.packet.icmpv6.echo(
                     id_=icmp_id,
                     seq=icmp_seq,
                     data=self._create_random_string())
@@ -139,21 +139,21 @@ class TestPortSecApp(test_base.DFTestBase):
 
     def _get_packet_protocol(self, src_ip, dst_ip):
         if self.ethertype == n_const.IPv4:
-            ip = ryu.lib.packet.ipv4.ipv4(
+            ip = os_ken.lib.packet.ipv4.ipv4(
                 src=str(src_ip),
                 dst=str(dst_ip),
-                proto=ryu.lib.packet.ipv4.inet.IPPROTO_ICMP,
+                proto=os_ken.lib.packet.ipv4.inet.IPPROTO_ICMP,
             )
         else:
-            ip = ryu.lib.packet.ipv6.ipv6(
+            ip = os_ken.lib.packet.ipv6.ipv6(
                 src=str(src_ip),
                 dst=str(dst_ip),
-                nxt=ryu.lib.packet.ipv6.inet.IPPROTO_ICMPV6)
+                nxt=os_ken.lib.packet.ipv6.inet.IPPROTO_ICMPV6)
 
         return ip
 
     def _create_ping_request(self, src_ip, src_mac, dst_port):
-        ethernet = ryu.lib.packet.ethernet.ethernet(
+        ethernet = os_ken.lib.packet.ethernet.ethernet(
             src=str(src_mac),
             dst=str(dst_port.port.get_logical_port().mac),
             ethertype=self.ethtype
@@ -163,7 +163,7 @@ class TestPortSecApp(test_base.DFTestBase):
             src_ip,
             dst_port.port.get_logical_port().ip)
         icmp = self._get_icmp_packet()
-        result = ryu.lib.packet.packet.Packet()
+        result = os_ken.lib.packet.packet.Packet()
         result.add_protocol(ethernet)
         result.add_protocol(ip)
         result.add_protocol(icmp)
@@ -175,14 +175,14 @@ class TestPortSecApp(test_base.DFTestBase):
         rules = [
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
+                app_testing_objects.OsKenARPGratuitousFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 packets
-                app_testing_objects.RyuIPv6Filter(),
+                app_testing_objects.OsKenIPv6Filter(),
                 actions=[
                     ignore_action
                 ]
@@ -200,7 +200,7 @@ class TestPortSecApp(test_base.DFTestBase):
         )
         rules = [
             app_testing_objects.PortPolicyRule(
-                app_testing_objects.RyuICMPPingFilter(
+                app_testing_objects.OsKenICMPPingFilter(
                     self._get_ping_using_vm_ip_mac, self.ethertype),
                 actions=[
                     count_action,
@@ -208,7 +208,7 @@ class TestPortSecApp(test_base.DFTestBase):
                 ]
             ),
             app_testing_objects.PortPolicyRule(
-                app_testing_objects.RyuICMPPingFilter(
+                app_testing_objects.OsKenICMPPingFilter(
                     self._get_ping_using_allowed_address_pair_ip_mac,
                     self.ethertype),
                 actions=[
@@ -217,7 +217,7 @@ class TestPortSecApp(test_base.DFTestBase):
                 ]
             ),
             app_testing_objects.PortPolicyRule(
-                app_testing_objects.RyuICMPPingFilter(
+                app_testing_objects.OsKenICMPPingFilter(
                     self._get_ping_using_fake_ip, self.ethertype),
                 actions=[
                     app_testing_objects.RaiseAction("a packet with a fake "
@@ -225,7 +225,7 @@ class TestPortSecApp(test_base.DFTestBase):
                 ]
             ),
             app_testing_objects.PortPolicyRule(
-                app_testing_objects.RyuICMPPingFilter(
+                app_testing_objects.OsKenICMPPingFilter(
                     self._get_ping_using_fake_mac, self.ethertype),
                 actions=[
                     app_testing_objects.RaiseAction("a packet with a fake "
@@ -297,7 +297,7 @@ class TestPortSecAppV4(TestPortSecApp):
         self.cidr = "192.168.196.0/24"
         self.ethertype = n_const.IPv4
         self.icmp_proto = "icmp"
-        self.ethtype = ryu.lib.packet.ethernet.ether.ETH_TYPE_IP
+        self.ethtype = os_ken.lib.packet.ethernet.ether.ETH_TYPE_IP
         super(TestPortSecAppV4, self).setUp()
 
     def test_icmp_ping_using_different_ip_mac(self):
@@ -313,7 +313,7 @@ class TestPortSecAppV6(TestPortSecApp):
         self.icmp_id_cursor = int(time.mktime(time.gmtime())) & 0xffff
         self.cidr = "fda8:06c3:ce53:a890::1/32"
         self.ethertype = n_const.IPv6
-        self.ethtype = ryu.lib.packet.ethernet.ether.ETH_TYPE_IPV6
+        self.ethtype = os_ken.lib.packet.ethernet.ether.ETH_TYPE_IPV6
         self.icmp_proto = "icmpv6"
         super(TestPortSecAppV6, self).setUp()
 
@@ -322,35 +322,35 @@ class TestPortSecAppV6(TestPortSecApp):
         rules = [
             app_testing_objects.PortPolicyRule(
                 # Ignore gratuitous ARP packets
-                app_testing_objects.RyuARPGratuitousFilter(),
+                app_testing_objects.OsKenARPGratuitousFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore Neighbor Advertisements
-                app_testing_objects.RyuNeighborSolicitationFilter(),
+                app_testing_objects.OsKenNeighborSolicitationFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore Neighbor Advertisements
-                app_testing_objects.RyuNeighborAdvertisementFilter(),
+                app_testing_objects.OsKenNeighborAdvertisementFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore Neighbor Advertisements
-                app_testing_objects.RyuRouterSolicitationFilter(),
+                app_testing_objects.OsKenRouterSolicitationFilter(),
                 actions=[
                     ignore_action
                 ]
             ),
             app_testing_objects.PortPolicyRule(
                 # Ignore IPv6 multicast
-                app_testing_objects.RyuIpv6MulticastFilter(),
+                app_testing_objects.OsKenIpv6MulticastFilter(),
                 actions=[
                     ignore_action
                 ]

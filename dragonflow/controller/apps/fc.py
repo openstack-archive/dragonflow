@@ -12,10 +12,10 @@
 import itertools
 
 from neutron_lib import constants as lib_constants
+from os_ken.lib.packet import ether_types
+from os_ken.lib.packet import in_proto
+from os_ken.ofproto import nicira_ext
 from oslo_log import log
-from ryu.lib.packet import ether_types
-from ryu.lib.packet import in_proto
-from ryu.ofproto import nicira_ext
 
 from dragonflow._i18n import _
 from dragonflow.controller.common import constants
