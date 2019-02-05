@@ -352,7 +352,8 @@ class VMTestObj(object):
     def close(self):
         if self.closed or self.server is None:
             return
-        self.nova.servers.delete(self.server)
+        # No patience
+        self.nova.servers.force_delete(self.server)
         self._wait_for_server_delete()
         self.closed = True
 

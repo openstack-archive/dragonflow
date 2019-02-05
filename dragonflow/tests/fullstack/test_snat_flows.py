@@ -96,7 +96,5 @@ class TestSnatFlows(test_base.DFTestBase):
         for key, value in r.items():
             self.assertIsNotNone(value, key)
 
-        vm.server.stop()
         vm.close()
         network.close()
-        return None
