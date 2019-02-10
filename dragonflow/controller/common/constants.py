@@ -26,6 +26,7 @@
 # translated to network id and the packet is forwarded to
 # INGRESS_DESTINATION_PORT_LOOKUP_TABLE.
 INGRESS_CLASSIFICATION_DISPATCH_TABLE = 0
+INGRESS_CLASSIFICATION_EXITPOINT_TABLE = 1
 # Detect reg6 (provider network and dNAT)
 EXTERNAL_INGRESS_DETECT_SOURCE_TABLE = 2
 # Next 2 tables are related to connection tracking and packet filtering.
