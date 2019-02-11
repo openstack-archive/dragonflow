@@ -17,7 +17,6 @@
 import netaddr
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import l3_rpc
-from neutron.db import common_db_mixin
 from neutron.db import extraroute_db
 from neutron.db import l3_agentschedulers_db
 from neutron.db import l3_attrs_db
@@ -50,7 +49,6 @@ LOG = log.getLogger(__name__)
 
 
 class DFL3AgentlessRouterPlugin(service_base.ServicePluginBase,
-                                common_db_mixin.CommonDbMixin,
                                 extraroute_db.ExtraRoute_dbonly_mixin,
                                 l3_gwmode_db.L3_NAT_db_mixin,
                                 l3_attrs_db.ExtraAttributesMixin,
