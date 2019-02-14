@@ -1,8 +1,11 @@
 vertices:
   portsec:
     type: portsec
+  log:
+    type: log
 
 edges:
-  dragonflow-legacy.out.1: portsec.in.default
+  dragonflow-legacy.out.1: log.in.default
+  log.out.default: portsec.in.default
   portsec.out.default: dragonflow-legacy.in.10
   portsec.out.services: dragonflow-legacy.in.20
