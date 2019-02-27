@@ -187,7 +187,10 @@ class DFBgpPlugin(service_base.ServicePluginBase,
         self.nb_api.update(bgp_speaker, skip_send_event=True)
 
     def router_port_callback(self, resource, event, trigger, **kwargs):
-        gw_network = kwargs['network_id']
+        if 'payload' in kwargs:
+            gw_network = kwargs['payload'].metadata.get('network_id')
+        else:
+            gw_network = kwargs['network_id']
         # NOTE(xiaohhui) Not all events have context in kwargs(e.g router
         # gw after create event), just get a admin context here.
         admin_ctx = n_context.get_admin_context()
