@@ -26,7 +26,6 @@ r="$r(?:.*\[.*\bslow\b.*\])"
 # exclude things that just aren't enabled:
 r="$r|(?:tempest\.api\.network\.admin\.test_quotas\.QuotasTest\.test_lbaas_quotas.*)"
 r="$r|(?:tempest\.api\.network\.admin\.test_agent_management\.*)"
-r="$r|(?:tempest\.api\.network\.admin\.test_l3_agent_scheduler\.*)"
 r="$r|(?:tempest\.api\.network\.test_load_balancer.*)"
 r="$r|(?:tempest\.scenario\.test_load_balancer.*)"
 r="$r|(?:tempest\.api\.network\.admin\.test_load_balancer.*)"
