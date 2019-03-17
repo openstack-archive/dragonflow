@@ -78,6 +78,7 @@ class Datapath(object):
         Instantiate the applications (Including table and register allocation)
         Wire the applications (including translating registers)
         """
+        self.clear_old_set_up(os_ken_base)
         self._dp = os_ken_base.datapath
         self._table_generator = _sequence_generator(
             cfg.CONF.df.datapath_autoalloc_table_offset)
@@ -120,6 +121,13 @@ class Datapath(object):
 
         for edge in self._layout.edges:
             self._install_edge(edge)
+
+    def clear_old_set_up(self):
+        if self.apps:
+            for name, app in self.apps.items():
+                dp_alloc = self._dp_allocs[name]
+                for state_name, table_num in dp_alloc.states:
+                    app.api.unregister_table_handler(table_num)
 
     def _get_app_class(self, app_type):
         """Get an application class (Python class) by app name"""
