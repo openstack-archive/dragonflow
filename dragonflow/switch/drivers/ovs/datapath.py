@@ -112,8 +112,11 @@ class Datapath(object):
 
         self.write_datapath_allocation()
 
-        for app in self.apps.values():
-            app.initialize()
+        for name, app in self.apps.items():
+            try:
+                app.initialize()
+            except Exception:
+                LOG.exception('Failed to initialize %s (%s)', name, app)
 
         for edge in self._layout.edges:
             self._install_edge(edge)
