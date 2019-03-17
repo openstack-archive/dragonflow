@@ -87,7 +87,7 @@ class OsKenDFAdapter(ofp_handler.OFPHandler):
             )
         self.table_handlers[table_id] = handler
 
-    def unregister_table_handler(self, table_id, handler):
+    def unregister_table_handler(self, table_id):
         self.table_handlers.pop(table_id, None)
 
     def notify_switch_sync_finished(self):
