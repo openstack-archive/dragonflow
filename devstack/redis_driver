@@ -11,7 +11,6 @@
 # - nb_db_driver_configure
 
 REDIS_VERSION=3.0.6
-RUBY_VERSION=2.3
 
 function _redis_env {
     # REMOTE_DB_* initialized after sourcing
@@ -74,15 +73,7 @@ function nb_db_driver_install_server {
                 _configure_redis
             fi
 
-            mkdir -p $DEST/ruby
-            if [ ! -f "$DEST/ruby/ruby-$RUBY_VERSION.0.tar.gz" ]; then
-                wget https://cache.ruby-lang.org/pub/ruby/$RUBY_VERSION/ruby-$RUBY_VERSION.0.tar.gz -O $DEST/ruby/ruby-$RUBY_VERSION.0.tar.gz
-            fi
-            tar xzvf $DEST/ruby/ruby-$RUBY_VERSION.0.tar.gz -C $DEST/ruby
-            cd $DEST/ruby/ruby-$RUBY_VERSION.0
-            sudo ./configure
-            sudo make
-            sudo make install
+            install_package -y ruby
 
             if ! sudo gem list redis | grep -q redis; then
                 sudo gem source -a $DF_RUBY_SOURCE_ADD
