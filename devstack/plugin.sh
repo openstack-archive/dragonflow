@@ -335,9 +335,9 @@ function install_zeromq {
     if is_fedora; then
         install_package zeromq
     elif is_ubuntu; then
-        install_package libzmq1
+        install_package libzmq3-dev
     elif is_suse; then
-        install_package libzmq1
+        install_package libzmq3-dev
     fi
     # Necessary directory for socket location.
     sudo mkdir -p /var/run/openstack
