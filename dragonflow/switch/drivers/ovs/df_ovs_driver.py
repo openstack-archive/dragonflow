@@ -42,6 +42,13 @@ class DfOvsDriver(df_switch_driver.DfSwitchDriver):
     def initialize(self, db_change_callback, neutron_notifier):
         super(DfOvsDriver, self).initialize(db_change_callback,
                                             neutron_notifier)
+        self._initialize_app()
+        # The OfctlService is needed to support the 'get_flows' method
+        self._initialize_service()
+
+    def _initialize_app(self):
+        if self.open_flow_app:
+            self.app_mgr.uninstantiate(self.open_flow_app.name)
         self.open_flow_app = self.app_mgr.instantiate(
             os_ken_base_app.OsKenDFAdapter,
             nb_api=self.nb_api,
@@ -49,7 +56,10 @@ class DfOvsDriver(df_switch_driver.DfSwitchDriver):
             neutron_server_notifier=self.neutron_notifier,
             db_change_callback=self.db_change_callback
         )
-        # The OfctlService is needed to support the 'get_flows' method
+
+    def _initialize_service(self):
+        if self.open_flow_service:
+            self.app_mgr.uninstantiate(self.open_flow_service.name)
         self.open_flow_service = self.app_mgr.instantiate(
             of_service.OfctlService)
 
