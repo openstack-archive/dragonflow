@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import testtools
 import time
 
 from neutron.agent.common import utils
@@ -225,6 +226,7 @@ class TestNeighborAdvertiser(test_base.DFTestBase):
                        'net.ipv6.conf.default.router_solicitations={}'.
                        format(self.router_solicit_conf)], run_as_root=True)
 
+    @testtools.skip('bug/1820977')
     def test_simple_response(self):
         """
         2 ports on 1 subnet. 1 port asks for MAC of other.
