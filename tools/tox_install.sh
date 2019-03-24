@@ -29,7 +29,7 @@ elif [ -x "$ZUUL_CLONER" ]; then
     export ZUUL_BRANCH=${ZUUL_BRANCH-$BRANCH}
     $ZUUL_CLONER --cache-dir \
         /opt/git \
-        git://git.openstack.org \
+        https://git.openstack.org \
         openstack/neutron
     cd openstack/neutron
     pip install -e .
