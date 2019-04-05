@@ -13,11 +13,11 @@
 import mock
 from oslo_config import cfg
 
-from neutron.services.trunk import constants as trunk_const
 from neutron.services.trunk import drivers as trunk_drivers
 from neutron.services.trunk import plugin as trunk_plugin
 from neutron_lib import constants
 from neutron_lib.plugins import directory
+from neutron_lib.services.trunk import constants as trunk_const
 
 from dragonflow.neutron.db.models import l2
 from dragonflow.neutron.services.trunk import driver
@@ -76,7 +76,7 @@ class TestDFTrunkDriver(test_mech_driver.DFMechanismDriverTestCase):
                     'sub_ports': [],
                 }
             })
-            self.assertTrue(trunk['status'] == trunk_const.ACTIVE_STATUS)
+            self.assertTrue(trunk['status'] == trunk_const.TRUNK_ACTIVE_STATUS)
 
     def test_driver_create_delete_subport(self):
         # Create parent port

@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.services.trunk import constants
 from neutron.services.trunk.drivers import base
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.callbacks import events
@@ -21,6 +20,7 @@ from neutron_lib.callbacks import resources
 from neutron_lib import constants as n_constants
 from neutron_lib import context
 from neutron_lib.plugins import directory
+from neutron_lib.services.trunk import constants
 
 from dragonflow import conf as cfg
 from dragonflow.db.models import l2
@@ -40,7 +40,7 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         super(DfTrunkDriver, self).__init__(
             'df',
             (portbindings.VIF_TYPE_OVS, portbindings.VIF_TYPE_VHOST_USER),
-            (constants.VLAN,),
+            (constants.SEGMENTATION_TYPE_VLAN,),
             can_trunk_bound_port=True
         )
         self._nb_api = None
@@ -66,18 +66,18 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
 
     def _register_init_events(self):
         registry.subscribe(self.register,
-                           constants.TRUNK_PLUGIN,
+                           resources.TRUNK_PLUGIN,
                            events.AFTER_INIT)
 
     def _register_trunk_events(self):
         registry.subscribe(self._add_trunk_handler,
-                           constants.TRUNK, events.AFTER_CREATE)
+                           resources.TRUNK, events.AFTER_CREATE)
 
     def _register_subport_events(self):
         registry.subscribe(self._add_subports_handler,
-                           constants.SUBPORTS, events.AFTER_CREATE)
+                           resources.SUBPORTS, events.AFTER_CREATE)
         registry.subscribe(self._delete_subports_handler,
-                           constants.SUBPORTS, events.AFTER_DELETE)
+                           resources.SUBPORTS, events.AFTER_DELETE)
         registry.subscribe(self._update_port_handler,
                            resources.PORT, events.AFTER_UPDATE)
 
@@ -85,7 +85,7 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
         """Handle the event that trunk was created"""
         payload = kwargs['payload']
         trunk = payload.current_trunk
-        trunk.update(status=constants.ACTIVE_STATUS)
+        trunk.update(status=constants.TRUNK_ACTIVE_STATUS)
 
     def _add_subports_handler(self, *args, **kwargs):
         """Handle the event that subports were created"""
