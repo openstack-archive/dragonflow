@@ -39,7 +39,6 @@ while test ${#} -gt 0; do
         exit 1
       fi
       VERB=$1
-      shift
       ;;
   esac
   shift
@@ -81,7 +80,7 @@ case "$VERB" in
     /usr/local/bin/df-local-controller --config-file /etc/dragonflow/dragonflow.ini
     ;;
   "bash")
-    /bin/bash
+    /bin/bash $@
     ;;
   "rest")
     df-model -j -o /var/dragonflow_model.json
