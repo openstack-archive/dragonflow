@@ -65,7 +65,7 @@
     post-run: zuul/dragonflow-dsvm-fullstack-redis/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/dragonflow
       - openstack/neutron
       - openstack/networking-sfc
@@ -78,7 +78,7 @@
     post-run: zuul/dragonflow-dsvm-fullstack-etcd-zmq/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/dragonflow
       - openstack/neutron
       - openstack/networking-sfc
@@ -91,7 +91,7 @@
     post-run: zuul/dragonflow-dsvm-rally/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/dragonflow
       - openstack/neutron
       - openstack/networking-sfc
@@ -105,7 +105,7 @@
     post-run: zuul/tempest-dsvm-dragonflow/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/dragonflow
       - openstack/neutron
       - openstack/networking-sfc
