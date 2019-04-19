@@ -13,12 +13,12 @@
           set -x
           cat > clonemap.yaml << EOF
           clonemap:
-            - name: openstack-infra/devstack-gate
+            - name: openstack/devstack-gate
               dest: devstack-gate
           EOF
           /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
-              https://git.openstack.org \
-              openstack-infra/devstack-gate
+              https://opendev.org \
+              openstack/devstack-gate
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
       environment: '{{ zuul | zuul_legacy_vars }}'
@@ -29,10 +29,10 @@
           set -x
           cat << 'EOF' >>"/tmp/dg-local.conf"
           [[local|localrc]]
-          enable_plugin dragonflow https://git.openstack.org/openstack/dragonflow
+          enable_plugin dragonflow https://opendev.org/openstack/dragonflow
           Q_ENABLE_DRAGONFLOW_LOCAL_CONTROLLER=True
-          enable_plugin rally https://git.openstack.org/openstack/rally
-          enable_plugin neutron-dynamic-routing https://git.openstack.org/openstack/neutron-dynamic-routing
+          enable_plugin rally https://opendev.org/openstack/rally
+          enable_plugin neutron-dynamic-routing https://opendev.org/openstack/neutron-dynamic-routing
 
           EOF
         executable: /bin/bash
