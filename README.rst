@@ -11,7 +11,7 @@ Distributed SDN-based Neutron Implementation
 
 * Free software: Apache license
 * Homepage: http://www.dragonflow.net/
-* Source: https://git.openstack.org/cgit/openstack/dragonflow
+* Source: https://opendev.org/openstack/dragonflow
 * Bugs: https://bugs.launchpad.net/dragonflow
 * Documentation: https://docs.openstack.org/dragonflow/latest/
 * Release notes: https://docs.openstack.org/developer/dragonflow/releasenotes.html
