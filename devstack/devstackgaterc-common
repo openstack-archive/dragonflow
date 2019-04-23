@@ -14,7 +14,7 @@
 # This script is executed in the OpenStack CI job that runs DevStack + tempest.
 # It is also used by the rally job. You can find the CI job configuration here:
 #
-# https://git.openstack.org/cgit/openstack-infra/project-config/tree/jenkins/jobs/dragonflow.yaml
+# https://opendev.org/openstack-infra/project-config/tree/jenkins/jobs/dragonflow.yaml
 #
 
 export OVERRIDE_ENABLED_SERVICES=key,n-api,n-api-meta,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,rabbit,mysql,dstat,df-controller,q-svc,df-metadata,q-qos,placement-api,q-trunk
