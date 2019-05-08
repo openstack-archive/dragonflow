@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron.db import common_db_mixin  # noqa
+
 from dragonflow.common import utils as df_utils
 from dragonflow.tests.database import test_db_api
 

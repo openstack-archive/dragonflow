@@ -57,6 +57,7 @@
               export OVERRIDE_ZUUL_BRANCH=$BRANCH_OVERRIDE
           fi
 
+          export PROJECTS="openstack/neutron $PROJECTS"
           export PROJECTS="openstack/dragonflow $PROJECTS"
           export PROJECTS="openstack/neutron-dynamic-routing $PROJECTS"
           export PROJECTS="openstack/networking-sfc $PROJECTS"
