@@ -69,6 +69,7 @@ class TestDFTrunkDriver(test_mech_driver.DFMechanismDriverTestCase):
         # Create trunk port
         # Check trunk is ACTIVE
         with self.port() as parent:
+
             trunk = self.trunk_plugin.create_trunk(self.context, {
                 'trunk': {
                     'port_id': parent['port']['id'],
