@@ -14,6 +14,8 @@ import abc
 
 import six
 
+from neutron.db import common_db_mixin  # noqa
+
 
 @six.add_metaclass(abc.ABCMeta)
 class DbApi(object):

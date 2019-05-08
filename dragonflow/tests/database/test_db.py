@@ -21,6 +21,7 @@ import uuid
 
 import mock
 from neutron.common import config as common_config
+from neutron.db import common_db_mixin  # noqa
 import numpy
 from oslo_log import log
 
