@@ -84,7 +84,7 @@ class DfTrunkDriver(base.DriverBase, mixins.LazyNbApiMixin):
     def _add_trunk_handler(self, *args, **kwargs):
         """Handle the event that trunk was created"""
         payload = kwargs['payload']
-        trunk = payload.current_trunk
+        trunk = payload.latest_state
         trunk.update(status=constants.TRUNK_ACTIVE_STATUS)
 
     def _add_subports_handler(self, *args, **kwargs):
