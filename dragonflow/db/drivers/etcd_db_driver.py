@@ -123,7 +123,10 @@ class EtcdDbDriver(db_api.DbApi):
     def _get_key(self, table_key, key):
         value = self.client.get(table_key)
         if len(value) > 0:
-            return value.pop()
+            ret_val = value.pop()
+            if not six.PY2:
+                ret_val = ret_val.decode("utf-8")
+            return ret_val
         raise df_exceptions.DBKeyNotFound(key=key)
 
     def set_key(self, table, key, value, topic=None):
@@ -143,6 +146,8 @@ class EtcdDbDriver(db_api.DbApi):
         for entry in directory:
             value = entry[0]
             if value:
+                if not six.PY2:
+                    value = value.decode("utf-8")
                 res.append(value)
         return res
 
