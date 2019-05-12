@@ -34,7 +34,7 @@ def key2slot(key):
         end = k.find('}', start + 1)
         if end > -1 and end != start + 1:
             k = k[start + 1:end]
-    return crc16.crc16xmodem(k.encode('UTF-8')) % REDIS_NSLOTS
+    return crc16.crc16xmodem(k.encode('utf-8')) % REDIS_NSLOTS
 
 
 class Node(object):
@@ -347,7 +347,7 @@ class RedisDbDriver(db_api.DbApi):
             # ask a specific node
             pattern = self._key_name(table, topic, key or '*')
             nodes = (self._cluster.get_node(pattern), )
-        return (pattern, nodes)
+        return pattern, nodes
 
     def _scan(self, table, key=None, topic=None):
         (pattern, nodes) = self._query_info(table, topic, key)

@@ -160,7 +160,7 @@ class RedisMgt(object):
         raw = node.execute_command('cluster nodes')
         ret = {}
 
-        for line in raw.split('\n'):
+        for line in raw.decode('utf-8', 'ignore').split('\n'):
             if not line:
                 continue
 
@@ -373,7 +373,7 @@ class RedisMgt(object):
                 update = db_common.DbUpdate('ha', 'nodes',
                                             'set', nodes_json,
                                             topic=topic)
-                topic = topic.encode('utf8')
+                topic = topic.encode('utf8', 'ignore')
                 data = pub_sub_api.pack_message(update.to_dict())
                 self.publisher._send_event(data, topic)
 
