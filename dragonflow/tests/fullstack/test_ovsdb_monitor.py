@@ -39,7 +39,9 @@ class TestOvsdbMonitor(test_base.DFTestBase):
             return False
         elif _interface.lport is None:
             return False
-        elif _interface.port_num <= 0:
+        # port_num may be None if it does not exist in the json
+        # This happens before the port is bound
+        elif _interface.port_num is None or _interface.port_num <= 0:
             return False
         elif _interface.admin_state != "up":
             return False

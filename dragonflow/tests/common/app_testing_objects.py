@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import binascii
 import collections
 import fcntl
 import os
@@ -93,7 +94,8 @@ def delete_tap_device(dev):
 
 
 def packet_raw_data_to_hex(buf):
-    return str(buf).encode('hex')
+    return binascii.hexlify(str(buf).encode('utf-8', 'ignore')
+                            ).decode('utf-8', 'ignore')
 
 
 class Topology(object):
@@ -428,7 +430,7 @@ class LogicalPortTap(object):
         if isinstance(buf, bytearray):
             buf = bytes(buf)
         elif isinstance(buf, six.string_types):
-            buf = buf.encode('utf-8')
+            buf = buf.encode('utf-8', 'ignore')
 
         if self.is_blocking:
             # Takes string and read-only bytes-like objects
