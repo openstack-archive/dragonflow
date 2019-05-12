@@ -9,12 +9,8 @@ function configure_docker_test_env {
     local docker_pkg
 
     sudo bash -c 'echo "tempest ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers'
-    if apt-cache search docker-engine | grep docker-engine; then
-        docker_pkg=docker-engine
-    else
-        docker_pkg=docker.io
-    fi
-    sudo apt-get install -y $docker_pkg
+    sudo apt-get update
+    sudo apt-get install -y docker-engine || sudo apt-get install -y docker.io
     sudo service docker restart
 }
 
