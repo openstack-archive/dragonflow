@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import binascii
 import collections
 import fcntl
 import os
@@ -93,7 +94,7 @@ def delete_tap_device(dev):
 
 
 def packet_raw_data_to_hex(buf):
-    return str(buf).encode('hex')
+    return binascii.hexlify(str(buf).encode('utf-8')).decode('utf-8')
 
 
 class Topology(object):
