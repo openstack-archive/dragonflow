@@ -11,10 +11,10 @@
 #    under the License.
 
 import re
+from six.moves import configparser
 
 from oslo_config import cfg
 
-import ConfigParser
 from dragonflow.common import utils as df_utils
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.common import utils
@@ -394,7 +394,7 @@ class TestL2FLows(test_base.DFTestBase):
         readhandle = None
         value = None
         try:
-            config = ConfigParser.ConfigParser()
+            config = configparser.ConfigParser()
             readhandle = open(ML2_CONF_INI, 'r')
             config.readfp(readhandle)
             value = config.get(section, key)
