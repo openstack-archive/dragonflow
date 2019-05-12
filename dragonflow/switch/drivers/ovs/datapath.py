@@ -347,7 +347,7 @@ def load_datapath_from_file_stream(stream):
 
 
 def load_datapath_from_file_name(dppath):
-    with open(dppath, 'r') as f:
+    with open(dppath, 'rb') as f:
         return load_datapath_from_file_stream(f)
 
 

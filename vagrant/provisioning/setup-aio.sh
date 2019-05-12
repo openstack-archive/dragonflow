@@ -18,6 +18,8 @@ HOST_IP=$ipaddress
 HOSTNAME=$(hostname)
 SERVICE_HOST_NAME=\${HOSTNAME}
 SERVICE_HOST=$ipaddress
+
+USE_PYTHON3=True
 DEVSTACKEOF
 
 ~/devstack/stack.sh
