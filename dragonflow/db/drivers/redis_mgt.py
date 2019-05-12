@@ -108,11 +108,11 @@ class RedisMgt(object):
         node.connection_pool.get_connection(None, None).disconnect()
 
     def _parse_node_line(self, line):
-        line_items = line.split(' ')
+        line_items = line.split(" ")
         ret = line_items[:8]
         slots = []
         for sl in line_items[8:]:
-            slot_range = sl.split('-')
+            slot_range = sl.split("-")
             # this is to avoid the tmp state when resharding such as:
             # 0-2111 [2112-<-ee248550472a0ddee8857969b7e2ee832fd6cce0]
             if len(slot_range) < 3:
@@ -126,7 +126,7 @@ class RedisMgt(object):
         # get redis cluster topology from local nodes cached in initialization
         new_nodes = {}
         for host, info in self.cluster_nodes.items():
-            ip_port = host.split(':')
+            ip_port = host.split(":")
             try:
                 node = self._init_node(ip_port[0], ip_port[1])
                 info = self._get_cluster_info(node)
