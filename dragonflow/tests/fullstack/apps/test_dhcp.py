@@ -67,11 +67,11 @@ class TestDHCPApp(test_base.DFTestBase):
         options = [
             os_ken.lib.packet.dhcp.option(
                 os_ken.lib.packet.dhcp.DHCP_MESSAGE_TYPE_OPT,
-                chr(os_ken.lib.packet.dhcp.DHCP_DISCOVER),
+                bytes((os_ken.lib.packet.dhcp.DHCP_DISCOVER,)),
             ),
             os_ken.lib.packet.dhcp.option(
                 os_ken.lib.packet.dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT,
-                chr(os_ken.lib.packet.dhcp.DHCP_GATEWAY_ADDR_OPT),
+                bytes((os_ken.lib.packet.dhcp.DHCP_GATEWAY_ADDR_OPT,)),
             ),
         ]
         dhcp = os_ken.lib.packet.dhcp.dhcp(
@@ -113,15 +113,15 @@ class TestDHCPApp(test_base.DFTestBase):
         options = [
             os_ken.lib.packet.dhcp.option(
                 os_ken.lib.packet.dhcp.DHCP_MESSAGE_TYPE_OPT,
-                chr(os_ken.lib.packet.dhcp.DHCP_REQUEST),
+                bytes((os_ken.lib.packet.dhcp.DHCP_REQUEST,)),
             ),
             os_ken.lib.packet.dhcp.option(
                 os_ken.lib.packet.dhcp.DHCP_REQUESTED_IP_ADDR_OPT,
-                offer.yiaddr,
+                offer.yiaddr.encode(),
             ),
             os_ken.lib.packet.dhcp.option(
                 os_ken.lib.packet.dhcp.DHCP_PARAMETER_REQUEST_LIST_OPT,
-                chr(os_ken.lib.packet.dhcp.DHCP_GATEWAY_ADDR_OPT),
+                bytes((os_ken.lib.packet.dhcp.DHCP_GATEWAY_ADDR_OPT,)),
             ),
         ]
         dhcp = os_ken.lib.packet.dhcp.dhcp(

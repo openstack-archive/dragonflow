@@ -486,7 +486,7 @@ class TestFcApp(SfcTestsCommonBase):
 
     @property
     def _initial_packet(self):
-        payload = '0' * 64
+        payload = (b'0' * 64)
 
         if self.pkt_proto == constants.PROTO_NAME_TCP:
             tp = self._gen_tcp()
@@ -574,13 +574,13 @@ class TestSfcApp(SfcTestsCommonBase):
             self._gen_ethernet() /
             self._gen_ipv4(proto=inet.IPPROTO_UDP) /
             self._gen_udp(src_port=SRC_PORT, dst_port=DST_PORT) /
-            ('0' * 64)
+            (b'0' * 64)
         )
         final_packet = self._get_bytes(
             self._gen_ethernet() /
             self._gen_ipv4(proto=inet.IPPROTO_UDP) /
             self._gen_udp(src_port=SRC_PORT, dst_port=DST_PORT) /
-            ('{len}'.format(len=len(self.layout)) * 64)
+            (bytes((len(self.layout) + ord('0'),)) * 64)
         )
         fc = objects.FlowClassifierTestObj(self.neutron, self.nb_api)
         self.addCleanup(fc.close)

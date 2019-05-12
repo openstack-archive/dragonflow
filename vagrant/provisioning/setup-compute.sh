@@ -16,6 +16,8 @@ cat << DEVSTACKEOF >> devstack/local.conf
 # Set this to the address of the main DevStack host running the rest of the
 # OpenStack services.
 HOSTNAME=$(hostname)
+
+USE_PYTHON3=True
 DEVSTACKEOF
 
 ~/devstack/stack.sh

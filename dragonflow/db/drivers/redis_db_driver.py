@@ -34,7 +34,7 @@ def key2slot(key):
         end = k.find('}', start + 1)
         if end > -1 and end != start + 1:
             k = k[start + 1:end]
-    return crc16.crc16xmodem(k.encode('UTF-8')) % REDIS_NSLOTS
+    return crc16.crc16xmodem(k.encode('utf-8')) % REDIS_NSLOTS
 
 
 class Node(object):
@@ -47,8 +47,10 @@ class Node(object):
     @property
     def client(self):
         if self._client is None:
+            decode = not six.PY2
             self._client = redis_client.StrictRedis(host=self.ip,
-                                                    port=self.port)
+                                                    port=self.port,
+                                                    decode_responses=decode)
         return self._client
 
     @property
@@ -128,7 +130,7 @@ class Cluster(object):
 class RedisDbDriver(db_api.DbApi):
     def __init__(self, *args, **kwargs):
         super(RedisDbDriver, self).__init__(*args, **kwargs)
-        self._table_strip_re = re.compile(b'^{.+}(.+)$')
+        self._table_strip_re = re.compile('^{.+}(.+)$')
         self.config = cfg.CONF.df_redis
         self.BATCH_KEY_AMOUNT = self.config.batch_amount
         self.RETRY_COUNT = self.config.retries
@@ -347,7 +349,7 @@ class RedisDbDriver(db_api.DbApi):
             # ask a specific node
             pattern = self._key_name(table, topic, key or '*')
             nodes = (self._cluster.get_node(pattern), )
-        return (pattern, nodes)
+        return pattern, nodes
 
     def _scan(self, table, key=None, topic=None):
         (pattern, nodes) = self._query_info(table, topic, key)

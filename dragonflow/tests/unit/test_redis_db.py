@@ -128,8 +128,8 @@ class TestRedisDB(tests_base.BaseTestCase):
             'DEL', '{table.topic}key')
 
     def test_get_all_keys_topic(self):
-        expected = [b'key1', b'key2', b'key3']
-        keys_response = [b'{table.topic}' + key for key in expected]
+        expected = ['key1', 'key2', 'key3']
+        keys_response = ['{table.topic}' + key for key in expected]
         self.RedisDbDriver._cluster = mock.Mock()
         node = mock.Mock()
         self.RedisDbDriver._cluster.get_node.return_value = node
@@ -139,14 +139,14 @@ class TestRedisDB(tests_base.BaseTestCase):
 
     def test_get_all_keys_notopic(self):
         nodes_keys = (
-            [b'key1', b'key2', b'key3'],
-            [b'key3', b'key4', b'key5'],
+            ['key1', 'key2', 'key3'],
+            ['key3', 'key4', 'key5'],
         )
         expected = set()
         nodes = []
         for node_keys in nodes_keys:
             expected.update(node_keys)
-            keys_response = [b'{table.topic}' + key for key in node_keys]
+            keys_response = ['{table.topic}' + key for key in node_keys]
             node = mock.Mock()
             node.client.scan.return_value = (0, keys_response)
             nodes.append(node)
