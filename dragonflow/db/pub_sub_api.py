@@ -139,7 +139,7 @@ class PublisherAgentBase(PublisherApi):
         if topic is None:
             topic = update.topic or db_common.SEND_ALL_TOPIC
 
-        topic = topic.encode('utf8')
+        topic = topic.encode('utf8', 'ignore')
 
         LOG.debug("Sending %s to %s", update, topic)
 

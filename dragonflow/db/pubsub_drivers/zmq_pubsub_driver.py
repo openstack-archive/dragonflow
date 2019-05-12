@@ -105,13 +105,13 @@ class ZMQSubscriberAgentBase(pub_sub_api.SubscriberAgentBase):
             self.sub_socket.disconnect(uri)
 
     def register_topic(self, topic):
-        topic = topic.encode('ascii', 'ignore')
+        topic = topic.encode('utf-8', 'ignore')
         is_new = super(ZMQSubscriberAgentBase, self).register_topic(topic)
         if is_new and self.sub_socket:
             self.sub_socket.setsockopt(zmq.SUBSCRIBE, topic)
 
     def unregister_topic(self, topic):
-        topic = topic.encode('ascii', 'ignore')
+        topic = topic.encode('utf-8', 'ignore')
         super(ZMQSubscriberAgentBase, self).unregister_topic(topic)
         if self.sub_socket:
             self.sub_socket.setsockopt(zmq.UNSUBSCRIBE, topic)
