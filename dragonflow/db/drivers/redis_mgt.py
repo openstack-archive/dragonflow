@@ -108,11 +108,11 @@ class RedisMgt(object):
         node.connection_pool.get_connection(None, None).disconnect()
 
     def _parse_node_line(self, line):
-        line_items = line.split(' ')
+        line_items = line.split(" ")
         ret = line_items[:8]
         slots = []
         for sl in line_items[8:]:
-            slot_range = sl.split('-')
+            slot_range = sl.split("-")
             # this is to avoid the tmp state when resharding such as:
             # 0-2111 [2112-<-ee248550472a0ddee8857969b7e2ee832fd6cce0]
             if len(slot_range) < 3:
@@ -126,7 +126,7 @@ class RedisMgt(object):
         # get redis cluster topology from local nodes cached in initialization
         new_nodes = {}
         for host, info in self.cluster_nodes.items():
-            ip_port = host.split(':')
+            ip_port = host.split(":")
             try:
                 node = self._init_node(ip_port[0], ip_port[1])
                 info = self._get_cluster_info(node)
@@ -149,18 +149,18 @@ class RedisMgt(object):
         raw = node.execute_command('cluster info')
 
         def _split(line):
-            k, v = line.split(':')
+            k, v = line.split(":")
             yield k
             yield v
 
         return {k: v for k, v in
-                [_split(line) for line in raw.split('\r\n') if line]}
+                [_split(line) for line in raw.split("\r\n") if line]}
 
     def _get_cluster_nodes(self, node):
         raw = node.execute_command('cluster nodes')
         ret = {}
 
-        for line in raw.split('\n'):
+        for line in raw.split("\n"):
             if not line:
                 continue
 
@@ -355,7 +355,7 @@ class RedisMgt(object):
         try:
             for remote in self.get_master_list():
                 remote_ip_port = remote['ip_port']
-                ip_port = remote_ip_port.split(':')
+                ip_port = remote_ip_port.split(":")
                 node = redis.StrictRedis(ip_port[0], ip_port[1])
                 RedisMgt.check_connection(node)
                 self._release_node(node)
