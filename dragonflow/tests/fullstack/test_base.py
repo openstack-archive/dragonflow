@@ -157,4 +157,5 @@ class DFTestBase(base.BaseTestCase):
 
     def _create_random_string(self, length=16):
         alphabet = string.printable
-        return ''.join([random.choice(alphabet) for _ in range(length)])
+        ret = ''.join([random.choice(alphabet) for _ in range(length)])
+        return ret.encode('utf-8', 'ignore')

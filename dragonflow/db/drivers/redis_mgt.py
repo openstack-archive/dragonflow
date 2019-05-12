@@ -146,7 +146,7 @@ class RedisMgt(object):
         return new_nodes
 
     def _get_cluster_info(self, node):
-        raw = node.execute_command('cluster info')
+        raw = node.execute_command('cluster info').decode('utf-8', 'ignore')
 
         def _split(line):
             k, v = line.split(':')
@@ -157,7 +157,7 @@ class RedisMgt(object):
                 [_split(line) for line in raw.split('\r\n') if line]}
 
     def _get_cluster_nodes(self, node):
-        raw = node.execute_command('cluster nodes')
+        raw = node.execute_command('cluster nodes').decode('utf-8', 'ignore')
         ret = {}
 
         for line in raw.split('\n'):
@@ -373,7 +373,7 @@ class RedisMgt(object):
                 update = db_common.DbUpdate('ha', 'nodes',
                                             'set', nodes_json,
                                             topic=topic)
-                topic = topic.encode('utf8')
+                topic = topic.encode('utf8', 'ignore')
                 data = pub_sub_api.pack_message(update.to_dict())
                 self.publisher._send_event(data, topic)
 

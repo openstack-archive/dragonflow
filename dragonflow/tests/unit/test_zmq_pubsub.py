@@ -52,7 +52,8 @@ class TestZMQPubSub(tests_base.BaseTestCase):
             log_debug.assert_called()
             args = self.ZMQPublisherAgent.socket.send_multipart.call_args
             self.ZMQPublisherAgent.socket.send_multipart.assert_called_once()
-            self.assertEqual(db_common.SEND_ALL_TOPIC.encode('utf-8'),
+            self.assertEqual(db_common.SEND_ALL_TOPIC.encode('utf-8',
+                                                             'ignore'),
                              args[0][0][0])
             self.assertIsNone(result)
 
