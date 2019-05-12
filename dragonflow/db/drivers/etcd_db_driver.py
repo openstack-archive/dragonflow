@@ -143,6 +143,8 @@ class EtcdDbDriver(db_api.DbApi):
         for entry in directory:
             value = entry[0]
             if value:
+                if not six.PY2:
+                    value = value.decode("utf-8")
                 res.append(value)
         return res
 

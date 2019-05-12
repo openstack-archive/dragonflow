@@ -160,7 +160,7 @@ class RedisMgt(object):
         raw = node.execute_command('cluster nodes')
         ret = {}
 
-        for line in raw.split('\n'):
+        for line in raw.decode('utf-8').split('\n'):
             if not line:
                 continue
 
