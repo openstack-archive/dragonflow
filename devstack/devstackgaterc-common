@@ -20,5 +20,5 @@
 export OVERRIDE_ENABLED_SERVICES=key,n-api,n-api-meta,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,g-api,g-reg,rabbit,mysql,dstat,df-controller,q-svc,df-metadata,q-qos,placement-api,q-trunk
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"DF_RUNNING_IN_GATE=True"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"EXTERNAL_HOST_IP=172.24.4.100"
-export DEVSTACK_LOCAL_CONFIG+=$'\n'"OVS_INSTALL_FROM_GIT=True"
+export DEVSTACK_LOCAL_CONFIG+=$'\n'"OVS_INSTALL_FROM_GIT=False"
 export DEVSTACK_LOCAL_CONFIG+=$'\n'"OVS_BRANCH=v2.9.1"
