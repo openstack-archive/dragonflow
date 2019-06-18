@@ -140,8 +140,3 @@ setups today there are many isolated topologies)
 
 Reactive
 --------
-
-
-
-
-
