@@ -8,19 +8,8 @@
     check:
       jobs:
         - dragonflow-tox-lower-constraints
-        - dragonflow-tempest:
-            voting: false
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^setup.cfg$
-        - dragonflow-dsvm-rally:
-            voting: false
         - dragonflow-dsvm-fullstack-redis
         - dragonflow-dsvm-fullstack-etcd-zmq
-        - dragonflow-openstack-ansible-cross-repo:
-            voting: false
-        - kuryr-kubernetes-tempest-dragonflow:
-            voting: false
         - openstack-tox-pep8:
             required-projects:
               - openstack/networking-sfc
@@ -57,6 +46,20 @@
             required-projects:
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
+
+    experimental:
+      jobs:
+        - dragonflow-tempest:
+            voting: false
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^setup.cfg$
+        - dragonflow-dsvm-rally:
+            voting: false
+        - dragonflow-openstack-ansible-cross-repo:
+            voting: false
+        - kuryr-kubernetes-tempest-dragonflow:
+            voting: false
 
 - job:
     name: dragonflow-dsvm-fullstack-redis
