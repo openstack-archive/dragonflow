@@ -691,4 +691,4 @@ References
 
 .. [2] https://wiki.openstack.org/wiki/Network/LBaaS/docs/how-to-create-tls-loadbalancer
 
-.. [3] https://developer.openstack.org/api-ref/load-balancer/v2/index.html
+.. [3] https://docs.openstack.org/api-ref/load-balancer/v2/index.html
