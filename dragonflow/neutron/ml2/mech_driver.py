@@ -152,8 +152,8 @@ class DFMechDriver(api.MechanismDriver):
             })
 
     @lock_db.wrap_db_lock(lock_db.RESOURCE_ML2_SECURITY_GROUP)
-    def update_security_group(self, resource, event, trigger, **kwargs):
-        sg = kwargs['security_group']
+    def update_security_group(self, resource, event, trigger, payload=None):
+        sg = payload.desired_state or payload.latest_state
         sg_name = sg.get('name')
         rules = sg.get('security_group_rules', [])
 
