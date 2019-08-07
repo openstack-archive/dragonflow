@@ -107,20 +107,15 @@ class RedisMgt(object):
     def _release_node(self, node):
         node.connection_pool.get_connection(None, None).disconnect()
 
-    def _parse_node_line(self, line):
-        line_items = line.split(' ')
-        ret = line_items[:8]
-        slots = []
-        for sl in line_items[8:]:
-            slot_range = sl.split('-')
-            # this is to avoid the tmp state when resharding such as:
-            # 0-2111 [2112-<-ee248550472a0ddee8857969b7e2ee832fd6cce0]
-            if len(slot_range) < 3:
-                slots.append(slot_range)
-
-        ret.append(slots)
-
-        return ret
+    # This is a temporary patch to still support Python2.
+    # The redis library always returns unicode strings
+    @staticmethod
+    def _unicode_to_str(value):
+        if six.PY3:
+            return value
+        if not isinstance(value, six.text_type):
+            return value
+        return value.encode('utf-8', 'ignore')
 
     def get_cluster_topology_by_all_nodes(self):
         # get redis cluster topology from local nodes cached in initialization
@@ -146,50 +141,35 @@ class RedisMgt(object):
         return new_nodes
 
     def _get_cluster_info(self, node):
-        raw = node.execute_command('cluster info').decode('utf-8', 'ignore')
+        raw = node.execute_command('cluster info')
+        return {self._unicode_to_str(key): self._unicode_to_str(value)
+                for key, value in raw.items()}
 
-        def _split(line):
-            k, v = line.split(':')
-            yield k
-            yield v
-
-        return {k: v for k, v in
-                [_split(line) for line in raw.split('\r\n') if line]}
+    @staticmethod
+    def _get_role_from_flags(flags):
+        parsed_flags = flags.split(',')
+        if 'fail' in parsed_flags:
+            return None
+        if 'master' in parsed_flags:
+            return 'master'
+        if 'slave' in parsed_flags:
+            flags = 'slave'
+        return flags
 
     def _get_cluster_nodes(self, node):
-        raw = node.execute_command('cluster nodes').decode('utf-8', 'ignore')
+        raw = node.execute_command('cluster nodes')
         ret = {}
 
-        for line in raw.split('\n'):
-            if not line:
-                continue
-
-            node_id, ip_port, flags, master_id, ping, pong, epoch, \
-                status, slots = self._parse_node_line(line)
-            role = flags
-
-            if ',' in flags:
-                if "fail" in flags:
-                    continue
-                if "slave" in flags:
-                    role = "slave"
-                elif "master" in flags:
-                    role = "master"
-
+        for ip_port, _node in raw.items():
+            node = {self._unicode_to_str(key): self._unicode_to_str(value)
+                    for key, value in _node.items()}
+            role = self._get_role_from_flags(node['flags'])
+            node['role'] = role
+            node.pop('flags', None)
             if ip_port.startswith(':'):
-                ip_port = "127.0.0.1" + ip_port
+                ip_port = '127.0.0.1' + ip_port
 
-            ret[ip_port] = {
-                'node_id': node_id,
-                'role': role,
-                'master_id': master_id,
-                'last_ping_sent': ping,
-                'last_pong_rcvd': pong,
-                'epoch': epoch,
-                'status': status,
-                'slots': slots
-            }
-
+        ret[self._unicode_to_str(ip_port)] = node
         return ret
 
     @staticmethod
@@ -247,10 +227,11 @@ class RedisMgt(object):
                                 if node['ip_port'] != ip_port]
 
     def pubsub_select_node_idx(self):
-        db_instance_id = RedisMgt._gen_random_str()
         master_num = len(self.master_list)
         if 0 == master_num:
+            LOG.info("redis master list is empty")
             return None
+        db_instance_id = RedisMgt._gen_random_str()
         num = hash(db_instance_id) % master_num
         ip_port = self.master_list[num]['ip_port']
 
@@ -258,13 +239,13 @@ class RedisMgt(object):
 
     # check if cluster topo changed
     def _check_nodes_change(self, old_nodes, new_nodes):
-        changed = RET_CODE.NOT_CHANGE
-
         if len(old_nodes) < len(new_nodes):
-            changed = RET_CODE.NODES_CHANGE
+            LOG.info("redis nodel list changed: %d to %d" %
+                     (len(old_nodes), len(new_nodes)))
+            return RET_CODE.NODES_CHANGE
         elif len(old_nodes) == len(new_nodes):
-            if 0 == len(old_nodes) and 0 == len(new_nodes):
-                return changed
+            if 0 == len(old_nodes):
+                return RET_CODE.NOT_CHANGE
 
             cnt = 0
             master_cnt = 0
@@ -289,13 +270,16 @@ class RedisMgt(object):
             if master_cnt != slave_cnt:
                 # this means a tmp status
                 # one master one slave
-                changed = RET_CODE.NODES_CHANGE
-                LOG.info("master nodes not equals to slave nodes")
+                LOG.info("master nodes count not equals to slave nodes count "
+                         "(%d, %d)" % (master_cnt, slave_cnt))
+                return RET_CODE.NODES_CHANGE
             else:
                 if cnt != len(old_nodes):
-                    changed = RET_CODE.NODES_CHANGE
+                    LOG.info("Node count changed from %d to %d" %
+                             (len(old_nodes), cnt))
+                    return RET_CODE.NODES_CHANGE
                 elif slot_changed:
-                    changed = RET_CODE.SLOTS_CHANGE
+                    return RET_CODE.SLOTS_CHANGE
         else:
             # This scenario can be considered as en exception and
             # should be recovered manually. Assumed that no scale-down in
@@ -307,7 +291,7 @@ class RedisMgt(object):
                         "local nodes:%(local)s",
                         {'new': new_nodes, 'local': old_nodes})
 
-        return changed
+        return RET_CODE.NOT_CHANGE
 
     # To receive the HA messages from neutron plugin
     def redis_failover_callback(self, new_nodes):
