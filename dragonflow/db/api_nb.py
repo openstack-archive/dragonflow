@@ -25,6 +25,7 @@ from oslo_utils import excutils
 
 import dragonflow.common.exceptions as df_exceptions
 from dragonflow.common import utils as df_utils
+from dragonflow.controller.common import constants as ctrl_const
 from dragonflow.db import db_common
 from dragonflow.db import model_proxy as mproxy
 from dragonflow.db.models import core
@@ -59,7 +60,6 @@ class NbApi(object):
     def __init__(self, db_driver):
         super(NbApi, self).__init__()
         self.driver = db_driver
-        self.controller = None
         self.use_pubsub = cfg.CONF.df.enable_df_pub_sub
         self.publisher = None
         self.subscriber = None
@@ -116,7 +116,9 @@ class NbApi(object):
         self.driver.process_ha()
         self.publisher.process_ha()
         self.subscriber.process_ha()
-        self.controller.sync()
+        self._notification_cb(
+            db_common.DbUpdate(None, None,
+                               ctrl_const.CONTROLLER_SYNC, topic=None))
 
     def _get_publisher(self):
         pub_sub_driver = df_utils.load_driver(
