@@ -107,21 +107,6 @@ class RedisMgt(object):
     def _release_node(self, node):
         node.connection_pool.get_connection(None, None).disconnect()
 
-    def _parse_node_line(self, line):
-        line_items = line.split(' ')
-        ret = line_items[:8]
-        slots = []
-        for sl in line_items[8:]:
-            slot_range = sl.split('-')
-            # this is to avoid the tmp state when resharding such as:
-            # 0-2111 [2112-<-ee248550472a0ddee8857969b7e2ee832fd6cce0]
-            if len(slot_range) < 3:
-                slots.append(slot_range)
-
-        ret.append(slots)
-
-        return ret
-
     def get_cluster_topology_by_all_nodes(self):
         # get redis cluster topology from local nodes cached in initialization
         new_nodes = {}
@@ -145,51 +130,46 @@ class RedisMgt(object):
 
         return new_nodes
 
+    # This is a temporary patch to still support Python2.
+    # The redis library always returns unicode strings
+    @staticmethod
+    def _unicode_to_str(value):
+        if six.PY3:
+            return value
+        if not isinstance(value, six.text_type):
+            return value
+        return value.encode('utf-8', 'ignore')
+
     def _get_cluster_info(self, node):
-        raw = node.execute_command('cluster info').decode('utf-8', 'ignore')
+        raw = node.execute_command('cluster info')
+        return {self._unicode_to_str(key): self._unicode_to_str(value)
+                for key, value in raw.items()}
 
-        def _split(line):
-            k, v = line.split(':')
-            yield k
-            yield v
-
-        return {k: v for k, v in
-                [_split(line) for line in raw.split('\r\n') if line]}
+    @staticmethod
+    def _get_role_from_flags(flags):
+        parsed_flags = flags.split(',')
+        if 'fail' in parsed_flags:
+            return None
+        if 'master' in parsed_flags:
+            return 'master'
+        if 'slave' in parsed_flags:
+            flags = 'slave'
+        return flags
 
     def _get_cluster_nodes(self, node):
-        raw = node.execute_command('cluster nodes').decode('utf-8', 'ignore')
+        raw = node.execute_command('cluster nodes')
         ret = {}
 
-        for line in raw.split('\n'):
-            if not line:
-                continue
-
-            node_id, ip_port, flags, master_id, ping, pong, epoch, \
-                status, slots = self._parse_node_line(line)
-            role = flags
-
-            if ',' in flags:
-                if "fail" in flags:
-                    continue
-                if "slave" in flags:
-                    role = "slave"
-                elif "master" in flags:
-                    role = "master"
-
+        for ip_port, _node in raw.items():
+            node = {self._unicode_to_str(key): self._unicode_to_str(value)
+                    for key, value in _node.items()}
+            role = self._get_role_from_flags(node['flags'])
+            node['role'] = role
+            node.pop('flags', None)
             if ip_port.startswith(':'):
-                ip_port = "127.0.0.1" + ip_port
+                ip_port = '127.0.0.1' + ip_port
 
-            ret[ip_port] = {
-                'node_id': node_id,
-                'role': role,
-                'master_id': master_id,
-                'last_ping_sent': ping,
-                'last_pong_rcvd': pong,
-                'epoch': epoch,
-                'status': status,
-                'slots': slots
-            }
-
+        ret[self._unicode_to_str(ip_port)] = node
         return ret
 
     @staticmethod
@@ -247,10 +227,11 @@ class RedisMgt(object):
                                 if node['ip_port'] != ip_port]
 
     def pubsub_select_node_idx(self):
-        db_instance_id = RedisMgt._gen_random_str()
         master_num = len(self.master_list)
         if 0 == master_num:
+            LOG.info("redis master list is empty")
             return None
+        db_instance_id = RedisMgt._gen_random_str()
         num = hash(db_instance_id) % master_num
         ip_port = self.master_list[num]['ip_port']
 
