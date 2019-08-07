@@ -59,7 +59,6 @@ class NbApi(object):
     def __init__(self, db_driver):
         super(NbApi, self).__init__()
         self.driver = db_driver
-        self.controller = None
         self.use_pubsub = cfg.CONF.df.enable_df_pub_sub
         self.publisher = None
         self.subscriber = None
@@ -116,7 +115,6 @@ class NbApi(object):
         self.driver.process_ha()
         self.publisher.process_ha()
         self.subscriber.process_ha()
-        self.controller.sync()
 
     def _get_publisher(self):
         pub_sub_driver = df_utils.load_driver(
