@@ -23,11 +23,11 @@ from dragonflow.db import pub_sub_api
 
 LOG = logging.getLogger(__name__)
 
-PUBSUB_DB_PREFIX = "pubsub"
+PUBSUB_DB_PREFIX = b"/pubsub"
 
 
 def _get_topic_watch_prefix(topic):
-    topic_prefix = "/{}/{}".format(PUBSUB_DB_PREFIX, topic)
+    topic_prefix = b'/'.join((PUBSUB_DB_PREFIX, topic))
     return topic_prefix
 
 
@@ -123,7 +123,8 @@ class EtcdSubscriberAgent(pub_sub_api.SubscriberApi):
     def register_topic(self, topic):
         LOG.info('Register topic %s', topic)
         if topic not in self.topic_dict:
-            topic_thread = self._create_topic_thread(topic)
+            topic_thread = self._create_topic_thread(topic.encode('utf-8',
+                                                                  'ignore'))
             self.topic_dict[topic] = topic_thread
             if self.running:
                 topic_thread.start()
