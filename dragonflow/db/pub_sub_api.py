@@ -251,13 +251,13 @@ class SubscriberAgentBase(SubscriberApi):
     def register_topic(self, topic):
         LOG.info('Register topic %s', topic)
         if topic not in self.topic_list:
-            self.topic_list.append(topic)
+            self.topic_list.append(topic.encode('utf-8', 'ignore'))
             return True
         return False
 
     def unregister_topic(self, topic):
         LOG.info('Unregister topic %s', topic)
-        self.topic_list.remove(topic)
+        self.topic_list.remove(topic.encode('utf-8'))
 
     def set_subscriber_for_failover(self, sub, callback):
         pass
