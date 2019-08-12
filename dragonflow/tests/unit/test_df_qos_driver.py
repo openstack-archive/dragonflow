@@ -97,8 +97,6 @@ class TestDfQosDriver(test_mech_driver.DFMechanismDriverTestCase):
                                            qos_rule_obj['id'],
                                            qos_obj['id'])
         newer_qos_obj = self.qos_plugin.get_policy(self.context, qos_obj['id'])
-        self.assertGreater(newer_qos_obj['revision_number'],
-                           new_qos_obj['revision_number'])
         self.qos_driver.nb_api.update.assert_called_with(qos.QosPolicy(
             id=qos_obj['id'],
             topic='project1',
