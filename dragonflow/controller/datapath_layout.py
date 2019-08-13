@@ -53,8 +53,9 @@ def get_datapath_layout(path=None):
     if path is None:
         path = cfg.CONF.df.datapath_layout_path
 
+    # See https://msg.pyyaml.org/load
     with open(path) as f:
-        raw_layout = yaml.load(f)
+        raw_layout = yaml.safe_load(f)
 
     vertices = tuple(
         Vertex(
