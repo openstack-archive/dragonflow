@@ -509,7 +509,7 @@ class OASPrinter(ModelsPrinter):
     def fields_end(self):
         pass
 
-    def _simple_field(self, field_type, restrictions):
+    def _simple_field(self, field_type, is_embedded, restrictions):
         if field_type == ENUM_TYPE:
             return {
                 'type': STRING_TYPE,
@@ -519,21 +519,29 @@ class OASPrinter(ModelsPrinter):
             if field_type == FLOAT_TYPE:
                 field_type = NUMBER_TYPE
             return {'type': field_type}
+        elif not is_embedded:
+            return {
+                'type': STRING_TYPE,
+                'x-referenced-type': field_type
+            }
         else:
             return {'$ref': '{}/{}'.format(OASPrinter._SCHEMA_BASE_PATH,
                                            field_type)}
 
-    def _array_field(self, field_type, restrictions):
-        return {'items': self._simple_field(field_type, restrictions),
+    def _array_field(self, field_type, is_embedded, restrictions):
+        return {'items': self._simple_field(field_type,
+                                            is_embedded, restrictions),
                 'type': 'array'}
 
     def handle_field(self, field_name, field_type, is_required, is_embedded,
                      is_single, restrictions):
         flds = self._model['properties']
         if is_single:
-            flds[field_name] = self._simple_field(field_type, restrictions)
+            flds[field_name] = self._simple_field(field_type,
+                                                  is_embedded, restrictions)
         else:
-            flds[field_name] = self._array_field(field_type, restrictions)
+            flds[field_name] = self._array_field(field_type,
+                                                 is_embedded, restrictions)
         if is_required:
             self._required.append(field_name)
 
