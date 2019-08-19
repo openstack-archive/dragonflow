@@ -97,6 +97,13 @@ class TestDfQosDriver(test_mech_driver.DFMechanismDriverTestCase):
                                            qos_rule_obj['id'],
                                            qos_obj['id'])
         newer_qos_obj = self.qos_plugin.get_policy(self.context, qos_obj['id'])
+        # There is an issue (Neutron) with the version number that is sent
+        # to the QoS plugin, somehow it is still version 1.
+        # We update and re-read the item to make sure it advances.
+        newer_qos_obj = self.qos_plugin.update_policy(
+                self.context, qos_obj['id'], {'policy': newer_qos_obj})
+        self.assertGreater(newer_qos_obj['revision_number'],
+                           new_qos_obj['revision_number'])
         self.qos_driver.nb_api.update.assert_called_with(qos.QosPolicy(
             id=qos_obj['id'],
             topic='project1',
