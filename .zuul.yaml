@@ -2,8 +2,8 @@
     templates:
       - check-requirements
       - openstack-python-jobs-neutron
-      - openstack-python35-jobs-neutron
       - openstack-python36-jobs-neutron
+      - openstack-python37-jobs-neutron
       - build-openstack-docs-pti
     check:
       jobs:
@@ -18,11 +18,11 @@
             required-projects:
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
-        - openstack-tox-py35:
+        - openstack-tox-py36:
             required-projects:
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
-        - openstack-tox-py36:
+        - openstack-tox-py37:
             required-projects:
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
@@ -38,11 +38,11 @@
             required-projects:
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
-        - openstack-tox-py35:
+        - openstack-tox-py36:
             required-projects:
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
-        - openstack-tox-py36:
+        - openstack-tox-py37:
             required-projects:
               - openstack/networking-sfc
               - openstack/neutron-dynamic-routing
