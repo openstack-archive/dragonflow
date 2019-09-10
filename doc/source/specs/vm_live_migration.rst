@@ -92,7 +92,7 @@ source node, and other nodes which have subscribed the same topic as the
 migrating VM.
 
 3 At the last stage, neutron calls update_port to update port chassis.
-And controller will respond to the publish event from the neuron server.
+And controller will respond to the publish event from the neutron server.
 The controller can either update migration flows or not in this step,
 so if it does, it will ensure the flows are updated correctly in condition
 the second step fail to update flows, such as publish event missing.
