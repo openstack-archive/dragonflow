@@ -275,7 +275,7 @@ function configure_df_plugin {
             'from dragonflow.common import extensions ;\
              print ",".join(extensions.SUPPORTED_API_EXTENSIONS)')
 
-        # Set netron-server related settings
+        # Set neutron-server related settings
         iniset $DRAGONFLOW_CONF df monitor_table_poll_time "$DF_MONITOR_TABLE_POLL_TIME"
         iniset $DRAGONFLOW_CONF df publisher_rate_limit_timeout "$PUBLISHER_RATE_LIMIT_TIMEOUT"
         iniset $DRAGONFLOW_CONF df publisher_rate_limit_count "$PUBLISHER_RATE_LIMIT_COUNT"
