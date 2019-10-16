@@ -26,7 +26,7 @@ didn't not define how opt_name should be translated to dhcp-opt number.
 
 According to the examples in the spec, and according to neutron reference
 implementation, the format of the option names is derived from the
-configuration file of dnsmsq-dhcp server ( as it used as the server in the
+configuration file of dnsmasq-dhcp server ( as it used as the server in the
 reference implementation ). In addition that configuration enables to
 configure fields in the dhcp-packet itself (the  "server-ip-address"
 as it change the  siaddr -  that isn't part of the
