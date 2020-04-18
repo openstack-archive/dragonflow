@@ -11,9 +11,9 @@
 #    under the License.
 import copy
 import testtools
+from unittest import mock
 
 from jsonmodels import fields
-import mock
 
 from dragonflow.common import exceptions
 from dragonflow.db import db_store

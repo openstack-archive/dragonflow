@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 import testtools
+from unittest import mock
 
 from dragonflow import conf as cfg
 from dragonflow.switch.drivers.ovs import os_ken_base_app

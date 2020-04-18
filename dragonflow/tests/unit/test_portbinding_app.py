@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
+from unittest import mock
 
 from dragonflow.db.models import l2
 from dragonflow.tests.unit import test_app_base

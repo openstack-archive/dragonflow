@@ -11,8 +11,8 @@
 #    under the License.
 
 import copy
+from unittest import mock
 
-import mock
 from os_ken.controller import ofp_event
 from os_ken.lib.packet import ethernet
 from os_ken.lib.packet import icmp

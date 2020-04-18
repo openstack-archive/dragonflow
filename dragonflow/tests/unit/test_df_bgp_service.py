@@ -11,10 +11,10 @@
 #    under the License.
 
 import threading
+from unittest import mock
 
 import eventlet
 from eventlet import greenthread
-import mock
 
 from dragonflow.controller import df_bgp_service
 from dragonflow.db import api_nb

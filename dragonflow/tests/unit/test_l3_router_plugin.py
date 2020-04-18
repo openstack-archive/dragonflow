@@ -15,7 +15,6 @@
 #    under the License.
 
 import itertools
-import mock
 from neutron.db.models import l3
 from neutron.tests.unit.api import test_extensions
 from neutron.tests.unit.extensions import test_l3
@@ -23,6 +22,7 @@ from neutron_lib import constants
 from neutron_lib import context as nctx
 from neutron_lib.plugins import directory
 import testtools
+from unittest import mock
 
 from dragonflow.db.models import l3 as df_l3
 from dragonflow.neutron.db.models import l3 as neutron_l3

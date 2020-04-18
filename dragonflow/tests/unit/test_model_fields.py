@@ -11,8 +11,9 @@
 #    under the License.
 from jsonmodels import errors
 from jsonmodels import fields
-import mock
 import netaddr
+from unittest import mock
+
 import six
 
 import dragonflow.db.field_types as df_fields

@@ -13,9 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 import netaddr
 from neutron.conf.agent.metadata import config as metadata_config
+from unittest import mock
+
 from oslo_config import fixture as cfg_fixture
 
 from dragonflow.controller.apps import metadata_service

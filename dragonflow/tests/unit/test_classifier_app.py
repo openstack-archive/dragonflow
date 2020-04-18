@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import copy
-import mock
 import testscenarios
+from unittest import mock
 
 from dragonflow.common import constants
 from dragonflow.controller.common import constants as const

@@ -14,8 +14,8 @@
 #    under the License.
 
 import time
+from unittest import mock
 
-import mock
 from os_ken.base import app_manager
 from os_ken import cfg as os_ken_cfg
 

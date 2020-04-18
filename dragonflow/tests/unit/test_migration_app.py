@@ -10,8 +10,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 import copy
+from unittest import mock
 
-import mock
 
 from dragonflow import conf as cfg
 from dragonflow.db.models import migration

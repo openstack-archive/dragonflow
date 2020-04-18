@@ -11,8 +11,8 @@
 #    under the License.
 
 import copy
+from unittest import mock
 
-import mock
 
 from dragonflow.db.models import l2
 from dragonflow.db.models import l3

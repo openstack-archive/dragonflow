@@ -13,8 +13,8 @@
 #    under the License.
 
 import copy
+from unittest import mock
 
-import mock
 
 from dragonflow.controller.common import constants as const
 from dragonflow.tests.unit import _test_l3

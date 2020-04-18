@@ -14,8 +14,8 @@
 #    under the License.
 
 import copy
+from unittest import mock
 
-import mock
 
 from dragonflow.db.models import host_route
 from dragonflow.tests.unit import _test_l3

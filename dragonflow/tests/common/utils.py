@@ -12,8 +12,8 @@
 
 import functools
 import re
+from unittest import mock
 
-import mock
 import netaddr
 from neutron.agent.common import utils as agent_utils
 from neutron.common import utils as n_utils

@@ -15,9 +15,9 @@
 
 import functools
 import math
-import mock
 import re
 import redis
+from unittest import mock
 
 from dragonflow.common import exceptions
 from dragonflow.db.drivers import redis_db_driver

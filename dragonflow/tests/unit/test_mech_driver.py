@@ -14,8 +14,8 @@
 
 
 import logging
-import mock
 import netaddr
+from unittest import mock
 
 from neutron.tests.unit.extensions import test_portsecurity
 from neutron.tests.unit.plugins.ml2 import test_ext_portsecurity

@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 import netaddr
 import os_ken.lib.packet
+from unittest import mock
 
 from dragonflow.controller.common import constants
 from dragonflow.controller import port_locator

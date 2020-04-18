@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 import netaddr
 from neutron.agent.common import utils
 from neutron_lib import constants as n_const
+from unittest import mock
 
 from dragonflow.db.models import l2
 from dragonflow.db.models import secgroups

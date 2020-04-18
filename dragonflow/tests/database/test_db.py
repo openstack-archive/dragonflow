@@ -17,9 +17,9 @@
 import signal
 import sys
 import time
+from unittest import mock
 import uuid
 
-import mock
 from neutron.common import config as common_config
 import numpy
 from oslo_log import log

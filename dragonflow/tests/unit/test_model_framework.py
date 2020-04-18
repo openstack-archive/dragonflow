@@ -11,9 +11,9 @@
 #    under the License.
 import contextlib
 import copy
+from unittest import mock
 
 from jsonmodels import fields
-import mock
 
 from dragonflow.controller import df_base_app
 from dragonflow.db import field_types as df_fields

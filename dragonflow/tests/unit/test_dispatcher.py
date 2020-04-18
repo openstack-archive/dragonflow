@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
+from unittest import mock
 
 from dragonflow.common import exceptions
 from dragonflow.controller import dispatcher

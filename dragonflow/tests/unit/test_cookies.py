@@ -11,7 +11,7 @@
 #    under the License.
 
 import collections
-import mock
+from unittest import mock
 
 from dragonflow.common import exceptions
 from dragonflow.controller.common import cookies

@@ -12,7 +12,7 @@
 
 from jsonmodels import fields
 from jsonmodels import models
-import mock
+from unittest import mock
 
 from dragonflow.db import db_store
 from dragonflow.db import field_types as df_fields

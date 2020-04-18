@@ -14,7 +14,7 @@
 #    under the License.
 
 import copy
-import mock
+from unittest import mock
 
 from neutron_lib import constants as n_const
 from os_ken.lib import addrconv

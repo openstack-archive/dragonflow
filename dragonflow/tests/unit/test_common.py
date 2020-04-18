@@ -10,8 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 import testtools
+from unittest import mock
 
 from dragonflow.common import exceptions as df_exc
 from dragonflow.common import utils

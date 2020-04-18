@@ -9,11 +9,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import mock
 from neutron.api import extensions as api_ext
 from neutron.common import config
 from neutron_lib import constants
 from neutron_lib import context
+from unittest import mock
+
 from oslo_utils import importutils
 import testtools
 

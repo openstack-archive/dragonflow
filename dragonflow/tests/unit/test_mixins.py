@@ -10,8 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from jsonmodels import fields
-import mock
 import testtools
+from unittest import mock
 
 from dragonflow.db import api_nb
 import dragonflow.db.model_framework as mf

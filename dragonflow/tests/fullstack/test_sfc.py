@@ -11,8 +11,8 @@
 #    under the License.
 import itertools
 import time
+from unittest import mock
 
-import mock
 from neutron_lib import constants
 from os_ken.lib.packet import ether_types
 from os_ken.lib.packet import ethernet

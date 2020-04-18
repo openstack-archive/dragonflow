@@ -14,7 +14,7 @@
 #    under the License.
 
 import copy
-import mock
+from unittest import mock
 
 from dragonflow.controller.common import constants as const
 from dragonflow.db.models import l2
